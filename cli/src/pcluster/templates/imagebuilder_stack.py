@@ -35,7 +35,7 @@ from pcluster.models.imagebuilder_extra_attributes import ChefAttributes
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 
 
-class ImageBuilderStack(core.Stack):
+class ImageBuilderCdkStack(core.Stack):
     """Create the Stack for imagebuilder."""
 
     def __init__(self, scope: core.Construct, construct_id: str, imagebuild: ImageBuilder, **kwargs) -> None:

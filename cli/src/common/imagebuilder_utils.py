@@ -21,7 +21,7 @@ InstanceRole = Enum("InstanceRole", ("ROLE", "INSTANCE_PROFILE"))
 
 def get_ami_id(parent_image):
     """Get ami id from parent image, parent image could be image id or image arn."""
-    if parent_image.startswith("arn"):
+    if parent_image and parent_image.startswith("arn"):
         ami_id = AWSApi.instance().imagebuilder.get_image_id(parent_image)
     else:
         ami_id = parent_image

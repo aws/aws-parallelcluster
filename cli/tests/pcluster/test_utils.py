@@ -132,34 +132,6 @@ def test_update_stack_template(mocker, boto3_stubber, error_message):
 
 
 @pytest.mark.parametrize(
-    "resources",
-    [
-        [
-            {"ResourceType": "Not a stack", "ResourceName": "name_one", "PhysicalResourceId": "PhysIdOne"},
-            {"ResourceType": STACK_TYPE, "ResourceName": "name_two", "PhysicalResourceId": "PhysIdTwo"},
-            {"ResourceType": "Also not a stack", "ResourceName": "name_three", "PhysicalResourceId": "PhysIdThree"},
-            {"ResourceType": STACK_TYPE, "ResourceName": "name_four", "PhysicalResourceId": "PhysIdFour"},
-        ],
-        [],
-    ],
-)
-def test_get_cluster_substacks(mocker, resources):  # noqa: D202
-    """Verify that utils.get_cluster_substacks behaves as expected."""
-
-    def fake_get_stack(phys_id):
-        return phys_id
-
-    mocker.patch("pcluster.utils.get_stack_resources").return_value = resources
-    mocker.patch("pcluster.utils.get_stack").side_effect = fake_get_stack
-    expected_substacks = [
-        fake_get_stack(r.get("PhysicalResourceId")) for r in resources if r.get("ResourceType") == STACK_TYPE
-    ]
-    observed_substacks = utils.get_cluster_substacks(FAKE_CLUSTER_NAME)
-    utils.get_stack_resources.assert_called_with(FAKE_STACK_NAME)
-    assert_that(observed_substacks).is_equal_to(expected_substacks)
-
-
-@pytest.mark.parametrize(
     "response,is_error",
     [
         ("Stack with id {0} does not exist".format(FAKE_STACK_NAME), True),
@@ -439,11 +411,11 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
     boto3_stubber("s3", mocked_requests)
     if create_error_message or configure_error_message:
         with pytest.raises(ClientError, match=create_error_message or configure_error_message):
-            utils.create_s3_bucket(bucket_name, region)
+            utils.create_s3_bucket(bucket_name)
         if configure_error_message:
             assert_that(delete_s3_bucket_mock.call_count).is_equal_to(1)
     else:
-        utils.create_s3_bucket(bucket_name, region)
+        utils.create_s3_bucket(bucket_name)
         delete_s3_bucket_mock.assert_not_called()
 
 

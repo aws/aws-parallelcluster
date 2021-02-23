@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from common.boto3.cfn import CfnClient
+from common.boto3.dynamodb import DynamodbClient
 from common.boto3.ec2 import Ec2Client
 from common.boto3.efs import EfsClient
 from common.boto3.imagebuilder import ImageBuilderClient
@@ -31,6 +32,7 @@ class AWSApi:
         self.cfn = CfnClient()
         self.ec2 = Ec2Client()
         self.efs = EfsClient(ec2_client=self.ec2)
+        self.dynamodb = DynamodbClient()
         # pylint: disable=C0103
         self.s3 = S3Client()
         self.kms = KmsClient()

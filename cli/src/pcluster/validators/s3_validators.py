@@ -84,12 +84,12 @@ class S3BucketValidator(Validator):
         try:
             AWSApi.instance().s3.head_bucket(bucket_name=bucket)
             # Check versioning is enabled on the bucket
-            response = AWSApi.instance().s3.get_bucket_versioning(bucket_name=bucket)
-            if response.get("Status") != "Enabled":
+            bucket_versioning_status = AWSApi.instance().s3.get_bucket_versioning_status(bucket)
+            if bucket_versioning_status != "Enabled":
                 self._add_failure(
                     "The S3 bucket {0} specified cannot be used by cluster "
                     "because versioning setting is: {1}, not 'Enabled'. Please enable bucket versioning.".format(
-                        bucket, response.get("Status")
+                        bucket, bucket_versioning_status
                     ),
                     FailureLevel.ERROR,
                 )

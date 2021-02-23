@@ -18,21 +18,22 @@ import tempfile
 from aws_cdk import core
 
 from common.utils import load_yaml_dict
+from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket
 from pcluster.models.imagebuilder import ImageBuilder
-from pcluster.templates.cluster_stack import ClusterStack
-from pcluster.templates.imagebuilder_stack import ImageBuilderStack
+from pcluster.templates.cluster_stack import ClusterCdkStack
+from pcluster.templates.imagebuilder_stack import ImageBuilderCdkStack
 
 
 class CDKTemplateBuilder:
     """Create the template, starting from the given resources."""
 
     @staticmethod
-    def build_cluster_template(cluster):
+    def build_cluster_template(cluster_config: BaseClusterConfig, bucket: ClusterBucket):
         """Build template for the given cluster and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "parallelcluster-cluster"  # TODO: pass stack name as argument
             app = core.App(outdir=str(tempdir))
-            ClusterStack(app, output_file, cluster=cluster)
+            ClusterCdkStack(app, output_file, cluster_config, bucket)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 
@@ -44,7 +45,7 @@ class CDKTemplateBuilder:
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "imagebuilder"
             app = core.App(outdir=str(tempdir))
-            ImageBuilderStack(app, output_file, imagebuild)
+            ImageBuilderCdkStack(app, output_file, imagebuild)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 

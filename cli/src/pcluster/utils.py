@@ -12,6 +12,7 @@
 from __future__ import absolute_import, print_function  # isort:skip
 
 import functools
+import itertools
 
 from future import standard_library  # isort:skip
 
@@ -85,6 +86,7 @@ def get_stack_template(stack_name):
     return template
 
 
+# TODO Moved
 def get_stack_version(stack):
     return next(iter([tag["Value"] for tag in stack.get("Tags") if tag["Key"] == "Version"]), None)
 
@@ -117,14 +119,17 @@ def update_stack_template(stack_name, updated_template, cfn_parameters):
 
 
 def get_region():
-    """Get AWS_DEFAULT_REGION from the environment."""
-    return os.environ.get("AWS_DEFAULT_REGION")
+    """
+    Get region used internally for all the AWS calls.
+
+    The region from the env has higher priority because it can be explicitly set from the code (e.g. unit test).
+    """
+    return os.environ.get("AWS_DEFAULT_REGION") or boto3.session.Session().region_name
 
 
 def get_partition():
-    """Get partition for the AWS_DEFAULT_REGION set in the environment."""
-    region = get_region()
-    return next(("aws-" + partition for partition in ["us-gov", "cn"] if region.startswith(partition)), "aws")
+    """Get partition for the region set in the environment."""
+    return next(("aws-" + partition for partition in ["us-gov", "cn"] if get_region().startswith(partition)), "aws")
 
 
 def paginate_boto3(method, **kwargs):
@@ -168,7 +173,7 @@ def get_cloudformation_directory():
     return os.path.join(current_dir, "..", "..", "..", "cloudformation")
 
 
-def create_s3_bucket(bucket_name, region):
+def create_s3_bucket(bucket_name):
     """
     Create a new S3 bucket.
 
@@ -178,6 +183,7 @@ def create_s3_bucket(bucket_name, region):
     """
     s3_client = boto3.client("s3")
     """ :type : pyboto3.s3 """
+    region = get_region()
     if region != "us-east-1":
         s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
     else:
@@ -268,6 +274,7 @@ def delete_s3_artifacts(bucket_name, artifact_directory):
         )
 
 
+# TODO moved
 def cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket=True):
     """Cleanup S3 bucket and/or artifact directory."""
     LOGGER.debug(
@@ -629,6 +636,7 @@ def get_stack(stack_name, cfn_client=None, raise_on_error=False):
         )
 
 
+# TODO moved
 def stack_exists(stack_name):
     """Return a boolean describing whether or not a stack by the given name exists."""
     try:
@@ -669,17 +677,7 @@ def get_stack_events(stack_name, raise_on_error=False):
         )
 
 
-def get_cluster_substacks(cluster_name):
-    """Return stack objects with names that match the given prefix."""
-    resources = get_stack_resources(get_stack_name(cluster_name))
-    substacks = []
-    for r in resources:
-        if r.get("ResourceType") == STACK_TYPE and r.get("PhysicalResourceId"):
-            substacks.append(get_stack(r.get("PhysicalResourceId")))
-    return substacks
-
-
-def verify_stack_creation(stack_name, cfn_client):
+def verify_stack_creation(stack_name, cfn_client=None):
     """
     Wait for the stack creation to be completed and notify if the stack creation fails.
 
@@ -687,6 +685,8 @@ def verify_stack_creation(stack_name, cfn_client):
     :param cfn_client: the CloudFormation client to use to verify stack status
     :return: True if the creation was successful, false otherwise.
     """
+    if not cfn_client:
+        cfn_client = boto3.client("cloudformation")
     status = get_stack(stack_name, cfn_client).get("StackStatus")
     resource_status = ""
     while status == "CREATE_IN_PROGRESS":
@@ -1325,7 +1325,9 @@ class InstanceTypeInfo:
 
     def supported_architecture(self):
         """Return the list of supported architectures."""
-        return self.instance_type_data.get("ProcessorInfo").get("SupportedArchitectures")
+        supported_architectures = self.instance_type_data.get("ProcessorInfo").get("SupportedArchitectures")
+        # Some instance types support multiple architectures (x86_64 and i386). Filter unsupported ones.
+        return list(set(supported_architectures) & set(SUPPORTED_ARCHITECTURES))
 
     def is_efa_supported(self):
         """Check whether EFA is supported."""
@@ -1359,3 +1361,13 @@ class InstanceTypeInfo:
         if ebs_info:
             ebs_optimized = ebs_info.get("EbsOptimizedSupport") != "unsupported"
         return ebs_optimized
+
+
+def grouper(iterable, n):
+    """Slice iterable into chunks of size n."""
+    it = iter(iterable)
+    while True:
+        chunk = tuple(itertools.islice(it, n))
+        if not chunk:
+            return
+        yield chunk

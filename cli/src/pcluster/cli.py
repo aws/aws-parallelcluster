@@ -159,6 +159,12 @@ Examples::
         "cluster_name",
         help="Defines the name of the cluster. The CloudFormation stack name will be " "parallelcluster-[cluster_name]",
     )
+    pcreate.add_argument(
+        "--disable-update-check",
+        action="store_true",
+        default=False,
+        help="Disable check for ParallelCluster updates.",
+    )
     _addarg_config(pcreate)
     _addarg_region(pcreate)
     _addarg_nowait(pcreate)
@@ -169,25 +175,6 @@ Examples::
         "-u",
         "--template-url",
         help="Specifies the URL for a custom CloudFormation template, if it was used at creation time.",
-    )
-    pcreate.add_argument(
-        "-t",
-        "--cluster-template",
-        help="Indicates the 'cluster' section of the configuration file to use for cluster creation.",
-    )
-    pcreate.add_argument(
-        "-p",
-        "--extra-parameters",
-        type=json.loads,
-        help="Adds extra parameters to pass as input to the CloudFormation template.\n"
-        'They must be in the form: {"ParameterKey1": "ParameterValue1", "ParameterKey2": "ParameterValue2"}',
-    )
-    pcreate.add_argument(
-        "-g",
-        "--tags",
-        type=json.loads,
-        help="Specifies additional tags to be added to the stack.\n"
-        'They must be in the form: {"Key1": "Value1", "Key2": "Value2"}',
     )
     pcreate.set_defaults(func=create)
 
@@ -250,7 +237,6 @@ Examples::
         help="Keep cluster's CloudWatch log group data after deleting. The log group will persist until it's deleted "
         "manually, but log events will still expire based on the previously configured retention time.",
     )
-    _addarg_config(pdelete)
     _addarg_region(pdelete)
     _addarg_nowait(pdelete)
     pdelete.set_defaults(func=delete)
@@ -285,7 +271,6 @@ Examples::
     # status command subparser
     pstatus = subparsers.add_parser("status", help="Pulls the current status of the cluster.")
     pstatus.add_argument("cluster_name", help="Shows the status of the cluster with the name provided here.")
-    _addarg_config(pstatus)
     _addarg_region(pstatus)
     _addarg_nowait(pstatus)
     pstatus.set_defaults(func=status)

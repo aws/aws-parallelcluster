@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+3.0.0
+------
+
+**CHANGES**
+
+- Deprecate `cluster-template`, `extra-parameters` and `tags` parameters for the `create` command.
+- Add `disable-update-check` parameter for the `create` command.
+- Deprecate `config` parameter for the `delete` command.
+- Deprecate `config` parameter for the `status` command.
+
+
 2.10.1
 ------
 

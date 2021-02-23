@@ -49,6 +49,18 @@ class S3Client(Boto3Client):
         """Upload object content to s3."""
         return self._client.put_object(Bucket=bucket_name, Body=body, Key=key)
 
+    @AWSExceptionHandler.handle_client_exception
+    def get_object(self, bucket_name, key, version_id=None):
+        """Get object content from s3."""
+        if version_id:
+            return self._client.get_object(Bucket=bucket_name, Key=key, VersionId=version_id)
+        return self._client.get_object(Bucket=bucket_name, Key=key)
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_bucket_versioning_status(self, bucket_name):
+        """Return true if bucket versioning is enabled."""
+        return self._client.get_bucket_versioning(Bucket=bucket_name).get("Status")
+
 
 def _process_generic_s3_bucket_error(client_error, bucket_name):
     if client_error.response.get("Error").get("Code") == "NoSuchBucket":

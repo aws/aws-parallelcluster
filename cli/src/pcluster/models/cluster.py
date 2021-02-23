@@ -12,939 +12,340 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-from enum import Enum
-from typing import List
+import logging
+import time
+
+import pkg_resources
+import yaml
 
 from common.aws.aws_api import AWSApi
-from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
-from pcluster.models.common import BaseDevSettings, BaseTag, Resource
-from pcluster.utils import get_availability_zone_of_subnet, get_partition, get_region
-from pcluster.validators.cluster_validators import (
-    ArchitectureOsValidator,
-    DcvValidator,
-    DisableSimultaneousMultithreadingArchitectureValidator,
-    DuplicateMountDirValidator,
-    EfaOsArchitectureValidator,
-    EfsIdValidator,
-    FsxArchitectureOsValidator,
-    FsxNetworkingValidator,
-    IntelHpcArchitectureValidator,
-    IntelHpcOsValidator,
-    NameValidator,
-    NumberOfStorageValidator,
-    TagKeyValidator,
+from common.aws.aws_resources import Stack, StackActionError
+from common.boto3.common import AWSClientError
+from pcluster.models.cluster_config import ClusterBucket, Tag
+from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.utils import (
+    NodeType,
+    check_s3_bucket_exists,
+    create_s3_bucket,
+    generate_random_name_with_prefix,
+    get_installed_version,
+    get_stack_name,
+    grouper,
+    upload_resources_artifacts,
 )
-from pcluster.validators.ebs_validators import (
-    EbsVolumeIopsValidator,
-    EbsVolumeThroughputIopsValidator,
-    EbsVolumeThroughputValidator,
-    EbsVolumeTypeSizeValidator,
-    SharedEBSVolumeIdValidator,
-)
-from pcluster.validators.ec2_validators import (
-    AdditionalIamPolicyValidator,
-    InstanceTypeBaseAMICompatibleValidator,
-    InstanceTypeValidator,
-    KeyPairValidator,
-    PlacementGroupIdValidator,
-)
-from pcluster.validators.fsx_validators import (
-    FsxBackupIdValidator,
-    FsxBackupOptionsValidator,
-    FsxPersistentOptionsValidator,
-    FsxS3Validator,
-    FsxStorageCapacityValidator,
-    FsxStorageTypeOptionsValidator,
-)
-from pcluster.validators.kms_validators import KmsKeyValidator
-from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
-from pcluster.validators.s3_validators import S3BucketUriValidator, S3BucketValidator, UrlValidator
 
-# ---------------------- Storage ---------------------- #
-
-MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1}
+LOGGER = logging.getLogger(__name__)
 
 
-class Ebs(Resource):
-    """Represent the configuration shared by EBS root volume and Shared EBS."""
+class ClusterActionError(Exception):
+    """Represent an error during the execution of an action on the cluster."""
 
-    def __init__(
-        self,
-        volume_type: str = None,
-        iops: int = None,
-        size: int = None,
-        encrypted: bool = None,
-        kms_key_id: str = None,
-        throughput: int = None,
-    ):
-        super().__init__()
-        self.volume_type = Resource.init_param(volume_type, default="gp2")
-        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
-        self.size = Resource.init_param(size, default=20)
-        self.encrypted = Resource.init_param(encrypted, default=False)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
-
-    def _validate(self):
-        # FIXME This method is not executed because subclass override the method.
-        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
-        self._execute_validator(
-            EbsVolumeIopsValidator,
-            volume_type=self.volume_type,
-            volume_size=self.size,
-            volume_iops=self.iops,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_throughput=self.throughput,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputIopsValidator,
-            volume_type=self.volume_type,
-            volume_iops=self.iops,
-            volume_throughput=self.throughput,
-        )
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+    def __init__(self, message: str, validation_failures: list = None):
+        super().__init__(message)
+        self.validation_failures = validation_failures or []
 
 
-class Raid(Resource):
-    """Represent the Raid configuration."""
+class ClusterStack(Stack):
+    """Class representing a running stack associated to a Cluster."""
 
-    def __init__(self, raid_type: int = None, number_of_volumes=None):
-        super().__init__()
-        self.raid_type = Resource.init_param(raid_type)
-        self.number_of_volumes = Resource.init_param(number_of_volumes, default=2)
-
-
-class EphemeralVolume(Resource):
-    """Represent the Ephemeral Volume resource."""
-
-    def __init__(self, encrypted: bool = None, mount_dir: str = None):
-        super().__init__()
-        self.encrypted = Resource.init_param(encrypted, default=False)
-        self.mount_dir = Resource.init_param(mount_dir, default="/scratch")
-
-
-class Storage(Resource):
-    """Represent the entire node storage configuration."""
-
-    def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
-        super().__init__()
-        self.root_volume = root_volume
-        self.ephemeral_volume = ephemeral_volume
-
-
-class SharedStorageType(Enum):
-    """Define storage types to be used as shared storage."""
-
-    EBS = "ebs"
-    EFS = "efs"
-    FSX = "fsx"
-
-
-class SharedEbs(Ebs):
-    """Represent a shared EBS, inherits from both _SharedStorage and Ebs classes."""
-
-    def __init__(
-        self,
-        mount_dir: str,
-        volume_type: str = None,
-        iops: int = None,
-        size: int = None,
-        encrypted: bool = None,
-        kms_key_id: str = None,
-        throughput: int = None,
-        snapshot_id: str = None,
-        volume_id: str = None,
-        raid: Raid = None,
-    ):
-        Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
-        self.mount_dir = mount_dir
-        self.shared_storage_type = SharedStorageType.EBS
-        self.snapshot_id = Resource.init_param(snapshot_id)
-        self.volume_id = Resource.init_param(volume_id)
-        self.raid = raid
-
-    def _validate(self):
-        self._execute_validator(SharedEBSVolumeIdValidator, volume_id=self.volume_id)
-
-
-class SharedEfs(Resource):
-    """Represent the shared EFS resource."""
-
-    def __init__(
-        self,
-        mount_dir: str,
-        encrypted: bool = None,
-        kms_key_id: str = None,
-        performance_mode: str = None,
-        throughput_mode: str = None,
-        provisioned_throughput: int = None,
-        file_system_id: str = None,
-    ):
-        super().__init__()
-        self.mount_dir = mount_dir
-        self.shared_storage_type = SharedStorageType.EFS
-        self.encrypted = Resource.init_param(encrypted, default=False)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-        self.performance_mode = Resource.init_param(performance_mode, default="generalPurpose")
-        self.throughput_mode = Resource.init_param(throughput_mode, default="bursting")
-        self.provisioned_throughput = Resource.init_param(provisioned_throughput)
-        self.file_system_id = Resource.init_param(file_system_id)
-
-    def _validate(self):
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-
-
-class SharedFsx(Resource):
-    """Represent the shared FSX resource."""
-
-    def __init__(
-        self,
-        mount_dir: str,
-        storage_capacity: str = None,
-        deployment_type: str = None,
-        export_path: str = None,
-        import_path: str = None,
-        imported_file_chunk_size: str = None,
-        weekly_maintenance_start_time: str = None,
-        automatic_backup_retention_days: str = None,
-        copy_tags_to_backups: bool = None,
-        daily_automatic_backup_start_time: str = None,
-        per_unit_storage_throughput: int = None,
-        backup_id: str = None,
-        kms_key_id: str = None,
-        file_system_id: str = None,
-        auto_import_policy: str = None,
-        drive_cache_type: str = None,
-        storage_type: str = None,
-    ):
-        super().__init__()
-        self.mount_dir = mount_dir
-        self.shared_storage_type = SharedStorageType.FSX
-        self.storage_capacity = Resource.init_param(storage_capacity)
-        self.storage_type = Resource.init_param(storage_type)
-        self.deployment_type = Resource.init_param(deployment_type)
-        self.export_path = Resource.init_param(export_path)
-        self.import_path = Resource.init_param(import_path)
-        self.imported_file_chunk_size = Resource.init_param(imported_file_chunk_size)
-        self.weekly_maintenance_start_time = Resource.init_param(weekly_maintenance_start_time)
-        self.automatic_backup_retention_days = Resource.init_param(automatic_backup_retention_days)
-        self.copy_tags_to_backups = Resource.init_param(copy_tags_to_backups)
-        self.daily_automatic_backup_start_time = Resource.init_param(daily_automatic_backup_start_time)
-        self.per_unit_storage_throughput = Resource.init_param(per_unit_storage_throughput)
-        self.backup_id = Resource.init_param(backup_id)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-        self.file_system_id = Resource.init_param(file_system_id)
-        self.auto_import_policy = Resource.init_param(auto_import_policy)
-        self.drive_cache_type = Resource.init_param(drive_cache_type)
-        self.storage_type = Resource.init_param(storage_type)
-
-    def _validate(self):
-        self._execute_validator(
-            FsxS3Validator,
-            import_path=self.import_path,
-            imported_file_chunk_size=self.imported_file_chunk_size,
-            export_path=self.export_path,
-            auto_import_policy=self.auto_import_policy,
-        )
-        self._execute_validator(
-            FsxPersistentOptionsValidator,
-            deployment_type=self.deployment_type,
-            kms_key_id=self.kms_key_id,
-            per_unit_storage_throughput=self.per_unit_storage_throughput,
-        )
-        self._execute_validator(
-            FsxBackupOptionsValidator,
-            automatic_backup_retention_days=self.automatic_backup_retention_days,
-            daily_automatic_backup_start_time=self.daily_automatic_backup_start_time,
-            copy_tags_to_backups=self.copy_tags_to_backups,
-            deployment_type=self.deployment_type,
-            imported_file_chunk_size=self.imported_file_chunk_size,
-            import_path=self.import_path,
-            export_path=self.export_path,
-            auto_import_policy=self.auto_import_policy,
-        )
-        self._execute_validator(
-            FsxStorageTypeOptionsValidator,
-            storage_type=self.storage_type,
-            deployment_type=self.deployment_type,
-            per_unit_storage_throughput=self.per_unit_storage_throughput,
-            drive_cache_type=self.drive_cache_type,
-        )
-        self._execute_validator(
-            FsxStorageCapacityValidator,
-            storage_capacity=self.storage_capacity,
-            deployment_type=self.deployment_type,
-            storage_type=self.storage_type,
-            per_unit_storage_throughput=self.per_unit_storage_throughput,
-            file_system_id=self.file_system_id,
-            backup_id=self.backup_id,
-        )
-        self._execute_validator(FsxBackupIdValidator, backup_id=self.backup_id)
-
-        if self.import_path:
-            self._execute_validator(S3BucketUriValidator, url=self.import_path)
-        if self.export_path:
-            self._execute_validator(S3BucketUriValidator, url=self.export_path)
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-
-
-# ---------------------- Networking ---------------------- #
-
-
-class Proxy(Resource):
-    """Represent the proxy."""
-
-    def __init__(self, http_proxy_address: str = None):
-        super().__init__()
-        self.http_proxy_address = http_proxy_address
-
-
-class _BaseNetworking(Resource):
-    """Represent the networking configuration shared by head node and compute node."""
-
-    def __init__(
-        self,
-        assign_public_ip: str = None,
-        security_groups: List[str] = None,
-        additional_security_groups: List[str] = None,
-        proxy: Proxy = None,
-    ):
-        super().__init__()
-        self.assign_public_ip = Resource.init_param(assign_public_ip)
-        self.security_groups = Resource.init_param(security_groups)
-        self.additional_security_groups = Resource.init_param(additional_security_groups)
-        self.proxy = proxy
-
-    def _validate(self):
-        self._execute_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
-        self._execute_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
-
-
-class HeadNodeNetworking(_BaseNetworking):
-    """Represent the networking configuration for the head node."""
-
-    def __init__(self, subnet_id: str, elastic_ip: str = None, **kwargs):
-        super().__init__(**kwargs)
-        self.subnet_id = Resource.init_param(subnet_id)
-        self.elastic_ip = Resource.init_param(elastic_ip)
+    def __init__(self, name: str):
+        """Init stack info."""
+        super().__init__(name)
 
     @property
-    def availability_zone(self):
-        """Compute availability zone from subnet id."""
-        return get_availability_zone_of_subnet(self.subnet_id)
-
-
-class PlacementGroup(Resource):
-    """Represent the placement group for the Queue networking."""
-
-    def __init__(self, enabled: bool = None, id: str = None):
-        super().__init__()
-        self.enabled = Resource.init_param(enabled, default=False)
-        self.id = Resource.init_param(id)
-
-    def _validate(self):
-        self._execute_validator(PlacementGroupIdValidator, placement_group_id=self.id)
-
-
-class QueueNetworking(_BaseNetworking):
-    """Represent the networking configuration for the Queue."""
-
-    def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
-        super().__init__(**kwargs)
-        self.subnet_ids = Resource.init_param(subnet_ids)
-        self.placement_group = placement_group
-
-
-class Ssh(Resource):
-    """Represent the SSH configuration for a node (or the entire cluster)."""
-
-    def __init__(self, key_name: str, allowed_ips: str = None):
-        super().__init__()
-        self.key_name = Resource.init_param(key_name)
-        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
-
-    def _validate(self):
-        self._execute_validator(KeyPairValidator, key_name=self.key_name)
-
-
-class Dcv(Resource):
-    """Represent the DCV configuration."""
-
-    def __init__(self, enabled: bool, port: int = None, allowed_ips: str = None):
-        super().__init__()
-        self.enabled = Resource.init_param(enabled)
-        self.port = Resource.init_param(port, default=8843)
-        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
-
-
-class Efa(Resource):
-    """Represent the EFA configuration."""
-
-    def __init__(self, enabled: bool = None, gdr_support: bool = None):
-        super().__init__()
-        self.enabled = Resource.init_param(enabled, default=True)
-        self.gdr_support = Resource.init_param(gdr_support, default=False)
-
-
-# ---------------------- Monitoring ---------------------- #
-
-
-class CloudWatchLogs(Resource):
-    """Represent the CloudWatch configuration in Logs."""
-
-    def __init__(
-        self,
-        enabled: bool = None,
-        retention_in_days: int = None,
-        log_group_id: str = None,
-        kms_key_id: str = None,
-    ):
-        super().__init__()
-        self.enabled = Resource.init_param(enabled, default=True)
-        self.retention_in_days = Resource.init_param(retention_in_days, default=14)
-        self.log_group_id = Resource.init_param(log_group_id)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-
-    def _validate(self):
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-
-
-class CloudWatchDashboards(Resource):
-    """Represent the CloudWatch Dashboard."""
-
-    def __init__(
-        self,
-        enabled: bool = None,
-    ):
-        super().__init__()
-        self.enabled = Resource.init_param(enabled, default=True)
-
-
-class Logs(Resource):
-    """Represent the CloudWatch Logs configuration."""
-
-    def __init__(
-        self,
-        cloud_watch: CloudWatchLogs = None,
-    ):
-        super().__init__()
-        self.cloud_watch = cloud_watch
-
-
-class Dashboards(Resource):
-    """Represent the Dashboards configuration."""
-
-    def __init__(
-        self,
-        cloud_watch: CloudWatchDashboards = None,
-    ):
-        super().__init__()
-        self.cloud_watch = cloud_watch
-
-
-class Monitoring(Resource):
-    """Represent the Monitoring configuration."""
-
-    def __init__(
-        self,
-        detailed_monitoring: bool = None,
-        logs: Logs = None,
-        dashboards: Dashboards = None,
-    ):
-        super().__init__()
-        self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
-        self.logs = logs
-        self.dashboards = dashboards
-
-
-# ---------------------- Others ---------------------- #
-
-
-class Tag(BaseTag):
-    """Represent the Tag configuration."""
-
-    def __init__(
-        self,
-        key: str = None,
-        value: str = None,
-    ):
-        super().__init__(key, value)
-
-    def _validate(self):
-        self._execute_validator(TagKeyValidator, key=self.key)
-
-
-class Roles(Resource):
-    """Represent the Roles configuration."""
-
-    def __init__(
-        self,
-        instance_role: str = None,
-        custom_lambda_resources: str = None,
-    ):
-        super().__init__()
-        self.instance_role = Resource.init_param(instance_role)
-        self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
-
-
-class S3Access(Resource):
-    """Represent the S3 Access configuration."""
-
-    def __init__(
-        self,
-        bucket_name: str,
-        type: str = None,
-    ):
-        super().__init__()
-        self.bucket_name = Resource.init_param(bucket_name)
-        self.type = Resource.init_param(type, default="READ_ONLY")
-
-
-class AdditionalIamPolicy(Resource):
-    """Represent the Additional IAM Policy configuration."""
-
-    def __init__(
-        self,
-        policy: str,
-    ):
-        super().__init__()
-        self.policy = Resource.init_param(policy)
-
-    def _validate(self):
-        self._execute_validator(AdditionalIamPolicyValidator, policy=self.policy)
-
-
-class Iam(Resource):
-    """Represent the IAM configuration."""
-
-    def __init__(
-        self,
-        roles: Roles = None,
-        s3_access: List[S3Access] = None,
-        additional_iam_policies: List[AdditionalIamPolicy] = None,
-    ):
-        super().__init__()
-        self.roles = roles
-        self.s3_access = s3_access
-        self.additional_iam_policies = additional_iam_policies
-
-
-class IntelSelectSolutions(Resource):
-    """Represent the Intel select solution configuration."""
-
-    def __init__(
-        self,
-        install_intel_software: bool = None,
-    ):
-        super().__init__()
-        self.install_intel_software = Resource.init_param(install_intel_software, default=False)
-
-
-class AdditionalPackages(Resource):
-    """Represent the additional packages configuration."""
-
-    def __init__(
-        self,
-        intel_select_solutions: IntelSelectSolutions = None,
-    ):
-        super().__init__()
-        self.intel_select_solutions = intel_select_solutions
-
-
-class ClusterDevSettings(BaseDevSettings):
-    """Represent the dev settings configuration."""
-
-    def __init__(self, cluster_template: str = None, **kwargs):
-        super().__init__(**kwargs)
-        self.cluster_template = Resource.init_param(cluster_template)
-
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(UrlValidator, url=self.cluster_template)
-
-
-# ---------------------- Nodes and Cluster ---------------------- #
-
-
-class Image(Resource):
-    """Represent the configuration of an Image."""
-
-    def __init__(self, os: str, custom_ami: str = None):
-        super().__init__()
-        self.os = Resource.init_param(os)
-        self.custom_ami = Resource.init_param(custom_ami)
-
-
-class CustomAction(Resource):
-    """Represent a custom action resource."""
-
-    def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
-        super().__init__()
-        self.script = Resource.init_param(script)
-        self.args = Resource.init_param(args)
-        self.event = Resource.init_param(event)
-        self.run_as = Resource.init_param(run_as)
-
-    def _validate(self):
-        self._execute_validator(UrlValidator, url=self.script)
-
-
-class HeadNode(Resource):
-    """Represent the Head Node resource."""
-
-    def __init__(
-        self,
-        instance_type: str,
-        networking: HeadNodeNetworking,
-        ssh: Ssh,
-        image: Image = None,
-        disable_simultaneous_multithreading: bool = None,
-        storage: Storage = None,
-        dcv: Dcv = None,
-        efa: Efa = None,
-        custom_actions: List[CustomAction] = None,
-        iam: Iam = None,
-    ):
-        super().__init__()
-        self.instance_type = Resource.init_param(instance_type)
-        self.disable_simultaneous_multithreading = Resource.init_param(
-            disable_simultaneous_multithreading, default=True
-        )
-        self.networking = networking
-        self.ssh = ssh
-        self.image = image
-        self.storage = storage
-        self.dcv = dcv
-        self.efa = efa
-        self.custom_actions = custom_actions
-        self.iam = iam
-
-    def _validate(self):
-        self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._execute_validator(
-            DisableSimultaneousMultithreadingArchitectureValidator,
-            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
-            architecture=self.architecture,
-        )
+    def version(self):
+        """Return the version of ParallelCluster used to create the stack."""
+        return self._get_tag("Version")
 
     @property
-    def architecture(self):
-        """Compute cluster's architecture based on its head node instance type."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        return instance_type_info.supported_architecture()
+    def s3_bucket_name(self):
+        """Return the name of the bucket used to store cluster information."""
+        return self._get_output("ResourcesS3Bucket")
 
     @property
-    def vcpus(self):
-        """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        default_threads_per_core = instance_type_info.default_threads_per_core()
-        return (
-            instance_type_info.vcpus_count()
-            if not self.disable_simultaneous_multithreading
-            else (instance_type_info.vcpus_count() // default_threads_per_core)
-        )
+    def s3_artifact_directory(self):
+        """Return the artifact directory of the bucket used to store cluster information."""
+        return self._get_output("ArtifactS3RootDirectory")
 
-    @property
-    def pass_cpu_options_in_launch_template(self):
-        """Check whether CPU Options must be passed in launch template for head node."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        return self.disable_simultaneous_multithreading and instance_type_info.is_cpu_options_supported_in_lt()
+    def get_cluster_config(self):
+        """Retrieve cluster config content."""
+        if not self.s3_bucket_name:
+            raise ClusterActionError("Unable to retrieve S3 Bucket name.")
+        if not self.s3_artifact_directory:
+            raise ClusterActionError("Unable to retrieve Artifact S3 Root Directory.")
 
-    @property
-    def instance_type_info(self):
-        """Return head node instance type information as returned from aws ec2 describe-instamce-types."""
-        return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        table_name = self.name
+        config_version = None
+        try:
+            config_version_item = AWSApi().instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
+            if config_version_item or "Item" in config_version_item:
+                config_version = config_version_item["Item"].get("Version")
+        except Exception:
+            # Use latest if not found
+            pass
 
-
-class BaseComputeResource(Resource):
-    """Represent the base Compute Resource, with the fields in common between all the schedulers."""
-
-    def __init__(
-        self,
-        name: str,
-        instance_type: str,
-        allocation_strategy: str = None,
-        disable_simultaneous_multithreading: bool = None,
-    ):
-        super().__init__()
-        self.name = Resource.init_param(name)
-        self.instance_type = Resource.init_param(instance_type)
-        self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
-        self.disable_simultaneous_multithreading = Resource.init_param(
-            disable_simultaneous_multithreading, default=True
-        )
-
-    def _validate(self):
-        self._execute_validator(NameValidator, name=self.name)
-        self._execute_validator(
-            DisableSimultaneousMultithreadingArchitectureValidator,
-            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
-            architecture=self.architecture,
-        )
-
-    @property
-    def architecture(self):
-        """Compute cluster's architecture based on its head node instance type."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        return instance_type_info.supported_architecture()
-
-
-class BaseQueue(Resource):
-    """Represent the generic Queue resource."""
-
-    def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        storage: Storage = None,
-        compute_type: str = None,
-        image: Image = None,
-        iam: Iam = None,
-    ):
-        super().__init__()
-        self.name = Resource.init_param(name)
-        self.networking = networking
-        self.storage = storage
-        self.compute_type = Resource.init_param(compute_type, default="ONDEMAND")
-        self.image = image
-        self.iam = iam
-
-    def _validate(self):
-        self._execute_validator(NameValidator, name=self.name)
-
-
-class CommonSchedulingSettings(Resource):
-    """Represent the common scheduler settings."""
-
-    def __init__(self, scaledown_idletime: int):
-        super().__init__()
-        self.scaledown_idletime = Resource.init_param(scaledown_idletime)
-
-
-class BaseCluster(Resource):
-    """Represent the common Cluster resource."""
-
-    def __init__(
-        self,
-        image: Image,
-        head_node: HeadNode,
-        shared_storage: List[Resource] = None,
-        monitoring: Monitoring = None,
-        additional_packages: AdditionalPackages = None,
-        tags: List[Tag] = None,
-        iam: Iam = None,
-        cluster_s3_bucket: str = None,
-        additional_resources: str = None,
-        dev_settings: ClusterDevSettings = None,
-    ):
-        super().__init__()
-        self.source_config = None
-        self.image = image
-        self.head_node = head_node
-        self.shared_storage = shared_storage
-        self.monitoring = monitoring
-        self.additional_packages = additional_packages
-        self.tags = tags
-        self.iam = iam
-        self.cluster_s3_bucket = Resource.init_param(cluster_s3_bucket)
-        self.additional_resources = Resource.init_param(additional_resources)
-        self.dev_settings = dev_settings
-
-    def _validate(self):
-        self._execute_validator(
-            ArchitectureOsValidator,
-            os=self.image.os,
-            architecture=self.head_node.architecture,
-        )
-        self._execute_validator(
-            InstanceTypeBaseAMICompatibleValidator,
-            instance_type=self.head_node.instance_type,
-            image=self.image.custom_ami,
-        )
-        self._execute_validator(
-            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
-        )
-        for queue in self.scheduling.queues:
-            for compute_resource in queue.compute_resources:
-                self._execute_validator(
-                    InstanceTypeBaseAMICompatibleValidator,
-                    instance_type=compute_resource.instance_type,
-                    image=self.image.custom_ami,
+        try:
+            s3_object = (
+                AWSApi()
+                .instance()
+                .s3.get_object(
+                    bucket_name=self.s3_bucket_name,
+                    key=f"{self.s3_artifact_directory}/configs/cluster-config.json",
+                    version_id=config_version,
                 )
-                if compute_resource.efa:
-                    self._execute_validator(
-                        EfaOsArchitectureValidator,
-                        efa_enabled=compute_resource.efa.enabled,
-                        os=self.image.os,
-                        # FIXME: head_node.architecture vs compute_resource.architecture?
-                        architecture=self.head_node.architecture,
-                    )
-        if self.head_node.efa:
-            self._execute_validator(
-                EfaOsArchitectureValidator,
-                efa_enabled=self.head_node.efa.enabled,
-                os=self.image.os,
-                architecture=self.head_node.architecture,
             )
-        self._register_storage_validators()
-
-        if self.head_node.dcv:
-            self._execute_validator(
-                DcvValidator,
-                instance_type=self.head_node.instance_type,
-                dcv_enabled=self.head_node.dcv.enabled,
-                allowed_ips=self.head_node.dcv.allowed_ips,
-                port=self.head_node.dcv.port,
-                os=self.image.os,
-                architecture=self.head_node.architecture,
+            config_content = s3_object["Body"].read().decode("utf-8")
+            return yaml.safe_load(config_content)
+        except Exception as e:
+            raise ClusterActionError(
+                f"Unable to load configuration from bucket '{self.s3_bucket_name}/{self.s3_artifact_directory}'.\n{e}"
             )
-        if (
-            self.additional_packages
-            and self.additional_packages.intel_select_solutions
-            and self.additional_packages.intel_select_solutions.install_intel_software
-        ):
-            self._execute_validator(IntelHpcOsValidator, os=self.image.os)
-            self._execute_validator(
-                IntelHpcArchitectureValidator,
-                architecture=self.head_node.architecture,
+
+    def delete(self, keep_logs: bool = True):
+        """Delete stack by preserving logs."""
+        if keep_logs:
+            self._persist_cloudwatch_log_groups()
+        super().delete()
+
+    def _persist_cloudwatch_log_groups(self):
+        """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
+        LOGGER.info("Configuring %s's CloudWatch log groups to persist past cluster deletion.", self.name)
+        log_group_keys = self._get_unretained_cw_log_group_resource_keys()
+        if log_group_keys:  # Only persist the CloudWatch group
+            self._persist_stack_resources(log_group_keys)
+
+    def _get_unretained_cw_log_group_resource_keys(self):
+        """Return the keys to all CloudWatch log group resources in template if the resource is not to be retained."""
+        unretained_cw_log_group_keys = []
+        for key, resource in self.template.get("Resources", {}).items():
+            if resource.get("Type") == "AWS::Logs::LogGroup" and resource.get("DeletionPolicy") != "Retain":
+                unretained_cw_log_group_keys.append(key)
+        return unretained_cw_log_group_keys
+
+    def _persist_stack_resources(self, keys):
+        """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
+        for key in keys:
+            self.template["Resources"][key]["DeletionPolicy"] = "Retain"
+        try:
+            self._update_template()
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
+
+    def _update_template(self):
+        """Update template of the running stack according to self.template."""
+        try:
+            AWSApi.instance().cfn.update_stack(self.name, self.template, self._params)
+            self._wait_for_update()
+        except AWSClientError as e:
+            if "no updates are to be performed" in str(e).lower():
+                return  # If updated_template was the same as the stack's current one, consider the update a success
+            raise e
+
+    def _wait_for_update(self):
+        """Wait for the given stack to be finished updating."""
+        while self.updated_status() == "UPDATE_IN_PROGRESS":
+            time.sleep(5)
+
+
+class Cluster:
+    """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
+
+    def __init__(self, name: str, config: dict = None, stack: ClusterStack = None):
+        self.name = name
+        self.stack = stack
+        self.bucket = None
+        self.template_body = None
+        self.config_version = None
+        if config:
+            self.config = ClusterSchema().load(config)
+        else:
+            try:
+                self.stack = ClusterStack(self.stack_name)
+            except StackActionError:
+                raise ClusterActionError(f"Cluster {self.name} does not exist.")
+            self.config = self.stack.get_cluster_config()
+
+    @property
+    def stack_name(self):
+        """Return stack name."""
+        return get_stack_name(self.name)
+
+    def create(self, disable_rollback: bool = False):
+        """Create cluster."""
+        # check cluster existence
+        if AWSApi.instance().cfn.stack_exists(self.stack_name):
+            raise ClusterActionError(f"Cluster {self.name} already exists")
+
+        validation_failures = self.config.validate()
+        if validation_failures:
+            # TODO skip validation errors
+            raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+
+        # Add tags information to the cluster
+        version = get_installed_version()
+        tags = self.config.tags or []
+        tags.append(Tag(key="Version", value=version))
+        tags = [{"Key": tag.key, "Value": tag.value} for tag in tags]
+
+        # Create bucket if needed
+        self._setup_cluster_bucket()
+
+        creation_result = None
+        try:
+            # Create template if not provided by the user
+            if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
+                self.template_body = CDKTemplateBuilder().build_cluster_template(
+                    cluster_config=self.config, bucket=self.bucket
+                )
+                # print(yaml.dump(cluster.cluster_template_body))
+
+            # upload cluster artifacts and generated template
+            self._upload_artifacts()
+
+            LOGGER.info("Creating stack named: %s", self.stack_name)
+            creation_result = AWSApi.instance().cfn.create_stack(
+                stack_name=self.stack_name,
+                template_url=self.template_url,
+                disable_rollback=disable_rollback,
+                tags=tags,
             )
-        if self.cluster_s3_bucket:
-            self._execute_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
 
-    def _register_storage_validators(self):
-        storage_count = {"ebs": 0, "efs": 0, "fsx": 0}
-        if self.shared_storage:
-            for storage in self.shared_storage:
-                if isinstance(storage, SharedFsx):
-                    storage_count["fsx"] += 1
-                    self._execute_validator(
-                        FsxNetworkingValidator,
-                        fs_system_id=storage.file_system_id,
-                        head_node_subnet_id=self.head_node.networking.subnet_id,
-                    )
-                    self._execute_validator(
-                        FsxArchitectureOsValidator,
-                        architecture=self.head_node.architecture,
-                        os=self.image.os,
-                    )
-                if isinstance(storage, SharedEbs):
-                    storage_count["ebs"] += 1
-                if isinstance(storage, SharedEfs):
-                    storage_count["efs"] += 1
-                    self._execute_validator(
-                        EfsIdValidator,
-                        efs_id=storage.file_system_id,
-                        head_node_avail_zone=self.head_node.networking.availability_zone,
-                    )
+            self.stack = ClusterStack(self.stack_name)
+            LOGGER.debug("StackId: %s", self.stack.id)
+            LOGGER.info("Status: %s", self.stack.status)
 
-            for storage_type in ["ebs", "efs", "fsx"]:
-                self._execute_validator(
-                    NumberOfStorageValidator,
-                    storage_type=storage_type.upper(),
-                    max_number=MAX_STORAGE_COUNT.get(storage_type),
-                    storage_count=storage_count[storage_type],
+        except Exception as e:
+            LOGGER.critical(e)
+            if not creation_result:
+                # Cleanup S3 artifacts if stack is not created yet
+                self.bucket.delete()
+            raise ClusterActionError(f"Cluster creation failed.\n{e}")
+
+    def _setup_cluster_bucket(self):
+        """
+        Create pcluster bucket, if needed, and attach info to the cluster itself.
+
+        If no bucket specified, create a bucket associated to the given stack.
+        Created bucket needs to be removed on cluster deletion.
+        """
+        if self.config.cluster_s3_bucket:
+            # Use user-provided bucket
+            # Do not remove this bucket on deletion, but cleanup artifact directory
+            name = self.config.cluster_s3_bucket
+            remove_on_deletion = False
+            try:
+                check_s3_bucket_exists(name)
+            except Exception as e:
+                LOGGER.error("Unable to access config-specified S3 bucket %s: %s", name, e)
+                raise
+        else:
+            # Create 1 bucket per cluster named "parallelcluster-{random_string}" if bucket is not provided
+            # This bucket needs to be removed on cluster deletion
+            name = generate_random_name_with_prefix("parallelcluster")
+            # self.cluster_s3_bucket = name
+            remove_on_deletion = True
+            LOGGER.debug("Creating S3 bucket for cluster resources, named %s", name)
+            try:
+                create_s3_bucket(name)
+            except Exception:
+                LOGGER.error("Unable to create S3 bucket %s.", name)
+                raise
+
+        # Use "{stack_name}-{random_string}" as directory in bucket
+        artifact_directory = generate_random_name_with_prefix(self.stack_name)
+        self.bucket = ClusterBucket(name, artifact_directory, remove_on_deletion)
+
+    def _upload_artifacts(self):
+        """
+        Upload cluster specific resources and cluster template.
+
+        Artifacts are uploaded to {bucket_name}/{artifact_directory}/.
+        {artifact_directory}/ will be always be cleaned up on cluster deletion or in case of failure.
+        """
+        if not self.bucket:
+            ClusterActionError("S3 bucket must be created before uploading artifacts.")
+
+        try:
+            resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
+            upload_resources_artifacts(self.bucket.name, self.bucket.artifact_directory, root=resources)
+            if self.config.scheduler_resources:
+                upload_resources_artifacts(
+                    self.bucket.name, self.bucket.artifact_directory, root=self.config.scheduler_resources
                 )
 
-        self._execute_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
+            # Upload template
+            if self.template_body:
+                AWSApi().instance().s3.put_object(
+                    bucket_name=self.bucket.name,
+                    body=yaml.dump(self.template_body),
+                    key=self._get_default_template_key(),
+                )
+            # Upload original config
+            if self.config.source_config:
+                result = (
+                    AWSApi()
+                    .instance()
+                    .s3.put_object(
+                        bucket_name=self.bucket.name,
+                        body=yaml.dump(self.config.source_config),
+                        key=self._get_config_key(),
+                    )
+                )
+                # config version will be stored in DB by the cookbook at the first update
+                self.config_version = result.get("VersionId")
+
+        except Exception as e:
+            raise ClusterActionError(
+                f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
+            )
 
     @property
-    def region(self):
-        """Retrieve region from environment."""
-        return get_region()
+    def template_url(self):
+        """Return template url."""
+        if self.config.dev_settings and self.config.dev_settings.cluster_template:
+            # template provided by the user
+            template_url = self.config.dev_settings.cluster_template
+        else:
+            # default template
+            template_url = "https://{bucket_name}.s3.{region}.amazonaws.com{partition_suffix}/{template_key}".format(
+                bucket_name=self.bucket.name,
+                region=self.config.region,
+                partition_suffix=".cn" if self.config.region.startswith("cn") else "",
+                template_key=self._get_default_template_key(),
+            )
+        return template_url
 
-    @property
-    def partition(self):
-        """Retrieve partition from environment."""
-        return get_partition()
+    def _get_default_template_key(self):
+        return f"{self.bucket.artifact_directory}/templates/aws-parallelcluster.cfn.yaml"
 
-    @property
-    def mount_dir_list(self):
-        """Retrieve the list of mount dirs for the shared storage and head node ephemeral volume."""
-        mount_dir_list = []
-        if self.shared_storage:
-            for storage in self.shared_storage:
-                mount_dir_list.append(storage.mount_dir)
+    def _get_config_key(self):
+        return f"{self.bucket.artifact_directory}/configs/cluster-config.json"
 
-        if self.head_node.storage and self.head_node.storage.ephemeral_volume:
-            mount_dir_list.append(self.head_node.storage.ephemeral_volume.mount_dir)
+    def delete(self, keep_logs: bool = True):
+        """Delete cluster."""
+        try:
+            self.stack.delete(keep_logs)
+            self._terminate_nodes()
+        except Exception as e:
+            self._terminate_nodes()
+            raise ClusterActionError(f"Cluster deletion failed. Error: {e}")
 
-        return mount_dir_list
+    def _terminate_nodes(self):
+        try:
+            LOGGER.info("\nChecking if there are running compute nodes that require termination...")
+            filters = [
+                {"Name": "tag:Application", "Values": [self.stack_name]},
+                {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
+                {"Name": "tag:aws-parallelcluster-node-type", "Values": [str(NodeType.compute)]},
+            ]
+            instances = AWSApi().instance().ec2.list_instance_ids(filters)
 
-    @property
-    def compute_subnet_ids(self):
-        """Return the list of all compute subnet ids in the cluster."""
-        return list(
-            {
-                subnet_id
-                for queue in self.scheduling.queues
-                if queue.networking.subnet_ids
-                for subnet_id in queue.networking.subnet_ids
-                if queue.networking.subnet_ids
-            }
-        )
+            for instance_ids in grouper(instances, 100):
+                LOGGER.info("Terminating following instances: %s", instance_ids)
+                if instance_ids:
+                    AWSApi().instance().ec2.terminate_instances(instance_ids)
 
-    @property
-    def compute_security_groups(self):
-        """Return the list of all compute security groups in the cluster."""
-        return list(
-            {
-                security_group
-                for queue in self.scheduling.queues
-                if queue.networking.security_groups
-                for security_group in queue.networking.security_groups
-            }
-        )
-
-    @property
-    def head_iam_role(self):
-        """Return the IAM role for head node, if set."""
-        role = None
-        if self.iam and self.iam.roles:
-            role = self.iam.roles.head_node
-        return role
-
-    @property
-    def compute_iam_role(self):
-        """Return the IAM role for compute nodes, if set."""
-        role = None
-        if self.iam and self.iam.roles:
-            role = self.iam.roles.compute_node
-        return role
-
-    @property
-    def artifacts_s3_root_directory(self):
-        """Return the root directory for artifacts in cluster's S3 bucket."""
-        # TODO: retrieve this information from cluster S3 bucket
-        return None
-
-    @property
-    def remove_s3_bucket_on_deletion(self):
-        """Tell if the cluster's S3 bucket must be removed at Stack deletion."""
-        # TODO: retrieve this information from cluster S3 bucket
-        return None
-
-    @property
-    def vpc_id(self):
-        """Return the VPC of the cluster."""
-        return (
-            AWSApi.instance()
-            .ec2.describe_subnets(SubnetIds=[self.head_node.networking.subnet_id])
-            .get("Subnets")[0]
-            .get("VpcId")
-        )
-
-    @property
-    def ami_id(self):
-        """Get the image id of the cluster."""
-        return (
-            self.image.custom_ami
-            if self.image.custom_ami
-            else AWSApi.instance().ec2.get_official_image_id(self.image.os, self.head_node.architecture)
-        )
+            LOGGER.info("Compute fleet cleaned up.")
+        except Exception as e:
+            LOGGER.error("Failed when checking for running EC2 instances with error: %s", str(e))

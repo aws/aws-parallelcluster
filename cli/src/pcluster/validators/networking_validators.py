@@ -35,11 +35,11 @@ class SubnetsValidator(Validator):
 
     def _validate(self, subnet_ids: List[str]):
         try:
-            response = AWSApi.instance().ec2.describe_subnets(subnet_ids=subnet_ids)
+            subnets = AWSApi.instance().ec2.describe_subnets(subnet_ids=subnet_ids)
 
             # Check all subnets are in the same VPC
             vpc_id = None
-            for subnet in response:
+            for subnet in subnets:
                 if vpc_id is None:
                     vpc_id = subnet["VpcId"]
                 elif vpc_id != subnet["VpcId"]:

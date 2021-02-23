@@ -13,7 +13,7 @@ from typing import List
 
 from assertpy import assert_that
 
-from pcluster.models.cluster import Resource
+from pcluster.models.cluster_config import Resource
 from pcluster.validators.common import FailureLevel, Validator
 
 
