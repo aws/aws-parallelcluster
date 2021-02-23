@@ -21,6 +21,7 @@ class ChefAttributes:
         self.nvidia = None
         self.is_official_ami_build = None
         self.custom_node_package = None
+        self.custom_awsbatchcli_package = None
         self.cfn_base_os = None
         self._extra_attributes_json = {}
         self._set_default(dev_settings)
@@ -31,6 +32,9 @@ class ChefAttributes:
         self.nvidia = {"enabled": "false"}
         self.is_official_ami_build = "true" if dev_settings and dev_settings.update_os_and_reboot else "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
+        self.custom_awsbatchcli_package = (
+            dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
+        )
         self.cfn_base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
 
     def _set_extra_attributes(self, dev_settings: ImagebuilderDevSettings):
