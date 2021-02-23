@@ -112,8 +112,8 @@ def _is_implied(resource, attr, value):
 class TagSchema(BaseSchema):
     """Represent the schema of Tag section."""
 
-    key = fields.Str()
-    value = fields.Str()
+    key = fields.Str(validate=validate.Length(max=128))
+    value = fields.Str(validate=validate.Length(max=256))
 
     @post_load
     def make_resource(self, data, **kwargs):
