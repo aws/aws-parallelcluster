@@ -181,19 +181,35 @@ class ImageBuilderStack(core.Stack):
         ami_distribution_configuration = {
             "Name": self._set_ami_name(),
             "AmiTags": ami_tags,
+            "LaunchPermissionConfiguration": dev_settings.distribution_configuration.launch_permission
+            if dev_settings and dev_settings.distribution_configuration
+            else None,
         }
+
+        distributions = []
+        if dev_settings and dev_settings.distribution_configuration and dev_settings.distribution_configuration.regions:
+            regions = set(map(str.strip, dev_settings.distribution_configuration.regions.split(",")))
+            for region in regions:
+                distributions.append(
+                    imagebuilder.CfnDistributionConfiguration.DistributionProperty(
+                        ami_distribution_configuration=ami_distribution_configuration,
+                        region=region,
+                    )
+                )
+        else:
+            distributions.append(
+                imagebuilder.CfnDistributionConfiguration.DistributionProperty(
+                    ami_distribution_configuration=ami_distribution_configuration,
+                    region=core.Fn.sub("${AWS::Region}"),
+                )
+            )
 
         imagebuilder.CfnDistributionConfiguration(
             self,
             id="ParallelClusterDistributionConfiguration",
             name="-".join(["ParallelCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
             tags=build_tags,
-            distributions=[
-                imagebuilder.CfnDistributionConfiguration.DistributionProperty(
-                    ami_distribution_configuration=ami_distribution_configuration,
-                    region=core.Fn.sub("${AWS::Region}"),
-                )
-            ],
+            distributions=distributions,
         )
 
         # Image
