@@ -9,7 +9,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from pcluster.models.common import BaseTag, Cookbook
-from pcluster.models.imagebuilder import Build, Component, Image, ImageBuilder, ImagebuilderDevSettings, Volume
+from pcluster.models.imagebuilder import (
+    Build,
+    Component,
+    DistributionConfiguration,
+    Image,
+    ImageBuilder,
+    ImagebuilderDevSettings,
+    Volume,
+)
 
 CLASS_DICT = {
     "imagebuilder": ImageBuilder,
@@ -20,6 +28,7 @@ CLASS_DICT = {
     "tags": BaseTag,
     "components": Component,
     "cookbook": Cookbook,
+    "distribution_configuration": DistributionConfiguration,
 }
 
 

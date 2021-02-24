@@ -19,7 +19,16 @@ from urllib.parse import urlparse
 from marshmallow import ValidationError, fields, post_load, validate, validates, validates_schema
 
 from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
-from pcluster.models.imagebuilder import Build, Component, Image, ImageBuilder, ImagebuilderDevSettings, Volume
+from common.utils import validate_json_format
+from pcluster.models.imagebuilder import (
+    Build,
+    Component,
+    DistributionConfiguration,
+    Image,
+    ImageBuilder,
+    ImagebuilderDevSettings,
+    Volume,
+)
 from pcluster.schemas.common_schema import (
     ALLOWED_VALUES,
     BaseDevSettingsSchema,
@@ -112,6 +121,24 @@ class ComponentSchema(BaseSchema):
             )
 
 
+class DistributionConfigurationSchema(BaseSchema):
+    """Represent the schema of the ImageBuilder distribution configuration."""
+
+    regions = fields.Str()
+    launch_permission = fields.Str()
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return DistributionConfiguration(**data)
+
+    @validates("launch_permission")
+    def validate_launch_permission(self, value):
+        """Validate json."""
+        if value and not validate_json_format(value):
+            raise ValidationError(message="'{0}' is invalid".format(value))
+
+
 class BuildSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Build."""
 
@@ -145,7 +172,7 @@ class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
 
     update_os_and_reboot = fields.Bool()
     disable_pcluster_component = fields.Bool()
-    distribution_configuration_arn = fields.Str(validate=validate.Regexp("^arn"))
+    distribution_configuration = fields.Nested(DistributionConfigurationSchema)
     terminate_instance_on_failure = fields.Bool()
 
     @post_load

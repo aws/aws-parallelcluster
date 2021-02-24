@@ -964,3 +964,301 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         .get("Properties")
         .get("SecurityGroupIds")
     ).is_equal_to(expected_imagebuilder_security_group_ids)
+
+
+@pytest.mark.parametrize(
+    "resource, response, expected_distributions",
+    [
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {"update_os_and_reboot": True},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 25,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                    },
+                    "Region": {"Fn::Sub": "${AWS::Region}"},
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {"distribution_configuration": {"regions": ""}},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                    },
+                    "Region": {"Fn::Sub": "${AWS::Region}"},
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {"distribution_configuration": {"regions": " eu-south-1,   eu-south-1"}},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                    },
+                    "Region": "eu-south-1",
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {"distribution_configuration": {"regions": "eu-south-1", "launch_permission": ""}},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "LaunchPermissionConfiguration": "",
+                    },
+                    "Region": "eu-south-1",
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {
+                        "distribution_configuration": {
+                            "regions": "eu-south-1",
+                            "launch_permission": {"UserIds": ["123456789012", "345678901234"]},
+                        }
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "LaunchPermissionConfiguration": {"UserIds": ["123456789012", "345678901234"]},
+                    },
+                    "Region": "eu-south-1",
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {
+                        "distribution_configuration": {
+                            "regions": "eu-south-1",
+                            "launch_permission": {"UserIds": []},
+                        }
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "LaunchPermissionConfiguration": {"UserIds": []},
+                    },
+                    "Region": "eu-south-1",
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {
+                        "distribution_configuration": {
+                            "regions": "eu-south-1,us-west-1",
+                            "launch_permission": {"UserGroups": ["all"]},
+                        }
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "LaunchPermissionConfiguration": {"UserGroups": ["all"]},
+                    },
+                    "Region": "eu-south-1",
+                },
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "LaunchPermissionConfiguration": {"UserGroups": ["all"]},
+                    },
+                    "Region": "us-west-1",
+                },
+            ],
+        ),
+    ],
+)
+def test_imagebuilder_distribution_configuraton(mocker, resource, response, expected_distributions):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.describe_image",
+        return_value=response,
+    )
+    dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild)
+
+    assert_that(
+        generated_template.get("Resources")
+        .get("ParallelClusterDistributionConfiguration")
+        .get("Properties")
+        .get("Distributions")
+    ).contains(*expected_distributions)

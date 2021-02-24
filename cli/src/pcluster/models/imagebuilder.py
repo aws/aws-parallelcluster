@@ -81,6 +81,15 @@ class Component(Resource):
         # TODO: add validator
 
 
+class DistributionConfiguration(Resource):
+    """Represent the distribution configuration for the ImageBuilder."""
+
+    def __init__(self, regions: str, launch_permission: str = None):
+        super().__init__()
+        self.regions = Resource.init_param(regions)
+        self.launch_permission = Resource.init_param(launch_permission)
+
+
 class Build(Resource):
     """Represent the build configuration for the ImageBuilder."""
 
@@ -121,14 +130,14 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self,
         update_os_and_reboot: bool = None,
         disable_pcluster_component: bool = None,
-        distribution_configuration_arn: str = None,
+        distribution_configuration: DistributionConfiguration = None,
         terminate_instance_on_failure: bool = None,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
         self.disable_pcluster_component = Resource.init_param(disable_pcluster_component, default=False)
-        self.distribution_configuration_arn = Resource.init_param(distribution_configuration_arn)
+        self.distribution_configuration = distribution_configuration
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
 
 
