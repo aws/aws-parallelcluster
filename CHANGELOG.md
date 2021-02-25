@@ -25,8 +25,9 @@ CHANGELOG
 - Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
 
-2.10.2
+2.x.x
 ------
+**ENHANCEMENTS**
 
 **CHANGES**
 
@@ -34,10 +35,23 @@ CHANGELOG
 - Remove support for Python 3.4
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
 
+2.10.2
+------
+**ENHANCEMENTS**
+
+- Improve cluster config validation by using cluster target AMI when invoking RunInstances in dryrun mode
+- Improve configuration procedure for the Munge service.
+
+**CHANGES**
+
+- Update Python version used in ParallelCluster virtualenvs from version 3.6.9 to version 3.6.13.
+
 **BUG FIXES**
 
+- Fix sanity checks with ARM instance types by using alinux2 AMI with correct architecture during dryrun  
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
-- Fix sanity checks with ARM instance types by using alinux2 AMI with correct architecture during dryrun
+- Use non interactive `apt update` command when building custom Ubuntu AMIs.
+- Fix `encrypted_ephemeral = true` when using Alinux2 or CentOS8
 
 2.10.1
 ------
