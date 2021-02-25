@@ -1,10 +1,10 @@
 import re
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
 from urllib.request import urlopen
 
 from common.aws.aws_api import AWSApi
 from common.boto3.common import AWSClientError
+from common.utils import get_url_scheme
 from pcluster.validators.common import FailureLevel, Validator
 from pcluster.validators.utils import get_bucket_name_from_s3_url
 
@@ -17,7 +17,7 @@ class UrlValidator(Validator):
     """
 
     def _validate(self, url):
-        scheme = urlparse(url).scheme
+        scheme = get_url_scheme(url)
         if scheme in ["https", "s3", "file"]:
             if scheme == "s3":
                 self._validate_s3_uri(url)
@@ -66,7 +66,7 @@ class S3BucketUriValidator(Validator):
 
     def _validate(self, url):
 
-        if urlparse(url).scheme == "s3":
+        if get_url_scheme(url) == "s3":
             try:
                 bucket = get_bucket_name_from_s3_url(url)
                 AWSApi.instance().s3.head_bucket(bucket_name=bucket)

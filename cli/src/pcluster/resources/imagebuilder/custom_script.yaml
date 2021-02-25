@@ -1,0 +1,58 @@
+name: ScriptComponent
+description: ScriptComponent
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      # Exit code for failures
+      - name: Fail
+        action: ExecuteBash
+        inputs:
+          commands:
+            - echo 1
+
+      # Create a temporary file
+      - name: TempScript
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              mkdir /tmp/parallelcluster/
+              temp_file=$(mktemp -p /tmp/parallelcluster/)
+              echo "${temp_file}"
+
+      # Download script
+      - name: Download
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              if [[ {{ build.ScriptUrlScheme.outputs.stdout }} == "https" ]]; then
+                curl --retry 3 -L -o {{ build.TempScript.outputs.stdout }} {{ build.ScriptUrl.outputs.stdout }}
+              elif [[ {{ build.ScriptUrlScheme.outputs.stdout }} == "s3" ]]; then
+                aws s3 cp {{ build.ScriptUrl.outputs.stdout }} {{ build.TempScript.outputs.stdout }}
+              else
+                echo "Invalid script url"
+                exit {{ build.Fail.outputs.stdout }}
+              fi
+
+      # Make script executable
+      - name: Executable
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              chmod +x {{ build.TempScript.outputs.stdout }} || (echo 'Unable to set script executable' && exit {{ build.Fail.outputs.stdout }})
+
+      # Execute script
+      - name: Execute
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              {{ build.TempScript.outputs.stdout }} || (echo 'Script execution failure.' && exit {{ build.Fail.outputs.stdout }})

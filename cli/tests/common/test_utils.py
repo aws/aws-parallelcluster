@@ -11,7 +11,7 @@
 import pytest
 from assertpy import assert_that
 
-from common.utils import validate_json_format
+from common.utils import get_url_scheme, parse_bucket_url, validate_json_format
 
 
 @pytest.mark.parametrize(
@@ -23,3 +23,38 @@ from common.utils import validate_json_format
 )
 def test_validate_json_format(data, expected_value):
     assert_that(validate_json_format(data)).is_equal_to(expected_value)
+
+
+@pytest.mark.parametrize(
+    "url, expect_output",
+    [
+        ("https://test.s3.cn-north-1.amazonaws.com.cn/post_install.sh", "https"),
+        (
+            "s3://test/post_install.sh",
+            "s3",
+        ),
+    ],
+)
+def test_get_url_scheme(url, expect_output):
+    assert_that(get_url_scheme(url)).is_equal_to(expect_output)
+
+
+@pytest.mark.parametrize(
+    "url, expect_output",
+    [
+        (
+            "s3://test/post_install.sh",
+            {"bucket_name": "test", "object_key": "post_install.sh", "object_name": "post_install.sh"},
+        ),
+        (
+            "s3://test/templates/3.0/post_install.sh",
+            {
+                "bucket_name": "test",
+                "object_key": "templates/3.0/post_install.sh",
+                "object_name": "post_install.sh",
+            },
+        ),
+    ],
+)
+def test_parse_bucket_url(url, expect_output):
+    assert_that(parse_bucket_url(url)).is_equal_to(expect_output)

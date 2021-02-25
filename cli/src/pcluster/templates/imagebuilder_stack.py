@@ -29,7 +29,7 @@ from common.imagebuilder_utils import (
     ROOT_VOLUME_TYPE,
     InstanceRole,
 )
-from common.utils import load_yaml
+from common.utils import get_url_scheme, load_yaml, parse_bucket_url
 from pcluster.models.imagebuilder import ImageBuilder, Volume
 from pcluster.models.imagebuilder_extra_attributes import ChefAttributes
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
@@ -96,8 +96,8 @@ class ImageBuilderCdkStack(core.Stack):
         # InfrastructureConfiguration
         imagebuilder.CfnInfrastructureConfiguration(
             self,
-            id="PClusterImageInfrastructureConfiguration",
-            name="-".join(["PCluster-Image-Infrastructure-Configuration", resources_prefix]),
+            id="ParallelClusterInfrastructureConfiguration",
+            name="-".join(["ParallelClusterInfrastructureConfiguration", resources_prefix]),
             tags=build_tags,
             instance_profile_name=core.Fn.ref(instance_profile_name or "InstanceProfile"),
             terminate_instance_on_failure=dev_settings.terminate_instance_on_failure
@@ -115,7 +115,7 @@ class ImageBuilderCdkStack(core.Stack):
             imagebuilder.CfnComponent(
                 self,
                 id="UpdateAndRebootComponent",
-                name="-".join(["UpdateAndReboot", resources_prefix]),
+                name="-".join(["UpdateAndRebootComponent", resources_prefix]),
                 version=utils.get_installed_version(),
                 tags=build_tags,
                 description="Update OS and Reboot",
@@ -130,26 +130,28 @@ class ImageBuilderCdkStack(core.Stack):
 
         imagebuilder.CfnComponent(
             self,
-            id="PClusterComponent",
-            name="-".join(["PCluster", resources_prefix]),
+            id="ParallelClusterComponent",
+            name="-".join(["ParallelClusterComponent", resources_prefix]),
             version=utils.get_installed_version(),
             tags=build_tags,
-            description="Bake PCluster AMI",
+            description="Bake ParallelCluster AMI",
             platform="Linux",
-            data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "pcluster_install.yaml")),
+            data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "parallelcluster.yaml")),
         )
 
         components.append(
-            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=core.Fn.ref("PClusterComponent"))
+            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                component_arn=core.Fn.ref("ParallelClusterComponent")
+            )
         )
 
         if build.components:
-            self._set_custom_components(components)
+            self._set_custom_components(components, resources_prefix)
 
         imagebuilder.CfnComponent(
             self,
-            id="ParallelClusterTag",
-            name="-".join(["ParallelClusterTag", resources_prefix]),
+            id="ParallelClusterTagComponent",
+            name="-".join(["ParallelClusterTagComponent", resources_prefix]),
             version=utils.get_installed_version(),
             tags=build_tags,
             description="Tag ParallelCluster AMI",
@@ -158,14 +160,16 @@ class ImageBuilderCdkStack(core.Stack):
         )
 
         components.append(
-            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=core.Fn.ref("ParallelClusterTag"))
+            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                component_arn=core.Fn.ref("ParallelClusterTagComponent")
+            )
         )
 
         # ImageRecipe
         imagebuilder.CfnImageRecipe(
             self,
-            id="PClusterImageRecipe",
-            name="-".join(["PCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
+            id="ParallelClusterImageRecipe",
+            name="-".join(["ParallelClusterImageRecipe", resources_prefix]),
             version=utils.get_installed_version(),
             tags=build_tags,
             parent_image=core.Fn.sub(build.parent_image),
@@ -207,7 +211,7 @@ class ImageBuilderCdkStack(core.Stack):
         imagebuilder.CfnDistributionConfiguration(
             self,
             id="ParallelClusterDistributionConfiguration",
-            name="-".join(["ParallelCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
+            name="-".join(["ParallelClusterDistributionConfiguration", resources_prefix]),
             tags=build_tags,
             distributions=distributions,
         )
@@ -215,10 +219,10 @@ class ImageBuilderCdkStack(core.Stack):
         # Image
         imagebuilder.CfnImage(
             self,
-            id="PClusterImage",
+            id="ParallelClusterImage",
             tags=build_tags,
-            image_recipe_arn=core.Fn.ref("PClusterImageRecipe"),
-            infrastructure_configuration_arn=core.Fn.ref("PClusterImageInfrastructureConfiguration"),
+            image_recipe_arn=core.Fn.ref("ParallelClusterImageRecipe"),
+            infrastructure_configuration_arn=core.Fn.ref("ParallelClusterInfrastructureConfiguration"),
             distribution_configuration_arn=core.Fn.ref("ParallelClusterDistributionConfiguration"),
         )
 
@@ -235,6 +239,7 @@ class ImageBuilderCdkStack(core.Stack):
 
     def _set_default_instance_role(self):
         """Set default instance role in imagebuilder cfn template."""
+        build = self.imagebuild.build
         managed_policy_arns = [
             core.Fn.sub("arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"),
             core.Fn.sub("arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"),
@@ -252,6 +257,24 @@ class ImageBuilderCdkStack(core.Stack):
                 },
             ],
         }
+
+        if build.components:
+            for custom_component in build.components:
+                # Check custom component is script, and the url is S3 url
+                if custom_component.type == "script" and get_url_scheme(custom_component.value) == "s3":
+                    bucket_info = parse_bucket_url(custom_component.value)
+                    bucket_name = bucket_info.get("bucket_name")
+                    object_key = bucket_info.get("object_key")
+                    action_list = instancerole_policy_document["Statement"][0]["Action"]
+
+                    if "s3:GetObject" not in action_list:
+                        action_list.append("s3:GetObject")
+                        instancerole_policy_document["Statement"][0]["Action"] = action_list
+                    resources_list = instancerole_policy_document["Statement"][0]["Resource"]
+                    resources_list.append(
+                        core.Fn.sub("arn:${AWS::Partition}:s3:::" + "{0}/{1}".format(bucket_name, object_key))
+                    )
+                    instancerole_policy_document["Statement"][0]["Resource"] = resources_list
 
         instancerole_policy = iam.CfnRole.PolicyProperty(
             policy_name="InstanceRoleInlinePolicy",
@@ -287,17 +310,35 @@ class ImageBuilderCdkStack(core.Stack):
             self, id="InstanceProfile", path="/executionServiceEC2Role/", roles=[core.Fn.ref(instance_role)]
         )
 
-    def _set_custom_components(self, components):
+    def _set_custom_components(self, components, resources_prefix):
         """Set custom component in imagebuilder cfn template."""
         build = self.imagebuild.build
         custom_components = build.components
+        initial_components_len = len(components)
         arn_components_len = 0
         for custom_component in custom_components:
-            if custom_component.type.startswith("arn"):
+            custom_components_len = len(components) - initial_components_len - arn_components_len
+            if custom_component.type == "arn":
                 components.append(
                     imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=custom_component.value)
                 )
                 arn_components_len += 1
+            else:
+                component_script_name = custom_component.value.split("/")[-1]
+                id = "ParallelClusterScriptComponent" + str(custom_components_len)
+                imagebuilder.CfnComponent(
+                    self,
+                    id=id,
+                    name="-".join(["ParallelClusterComponentScript", str(custom_components_len), resources_prefix]),
+                    version=utils.get_installed_version(),
+                    description="This component is custom component for script, script name is {0}, script url is "
+                    "{1}".format(component_script_name, custom_component.value),
+                    platform="Linux",
+                    data=imagebuilder_utils.wrap_script_to_component(custom_component.value),
+                )
+                components.append(
+                    imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=core.Fn.ref(id))
+                )
 
     def _set_ebs_volume(self):
         """Set ebs root volume in imagebuilder cfn template."""
