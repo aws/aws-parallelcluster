@@ -92,19 +92,19 @@ def test_fsx_s3_validator(import_path, imported_file_chunk_size, export_path, au
             "SCRATCH_2",
             "9e8a129be-0e46-459d-865b-3a5bf974a22k",
             None,
-            "kms key id can only be used when deployment type is `PERSISTENT_1'",
+            "KMS key id can only be used when deployment type is `PERSISTENT_1'",
         ),
         (
             "SCRATCH_1",
             None,
             200,
-            "per unit storage throughput can only be used when deployment type is `PERSISTENT_1'",
+            "Per unit storage throughput can only be used when deployment type is `PERSISTENT_1'",
         ),
         (
             "PERSISTENT_1",
             None,
             None,
-            "per unit storage throughput must be specified when deployment type is `PERSISTENT_1'",
+            "Per unit storage throughput must be specified when deployment type is `PERSISTENT_1'",
         ),
     ],
 )
@@ -258,7 +258,7 @@ def test_fsx_backup_options_validator(
             "PERSISTENT_1",
             50,
             "READ",
-            "drive cache type features can be used only with HDD filesystems",
+            "Drive cache type features can be used only with HDD filesystems",
         ),
     ],
 )
@@ -321,7 +321,7 @@ def test_fsx_storage_type_options_validator(
             None,
             None,
             None,
-            "When specifying 'fsx' section, the 'StorageCapacity' option must be specified",
+            "When specifying FSx .* storage capacity must be specified",
         ),
         (
             1801,
@@ -431,7 +431,7 @@ def test_fsx_backup_id_validator(boto3_stubber, backup_id, expected_message):
             "NEW",
             None,
             {"Bucket": "test"},
-            "AutoImport is not supported for cross-region buckets.",
+            "auto import is not supported for cross-region buckets.",
         ),
         (
             "s3://test/test1/test2",

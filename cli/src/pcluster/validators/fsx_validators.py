@@ -33,19 +33,19 @@ class FsxS3Validator(Validator):
     ):
         if imported_file_chunk_size and not import_path:
             self._add_failure(
-                "When specifying imported file chunk size, the import path option must be specified",
+                "When specifying imported file chunk size, the import path option must be specified.",
                 FailureLevel.ERROR,
             )
 
         if export_path and not import_path:
             self._add_failure(
-                "When specifying export path, the import path option must be specified",
+                "When specifying export path, the import path option must be specified.",
                 FailureLevel.ERROR,
             )
 
         if auto_import_policy and not import_path:
             self._add_failure(
-                "When specifying auto import policy, the import path option must be specified",
+                "When specifying auto import policy, the import path option must be specified.",
                 FailureLevel.ERROR,
             )
 
@@ -61,18 +61,18 @@ class FsxPersistentOptionsValidator(Validator):
         if deployment_type == "PERSISTENT_1":
             if not per_unit_storage_throughput:
                 self._add_failure(
-                    "per unit storage throughput must be specified when deployment type is `PERSISTENT_1'",
+                    "Per unit storage throughput must be specified when deployment type is `PERSISTENT_1'.",
                     FailureLevel.ERROR,
                 )
         else:
             if kms_key_id:
                 self._add_failure(
-                    "kms key id can only be used when deployment type is `PERSISTENT_1'",
+                    "KMS key id can only be used when deployment type is `PERSISTENT_1'.",
                     FailureLevel.ERROR,
                 )
             if per_unit_storage_throughput:
                 self._add_failure(
-                    "per unit storage throughput can only be used when deployment type is `PERSISTENT_1'",
+                    "Per unit storage throughput can only be used when deployment type is `PERSISTENT_1'.",
                     FailureLevel.ERROR,
                 )
 
@@ -94,24 +94,24 @@ class FsxBackupOptionsValidator(Validator):
         if not automatic_backup_retention_days and daily_automatic_backup_start_time:
             self._add_failure(
                 "When specifying daily automatic backup start time,"
-                "the automatic backup retention days option must be specified",
+                "the automatic backup retention days option must be specified.",
                 FailureLevel.ERROR,
             )
         if not automatic_backup_retention_days and copy_tags_to_backups is not None:
             self._add_failure(
-                "When specifying copy tags to backups, " "the automatic backup retention days option must be specified",
+                "When specifying copy tags to backups, the automatic backup retention days option must be specified.",
                 FailureLevel.ERROR,
             )
         if deployment_type != "PERSISTENT_1" and automatic_backup_retention_days:
             self._add_failure(
-                "FSx automatic backup features can be used only with 'PERSISTENT_1' file systems",
+                "FSx automatic backup features can be used only with 'PERSISTENT_1' file systems.",
                 FailureLevel.ERROR,
             )
         if (
             imported_file_chunk_size or import_path or export_path or auto_import_policy
         ) and automatic_backup_retention_days:
             self._add_failure(
-                "Backups cannot be created on S3-linked file systems",
+                "Backups cannot be created on S3-linked file systems.",
                 FailureLevel.ERROR,
             )
 
@@ -129,12 +129,12 @@ class FsxStorageTypeOptionsValidator(Validator):
         if storage_type == "HDD":
             if deployment_type != "PERSISTENT_1":
                 self._add_failure(
-                    "For HDD filesystems, deployment type must be 'PERSISTENT_1'",
+                    "For HDD filesystems, deployment type must be 'PERSISTENT_1'.",
                     FailureLevel.ERROR,
                 )
             if per_unit_storage_throughput not in FSX_HDD_THROUGHPUT:
                 self._add_failure(
-                    "For HDD filesystems, per unit storage throughput can only have the following values: {0}".format(
+                    "For HDD filesystems, per unit storage throughput can only have the following values: {0}.".format(
                         FSX_HDD_THROUGHPUT
                     ),
                     FailureLevel.ERROR,
@@ -142,12 +142,12 @@ class FsxStorageTypeOptionsValidator(Validator):
         else:  # SSD or None
             if drive_cache_type:
                 self._add_failure(
-                    "drive cache type features can be used only with HDD filesystems",
+                    "Drive cache type features can be used only with HDD filesystems.",
                     FailureLevel.ERROR,
                 )
             if per_unit_storage_throughput and per_unit_storage_throughput not in FSX_SSD_THROUGHPUT:
                 self._add_failure(
-                    "For SSD filesystems, per unit storage throughput can only have the following values: {0}".format(
+                    "For SSD filesystems, per unit storage throughput can only have the following values: {0}.".format(
                         FSX_SSD_THROUGHPUT
                     ),
                     FailureLevel.ERROR,
@@ -173,30 +173,30 @@ class FsxStorageCapacityValidator(Validator):
         if not storage_capacity:
             # if file_system_id is not provided, storage_capacity must be provided
             self._add_failure(
-                "When specifying 'fsx' section, the 'StorageCapacity' option must be specified",
+                "When specifying FSx configuration, storage capacity must be specified.",
                 FailureLevel.ERROR,
             )
         elif deployment_type == "SCRATCH_1":
             if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
                 self._add_failure(
-                    "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB",
+                    "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB.",
                     FailureLevel.ERROR,
                 )
         elif deployment_type == "PERSISTENT_1" and storage_type == "HDD":
             if per_unit_storage_throughput == 12 and not storage_capacity % 6000 == 0:
                 self._add_failure(
-                    "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB",
+                    "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB.",
                     FailureLevel.ERROR,
                 )
             elif per_unit_storage_throughput == 40 and not storage_capacity % 1800 == 0:
                 self._add_failure(
-                    "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB",
+                    "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB.",
                     FailureLevel.ERROR,
                 )
         elif deployment_type in ["SCRATCH_2", "PERSISTENT_1"]:
             if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
                 self._add_failure(
-                    "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+                    "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB.",
                     FailureLevel.ERROR,
                 )
 
@@ -230,25 +230,25 @@ class FsxAutoImportValidator(Validator):
                 if s3_bucket_region is None:
                     s3_bucket_region = "us-east-1"
                 if s3_bucket_region != get_region():
-                    self._add_failure("AutoImport is not supported for cross-region buckets.", FailureLevel.ERROR)
+                    self._add_failure("FSx auto import is not supported for cross-region buckets.", FailureLevel.ERROR)
             except ClientError as client_error:
                 if client_error.response.get("Error").get("Code") == "NoSuchBucket":
                     self._add_failure(
-                        "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+                        "The S3 bucket '{0}' does not appear to exist: '{1}'.".format(
                             bucket, client_error.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,
                     )
                 elif client_error.response.get("Error").get("Code") == "AccessDenied":
                     self._add_failure(
-                        "You do not have access to the S3 bucket '{0}': '{1}'".format(
+                        "You do not have access to the S3 bucket '{0}': '{1}'.".format(
                             bucket, client_error.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,
                     )
                 else:
                     self._add_failure(
-                        "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+                        "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'.".format(
                             bucket, client_error.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,

@@ -50,9 +50,9 @@ def boto3_stubber_path():
         ("centos8", "slurm", None),
         ("ubuntu1804", "slurm", None),
         ("alinux2", "slurm", None),
-        ("centos7", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("centos8", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
+        ("centos7", "awsbatch", "scheduler supports the following operating systems"),
+        ("centos8", "awsbatch", "scheduler supports the following operating systems"),
+        ("ubuntu1804", "awsbatch", "scheduler supports the following operating systems"),
         ("alinux2", "awsbatch", None),
     ],
 )
@@ -80,10 +80,10 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
         (["i1"], None),
         (["i1", "i2"], None),
         (["i1", "i2", "i3"], None),
-        (["i1", "i1", "i2"], "Instance type i1 cannot be specified for multiple Compute Resources"),
+        (["i1", "i1", "i2"], "Instance type i1 cannot be specified for multiple compute resources"),
         (
             ["i1", "i2", "i3", "i2", "i1"],
-            "Instance types i2, i1 cannot be specified for multiple Compute Resources",
+            "Instance types i2, i1 cannot be specified for multiple compute resources",
         ),
     ],
 )
@@ -133,7 +133,7 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
         # Efa disabled, no check on placement group configuration
         (False, None, False, None),
         # Efa enabled
-        (True, None, False, "You may see better performance using a Placement Group"),
+        (True, None, False, "You may see better performance using a placement group"),
         (True, None, True, None),
         (True, "existing_pg", False, None),
     ],
@@ -294,7 +294,7 @@ def test_disable_simultaneous_multithreading_architecture_validator(
             True,
             "centos8",
             "arm64",
-            "EFA currently not supported on centos8 for arm64 architecture",
+            "EFA is currently not supported on centos8 for arm64 architecture",
         ),
         (False, "centos8", "arm64", None),
         (True, "ubuntu1804", "x86_64", None),
@@ -409,7 +409,7 @@ def test_queue_name_validator(name, expected_message):
             "vpc-06e4ab6c6ccWRONG",
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             ["eni-09b9460295ddd4e5f"],
-            "only support using FSx file system that is in the same VPC as the stack",
+            "only support using FSx file system that is in the same VPC as the cluster",
         ),
         (  # not working case --> wrong ip permissions in security group
             "vpc-06e4ab6c6cWRONG",
@@ -425,7 +425,7 @@ def test_queue_name_validator(name, expected_message):
             ],
             ["eni-09b9460295ddd4e5f"],
             [
-                "only support using FSx file system that is in the same VPC as the stack",
+                "only support using FSx file system that is in the same VPC as the cluster",
                 "does not satisfy mounting requirement",
             ],
         ),
@@ -675,7 +675,7 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
 @pytest.mark.parametrize(
     "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
     [
-        (True, "alinux", "t2.medium", None, None, "Please double check the Os configuration parameter"),
+        (True, "alinux", "t2.medium", None, None, "Please double check the os configuration"),
         (False, "alinux", "t2.medium", None, None, None),  # doesn't fail because DCV is disabled
         (True, "centos7", "t2.medium", None, None, None),
         (True, "centos8", "t2.medium", None, None, None),
@@ -689,7 +689,7 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
         (False, "alinux2", "t2.micro", None, None, None),  # doesn't fail because DCV is disabled
         (True, "ubuntu1804", "m6g.xlarge", None, None, None),
         (True, "alinux2", "m6g.xlarge", None, None, None),
-        (True, "centos7", "m6g.xlarge", None, None, "Please double check the Os configuration parameter"),
+        (True, "centos7", "m6g.xlarge", None, None, "Please double check the os configuration"),
         (True, "centos8", "m6g.xlarge", None, None, None),
     ],
 )

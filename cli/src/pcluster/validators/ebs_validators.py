@@ -50,12 +50,12 @@ class EbsVolumeTypeSizeValidator(Validator):
             min_size, max_size = EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.get(volume_type)
             if volume_size > max_size:
                 self._add_failure(
-                    "The size of {0} volumes can not exceed {1} GiB".format(volume_type, max_size),
+                    f"The size of {volume_type} volumes can not exceed {max_size} GiB.",
                     FailureLevel.ERROR,
                 )
             elif volume_size < min_size:
                 self._add_failure(
-                    "The size of {0} volumes must be at least {1} GiB".format(volume_type, min_size),
+                    f"The size of {volume_type} volumes must be at least {min_size} GiB.",
                     FailureLevel.ERROR,
                 )
 
@@ -72,10 +72,8 @@ class EbsVolumeThroughputValidator(Validator):
             min_throughput, max_throughput = 125, 1000
             if volume_throughput < min_throughput or volume_throughput > max_throughput:
                 self._add_failure(
-                    "Throughput must be between {min_throughput} MB/s and {max_throughput} MB/s when provisioning "
-                    "{volume_type} volumes.".format(
-                        min_throughput=min_throughput, max_throughput=max_throughput, volume_type=volume_type
-                    ),
+                    f"Throughput must be between {min_throughput} MB/s and {max_throughput} MB/s when provisioning "
+                    f"{volume_type} volumes.",
                     FailureLevel.ERROR,
                 )
 
@@ -141,11 +139,11 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                 # validate that the input volume size is larger than the volume size of the EBS snapshot
                 snapshot_volume_size = snapshot_response_dict.get("VolumeSize")
                 if snapshot_volume_size is None:
-                    self._add_failure(f"Unable to get volume size for snapshot {snapshot_id}", FailureLevel.ERROR)
+                    self._add_failure(f"Unable to get volume size for snapshot {snapshot_id}.", FailureLevel.ERROR)
                 elif volume_size < snapshot_volume_size:
                     self._add_failure(
                         f"The EBS volume size must not be smaller than {snapshot_volume_size}, "
-                        "because it is the size of the provided snapshot {snapshot_id}",
+                        f"which is the size of the provided snapshot {snapshot_id}.",
                         FailureLevel.ERROR,
                     )
                 elif volume_size > snapshot_volume_size:
@@ -161,7 +159,7 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                 # validate that the state of ebs snapshot
                 if snapshot_response_dict.get("State") != "completed":
                     self._add_failure(
-                        "Snapshot {0} is in state '{1}' not 'completed'".format(
+                        "Snapshot {0} is in state '{1}' not 'completed'.".format(
                             snapshot_id, snapshot_response_dict.get("State")
                         ),
                         FailureLevel.WARNING,
@@ -172,14 +170,14 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                     "InvalidSnapshot.Malformed",
                 ]:
                     self._add_failure(
-                        "The snapshot {0} does not appear to exist: {1}".format(
+                        "The snapshot {0} does not appear to exist: {1}.".format(
                             snapshot_id, exception.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,
                     )
                 else:
                     self._add_failure(
-                        "Issue getting info for snapshot {0}: {1}".format(
+                        "Issue getting info for snapshot {0}: {1}.".format(
                             snapshot_id,
                             exception.response.get("Error").get("Message")
                             if isinstance(exception, ClientError)
@@ -217,7 +215,7 @@ class SharedEBSVolumeIdValidator(Validator):
                 respond = boto3.client("ec2").describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
                 if respond.get("State") != "available":
                     self._add_failure(
-                        "Volume {0} is in state '{1}' not 'available'".format(volume_id, respond.get("State")),
+                        "Volume {0} is in state '{1}' not 'available'.".format(volume_id, respond.get("State")),
                         FailureLevel.WARNING,
                     )
             except ClientError as e:
@@ -226,6 +224,6 @@ class SharedEBSVolumeIdValidator(Validator):
                     .get("Message")
                     .endswith("parameter volumes is invalid. Expected: 'vol-...'.")
                 ):
-                    self._add_failure("Volume {0} does not exist".format(volume_id), FailureLevel.ERROR)
+                    self._add_failure(f"Volume {volume_id} does not exist.", FailureLevel.ERROR)
                 else:
                     self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)

@@ -26,19 +26,18 @@ class UrlValidator(Validator):
                     urlopen(url)
                 except HTTPError as e:
                     self._add_failure(
-                        "The url '{0}' cause HTTPError, the error code is '{1}', the error reason is '{2}'".format(
-                            url, e.code, e.reason
-                        ),
+                        f"The url '{url}' causes HTTPError, the error code is '{e.code}',"
+                        f" the error reason is '{e.reason}'.",
                         FailureLevel.WARNING,
                     )
                 except URLError as e:
                     self._add_failure(
-                        "The url '{0}' causes URLError, the error reason is '{1}'".format(url, e.reason),
+                        f"The url '{url}' causes URLError, the error reason is '{e.reason}'.",
                         FailureLevel.WARNING,
                     )
                 except ValueError:
                     self._add_failure(
-                        "The value '{0}' is not a valid URL".format(url),
+                        f"The value '{url}' is not a valid URL.",
                         FailureLevel.ERROR,
                     )
         else:

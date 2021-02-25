@@ -52,9 +52,9 @@ class SubnetsValidator(Validator):
 
             # Check for DNS support in the VPC
             if not AWSApi.instance().ec2.is_enable_dns_support(vpc_id):
-                self._add_failure(f"DNS Support is not enabled in the VPC {vpc_id}", FailureLevel.ERROR)
+                self._add_failure(f"DNS Support is not enabled in the VPC {vpc_id}.", FailureLevel.ERROR)
             if not AWSApi.instance().ec2.is_enable_dns_hostnames(vpc_id):
-                self._add_failure(f"DNS Hostnames not enabled in the VPC {vpc_id}", FailureLevel.ERROR)
+                self._add_failure(f"DNS Hostnames not enabled in the VPC {vpc_id}.", FailureLevel.ERROR)
 
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)

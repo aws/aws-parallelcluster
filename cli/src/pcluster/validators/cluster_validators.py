@@ -39,15 +39,14 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
 
 FSX_MESSAGES = {
     "errors": {
-        "unsupported_os": "On {architecture} instance types FSX Lustre can be used with one of the following operating "
-        "systems: {supported_oses}. Please double check the 'base_os' configuration parameter",
-        "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
-        "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
-        "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
+        "unsupported_os": "On {architecture} instance types, FSx Lustre can be used with one of the following operating"
+        " systems: {supported_oses}. Please double check the os configuration.",
+        "unsupported_architecture": "FSx Lustre can be used only with instance types and AMIs that support these "
+        "architectures: {supported_architectures}. Please double check the head node instance type, "
+        "compute instance type and/or custom AMI configurations.",
         "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
         "cannot be specified.",
-        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when specifying an existing Lustre file system via "
-        "fsx_fs_id.",
+        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when an existing Lustre file system is specified.",
     }
 }
 
@@ -63,7 +62,7 @@ class SchedulerOsValidator(Validator):
         supported_os = get_supported_os_for_scheduler(scheduler)
         if os not in supported_os:
             self._add_failure(
-                f"{scheduler} scheduler supports the following Operating Systems: {supported_os}",
+                f"{scheduler} scheduler supports the following operating systems: {supported_os}.",
                 FailureLevel.ERROR,
             )
 
@@ -78,7 +77,7 @@ class ComputeResourceSizeValidator(Validator):
     def _validate(self, min_count, max_count):
         if max_count < min_count:
             self._add_failure(
-                "Max count must be greater than or equal to min count",
+                "Max count must be greater than or equal to min count.",
                 FailureLevel.ERROR,
             )
 
@@ -95,7 +94,7 @@ class DisableSimultaneousMultithreadingArchitectureValidator(Validator):
         if disable_simultaneous_multithreading and architecture not in supported_architectures:
             self._add_failure(
                 "Disabling simultaneous multithreading is only supported on instance types that support "
-                "these architectures: {0}".format(", ".join(supported_architectures)),
+                "these architectures: {0}.".format(", ".join(supported_architectures)),
                 FailureLevel.ERROR,
             )
 
@@ -106,7 +105,7 @@ class EfaOsArchitectureValidator(Validator):
     def _validate(self, efa_enabled, os, architecture: str):
         if efa_enabled and os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
-                "EFA currently not supported on {0} for {1} architecture".format(os, architecture),
+                f"EFA is currently not supported on {os} for {architecture} architecture.",
                 FailureLevel.ERROR,
             )
 
@@ -122,9 +121,8 @@ class ArchitectureOsValidator(Validator):
         allowed_oses = get_supported_os_for_architecture(architecture)
         if os not in allowed_oses:
             self._add_failure(
-                "The architecture {0} is only supported for the following operating systems: {1}".format(
-                    architecture, allowed_oses
-                ),
+                f"The architecture {architecture} is only supported "
+                f"for the following operating systems: {allowed_oses}.",
                 FailureLevel.ERROR,
             )
 
@@ -187,7 +185,7 @@ class DuplicateInstanceTypeValidator(Validator):
         duplicated_instance_types = _find_duplicate_params(instance_type_list)
         if duplicated_instance_types:
             self._add_failure(
-                "Instance {0} {1} cannot be specified for multiple Compute Resources in the same Queue".format(
+                "Instance {0} {1} cannot be specified for multiple compute resources in the same queue.".format(
                     "types" if len(duplicated_instance_types) > 1 else "type",
                     ", ".join(instance_type for instance_type in duplicated_instance_types),
                 ),
@@ -222,7 +220,7 @@ class EfaPlacementGroupValidator(Validator):
     def _validate(self, efa_enabled, placement_group_id, placement_group_enabled):
         if efa_enabled and not placement_group_id and not placement_group_enabled:
             self._add_failure(
-                "You may see better performance using a Placement Group for the queue.", FailureLevel.WARNING
+                "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
             )
 
 
@@ -366,8 +364,8 @@ class FsxNetworkingValidator(Validator):
             # Check to see if fs is in the same VPC as the stack
             if file_system.get("VpcId") != vpc_id:
                 self._add_failure(
-                    "Currently only support using FSx file system that is in the same VPC as the stack. "
-                    "The file system provided is in {0}".format(file_system.get("VpcId")),
+                    "Currently only support using FSx file system that is in the same VPC as the cluster. "
+                    "The file system provided is in {0}.".format(file_system.get("VpcId")),
                     FailureLevel.ERROR,
                 )
 
@@ -470,8 +468,8 @@ class NumberOfStorageValidator(Validator):
     def _validate(self, storage_type: str, max_number: int, storage_count: int):
         if storage_count > max_number:
             self._add_failure(
-                "Invalid number of shared storage of {0} type specified. "
-                "Currently only supports upto {1}".format(storage_type, max_number),
+                f"Invalid number of shared storage of {storage_type} type specified. "
+                f"Currently only supports upto {max_number}.",
                 FailureLevel.ERROR,
             )
 
@@ -531,8 +529,8 @@ class DcvValidator(Validator):
             allowed_oses = get_supported_dcv_os(architecture)
             if os not in allowed_oses:
                 self._add_failure(
-                    "NICE DCV can be used with one of the following operating systems: {0}. "
-                    "Please double check the Os configuration parameter".format(allowed_oses),
+                    f"NICE DCV can be used with one of the following operating systems: {allowed_oses}. "
+                    "Please double check the os configuration.",
                     FailureLevel.ERROR,
                 )
 
@@ -560,7 +558,7 @@ class IntelHpcOsValidator(Validator):
         if os not in allowed_oses:
             self._add_failure(
                 "When enabling intel software, the operating system is required to be set "
-                "to one of the following values : {0}".format(allowed_oses),
+                f"to one of the following values : {allowed_oses}.",
                 FailureLevel.ERROR,
             )
 
@@ -572,8 +570,8 @@ class IntelHpcArchitectureValidator(Validator):
         allowed_architectures = ["x86_64"]
         if architecture not in allowed_architectures:
             self._add_failure(
-                "When enabling intel software, it is required to use head node and compute instance "
-                "types and an AMI that support these architectures: {0}".format(allowed_architectures),
+                "When enabling Intel software, it is required to use head node and compute instance "
+                f"types and an AMI that support these architectures: {allowed_architectures}.",
                 FailureLevel.ERROR,
             )
 

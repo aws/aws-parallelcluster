@@ -149,7 +149,7 @@ def test_ebs_volume_type_size_validator(volume_type, volume_size, expected_messa
             120,
             "completed",
             "aws-us-gov",
-            "The EBS volume size must not be smaller than 120, because it is the size of the provided snapshot .*",
+            "The EBS volume size must not be smaller than 120, which is the size of the provided snapshot .*",
             False,
         ),
         (
