@@ -3,6 +3,9 @@ CHANGELOG
 
 2.10.2
 ------
+**ENHANCEMENTS**
+
+- Improve cluster config validation by using cluster target AMI when invoking RunInstances in dryrun mode
 
 **CHANGES**
 
@@ -13,6 +16,7 @@ CHANGELOG
 **BUG FIXES**
 
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
+- Fix sanity checks with ARM instance types by using cluster AMIs when performing validation      
 
 2.10.1
 ------
