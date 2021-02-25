@@ -30,8 +30,7 @@ from common.imagebuilder_utils import (
     InstanceRole,
 )
 from common.utils import get_url_scheme, load_yaml, parse_bucket_url
-from pcluster.models.imagebuilder import ImageBuilder, Volume
-from pcluster.models.imagebuilder_extra_attributes import ChefAttributes
+from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderExtraChefAttributes, Volume
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 
 
@@ -64,7 +63,7 @@ class ImageBuilderCdkStack(core.Stack):
             self,
             "CfnParamChefDnaJson",
             type="String",
-            default=ChefAttributes(dev_settings).dump_json(),
+            default=ImageBuilderExtraChefAttributes(dev_settings).dump_json(),
             description="ChefAttributes",
         )
         core.CfnParameter(

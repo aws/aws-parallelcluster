@@ -8,11 +8,14 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 from urllib.error import URLError
 
 import pytest
+from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
+from pcluster.models.imagebuilder import ImageBuilderExtraChefAttributes
 from pcluster.validators.common import FailureLevel
 from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
 from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
@@ -126,6 +129,104 @@ def test_imagebuilder_url_validator(
         expected_failure_messages,
         expected_failure_levels,
     )
+
+
+@pytest.mark.parametrize(
+    "resource, dna_json",
+    [
+        (
+            {
+                "dev_settings": {
+                    "update_os_and_reboot": True,
+                    "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
+                    "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
+                },
+            },
+            {
+                "cfncluster": {
+                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
+                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
+                    "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
+                    "is_official_ami_build": "true",
+                    "nvidia": {"enabled": "false"},
+                }
+            },
+        ),
+        (
+            {
+                "dev_settings": {
+                    "cookbook": {
+                        "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
+                        "extra_chef_attributes": '{"cluster": {"nvidia": { "enabled" : "true" }, "dcv" :"false"}}',
+                    },
+                    "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
+                },
+            },
+            {
+                "cfncluster": {
+                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
+                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "custom_awsbatchcli_package": "",
+                    "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
+                    "dcv": "false",
+                    "is_official_ami_build": "false",
+                    "nvidia": {"enabled": "true"},
+                }
+            },
+        ),
+        (
+            {
+                "dev_settings": {
+                    "cookbook": {
+                        "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
+                        "extra_chef_attributes": '{"cluster": {"nvidia": { "enabled" : "true" }, "dcv" :"false"}, '
+                        '"nfs": "true"}',
+                    },
+                    "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
+                },
+            },
+            {
+                "cfncluster": {
+                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
+                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
+                    "custom_node_package": "",
+                    "dcv": "false",
+                    "is_official_ami_build": "false",
+                    "nvidia": {"enabled": "true"},
+                },
+                "nfs": "true",
+            },
+        ),
+        (
+            {
+                "dev_settings": {
+                    "cookbook": {
+                        "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
+                        "extra_chef_attributes": '{"nfs": "true"}',
+                    },
+                    "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
+                },
+            },
+            {
+                "cfncluster": {
+                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
+                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
+                    "custom_node_package": "",
+                    "is_official_ami_build": "false",
+                    "nvidia": {"enabled": "false"},
+                },
+                "nfs": "true",
+            },
+        ),
+    ],
+)
+def test_imagebuilder_extra_chef_attributes(resource, dna_json):
+    dev_settings = imagebuilder_factory(resource).get("dev_settings")
+    chef_attributes = ImageBuilderExtraChefAttributes(dev_settings).dump_json()
+    assert_that(chef_attributes).is_equal_to(json.dumps(dna_json))
 
 
 def _test_imagebuilder(

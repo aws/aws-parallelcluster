@@ -17,7 +17,7 @@ from typing import List
 
 from common.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster import utils
-from pcluster.models.common import BaseDevSettings, BaseTag, Resource
+from pcluster.models.common import BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
 from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
@@ -169,3 +169,33 @@ class ImageBuilder(Resource):
             volume_size=self.image.root_volume.size,
             image=self.build.parent_image,
         )
+
+
+# ------------ Attributes class used in imagebuilder resources ----------- #
+
+
+class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
+    """Extra Attributes for ImageBuilder Chef Client."""
+
+    def __init__(self, dev_settings: ImagebuilderDevSettings):
+        super().__init__(dev_settings)
+        self.cfn_region = None
+        self.nvidia = None
+        self.is_official_ami_build = None
+        self.custom_node_package = None
+        self.custom_awsbatchcli_package = None
+        self.cfn_base_os = None
+        self._set_default(dev_settings)
+
+    def _set_default(self, dev_settings: ImagebuilderDevSettings):
+        self.cfn_region = "{{ build.AWSRegion.outputs.stdout }}"
+        self.nvidia = {"enabled": "false"}
+        self.is_official_ami_build = "true" if dev_settings and dev_settings.update_os_and_reboot else "false"
+        self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
+        self.custom_awsbatchcli_package = (
+            dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
+        )
+        self.cfn_base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
+        for key, value in self.__dict__.items():
+            if not key.startswith("_") and key not in self._cfncluster_attributes:
+                self._cfncluster_attributes.update({key: value})

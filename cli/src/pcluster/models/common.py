@@ -12,7 +12,7 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-
+import json
 from abc import ABC
 from typing import List
 
@@ -204,3 +204,32 @@ class BaseDevSettings(Resource):
     def _validate(self):
         self._execute_validator(UrlValidator, url=self.node_package)
         self._execute_validator(UrlValidator, url=self.aws_batch_cli_package)
+
+
+# ------------ Common attributes class between ImageBuilder an Cluster models ----------- #
+
+
+class ExtraChefAttributes:
+    """Extra Attributes for Chef Client."""
+
+    def __init__(self, dev_settings: BaseDevSettings):
+        self._cfncluster_attributes = {}
+        self._extra_attributes = {}
+        self._set_cfncluster_attributes(dev_settings)
+        self._set_extra_attributes(dev_settings)
+
+    def _set_cfncluster_attributes(self, dev_settings):
+        if dev_settings and dev_settings.cookbook and dev_settings.cookbook.extra_chef_attributes:
+            self._cfncluster_attributes = json.loads(dev_settings.cookbook.extra_chef_attributes).get("cluster") or {}
+
+    def _set_extra_attributes(self, dev_settings):
+        if dev_settings and dev_settings.cookbook and dev_settings.cookbook.extra_chef_attributes:
+            self._extra_attributes = json.loads(dev_settings.cookbook.extra_chef_attributes)
+            if "cluster" in self._extra_attributes:
+                self._extra_attributes.pop("cluster")
+
+    def dump_json(self):
+        """Dump chef attribute json to string."""
+        attribute_json = {"cfncluster": self._cfncluster_attributes}
+        attribute_json.update(self._extra_attributes)
+        return json.dumps(attribute_json, sort_keys=True)
