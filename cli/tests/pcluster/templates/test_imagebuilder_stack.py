@@ -876,7 +876,7 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         ),
     ],
 )
-def test_imagebuilder_security_group_ids(mocker, resource, response, expected_imagebuilder_subnet_id):
+def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilder_subnet_id):
     mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
