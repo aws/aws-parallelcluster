@@ -26,7 +26,7 @@ from .utils import assert_failure_messages
     "region, expected_message",
     [
         ("eu-west-1", None),
-        ("ap-northeast-3", "AWS Batch scheduler is not supported in the .* region"),
+        ("ap-northeast-3", "AWS Batch scheduler is not supported in.*region"),
     ],
 )
 def test_awsbatch_region_validator(region, expected_message):
@@ -37,7 +37,7 @@ def test_awsbatch_region_validator(region, expected_message):
 @pytest.mark.parametrize(
     "instance_type, max_vcpus, expected_message",
     [
-        ("t2.micro", 2, "max vcpus must be greater than or equal to 4"),
+        ("t2.micro", 2, "Max vCPUs must be greater than or equal to 4"),
         ("t2.micro", 4, None),
         ("p4d.24xlarge", 4, None),
         ("c4.xlarge", 4, "is not supported"),
@@ -69,19 +69,19 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
             3,
             2,
             3,
-            "desired vcpus must be greater than or equal to min vcpus",
+            "desired vCPUs must be greater than or equal to min vCPUs",
         ),
         (
             1,
             4,
             3,
-            "desired vcpus must be fewer than or equal to max vcpus",
+            "desired vCPUs must be fewer than or equal to max vCPUs",
         ),
         (
             4,
             4,
             3,
-            "Max vcpus must be greater than or equal to min vcpus",
+            "Max vCPUs must be greater than or equal to min vCPUs",
         ),
     ],
 )
@@ -104,7 +104,7 @@ def test_awsbatch_compute_resource_size_validator(min_vcpus, desired_vcpus, max_
             "x86_64",
             "arm64",
             "m6g.xlarge,r6g.xlarge",
-            "none of which are compatible with the architecture supported by the head node instance type",
+            "none of which is compatible with the architecture.*supported by the head node instance type",
         ),
     ],
 )
