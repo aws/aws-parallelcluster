@@ -1,6 +1,16 @@
 CHANGELOG
 =========
 
+2.10.2
+------
+**ENHANCEMENTS**
+
+- Improve cluster config validation by using cluster target AMI when invoking RunInstances in dryrun mode
+
+**BUG FIXES**
+
+- Fix sanity checks with ARM instance types by using cluster AMIs when performing validation      
+
 2.10.1
 ------
 
