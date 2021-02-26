@@ -23,33 +23,47 @@ def boto3_stubber_path():
 
 
 @pytest.mark.parametrize(
-    "path, boto3_response, expected_message",
+    "architecture, boto3_response, expected_message",
     [
         (
-            "/aws/service/ami-amazon-linux-latest",
+            "arm64",
             {
-                "Parameters": [
-                    {
-                        "Name": "/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-ebs",
-                        "Value": "ami-0833bb56f241ee002",
-                    },
-                    {
-                        "Name": "/aws/service/ami-amazon-linux-latest/amzn2-ami-minimal-hvm-x86_64-ebs",
-                        "Value": "ami-00a2133c9940bf8c3",
-                    },
-                ]
+                "Parameter": {
+                    "Name": "/aws/service/ami-amazon-linux-latest/amzn2-ami-minimal-hvm-arm64-ebs",
+                    "Type": "String",
+                    "Value": "ami-0aaf2d8fefcde5893",
+                    "Version": 27,
+                    "LastModifiedDate": 1614231667.121,
+                    "DataType": "text",
+                }
             },
             None,
         ),
-        ("/aws/service/ami-amazon-linux-latest", "Generic Error", "Unable to retrieve Amazon Linux AMI id"),
+        (
+            "x86_64",
+            {
+                "Parameter": {
+                    "Name": "/aws/service/ami-amazon-linux-latest/amzn2-ami-minimal-hvm-x86_64-ebs",
+                    "Type": "String",
+                    "Value": "ami-0962afb8e2794cd6e",
+                    "Version": 40,
+                    "LastModifiedDate": 1614231667.235,
+                    "DataType": "text",
+                }
+            },
+            None,
+        ),
+        ("x86_64", "Generic Error", "Unable to retrieve Amazon Linux 2 AMI id"),
     ],
 )
-def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, expected_message):
+def test_get_latest_alinux_ami_id(mocker, boto3_stubber, architecture, boto3_response, expected_message):
     mocked_requests = [
         MockedBoto3Request(
-            method="get_parameters_by_path",
+            method="get_parameter",
             response=boto3_response,
-            expected_params={"Path": path},
+            expected_params={
+                "Name": "/aws/service/ami-amazon-linux-latest/amzn2-ami-minimal-hvm-%s-ebs" % architecture
+            },
             generate_error=True if expected_message else False,
         )
     ]
@@ -59,10 +73,10 @@ def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, e
 
     if expected_message:
         with pytest.raises(SystemExit, match=expected_message):
-            _ = pcluster_config.cluster_model._get_latest_alinux_ami_id()
+            _ = pcluster_config.cluster_model._get_latest_alinux_ami_id(architecture)
     else:
-        latest_linux_ami_id = pcluster_config.cluster_model._get_latest_alinux_ami_id()
-        assert_that(latest_linux_ami_id).is_equal_to(boto3_response.get("Parameters")[0].get("Value"))
+        latest_linux_ami_id = pcluster_config.cluster_model._get_latest_alinux_ami_id(architecture)
+        assert_that(latest_linux_ami_id).is_equal_to(boto3_response.get("Parameter").get("Value"))
 
 
 @pytest.mark.parametrize(

@@ -111,7 +111,7 @@ class SITClusterModel(ClusterModel):
         )
 
         try:
-            latest_alinux_ami_id = self._get_latest_alinux_ami_id()
+            latest_alinux_ami_id = self._get_latest_alinux_ami_id(cluster_section.get_param_value("architecture"))
 
             head_node_network_interfaces = self.build_launch_network_interfaces(
                 network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
