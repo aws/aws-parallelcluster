@@ -72,7 +72,7 @@ class HITClusterModel(ClusterModel):
             else {}
         )
         try:
-            cluster_ami_id = self._get_cluster_ami_id(pcluster_config)
+            latest_alinux_ami_id = self._get_latest_alinux_ami_id()
 
             head_node_network_interfaces = self.build_launch_network_interfaces(
                 network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
@@ -88,7 +88,7 @@ class HITClusterModel(ClusterModel):
                 InstanceType=head_node_instance_type,
                 MinCount=1,
                 MaxCount=1,
-                ImageId=cluster_ami_id,
+                ImageId=latest_alinux_ami_id,
                 CpuOptions=head_node_cpu_options,
                 NetworkInterfaces=head_node_network_interfaces,
                 DryRun=True,
@@ -111,7 +111,7 @@ class HITClusterModel(ClusterModel):
                     pcluster_config,
                     compute_resource_section,
                     disable_hyperthreading=disable_hyperthreading,
-                    ami_id=cluster_ami_id,
+                    ami_id=latest_alinux_ami_id,
                     subnet=compute_subnet,
                     security_groups_ids=security_groups_ids,
                     placement_group=queue_placement_group,
