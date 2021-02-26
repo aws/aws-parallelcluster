@@ -13,6 +13,7 @@ CHANGELOG
 **BUG FIXES**
 
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
+- Fix sanity checks with ARM instance types by using alinux2 AMI with correct architecture during dryrun
 
 2.10.1
 ------

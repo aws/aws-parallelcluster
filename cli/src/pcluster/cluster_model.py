@@ -115,17 +115,17 @@ class ClusterModel(ABC):
                     "Please double check your cluster configuration.\n{1}".format(kwargs["InstanceType"], message)
                 )
 
-    def _get_latest_alinux_ami_id(self):
+    def _get_latest_alinux_ami_id(self, architecture):
         """Get latest alinux ami id."""
         try:
             alinux_ami_id = (
                 boto3.client("ssm")
-                .get_parameters_by_path(Path="/aws/service/ami-amazon-linux-latest")
-                .get("Parameters")[0]
+                .get_parameter(Name="/aws/service/ami-amazon-linux-latest/amzn2-ami-minimal-hvm-%s-ebs" % architecture)
+                .get("Parameter")
                 .get("Value")
             )
         except ClientError as e:
-            error("Unable to retrieve Amazon Linux AMI id.\n{0}".format(e.response.get("Error").get("Message")))
+            error("Unable to retrieve Amazon Linux 2 AMI id.\n{0}".format(e.response.get("Error").get("Message")))
             raise
 
         return alinux_ami_id
