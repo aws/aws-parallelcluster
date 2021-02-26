@@ -48,14 +48,16 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
 }
 
+# Get official pcluster AMIs or get from dev account
+PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
-    "alinux": {"name": "amzn-hvm-x86_64-*", "owners": ["amazon"]},
-    "alinux2": {"name": "amzn2-hvm-*-*", "owners": ["amazon"]},
-    "centos7": {"name": "centos7-hvm-x86_64-*", "owners": ["amazon"]},
-    "centos8": {"name": "centos8-hvm-x86_64-*", "owners": ["amazon"]},
-    "ubuntu1604": {"name": "ubuntu-1604-lts-hvm-x86_64-*", "owners": ["amazon"]},
-    "ubuntu1804": {"name": "ubuntu-1804-lts-hvm-*-*", "owners": ["amazon"]},
+    "alinux": {"name": "amzn-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
+    "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
+    "centos7": {"name": "centos7-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
+    "centos8": {"name": "centos8-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
+    "ubuntu1604": {"name": "ubuntu-1604-lts-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
+    "ubuntu1804": {"name": "ubuntu-1804-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
 }
 
 AMI_TYPE_DICT = {
