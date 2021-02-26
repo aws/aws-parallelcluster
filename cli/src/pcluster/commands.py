@@ -377,69 +377,25 @@ def list_stacks(args):
         sys.exit(0)
 
 
-def _poll_head_node_state(stack_name):
-    ec2 = boto3.client("ec2")
-    try:
-        instances = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.head_node)
-        if not instances:
-            LOGGER.error("Cannot retrieve head node status. Exiting...")
-            sys.exit(1)
-        head_node_id = instances[0].get("InstanceId")
-        state = instances[0].get("State").get("Name")
-        sys.stdout.write("\rMasterServer: %s" % state.upper())
-        sys.stdout.flush()
-        while state not in ["running", "stopped", "terminated", "shutting-down"]:
-            time.sleep(5)
-            state = (
-                ec2.describe_instance_status(InstanceIds=[head_node_id])
-                .get("InstanceStatuses")[0]
-                .get("InstanceState")
-                .get("Name")
-            )
-            head_node_status = "\r\033[KMasterServer: %s" % state.upper()
-            sys.stdout.write(head_node_status)
-            sys.stdout.flush()
-        if state in ["terminated", "shutting-down"]:
-            LOGGER.info("State: %s is irrecoverable. Cluster needs to be re-created.", state)
-            sys.exit(1)
-        head_node_status = "\rMasterServer: %s\n" % state.upper()
-        sys.stdout.write(head_node_status)
-        sys.stdout.flush()
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
-    except KeyboardInterrupt:
-        LOGGER.info("\nExiting...")
-        sys.exit(0)
-
-    return state
-
-
-def _get_compute_instances(stack):
-    instances = utils.describe_cluster_instances(stack, node_type=utils.NodeType.compute)
-    return map(lambda i: ("ComputeFleet", i.get("InstanceId")), instances)
-
-
 def instances(args):
-    stack_name = utils.get_stack_name(args.cluster_name)
-    PclusterConfig.init_aws(config_file=args.config_file)
-    cfn_stack = utils.get_stack(stack_name)
-    scheduler = utils.get_cfn_param(cfn_stack.get("Parameters"), "Scheduler")
+    """Print the list of instances associated to the cluster."""
+    result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+    if isinstance(result, ClusterInfo):
+        cluster_instances = []
+        head_node_instance = result.head_node
+        if head_node_instance:
+            cluster_instances.append(("Head node\t", head_node_instance.id))
 
-    instances = []
-    head_node_server = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.head_node)
-    if head_node_server:
-        instances.append(("MasterServer", head_node_server[0].get("InstanceId")))
+        for instance in result.compute_instances:
+            cluster_instances.append(("Compute node\t", instance.id))
 
-    if scheduler != "awsbatch":
-        instances.extend(_get_compute_instances(stack_name))
+        if result.scheduler == "awsbatch":
+            LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
 
-    for instance in instances:
-        LOGGER.info("%s         %s", instance[0], instance[1])
-
-    if scheduler == "awsbatch":
-        LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
+        for instance in cluster_instances:
+            LOGGER.info("%s         %s", instance[0], instance[1])
+    else:
+        utils.error(f"Unable to retrieve the instances of the cluster.\n{result.message}")
 
 
 def ssh(args, extra_args):  # noqa: C901 FIXME!!!
@@ -449,32 +405,31 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     :param args: pcluster CLI args
     :param extra_args: pcluster CLI extra_args
     """
-    # FIXME it always search for the default config file
-    pcluster_config = PclusterConfig(fail_on_error=False, auto_refresh=False)
-    if args.command in pcluster_config.get_section("aliases").params:
-        ssh_command = pcluster_config.get_section("aliases").get_param_value(args.command)
-    else:
-        ssh_command = "ssh {CFN_USER}@{MASTER_IP} {ARGS}"
-
     try:
-        head_node_ip, username = utils.get_head_node_ip_and_username(args.cluster_name)
-        try:
-            from shlex import quote as cmd_quote
-        except ImportError:
-            from pipes import quote as cmd_quote
+        result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+        if isinstance(result, ClusterInfo):
+            try:
+                from shlex import quote as cmd_quote
+            except ImportError:
+                from pipes import quote as cmd_quote
 
-        # build command
-        cmd = ssh_command.format(
-            CFN_USER=username, MASTER_IP=head_node_ip, ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args)
-        )
+            # build command
+            cmd = "ssh {CFN_USER}@{MASTER_IP} {ARGS}".format(
+                CFN_USER=result.user,
+                MASTER_IP=result.head_node_ip,
+                ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args),
+            )
 
-        # run command
-        log_message = "SSH command: {0}".format(cmd)
-        if not args.dryrun:
-            LOGGER.debug(log_message)
-            os.system(cmd)
+            # run command
+            log_message = "SSH command: {0}".format(cmd)
+            if not args.dryrun:
+                LOGGER.debug(log_message)
+                os.system(cmd)
+            else:
+                LOGGER.info(log_message)
         else:
-            LOGGER.info(log_message)
+            utils.error(f"Unable to connect to the cluster.\n{result.message}")
+
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
@@ -499,7 +454,6 @@ def status(args):  # noqa: C901 FIXME!!!
                     time.sleep(5)
                     result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
 
-                    # stack = utils.get_stack(stack_name, cfn)
                     events = utils.get_stack_events(result.stack_name)[0]
                     resource_status = (
                         "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
@@ -509,8 +463,10 @@ def status(args):  # noqa: C901 FIXME!!!
                 sys.stdout.write("\rStatus: %s\n" % result.stack_status)
                 sys.stdout.flush()
                 if result.stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
-                    state = _poll_head_node_state(result.stack_name)
-                    if state == "running":
+                    head_node_state = result.head_node.state
+                    LOGGER.info("MasterServer: %s" % head_node_state.upper())
+
+                    if head_node_state == "running":
                         _print_stack_outputs(result.stack_outputs)
                     _print_compute_fleet_status(args.cluster_name, result.stack_outputs)
                 elif result.stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:

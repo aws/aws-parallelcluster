@@ -8,7 +8,10 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 from common.aws.aws_api import AWSApi
+from common.boto3.cfn import CfnClient
 from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
 from common.boto3.imagebuilder import ImageBuilderClient
@@ -65,12 +68,20 @@ class DummyInstanceTypeInfo(InstanceTypeInfo):
 
 class DummyAWSApi(AWSApi):
     def __init__(self):
+        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
         self.ec2 = dummy_ec2_client()
         self.efs = dummy_efs_client()
+        self.cfn = dummy_cfn_client()
         self.s3 = dummy_s3_client()
         self.imagebuilder = dummy_imagebuilder_client()
         self.kms = dummy_kms_client()
         # TODO: mock all clients
+
+
+class DummyCfnClient(CfnClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
 
 
 class DummyEc2Client(Ec2Client):
@@ -144,6 +155,10 @@ def dummy_ec2_client():
 
 def dummy_efs_client():
     return DummyEfsClient()
+
+
+def dummy_cfn_client():
+    return DummyCfnClient()
 
 
 def dummy_s3_client():

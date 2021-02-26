@@ -19,7 +19,7 @@ import pkg_resources
 import yaml
 
 from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import Stack, StackActionError
+from common.aws.aws_resources import StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster_config import ClusterBucket, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -46,12 +46,20 @@ class ClusterActionError(Exception):
         self.validation_failures = validation_failures or []
 
 
-class ClusterStack(Stack):
+class ClusterStack(StackInfo):
     """Class representing a running stack associated to a Cluster."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, stack_data: dict):
         """Init stack info."""
-        super().__init__(name)
+        super().__init__(name, stack_data)
+
+    @property
+    def template(self):
+        """Return the template body of the stack."""
+        try:
+            return AWSApi().instance().cfn.get_stack_template(self.name)
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unable to retrieve template for stack {self.name}. {e}")
 
     @property
     def version(self):
@@ -68,7 +76,7 @@ class ClusterStack(Stack):
         """Return the artifact directory of the bucket used to store cluster information."""
         return self._get_output("ArtifactS3RootDirectory")
 
-    def get_cluster_config(self):
+    def get_cluster_config_dict(self):
         """Retrieve cluster config content."""
         if not self.s3_bucket_name:
             raise ClusterActionError("Unable to retrieve S3 Bucket name.")
@@ -102,11 +110,18 @@ class ClusterStack(Stack):
                 f"Unable to load configuration from bucket '{self.s3_bucket_name}/{self.s3_artifact_directory}'.\n{e}"
             )
 
+    def updated_status(self):
+        """Return updated status."""
+        try:
+            return AWSApi().instance().cfn.describe_stack(self.name).get("StackStatus")
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unable to retrieve status of stack {self.name}. {e}")
+
     def delete(self, keep_logs: bool = True):
         """Delete stack by preserving logs."""
         if keep_logs:
             self._persist_cloudwatch_log_groups()
-        super().delete()
+        AWSApi().instance().cfn.delete_stack(self.name)
 
     def _persist_cloudwatch_log_groups(self):
         """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
@@ -147,6 +162,11 @@ class ClusterStack(Stack):
         while self.updated_status() == "UPDATE_IN_PROGRESS":
             time.sleep(5)
 
+    def get_default_user(self, os: str):
+        """Get the default user for the given os."""
+        mappings = self.template.get("Mappings").get("OSFeatures")
+        return mappings[os]["User"]
+
 
 class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
@@ -158,18 +178,24 @@ class Cluster:
         self.template_body = None
         self.config_version = None
         if config:
-            self.config = ClusterSchema().load(config)
+            self.source_config = config
         else:
             try:
-                self.stack = ClusterStack(self.stack_name)
-            except StackActionError:
+                self.stack = ClusterStack(self.stack_name, AWSApi().instance().cfn.describe_stack(self.stack_name))
+            except AWSClientError:
                 raise ClusterActionError(f"Cluster {self.name} does not exist.")
-            self.config = self.stack.get_cluster_config()
+            self.source_config = self.stack.get_cluster_config_dict()
+        self.config = ClusterSchema().load(self.source_config)
 
     @property
     def stack_name(self):
         """Return stack name."""
         return get_stack_name(self.name)
+
+    @property
+    def status(self):
+        """Return the cluster status."""
+        return self.stack.status
 
     def create(self, disable_rollback: bool = False):
         """Create cluster."""
@@ -211,7 +237,7 @@ class Cluster:
                 tags=tags,
             )
 
-            self.stack = ClusterStack(self.stack_name)
+            self.stack = ClusterStack(self.stack_name, AWSApi().instance().cfn.describe_stack(self.stack_name))
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
 
@@ -329,16 +355,12 @@ class Cluster:
             self._terminate_nodes()
         except Exception as e:
             self._terminate_nodes()
-            raise ClusterActionError(f"Cluster deletion failed. Error: {e}")
+            raise ClusterActionError(f"Cluster {self.name} did not delete successfully. {e}")
 
     def _terminate_nodes(self):
         try:
             LOGGER.info("\nChecking if there are running compute nodes that require termination...")
-            filters = [
-                {"Name": "tag:Application", "Values": [self.stack_name]},
-                {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
-                {"Name": "tag:aws-parallelcluster-node-type", "Values": [str(NodeType.compute)]},
-            ]
+            filters = self._get_instance_filters(node_type=NodeType.compute)
             instances = AWSApi().instance().ec2.list_instance_ids(filters)
 
             for instance_ids in grouper(instances, 100):
@@ -349,3 +371,60 @@ class Cluster:
             LOGGER.info("Compute fleet cleaned up.")
         except Exception as e:
             LOGGER.error("Failed when checking for running EC2 instances with error: %s", str(e))
+
+    @property
+    def compute_instances(self):
+        """Get compute instances."""
+        return self._describe_instances(node_type=NodeType.compute)
+
+    @property
+    def head_node_instance(self):
+        """Get head node instance."""
+        try:
+            return self._describe_instances(node_type=NodeType.head_node)[0]
+        except IndexError:
+            raise ClusterActionError("Unable to retrieve head node information.")
+
+    def _get_instance_filters(self, node_type: NodeType):
+        return [
+            {"Name": "tag:Application", "Values": [self.stack_name]},
+            {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
+            {"Name": "tag:aws-parallelcluster-node-type", "Values": [node_type.value]},
+        ]
+
+    def _describe_instances(self, node_type: NodeType):
+        """Return the cluster instances filtered by node type."""
+        try:
+            filters = self._get_instance_filters(node_type)
+            return AWSApi().instance().ec2.describe_instances(filters)
+        except AWSClientError as e:
+            raise ClusterActionError(f"Failed to retrieve cluster instances. {e}")
+
+    @property
+    def head_node_user(self):
+        """Return the default user for the head node."""
+        user = self.stack.get_default_user(self.config.image.os)
+        if not user:
+            raise ClusterActionError("Failed to get cluster {0} username.".format(self.name))
+        return user
+
+    @property
+    def head_node_ip(self):
+        """Get the IP Address of the head node."""
+        stack_status = self.stack.updated_status()
+        if stack_status in ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]:
+            raise ClusterActionError(
+                "Unable to retrieve head node ip for a stack in the status: {0}".format(stack_status)
+            )
+
+        head_node = self.head_node_instance
+        if not head_node:
+            raise ClusterActionError("Head node not running.")
+
+        ip_address = head_node.public_ip
+        if ip_address is None:
+            ip_address = head_node.private_ip
+
+        if head_node.state != "running" or ip_address is None:
+            raise ClusterActionError("Head node: {0}\nCannot get ip address.".format(head_node.state.upper()))
+        return ip_address

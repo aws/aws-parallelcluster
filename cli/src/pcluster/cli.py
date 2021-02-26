@@ -289,7 +289,6 @@ Examples::
     # instances command subparser
     pinstances = subparsers.add_parser("instances", help="Displays a list of all instances in a cluster.")
     pinstances.add_argument("cluster_name", help="Display the instances for the cluster with the name provided here.")
-    _addarg_config(pinstances)
     _addarg_region(pinstances)
     pinstances.set_defaults(func=instances)
 
@@ -301,26 +300,13 @@ Examples::
 
 Returns an ssh command with the cluster username and IP address pre-populated::
 
-  $ ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa
-
-The SSH command is defined in the global config file under the aliases section and it can be customized::
-
-  [aliases]
-  ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
-
-Variables substituted::
-
-  {CFN_USER}
-  {MASTER_IP}
-  {ARGS} (only if specified on the cli)"""
+  $ ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa"""
     )
     pssh = subparsers.add_parser(
         "ssh",
         help="Connects to the head node instance using SSH.",
         description="Run ssh command with the cluster username and IP address pre-populated. "
-        "Arbitrary arguments are appended to the end of the ssh command. "
-        "This command can be customized in the aliases "
-        "section of the config file.",
+        "Arbitrary arguments are appended to the end of the ssh command.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=ssh_example,
     )

@@ -1,5 +1,5 @@
 """This module provides unit tests for the functions in the pcluster.delete module."""
-
+import os
 from collections import namedtuple
 
 import pytest
@@ -10,7 +10,7 @@ from common.boto3.common import AWSClientError
 from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
 
 FakePdeleteArgs = namedtuple("FakePdeleteArgs", "cluster_name config_file nowait keep_logs region")
-FAKE_CLUSTER_NAME = "cluster_name"
+FAKE_CLUSTER_NAME = "cluster-name"
 FAKE_STACK_NAME = utils.get_stack_name(FAKE_CLUSTER_NAME)
 LOG_GROUP_TYPE = "AWS::Logs::LogGroup"
 
@@ -32,14 +32,14 @@ def get_fake_pdelete_args(cluster_name="cluster_name", config_file=None, nowait=
 )
 def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
     """Verify that Cluster.delete behaves as expected."""
-    mocker.patch("pcluster.models.cluster.Stack.__init__", return_value=None)
-    mocker.patch("pcluster.models.cluster.Stack.delete")
-    cluster_stack = ClusterStack(FAKE_STACK_NAME)
-    cluster_stack.name = FAKE_STACK_NAME
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    mocker.patch("common.boto3.cfn.CfnClient.delete_stack")
+    cluster_stack = ClusterStack(FAKE_STACK_NAME, {})
     persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster_stack, "_persist_cloudwatch_log_groups")
 
     mocker.patch("pcluster.models.cluster.Cluster.__init__", return_value=None)
     cluster = Cluster(FAKE_CLUSTER_NAME)
+    cluster.name = FAKE_CLUSTER_NAME
     cluster.stack = cluster_stack
     terminate_nodes_mock = mocker.patch.object(cluster, "_terminate_nodes")
 
@@ -77,10 +77,10 @@ def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
 )
 def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain, fail_on_persist):
     """Verify that commands._persist_cloudwatch_log_groups behaves as expected."""
-    mocker.patch("pcluster.models.cluster.Stack.__init__", return_value=None)
-    cluster_stack = ClusterStack(FAKE_STACK_NAME)
+    cluster_stack = ClusterStack(FAKE_STACK_NAME, {})
     cluster_stack.name = FAKE_STACK_NAME
-    cluster_stack._stack_data = {"TemplateBody": template}
+    template_property_mock = mocker.PropertyMock(return_value=template)
+    mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
 
     client_error = AWSClientError("function", "Generic error.")
     update_template_mock = mocker.patch.object(
@@ -119,10 +119,10 @@ def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain
 )
 def test_persist_stack_resources(mocker, template):
     """Verify that commands._persist_stack_resources behaves as expected."""
-    mocker.patch("pcluster.models.cluster.Stack.__init__", return_value=None)
-    cluster_stack = ClusterStack(FAKE_STACK_NAME)
+    cluster_stack = ClusterStack(FAKE_STACK_NAME, {})
     cluster_stack.name = FAKE_STACK_NAME
-    cluster_stack._stack_data = {"TemplateBody": template}
+    template_property_mock = mocker.PropertyMock(return_value=template)
+    mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
     update_stack_template_mock = mocker.patch.object(cluster_stack, "_update_template")
 
     if "Resources" not in template:
@@ -154,10 +154,11 @@ def test_persist_stack_resources(mocker, template):
 )
 def test_get_unretained_cw_log_group_resource_keys(mocker, template, expected_return):
     """Verify that commands._get_unretained_cw_log_group_resource_keys behaves as expected."""
-    mocker.patch("pcluster.models.cluster.Stack.__init__", return_value=None)
-    cluster_stack = ClusterStack(FAKE_STACK_NAME)
+    cluster_stack = ClusterStack(FAKE_STACK_NAME, {})
     cluster_stack.name = FAKE_STACK_NAME
-    cluster_stack._stack_data = {"TemplateBody": template}
+
+    template_property_mock = mocker.PropertyMock(return_value=template)
+    mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
 
     observed_return = cluster_stack._get_unretained_cw_log_group_resource_keys()
     assert_that(observed_return).is_equal_to(expected_return)

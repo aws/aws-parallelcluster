@@ -37,7 +37,12 @@ class ClusterInfo:
         self.id = cluster.name
         self.region = cluster.stack.region
         self.version = cluster.stack.version
-        self.status = cluster.stack.status
+        self.status = cluster.status
+        self.head_node = cluster.head_node_instance
+        self.head_node_ip = cluster.head_node_ip
+        self.user = cluster.head_node_user
+        self.compute_instances = cluster.compute_instances
+        self.scheduler = cluster.config.scheduling.scheduler
 
     def __repr__(self):
         return json.dumps(self.__dict__)

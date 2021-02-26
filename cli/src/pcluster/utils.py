@@ -58,7 +58,7 @@ STACK_TYPE = "AWS::CloudFormation::Stack"
 class NodeType(Enum):
     """Enum that identifies the cluster node type."""
 
-    head_node = "Master"
+    head_node = "Master"  # FIXME HeadNode
     compute = "Compute"
 
     def __str__(self):
@@ -75,21 +75,6 @@ def get_cluster_name(stack_name):
         return stack_name[len(prefix) :]  # noqa: E203
     else:
         raise Exception("Invalid stack name: {}".format(stack_name))
-
-
-def get_stack_template(stack_name):
-    """Get the template used for the given stack."""
-    try:
-        template = boto3.client("cloudformation").get_template(StackName=stack_name).get("TemplateBody")
-    except ClientError as client_err:
-        error(
-            "Unable to get template for stack {stack_name}.\n{err_msg}".format(
-                stack_name=stack_name, err_msg=client_err.response.get("Error").get("Message")
-            )
-        )
-    if not template:
-        error("Unable to get template for stack {0}.".format(stack_name))
-    return template
 
 
 # TODO Moved
@@ -795,6 +780,7 @@ def error(message, fail_on_error=True):
         print("ERROR: {0}".format(message))
 
 
+# TODO moved
 def get_cfn_param(params, key_name):
     """
     Get parameter value from Cloudformation Stack Parameters.
@@ -826,110 +812,6 @@ def get_efs_mount_target_id(efs_fs_id, avail_zone):
                 mount_target_id = mount_target.get("MountTargetId")
 
     return mount_target_id
-
-
-def _describe_cluster_instances(stack_name, filter_by_node_type=None, filter_by_name=None):
-    instances = []
-    for instances_page in _describe_cluster_instances_iterator(stack_name, filter_by_node_type, filter_by_name):
-        instances.extend(instances_page)
-    return instances
-
-
-def _describe_cluster_instances_iterator(
-    stack_name,
-    filter_by_node_type=None,
-    filter_by_name=None,
-    instance_state=("pending", "running", "stopping", "stopped"),
-):
-    try:
-        ec2 = boto3.client("ec2")
-        filters = [
-            {"Name": "tag:Application", "Values": [stack_name]},
-            {"Name": "instance-state-name", "Values": list(instance_state)},
-        ]
-        if filter_by_node_type:
-            filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
-        if filter_by_name:
-            filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
-
-        for page in paginate_boto3(ec2.describe_instances, Filters=filters):
-            yield page.get("Instances", [])
-
-    except ClientError as e:
-        error(e.response.get("Error").get("Message"))
-
-
-def describe_cluster_instances(stack_name, node_type):
-    """Return the cluster instances optionally filtered by tag."""
-    instances = _describe_cluster_instances(stack_name, filter_by_node_type=str(node_type))
-    if not instances:
-        # Support for cluster that do not have aws-parallelcluster-node-type tag
-        LOGGER.debug("Falling back to Name tag when describing cluster instances")
-        instances = _describe_cluster_instances(stack_name, filter_by_name=str(node_type))
-
-    return instances
-
-
-def _get_head_node_ip(stack_name):
-    """
-    Get the IP Address of the head node.
-
-    :param stack_name: The name of the cloudformation stack
-    :param config: Config object
-    :return private/public ip address
-    """
-    instances = describe_cluster_instances(stack_name, node_type=NodeType.head_node)
-    if not instances:
-        error("Head node not running. Can't SSH")
-    head_node = instances[0]
-    ip_address = head_node.get("PublicIpAddress")
-    if ip_address is None:
-        ip_address = head_node.get("PrivateIpAddress")
-    state = head_node.get("State").get("Name")
-    if state != "running" or ip_address is None:
-        error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
-    return ip_address
-
-
-def get_head_node_ip_and_username(cluster_name):
-    cfn = boto3.client("cloudformation")
-    try:
-        stack_name = get_stack_name(cluster_name)
-
-        stack_result = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
-        stack_status = stack_result.get("StackStatus")
-
-        if stack_status in ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]:
-            error("Unable to retrieve head node ip and username for a stack in the status: {0}".format(stack_status))
-        else:
-            head_node_ip = _get_head_node_ip(stack_name)
-            template = cfn.get_template(StackName=stack_name)
-            mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
-            base_os = get_cfn_param(stack_result.get("Parameters"), "BaseOS")
-            username = mappings.get(base_os).get("User")
-
-        if not head_node_ip:
-            error("Failed to get cluster {0} ip.".format(cluster_name))
-        if not username:
-            error("Failed to get cluster {0} username.".format(cluster_name))
-
-    except ClientError as e:
-        error(e.response.get("Error").get("Message"))
-
-    return head_node_ip, username
-
-
-def get_head_node_state(stack_name):
-    """
-    Get the State of the head node.
-
-    :param stack_name: The name of the cloudformation stack
-    :return head node state name
-    """
-    instances = describe_cluster_instances(stack_name, "Master")
-    if not instances:
-        error("Head node not running.")
-    return instances[0].get("State").get("Name")
 
 
 def get_info_for_amis(ami_ids):
