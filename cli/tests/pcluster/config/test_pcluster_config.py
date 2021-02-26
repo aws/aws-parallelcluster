@@ -13,7 +13,6 @@ import pytest
 from assertpy import assert_that
 from pytest import fail
 
-from pcluster.utils import get_installed_version
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.utils import get_mocked_pcluster_config, init_pcluster_config_from_configparser
 
@@ -144,85 +143,3 @@ def test_load_from_file_errors(capsys, config_parser_dict, expected_message):
             assert_that(e.args[0]).matches(expected_message)
         else:
             fail("Unexpected failure when loading file")
-
-
-@pytest.mark.parametrize(
-    "custom_ami_id, os, architecture, expected_ami_suffix, expected_ami_id, expected_error_message, raise_boto3_error",
-    [
-        # Official AMIs
-        (None, "alinux", "x86_64", "amzn-hvm-x86_64", "ami-official", None, False),
-        (None, "alinux2", "x86_64", "amzn2-hvm-x86_64", "ami-official", None, False),
-        (None, "centos7", "x86_64", "centos7-hvm-x86_64", "ami-official", None, False),
-        (None, "centos8", "x86_64", "centos8-hvm-x86_64", "ami-official", None, False),
-        (None, "ubuntu1604", "x86_64", "ubuntu-1604-lts-hvm-x86_64", "ami-official", None, False),
-        (None, "ubuntu1804", "x86_64", "ubuntu-1804-lts-hvm-x86_64", "ami-official", None, False),
-        (None, "alinux", "arm_64", "amzn-hvm-arm_64", "ami-official", None, False),
-        (None, "alinux2", "arm_64", "amzn2-hvm-arm_64", "ami-official", None, False),
-        (None, "centos7", "arm_64", "centos7-hvm-arm_64", "ami-official", None, False),
-        (None, "centos8", "arm_64", "centos8-hvm-arm_64", "ami-official", None, False),
-        (None, "ubuntu1604", "arm_64", "ubuntu-1604-lts-hvm-arm_64", "ami-official", None, False),
-        (None, "ubuntu1804", "arm_64", "ubuntu-1804-lts-hvm-arm_64", "ami-official", None, False),
-        # Custom AMIs
-        ("ami-custom", "alinux2", "x86_64", None, "ami-custom", None, False),
-        ("ami-custom", "alinux2", "arm_64", None, "ami-custom", None, False),
-        # No AMI found
-        (None, "alinux2", "x86_64", "amzn2-hvm-x86_64", None, "No official image id found", False),
-        # Boto3 error
-        (None, "alinux2", "x86_64", "amzn2-hvm-x86_64", None, "Unable to retrieve official image id", True),
-    ],
-)
-def test_get_cluster_ami_id(
-    mocker,
-    boto3_stubber,
-    custom_ami_id,
-    os,
-    architecture,
-    expected_ami_suffix,
-    expected_ami_id,
-    expected_error_message,
-    raise_boto3_error,
-):
-    if not custom_ami_id:
-        mocked_requests = [
-            MockedBoto3Request(
-                method="describe_images",
-                response={
-                    "Images": [
-                        {
-                            "Architecture": "arm64",
-                            "CreationDate": "2020-12-22T13:30:33.000Z",
-                            "ImageId": expected_ami_id,
-                        }
-                    ]
-                    if expected_ami_id
-                    else []
-                },
-                expected_params={
-                    "Filters": [
-                        {
-                            "Name": "name",
-                            "Values": [
-                                "aws-parallelcluster-{version}-{suffix}*".format(
-                                    version=get_installed_version(), suffix=expected_ami_suffix
-                                )
-                            ],
-                        },
-                        {"Name": "owner-alias", "Values": ["amazon"]},
-                    ],
-                },
-                generate_error=raise_boto3_error,
-            )
-        ]
-        boto3_stubber("ec2", mocked_requests)
-
-    pcluster_config = get_mocked_pcluster_config(mocker)
-    pcluster_config.get_section("cluster").get_param("custom_ami").value = custom_ami_id
-    pcluster_config.get_section("cluster").get_param("base_os").value = os
-    pcluster_config.get_section("cluster").get_param("architecture").value = architecture
-
-    if expected_error_message:
-        with pytest.raises(SystemExit, match=expected_error_message):
-            _ = pcluster_config.cluster_model._get_cluster_ami_id(pcluster_config)
-    else:
-        cluster_ami_id = pcluster_config.cluster_model._get_cluster_ami_id(pcluster_config)
-        assert_that(cluster_ami_id).is_equal_to(expected_ami_id)
