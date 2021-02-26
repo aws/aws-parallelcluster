@@ -42,7 +42,13 @@ from jinja2 import BaseLoader, Environment
 from pkg_resources import packaging
 
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
-from pcluster.constants import PCLUSTER_STACK_PREFIX, SUPPORTED_ARCHITECTURES
+from pcluster.constants import (
+    PCLUSTER_STACK_PREFIX,
+    SUPPORTED_ARCHITECTURES,
+    SUPPORTED_OSES_FOR_ARCHITECTURE,
+    SUPPORTED_OSES_FOR_SCHEDULER,
+    SUPPORTED_SCHEDULERS,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -549,6 +555,17 @@ def get_supported_az_for_multi_instance_types(instance_types):
     return result
 
 
+def get_common_supported_az_for_multi_instance_types(instance_types):
+    supported_az = get_supported_az_for_multi_instance_types(instance_types)
+    common_az = None
+    for az_list in supported_az.values():
+        if common_az is None:
+            common_az = set(az_list)
+        else:
+            common_az = common_az & set(az_list)
+    return common_az
+
+
 def get_availability_zone_of_subnet(subnet_id):
     """
     Return the availability zone of the subnet.
@@ -580,18 +597,18 @@ def get_supported_os_for_scheduler(scheduler):
     :param scheduler: the scheduler for which we want to know the supported os
     :return: an array of strings of the supported OSes
     """
-    oses = ["alinux", "alinux2"]
-    if scheduler != "awsbatch":
-        oses.extend(["centos7", "centos8", "ubuntu1604", "ubuntu1804"])
-    return list(oses)
+    return SUPPORTED_OSES_FOR_SCHEDULER.get(scheduler, [])
 
 
 def get_supported_os_for_architecture(architecture):
     """Return list of supported OSes for the specified architecture."""
-    oses = ["alinux2", "ubuntu1804", "centos8"]
-    if architecture == "x86_64":
-        oses.extend(["centos7", "alinux", "ubuntu1604"])
-    return oses
+    return SUPPORTED_OSES_FOR_ARCHITECTURE.get(architecture, [])
+
+
+def camelcase(snake_case_word):
+    """Convert the given snake case word into a camel case one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
 
 
 def get_supported_schedulers():
@@ -600,7 +617,7 @@ def get_supported_schedulers():
 
     :return: a tuple of strings of the supported scheduler
     """
-    return "sge", "torque", "slurm", "awsbatch"
+    return SUPPORTED_SCHEDULERS
 
 
 def get_stack_output_value(stack_outputs, output_key):

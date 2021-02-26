@@ -27,10 +27,8 @@ Allowed values for EC2 Key Pair Name:
 5. key5
 6. key6
 Allowed values for Scheduler:
-1. sge
-2. torque
-3. slurm
-4. awsbatch
+1. slurm
+2. awsbatch
 Allowed values for VPC ID:
   #  id            name                                 number_of_subnets
 ---  ------------  ---------------------------------  -------------------
@@ -38,12 +36,12 @@ Allowed values for VPC ID:
   2  vpc-23456789  ParallelClusterVPC-20190624105051                    0
   3  vpc-34567891  default                                              3
   4  vpc-45678912  ParallelClusterVPC-20190626095403                    1
-Allowed values for head node Subnet ID:
+Allowed values for head node subnet ID:
   #  id               name                            size  availability_zone
 ---  ---------------  ----------------------------  ------  -------------------
   1  subnet-12345678  ParallelClusterPublicSubnet      256  eu-west-1b
   2  subnet-23456789  ParallelClusterPrivateSubnet    4096  eu-west-1b
-Allowed values for compute Subnet ID:
+Allowed values for compute subnet ID:
   #  id               name                            size  availability_zone
 ---  ---------------  ----------------------------  ------  -------------------
   1  subnet-12345678  ParallelClusterPublicSubnet      256  eu-west-1b

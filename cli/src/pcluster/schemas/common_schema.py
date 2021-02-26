@@ -20,6 +20,7 @@ from common.utils import validate_json_format
 from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster_config import BaseTag
 from pcluster.models.common import Cookbook
+from pcluster.utils import camelcase
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -50,7 +51,7 @@ class BaseSchema(Schema):
         For example, `EBS` in the config file is not CamelCase, we have to bind it with ebs manually.
         """
         if field_obj.data_key is None:
-            field_obj.data_key = _camelcase(field_name)
+            field_obj.data_key = camelcase(field_name)
 
     def only_one_field(self, data, field_list, **kwargs):
         """
@@ -87,12 +88,6 @@ class BaseSchema(Schema):
     def remove_none_values(self, data, **kwargs):
         """Remove None values before creating the Yaml format."""
         return {key: value for key, value in data.items() if value is not None and value != []}
-
-
-def _camelcase(snake_case_word):
-    """Convert the given snake case word into a camel case one."""
-    parts = iter(snake_case_word.split("_"))
-    return "".join(word.title() for word in parts)
 
 
 def _is_implied(resource, attr, value):

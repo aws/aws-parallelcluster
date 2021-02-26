@@ -111,7 +111,10 @@ class PublicNetworkConfig(BaseNetworkConfig):
         _validate_cidr(public_cidr)
         parameters = self.get_cfn_parameters(vpc_id, internet_gateway_id, public_cidr)
         stack_output = _create_network_stack(self, parameters)
-        return {"master_subnet_id": get_stack_output_value(stack_output, "PublicSubnetId"), "use_public_ips": "true"}
+        return {
+            "head_node_subnet_id": get_stack_output_value(stack_output, "PublicSubnetId"),
+            "compute_subnet_id": get_stack_output_value(stack_output, "PublicSubnetId"),
+        }
 
 
 class PublicPrivateNetworkConfig(BaseNetworkConfig):
@@ -143,9 +146,8 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
         parameters = self.get_cfn_parameters(vpc_id, internet_gateway_id, public_cidr, private_cidr)
         stack_output = _create_network_stack(self, parameters)
         return {
-            "master_subnet_id": get_stack_output_value(stack_output, "PublicSubnetId"),
+            "head_node_subnet_id": get_stack_output_value(stack_output, "PublicSubnetId"),
             "compute_subnet_id": get_stack_output_value(stack_output, "PrivateSubnetId"),
-            "use_public_ips": "false",
         }
 
 
