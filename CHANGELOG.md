@@ -24,7 +24,7 @@ CHANGELOG
 
 **BUG FIXES**
 
-- Fix sanity checks with ARM instance types by using alinux2 AMI with correct architecture during dryrun  
+- Fix sanity checks with ARM instance types by using cluster AMI when performing validation  
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
 - Use non interactive `apt update` command when building custom Ubuntu AMIs.
 - Fix `encrypted_ephemeral = true` when using Alinux2 or CentOS8
