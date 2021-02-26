@@ -30,11 +30,10 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from api.pcluster_api import ClusterInfo, PclusterApi
+from api.pcluster_api import FullClusterInfo, PclusterApi
 from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatusManager
-from pcluster.config.pcluster_config import PclusterConfig
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX
 
 LOGGER = logging.getLogger(__name__)
 
@@ -246,7 +245,7 @@ def create(args):
         region=utils.get_region(),
         disable_rollback=args.norollback,
     )
-    if isinstance(result, ClusterInfo):
+    if isinstance(result, FullClusterInfo):
         print(f"Cluster creation started successfully. {result}")
 
         if not args.nowait:
@@ -254,7 +253,7 @@ def create(args):
             LOGGER.info("")
 
             result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, ClusterInfo):
+            if isinstance(result, FullClusterInfo):
                 # result_stack = utils.get_stack(stack_name, cfn_client)
                 _print_stack_outputs(result.stack_outputs)
             else:
@@ -263,7 +262,7 @@ def create(args):
                 sys.exit(1)
         else:
             result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, ClusterInfo):
+            if isinstance(result, FullClusterInfo):
                 LOGGER.info("Status: %s", result.stack_status)
             else:
                 utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
@@ -352,26 +351,15 @@ def _colorize(stack_status, args):
             return "\033[%s%s\033[%s" % (status_to_color[status_label], stack_status, end)
 
 
-def list_stacks(args):
-    # Parse configuration file to read the AWS section
-    PclusterConfig.init_aws(config_file=args.config_file)
-
+def list_clusters(args):
+    """List existing clusters."""
     try:
-        result = []
-        for stack in utils.paginate_boto3(boto3.client("cloudformation").describe_stacks):
-            if stack.get("ParentId") is None and stack.get("StackName").startswith(PCLUSTER_STACK_PREFIX):
-                pcluster_version = _get_pcluster_version_from_stack(stack)
-                result.append(
-                    [
-                        stack.get("StackName")[len(PCLUSTER_STACK_PREFIX) :],  # noqa: E203
-                        _colorize(stack.get("StackStatus"), args),
-                        pcluster_version,
-                    ]
-                )
-        LOGGER.info(tabulate(result, tablefmt="plain"))
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
+        result = PclusterApi().list_clusters(region=utils.get_region())
+        if isinstance(result, list):
+            clusters = [[cluster.name, _colorize(cluster.status, args), cluster.version] for cluster in result]
+            LOGGER.info(tabulate(clusters, tablefmt="plain"))
+        else:
+            utils.error(f"Unable to retrieve the list of clusters.\n{result.message}")
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
         sys.exit(0)
@@ -379,26 +367,30 @@ def list_stacks(args):
 
 def instances(args):
     """Print the list of instances associated to the cluster."""
-    result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-    if isinstance(result, ClusterInfo):
-        cluster_instances = []
-        head_node_instance = result.head_node
-        if head_node_instance:
-            cluster_instances.append(("Head node\t", head_node_instance.id))
+    try:
+        result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+        if isinstance(result, FullClusterInfo):
+            cluster_instances = []
+            head_node_instance = result.head_node
+            if head_node_instance:
+                cluster_instances.append(("Head node\t", head_node_instance.id))
 
-        for instance in result.compute_instances:
-            cluster_instances.append(("Compute node\t", instance.id))
+            for instance in result.compute_instances:
+                cluster_instances.append(("Compute node\t", instance.id))
 
-        if result.scheduler == "awsbatch":
-            LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
+            if result.scheduler == "awsbatch":
+                LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
 
-        for instance in cluster_instances:
-            LOGGER.info("%s         %s", instance[0], instance[1])
-    else:
-        utils.error(f"Unable to retrieve the instances of the cluster.\n{result.message}")
+            for instance in cluster_instances:
+                LOGGER.info("%s         %s", instance[0], instance[1])
+        else:
+            utils.error(f"Unable to retrieve the instances of the cluster.\n{result.message}")
+    except KeyboardInterrupt:
+        LOGGER.info("Exiting...")
+        sys.exit(0)
 
 
-def ssh(args, extra_args):  # noqa: C901 FIXME!!!
+def ssh(args, extra_args):
     """
     Execute an SSH command to the head node instance, according to the [aliases] section if there.
 
@@ -407,7 +399,7 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     """
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterInfo):
+        if isinstance(result, FullClusterInfo):
             try:
                 from shlex import quote as cmd_quote
             except ImportError:
@@ -436,9 +428,10 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
 
 
 def status(args):  # noqa: C901 FIXME!!!
+    """Get cluster status."""
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterInfo):
+        if isinstance(result, FullClusterInfo):
             # print(f"{result}")
             sys.stdout.write("\rStatus: %s" % result.stack_status)
             sys.stdout.flush()

@@ -12,7 +12,7 @@ import logging
 import sys
 import time
 
-from api.pcluster_api import ClusterInfo, PclusterApi
+from api.pcluster_api import FullClusterInfo, PclusterApi
 from pcluster import utils
 
 LOGGER = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ def delete(args):
     try:
         # delete cluster raises an exception if stack does not exist
         result = PclusterApi().delete_cluster(args.cluster_name, utils.get_region(), args.keep_logs)
-        if isinstance(result, ClusterInfo):
+        if isinstance(result, FullClusterInfo):
             print(f"Cluster deletion started correctly. {result}")
         else:
             utils.error(f"Cluster deletion failed. {result.message}")
@@ -37,7 +37,7 @@ def delete(args):
             while result.stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
                 result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-                if isinstance(result, ClusterInfo):
+                if isinstance(result, FullClusterInfo):
                     events = utils.get_stack_events(result.stack_name, raise_on_error=True)[0]
                     resource_status = (
                         "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))

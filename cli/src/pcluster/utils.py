@@ -70,7 +70,7 @@ def get_stack_name(cluster_name):
 
 
 def get_cluster_name(stack_name):
-    prefix = "parallelcluster-"
+    prefix = PCLUSTER_STACK_PREFIX
     if stack_name.startswith(prefix):
         return stack_name[len(prefix) :]  # noqa: E203
     else:

@@ -13,7 +13,7 @@ import re
 import subprocess as sub
 import webbrowser
 
-from api.pcluster_api import ClusterInfo, PclusterApi
+from api.pcluster_api import FullClusterInfo, PclusterApi
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.dcv.utils import DCV_CONNECT_SCRIPT
 from pcluster.utils import error, get_region, retry
@@ -38,7 +38,7 @@ def dcv_connect(args):
     :param args: pcluster cli arguments.
     """
     result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=get_region())
-    if isinstance(result, ClusterInfo):
+    if isinstance(result, FullClusterInfo):
         # Prepare ssh command to execute in the head node instance
         cmd = 'ssh {CFN_USER}@{HEAD_NODE_IP} {KEY} "{REMOTE_COMMAND} /home/{CFN_USER}"'.format(
             CFN_USER=result.user,

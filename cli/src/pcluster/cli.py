@@ -54,8 +54,8 @@ def status(args):
     pcluster.status(args)
 
 
-def list_stacks(args):
-    pcluster.list_stacks(args)
+def list_clusters(args):
+    pcluster.list_clusters(args)
 
 
 def delete(args):
@@ -282,9 +282,8 @@ Examples::
         epilog="This command lists the names of any CloudFormation stacks named parallelcluster-*",
     )
     plist.add_argument("--color", action="store_true", default=False, help="Display the cluster status in color.")
-    _addarg_config(plist)
     _addarg_region(plist)
-    plist.set_defaults(func=list_stacks)
+    plist.set_defaults(func=list_clusters)
 
     # instances command subparser
     pinstances = subparsers.add_parser("instances", help="Displays a list of all instances in a cluster.")
