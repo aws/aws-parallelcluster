@@ -19,7 +19,7 @@ import re
 
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
-from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
+from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.models.cluster_config import (
     AdditionalIamPolicy,
     AdditionalPackages,
@@ -525,7 +525,7 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
 class ImageSchema(BaseSchema):
     """Represent the schema of the Image."""
 
-    os = fields.Str(required=True, validate=validate.OneOf(["alinux2", "ubuntu1804", "centos7", "centos8"]))
+    os = fields.Str(required=True, validate=validate.OneOf(SUPPORTED_OSES))
     custom_ami = fields.Str(validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"))
 
     @post_load

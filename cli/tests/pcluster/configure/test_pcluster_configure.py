@@ -3,11 +3,12 @@ import tempfile
 from collections import OrderedDict
 
 import pytest
+import yaml
 from assertpy import assert_that
-from configparser import ConfigParser
 
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
+from pcluster.schemas.cluster_schema import ClusterSchema
 from tests.pcluster.config.utils import mock_instance_type_info
 
 EASYCONFIG = "pcluster.configure.easyconfig."
@@ -55,10 +56,7 @@ def _mock_aws_region(mocker, partition="commercial"):
 def _mock_availability_zone(mocker, availability_zones=("eu-west-1a", "eu-west-1b", "eu-west-1c")):
     # To Do: return different list for different region or instance type
     mocker.patch(EASYCONFIG + "get_supported_az_for_one_instance_type", return_value=availability_zones)
-
-
-def _mock_cache_availability_zones(mocker):
-    mocker.patch(EASYCONFIG + "get_supported_az_for_multi_instance_types")
+    mocker.patch(EASYCONFIG + "get_common_supported_az_for_multi_instance_types", return_value=availability_zones)
 
 
 def _mock_list_keys(mocker, partition="commercial"):
@@ -315,15 +313,13 @@ def _run_configuration(mocker, path, with_config=False, region=None):
 def _assert_configurations_are_equal(path_config_expected, path_config_after_input):
     assert_that(path_config_expected).exists().is_file()
     assert_that(path_config_after_input).exists().is_file()
+    with open(path_config_after_input) as after_input_conf_file:
+        after_input_content = yaml.load(after_input_conf_file, Loader=yaml.SafeLoader)
+        ClusterSchema().load(after_input_content)  # Test if the generated yaml can be corrected loaded by Marshmallow.
+    with open(path_config_expected) as expected_conf_file:
+        expected_content = yaml.load(expected_conf_file, Loader=yaml.SafeLoader)
 
-    config_expected = ConfigParser()
-    config_expected.read(path_config_expected)
-    config_expected_dict = {s: dict(config_expected.items(s)) for s in config_expected.sections()}
-
-    config_actual = ConfigParser()
-    config_actual.read(path_config_after_input)
-    config_actual_dict = {s: dict(config_actual.items(s)) for s in config_actual.sections()}
-    assert_that(config_actual_dict).is_equal_to(config_expected_dict)
+    assert_that(expected_content == after_input_content).is_true()
 
 
 def _assert_output_error_are_correct(capsys, output, error, config_path):
@@ -331,6 +327,7 @@ def _assert_output_error_are_correct(capsys, output, error, config_path):
     with open(output) as f:
         expected_output = f.read()
         expected_output = expected_output.replace("{{ CONFIG_FILE }}", config_path)
+        print(readouterr.out)
         assert_that(readouterr.out).is_equal_to(expected_output)
     with open(error) as f:
         assert_that(readouterr.err).is_equal_to(f.read())
@@ -345,9 +342,12 @@ class ComposeInput:
     def add_first_flow(self, op_sys, min_size, max_size, head_node_instance, compute_instance):
         if self.is_not_aws_batch:
             self.input_list.append(op_sys)
-        self.input_list.extend([min_size, max_size, head_node_instance])
+        self.input_list.append(head_node_instance)
+        if self.is_not_aws_batch:
+            self.input_list.extend(["1", "1"])
         if self.is_not_aws_batch:
             self.input_list.append(compute_instance)
+        self.input_list.extend([min_size, max_size])
 
     def add_no_automation_no_empty_vpc(self, vpc_id, head_node_id, compute_id):
         self.input_list.extend(["n", vpc_id, "n", head_node_id, compute_id])
@@ -360,7 +360,7 @@ class ComposeInput:
             self.input_list.append(network_configuration)
 
     def add_vpc_sub_automation_empty_region(self, network_configuration):
-        self.input_list.extend(["n", network_configuration])
+        self.input_list.extend([network_configuration])
 
     def add_vpc_sub_automation(self, network_configuration):
         self.input_list.append("y")
@@ -378,7 +378,6 @@ class MockHandler:
         _mock_list_keys(self.mocker, partition)
         _mock_list_vpcs_and_subnets(self.mocker, empty_region, partition)
         _mock_parallel_cluster_config(self.mocker)
-        _mock_cache_availability_zones(self.mocker)
         mocker.patch("pcluster.configure.easyconfig.get_default_instance_type", return_value="t2.micro")
         if mock_availability_zone:
             _mock_availability_zone(self.mocker)
@@ -391,7 +390,7 @@ class MockHandler:
 
 
 def get_file_path(test_datadir):
-    config = test_datadir / "pcluster.config.ini"
+    config = test_datadir / "pcluster.config.yaml"
     output = test_datadir / "output.txt"
     error = test_datadir / "error.txt"
     #  str for python 2.7 compatibility
@@ -406,10 +405,9 @@ def _run_and_assert(mocker, capsys, output, error, expected_config, path_for_con
     os.remove(path_for_config)
 
 
-def _run_input_test_with_config(
+def _run_input_test(
     mocker,
     config,
-    old_config_file,
     error,
     output,
     capsys,
@@ -420,7 +418,7 @@ def _run_input_test_with_config(
     if with_input:
         input_composer = ComposeInput(aws_region_name="us-east-1", key="key2", scheduler="slurm")
         input_composer.add_first_flow(
-            op_sys="ubuntu1604",
+            op_sys="ubuntu1804",
             min_size="7",
             max_size="18",
             head_node_instance=head_node_instance,
@@ -436,16 +434,16 @@ def _run_input_test_with_config(
 
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, old_config_file, with_config=True)
+    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
 
 
 def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker)
-    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="torque")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="alinux", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="alinux2", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
@@ -455,117 +453,35 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
 
 
-def test_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
-    """
-    Testing easy config with user hitting return on all prompts.
-
-    After running easy config, the old original_config_file should be the same as pcluster.config.ini
-    """
+def test_no_input_no_automation_no_errors(mocker, capsys, test_datadir):
+    """Testing easy config with user hitting return on all prompts."""
     config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
 
     MockHandler(mocker)
 
-    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
+    _run_input_test(mocker, config, error, output, capsys, with_input=False)
 
 
-def test_with_region_arg_with_config_file(mocker, capsys, test_datadir):
+def test_with_region_arg(mocker, capsys, test_datadir):
     """
     Testing easy config with -r/-region provided.
 
-    The region arg should overwrite region specified in config file and environment variable
+    The region arg should overwrite region specified in environment variable
     """
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker)
 
-    input_composer = ComposeInput(aws_region_name=None, key="key1", scheduler="torque")
+    input_composer = ComposeInput(aws_region_name=None, key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="alinux", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="alinux2", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
     )
     input_composer.mock_input(mocker)
     os.environ["AWS_DEFAULT_REGION"] = "env_region_name_to_be_overwritten"
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG, region="eu-west-1", with_config=True)
-
-
-def test_region_env_overwrite_region_config(mocker, capsys, test_datadir):
-    """Testing environment variable AWS_DEFAULT_REGION overwrites aws_region_name in parallelcluster config file."""
-    config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
-
-    MockHandler(mocker)
-    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
-
-    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
-
-
-def test_unexisting_instance_type(mocker, capsys, test_datadir):
-    """
-    Test configuration file with wrong values that must be overridden by user inputs.
-
-    This test verifies that the validation steps are not performed with initial or default values
-    (e.g. t2.micro as instance type in a region that doesn't support it).
-    """
-    config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
-
-    MockHandler(mocker)
-
-    _run_input_test_with_config(
-        mocker,
-        config,
-        old_config_file,
-        error,
-        output,
-        capsys,
-        with_input=True,
-        head_node_instance="m6g.xlarge",
-        compute_instance="m6g.xlarge",
-    )
-
-
-def test_no_available_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
-    """
-    Testing easy config with user hitting return on all prompts.
-
-    Mocking the case where parameters: aws_region_name, key_name, vpc_id, compute_subnet_id, head_node_subnet_id.
-    Are not found in available list under new partition/region/vpc configuration.
-    After running easy config, the old original_config_file should be the same as pcluster.config.ini
-    """
-    config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
-
-    MockHandler(mocker, partition="china")
-    _mock_availability_zone(mocker, ["cn-north-1a"])
-
-    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
-
-
-def test_with_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
-    """
-    Testing only inputting queue_size inputs.
-
-    After running easy config on the old original_config_file, output should be the same as pcluster.config.ini
-    """
-    config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
-
-    MockHandler(mocker)
-
-    _run_input_test_with_config(
-        mocker,
-        config,
-        old_config_file,
-        error,
-        output,
-        capsys,
-        with_input=True,
-        head_node_instance="m6g.xlarge",
-        compute_instance="m6g.xlarge",
-    )
+    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG, region="eu-west-1")
 
 
 def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
@@ -591,7 +507,7 @@ def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
 
-    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
         op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
@@ -609,7 +525,7 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
 
-    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
         op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
@@ -621,32 +537,13 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
 
 
-def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys, test_datadir):
-    config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
-
-    mock_handler = MockHandler(mocker)
-    mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-
-    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
-    input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
-    )
-    input_composer.add_sub_automation(
-        vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
-    )
-    input_composer.mock_input(mocker)
-
-    _run_and_assert(mocker, capsys, output, error, config, old_config_file, with_config=True)
-
-
 def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
 
-    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
         op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
@@ -691,6 +588,7 @@ def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir):
 
 
 def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir, caplog):
+    """Testing warning message if the input the VPC does not have corresct parameters (DNS settings)."""
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker)
@@ -725,6 +623,7 @@ def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir):
 
 
 def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
+    """Testing automated VPC creation to create a single public Subnet."""
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker, empty_region=True)
@@ -742,37 +641,23 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
 
 def test_filtered_subnets_by_az(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
 
     MockHandler(mocker, mock_availability_zone=False)
     _mock_availability_zone(mocker, ["eu-west-1a"])
 
-    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
+    input_composer = ComposeInput(aws_region_name="", key="", scheduler="")
+    input_composer.add_first_flow(op_sys="", min_size="", max_size="", head_node_instance="", compute_instance="")
+    input_composer.add_no_automation_no_empty_vpc(vpc_id="vpc-34567891", head_node_id="", compute_id="")
 
-
-def test_bad_config_file(mocker, capsys, test_datadir):
-    config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file.ini")
-
-    mock_handler = MockHandler(mocker)
-    mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-
-    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
-    input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
-    )
-    input_composer.add_sub_automation(
-        vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
-    )
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, old_config_file, with_config=True)
+    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
 
 
 def general_wrapper_for_prompt_testing(
     mocker,
     region="eu-west-1",
-    scheduler="torque",
+    scheduler="slurm",
     op_sys="centos7",
     min_size="0",
     max_size="10",
@@ -802,9 +687,13 @@ def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir
         EASYCONFIG + "get_supported_az_for_one_instance_type",
         new=lambda x: ["eu-west-1a"] if x == "t2.nano" else ["eu-west-1b"],
     )
+    mocker.patch(
+        EASYCONFIG + "get_common_supported_az_for_multi_instance_types",
+        new=lambda x: ["eu-west-1a"] if "t2.nano" in x else ["eu-west-1b"],
+    )
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
 
-    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
         op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
@@ -901,13 +790,3 @@ def test_valid_subnet(mocker, vpc_id, head_node_id, compute_id):
     assert_that(
         general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id)
     ).is_true()
-
-
-def test_hit_config_file(mocker, capsys, test_datadir):
-    old_config_file = str(test_datadir / "original_config_file.ini")
-
-    MockHandler(mocker)
-
-    # Expected sys exit with error
-    with pytest.raises(SystemExit, match="ERROR: Configuration in file .* cannot be overwritten"):
-        _run_configuration(mocker, old_config_file, with_config=True)

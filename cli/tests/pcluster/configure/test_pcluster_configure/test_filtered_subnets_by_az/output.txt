@@ -1,4 +1,4 @@
-WARNING: Configuration file {{ CONFIG_FILE }} will be overwritten.
+INFO: Configuration file {{ CONFIG_FILE }} will be written.
 Press CTRL-C to interrupt the procedure.
 
 
@@ -27,17 +27,13 @@ Allowed values for EC2 Key Pair Name:
 5. key5
 6. key6
 Allowed values for Scheduler:
-1. sge
-2. torque
-3. slurm
-4. awsbatch
+1. slurm
+2. awsbatch
 Allowed values for Operating System:
-1. alinux
-2. alinux2
-3. centos7
-4. centos8
-5. ubuntu1604
-6. ubuntu1804
+1. alinux2
+2. centos7
+3. centos8
+4. ubuntu1804
 Allowed values for VPC ID:
   #  id            name                                 number_of_subnets
 ---  ------------  ---------------------------------  -------------------
@@ -46,12 +42,12 @@ Allowed values for VPC ID:
   3  vpc-34567891  default                                              3
   4  vpc-45678912  ParallelClusterVPC-20190626095403                    1
 Note:  2 subnet(s) is/are not listed, because the instance type is not in their availability zone(s)
-Allowed values for head node Subnet ID:
+Allowed values for head node subnet ID:
   #  id               name      size  availability_zone
 ---  ---------------  ------  ------  -------------------
   1  subnet-45678912            4096  eu-west-1a
 Note:  2 subnet(s) is/are not listed, because the instance type is not in their availability zone(s)
-Allowed values for compute Subnet ID:
+Allowed values for compute subnet ID:
   #  id               name      size  availability_zone
 ---  ---------------  ------  ------  -------------------
   1  subnet-45678912            4096  eu-west-1a

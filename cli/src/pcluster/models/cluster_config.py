@@ -19,7 +19,7 @@ from typing import List
 import pkg_resources
 
 from common.aws.aws_api import AWSApi
-from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
+from pcluster.constants import CIDR_ALL_IPS, DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, EBS_VOLUME_TYPE_IOPS_DEFAULT
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import (
     delete_s3_artifacts,
@@ -340,7 +340,7 @@ class _BaseNetworking(Resource):
         proxy: Proxy = None,
     ):
         super().__init__()
-        self.assign_public_ip = Resource.init_param(assign_public_ip)
+        self.assign_public_ip = Resource.init_param(assign_public_ip, default=False)
         self.security_groups = Resource.init_param(security_groups)
         self.additional_security_groups = Resource.init_param(additional_security_groups)
         self.proxy = proxy
@@ -985,8 +985,8 @@ class AwsbatchComputeResource(BaseComputeResource):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.max_vcpus = Resource.init_param(max_vcpus, default=10)
-        self.min_vcpus = Resource.init_param(min_vcpus, default=0)
+        self.max_vcpus = Resource.init_param(max_vcpus, default=DEFAULT_MAX_COUNT)
+        self.min_vcpus = Resource.init_param(min_vcpus, default=DEFAULT_MIN_COUNT)
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=0)
         self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
 
@@ -1055,8 +1055,8 @@ class SlurmComputeResource(BaseComputeResource):
         self, max_count: int = None, min_count: int = None, spot_price: float = None, efa: Efa = None, **kwargs
     ):
         super().__init__(**kwargs)
-        self.max_count = Resource.init_param(max_count, default=10)
-        self.min_count = Resource.init_param(min_count, default=0)
+        self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
+        self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
         self.efa = efa
 

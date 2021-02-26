@@ -27,17 +27,13 @@ Allowed values for EC2 Key Pair Name:
 5. key5
 6. key6
 Allowed values for Scheduler:
-1. sge
-2. torque
-3. slurm
-4. awsbatch
+1. slurm
+2. awsbatch
 Allowed values for Operating System:
-1. alinux
-2. alinux2
-3. centos7
-4. centos8
-5. ubuntu1604
-6. ubuntu1804
+1. alinux2
+2. centos7
+3. centos8
+4. ubuntu1804
 Allowed values for Network Configuration:
 1. Head node in a public subnet and compute fleet in a private subnet
 2. Head node and compute fleet in the same public subnet

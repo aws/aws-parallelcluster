@@ -310,18 +310,14 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
     "os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux", "x86_64", None),
         ("alinux2", "x86_64", None),
         ("centos7", "x86_64", None),
         ("centos8", "x86_64", None),
-        ("ubuntu1604", "x86_64", None),
         ("ubuntu1804", "x86_64", None),
         # Only a subset of OSes supported for arm64
-        ("alinux", "arm64", "arm64 is only supported for the following operating systems"),
         ("alinux2", "arm64", None),
         ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
         ("centos8", "arm64", None),
-        ("ubuntu1604", "arm64", "arm64 is only supported for the following operating systems"),
         ("ubuntu1804", "arm64", None),
     ],
 )
