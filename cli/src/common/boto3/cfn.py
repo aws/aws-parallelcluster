@@ -59,3 +59,8 @@ class CfnClient(Boto3Client):
             if f"Stack with id {stack_name} does not exist" in str(e):
                 return False
             raise e
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_stack_template(self, stack_name: str):
+        """Get stack template."""
+        return self._client.get_template(StackName=stack_name).get("TemplateBody")

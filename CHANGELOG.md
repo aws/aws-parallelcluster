@@ -10,6 +10,8 @@ CHANGELOG
 - Add `disable-update-check` parameter for the `create` command.
 - Deprecate `config` parameter for the `delete` command.
 - Deprecate `config` parameter for the `status` command.
+- Deprecate `config` parameter for the `instances` command.
+- Remove possibility to specify aliases for `ssh` command in the configuration file.
 
 
 2.10.1

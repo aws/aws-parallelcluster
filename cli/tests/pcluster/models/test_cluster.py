@@ -8,13 +8,18 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 from typing import List
 
+import pytest
 from assertpy import assert_that
 
+from common.aws.aws_resources import InstanceInfo
+from pcluster import utils as utils
+from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
 from pcluster.models.cluster_config import Resource
 from pcluster.validators.common import FailureLevel, Validator
+from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.pcluster.test_utils import FAKE_CLUSTER_NAME, FAKE_STACK_NAME
 
 
 class FakeInfoValidator(Validator):
@@ -148,3 +153,79 @@ def test_nested_resource_validate():
     _assert_validation_result(validation_failures[0], FailureLevel.ERROR, "Error value1.")
     _assert_validation_result(validation_failures[1], FailureLevel.ERROR, "Error value2.")
     _assert_validation_result(validation_failures[2], FailureLevel.INFO, "Wrong value other-value.")
+
+
+@pytest.mark.parametrize(
+    "node_type, expected_response, expected_instances",
+    [
+        (utils.NodeType.head_node, [{}], 1),
+        (utils.NodeType.compute, [{}, {}, {}], 3),
+        (utils.NodeType.compute, [{}, {}], 2),
+        (utils.NodeType.compute, [], 0),
+    ],
+)
+def test_describe_instances(mocker, node_type, expected_response, expected_instances):
+    instance_state_list = ["pending", "running", "stopping", "stopped"]
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.describe_instances",
+        return_value=[InstanceInfo(instance) for instance in expected_response],
+        expected_params=[
+            {"Name": "tag:Application", "Values": ["test-cluster"]},
+            {"Name": "instance-state-name", "Values": instance_state_list},
+            {"Name": "tag:aws-parallelcluster-node-type", "Values": [str(node_type)]},
+        ],
+    )
+
+    mocker.patch("pcluster.models.cluster.Cluster.__init__", return_value=None)
+    cluster = Cluster(FAKE_CLUSTER_NAME)
+    cluster.name = FAKE_CLUSTER_NAME
+    cluster.stack = ClusterStack(FAKE_STACK_NAME, {})
+    instances = cluster._describe_instances(node_type=node_type)
+
+    assert_that(instances).is_length(expected_instances)
+
+
+@pytest.mark.parametrize(
+    "head_node_instance, expected_ip, error",
+    [
+        (
+            {
+                "PrivateIpAddress": "10.0.16.17",
+                "PublicIpAddress": "18.188.93.193",
+                "State": {"Code": 16, "Name": "running"},
+            },
+            "18.188.93.193",
+            None,
+        ),
+        ({"PrivateIpAddress": "10.0.16.17", "State": {"Code": 16, "Name": "running"}}, "10.0.16.17", None),
+        (
+            {
+                "PrivateIpAddress": "10.0.16.17",
+                "PublicIpAddress": "18.188.93.193",
+                "State": {"Code": 16, "Name": "stopped"},
+            },
+            "18.188.93.193",
+            "Head node: STOPPED",
+        ),
+    ],
+    ids=["public_ip", "private_ip", "stopped"],
+)
+def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
+
+    cluster_stack = ClusterStack(FAKE_STACK_NAME, {})
+    mocker.patch.object(cluster_stack, "updated_status")
+
+    mocker.patch("pcluster.models.cluster.Cluster.__init__", return_value=None)
+    cluster = Cluster(FAKE_CLUSTER_NAME)
+    cluster.stack = cluster_stack
+    describe_cluster_instances_mock = mocker.patch.object(
+        cluster, "_describe_instances", return_value=[InstanceInfo(head_node_instance)]
+    )
+
+    if error:
+        with pytest.raises(ClusterActionError, match=error):
+            _ = cluster.head_node_ip
+    else:
+        assert_that(cluster.head_node_ip).is_equal_to(expected_ip)
+        describe_cluster_instances_mock.assert_called_with(node_type=utils.NodeType.head_node)

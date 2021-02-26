@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+from common.aws.aws_resources import InstanceInfo
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 from pcluster import utils
 from pcluster.utils import Cache, InstanceTypeInfo
@@ -129,6 +129,15 @@ class Ec2Client(Boto3Client):
         """Retrieve a filtered list of instance ids."""
         return [
             instance.get("InstanceId")
+            for result in self._paginate_results(self._client.describe_instances, Filters=filters)
+            for instance in result.get("Instances")
+        ]
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_instances(self, filters):
+        """Retrieve a filtered list of instances."""
+        return [
+            InstanceInfo(instance)
             for result in self._paginate_results(self._client.describe_instances, Filters=filters)
             for instance in result.get("Instances")
         ]
