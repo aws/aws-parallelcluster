@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+2.10.2
+------
+
+**BUG FIXES**
+
+- Fix sanity checks with ARM instance types by using alinux2 AMI with correct architecture during dryrun
+
 2.10.1
 ------
 
