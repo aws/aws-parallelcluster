@@ -177,10 +177,7 @@ def test_describe_instances(mocker, node_type, expected_response, expected_insta
         ],
     )
 
-    mocker.patch("pcluster.models.cluster.Cluster.__init__", return_value=None)
-    cluster = Cluster(FAKE_CLUSTER_NAME)
-    cluster.name = FAKE_CLUSTER_NAME
-    cluster.stack = ClusterStack(FAKE_STACK_NAME, {})
+    cluster = Cluster(FAKE_CLUSTER_NAME, stack=ClusterStack({"StackName": FAKE_STACK_NAME}))
     instances = cluster._describe_instances(node_type=node_type)
 
     assert_that(instances).is_length(expected_instances)
@@ -213,12 +210,10 @@ def test_describe_instances(mocker, node_type, expected_response, expected_insta
 )
 def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
 
-    cluster_stack = ClusterStack(FAKE_STACK_NAME, {})
+    cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
     mocker.patch.object(cluster_stack, "updated_status")
 
-    mocker.patch("pcluster.models.cluster.Cluster.__init__", return_value=None)
-    cluster = Cluster(FAKE_CLUSTER_NAME)
-    cluster.stack = cluster_stack
+    cluster = Cluster(FAKE_CLUSTER_NAME, stack=cluster_stack)
     describe_cluster_instances_mock = mocker.patch.object(
         cluster, "_describe_instances", return_value=[InstanceInfo(head_node_instance)]
     )

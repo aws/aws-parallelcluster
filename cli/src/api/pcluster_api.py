@@ -12,7 +12,8 @@ import json
 import logging
 import os
 
-from pcluster.models.cluster import Cluster, ClusterActionError
+from common.aws.aws_api import AWSApi
+from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
 from pcluster.utils import get_installed_version
 
 LOGGER = logging.getLogger(__name__)
@@ -27,25 +28,41 @@ class ApiFailure:
 
 
 class ClusterInfo:
-    """Minimal representation of a running cluster."""
+    """
+    Minimal representation of a running cluster.
+
+    All the information are retrieved from the stack.
+    """
+
+    def __init__(self, stack: ClusterStack):
+        # Cluster info
+        self.name = stack.cluster_name
+        self.status = stack.status  # FIXME
+        # Stack info
+        self.stack_arn = stack.id
+        self.stack_name = stack.name
+        self.stack_status = stack.status
+        self.region = stack.region
+        self.version = stack.version
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+
+class FullClusterInfo(ClusterInfo):
+    """Full representation of a running cluster."""
 
     def __init__(self, cluster: Cluster):
-        self.stack_status = cluster.stack.status
-        self.stack_arn = cluster.stack.id
-        self.stack_name = cluster.stack.name
-        self.stack_outputs = cluster.stack.outputs
-        self.id = cluster.name
-        self.region = cluster.stack.region
-        self.version = cluster.stack.version
-        self.status = cluster.status
+        super().__init__(cluster.stack)
+        # Cluster info
         self.head_node = cluster.head_node_instance
         self.head_node_ip = cluster.head_node_ip
         self.user = cluster.head_node_user
         self.compute_instances = cluster.compute_instances
+        # Config info
         self.scheduler = cluster.config.scheduling.scheduler
-
-    def __repr__(self):
-        return json.dumps(self.__dict__)
+        # Stack info
+        self.stack_outputs = cluster.stack.outputs
 
 
 class PclusterApi:
@@ -70,7 +87,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             cluster = Cluster(cluster_name, cluster_config)
             cluster.create(disable_rollback)
-            return ClusterInfo(cluster)
+            return FullClusterInfo(cluster)
         except ClusterActionError as e:
             return ApiFailure(str(e), e.validation_failures)
         except Exception as e:
@@ -85,9 +102,9 @@ class PclusterApi:
             # retrieve cluster config and generate model
             cluster = Cluster(cluster_name)
             cluster.delete(keep_logs)
-            return ClusterInfo(cluster)
-        except (ClusterActionError, Exception) as e:
-            return ApiFailure(e)
+            return FullClusterInfo(cluster)
+        except Exception as e:
+            return ApiFailure(str(e))
 
     @staticmethod
     def describe_cluster(cluster_name: str, region: str):
@@ -95,24 +112,40 @@ class PclusterApi:
         try:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
-            return ClusterInfo(Cluster(cluster_name))
-        except (ClusterActionError, Exception) as e:
-            return ApiFailure(e)
+            return FullClusterInfo(Cluster(cluster_name))
+        except Exception as e:
+            return ApiFailure(str(e))
 
     @staticmethod
     def update_cluster(cluster_name: str, region: str):
         """Update existing cluster."""
-        if region:
-            os.environ["AWS_DEFAULT_REGION"] = region
-        # Check if stack version matches with running version.
-        cluster = Cluster(cluster_name)
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+            # Check if stack version matches with running version.
+            cluster = Cluster(cluster_name)
 
-        installed_version = get_installed_version()
-        if cluster.stack.version != installed_version:
-            raise ClusterActionError(
-                f"The cluster was created with a different version of "
-                f"ParallelCluster: {cluster.stack.version}. Installed version is {installed_version}. "
-                "This operation may only be performed using the same ParallelCluster "
-                "version used to create the cluster."
-            )
-        return ClusterInfo(cluster)
+            installed_version = get_installed_version()
+            if cluster.stack.version != installed_version:
+                raise ClusterActionError(
+                    "The cluster was created with a different version of "
+                    f"ParallelCluster: {cluster.stack.version}. Installed version is {installed_version}. "
+                    "This operation may only be performed using the same ParallelCluster "
+                    "version used to create the cluster."
+                )
+            return FullClusterInfo(cluster)
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
+    def list_clusters(region: str):
+        """List existing clusters."""
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            stacks = AWSApi.instance().cfn.list_pcluster_stacks()
+            return [ClusterInfo(ClusterStack(stack)) for stack in stacks]
+
+        except Exception as e:
+            return ApiFailure(str(e))

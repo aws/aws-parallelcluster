@@ -14,15 +14,14 @@ from pcluster.utils import get_region
 class StackInfo:
     """Object to store Stack information, initialized with a describe_stacks call."""
 
-    def __init__(self, stack_name: str, stack_data: dict):
+    def __init__(self, stack_data: dict):
         """
         Init StackInfo by performing a describe_stacks call.
 
         If the stack doesn't exist it raises an exception.
         """
-        self.name = stack_name
-        self.region = get_region()
         self._stack_data = stack_data
+        self.region = get_region()
         self._params = self._stack_data.get("Parameters", [])
         self._tags = self._stack_data.get("Tags", [])
         self.outputs = self._stack_data.get("Outputs", [])
@@ -31,6 +30,11 @@ class StackInfo:
     def id(self):
         """Return the id/arn of the stack."""
         return self._stack_data.get("StackId")
+
+    @property
+    def name(self):
+        """Return the name of the stack."""
+        return self._stack_data.get("StackName")
 
     @property
     def status(self):

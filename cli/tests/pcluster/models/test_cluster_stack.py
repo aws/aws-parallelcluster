@@ -42,7 +42,7 @@ def test_get_stack_template(mocker, template_body, error_message):
         side_effect=AWSClientError(function_name="get_template", message="error") if not template_body else None,
     )
 
-    cluster_stack = ClusterStack(FAKE_STACK_NAME, {})
+    cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
     if error_message:
         with pytest.raises(ClusterActionError, match=error_message):
             _ = cluster_stack.template

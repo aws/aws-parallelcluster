@@ -11,6 +11,7 @@
 import json
 
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
+from pcluster.constants import PCLUSTER_STACK_PREFIX
 
 
 class CfnClient(Boto3Client):
@@ -64,3 +65,12 @@ class CfnClient(Boto3Client):
     def get_stack_template(self, stack_name: str):
         """Get stack template."""
         return self._client.get_template(StackName=stack_name).get("TemplateBody")
+
+    @AWSExceptionHandler.handle_client_exception
+    def list_pcluster_stacks(self):
+        """List existing pcluster stacks."""
+        return [
+            stack
+            for stack in self._paginate_results(self._client.describe_stacks)
+            if stack.get("ParentId") is None and stack.get("StackName").startswith(PCLUSTER_STACK_PREFIX)
+        ]

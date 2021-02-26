@@ -12,6 +12,7 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
+import copy
 import logging
 import time
 
@@ -21,6 +22,7 @@ import yaml
 from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import StackInfo
 from common.boto3.common import AWSClientError
+from pcluster.constants import PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_config import ClusterBucket, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -49,15 +51,20 @@ class ClusterActionError(Exception):
 class ClusterStack(StackInfo):
     """Class representing a running stack associated to a Cluster."""
 
-    def __init__(self, name: str, stack_data: dict):
+    def __init__(self, stack_data: dict):
         """Init stack info."""
-        super().__init__(name, stack_data)
+        super().__init__(stack_data)
+
+    @property
+    def cluster_name(self):
+        """Return cluster name associated to this cluster."""
+        return self.name[len(PCLUSTER_STACK_PREFIX) :]  # noqa: E203
 
     @property
     def template(self):
         """Return the template body of the stack."""
         try:
-            return AWSApi().instance().cfn.get_stack_template(self.name)
+            return AWSApi.instance().cfn.get_stack_template(self.name)
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to retrieve template for stack {self.name}. {e}")
 
@@ -86,7 +93,7 @@ class ClusterStack(StackInfo):
         table_name = self.name
         config_version = None
         try:
-            config_version_item = AWSApi().instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
+            config_version_item = AWSApi.instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
             if config_version_item or "Item" in config_version_item:
                 config_version = config_version_item["Item"].get("Version")
         except Exception:
@@ -113,7 +120,7 @@ class ClusterStack(StackInfo):
     def updated_status(self):
         """Return updated status."""
         try:
-            return AWSApi().instance().cfn.describe_stack(self.name).get("StackStatus")
+            return AWSApi.instance().cfn.describe_stack(self.name).get("StackStatus")
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to retrieve status of stack {self.name}. {e}")
 
@@ -121,7 +128,7 @@ class ClusterStack(StackInfo):
         """Delete stack by preserving logs."""
         if keep_logs:
             self._persist_cloudwatch_log_groups()
-        AWSApi().instance().cfn.delete_stack(self.name)
+        AWSApi.instance().cfn.delete_stack(self.name)
 
     def _persist_cloudwatch_log_groups(self):
         """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
@@ -173,19 +180,36 @@ class Cluster:
 
     def __init__(self, name: str, config: dict = None, stack: ClusterStack = None):
         self.name = name
-        self.stack = stack
+        self.__source_config = config
+        self.__stack = stack
         self.bucket = None
         self.template_body = None
         self.config_version = None
-        if config:
-            self.source_config = config
-        else:
+        self.__config = None
+
+    @property
+    def stack(self):
+        """Return the ClusterStack object."""
+        if not self.__stack:
             try:
-                self.stack = ClusterStack(self.stack_name, AWSApi().instance().cfn.describe_stack(self.stack_name))
+                self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
             except AWSClientError:
                 raise ClusterActionError(f"Cluster {self.name} does not exist.")
-            self.source_config = self.stack.get_cluster_config_dict()
-        self.config = ClusterSchema().load(self.source_config)
+        return self.__stack
+
+    @property
+    def source_config(self):
+        """Return original config used to create the cluster."""
+        if not self.__source_config:
+            self.__source_config = self.stack.get_cluster_config_dict()
+        return self.__source_config
+
+    @property
+    def config(self):
+        """Return ClusterConfig object."""
+        if not self.__config:
+            self.__config = ClusterSchema().load(self.source_config)
+        return self.__config
 
     @property
     def stack_name(self):
@@ -208,9 +232,9 @@ class Cluster:
             # TODO skip validation errors
             raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
 
-        # Add tags information to the cluster
+        # Add tags information to the stack
         version = get_installed_version()
-        tags = self.config.tags or []
+        tags = copy.deepcopy(self.config.tags) or []
         tags.append(Tag(key="Version", value=version))
         tags = [{"Key": tag.key, "Value": tag.value} for tag in tags]
 
@@ -237,7 +261,7 @@ class Cluster:
                 tags=tags,
             )
 
-            self.stack = ClusterStack(self.stack_name, AWSApi().instance().cfn.describe_stack(self.stack_name))
+            self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
 
@@ -302,21 +326,17 @@ class Cluster:
 
             # Upload template
             if self.template_body:
-                AWSApi().instance().s3.put_object(
+                AWSApi.instance().s3.put_object(
                     bucket_name=self.bucket.name,
                     body=yaml.dump(self.template_body),
                     key=self._get_default_template_key(),
                 )
             # Upload original config
             if self.config.source_config:
-                result = (
-                    AWSApi()
-                    .instance()
-                    .s3.put_object(
-                        bucket_name=self.bucket.name,
-                        body=yaml.dump(self.config.source_config),
-                        key=self._get_config_key(),
-                    )
+                result = AWSApi.instance().s3.put_object(
+                    bucket_name=self.bucket.name,
+                    body=yaml.dump(self.config.source_config),
+                    key=self._get_config_key(),
                 )
                 # config version will be stored in DB by the cookbook at the first update
                 self.config_version = result.get("VersionId")
@@ -361,12 +381,12 @@ class Cluster:
         try:
             LOGGER.info("\nChecking if there are running compute nodes that require termination...")
             filters = self._get_instance_filters(node_type=NodeType.compute)
-            instances = AWSApi().instance().ec2.list_instance_ids(filters)
+            instances = AWSApi.instance().ec2.list_instance_ids(filters)
 
             for instance_ids in grouper(instances, 100):
                 LOGGER.info("Terminating following instances: %s", instance_ids)
                 if instance_ids:
-                    AWSApi().instance().ec2.terminate_instances(instance_ids)
+                    AWSApi.instance().ec2.terminate_instances(instance_ids)
 
             LOGGER.info("Compute fleet cleaned up.")
         except Exception as e:
@@ -396,7 +416,7 @@ class Cluster:
         """Return the cluster instances filtered by node type."""
         try:
             filters = self._get_instance_filters(node_type)
-            return AWSApi().instance().ec2.describe_instances(filters)
+            return AWSApi.instance().ec2.describe_instances(filters)
         except AWSClientError as e:
             raise ClusterActionError(f"Failed to retrieve cluster instances. {e}")
 
