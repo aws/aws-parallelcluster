@@ -19,7 +19,7 @@ from pcluster.config.cfn_param_types import CfnSection
 from pcluster.config.mappings import CLUSTER_HIT
 from pcluster.config.param_types import SettingsParam, StorageData
 from pcluster.config.pcluster_config import PclusterConfig
-from tests.common import MockedBoto3Request
+from tests.utils import MockedBoto3Request
 from tests.pcluster.config.utils import duplicate_config_file, get_mocked_pcluster_config
 
 # Mocked responses for describe_instance_types boto3 calls

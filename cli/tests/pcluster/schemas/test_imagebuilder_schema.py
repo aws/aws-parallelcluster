@@ -6,7 +6,7 @@ from assertpy import assert_that
 
 from common.utils import load_yaml_dict
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 
 
 @pytest.mark.parametrize(

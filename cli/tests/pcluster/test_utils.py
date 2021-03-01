@@ -14,8 +14,8 @@ import pcluster.utils as utils
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import ClusterStack
 from pcluster.utils import Cache, get_bucket_url
-from tests.common import MockedBoto3Request
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.utils import MockedBoto3Request
+from tests.common.dummy_aws_api import DummyAWSApi
 
 FAKE_CLUSTER_NAME = "cluster-name"
 FAKE_STACK_NAME = utils.get_stack_name(FAKE_CLUSTER_NAME)

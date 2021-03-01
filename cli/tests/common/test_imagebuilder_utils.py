@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that
 
 from common import imagebuilder_utils
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 
 
 @pytest.mark.parametrize(

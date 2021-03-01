@@ -17,7 +17,7 @@ from common.aws.aws_resources import InstanceInfo
 from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack, NodeType
 from pcluster.models.cluster_config import Resource
 from pcluster.validators.common import FailureLevel, Validator
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.test_utils import FAKE_CLUSTER_NAME, FAKE_STACK_NAME
 
 

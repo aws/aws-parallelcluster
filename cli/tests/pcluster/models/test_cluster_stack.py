@@ -19,7 +19,7 @@ from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError, ClusterStack
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.test_utils import FAKE_STACK_NAME
 
 

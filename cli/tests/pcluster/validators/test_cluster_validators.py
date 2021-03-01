@@ -34,7 +34,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerOsValidator,
     TagKeyValidator,
 )
-from tests.common import MockedBoto3Request
+from tests.utils import MockedBoto3Request
 from tests.pcluster.validators.utils import assert_failure_messages
 
 

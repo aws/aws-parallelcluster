@@ -4,7 +4,7 @@ import os
 import pytest
 
 from awsbatch import awsbstat
-from tests.common import MockedBoto3Request, read_text
+from tests.utils import MockedBoto3Request, read_text
 from tests.conftest import DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG
 
 ALL_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]

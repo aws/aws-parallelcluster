@@ -15,7 +15,7 @@ import pytest
 from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
-from tests.common import MockedBoto3Request
+from tests.utils import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
 
 
