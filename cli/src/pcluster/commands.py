@@ -486,6 +486,48 @@ def status(args):  # noqa: C901 FIXME!!!
         sys.exit(0)
 
 
+def delete(args):
+    """Delete cluster described by cluster_name."""
+    LOGGER.info("Deleting: %s", args.cluster_name)
+    LOGGER.debug("CLI args: %s", str(args))
+    try:
+        # delete cluster raises an exception if stack does not exist
+        result = PclusterApi().delete_cluster(args.cluster_name, utils.get_region(), args.keep_logs)
+        if isinstance(result, FullClusterInfo):
+            print(f"Cluster deletion started correctly. {result}")
+        else:
+            utils.error(f"Cluster deletion failed. {result.message}")
+
+        sys.stdout.write("\rStatus: %s" % result.stack_status)
+        sys.stdout.flush()
+        LOGGER.debug("Status: %s", result.stack_status)
+        if not args.nowait:
+            while result.stack_status == "DELETE_IN_PROGRESS":
+                time.sleep(5)
+                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+                if isinstance(result, FullClusterInfo):
+                    events = utils.get_stack_events(result.stack_name, raise_on_error=True)[0]
+                    resource_status = (
+                        "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
+                    ).ljust(80)
+                    sys.stdout.write("\r%s" % resource_status)
+                    sys.stdout.flush()
+                else:
+                    utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
+
+            sys.stdout.write("\rStatus: %s\n" % result.stack_status)
+            sys.stdout.flush()
+            LOGGER.debug("Status: %s", result.stack_status)
+        else:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+        if result.stack_status == "DELETE_FAILED":
+            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", args.cluster_name)
+    except KeyboardInterrupt:
+        LOGGER.info("\nExiting...")
+        sys.exit(0)
+
+
 def start(args):
     """Start cluster compute fleet."""
     try:
