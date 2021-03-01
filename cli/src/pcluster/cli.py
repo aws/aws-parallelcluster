@@ -21,7 +21,6 @@ from logging.handlers import RotatingFileHandler
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-import pcluster.cli_commands.delete as pcluster_delete
 import pcluster.cli_commands.update as pcluster_update
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
@@ -57,7 +56,7 @@ def list_clusters(args):
 
 
 def delete(args):
-    pcluster_delete.delete(args)
+    pcluster.delete(args)
 
 
 def instances(args):
