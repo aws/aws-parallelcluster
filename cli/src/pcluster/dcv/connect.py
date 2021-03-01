@@ -11,12 +11,13 @@
 import logging
 import re
 import subprocess as sub
+import time
 import webbrowser
 
 from api.pcluster_api import FullClusterInfo, PclusterApi
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.dcv.utils import DCV_CONNECT_SCRIPT
-from pcluster.utils import error, get_region, retry
+from pcluster.utils import error, get_region
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def dcv_connect(args):
         )
 
         try:
-            url = retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, result.head_node_ip], attempts=4)
+            url = _retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, result.head_node_ip], attempts=4)
             url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
 
             if args.show_url:
@@ -106,3 +107,25 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
     return "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
         IP=head_node_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
     )
+
+
+def _retry(func, func_args, attempts=1, wait=0):
+    """
+    Call function and re-execute it if it raises an Exception.
+
+    :param func: the function to execute.
+    :param func_args: the positional arguments of the function.
+    :param attempts: the maximum number of attempts. Default: 1.
+    :param wait: delay between attempts. Default: 0.
+    :returns: the result of the function.
+    """
+    while attempts:
+        try:
+            return func(*func_args)
+        except Exception as e:
+            attempts -= 1
+            if not attempts:
+                raise e
+
+            LOGGER.debug("{0}, retrying in {1} seconds..".format(e, wait))
+            time.sleep(wait)
