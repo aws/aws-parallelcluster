@@ -19,12 +19,12 @@ from marshmallow import ValidationError, fields, post_load, validate, validates,
 
 from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from common.utils import get_url_scheme, validate_json_format
-from pcluster.models.imagebuilder import (
+from pcluster.models.imagebuilder_config import (
     Build,
     Component,
     DistributionConfiguration,
     Image,
-    ImageBuilder,
+    ImageBuilderConfig,
     ImagebuilderDevSettings,
     Volume,
 )
@@ -184,4 +184,4 @@ class ImageBuilderSchema(BaseSchema):
     @post_load()
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return ImageBuilder(**data)
+        return ImageBuilderConfig(**data)

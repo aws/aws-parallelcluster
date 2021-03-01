@@ -269,7 +269,7 @@ class Cluster:
             self._upload_artifacts()
 
             LOGGER.info("Creating stack named: %s", self.stack_name)
-            creation_result = AWSApi.instance().cfn.create_stack(
+            creation_result = AWSApi.instance().cfn.create_stack_from_url(
                 stack_name=self.stack_name,
                 template_url=self.template_url,
                 disable_rollback=disable_rollback,

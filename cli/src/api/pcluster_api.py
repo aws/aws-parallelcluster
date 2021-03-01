@@ -17,6 +17,7 @@ from packaging import version
 from common.aws.aws_api import AWSApi
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
+from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError
 from pcluster.utils import get_installed_version, get_region
 
 LOGGER = logging.getLogger(__name__)
@@ -67,6 +68,21 @@ class FullClusterInfo(ClusterInfo):
         self.compute_instances = cluster.compute_instances
         # Config info
         self.scheduler = cluster.config.scheduling.scheduler
+
+
+class ImageInfo:
+    """Minimal representation of a building image."""
+
+    def __init__(self, imagebuilder: ImageBuilder):
+        self.image_name = imagebuilder.stack.name
+        self.imagebuild_status = imagebuilder.imagebuild_status
+        self.stack_status = imagebuilder.stack.status
+        self.stack_arn = imagebuilder.stack.id
+        self.region = get_region()
+        self.version = imagebuilder.stack.version
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
 
 
 class PclusterApi:
@@ -188,3 +204,25 @@ class PclusterApi:
     @staticmethod
     def _is_version_2(cluster):
         return version.parse(cluster.stack.version) < version.parse("3.0.0")
+
+    @staticmethod
+    def build_image(imagebuilder_config: dict, image_name: str, region: str, disable_rollback: bool = True):
+        """
+        Load imagebuilder model from imagebuilder_config and create stack.
+
+        :param imagebuilder_config: imagebuilder configuration (yaml dict)
+        :param image_name: the image name(the same as cfn stack name)
+        :param region: AWS region
+        :param disable_rollback: Disable rollback in case of failures
+        """
+        try:
+            # Generate model from imagebuilder config dict
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+            imagebuilder = ImageBuilder(image_name, imagebuilder_config)
+            imagebuilder.create(disable_rollback)
+            return ImageInfo(imagebuilder)
+        except ImageBuilderActionError as e:
+            return ApiFailure(str(e), e.validation_failures)
+        except Exception as e:
+            return ApiFailure(str(e))

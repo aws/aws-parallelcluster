@@ -202,8 +202,10 @@ class BaseDevSettings(Resource):
         self.aws_batch_cli_package = Resource.init_param(aws_batch_cli_package)
 
     def _validate(self):
-        self._execute_validator(UrlValidator, url=self.node_package)
-        self._execute_validator(UrlValidator, url=self.aws_batch_cli_package)
+        if self.node_package:
+            self._execute_validator(UrlValidator, url=self.node_package)
+        if self.aws_batch_cli_package:
+            self._execute_validator(UrlValidator, url=self.aws_batch_cli_package)
 
 
 # ------------ Common attributes class between ImageBuilder an Cluster models ----------- #

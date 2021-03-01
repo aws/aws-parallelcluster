@@ -24,7 +24,6 @@ from botocore.exceptions import NoCredentialsError
 import pcluster.cli_commands.update as pcluster_update
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
-import pcluster.createami as createami
 import pcluster.utils as utils
 from pcluster.dcv.connect import dcv_connect
 
@@ -79,8 +78,8 @@ def stop(args):
     pcluster.stop(args)
 
 
-def create_ami(args):
-    createami.create_ami(args)
+def build_image(args):
+    pcluster.build_image(args)
 
 
 def config_logger():
@@ -297,69 +296,17 @@ Returns an ssh command with the cluster username and IP address pre-populated::
     pssh.set_defaults(func=ssh)
 
     # createami command subparser
-    pami = subparsers.add_parser(
-        "createami", help="(Linux/macOS) Creates a custom AMI to use with AWS ParallelCluster."
-    )
-    pami.add_argument(
-        "-ai",
-        "--ami-id",
-        dest="base_ami_id",
-        required=True,
-        help="Specifies the base AMI to use for building the AWS ParallelCluster AMI.",
-    )
-    pami.add_argument(
-        "-os",
-        "--os",
-        dest="base_ami_os",
-        required=True,
-        help="Specifies the OS of the base AMI. "
-        "Valid options are: alinux, ubuntu1604, ubuntu1804, centos7, centos8.",
-    )
+    pami = subparsers.add_parser("build-image", help="Creates a custom AMI to use with AWS ParallelCluster.")
     pami.add_argument(
         "-i",
-        "--instance-type",
-        dest="instance_type",
-        default="t2.xlarge",
-        help="Sets instance type to build the ami on. Defaults to t2.xlarge.",
-    )
-    pami.add_argument(
-        "-ap",
-        "--ami-name-prefix",
-        dest="custom_ami_name_prefix",
-        default="custom-ami-",
-        help="Specifies the prefix name of the resulting AWS ParallelCluster AMI.",
-    )
-    pami.add_argument(
-        "-cc",
-        "--custom-cookbook",
-        dest="custom_ami_cookbook",
-        help="Specifies the cookbook to use to build the AWS ParallelCluster AMI.",
-    )
-    pami.add_argument(
-        "--post-install",
-        dest="post_install_script",
-        help="Specifies the post install script to use to build the AWS ParallelCluster AMI.",
-    )
-    pami.add_argument(
-        "--no-public-ip",
-        dest="associate_public_ip",
-        action="store_false",
-        default=True,
-        help="Do not associate public IP to the Packer instance. Defaults to associate public ip",
+        "--image-name",
+        dest="image_name",
+        required=True,
+        help="Specifies the image name to use for building the AWS ParallelCluster AMI.",
     )
     _addarg_config(pami)
-    pami_group1 = pami.add_argument_group("Build AMI by using VPC settings from configuration file")
-    pami_group1.add_argument(
-        "-t",
-        "--cluster-template",
-        help="Specifies the 'cluster' section of the configuration file to retrieve VPC settings.",
-    )
-    pami_group2 = pami.add_argument_group("Build AMI in a custom VPC and Subnet")
-    pami_group2.add_argument("--vpc-id", help="Specifies the VPC to use to build the AWS ParallelCluster AMI.")
-    pami_group2.add_argument("--subnet-id", help="Specifies the Subnet to use to build the AWS ParallelCluster AMI.")
     _addarg_region(pami)
-    pami.set_defaults(template_url=None)
-    pami.set_defaults(func=create_ami)
+    pami.set_defaults(func=build_image)
 
     # configure command subparser
     pconfigure = subparsers.add_parser("configure", help="Start the AWS ParallelCluster configuration.")

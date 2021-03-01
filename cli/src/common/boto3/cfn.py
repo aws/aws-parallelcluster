@@ -21,8 +21,19 @@ class CfnClient(Boto3Client):
         super().__init__("cloudformation")
 
     @AWSExceptionHandler.handle_client_exception
-    def create_stack(self, stack_name: str, template_url: str, disable_rollback: bool, tags: list):
+    def create_stack(self, stack_name: str, disable_rollback: bool, tags: list, template_body: str):
         """Create CFN stack by using the given template."""
+        return self._client.create_stack(
+            StackName=stack_name,
+            TemplateBody=template_body,
+            Capabilities=["CAPABILITY_IAM"],
+            DisableRollback=disable_rollback,
+            Tags=tags,
+        )
+
+    @AWSExceptionHandler.handle_client_exception
+    def create_stack_from_url(self, stack_name: str, disable_rollback: bool, tags: list, template_url: str):
+        """Create CFN stack by using the given template url."""
         return self._client.create_stack(
             StackName=stack_name,
             TemplateURL=template_url,
@@ -74,3 +85,8 @@ class CfnClient(Boto3Client):
             for stack in self._paginate_results(self._client.describe_stacks)
             if stack.get("ParentId") is None and stack.get("StackName").startswith(PCLUSTER_STACK_PREFIX)
         ]
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
+        """Get stack resource information."""
+        self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
