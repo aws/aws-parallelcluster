@@ -30,9 +30,9 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from api.pcluster_api import FullClusterInfo, PclusterApi
+from api.pcluster_api import ApiFailure, FullClusterInfo, PclusterApi
 from common.utils import load_yaml_dict
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatusManager
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX
 
 LOGGER = logging.getLogger(__name__)
@@ -483,6 +483,36 @@ def status(args):  # noqa: C901 FIXME!!!
 
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
+        sys.exit(0)
+
+
+def start(args):
+    """Start cluster compute fleet."""
+    try:
+        result = PclusterApi().update_compute_fleet_status(
+            cluster_name=args.cluster_name, region=utils.get_region(), status=ComputeFleetStatus.START_REQUESTED
+        )
+        if isinstance(result, ApiFailure):
+            utils.error(f"Unable to start the compute fleet of the cluster.\n{result.message}")
+        else:
+            LOGGER.info("Compute fleet started correctly.")
+    except KeyboardInterrupt:
+        LOGGER.info("Exiting...")
+        sys.exit(0)
+
+
+def stop(args):
+    """Stop cluster compute fleet."""
+    try:
+        result = PclusterApi().update_compute_fleet_status(
+            cluster_name=args.cluster_name, region=utils.get_region(), status=ComputeFleetStatus.STOP_REQUESTED
+        )
+        if isinstance(result, ApiFailure):
+            utils.error(f"Unable to stop the compute fleet of the cluster.\n{result.message}")
+        else:
+            LOGGER.info("Compute fleet stopped correctly.")
+    except KeyboardInterrupt:
+        LOGGER.info("Exiting...")
         sys.exit(0)
 
 

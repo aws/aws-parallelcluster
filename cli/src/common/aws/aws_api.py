@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from common.boto3.batch import BatchClient
 from common.boto3.cfn import CfnClient
 from common.boto3.dynamodb import DynamodbClient
 from common.boto3.ec2 import Ec2Client
@@ -29,6 +30,7 @@ class AWSApi:
     _instance = None
 
     def __init__(self):
+        self.batch = BatchClient()
         self.cfn = CfnClient()
         self.ec2 = Ec2Client()
         self.efs = EfsClient(ec2_client=self.ec2)

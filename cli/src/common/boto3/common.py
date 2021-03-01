@@ -43,6 +43,7 @@ class AWSExceptionHandler:
             except BotoCoreError as e:
                 raise AWSClientError(func.__name__, str(e))
             except ClientError as e:
+                # add request id
                 raise AWSClientError(func.__name__, e.response["Error"]["Message"])
 
         return wrapper

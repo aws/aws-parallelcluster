@@ -877,6 +877,7 @@ def retry(func, func_args, attempts=1, wait=0):
             time.sleep(wait)
 
 
+# TODO to be deleted
 def get_asg_name(stack_name):
     outputs = get_stack(stack_name).get("Outputs", [])
     asg_name = get_stack_output_value(outputs, "ASGName")
@@ -892,13 +893,7 @@ def get_asg_name(stack_name):
     return asg_name
 
 
-def set_asg_limits(asg_name, min, max, desired):
-    asg = boto3.client("autoscaling")
-    asg.update_auto_scaling_group(
-        AutoScalingGroupName=asg_name, MinSize=int(min), MaxSize=int(max), DesiredCapacity=int(desired)
-    )
-
-
+# TODO to be deleted
 def get_batch_ce(stack_name):
     """
     Get name of the AWS Batch Compute Environment.
@@ -911,6 +906,7 @@ def get_batch_ce(stack_name):
     return get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
 
 
+# TODO to be deleted
 def get_batch_ce_capacity(stack_name):
     client = boto3.client("batch")
 
@@ -933,6 +929,7 @@ def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
             time.sleep(wait)
 
 
+# TODO to be deleted
 def get_asg_settings(stack_name):
     try:
         asg_name = get_asg_name(stack_name)
