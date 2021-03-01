@@ -11,9 +11,9 @@
 import pytest
 
 from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
-from tests.utils import MockedBoto3Request
 from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.validators.utils import assert_failure_messages
+from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()

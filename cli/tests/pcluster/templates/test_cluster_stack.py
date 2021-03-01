@@ -12,8 +12,8 @@
 import yaml
 
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-
 from tests.common.dummy_aws_api import mock_aws_api
+
 from ..models.cluster_dummy_model import dummy_bucket, dummy_cluster
 
 
