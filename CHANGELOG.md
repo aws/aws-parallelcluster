@@ -8,7 +8,7 @@ CHANGELOG
 
 - Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
 - Add `--disable-update-check` parameter for the `create` command.
-- Deprecate `--config` parameter for `delete`, `status`, `instances` and `list` commands.
+- Deprecate `--config` parameter for `delete`, `status`, `start`, `stop`, `instances` and `list` commands.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
 
 

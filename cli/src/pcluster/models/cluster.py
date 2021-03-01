@@ -22,6 +22,7 @@ import yaml
 from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import StackInfo
 from common.boto3.common import AWSClientError
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_config import ClusterBucket, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -101,14 +102,10 @@ class ClusterStack(StackInfo):
             pass
 
         try:
-            s3_object = (
-                AWSApi()
-                .instance()
-                .s3.get_object(
-                    bucket_name=self.s3_bucket_name,
-                    key=f"{self.s3_artifact_directory}/configs/cluster-config.json",
-                    version_id=config_version,
-                )
+            s3_object = AWSApi.instance().s3.get_object(
+                bucket_name=self.s3_bucket_name,
+                key=f"{self.s3_artifact_directory}/configs/cluster-config.yaml",
+                version_id=config_version,
             )
             config_content = s3_object["Body"].read().decode("utf-8")
             return yaml.safe_load(config_content)
@@ -174,6 +171,11 @@ class ClusterStack(StackInfo):
         mappings = self.template.get("Mappings").get("OSFeatures")
         return mappings[os]["User"]
 
+    @property
+    def batch_compute_environment(self):
+        """Return Batch compute environment."""
+        return self._get_output("BatchComputeEnvironmentArn")
+
 
 class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
@@ -193,8 +195,10 @@ class Cluster:
         if not self.__stack:
             try:
                 self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
-            except AWSClientError:
-                raise ClusterActionError(f"Cluster {self.name} does not exist.")
+            except AWSClientError as e:
+                if f"Stack with id {self.stack_name} does not exist" in str(e):
+                    raise ClusterActionError(f"Cluster {self.name} doesn't exist.")
+                raise ClusterActionError(f"Unable to find cluster {self.name}. {e}")
         return self.__stack
 
     @property
@@ -366,7 +370,7 @@ class Cluster:
         return f"{self.bucket.artifact_directory}/templates/aws-parallelcluster.cfn.yaml"
 
     def _get_config_key(self):
-        return f"{self.bucket.artifact_directory}/configs/cluster-config.json"
+        return f"{self.bucket.artifact_directory}/configs/cluster-config.yaml"
 
     def delete(self, keep_logs: bool = True):
         """Delete cluster."""
@@ -448,3 +452,70 @@ class Cluster:
         if head_node.state != "running" or ip_address is None:
             raise ClusterActionError("Head node: {0}\nCannot get ip address.".format(head_node.state.upper()))
         return ip_address
+
+    def start(self):
+        """Start the cluster."""
+        scheduler = self.config.scheduling.scheduler
+        if scheduler == "awsbatch":
+            LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
+            try:
+                compute_resource = self.config.scheduling.queues[0].compute_resources[0]
+
+                AWSApi.instance().batch.enable_compute_environment(
+                    ce_name=self.stack.batch_compute_environment,
+                    min_vcpus=compute_resource.min_vcpus,
+                    max_vcpus=compute_resource.max_vcpus,
+                    desired_vcpus=compute_resource.desired_vcpus,
+                )
+            except Exception as e:
+                raise ClusterActionError(f"Unable to enable Batch compute environment. {str(e)}")
+
+        else:  # scheduler == "slurm"
+            stack_status = self.stack.status
+            if "IN_PROGRESS" in stack_status:
+                raise ClusterActionError(f"Cannot start compute fleet while stack is in {stack_status} status.")
+            if "FAILED" in stack_status:
+                LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
+
+            try:
+                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+                compute_fleet_status_manager.update_status(
+                    ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
+                )
+            except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
+                raise ClusterActionError(
+                    "Failed when starting compute fleet due to a concurrent update of the status. "
+                    "Please retry the operation."
+                )
+            except Exception as e:
+                raise ClusterActionError(f"Failed when starting compute fleet with error: {str(e)}")
+
+    def stop(self):
+        """Stop compute fleet of the cluster."""
+        scheduler = self.config.scheduling.scheduler
+        if scheduler == "awsbatch":
+            LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
+            try:
+                AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
+            except Exception as e:
+                raise ClusterActionError(f"Unable to disable Batch compute environment. {str(e)}")
+
+        else:  # scheduler == "slurm"
+            stack_status = self.stack.status
+            if "IN_PROGRESS" in stack_status:
+                raise ClusterActionError(f"Cannot stop compute fleet while stack is in {stack_status} status.")
+            if "FAILED" in stack_status:
+                LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
+
+            try:
+                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+                compute_fleet_status_manager.update_status(
+                    ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
+                )
+            except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
+                raise ClusterActionError(
+                    "Failed when stopping compute fleet due to a concurrent update of the status. "
+                    "Please retry the operation."
+                )
+            except Exception as e:
+                raise ClusterActionError(f"Failed when stopping compute fleet with error: {str(e)}")

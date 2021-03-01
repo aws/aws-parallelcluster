@@ -12,7 +12,10 @@ import json
 import logging
 import os
 
+from packaging import version
+
 from common.aws.aws_api import AWSApi
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
 from pcluster.utils import get_installed_version
 
@@ -101,6 +104,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             # retrieve cluster config and generate model
             cluster = Cluster(cluster_name)
+            PclusterApi._check_version_2(cluster)
             cluster.delete(keep_logs)
             return FullClusterInfo(cluster)
         except Exception as e:
@@ -112,7 +116,10 @@ class PclusterApi:
         try:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
-            return FullClusterInfo(Cluster(cluster_name))
+
+            cluster = Cluster(cluster_name)
+            PclusterApi._check_version_2(cluster)
+            return FullClusterInfo(cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -149,3 +156,30 @@ class PclusterApi:
 
         except Exception as e:
             return ApiFailure(str(e))
+
+    @staticmethod
+    def update_compute_fleet_status(cluster_name: str, region: str, status: ComputeFleetStatus):
+        """Update existing compute fleet status."""
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            cluster = Cluster(cluster_name)
+            PclusterApi._check_version_2(cluster)
+            if status == ComputeFleetStatus.START_REQUESTED:
+                cluster.start()
+            elif status == ComputeFleetStatus.STOP_REQUESTED:
+                cluster.stop()
+            else:
+                return ApiFailure(f"Unable to update the compute fleet to status {status}. Not supported.")
+
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
+    def _check_version_2(cluster):
+        if version.parse(cluster.stack.version) < version.parse("3.0.0"):
+            raise ClusterActionError(
+                f"The cluster {cluster.name} was created with ParallelCluster {cluster.stack.version}. "
+                "This operation may only be performed using the same version used to create the cluster."
+            )

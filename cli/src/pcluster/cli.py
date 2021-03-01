@@ -22,8 +22,6 @@ import argparse
 from botocore.exceptions import NoCredentialsError
 
 import pcluster.cli_commands.delete as pcluster_delete
-import pcluster.cli_commands.start as pcluster_start
-import pcluster.cli_commands.stop as pcluster_stop
 import pcluster.cli_commands.update as pcluster_update
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
@@ -75,11 +73,11 @@ def version(args):
 
 
 def start(args):
-    pcluster_start.start(args)
+    pcluster.start(args)
 
 
 def stop(args):
-    pcluster_stop.stop(args)
+    pcluster.stop(args)
 
 
 def create_ami(args):
@@ -242,29 +240,14 @@ Examples::
     pdelete.set_defaults(func=delete)
 
     # start command subparser
-    pstart = subparsers.add_parser(
-        "start",
-        help="Starts the compute fleet for a cluster that has been stopped.",
-        epilog="This command sets the Auto Scaling Group parameters to either the initial "
-        "configuration values (max_queue_size and initial_queue_size) specified in the "
-        "template that was used to create the cluster or to the configuration values "
-        "that were used to update the cluster after it was created.",
-    )
+    pstart = subparsers.add_parser("start", help="Starts the compute fleet for a cluster that has been stopped.")
     pstart.add_argument("cluster_name", help="Starts the compute fleet of the cluster name provided here.")
-    _addarg_config(pstart)
     _addarg_region(pstart)
     pstart.set_defaults(func=start)
 
     # stop command subparser
-    pstop = subparsers.add_parser(
-        "stop",
-        help="Stops the compute fleet, leaving the head node running.",
-        epilog="This command sets the Auto Scaling Group parameters to min/max/desired = 0/0/0 and "
-        "terminates the compute fleet. The head node will remain running. To terminate "
-        "all EC2 resources and avoid EC2 charges, consider deleting the cluster.",
-    )
+    pstop = subparsers.add_parser("stop", help="Stops the compute fleet, leaving the head node running.")
     pstop.add_argument("cluster_name", help="Stops the compute fleet of the cluster name provided here.")
-    _addarg_config(pstop)
     _addarg_region(pstop)
     pstop.set_defaults(func=stop)
 
