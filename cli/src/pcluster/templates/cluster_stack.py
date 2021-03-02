@@ -79,9 +79,7 @@ class ClusterCdkStack(core.Stack):
         self.os_features = {
             "centos7": {"User": "centos", "RootDevice": "/dev/sda1"},
             "centos8": {"User": "centos", "RootDevice": "/dev/sda1"},
-            "alinux": {"User": "ec2-user", "RootDevice": "/dev/xvda"},
             "alinux2": {"User": "ec2-user", "RootDevice": "/dev/xvda"},
-            "ubuntu1604": {"User": "ubuntu", "RootDevice": "/dev/sda1"},
             "ubuntu1804": {"User": "ubuntu", "RootDevice": "/dev/sda1"},
         }
 
@@ -126,14 +124,14 @@ class ClusterCdkStack(core.Stack):
         if self._condition_create_s3_access_policies():
             self._add_s3_access_policies()
 
-        # MasterEIP
+        # Head Node EIP
         if self._cluster_config.head_node.networking.assign_public_ip:
-            self._head_eip = CfnEIP(scope=self, id="MasterEIP", domain="vpc")
+            self._head_eip = CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
 
         # ParallelCluster managed security groups
         self._add_security_groups()
 
-        # MasterENI
+        # Head Node ENI
         self.head_eni = self._add_head_eni()
 
         # AdditionalCfnStack
@@ -159,7 +157,7 @@ class ClusterCdkStack(core.Stack):
         # RAIDSubstack
         # TODO: inline resources
 
-        # MasterServerSubstack
+        # Head Node
         # TODO: double check head node creation
         self._add_head_node()
 
@@ -220,7 +218,7 @@ class ClusterCdkStack(core.Stack):
             head_eni_groupset.extend(self._cluster_config.head_node.networking.security_groups)
         head_eni = CfnNetworkInterface(
             scope=self,
-            id="MasterENI",
+            id="HeadNodeENI",
             description="AWS ParallelCluster head node interface",
             subnet_id=self._cluster_config.head_node.networking.subnet_id,
             source_dest_check=False,
@@ -237,18 +235,18 @@ class ClusterCdkStack(core.Stack):
         return head_eni
 
     def _add_security_groups(self):
-        # MasterSecurityGroup
+        # Head Node Security Group
         if self._condition_create_head_security_group():
             self._head_security_group = self._add_head_security_group()
         # ComputeSecurityGroup
         if self._condition_create_compute_security_group():
             self._compute_security_group = self._add_compute_security_group()
-        # MasterSecurityGroupIngress
+        # Head Node Security Group Ingress
         # Access to head node from compute nodes
         if self._condition_create_head_security_group() and self._condition_create_compute_security_group():
             CfnSecurityGroupIngress(
                 scope=self,
-                id="MasterSecurityGroupIngress",
+                id="HeadNodeSecurityGroupIngress",
                 ip_protocol="-1",
                 from_port=0,
                 to_port=65535,
@@ -622,7 +620,7 @@ class ClusterCdkStack(core.Stack):
             )
         return CfnSecurityGroup(
             scope=self,
-            id="MasterSecurityGroup",
+            id="HeadNodeSecurityGroup",
             group_description="Enable access to the head node",
             vpc_id=self._cluster_config.vpc_id,
             security_group_ingress=head_security_group_ingress,
@@ -806,7 +804,7 @@ class ClusterCdkStack(core.Stack):
 
         head_node_launch_template = CfnLaunchTemplate(
             scope=self,
-            id="MasterServerLaunchTemplate",
+            id="HeadNodeServerLaunchTemplate",
             launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=self._cluster_config.head_node.instance_type,
                 cpu_options=CfnLaunchTemplate.CpuOptionsProperty(
@@ -821,8 +819,8 @@ class ClusterCdkStack(core.Stack):
                         resource_type="instance",
                         tags=[
                             CfnTag(key="Application", value=self.stack_name),
-                            CfnTag(key="Name", value="Master"),
-                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),
+                            CfnTag(key="Name", value="Master"),  # FIXME
+                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
                             CfnTag(key="ClusterName", value=self._short_stack_name()),
                             CfnTag(
                                 key="aws-parallelcluster-attributes",
@@ -851,7 +849,7 @@ class ClusterCdkStack(core.Stack):
                         tags=[
                             CfnTag(key="ClusterName", value=self._short_stack_name()),
                             CfnTag(key="Application", value=self.stack_name),
-                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),
+                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
                         ],
                     ),
                 ],
@@ -880,7 +878,7 @@ class ClusterCdkStack(core.Stack):
 
         # Metadata
         head_node_launch_template.add_metadata("cfn-lint", {"config": {"ignore_checks": ["E3002"]}})
-        head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Master server")
+        head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
 
         # CloudFormation Init
         # TODO: Finish implementation and fix deployConfigFiles
@@ -977,11 +975,11 @@ class ClusterCdkStack(core.Stack):
             value=self.os_features[self._cluster_config.image.os]["User"],
         )
 
-        # MasterPrivateIP
+        # Head Node Private IP
         # TODO: take from created head node
         head_private_ip = "10.0.0.2"
 
-        # MasterPublicIP
+        # Head Node Public IP
         # TODO: take from created head node
         head_public_ip = "176.32.103.200"
 
