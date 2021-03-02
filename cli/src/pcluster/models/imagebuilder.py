@@ -18,10 +18,10 @@ from typing import List
 from common.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster import utils
 from pcluster.models.common import BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
-from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
+from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
-from pcluster.validators.kms_validators import KmsKeyValidator
+from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 
 # ---------------------- Image ---------------------- #
 
@@ -37,9 +37,7 @@ class Volume(Resource):
         # TODO: add validator
 
     def _validate(self):
-        self._execute_validator(
-            EBSVolumeKmsKeyIdValidator, volume_kms_key_id=self.kms_key_id, volume_encrypted=self.encrypted
-        )
+        self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         if self.kms_key_id:
             self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
