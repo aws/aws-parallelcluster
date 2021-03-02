@@ -10,6 +10,7 @@ CHANGELOG
 - Make `key_name` parameter optional to support cluster configurations without a key pair. 
 - Remove support for Python 3.4
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
+- Add sanity check to prevent cluster creation in non officially supported AWS regions 
 
 2.10.2
 ------

@@ -40,6 +40,34 @@ from pcluster.utils import (
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
 
+SUPPORTED_REGIONS = [
+    "af-south-1",
+    "ap-east-1",
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "ap-northeast-3",
+    "ap-south-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ca-central-1",
+    "cn-north-1",
+    "cn-northwest-1",
+    "eu-central-1",
+    "eu-north-1",
+    "eu-south-1",
+    "eu-west-1",
+    "eu-west-2",
+    "eu-west-3",
+    "me-south-1",
+    "sa-east-1",
+    "us-east-1",
+    "us-east-2",
+    "us-gov-east-1",
+    "us-gov-west-1",
+    "us-west-1",
+    "us-west-2",
+]
+
 DCV_MESSAGES = {
     "warnings": {
         "access_from_world": "With this configuration you are opening dcv port ({port}) to the world (0.0.0.0/0). "
@@ -1601,3 +1629,10 @@ def ebs_volume_throughput_validator(section_key, section_label, pcluster_config)
             )
 
     return errors, warnings
+
+
+def region_validator(section_key, section_label, pcluster_config):
+    errors = []
+    if pcluster_config.region not in SUPPORTED_REGIONS:
+        errors.append("Region '{0}' is not yet officially supported by ParallelCluster".format(pcluster_config.region))
+    return errors, []
