@@ -16,12 +16,13 @@ import copy
 import logging
 import time
 from enum import Enum
+from typing import List
 
 import pkg_resources
 import yaml
 
 from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import StackInfo
+from common.aws.aws_resources import InstanceInfo, StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_STACK_PREFIX
@@ -178,7 +179,7 @@ class ClusterStack(StackInfo):
 
     def get_default_user(self, os: str):
         """Get the default user for the given os."""
-        mappings = self.template.get("Mappings").get("OSFeatures")
+        mappings = self.template.get("Mappings").get("OSFeatures")  # FIXME double check
         return mappings[os]["User"]
 
     @property
@@ -407,12 +408,12 @@ class Cluster:
             LOGGER.error("Failed when checking for running EC2 instances with error: %s", str(e))
 
     @property
-    def compute_instances(self):
+    def compute_instances(self) -> List[InstanceInfo]:
         """Get compute instances."""
         return self._describe_instances(node_type=NodeType.COMPUTE)
 
     @property
-    def head_node_instance(self):
+    def head_node_instance(self) -> InstanceInfo:
         """Get head node instance."""
         try:
             return self._describe_instances(node_type=NodeType.HEAD_NODE)[0]
