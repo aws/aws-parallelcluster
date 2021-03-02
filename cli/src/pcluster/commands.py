@@ -30,7 +30,7 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from api.pcluster_api import ApiFailure, FullClusterInfo, PclusterApi
+from api.pcluster_api import ApiFailure, ClusterInfo, FullClusterInfo, PclusterApi
 from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX
@@ -245,7 +245,7 @@ def create(args):
         region=utils.get_region(),
         disable_rollback=args.norollback,
     )
-    if isinstance(result, FullClusterInfo):
+    if isinstance(result, ClusterInfo):
         print(f"Cluster creation started successfully. {result}")
 
         if not args.nowait:
@@ -253,8 +253,7 @@ def create(args):
             LOGGER.info("")
 
             result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, FullClusterInfo):
-                # result_stack = utils.get_stack(stack_name, cfn_client)
+            if isinstance(result, ClusterInfo):
                 _print_stack_outputs(result.stack_outputs)
             else:
                 utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
@@ -262,7 +261,7 @@ def create(args):
                 sys.exit(1)
         else:
             result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, FullClusterInfo):
+            if isinstance(result, ClusterInfo):
                 LOGGER.info("Status: %s", result.stack_status)
             else:
                 utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
@@ -371,12 +370,12 @@ def instances(args):
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
         if isinstance(result, FullClusterInfo):
             cluster_instances = []
-            head_node_instance = result.head_node
-            if head_node_instance:
-                cluster_instances.append(("Head node\t", head_node_instance.id))
+            if result.head_node:
+                cluster_instances.append(("Head node\t", result.head_node.id))
 
-            for instance in result.compute_instances:
-                cluster_instances.append(("Compute node\t", instance.id))
+            if result.compute_instances:
+                for instance in result.compute_instances:
+                    cluster_instances.append(("Compute node\t", instance.id))
 
             if result.scheduler == "awsbatch":
                 LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
@@ -431,7 +430,7 @@ def status(args):  # noqa: C901 FIXME!!!
     """Get cluster status."""
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, FullClusterInfo):
+        if isinstance(result, ClusterInfo):
             # print(f"{result}")
             sys.stdout.write("\rStatus: %s" % result.stack_status)
             sys.stdout.flush()
@@ -456,11 +455,11 @@ def status(args):  # noqa: C901 FIXME!!!
                 sys.stdout.write("\rStatus: %s\n" % result.stack_status)
                 sys.stdout.flush()
                 if result.stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
-                    head_node_state = result.head_node.state
-                    LOGGER.info("MasterServer: %s" % head_node_state.upper())
-
-                    if head_node_state == "running":
-                        _print_stack_outputs(result.stack_outputs)
+                    if isinstance(result, FullClusterInfo) and result.head_node:
+                        head_node_state = result.head_node.state
+                        LOGGER.info("MasterServer: %s" % head_node_state.upper())
+                        if head_node_state == "running":
+                            _print_stack_outputs(result.stack_outputs)
                     _print_compute_fleet_status(args.cluster_name, result.stack_outputs)
                 elif result.stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
                     events = utils.get_stack_events(result.stack_name)
@@ -493,7 +492,7 @@ def delete(args):
     try:
         # delete cluster raises an exception if stack does not exist
         result = PclusterApi().delete_cluster(args.cluster_name, utils.get_region(), args.keep_logs)
-        if isinstance(result, FullClusterInfo):
+        if isinstance(result, ClusterInfo):
             print(f"Cluster deletion started correctly. {result}")
         else:
             utils.error(f"Cluster deletion failed. {result.message}")
@@ -505,7 +504,7 @@ def delete(args):
             while result.stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
                 result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-                if isinstance(result, FullClusterInfo):
+                if isinstance(result, ClusterInfo):
                     events = utils.get_stack_events(result.stack_name, raise_on_error=True)[0]
                     resource_status = (
                         "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))

@@ -58,10 +58,12 @@ class FullClusterInfo(ClusterInfo):
 
     def __init__(self, cluster: Cluster):
         super().__init__(cluster.stack)
-        # Cluster info
-        self.head_node = cluster.head_node_instance
-        self.head_node_ip = cluster.head_node_ip
-        self.user = cluster.head_node_user
+        stack_status = cluster.stack.updated_status()
+        if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
+            # Head node info
+            self.head_node = cluster.head_node_instance
+            self.head_node_ip = cluster.head_node_ip
+            self.user = cluster.head_node_user
         self.compute_instances = cluster.compute_instances
         # Config info
         self.scheduler = cluster.config.scheduling.scheduler
@@ -89,7 +91,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             cluster = Cluster(cluster_name, cluster_config)
             cluster.create(disable_rollback)
-            return FullClusterInfo(cluster)
+            return ClusterInfo(cluster.stack)
         except ClusterActionError as e:
             return ApiFailure(str(e), e.validation_failures)
         except Exception as e:
@@ -103,9 +105,11 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             # retrieve cluster config and generate model
             cluster = Cluster(cluster_name)
-            PclusterApi._check_version_2(cluster)
             cluster.delete(keep_logs)
-            return FullClusterInfo(cluster)
+            if PclusterApi._is_version_2(cluster):
+                return ClusterInfo(cluster.stack)
+            else:
+                return FullClusterInfo(cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -117,8 +121,10 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             cluster = Cluster(cluster_name)
-            PclusterApi._check_version_2(cluster)
-            return FullClusterInfo(cluster)
+            if PclusterApi._is_version_2(cluster):
+                return ClusterInfo(cluster.stack)
+            else:
+                return FullClusterInfo(cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -164,7 +170,11 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             cluster = Cluster(cluster_name)
-            PclusterApi._check_version_2(cluster)
+            if PclusterApi._is_version_2(cluster):
+                raise ClusterActionError(
+                    f"The cluster {cluster.name} was created with ParallelCluster {cluster.stack.version}. "
+                    "This operation may only be performed using the same version used to create the cluster."
+                )
             if status == ComputeFleetStatus.START_REQUESTED:
                 cluster.start()
             elif status == ComputeFleetStatus.STOP_REQUESTED:
@@ -176,9 +186,5 @@ class PclusterApi:
             return ApiFailure(str(e))
 
     @staticmethod
-    def _check_version_2(cluster):
-        if version.parse(cluster.stack.version) < version.parse("3.0.0"):
-            raise ClusterActionError(
-                f"The cluster {cluster.name} was created with ParallelCluster {cluster.stack.version}. "
-                "This operation may only be performed using the same version used to create the cluster."
-            )
+    def _is_version_2(cluster):
+        return version.parse(cluster.stack.version) < version.parse("3.0.0")
