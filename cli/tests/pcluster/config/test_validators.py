@@ -35,6 +35,7 @@ from pcluster.config.validators import (
     intel_hpc_architecture_validator,
     queue_validator,
     region_validator,
+    s3_bucket_region_validator,
     settings_validator,
 )
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
@@ -544,6 +545,105 @@ def test_s3_validator(mocker, boto3_stubber, config, num_calls, bucket, expected
     if bucket:
         _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
     utils.assert_param_validator(mocker, config, expected_message)
+
+
+@pytest.mark.parametrize(
+    "bucket, region, error_code, expected_message, client_error",
+    [
+        (
+            "bucket",
+            "us-east-1",
+            None,
+            None,
+            False,
+        ),
+        (
+            "bucket",
+            "us-west-1",
+            None,
+            None,
+            False,
+        ),
+        (
+            "bucket",
+            "eu-west-1",
+            None,
+            "cluster_resource_bucket must be in the same region of the cluster.",
+            False,
+        ),
+        (
+            "not_existed_bucket",
+            "af-south-1",
+            "NoSuchBucket",
+            "The S3 bucket 'not_existed_bucket' does not appear to exist",
+            True,
+        ),
+        (
+            "access_denied_bucket",
+            "af-south-1",
+            "AccessDenied",
+            "You do not have access to the S3 bucket 'access_denied_bucket'",
+            True,
+        ),
+        (
+            "unexpected_error_bucket",
+            "af-south-1",
+            None,
+            "Unexpected error for S3 bucket",
+            True,
+        ),
+    ],
+)
+def test_s3_bucket_region_validator(mocker, boto3_stubber, error_code, bucket, region, client_error, expected_message):
+    os.environ["AWS_DEFAULT_REGION"] = "us-west-1" if region == "us-west-1" else "us-east-1"
+    if region == "us-east-1":
+        # The actual response when region is us-east-1 is
+        # {'ResponseMetadata': {...}, 'LocationConstraint': None}
+        # But botocore doesn't support mock None response. we mock the return as following
+        get_bucket_location_response = {
+            "ResponseMetadata": {},
+        }
+    else:
+        get_bucket_location_response = {
+            "ResponseMetadata": {},
+            "LocationConstraint": region,
+        }
+    mocked_requests = []
+
+    if error_code is None:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params={"Bucket": bucket},
+                generate_error=client_error is True,
+            )
+        )
+    else:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params={"Bucket": bucket},
+                generate_error=error_code is not None,
+                error_code=error_code,
+            )
+        )
+
+    boto3_stubber("s3", mocked_requests)
+    config = {
+        "cluster default": {"cluster_resource_bucket": bucket},
+    }
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    errors, warnings = s3_bucket_region_validator("cluster_resource_bucket", bucket, pcluster_config)
+
+    if expected_message:
+        assert_that(errors[0]).contains(expected_message)
+    else:
+        assert_that(errors).is_empty()
 
 
 def test_ec2_vpc_id_validator(mocker, boto3_stubber):

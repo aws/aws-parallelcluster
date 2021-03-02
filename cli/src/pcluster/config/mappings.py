@@ -101,6 +101,7 @@ from pcluster.config.validators import (
     queue_settings_validator,
     queue_validator,
     region_validator,
+    s3_bucket_region_validator,
     s3_bucket_uri_validator,
     s3_bucket_validator,
     scheduler_validator,
@@ -1025,7 +1026,7 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("cluster_resource_bucket", {
         "cfn_param_mapping": "ResourcesS3Bucket",
-        "validators": [s3_bucket_validator],
+        "validators": [s3_bucket_validator, s3_bucket_region_validator],
         "update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET,
     }),
     ("iam_lambda_role", {
