@@ -45,6 +45,7 @@ class ClusterInfo:
         self.stack_arn = stack.id
         self.stack_name = stack.name
         self.stack_status = stack.status
+        self.stack_outputs = stack.outputs
         self.region = get_region()
         self.version = stack.version
 
@@ -64,8 +65,6 @@ class FullClusterInfo(ClusterInfo):
         self.compute_instances = cluster.compute_instances
         # Config info
         self.scheduler = cluster.config.scheduling.scheduler
-        # Stack info
-        self.stack_outputs = cluster.stack.outputs
 
 
 class PclusterApi:
