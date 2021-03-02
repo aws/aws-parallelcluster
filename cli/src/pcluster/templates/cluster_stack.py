@@ -74,11 +74,11 @@ class ClusterCdkStack(core.Stack):
 
         self._init_mappings()
         self._add_resources()
-        self._add_ouputs()
+        self._add_outputs()
 
     # -- Mappings ---------------------------------------------------------------------------------------------------- #
+
     def _init_mappings(self):
-        # OS Features
         self.os_features = {
             "centos7": {"User": "centos", "RootDevice": "/dev/sda1"},
             "centos8": {"User": "centos", "RootDevice": "/dev/sda1"},
@@ -100,7 +100,7 @@ class ClusterCdkStack(core.Stack):
             ]
         return len(raid_volumes)
 
-    def _short_stack_name(self):
+    def _cluster_name(self):
         return Fn.select(1, Fn.split("parallelcluster-", self.stack_name))
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -112,18 +112,18 @@ class ClusterCdkStack(core.Stack):
         if self._condition_create_ec2_iam_role():
             self.root_iam_role = self._add_root_iam_role()
 
-        # RootInstanceProfile
+        # Root Instance Profile
         self.root_instance_profile = self._add_root_instance_profile()
 
-        # ParallelClusterPolicies
+        # ParallelCluster Policies
         if self._condition_create_ec2_iam_role():
             self._add_parallelcluster_policies()
 
-        # ParallelClusterHITPolicies
-        if self._condition_add_hit_iam_policies():
-            self._add_parallelcluster_hit_policies()
+        # Slurm Policies
+        if self._condition_add_slurm_iam_policies():
+            self._add_slurm_policies()
 
-        # S3AccessPolicies
+        # S3 Access Policies
         if self._condition_create_s3_access_policies():
             self._add_s3_access_policies()
 
@@ -164,7 +164,7 @@ class ClusterCdkStack(core.Stack):
         # TODO: double check head node creation
         self._add_head_node()
 
-        # ComputeFleetHITSubstack
+        # Compute Fleet Substack
         # TODO: inline resources
 
         # CloudWatchDashboardSubstack
@@ -175,7 +175,7 @@ class ClusterCdkStack(core.Stack):
                 self._add_shared_storage(storage)
 
     def _add_terminate_compute_fleet_custom_resource(self):
-        if self._condition_create_hit_substack():
+        if self._condition_is_slurm():
             self.terminate_compute_fleet_custom_resource = CfnCustomResource(
                 scope=self,
                 id="TerminateComputeFleetCustomResource",
@@ -405,11 +405,9 @@ class ClusterCdkStack(core.Stack):
                                 actions=s3_policy_actions,
                                 effect=Effect.ALLOW,
                                 resources=[
-                                    self.format_arn(service="s3", account="", region="", resource=self._bucket.name),
+                                    self.format_arn(service="s3", resource=self._bucket.name),
                                     self.format_arn(
                                         service="s3",
-                                        account="",
-                                        region="",
                                         resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
                                     ),
                                 ],
@@ -421,7 +419,7 @@ class ClusterCdkStack(core.Stack):
                 ),
             ],
         )
-        if self._condition_create_hit_substack():
+        if self._condition_is_slurm():
             self.cleanup_resources_function_execution_role.policies[0].policy_document.add_statements(
                 PolicyStatement(
                     actions=["ec2:DescribeInstances"], resources=["*"], effect=Effect.ALLOW, sid="DescribeInstances"
@@ -499,8 +497,6 @@ class ClusterCdkStack(core.Stack):
                         resources=[
                             self.format_arn(
                                 service="s3",
-                                account=None,  # No account ID needed here
-                                region=None,  # No region needed here
                                 resource="{0}-aws-parallelcluster/*".format(self.region),
                             )
                         ],
@@ -512,8 +508,6 @@ class ClusterCdkStack(core.Stack):
                         resources=[
                             self.format_arn(
                                 service="s3",
-                                account=None,  # No account ID needed here
-                                region=None,  # No region needed here
                                 resource="{0}/{1}/batch/".format(self._bucket.name, self._bucket.artifact_directory),
                             )
                         ],
@@ -534,8 +528,6 @@ class ClusterCdkStack(core.Stack):
                         resources=[
                             self.format_arn(
                                 service="s3",
-                                account=None,  # No account ID needed here
-                                region=None,  # No region needed here
                                 resource="dcv-license.{0}/*".format(self.region),
                             )
                         ],
@@ -545,11 +537,11 @@ class ClusterCdkStack(core.Stack):
             roles=[self.root_iam_role.ref],
         )
 
-    def _add_parallelcluster_hit_policies(self):
+    def _add_slurm_policies(self):
         CfnPolicy(
             scope=self,
-            id="ParallelClusterHITPolicies",
-            policy_name="parallelcluster-hit",
+            id="ParallelClusterSlurmPolicies",
+            policy_name="parallelcluster-slurm",
             policy_document=PolicyDocument(
                 statements=[
                     PolicyStatement(
@@ -578,11 +570,9 @@ class ClusterCdkStack(core.Stack):
                         if self._bucket.remove_on_deletion
                         else ["s3:*"],
                         resources=[
-                            self.format_arn(service="s3", account="", region="", resource=self._bucket.name),
+                            self.format_arn(service="s3", resource=self._bucket.name),
                             self.format_arn(
                                 service="s3",
-                                account="",
-                                region="",
                                 resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
                             ),
                         ],
@@ -845,7 +835,7 @@ class ClusterCdkStack(core.Stack):
                             CfnTag(key="Application", value=self.stack_name),
                             CfnTag(key="Name", value="Master"),  # FIXME
                             CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
-                            CfnTag(key="ClusterName", value=self._short_stack_name()),
+                            CfnTag(key="ClusterName", value=self._cluster_name()),
                             CfnTag(
                                 key="aws-parallelcluster-attributes",
                                 value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
@@ -871,7 +861,7 @@ class ClusterCdkStack(core.Stack):
                     CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=[
-                            CfnTag(key="ClusterName", value=self._short_stack_name()),
+                            CfnTag(key="ClusterName", value=self._cluster_name()),
                             CfnTag(key="Application", value=self.stack_name),
                             CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
                         ],
@@ -938,21 +928,11 @@ class ClusterCdkStack(core.Stack):
         """Root role is created if head instance role or one of compute node instance roles is not specified."""
         # TODO: split root role in head and compute roles
         head_node = self._cluster_config.head_node
-        role_needed = (
-            not head_node.iam
-            or not head_node.iam.roles
-            or not head_node.iam.roles.instance_role
-            or head_node.iam.roles.instance_role == "AUTO"
-        )
+        role_needed = not head_node.iam or not head_node.iam.roles or not head_node.iam.roles.instance_role
 
         if not role_needed:
             for queue in self._cluster_config.scheduling.queues:
-                role_needed = (
-                    not queue.head_node.iam
-                    or not queue.iam.roles
-                    or not queue.iam.roles.instance_role
-                    or queue.iam.roles.instance_role == "AUTO"
-                )
+                role_needed = not queue.iam or not queue.iam.roles or not queue.iam.roles.instance_role
                 if role_needed:
                     break
         return role_needed
@@ -968,7 +948,7 @@ class ClusterCdkStack(core.Stack):
     def _condition_create_s3_access_policies(self):
         return self._cluster_config.iam and self._cluster_config.iam.s3_access
 
-    def _condition_add_hit_iam_policies(self):
+    def _condition_add_slurm_iam_policies(self):
         return self._condition_create_ec2_iam_role() and self._cluster_config.scheduling.scheduler == "slurm"
 
     def _condition_create_compute_security_group(self):
@@ -982,12 +962,12 @@ class ClusterCdkStack(core.Stack):
     def _condition_create_head_security_group(self):
         return not self._cluster_config.head_node.networking.security_groups
 
-    def _condition_create_hit_substack(self):
+    def _condition_is_slurm(self):
         return self._cluster_config.scheduling.scheduler == "slurm"
 
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
-    def _add_ouputs(self):
+    def _add_outputs(self):
         # Storage filesystem Ids
         self._add_shared_storage_outputs()
 
@@ -1046,8 +1026,7 @@ class ClusterCdkStack(core.Stack):
         # BatchUserRole
         # TODO: take values from Batch resources
 
-        # IsHITCluster
-        CfnOutput(id="IsHITCluster", scope=self, value=str(self._condition_create_hit_substack()).lower())
+        CfnOutput(id="Scheduler", scope=self, value=self._cluster_config.scheduling.scheduler)
 
     def _add_shared_storage_outputs(self):
         """Add the ids of the managed filesystem to the Stack Outputs."""

@@ -292,7 +292,7 @@ def evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None)
 
 
 def _print_compute_fleet_status(cluster_name, stack_outputs):
-    if utils.get_stack_output_value(stack_outputs, "IsHITCluster") == "true":
+    if utils.get_stack_output_value(stack_outputs, "Scheduler") == "slurm":
         status_manager = ComputeFleetStatusManager(cluster_name)
         compute_fleet_status = status_manager.get_status()
         if compute_fleet_status:
