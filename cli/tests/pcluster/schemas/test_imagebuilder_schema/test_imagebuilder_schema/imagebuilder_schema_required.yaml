@@ -1,6 +1,3 @@
-Image:
-  Name: Pcluster
-
 Build:
   InstanceType: c5.xlarge
   ParentImage: ami-0185634c5a8a37250

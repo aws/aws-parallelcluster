@@ -17,7 +17,6 @@ import re
 
 from marshmallow import ValidationError, fields, post_load, validate, validates, validates_schema
 
-from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from common.utils import get_url_scheme, validate_json_format
 from pcluster.models.imagebuilder_config import (
     Build,
@@ -55,11 +54,6 @@ class VolumeSchema(BaseSchema):
 class ImageSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Image."""
 
-    name = fields.Str(
-        validate=validate.Regexp(r"^[-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]$")
-        and validate.Length(max=1024 - len(AMI_NAME_REQUIRED_SUBSTRING)),
-        required=True,
-    )
     tags = fields.List(fields.Nested(TagSchema))
     root_volume = fields.Nested(VolumeSchema)
 
@@ -177,7 +171,7 @@ class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
 class ImageBuilderSchema(BaseSchema):
     """Represent the schema of the ImageBuilder."""
 
-    image = fields.Nested(ImageSchema, required=True)
+    image = fields.Nested(ImageSchema)
     build = fields.Nested(BuildSchema, required=True)
     dev_settings = fields.Nested(ImagebuilderDevSettingsSchema)
 

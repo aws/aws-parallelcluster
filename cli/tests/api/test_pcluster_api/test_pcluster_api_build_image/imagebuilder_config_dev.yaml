@@ -1,5 +1,4 @@
 Image:
-  Name: Pcluster
   Tags:
     - Key: Name
       Value: ParallelCluster-3.0-AMI

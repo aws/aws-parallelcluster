@@ -29,7 +29,6 @@ from tests.pcluster.models.test_cluster import _assert_validation_result
             {
                 "imagebuilder": {
                     "image": {
-                        "name": "Pcluster",
                         "root_volume": {"size": 25, "kms_key_id": "key_id"},
                         "tags": [
                             {"key": "name", "value": "pcluster"},

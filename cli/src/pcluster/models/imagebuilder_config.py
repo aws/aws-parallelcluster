@@ -45,12 +45,10 @@ class Image(Resource):
 
     def __init__(
         self,
-        name: str,
         tags: List[BaseTag] = None,
         root_volume: Volume = None,
     ):
         super().__init__()
-        self.name = Resource.init_param(name)
         self.tags = tags
         self.root_volume = root_volume
 
@@ -135,8 +133,8 @@ class ImageBuilderConfig(Resource):
 
     def __init__(
         self,
-        image: Image,
         build: Build,
+        image: Image = None,
         dev_settings: ImagebuilderDevSettings = None,
     ):
         super().__init__()
@@ -146,7 +144,7 @@ class ImageBuilderConfig(Resource):
 
     def _validate(self):
         # Volume size validator only validates specified volume size
-        if self.image.root_volume and self.image.root_volume.size:
+        if self.image and self.image.root_volume and self.image.root_volume.size:
             self._execute_validator(
                 EbsVolumeTypeSizeValidator,
                 volume_type=ROOT_VOLUME_TYPE,

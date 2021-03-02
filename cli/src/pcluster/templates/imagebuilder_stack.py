@@ -99,7 +99,7 @@ class ImageBuilderCdkStack(core.Stack):
         build_tags = {tag.key: tag.value for tag in tags}
 
         # Add default ami tags information
-        tags = copy.deepcopy(image.tags) or []
+        tags = copy.deepcopy(image.tags) if image and image.tags else []
         tags.append(BaseTag(key="pcluster_version", value=utils.get_installed_version()))
         ami_tags = {tag.key: tag.value for tag in tags}
 
@@ -352,13 +352,13 @@ class ImageBuilderCdkStack(core.Stack):
         image = self.imagebuild.image
         build = self.imagebuild.build
 
-        if image.root_volume is None or image.root_volume.size is None:
+        if image is None or image.root_volume is None or image.root_volume.size is None:
             ami_id = imagebuilder_utils.get_ami_id(build.parent_image)
             ami_info = AWSApi.instance().ec2.describe_image(ami_id)
             default_root_volume_size = (
                 ami_info.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + PCLUSTER_RESERVED_VOLUME_SIZE
             )
-            if image.root_volume is None:
+            if image is None or image.root_volume is None:
                 default_root_volume = Volume(size=default_root_volume_size)
             else:
                 default_root_volume = copy.deepcopy(image.root_volume)
