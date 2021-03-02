@@ -34,6 +34,7 @@ from pcluster.config.validators import (
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
     queue_validator,
+    region_validator,
     settings_validator,
 )
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
@@ -2782,3 +2783,22 @@ def test_efa_os_arch_validator(mocker, cluster_dict, architecture, expected_erro
 def test_ebs_volume_throughput_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "region, expected_message",
+    [
+        ("invalid-region", "Region 'invalid-region' is not yet officially supported "),
+        ("us-east-1", None),
+    ],
+)
+def test_region_validator(mocker, region, expected_message):
+    pcluster_config = utils.get_mocked_pcluster_config(mocker)
+    pcluster_config.region = region
+
+    errors, warnings = region_validator("aws", None, pcluster_config)
+    if expected_message:
+        assert_that(len(errors)).is_greater_than(0)
+        assert_that(errors[0]).matches(expected_message)
+    else:
+        assert_that(errors).is_empty()
