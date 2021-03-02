@@ -5,6 +5,8 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 
+- Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+
 **CHANGES**
 
 - Upgrade Slurm to version 20.11.4.

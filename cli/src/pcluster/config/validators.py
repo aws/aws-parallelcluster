@@ -797,6 +797,26 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+def s3_bucket_region_validator(param_key, param_value, pcluster_config):
+    """Validate S3 bucket is in the same region with the cloudformation stack."""
+    errors = []
+    warnings = []
+    s3_client = boto3.client("s3")
+    try:
+        bucket_region = s3_client.get_bucket_location(Bucket=param_value).get("LocationConstraint")
+        # Buckets in Region us-east-1 have a LocationConstraint of null
+        # Example output from get_bucket_location for us-east-1:
+        #   {'ResponseMetadata': {...}, 'LocationConstraint': None}
+        if bucket_region is None:
+            bucket_region = "us-east-1"
+        if bucket_region != pcluster_config.region:
+            errors.append("cluster_resource_bucket must be in the same region of the cluster.")
+    except ClientError as client_error:
+        _process_generic_s3_bucket_error(client_error, param_value, warnings, errors)
+
+    return errors, warnings
+
+
 def _process_generic_s3_bucket_error(client_error, bucket_name, warnings, errors):
     if client_error.response.get("Error").get("Code") == "NoSuchBucket":
         errors.append(
@@ -812,7 +832,7 @@ def _process_generic_s3_bucket_error(client_error, bucket_name, warnings, errors
         )
     else:
         errors.append(
-            "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+            "Unexpected error for S3 bucket '{0}': '{1}'".format(
                 bucket_name, client_error.response.get("Error").get("Message")
             )
         )
@@ -835,24 +855,7 @@ def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
             if s3_bucket_region != pcluster_config.region:
                 errors.append("AutoImport is not supported for cross-region buckets.")
         except ClientError as client_error:
-            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
-                errors.append(
-                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
-            elif client_error.response.get("Error").get("Code") == "AccessDenied":
-                errors.append(
-                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
-            else:
-                errors.append(
-                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
+            _process_generic_s3_bucket_error(client_error, bucket, warnings, errors)
     return errors, warnings
 
 
