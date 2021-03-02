@@ -22,3 +22,18 @@ class KmsKeyValidator(Validator):
             AWSApi.instance().kms.describe_key(kms_key_id=kms_key_id)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class KmsKeyIdEncryptedValidator(Validator):
+    """
+    KmsKeyId encrypted validator.
+
+    Validate KmsKeyId value based on encrypted value.
+    """
+
+    def _validate(self, kms_key_id, encrypted):
+        if kms_key_id and not encrypted:
+            self._add_failure(
+                "Kms Key Id {0} is specified, the encrypted state must be True.".format(kms_key_id),
+                FailureLevel.ERROR,
+            )

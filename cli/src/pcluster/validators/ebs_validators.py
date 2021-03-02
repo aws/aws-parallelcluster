@@ -187,22 +187,7 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                     )
 
 
-class EBSVolumeKmsKeyIdValidator(Validator):
-    """
-    EBS volume KmsKeyId validator.
-
-    Validate KmsKeyId value based on encrypted value.
-    """
-
-    def _validate(self, volume_kms_key_id, volume_encrypted):
-        if volume_kms_key_id and not volume_encrypted:
-            self._add_failure(
-                "Kms Key Id {0} is specified, the encrypted state must be True.".format(volume_kms_key_id),
-                FailureLevel.ERROR,
-            )
-
-
-class SharedEBSVolumeIdValidator(Validator):
+class SharedEbsVolumeIdValidator(Validator):
     """
     SharedEBS volume id validator.
 

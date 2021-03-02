@@ -647,8 +647,7 @@ def test_fsx_architecture_os_validator(architecture, os, expected_message):
     ],
 )
 def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
-    mount_dir_param_list = [mount_dir for mount_dir in mount_dir_list]
-    actual_failures = DuplicateMountDirValidator().execute(mount_dir_param_list)
+    actual_failures = DuplicateMountDirValidator().execute(mount_dir_list)
     assert_failure_messages(actual_failures, expected_message)
 
 

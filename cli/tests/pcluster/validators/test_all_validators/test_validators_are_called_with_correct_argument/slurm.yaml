@@ -1,0 +1,42 @@
+Image:
+  Os: alinux2
+  CustomAmi: ami-12345678
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: ec2-key-name
+Scheduling:
+  Slurm:
+    Queues:
+      - Name: queue1
+        Networking:
+          SubnetIds:
+            - subnet-23456789
+        ComputeResources:
+          - Name: compute_resource1
+            InstanceType: c5.2xlarge
+          - Name: compute_resource2
+            InstanceType: c4.2xlarge
+      - Name: queue2
+        Networking:
+          SubnetIds:
+            - subnet-23456789
+        ComputeResources:
+          - Name: compute_resource1
+            InstanceType: c5.4xlarge
+            MaxCount: 5
+          - Name: compute_resource2
+            InstanceType: c4.4xlarge
+SharedStorage:
+  - MountDir: /my/mount/point1
+    Ebs:
+      VolumeId: vol-12345678
+  - MountDir: /my/mount/point2
+    Efs:
+      Encrypted: True
+      KmsKeyId: 1234abcd-12ab-34cd-56ef-1234567890ab
+  - MountDir: /my/mount/point3
+    FsxLustre:
+      StorageCapacity: 3600

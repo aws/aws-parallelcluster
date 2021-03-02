@@ -30,11 +30,13 @@ from pcluster.utils import (
 )
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
+    AwsbatchComputeResourceSizeValidator,
     AwsbatchInstancesArchitectureCompatibilityValidator,
     AwsbatchRegionValidator,
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
+    ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateInstanceTypeValidator,
@@ -56,10 +58,11 @@ from pcluster.validators.cluster_validators import (
 )
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
+    EbsVolumeSizeSnapshotValidator,
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
-    SharedEBSVolumeIdValidator,
+    SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
     AdditionalIamPolicyValidator,
@@ -69,6 +72,7 @@ from pcluster.validators.ec2_validators import (
     PlacementGroupIdValidator,
 )
 from pcluster.validators.fsx_validators import (
+    FsxAutoImportValidator,
     FsxBackupIdValidator,
     FsxBackupOptionsValidator,
     FsxPersistentOptionsValidator,
@@ -76,7 +80,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
-from pcluster.validators.kms_validators import KmsKeyValidator
+from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import S3BucketUriValidator, S3BucketValidator, UrlValidator
 
@@ -131,6 +135,7 @@ class Ebs(Resource):
         )
         if self.kms_key_id:
             self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
 
 
 class Raid(Resource):
@@ -192,7 +197,9 @@ class SharedEbs(Ebs):
         self.raid = raid
 
     def _validate(self):
-        self._execute_validator(SharedEBSVolumeIdValidator, volume_id=self.volume_id)
+        super()._validate()
+        self._execute_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
+        self._execute_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
 
 
 class SharedEfs(Resource):
@@ -221,6 +228,7 @@ class SharedEfs(Resource):
     def _validate(self):
         if self.kms_key_id:
             self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
 
 
 class SharedFsx(Resource):
@@ -316,6 +324,10 @@ class SharedFsx(Resource):
             self._execute_validator(S3BucketUriValidator, url=self.export_path)
         if self.kms_key_id:
             self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+        if self.auto_import_policy:
+            self._execute_validator(
+                FsxAutoImportValidator, auto_import_policy=self.auto_import_policy, import_path=self.import_path
+            )
 
 
 # ---------------------- Networking ---------------------- #
@@ -639,7 +651,7 @@ class HeadNode(Resource):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
         self.disable_simultaneous_multithreading = Resource.init_param(
-            disable_simultaneous_multithreading, default=True
+            disable_simultaneous_multithreading, default=False
         )
         self.networking = networking
         self.ssh = ssh
@@ -702,7 +714,7 @@ class BaseComputeResource(Resource):
         self.instance_type = Resource.init_param(instance_type)
         self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
         self.disable_simultaneous_multithreading = Resource.init_param(
-            disable_simultaneous_multithreading, default=True
+            disable_simultaneous_multithreading, default=False
         )
 
     def _validate(self):
@@ -853,11 +865,12 @@ class BaseClusterConfig(Resource):
             for storage in self.shared_storage:
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
-                    self._execute_validator(
-                        FsxNetworkingValidator,
-                        fs_system_id=storage.file_system_id,
-                        head_node_subnet_id=self.head_node.networking.subnet_id,
-                    )
+                    if storage.file_system_id:
+                        self._execute_validator(
+                            FsxNetworkingValidator,
+                            file_system_id=storage.file_system_id,
+                            head_node_subnet_id=self.head_node.networking.subnet_id,
+                        )
                     self._execute_validator(
                         FsxArchitectureOsValidator,
                         architecture=self.head_node.architecture,
@@ -867,11 +880,12 @@ class BaseClusterConfig(Resource):
                     storage_count["ebs"] += 1
                 if isinstance(storage, SharedEfs):
                     storage_count["efs"] += 1
-                    self._execute_validator(
-                        EfsIdValidator,
-                        efs_id=storage.file_system_id,
-                        head_node_avail_zone=self.head_node.networking.availability_zone,
-                    )
+                    if storage.file_system_id:
+                        self._execute_validator(
+                            EfsIdValidator,
+                            efs_id=storage.file_system_id,
+                            head_node_avail_zone=self.head_node.networking.availability_zone,
+                        )
 
             for storage_type in ["ebs", "efs", "fsx"]:
                 self._execute_validator(
@@ -987,13 +1001,19 @@ class AwsbatchComputeResource(BaseComputeResource):
         super().__init__(**kwargs)
         self.max_vcpus = Resource.init_param(max_vcpus, default=DEFAULT_MAX_COUNT)
         self.min_vcpus = Resource.init_param(min_vcpus, default=DEFAULT_MIN_COUNT)
-        self.desired_vcpus = Resource.init_param(desired_vcpus, default=0)
+        self.desired_vcpus = Resource.init_param(desired_vcpus, default=self.min_vcpus)
         self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
 
     def _validate(self):
         super()._validate()
         self._execute_validator(
             AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_type, max_vcpus=self.max_vcpus
+        )
+        self._execute_validator(
+            AwsbatchComputeResourceSizeValidator,
+            min_vcpus=self.min_vcpus,
+            max_vcpus=self.max_vcpus,
+            desired_vcpus=self.desired_vcpus,
         )
 
 
@@ -1063,6 +1083,11 @@ class SlurmComputeResource(BaseComputeResource):
     def _validate(self):
         super()._validate()
         self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        self._execute_validator(
+            ComputeResourceSizeValidator,
+            min_count=self.min_count,
+            max_count=self.max_count,
+        )
         if self.efa:
             self._execute_validator(
                 EfaValidator,

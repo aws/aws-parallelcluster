@@ -15,13 +15,13 @@ from pcluster.schemas.common_schema import ALLOWED_VALUES
 from pcluster.validators.ebs_validators import (
     EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
     EbsVolumeIopsValidator,
-    EBSVolumeKmsKeyIdValidator,
     EbsVolumeSizeSnapshotValidator,
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
-    SharedEBSVolumeIdValidator,
+    SharedEbsVolumeIdValidator,
 )
+from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 from tests.utils import MockedBoto3Request
 
@@ -229,7 +229,7 @@ def test_ebs_volume_size_snapshot_validator(
     ],
 )
 def test_ebs_volume_kms_key_id_validator(kms_key_id, encrypted, expected_message):
-    actual_failures = EBSVolumeKmsKeyIdValidator().execute(volume_kms_key_id=kms_key_id, volume_encrypted=encrypted)
+    actual_failures = KmsKeyIdEncryptedValidator().execute(kms_key_id=kms_key_id, encrypted=encrypted)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -267,7 +267,7 @@ def test_ec2_volume_validator(boto3_stubber):
     ]
     boto3_stubber("ec2", mocked_requests)
 
-    actual_failures = SharedEBSVolumeIdValidator().execute(volume_id="vol-12345678")
+    actual_failures = SharedEbsVolumeIdValidator().execute(volume_id="vol-12345678")
     assert_failure_messages(actual_failures, None)
 
 
