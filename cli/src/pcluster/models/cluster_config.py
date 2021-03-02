@@ -176,6 +176,7 @@ class SharedStorageType(Enum):
     """Define storage types to be used as shared storage."""
 
     EBS = "ebs"
+    RAID = "raid"
     EFS = "efs"
     FSX = "fsx"
 
@@ -198,7 +199,7 @@ class SharedEbs(Ebs):
     ):
         Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
         self.mount_dir = mount_dir
-        self.shared_storage_type = SharedStorageType.EBS
+        self.shared_storage_type = SharedStorageType.RAID if raid else SharedStorageType.EBS
         self.snapshot_id = Resource.init_param(snapshot_id)
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid

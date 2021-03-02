@@ -254,7 +254,8 @@ class SharedStorageSchema(BaseSchema):
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema."""
         child = copy.copy(data)
-        setattr(data, data.shared_storage_type.value, child)
+        storage_type = "ebs" if data.shared_storage_type.value == "raid" else data.shared_storage_type.value
+        setattr(data, storage_type, child)
         return data
 
     @validates("mount_dir")

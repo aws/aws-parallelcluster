@@ -66,7 +66,7 @@ class ClusterCdkStack(core.Stack):
         construct_id: str,
         cluster_config: SlurmClusterConfig,
         bucket: ClusterBucket,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self._cluster_config = cluster_config
@@ -97,15 +97,6 @@ class ClusterCdkStack(core.Stack):
         self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorageType}
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
-    def _raids_count(self):
-        raid_volumes = []
-        if self._cluster_config.shared_storage:
-            raid_volumes = [
-                storage
-                for storage in self._cluster_config.shared_storage
-                if storage.shared_storage_type == SharedStorageType.EBS and storage.raid
-            ]
-        return len(raid_volumes)
 
     def _cluster_name(self):
         return Fn.select(1, Fn.split("parallelcluster-", self.stack_name))
@@ -661,6 +652,8 @@ class ClusterCdkStack(core.Stack):
             storage_id = self._add_ebs_volume(cfn_resource_id, storage)
         elif storage.shared_storage_type == SharedStorageType.EFS:
             storage_id = self._add_efs_storage(cfn_resource_id, storage)
+        elif storage.shared_storage_type == SharedStorageType.RAID:
+            storage_id = self._add_raid_volume(cfn_resource_id, storage)
 
         # Store filesystem id
         storage_ids_list = self._storage_resource_ids[storage.shared_storage_type]
@@ -754,29 +747,30 @@ class ClusterCdkStack(core.Stack):
                 )
             checked_availability_zones.append(availability_zone)
 
+    def _add_raid_volume(self, id: str, shared_ebs: SharedEbs):
+        """Add specific Cfn Resources to map the EBS storage."""
+        # TODO: add RAID storage
+        return f"fake_id{id}-{shared_ebs.mount_dir}"
+
     def _add_ebs_volume(self, id: str, shared_ebs: SharedEbs):
         """Add specific Cfn Resources to map the EBS storage."""
-        if shared_ebs.raid:
-            # TODO: add RAID storage
-            ebs_id = ""
-        else:
-            ebs_id = shared_ebs.volume_id
-            if not ebs_id and shared_ebs.mount_dir:
-                ebs_resource = ec2.CfnVolume(
-                    scope=self,
-                    id=id,
-                    availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
-                        self._cluster_config.head_node.networking.subnet_id
-                    ),
-                    encrypted=shared_ebs.encrypted,
-                    iops=shared_ebs.iops,
-                    throughput=shared_ebs.throughput,
-                    kms_key_id=shared_ebs.kms_key_id,
-                    size=shared_ebs.size,
-                    snapshot_id=shared_ebs.snapshot_id,
-                    volume_type=shared_ebs.volume_type,
-                )
-                ebs_id = ebs_resource.ref
+        ebs_id = shared_ebs.volume_id
+        if not ebs_id and shared_ebs.mount_dir:
+            ebs_resource = ec2.CfnVolume(
+                scope=self,
+                id=id,
+                availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
+                    self._cluster_config.head_node.networking.subnet_id
+                ),
+                encrypted=shared_ebs.encrypted,
+                iops=shared_ebs.iops,
+                throughput=shared_ebs.throughput,
+                kms_key_id=shared_ebs.kms_key_id,
+                size=shared_ebs.size,
+                snapshot_id=shared_ebs.snapshot_id,
+                volume_type=shared_ebs.volume_type,
+            )
+            ebs_id = ebs_resource.ref
 
         return ebs_id
 
@@ -865,8 +859,7 @@ class ClusterCdkStack(core.Stack):
                                 value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
                                     efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
                                     multiebs=len(self._storage_resource_ids[SharedStorageType.EBS]),
-                                    # TODO: shall we add a EBS_RAID StorageType?
-                                    raid=self._raids_count(),
+                                    raid=len(self._storage_resource_ids[SharedStorageType.RAID]),
                                     fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
                                 ),
                             ),
