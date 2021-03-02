@@ -27,7 +27,7 @@ HeadNode:
     AllowedIps: 1.2.3.4/32  # 1.2.3.4/32
   Storage:
     RootVolume:
-      Size: 27  # 25
+      Size: 37  # 35
       Encrypted: true  # true
       KmsKeyId: String
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
@@ -46,7 +46,7 @@ Scheduling:
       - Name: String  # queue
         Storage:
           RootVolume:
-            Size: 28  # 25
+            Size: 38  # 35
             Encrypted: true  # true
             KmsKeyId: String
             VolumeType: sc1  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard

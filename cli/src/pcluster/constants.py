@@ -13,18 +13,25 @@ PCLUSTER_STACK_PREFIX = "parallelcluster-"
 PCLUSTER_NAME_MAX_LENGTH = 60
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
+
 CIDR_ALL_IPS = "0.0.0.0/0"
+
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SUPPORTED_OSES = ["alinux2", "centos7", "centos8", "ubuntu1804"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {"x86_64": SUPPORTED_OSES, "arm64": ["alinux2", "ubuntu1804", "centos8"]}
+
 FSX_SSD_THROUGHPUT = [50, 100, 200]
 FSX_HDD_THROUGHPUT = [12, 40]
+
 EBS_VOLUME_TYPE_IOPS_DEFAULT = {
     "io1": 100,
     "io2": 100,
     "gp3": 3000,
 }
+EBS_VOLUME_SIZE_DEFAULT = 35
+EBS_VOLUME_TYPE_DEFAULT = "gp2"
+
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0

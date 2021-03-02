@@ -97,7 +97,7 @@ Scheduling:
       - Name: queue2
         Storage:
           RootVolume:
-            Size:  25
+            Size:  35
             Encrypted:  true
             KmsKeyId: String
             VolumeType: gp2

@@ -19,7 +19,14 @@ from typing import List
 import pkg_resources
 
 from common.aws.aws_api import AWSApi
-from pcluster.constants import CIDR_ALL_IPS, DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, EBS_VOLUME_TYPE_IOPS_DEFAULT
+from pcluster.constants import (
+    CIDR_ALL_IPS,
+    DEFAULT_MAX_COUNT,
+    DEFAULT_MIN_COUNT,
+    EBS_VOLUME_SIZE_DEFAULT,
+    EBS_VOLUME_TYPE_DEFAULT,
+    EBS_VOLUME_TYPE_IOPS_DEFAULT,
+)
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import (
     delete_s3_artifacts,
@@ -106,9 +113,9 @@ class Ebs(Resource):
         throughput: int = None,
     ):
         super().__init__()
-        self.volume_type = Resource.init_param(volume_type, default="gp2")
+        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
-        self.size = Resource.init_param(size, default=20)
+        self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
