@@ -85,6 +85,13 @@ class ClusterCdkStack(core.Stack):
             "alinux2": {"User": "ec2-user", "RootDevice": "/dev/xvda"},
             "ubuntu1804": {"User": "ubuntu", "RootDevice": "/dev/sda1"},
         }
+        self.packages_versions = {
+            "parallelcluster": "2.10.1",
+            "cookbook": "aws-parallelcluster-cookbook-2.10.1",
+            "chef": "15.11.8",
+            "berkshelf": "7.0.10",
+            "ami": "dev",
+        }
 
         # Storage filesystem Ids
         self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorageType}
@@ -102,6 +109,13 @@ class ClusterCdkStack(core.Stack):
 
     def _cluster_name(self):
         return Fn.select(1, Fn.split("parallelcluster-", self.stack_name))
+
+    def _custom_chef_cookbook(self):
+        return (
+            self._cluster_config.dev_settings.cookbook
+            if self._cluster_config.dev_settings and self._cluster_config.dev_settings.cookbook
+            else "NONE"
+        )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
     def _add_resources(self):
@@ -884,6 +898,17 @@ class ClusterCdkStack(core.Stack):
                             "AptProxy": self._cluster_config.head_node.networking.proxy
                             if self._cluster_config.head_node.networking.proxy
                             else "false",
+                            "ProxyServer": self._cluster_config.head_node.networking.proxy
+                            if self._cluster_config.head_node.networking.proxy
+                            else "NONE",
+                            "CustomChefCookbook": self._custom_chef_cookbook(),
+                            "ParallelClusterVersion": self.packages_versions["parallelcluster"],
+                            "CookbookVersion": self.packages_versions["cookbook"],
+                            "ChefVersion": self.packages_versions["chef"],
+                            "BerkshelfVersion": self.packages_versions["berkshelf"],
+                            "IamRoleName": self.root_iam_role.ref
+                            if self._condition_create_ec2_iam_role()
+                            else self._cluster_config.head_node.iam.roles.instance_role,
                         },
                     )
                 ),

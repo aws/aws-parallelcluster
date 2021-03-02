@@ -88,7 +88,7 @@ function bootstrap_instance
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 custom_cookbook=${CustomChefCookbook}
 export _region=${AWS::Region}
-s3_url=${AWSDomain}
+s3_url=${AWS::URLSuffix}
 if [ "${!custom_cookbook}" != "NONE" ]; then
   if [[ "${!custom_cookbook}" =~ ^s3:// ]]; then
     cookbook_url=$(aws s3 presign "${!custom_cookbook}" --region "${!_region}")
