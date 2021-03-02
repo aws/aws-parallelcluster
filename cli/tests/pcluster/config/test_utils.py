@@ -14,7 +14,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.utils import get_default_instance_type
-from tests.common import MockedBoto3Request
+from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()

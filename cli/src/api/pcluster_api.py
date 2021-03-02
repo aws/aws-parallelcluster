@@ -17,7 +17,7 @@ from packaging import version
 from common.aws.aws_api import AWSApi
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, get_region
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class ClusterInfo:
         self.stack_arn = stack.id
         self.stack_name = stack.name
         self.stack_status = stack.status
-        self.region = stack.region
+        self.region = get_region()
         self.version = stack.version
 
     def __repr__(self):

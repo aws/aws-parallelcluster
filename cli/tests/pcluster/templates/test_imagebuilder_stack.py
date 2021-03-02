@@ -14,8 +14,8 @@ from assertpy import assert_that
 
 import pcluster.utils as utils
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from tests.common.dummy_aws_api import DummyAWSApi
 
-from ..boto3.dummy_boto3 import DummyAWSApi
 from ..models.imagebuilder_dummy_model import imagebuilder_factory
 
 

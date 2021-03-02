@@ -13,7 +13,7 @@ import pytest
 
 from common.boto3.common import AWSClientError
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator, InstanceTypeValidator
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.validators.utils import assert_failure_messages
 
 

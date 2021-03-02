@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.utils import get_region
 
 
 class StackInfo:
@@ -21,7 +20,6 @@ class StackInfo:
         If the stack doesn't exist it raises an exception.
         """
         self._stack_data = stack_data
-        self.region = get_region()
         self._params = self._stack_data.get("Parameters", [])
         self._tags = self._stack_data.get("Tags", [])
         self.outputs = self._stack_data.get("Outputs", [])

@@ -12,7 +12,7 @@
 import pytest
 
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.validators.utils import assert_failure_messages
 
 

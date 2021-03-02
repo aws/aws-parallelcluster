@@ -15,6 +15,7 @@
 import copy
 import logging
 import time
+from enum import Enum
 
 import pkg_resources
 import yaml
@@ -28,7 +29,6 @@ from pcluster.models.cluster_config import ClusterBucket, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import (
-    NodeType,
     check_s3_bucket_exists,
     create_s3_bucket,
     generate_random_name_with_prefix,
@@ -39,6 +39,16 @@ from pcluster.utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+class NodeType(Enum):
+    """Enum that identifies the cluster node type."""
+
+    HEAD_NODE = "Master"  # FIXME HeadNode
+    COMPUTE = "Compute"
+
+    def __str__(self):
+        return str(self.value)
 
 
 class ClusterActionError(Exception):
@@ -384,7 +394,7 @@ class Cluster:
     def _terminate_nodes(self):
         try:
             LOGGER.info("\nChecking if there are running compute nodes that require termination...")
-            filters = self._get_instance_filters(node_type=NodeType.compute)
+            filters = self._get_instance_filters(node_type=NodeType.COMPUTE)
             instances = AWSApi.instance().ec2.list_instance_ids(filters)
 
             for instance_ids in grouper(instances, 100):
@@ -399,13 +409,13 @@ class Cluster:
     @property
     def compute_instances(self):
         """Get compute instances."""
-        return self._describe_instances(node_type=NodeType.compute)
+        return self._describe_instances(node_type=NodeType.COMPUTE)
 
     @property
     def head_node_instance(self):
         """Get head node instance."""
         try:
-            return self._describe_instances(node_type=NodeType.head_node)[0]
+            return self._describe_instances(node_type=NodeType.HEAD_NODE)[0]
         except IndexError:
             raise ClusterActionError("Unable to retrieve head node information.")
 

@@ -14,11 +14,10 @@ import pytest
 from assertpy import assert_that
 
 from common.aws.aws_resources import InstanceInfo
-from pcluster import utils as utils
-from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
+from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack, NodeType
 from pcluster.models.cluster_config import Resource
 from pcluster.validators.common import FailureLevel, Validator
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.test_utils import FAKE_CLUSTER_NAME, FAKE_STACK_NAME
 
 
@@ -158,10 +157,10 @@ def test_nested_resource_validate():
 @pytest.mark.parametrize(
     "node_type, expected_response, expected_instances",
     [
-        (utils.NodeType.head_node, [{}], 1),
-        (utils.NodeType.compute, [{}, {}, {}], 3),
-        (utils.NodeType.compute, [{}, {}], 2),
-        (utils.NodeType.compute, [], 0),
+        (NodeType.HEAD_NODE, [{}], 1),
+        (NodeType.COMPUTE, [{}, {}, {}], 3),
+        (NodeType.COMPUTE, [{}, {}], 2),
+        (NodeType.COMPUTE, [], 0),
     ],
 )
 def test_describe_instances(mocker, node_type, expected_response, expected_instances):
@@ -223,4 +222,4 @@ def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
             _ = cluster.head_node_ip
     else:
         assert_that(cluster.head_node_ip).is_equal_to(expected_ip)
-        describe_cluster_instances_mock.assert_called_with(node_type=utils.NodeType.head_node)
+        describe_cluster_instances_mock.assert_called_with(node_type=NodeType.HEAD_NODE)

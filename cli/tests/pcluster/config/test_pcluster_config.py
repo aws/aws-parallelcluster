@@ -13,8 +13,8 @@ import pytest
 from assertpy import assert_that
 from pytest import fail
 
-from tests.common import MockedBoto3Request
 from tests.pcluster.config.utils import get_mocked_pcluster_config, init_pcluster_config_from_configparser
+from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()

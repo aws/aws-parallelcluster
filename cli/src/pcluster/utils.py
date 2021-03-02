@@ -31,7 +31,6 @@ import sys
 import time
 import urllib.request
 import zipfile
-from enum import Enum
 from io import BytesIO
 from urllib.parse import urlparse
 
@@ -51,18 +50,6 @@ from pcluster.constants import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-STACK_TYPE = "AWS::CloudFormation::Stack"
-
-
-class NodeType(Enum):
-    """Enum that identifies the cluster node type."""
-
-    head_node = "Master"  # FIXME HeadNode
-    compute = "Compute"
-
-    def __str__(self):
-        return str(self.value)
 
 
 def get_stack_name(cluster_name):
@@ -85,28 +72,6 @@ def get_stack_version(stack):
 def default_config_file_path():
     """Return the default path for the ParallelCluster configuration file."""
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
-
-
-def _wait_for_update(stack_name):
-    """Wait for the given stack to be finished updating."""
-    while get_stack(stack_name).get("StackStatus") == "UPDATE_IN_PROGRESS":
-        time.sleep(5)
-
-
-def update_stack_template(stack_name, updated_template, cfn_parameters):
-    """Update stack_name's template to that represented by updated_template."""
-    try:
-        boto3.client("cloudformation").update_stack(
-            StackName=stack_name,
-            TemplateBody=json.dumps(updated_template, indent=2),  # Indent so it looks nice in the console
-            Parameters=cfn_parameters,
-            Capabilities=["CAPABILITY_IAM"],
-        )
-        _wait_for_update(stack_name)
-    except ClientError as client_err:
-        if "no updates are to be performed" in client_err.response.get("Error").get("Message").lower():
-            return  # If updated_template was the same as the stack's current one, consider the update a success
-        raise
 
 
 def get_region():
@@ -638,18 +603,6 @@ def get_stack(stack_name, cfn_client=None, raise_on_error=False):
         )
 
 
-# TODO moved
-def stack_exists(stack_name):
-    """Return a boolean describing whether or not a stack by the given name exists."""
-    try:
-        get_stack(stack_name)
-        return True
-    except SystemExit as sys_exit:
-        if "Stack with id {0} does not exist".format(stack_name) in str(sys_exit):
-            return False
-        raise
-
-
 def get_stack_resources(stack_name):
     """Get the given stack's resources."""
     cfn_client = boto3.client("cloudformation")
@@ -853,28 +806,6 @@ def get_supported_architectures_for_instance_type(instance_type):
 
 def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
-
-
-def retry(func, func_args, attempts=1, wait=0):
-    """
-    Call function and re-execute it if it raises an Exception.
-
-    :param func: the function to execute.
-    :param func_args: the positional arguments of the function.
-    :param attempts: the maximum number of attempts. Default: 1.
-    :param wait: delay between attempts. Default: 0.
-    :returns: the result of the function.
-    """
-    while attempts:
-        try:
-            return func(*func_args)
-        except Exception as e:
-            attempts -= 1
-            if not attempts:
-                raise e
-
-            LOGGER.debug("{0}, retrying in {1} seconds..".format(e, wait))
-            time.sleep(wait)
 
 
 # TODO to be deleted

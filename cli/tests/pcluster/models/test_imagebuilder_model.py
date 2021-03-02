@@ -17,7 +17,7 @@ from assertpy import assert_that
 from common.boto3.common import AWSClientError
 from pcluster.models.imagebuilder import ImageBuilderExtraChefAttributes
 from pcluster.validators.common import FailureLevel
-from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
+from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
 from tests.pcluster.models.test_cluster import _assert_validation_result
 

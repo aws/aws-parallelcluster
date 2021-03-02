@@ -15,8 +15,8 @@ import pytest
 from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
-from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
+from tests.utils import MockedBoto3Request
 
 
 @pytest.mark.parametrize("instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None)])
