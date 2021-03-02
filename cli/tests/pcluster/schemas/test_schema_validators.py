@@ -79,9 +79,8 @@ def test_mount_dir_validator(mount_dir, expected_message):
         ("", "Not a valid integer"),
         ("NONE", "Not a valid integer"),
         ("wrong_value", "Not a valid integer"),
-        (19, "must be at least 25"),
-        (22, "must be at least 25"),
-        (31, None),
+        (19, "must be at least 35"),
+        (36, None),
     ],
 )
 def test_root_volume_size_validator(size, expected_message):

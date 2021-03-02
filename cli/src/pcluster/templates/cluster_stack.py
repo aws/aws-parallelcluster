@@ -12,6 +12,8 @@
 #
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
+import copy
+
 import pkg_resources
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
@@ -45,6 +47,7 @@ from common.aws.aws_api import AWSApi
 from pcluster import utils
 from pcluster.models.cluster_config import (
     ClusterBucket,
+    Ebs,
     SharedEbs,
     SharedEfs,
     SharedFsx,
@@ -802,6 +805,27 @@ class ClusterCdkStack(core.Stack):
         with open(user_data_file_path, "r") as user_data_file:
             head_node_lt_user_data = user_data_file.read()
 
+        if self._cluster_config.head_node.storage and self._cluster_config.head_node.storage.root_volume:
+            root_volume = copy.deepcopy(self._cluster_config.head_node.storage.root_volume)
+        else:
+            root_volume = Ebs()
+
+        block_device_mappings = []
+        for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
+            device_name = "/dev/xvdb{0}".format(device_name_index)
+            virtual_name = "ephemeral{0}".format(virtual_name_index)
+            block_device_mappings.append(
+                ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
+            )
+        block_device_mappings.append(
+            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
+                device_name=self.os_features[self._cluster_config.image.os]["RootDevice"],
+                ebs=ec2.CfnLaunchTemplate.EbsProperty(
+                    volume_size=root_volume.size,
+                    volume_type=root_volume.volume_type,
+                ),
+            )
+        )
         head_node_launch_template = CfnLaunchTemplate(
             scope=self,
             id="HeadNodeServerLaunchTemplate",
@@ -812,7 +836,7 @@ class ClusterCdkStack(core.Stack):
                 )
                 if self._cluster_config.head_node.pass_cpu_options_in_launch_template
                 else None,
-                # block_device_mappings="",  # TODO: Implement this!
+                block_device_mappings=block_device_mappings,
                 key_name=self._cluster_config.head_node.ssh.key_name,
                 tag_specifications=[
                     CfnLaunchTemplate.TagSpecificationProperty(

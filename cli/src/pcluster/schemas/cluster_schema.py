@@ -19,7 +19,7 @@ import re
 
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
-from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
+from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.models.cluster_config import (
     AdditionalIamPolicy,
     AdditionalPackages,
@@ -90,9 +90,11 @@ class RootVolumeSchema(_BaseEbsSchema):
 
     @validates("size")
     def validate_size(self, value):
-        """Validate the size of root volume is at least 25."""
-        if value < 25:
-            raise ValidationError(f"Root volume size {value} is invalid. It must be at least 25.")
+        """Validate the size of root volume."""
+        if value < EBS_VOLUME_SIZE_DEFAULT:
+            raise ValidationError(
+                f"Root volume size {value} is invalid. It must be at least {EBS_VOLUME_SIZE_DEFAULT}."
+            )
 
 
 class RaidSchema(BaseSchema):
