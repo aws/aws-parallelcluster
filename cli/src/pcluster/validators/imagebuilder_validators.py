@@ -21,7 +21,7 @@ class AMIVolumeSizeValidator(Validator):
         """Validate the volume size is larger than base ami volume size."""
         ami_id = imagebuilder_utils.get_ami_id(image)
         ami_info = AWSApi.instance().ec2.describe_image(ami_id)
-        min_volume_size = ami_info.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
+        min_volume_size = ami_info.volume_size
         if volume_size < min_volume_size:
             self._add_failure(
                 "Root volume size {0} GB is less than the minimum required size {1} GB that equals parent ami "

@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import List
 
-from common.aws.aws_resources import InstanceTypeInfo
+from common.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client, ImageNotFoundError
 from pcluster import utils
 from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, SUPPORTED_ARCHITECTURES
@@ -86,7 +86,7 @@ class Ec2Client(Boto3Client):
         """Return a dict of ami info."""
         result = self._client.describe_images(ImageIds=[ami_id])
         if result.get("Images"):
-            return result.get("Images")[0]
+            return ImageInfo(result.get("Images")[0])
         raise AWSClientError(function_name="describe_images", message=f"Image {ami_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
@@ -94,7 +94,7 @@ class Ec2Client(Boto3Client):
         """Return a list of dict of ami info."""
         result = self._client.describe_images(ImageIds=ami_ids, Filters=filters, Owners=owners)
         if result.get("Images"):
-            return result.get("Images")
+            return [ImageInfo(image) for image in result.get("Images")]
         raise ImageNotFoundError(function_name="describe_images")
 
     def image_exists(self, image_name):
@@ -111,6 +111,17 @@ class Ec2Client(Boto3Client):
         filters = [{"Name": "tag:" + PCLUSTER_IMAGE_NAME_TAG, "Values": [image_name]}]
         owners = ["self"]
         return self.describe_images(ami_ids=[], filters=filters, owners=owners)[0]
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_instance_ids_by_ami_id(self, image_id):
+        """Get instance ids by ami id."""
+        return [
+            instance.get("InstanceId")
+            for result in self._paginate_results(
+                self._client.describe_instances, Filters=[{"Name": "image-id", "Values": [image_id]}]
+            )
+            for instance in result.get("Instances")
+        ]
 
     @AWSExceptionHandler.handle_client_exception
     def describe_key_pair(self, key_name):
@@ -262,3 +273,13 @@ class Ec2Client(Boto3Client):
                 offering["Location"] for offering in offerings if offering["InstanceType"] == instance_type
             )
         return result
+
+    @AWSExceptionHandler.handle_client_exception
+    def deregister_image(self, image_id):
+        """Deregister ami."""
+        self._client.deregister_image(ImageId=image_id)
+
+    @AWSExceptionHandler.handle_client_exception
+    def delete_snapshot(self, snapshot_id: str):
+        """Delete snapshot."""
+        self._client.delete_snapshot(SnapshotId=snapshot_id)

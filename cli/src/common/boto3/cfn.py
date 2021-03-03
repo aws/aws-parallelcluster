@@ -10,7 +10,7 @@
 # limitations under the License.
 import json
 
-from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
+from common.boto3.common import AWSExceptionHandler, Boto3Client, StackNotFoundError
 from pcluster.constants import PCLUSTER_STACK_PREFIX
 
 
@@ -76,17 +76,20 @@ class CfnClient(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def describe_stack(self, stack_name: str):
         """Get information for the given stack."""
-        return self._client.describe_stacks(StackName=stack_name).get("Stacks")[0]
+        try:
+            return self._client.describe_stacks(StackName=stack_name).get("Stacks")[0]
+        except Exception as e:
+            if f"Stack with id {stack_name} does not exist" in str(e):
+                raise StackNotFoundError(function_name="describe_stack", stack_name=stack_name)
+            raise
 
     def stack_exists(self, stack_name: str):
         """Return a boolean describing whether or not a stack by the given name exists."""
         try:
             self.describe_stack(stack_name)
             return True
-        except AWSClientError as e:
-            if f"Stack with id {stack_name} does not exist" in str(e):
-                return False
-            raise e
+        except StackNotFoundError:
+            return False
 
     @AWSExceptionHandler.handle_client_exception
     def get_stack_template(self, stack_name: str):
@@ -105,4 +108,4 @@ class CfnClient(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
         """Get stack resource information."""
-        self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
+        return self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)

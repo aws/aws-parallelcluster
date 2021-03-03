@@ -32,7 +32,7 @@ from common.imagebuilder_utils import (
     InstanceRole,
 )
 from common.utils import get_url_scheme, load_yaml, parse_bucket_url
-from pcluster.constants import PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG
+from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG
 from pcluster.models.common import BaseTag, S3Bucket, S3FileType
 from pcluster.models.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
@@ -76,7 +76,7 @@ class ImageBuilderCdkStack(Stack):
     def _get_root_device_name(self):
         ami_id = imagebuilder_utils.get_ami_id(self.config.build.parent_image)
         ami_info = AWSApi.instance().ec2.describe_image(ami_id)
-        return ami_info.get("BlockDeviceMappings")[0].get("DeviceName")
+        return ami_info.device_name
 
     def _stack_unique_id(self):
         return Fn.select(2, Fn.split("/", self.stack_id))
@@ -133,7 +133,7 @@ class ImageBuilderCdkStack(Stack):
     def _add_resources(self):
         # Add default build tags information
         tags = copy.deepcopy(self.config.build.tags) or []
-        tags.append(BaseTag(key="pcluster_build_image", value=utils.get_installed_version()))
+        tags.append(BaseTag(key=PCLUSTER_IMAGE_NAME_TAG, value=self.image_name))
         build_tags_map = {tag.key: tag.value for tag in tags}
         build_tags_list = [CfnTag(key=tag.key, value=tag.value) for tag in tags]
 
@@ -142,6 +142,7 @@ class ImageBuilderCdkStack(Stack):
         tags.append(BaseTag(key="pcluster_version", value=utils.get_installed_version()))
         tags.append(BaseTag(key=PCLUSTER_S3_BUCKET_TAG, value=self.bucket.name))
         tags.append(BaseTag(key=PCLUSTER_S3_IMAGE_DIR_TAG, value=self.bucket.artifact_directory))
+        tags.append(BaseTag(key=PCLUSTER_IMAGE_NAME_TAG, value=self.image_name))
         ami_tags = {tag.key: tag.value for tag in tags}
 
         lambda_cleanup_policy_statements = []
@@ -724,9 +725,7 @@ class ImageBuilderCdkStack(Stack):
         ):
             ami_id = imagebuilder_utils.get_ami_id(self.config.build.parent_image)
             ami_info = AWSApi.instance().ec2.describe_image(ami_id)
-            default_root_volume_size = (
-                ami_info.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + PCLUSTER_RESERVED_VOLUME_SIZE
-            )
+            default_root_volume_size = ami_info.volume_size + PCLUSTER_RESERVED_VOLUME_SIZE
             if self.config.image is None or self.config.image.root_volume is None:
                 default_root_volume = Volume(size=default_root_volume_size)
             else:

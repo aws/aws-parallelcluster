@@ -23,7 +23,7 @@ import yaml
 from marshmallow import ValidationError
 
 from common.aws.aws_api import AWSApi
-from common.boto3.common import AWSClientError
+from common.boto3.common import AWSClientError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import PCLUSTER_STACK_PREFIX
@@ -103,9 +103,9 @@ class Cluster:
         if not self.__stack:
             try:
                 self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
+            except StackNotFoundError:
+                raise ClusterActionError(f"Cluster {self.name} doesn't exist.")
             except AWSClientError as e:
-                if f"Stack with id {self.stack_name} does not exist" in str(e):
-                    raise ClusterActionError(f"Cluster {self.name} doesn't exist.")
                 raise ClusterActionError(f"Unable to find cluster {self.name}. {e}")
         return self.__stack
 

@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 
-from pcluster.constants import SUPPORTED_ARCHITECTURES
+from pcluster.constants import PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG, SUPPORTED_ARCHITECTURES
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class StackInfo:
         """
         self._stack_data = stack_data
         self._params = self._stack_data.get("Parameters", [])
-        self._tags = self._stack_data.get("Tags", [])
+        self.tags = self._stack_data.get("Tags", [])
         self.outputs = self._stack_data.get("Outputs", [])
 
     @property
@@ -45,12 +45,17 @@ class StackInfo:
         return self._stack_data.get("StackStatus")
 
     @property
+    def creation_time(self):
+        """Return creation time of the stack."""
+        return str(self._stack_data.get("CreationTime"))
+
+    @property
     def is_working_status(self):
         """Return true if the stack is in a working status."""
         return self.status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
 
     def _get_tag(self, tag_key: str):
-        return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)
+        return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)
 
     def _get_output(self, output_key: str):
         return next((out["OutputValue"] for out in self.outputs if out["OutputKey"] == output_key), None)
@@ -222,3 +227,81 @@ class FsxFileSystemInfo:
     def dns_name(self):
         """Return DNSName of the filesystem."""
         return self.file_system_data.get("DNSName")
+
+
+class ImageInfo:
+    """Object to store Image information, initialized with the describe image."""
+
+    def __init__(self, image_data: dict):
+        self._image_data = image_data
+
+    @property
+    def name(self) -> str:
+        """Return image name."""
+        return self._image_data.get("Name")
+
+    @property
+    def id(self) -> str:
+        """Return image id."""
+        return self._image_data.get("ImageId")
+
+    @property
+    def description(self) -> str:
+        """Return image description."""
+        return self._image_data.get("Description")
+
+    @property
+    def state(self) -> str:
+        """Return image state."""
+        return self._image_data.get("State")
+
+    @property
+    def architecture(self) -> str:
+        """Return image supports architecture."""
+        return self._image_data.get("Architecture")
+
+    @property
+    def tags(self) -> list:
+        """Return image tags."""
+        return self._image_data.get("Tags")
+
+    @property
+    def block_device_mappings(self) -> list:
+        """Return device block mappings."""
+        return self._image_data.get("BlockDeviceMappings")
+
+    @property
+    def snapshot_ids(self) -> list:
+        """Return snapshot ids."""
+        snapshot_ids = []
+        for block_device_mapping in self.block_device_mappings:
+            snapshot_ids.append(block_device_mapping.get("Ebs").get("SnapshotId"))
+        return snapshot_ids
+
+    @property
+    def volume_size(self) -> int:
+        """Return root volume size."""
+        return self.block_device_mappings[0].get("Ebs").get("VolumeSize")
+
+    @property
+    def device_name(self) -> str:
+        """Return root volume device name."""
+        return self.block_device_mappings[0].get("DeviceName")
+
+    @property
+    def s3_bucket_name(self) -> str:
+        """Return the name of the bucket used to store image information."""
+        return self._get_tag(PCLUSTER_S3_BUCKET_TAG)
+
+    @property
+    def s3_artifact_directory(self) -> str:
+        """Return the artifact directory of the bucket used to store image information."""
+        return self._get_tag(PCLUSTER_S3_IMAGE_DIR_TAG)
+
+    @property
+    def creation_date(self) -> str:
+        """Return image creation date."""
+        return self._image_data.get("CreationDate")
+
+    def _get_tag(self, tag_key: str):
+        return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)

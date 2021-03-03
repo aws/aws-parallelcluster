@@ -81,6 +81,14 @@ def build_image(args):
     pcluster.build_image(args)
 
 
+def delete_image(args):
+    pcluster.delete_image(args)
+
+
+def describe_image(args):
+    pcluster.describe_image(args)
+
+
 def config_logger():
     logger = logging.getLogger("pcluster")
     file_only_logger = logging.getLogger("cli_log_file")
@@ -291,11 +299,11 @@ Returns an ssh command with the cluster username and IP address pre-populated::
     pssh.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
     pssh.set_defaults(func=ssh)
 
-    # createami command subparser
+    # build image command subparser
     pami = subparsers.add_parser("build-image", help="Creates a custom AMI to use with AWS ParallelCluster.")
     pami.add_argument(
-        "-i",
-        "--image-name",
+        "-n",
+        "--name",
         dest="image_name",
         required=True,
         help="Specifies the image name to use for building the AWS ParallelCluster AMI.",
@@ -303,6 +311,33 @@ Returns an ssh command with the cluster username and IP address pre-populated::
     _addarg_config(pami)
     _addarg_region(pami)
     pami.set_defaults(func=build_image)
+
+    # delete image command subparser
+    pdeleteami = subparsers.add_parser(
+        "delete-image",
+        help="Deletes an image and related image builder stack.",
+        epilog="When the command is called and it begins polling for the status of that call "
+        'it is safe to "Ctrl-C" out.',
+    )
+    pdeleteami.add_argument(
+        "-n", "--name", dest="image_name", required=True, help="Name of the AWS ParallelCluster AMI to delete."
+    )
+    pdeleteami.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force EC2 AMI deletion even if AMI is shared or instance is using it.",
+    )
+    _addarg_region(pdeleteami)
+    pdeleteami.set_defaults(func=delete_image)
+
+    # describe image command subparser
+    pdescribeami = subparsers.add_parser("describe-image", help="Describes the specified ParallelCluster image.")
+    pdescribeami.add_argument(
+        "-n", "--name", dest="image_name", required=True, help="Name of the AWS ParallelCluster AMI to describe."
+    )
+    _addarg_region(pdescribeami)
+    pdescribeami.set_defaults(func=describe_image)
 
     # configure command subparser
     pconfigure = subparsers.add_parser("configure", help="Start the AWS ParallelCluster configuration.")

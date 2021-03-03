@@ -34,6 +34,13 @@ class ImageNotFoundError(AWSClientError):
         super().__init__(function_name=function_name, message="No image matching the search criteria found")
 
 
+class StackNotFoundError(AWSClientError):
+    """Error during describe stack if stack is not found."""
+
+    def __init__(self, function_name: str, stack_name: str):
+        super().__init__(function_name=function_name, message=f"Stack with id {stack_name} does not exist")
+
+
 class AWSExceptionHandler:
     """AWS Exception handler."""
 
