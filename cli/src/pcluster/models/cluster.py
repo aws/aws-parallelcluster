@@ -25,7 +25,7 @@ from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import InstanceInfo, StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
-from pcluster.constants import PCLUSTER_STACK_PREFIX
+from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_config import ClusterBucket, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -179,8 +179,7 @@ class ClusterStack(StackInfo):
 
     def get_default_user(self, os: str):
         """Get the default user for the given os."""
-        mappings = self.template.get("Mappings").get("OSFeatures")  # FIXME double check
-        return mappings[os]["User"]
+        return OS_MAPPING.get(os, []).get("user", None)
 
     @property
     def batch_compute_environment(self):
