@@ -100,6 +100,7 @@ from pcluster.config.validators import (
     maintain_initial_size_validator,
     queue_settings_validator,
     queue_validator,
+    region_validator,
     s3_bucket_uri_validator,
     s3_bucket_validator,
     scheduler_validator,
@@ -109,7 +110,7 @@ from pcluster.config.validators import (
 )
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
-CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator]
+CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator, region_validator]
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
 
