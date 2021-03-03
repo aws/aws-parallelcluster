@@ -260,12 +260,7 @@ def create(args):
             if not verified:
                 sys.exit(1)
         else:
-            result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, ClusterInfo):
-                LOGGER.info("Status: %s", result.stack_status)
-            else:
-                utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
-
+            LOGGER.info("Status: %s", result.stack_status)
     else:
         message = "Cluster creation failed. {0}.".format(result.message if result.message else "")
         if result.validation_failures:
