@@ -4,9 +4,6 @@ HeadNode:
   InstanceType: t2.micro  # t2.micro
   Networking:
     SubnetId: subnet-12345678  # subnet-xxx
-  Image:
-    Os: centos8
-    CustomAmi: ami-23456789
   Ssh:
     KeyName: ec2-key-name
     AllowedIps: 1.2.3.4/32
