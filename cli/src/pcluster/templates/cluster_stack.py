@@ -799,7 +799,7 @@ class ClusterCdkStack(core.Stack):
             )
 
         # LT userdata
-        user_data_file_path = pkg_resources.resource_filename(__name__, "../resources/user_data/head_node/head_node.sh")
+        user_data_file_path = pkg_resources.resource_filename(__name__, "../resources/head_node/user_data.sh")
         with open(user_data_file_path, "r") as user_data_file:
             head_node_lt_user_data = user_data_file.read()
 
