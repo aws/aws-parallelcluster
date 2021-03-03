@@ -22,6 +22,13 @@ SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {"x86_64": SUPPORTED_OSES, "arm64": ["alinux2", "ubuntu1804", "centos8"]}
 
+OS_MAPPING = {
+    "centos7": {"user": "centos", "root-device": "/dev/sda1"},
+    "centos8": {"user": "centos", "root-device": "/dev/sda1"},
+    "alinux2": {"user": "ec2-user", "root-device": "/dev/xvda"},
+    "ubuntu1804": {"user": "ubuntu", "root-device": "/dev/sda1"},
+}
+
 FSX_SSD_THROUGHPUT = [50, 100, 200]
 FSX_HDD_THROUGHPUT = [12, 40]
 

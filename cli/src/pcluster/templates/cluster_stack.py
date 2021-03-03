@@ -45,6 +45,7 @@ from aws_cdk.core import CfnCustomResource, CfnOutput, CfnStack, CfnTag, Fn
 
 from common.aws.aws_api import AWSApi
 from pcluster import utils
+from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
     ClusterBucket,
     Ebs,
@@ -55,8 +56,9 @@ from pcluster.models.cluster_config import (
     SlurmClusterConfig,
 )
 
-
 # pylint: disable=too-many-lines
+
+
 class ClusterCdkStack(core.Stack):
     """Create the CloudFormation stack template for the Cluster."""
 
@@ -79,12 +81,6 @@ class ClusterCdkStack(core.Stack):
     # -- Mappings ---------------------------------------------------------------------------------------------------- #
 
     def _init_mappings(self):
-        self.os_features = {
-            "centos7": {"User": "centos", "RootDevice": "/dev/sda1"},
-            "centos8": {"User": "centos", "RootDevice": "/dev/sda1"},
-            "alinux2": {"User": "ec2-user", "RootDevice": "/dev/xvda"},
-            "ubuntu1804": {"User": "ubuntu", "RootDevice": "/dev/sda1"},
-        }
         self.packages_versions = {
             "parallelcluster": "2.10.1",
             "cookbook": "aws-parallelcluster-cookbook-2.10.1",
@@ -820,7 +816,7 @@ class ClusterCdkStack(core.Stack):
             )
         block_device_mappings.append(
             ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
-                device_name=self.os_features[self._cluster_config.image.os]["RootDevice"],
+                device_name=OS_MAPPING[self._cluster_config.image.os]["root-device"],
                 ebs=ec2.CfnLaunchTemplate.EbsProperty(
                     volume_size=root_volume.size,
                     volume_type=root_volume.volume_type,
@@ -997,7 +993,7 @@ class ClusterCdkStack(core.Stack):
             scope=self,
             id="ClusterUser",
             description="Username to login to head node",
-            value=self.os_features[self._cluster_config.image.os]["User"],
+            value=OS_MAPPING[self._cluster_config.image.os]["user"],
         )
 
         # Head Node Private IP
