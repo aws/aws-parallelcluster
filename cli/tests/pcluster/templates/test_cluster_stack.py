@@ -17,10 +17,10 @@ from tests.common.dummy_aws_api import mock_aws_api
 from ..models.cluster_dummy_model import dummy_bucket, dummy_cluster
 
 
-def test_cluster_builder():
+def test_cluster_builder(mocker):
     mock_aws_api()
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_cluster(),
+        cluster_config=dummy_cluster(mocker),
         bucket=dummy_bucket(),
     )
     print(yaml.dump(generated_template))

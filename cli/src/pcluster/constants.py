@@ -35,3 +35,5 @@ EBS_VOLUME_TYPE_DEFAULT = "gp2"
 
 DEFAULT_MAX_COUNT = 10
 DEFAULT_MIN_COUNT = 0
+
+MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1, "raid": 1}

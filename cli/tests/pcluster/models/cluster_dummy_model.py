@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import List
+from unittest.mock import PropertyMock
 
 from pcluster.models.cluster_config import (
     ClusterBucket,
@@ -18,6 +19,7 @@ from pcluster.models.cluster_config import (
     Iam,
     Image,
     QueueNetworking,
+    Raid,
     S3Access,
     SharedEbs,
     SharedEfs,
@@ -55,8 +57,12 @@ def dummy_bucket():
     return ClusterBucket(name="dummy-bucket", artifact_directory="dummy_root_dir", remove_on_deletion=True)
 
 
-def dummy_head_node():
+def dummy_head_node(mocker):
     """Generate dummy head node."""
+    mocker.patch(
+        "pcluster.models.cluster_config.HeadNodeNetworking.availability_zone",
+        new_callable=PropertyMock(return_value="us-east-1a"),
+    )
     head_node_networking = HeadNodeNetworking(subnet_id="dummy-subnet-1")
     head_node_networking.assign_public_ip = True
     head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
@@ -66,10 +72,10 @@ def dummy_head_node():
     return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv)
 
 
-def dummy_cluster():
+def dummy_cluster(mocker):
     """Generate dummy cluster."""
     image = Image(os="alinux2")
-    head_node = dummy_head_node()
+    head_node = dummy_head_node(mocker)
     compute_resources = [SlurmComputeResource(name="test", instance_type="test")]
     queue_networking1 = QueueNetworking(
         subnet_ids=["dummy-subnet-1", "dummy-subnet-2"], security_groups=["sg-1", "sg-2"]
@@ -89,6 +95,7 @@ def dummy_cluster():
     shared_storage.append(dummy_fsx())
     shared_storage.append(dummy_ebs("/ebs1"))
     shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))
+    shared_storage.append(dummy_ebs("/ebs3", raid=Raid(raid_type=1, number_of_volumes=5)))
     shared_storage.append(dummy_efs("/efs1"))
     shared_storage.append(dummy_efs("/efs2", file_system_id="fs-efs-1"))
 
@@ -128,7 +135,7 @@ def dummy_fsx(file_system_id=None, mount_dir="/shared"):
     )
 
 
-def dummy_ebs(mount_dir, volume_id=None):
+def dummy_ebs(mount_dir, volume_id=None, raid=None):
     return SharedEbs(
         mount_dir=mount_dir,
         kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
@@ -136,6 +143,7 @@ def dummy_ebs(mount_dir, volume_id=None):
         volume_type="gp2",
         throughput=300,
         volume_id=volume_id,
+        raid=raid,
     )
 
 
