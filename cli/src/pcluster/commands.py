@@ -559,3 +559,19 @@ def _get_default_template_url(region):
             REGION=region, SUFFIX=".cn" if region.startswith("cn") else "", VERSION=utils.get_installed_version()
         )
     )
+
+
+def build_image(args):
+    """Build AWS ParallelCluster AMI."""
+    LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
+    try:
+        response = PclusterApi().build_image(
+            imagebuilder_config=load_yaml_dict(args.config_file), image_name=args.image_name, region=utils.get_region()
+        )
+        LOGGER.info("Response:")
+        LOGGER.info({"image": response.__repr__()})
+    except Exception as e:
+        utils.error(
+            "Error parsing configuration file {0}.\nDouble check it's a valid Yaml file. "
+            "Error: {1}".format(args.config_file, str(e))
+        )

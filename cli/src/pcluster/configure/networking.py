@@ -168,7 +168,7 @@ def _create_network_stack(configuration, parameters):
     version = pkg_resources.get_distribution("aws-parallelcluster").version
     try:
         cfn_client = boto3.client("cloudformation")
-        stack = cfn_client.create_stack(
+        stack = cfn_client.create_stack_from_url(
             StackName=stack_name,
             TemplateURL=get_templates_bucket_path()
             + "networking/%s-%s.cfn.json" % (configuration.template_name, version),

@@ -10,7 +10,10 @@ CHANGELOG
 - Add `--disable-update-check` parameter for the `create` command.
 - Deprecate `--config` parameter for `delete`, `status`, `start`, `stop`, `instances` and `list` commands.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
-
+- Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 
+  `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
+   `--subnet-id`.
+- Add `--image-name`, `--config`, `--region` to `build-image` command
 
 2.10.1
 ------

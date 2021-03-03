@@ -30,16 +30,20 @@ from common.imagebuilder_utils import (
     InstanceRole,
 )
 from common.utils import get_url_scheme, load_yaml, parse_bucket_url
-from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderExtraChefAttributes, Volume
+from pcluster.models.common import BaseTag
+from pcluster.models.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 
 
 class ImageBuilderCdkStack(core.Stack):
     """Create the Stack for imagebuilder."""
 
-    def __init__(self, scope: core.Construct, construct_id: str, imagebuild: ImageBuilder, **kwargs) -> None:
+    def __init__(
+        self, scope: core.Construct, construct_id: str, imagebuild: ImageBuilderConfig, image_name: str, **kwargs
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.imagebuild = imagebuild
+        image = imagebuild.image
         build = imagebuild.build
         dev_settings = imagebuild.dev_settings
 
@@ -89,8 +93,15 @@ class ImageBuilderCdkStack(core.Stack):
             self._set_default_instance_role()
             self._set_instance_profile()
 
-        build_tags = {tag.key: tag.value for tag in build.tags} if build.tags else None
-        ami_tags = {tag.key: tag.value for tag in self.imagebuild.image.tags} if self.imagebuild.image.tags else None
+        # Add default build tags information
+        tags = copy.deepcopy(build.tags) or []
+        tags.append(BaseTag(key="pcluster_build_image", value=utils.get_installed_version()))
+        build_tags = {tag.key: tag.value for tag in tags}
+
+        # Add default ami tags information
+        tags = copy.deepcopy(image.tags) if image and image.tags else []
+        tags.append(BaseTag(key="pcluster_version", value=utils.get_installed_version()))
+        ami_tags = {tag.key: tag.value for tag in tags}
 
         # InfrastructureConfiguration
         imagebuilder.CfnInfrastructureConfiguration(
@@ -182,7 +193,7 @@ class ImageBuilderCdkStack(core.Stack):
         )
 
         ami_distribution_configuration = {
-            "Name": self._set_ami_name(),
+            "Name": image_name + AMI_NAME_REQUIRED_SUBSTRING,
             "AmiTags": ami_tags,
             "LaunchPermissionConfiguration": dev_settings.distribution_configuration.launch_permission
             if dev_settings and dev_settings.distribution_configuration
@@ -224,9 +235,6 @@ class ImageBuilderCdkStack(core.Stack):
             infrastructure_configuration_arn=core.Fn.ref("ParallelClusterInfrastructureConfiguration"),
             distribution_configuration_arn=core.Fn.ref("ParallelClusterDistributionConfiguration"),
         )
-
-    def _set_ami_name(self):
-        return self.imagebuild.image.name + AMI_NAME_REQUIRED_SUBSTRING
 
     def _get_instance_role_type(self):
         """Get instance role type based on instance_role in config."""
@@ -344,13 +352,13 @@ class ImageBuilderCdkStack(core.Stack):
         image = self.imagebuild.image
         build = self.imagebuild.build
 
-        if image.root_volume is None or image.root_volume.size is None:
+        if image is None or image.root_volume is None or image.root_volume.size is None:
             ami_id = imagebuilder_utils.get_ami_id(build.parent_image)
             ami_info = AWSApi.instance().ec2.describe_image(ami_id)
             default_root_volume_size = (
                 ami_info.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + PCLUSTER_RESERVED_VOLUME_SIZE
             )
-            if image.root_volume is None:
+            if image is None or image.root_volume is None:
                 default_root_volume = Volume(size=default_root_volume_size)
             else:
                 default_root_volume = copy.deepcopy(image.root_volume)

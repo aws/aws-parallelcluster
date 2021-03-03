@@ -25,7 +25,6 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
@@ -155,7 +154,6 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Parallelcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -275,7 +273,7 @@ def test_imagebuilder(mocker, resource, response, expected_template):
         return_value=response,
     )
     dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild, "Pcluster")
     # TODO assert content of the template by matching expected template, re-enable it after refactoring
     _test_parameters(generated_template.get("Parameters"), expected_template.get("Parameters"))
     _test_resources(generated_template.get("Resources"), expected_template.get("Resources"))
@@ -297,7 +295,6 @@ def _test_resources(generated_resouces, expected_resources):
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -362,7 +359,6 @@ def _test_resources(generated_resouces, expected_resources):
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -398,7 +394,6 @@ def _test_resources(generated_resouces, expected_resources):
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -442,7 +437,7 @@ def test_imagebuilder_instance_role(
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
     assert_that(generated_template.get("Resources").get("InstanceRole")).is_equal_to(expected_instance_role)
     assert_that(generated_template.get("Resources").get("InstanceProfile")).is_equal_to(expected_instance_profile)
     assert_that(
@@ -459,7 +454,6 @@ def test_imagebuilder_instance_role(
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -502,7 +496,6 @@ def test_imagebuilder_instance_role(
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -547,7 +540,6 @@ def test_imagebuilder_instance_role(
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -598,7 +590,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
     assert_that(
         generated_template.get("Resources").get("ParallelClusterImageRecipe").get("Properties").get("Components")
     ).is_equal_to(expected_components)
@@ -611,7 +603,6 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
             {
                 "imagebuilder": {
                     "image": {
-                        "name": "my AMI 1",
                         "tags": [
                             {
                                 "key": "keyTag1",
@@ -643,7 +634,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
             [
                 {
                     "AmiDistributionConfiguration": {
-                        "Name": "my AMI 1 {{ imagebuilder:buildDate }}",
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "keyTag1": "valueTag1",
                             "keyTag2": "valueTag2",
@@ -657,7 +648,6 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "my AMI 2"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -678,7 +668,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
             [
                 {
                     "AmiDistributionConfiguration": {
-                        "Name": "my AMI 2 {{ imagebuilder:buildDate }}",
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {"pcluster_version": utils.get_installed_version()},
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
@@ -689,7 +679,6 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
             {
                 "imagebuilder": {
                     "image": {
-                        "name": "my AMI 1",
                         "tags": [],
                     },
                     "build": {
@@ -712,7 +701,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
             [
                 {
                     "AmiDistributionConfiguration": {
-                        "Name": "my AMI 1 {{ imagebuilder:buildDate }}",
+                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {"pcluster_version": utils.get_installed_version()},
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
@@ -729,7 +718,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
     assert_that(
         generated_template.get("Resources")
         .get("ParallelClusterDistributionConfiguration")
@@ -744,9 +733,6 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
         (
             {
                 "imagebuilder": {
-                    "image": {
-                        "name": "my AMI 1",
-                    },
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
@@ -778,10 +764,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     }
                 ],
             },
-            {
-                "keyTag1": "valueTag1",
-                "keyTag2": "valueTag2",
-            },
+            {"keyTag1": "valueTag1", "keyTag2": "valueTag2", "pcluster_build_image": utils.get_installed_version()},
             [
                 {
                     "Key": "keyTag1",
@@ -796,7 +779,6 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "my AMI 2"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -814,15 +796,12 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     }
                 ],
             },
-            None,
+            {"pcluster_build_image": utils.get_installed_version()},
             None,
         ),
         (
             {
                 "imagebuilder": {
-                    "image": {
-                        "name": "my AMI 1",
-                    },
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
@@ -841,7 +820,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     }
                 ],
             },
-            None,
+            {"pcluster_build_image": utils.get_installed_version()},
             None,
         ),
     ],
@@ -854,8 +833,7 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
-
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
     for resource_name, resource in generated_template.get("Resources").items():
         if resource_name == "InstanceProfile":
             # InstanceProfile has no tags
@@ -872,9 +850,6 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         (
             {
                 "imagebuilder": {
-                    "image": {
-                        "name": "my AMI 1",
-                    },
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
@@ -897,7 +872,6 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "my AMI 2"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -928,7 +902,7 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
 
     assert_that(
         generated_template.get("Resources")
@@ -944,9 +918,6 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
         (
             {
                 "imagebuilder": {
-                    "image": {
-                        "name": "my AMI 1",
-                    },
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
@@ -969,7 +940,6 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "my AMI 2"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -1000,7 +970,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
 
     assert_that(
         generated_template.get("Resources")
@@ -1016,7 +986,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
@@ -1048,7 +1017,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -1084,7 +1052,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -1120,7 +1087,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -1157,7 +1123,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -1199,7 +1164,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -1241,7 +1205,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -1298,7 +1261,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
         return_value=response,
     )
     dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild, "Pcluster")
 
     assert_that(
         generated_template.get("Resources")

@@ -15,7 +15,7 @@ import pytest
 from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
-from pcluster.models.imagebuilder import ImageBuilderExtraChefAttributes
+from pcluster.models.imagebuilder_config import ImageBuilderExtraChefAttributes
 from pcluster.validators.common import FailureLevel
 from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
@@ -29,7 +29,6 @@ from tests.pcluster.models.test_cluster import _assert_validation_result
             {
                 "imagebuilder": {
                     "image": {
-                        "name": "Pcluster",
                         "root_volume": {"size": 25, "kms_key_id": "key_id"},
                         "tags": [
                             {"key": "name", "value": "pcluster"},
@@ -64,10 +63,10 @@ from tests.pcluster.models.test_cluster import _assert_validation_result
         )
     ],
 )
-def test_imagebuilder_ebs_volume_kms_key_id_validator_and_ami_volume_size_validator(
+def test_imagebuilder_kms_key_id_encrypted_validator_and_ami_volume_size_validator(
     mocker, resource, ami_response, ami_side_effect, expected_failure_messages, expected_failure_levels
 ):
-    """Test EBSVolumeKmsKeyIdValidator and AMIVolumeSizeValidator."""
+    """Test KmsKeyIdEncryptedValidator and AMIVolumeSizeValidator."""
     fake_instance_response = ["c5.xlarge", "m6g.xlarge"]
     fake_supported_architecture = ["x86_64"]
     _test_imagebuilder(

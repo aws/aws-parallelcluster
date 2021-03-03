@@ -12,188 +12,191 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
+import copy
+import json
+import logging
+import re
 
-from typing import List
+from common.aws.aws_api import AWSApi
+from common.aws.aws_resources import StackInfo
+from common.boto3.common import AWSClientError
+from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
+from pcluster.models.common import BaseTag
+from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
+from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.utils import get_installed_version
 
-from common.imagebuilder_utils import ROOT_VOLUME_TYPE
-from pcluster import utils
-from pcluster.models.common import BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
-from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
-from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
-from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
-from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
+ImageBuilderStatusMapping = {
+    "BUILD_IN_PROGRESS": [
+        "CREATE_IN_PROGRESS",
+        "ROLLBACK_IN_PROGRESS",
+        "UPDATE_IN_PROGRESS",
+        "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
+        "UPDATE_ROLLBACK_IN_PROGRESS",
+        "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS",
+        "REVIEW_IN_PROGRESS",
+        "IMPORT_IN_PROGRESS",
+        "IMPORT_ROLLBACK_IN_PROGRESS",
+    ],
+    "BUILD_FAILED": [
+        "CREATE_FAILED",
+        "ROLLBACK_FAILED",
+        "ROLLBACK_COMPLETE",
+        "UPDATE_ROLLBACK_FAILED",
+        "UPDATE_ROLLBACK_COMPLETE",
+        "IMPORT_ROLLBACK_FAILED",
+        "IMPORT_ROLLBACK_COMPLETE",
+    ],
+    "BUILD_COMPLETE": ["CREATE_COMPLETE", "UPDATE_COMPLETE", "IMPORT_COMPLETE"],
+    "DELETE_IN_PROGRESS": ["DELETE_IN_PROGRESS"],
+    "DELETE_FAILED": ["DELETE_FAILED"],
+    "DELETE_COMPLETE": ["DELETE_COMPLETE"],
+}
 
-# ---------------------- Image ---------------------- #
-
-
-class Volume(Resource):
-    """Represent the volume configuration for the ImageBuilder."""
-
-    def __init__(self, size: int = None, encrypted: bool = None, kms_key_id: str = None):
-        super().__init__()
-        self.size = Resource.init_param(size)
-        self.encrypted = Resource.init_param(encrypted, default=False)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-        # TODO: add validator
-
-    def _validate(self):
-        self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-
-
-class Image(Resource):
-    """Represent the image configuration for the ImageBuilder."""
-
-    def __init__(
-        self,
-        name: str,
-        tags: List[BaseTag] = None,
-        root_volume: Volume = None,
-    ):
-        super().__init__()
-        self.name = Resource.init_param(name)
-        self.tags = tags
-        self.root_volume = root_volume
-        self._set_default()
-        # TODO: add validator
-
-    def _set_default(self):
-        if self.tags is None:
-            self.tags = []
-        default_tag = BaseTag("pcluster_version", utils.get_installed_version())
-        default_tag.implied = True
-        self.tags.append(default_tag)
+LOGGER = logging.getLogger(__name__)
 
 
-# ---------------------- Build ---------------------- #
+class ImageBuilderActionError(Exception):
+    """Represent an error during the execution of an action on the imagebuilder."""
+
+    def __init__(self, message: str, validation_failures: list = None):
+        super().__init__(message)
+        self.validation_failures = validation_failures or []
 
 
-class Component(Resource):
-    """Represent the components configuration for the ImageBuilder."""
+class ImageBuilderStack(StackInfo):
+    """Class representing a running stack associated to a building image."""
 
-    def __init__(self, type: str, value: str):
-        super().__init__()
-        self.type = Resource.init_param(type)
-        self.value = Resource.init_param(value)
-        # TODO: add validator
+    def __init__(self, stack_data: dict):
+        """Init stack info."""
+        super().__init__(stack_data)
+        try:
+            self._image_resource = AWSApi.instance().cfn.describe_stack_resource(self.name, "ParallelClusterImage")
+        except AWSClientError:
+            self._image_resource = None
 
+    @property
+    def version(self):
+        """Return the version of ParallelCluster used to create the stack."""
+        return self._get_tag("pcluster_version")
 
-class DistributionConfiguration(Resource):
-    """Represent the distribution configuration for the ImageBuilder."""
+    @property
+    def image_id(self):
+        """Return output image id."""
+        if self._image_resource:
+            try:
+                image_build_version_arn = self._image_resource.get("StackResourceDetail").get("PhysicalResourceId")
+                return AWSApi.instance().imagebuilder.get_image_id(image_build_version_arn)
+            except (AWSClientError, KeyError):
+                return None
+        return None
 
-    def __init__(self, regions: str, launch_permission: str = None):
-        super().__init__()
-        self.regions = Resource.init_param(regions)
-        self.launch_permission = Resource.init_param(launch_permission)
-
-
-class Build(Resource):
-    """Represent the build configuration for the ImageBuilder."""
-
-    def __init__(
-        self,
-        instance_type: str,
-        parent_image: str,
-        instance_role: str = None,  # TODO: auto generate if not assigned
-        subnet_id: str = None,  # TODO: auto generate if not assigned
-        tags: List[BaseTag] = None,
-        security_group_ids: List[str] = None,
-        components: List[Component] = None,
-    ):
-        super().__init__()
-        self.instance_type = Resource.init_param(instance_type)
-        self.parent_image = Resource.init_param(parent_image)
-        self.instance_role = Resource.init_param(instance_role)
-        self.tags = tags
-        self.subnet_id = Resource.init_param(subnet_id)
-        self.security_group_ids = security_group_ids
-        self.components = components
-
-    def _validate(self):
-        self._execute_validator(
-            InstanceTypeBaseAMICompatibleValidator,
-            instance_type=self.instance_type,
-            image=self.parent_image,
-        )
+    @property
+    def get_source_config(self):
+        """Get source config from metadata."""
+        try:
+            return AWSApi.instance().cfn.get_template(self.name).get("Metadata").get("Config")
+        except (AWSClientError, KeyError):
+            return None
 
 
-# ---------------------- Dev Settings ---------------------- #
+class ImageBuilder:
+    """Represent a building image, composed by an ImageBuilder config and an ImageBuilderStack."""
 
+    def __init__(self, image_name: str, config: dict = None, stack: ImageBuilderStack = None):
+        self.image_name = image_name
+        self.__source_config = config
+        self.__stack = stack
+        self.__config = None
+        self.template_body = None
+        self.config_version = None
 
-class ImagebuilderDevSettings(BaseDevSettings):
-    """Represent the dev settings configuration for the ImageBuilder."""
+    @property
+    def stack(self):
+        """Return the ImageBuilderStack object."""
+        if not self.__stack:
+            try:
+                self.__stack = ImageBuilderStack(AWSApi().instance().cfn.describe_stack(self.image_name))
+            except AWSClientError:
+                raise ImageBuilderActionError(f"ImageBuilder stack {self.image_name} does not exist.")
+        return self.__stack
 
-    def __init__(
-        self,
-        update_os_and_reboot: bool = None,
-        disable_pcluster_component: bool = None,
-        distribution_configuration: DistributionConfiguration = None,
-        terminate_instance_on_failure: bool = None,
-        **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
-        self.disable_pcluster_component = Resource.init_param(disable_pcluster_component, default=False)
-        self.distribution_configuration = distribution_configuration
-        self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
+    @property
+    def source_config(self):
+        """Return original config used to create the imagebuilder stack."""
+        if not self.__source_config:
+            self.__source_config = self.stack.get_source_config
+        return self.__source_config
 
+    @property
+    def imagebuild_status(self):
+        """Return the status of the stack of build image process."""
+        cfn_status = self.stack.status
+        for key, value in ImageBuilderStatusMapping.items():
+            if cfn_status in value:
+                return key
+        return None
 
-# ---------------------- ImageBuilder ---------------------- #
+    @property
+    def config(self):
+        """Return ImageBuilder Config object."""
+        if not self.__config:
+            self.__config = ImageBuilderSchema().load(self.source_config)
+        return self.__config
 
+    def create(self, disable_rollback: bool = False):
+        """Create the CFN Stack and associate resources."""
+        # validate image name
+        self._validate_image_name()
 
-class ImageBuilder(Resource):
-    """Represent the configuration of an ImageBuilder."""
+        # check imagebuilder stack existence
+        if AWSApi.instance().cfn.stack_exists(self.image_name):
+            raise ImageBuilderActionError(f"ImageBuilder stack {self.image_name} already exists")
 
-    def __init__(
-        self,
-        image: Image,
-        build: Build,
-        dev_settings: ImagebuilderDevSettings = None,
-    ):
-        super().__init__()
-        self.image = image
-        self.build = build
-        self.dev_settings = dev_settings
+        validation_failures = self.config.validate()
+        if validation_failures:
+            # TODO skip validation errors
+            raise ImageBuilderActionError("Configuration is invalid", validation_failures=validation_failures)
 
-    def _validate(self):
-        self._execute_validator(
-            EbsVolumeTypeSizeValidator,
-            volume_type=ROOT_VOLUME_TYPE,
-            volume_size=self.image.root_volume.size,
-        )
-        self._execute_validator(
-            AMIVolumeSizeValidator,
-            volume_size=self.image.root_volume.size,
-            image=self.build.parent_image,
-        )
+        # Add tags information to the stack
+        tags = copy.deepcopy(self.config.build.tags) or []
+        tags.append(BaseTag(key="pcluster_build_image", value=get_installed_version()))
+        tags = [{"Key": tag.key, "Value": tag.value} for tag in tags]
 
+        try:
+            LOGGER.info("Creating stack named: %s", self.image_name)
 
-# ------------ Attributes class used in imagebuilder resources ----------- #
+            # Generate cdk cfn template
+            self.template_body = CDKTemplateBuilder().build_imagebuilder_template(
+                imagebuild=self.config, image_name=self.image_name
+            )
 
+            # Stack creation
+            AWSApi.instance().cfn.create_stack(
+                stack_name=self.image_name,
+                template_body=json.dumps(self.template_body),
+                disable_rollback=disable_rollback,
+                tags=tags,
+            )
 
-class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
-    """Extra Attributes for ImageBuilder Chef Client."""
+            self.__stack = ImageBuilderStack(AWSApi().instance().cfn.describe_stack(self.image_name))
+            LOGGER.debug("StackId: %s", self.stack.id)
+            LOGGER.info("Status: %s", self.stack.status)
 
-    def __init__(self, dev_settings: ImagebuilderDevSettings):
-        super().__init__(dev_settings)
-        self.cfn_region = None
-        self.nvidia = None
-        self.is_official_ami_build = None
-        self.custom_node_package = None
-        self.custom_awsbatchcli_package = None
-        self.cfn_base_os = None
-        self._set_default(dev_settings)
+        except Exception as e:
+            LOGGER.critical(e)
+            raise ImageBuilderActionError(f"ImageBuilder stack creation failed.\n{e}")
 
-    def _set_default(self, dev_settings: ImagebuilderDevSettings):
-        self.cfn_region = "{{ build.AWSRegion.outputs.stdout }}"
-        self.nvidia = {"enabled": "false"}
-        self.is_official_ami_build = "true" if dev_settings and dev_settings.update_os_and_reboot else "false"
-        self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
-        self.custom_awsbatchcli_package = (
-            dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
-        )
-        self.cfn_base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
-        for key, value in self.__dict__.items():
-            if not key.startswith("_") and key not in self._cfncluster_attributes:
-                self._cfncluster_attributes.update({key: value})
+    def _validate_image_name(self):
+        match = re.match(r"^[-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]$", self.image_name)
+        if match is None:
+            raise ImageBuilderActionError(
+                "Image name '{0}' failed to satisfy constraint: ".format(self.image_name)
+                + "Member must satisfy regular expression pattern: [-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]"
+            )
+        if len(self.image_name) > 1024 - len(AMI_NAME_REQUIRED_SUBSTRING):
+            raise ImageBuilderActionError(
+                "Image name failed to satisfy constraint, the length should be shorter than {0}".format(
+                    str(1024 - len(AMI_NAME_REQUIRED_SUBSTRING))
+                )
+            )
