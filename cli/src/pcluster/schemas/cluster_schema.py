@@ -33,6 +33,7 @@ from pcluster.models.cluster_config import (
     ClusterDevSettings,
     CommonSchedulingSettings,
     CustomAction,
+    CustomActionEvent,
     Dashboards,
     Dcv,
     Dns,
@@ -542,7 +543,7 @@ class CustomActionSchema(BaseSchema):
 
     script = fields.Str(required=True)
     args = fields.List(fields.Str())
-    event = fields.Str(validate=validate.OneOf(["NODE_START", "NODE_CONFIGURED"]))
+    event = fields.Str(validate=validate.OneOf([event.value for event in CustomActionEvent]))
     run_as = fields.Str()
 
     @post_load
@@ -561,7 +562,9 @@ class HeadNodeSchema(BaseSchema):
     storage = fields.Nested(StorageSchema)
     dcv = fields.Nested(DcvSchema)
     efa = fields.Nested(EfaSchema)
-    custom_actions = fields.Nested(CustomActionSchema, many=True)
+    custom_actions = fields.Nested(
+        CustomActionSchema, many=True
+    )  # TODO validate to avoid more than one script for event type or add support for them.
     iam = fields.Nested(IamSchema)
 
     @post_load()

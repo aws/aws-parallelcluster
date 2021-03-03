@@ -1122,10 +1122,9 @@ class InstanceTypeInfo:
 
         return gpu_count
 
-    def max_network_interface_count(self):
+    def max_network_interface_count(self) -> int:
         """Max number of NICs for the instance."""
-        needed_interfaces = int(self.instance_type_data.get("NetworkInfo").get("MaximumNetworkCards", 1))
-        return needed_interfaces
+        return int(self.instance_type_data.get("NetworkInfo").get("MaximumNetworkCards", 1))
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""
@@ -1140,7 +1139,7 @@ class InstanceTypeInfo:
             threads_per_core = 2 if "x86_64" in supported_architectures else 1
         return threads_per_core
 
-    def vcpus_count(self):
+    def vcpus_count(self) -> int:
         """Get number of vcpus for the given instance type."""
         try:
             vcpus_info = self.instance_type_data.get("VCpuInfo")

@@ -222,6 +222,7 @@ class Cluster:
     def config(self):
         """Return ClusterConfig object."""
         if not self.__config:
+            # TODO what if there is a ValidationError
             self.__config = ClusterSchema().load(self.source_config)
         return self.__config
 

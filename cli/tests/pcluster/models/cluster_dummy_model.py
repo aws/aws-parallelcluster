@@ -69,7 +69,14 @@ def dummy_head_node(mocker):
     head_node_dcv = Dcv(enabled=True, port=1024)
     ssh = Ssh(key_name="test")
 
-    return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv)
+    head_node = HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv)
+
+    disable_ht_cpu_opts_mock = mocker.PropertyMock(return_value="true")
+    mocker.patch(
+        "pcluster.models.cluster_config.HeadNode.disable_simultaneous_multithreading_via_cpu_options",
+        new_callable=disable_ht_cpu_opts_mock,
+    )
+    return head_node
 
 
 def dummy_cluster(mocker):
@@ -98,6 +105,7 @@ def dummy_cluster(mocker):
     shared_storage.append(dummy_ebs("/ebs3", raid=Raid(raid_type=1, number_of_volumes=5)))
     shared_storage.append(dummy_efs("/efs1"))
     shared_storage.append(dummy_efs("/efs2", file_system_id="fs-efs-1"))
+    shared_storage.append(dummy_raid("/raid1"))
 
     cluster = DummySlurmCluster(image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage)
     cluster.cluster_s3_bucket = "s3://dummy-s3-bucket"
@@ -144,6 +152,18 @@ def dummy_ebs(mount_dir, volume_id=None, raid=None):
         throughput=300,
         volume_id=volume_id,
         raid=raid,
+    )
+
+
+def dummy_raid(mount_dir, volume_id=None):
+    return SharedEbs(
+        mount_dir=mount_dir,
+        kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        snapshot_id="snapshot-abdcef76",
+        volume_type="gp2",
+        throughput=300,
+        volume_id=volume_id,
+        raid=Raid(raid_type=1),
     )
 
 

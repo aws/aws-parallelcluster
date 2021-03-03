@@ -30,8 +30,10 @@ from pcluster.constants import (
 )
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import (
+    InstanceTypeInfo,
     delete_s3_artifacts,
     delete_s3_bucket,
+    disable_ht_via_cpu_options,
     get_availability_zone_of_subnet,
     get_partition,
     get_region,
@@ -120,7 +122,6 @@ class Ebs(Resource):
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
     def _validate(self):
-        # FIXME This method is not executed because subclass override the method.
         self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
         self._execute_validator(
             EbsVolumeIopsValidator,
@@ -147,7 +148,7 @@ class Ebs(Resource):
 class Raid(Resource):
     """Represent the Raid configuration."""
 
-    def __init__(self, raid_type: int = None, number_of_volumes=None):
+    def __init__(self, raid_type: int, number_of_volumes=None):
         super().__init__()
         self.raid_type = Resource.init_param(raid_type)
         self.number_of_volumes = Resource.init_param(number_of_volumes, default=2)
@@ -625,6 +626,13 @@ class Image(Resource):
         self.custom_ami = Resource.init_param(custom_ami)
 
 
+class CustomActionEvent(Enum):
+    """Enum to identify the type of events supported by custom actions."""
+
+    NODE_START = "NODE_START"
+    NODE_CONFIGURED = "NODE_CONFIGURED"
+
+
 class CustomAction(Resource):
     """Represent a custom action resource."""
 
@@ -666,6 +674,7 @@ class HeadNode(Resource):
         self.efa = efa
         self.custom_actions = custom_actions
         self.iam = iam
+        self.__instance_type_info = None
 
     def _validate(self):
         self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
@@ -678,13 +687,12 @@ class HeadNode(Resource):
     @property
     def architecture(self):
         """Compute cluster's architecture based on its head node instance type."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        return instance_type_info.supported_architecture()[0]
+        return self._instance_type_info.supported_architecture()[0]
 
     @property
     def vcpus(self):
         """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        instance_type_info = self._instance_type_info
         default_threads_per_core = instance_type_info.default_threads_per_core()
         return (
             instance_type_info.vcpus_count()
@@ -693,15 +701,39 @@ class HeadNode(Resource):
         )
 
     @property
-    def pass_cpu_options_in_launch_template(self):
+    def pass_cpu_options_in_launch_template(self) -> bool:
         """Check whether CPU Options must be passed in launch template for head node."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        return self.disable_simultaneous_multithreading and instance_type_info.is_cpu_options_supported_in_lt()
+        return self.disable_simultaneous_multithreading and self._instance_type_info.is_cpu_options_supported_in_lt()
 
     @property
-    def instance_type_info(self):
+    def is_ebs_optimized(self) -> bool:
+        """Return True if the instance has optimized EBS support."""
+        return self._instance_type_info.is_ebs_optimized()
+
+    @property
+    def max_network_interface_count(self) -> int:
+        """Return max number of NICs for the instance."""
+        return self._instance_type_info.max_network_interface_count()
+
+    @property
+    def _instance_type_info(self) -> InstanceTypeInfo:
         """Return head node instance type information as returned from aws ec2 describe-instance-types."""
-        return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        if not self.__instance_type_info:
+            self.__instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return self.__instance_type_info
+
+    @property
+    def disable_simultaneous_multithreading_via_cpu_options(self):
+        """Return true if simultaneous multithreading must be disabled through cpu options."""
+        return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
+
+    def get_custom_action(self, event: CustomActionEvent):
+        """Return the first CustomAction corresponding to the specified event."""
+        return (
+            next((action for action in self.custom_actions if action.event == event), None)
+            if self.custom_actions
+            else None
+        )
 
 
 class BaseComputeResource(Resource):
