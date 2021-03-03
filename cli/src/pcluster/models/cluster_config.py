@@ -244,13 +244,13 @@ class SharedFsx(Resource):
     def __init__(
         self,
         mount_dir: str,
-        storage_capacity: str = None,
+        storage_capacity: int = None,
         deployment_type: str = None,
         export_path: str = None,
         import_path: str = None,
-        imported_file_chunk_size: str = None,
+        imported_file_chunk_size: int = None,
         weekly_maintenance_start_time: str = None,
-        automatic_backup_retention_days: str = None,
+        automatic_backup_retention_days: int = None,
         copy_tags_to_backups: bool = None,
         daily_automatic_backup_start_time: str = None,
         per_unit_storage_throughput: int = None,
@@ -647,7 +647,6 @@ class HeadNode(Resource):
         instance_type: str,
         networking: HeadNodeNetworking,
         ssh: Ssh,
-        image: Image = None,
         disable_simultaneous_multithreading: bool = None,
         storage: Storage = None,
         dcv: Dcv = None,
@@ -662,7 +661,6 @@ class HeadNode(Resource):
         )
         self.networking = networking
         self.ssh = ssh
-        self.image = image
         self.storage = storage
         self.dcv = dcv
         self.efa = efa
@@ -702,7 +700,7 @@ class HeadNode(Resource):
 
     @property
     def instance_type_info(self):
-        """Return head node instance type information as returned from aws ec2 describe-instamce-types."""
+        """Return head node instance type information as returned from aws ec2 describe-instance-types."""
         return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
 
 
@@ -748,7 +746,6 @@ class BaseQueue(Resource):
         networking: QueueNetworking,
         storage: Storage = None,
         compute_type: str = None,
-        image: Image = None,
         iam: Iam = None,
     ):
         super().__init__()
@@ -756,7 +753,6 @@ class BaseQueue(Resource):
         self.networking = networking
         self.storage = storage
         self.compute_type = Resource.init_param(compute_type, default="ONDEMAND")
-        self.image = image
         self.iam = iam
 
     def _validate(self):

@@ -557,7 +557,6 @@ class HeadNodeSchema(BaseSchema):
     instance_type = fields.Str(required=True)
     disable_simultaneous_multithreading = fields.Bool()
     networking = fields.Nested(HeadNodeNetworkingSchema, required=True)
-    image = fields.Nested(ImageSchema)
     ssh = fields.Nested(SshSchema, required=True)
     storage = fields.Nested(StorageSchema)
     dcv = fields.Nested(DcvSchema)
@@ -616,7 +615,6 @@ class BaseQueueSchema(BaseSchema):
     networking = fields.Nested(QueueNetworkingSchema, required=True)
     storage = fields.Nested(StorageSchema)
     compute_type = fields.Str(validate=validate.OneOf(["ONDEMAND", "SPOT"]))
-    image = fields.Nested(ImageSchema)
     iam = fields.Nested(IamSchema)
 
 
