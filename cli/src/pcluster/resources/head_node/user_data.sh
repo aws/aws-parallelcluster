@@ -117,7 +117,7 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
 fi
 cd /tmp
 # Call CloudFormation
-cfn-init -s ${AWS::StackName} --role=${IamRoleName} -v -c default -r MasterServerLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
+cfn-init -s ${AWS::StackName} --role=${IamRoleName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
 cfn-signal --exit-code=0 --reason="MasterServer setup complete" --stack=${AWS::StackName} --role=${IamRoleName} --resource=MasterServer --region=${AWS::Region}
 # End of file
 --==BOUNDARY==

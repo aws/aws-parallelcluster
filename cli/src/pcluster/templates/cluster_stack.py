@@ -13,6 +13,7 @@
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
 import copy
+import json
 
 import pkg_resources
 from aws_cdk import aws_ec2 as ec2
@@ -22,14 +23,12 @@ from aws_cdk import core
 from aws_cdk.aws_ec2 import (
     CfnEIP,
     CfnEIPAssociation,
+    CfnInstance,
     CfnLaunchTemplate,
     CfnNetworkInterface,
     CfnSecurityGroup,
     CfnSecurityGroupEgress,
     CfnSecurityGroupIngress,
-    CloudFormationInit,
-    InitConfig,
-    InitFile,
 )
 from aws_cdk.aws_iam import (
     CfnInstanceProfile,
@@ -41,13 +40,14 @@ from aws_cdk.aws_iam import (
     ServicePrincipal,
 )
 from aws_cdk.aws_lambda import CfnFunction
-from aws_cdk.core import CfnCustomResource, CfnOutput, CfnStack, CfnTag, Fn
+from aws_cdk.core import CfnCreationPolicy, CfnCustomResource, CfnOutput, CfnStack, CfnTag, CustomResource, Fn
 
 from common.aws.aws_api import AWSApi
 from pcluster import utils
 from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
     ClusterBucket,
+    CustomActionEvent,
     Ebs,
     SharedEbs,
     SharedEfs,
@@ -82,7 +82,7 @@ class ClusterCdkStack(core.Stack):
 
     def _init_mappings(self):
         self.packages_versions = {
-            "parallelcluster": "2.10.1",
+            "parallelcluster": utils.get_installed_version(),
             "cookbook": "aws-parallelcluster-cookbook-2.10.1",
             "chef": "15.11.8",
             "berkshelf": "7.0.10",
@@ -91,6 +91,7 @@ class ClusterCdkStack(core.Stack):
 
         # Storage filesystem Ids
         self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorageType}
+        self._storage_resource_options = {storage_type: "NONE" for storage_type in SharedStorageType}
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
@@ -104,21 +105,47 @@ class ClusterCdkStack(core.Stack):
             else "NONE"
         )
 
+    def _get_shared_storage_ids(self, storage_type: SharedStorageType):
+        return (
+            ",".join(self._storage_resource_ids[storage_type]) if self._storage_resource_ids[storage_type] else "NONE"
+        )
+
+    def _get_shared_storage_options(self, storage_type: SharedStorageType):
+        default_storage_options = {
+            SharedStorageType.EBS: "NONE",
+            SharedStorageType.RAID: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            SharedStorageType.EFS: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            SharedStorageType.FSX: (
+                "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+            ),
+        }
+        return (
+            self._storage_resource_options[storage_type]
+            if self._storage_resource_options[storage_type]
+            else default_storage_options[storage_type]
+        )
+
     # -- Resources --------------------------------------------------------------------------------------------------- #
+
     def _add_resources(self):
         # CloudWatchLogsSubstack
         # TODO: inline cw-logs-substack
 
-        # RootRole
-        if self._condition_create_ec2_iam_role():
-            self.root_iam_role = self._add_root_iam_role()
+        # Head Node EC2 Iam Role
+        self.head_node_iam_role = (
+            self._add_root_iam_role()
+            if self._condition_create_head_node_iam_role()
+            else self._cluster_config.head_node.iam.roles.instance_role
+        )
+        # TODO split head node and queues roles
 
         # Root Instance Profile
         self.root_instance_profile = self._add_root_instance_profile()
 
         # ParallelCluster Policies
-        if self._condition_create_ec2_iam_role():
+        if self._condition_create_head_node_iam_role():
             self._add_parallelcluster_policies()
+            # TODO attach policies to each queue instance role
 
         # Slurm Policies
         if self._condition_add_slurm_iam_policies():
@@ -161,10 +188,6 @@ class ClusterCdkStack(core.Stack):
         # RAIDSubstack
         # TODO: inline resources
 
-        # Head Node
-        # TODO: double check head node creation
-        self._add_head_node()
-
         # Compute Fleet Substack
         # TODO: inline resources
 
@@ -174,6 +197,9 @@ class ClusterCdkStack(core.Stack):
         if self._cluster_config.shared_storage:
             for storage in self._cluster_config.shared_storage:
                 self._add_shared_storage(storage)
+
+        # Head Node
+        self._add_head_node()
 
     def _add_terminate_compute_fleet_custom_resource(self):
         if self._condition_is_slurm():
@@ -322,7 +348,7 @@ class ClusterCdkStack(core.Stack):
             scope=self,
             id="S3AccessPolicies",
             policy_document=PolicyDocument(statements=[]),
-            roles=[self.root_iam_role.ref],
+            roles=[self.head_node_iam_role.ref],
             policy_name="S3Access",
         )
         if read_only_s3_resources:
@@ -343,7 +369,7 @@ class ClusterCdkStack(core.Stack):
 
     def _add_root_instance_profile(self):
         root_instance_profile_roles = [
-            self.root_iam_role.ref if hasattr(self, "root_iam_role") else None,
+            self.head_node_iam_role.ref if hasattr(self, "head_node_iam_role") else None,
             self._cluster_config.head_iam_role,
             self._cluster_config.compute_iam_role,
         ]
@@ -543,7 +569,7 @@ class ClusterCdkStack(core.Stack):
                     ),
                 ]
             ),
-            roles=[self.root_iam_role.ref],
+            roles=[self.head_node_iam_role.ref],
         )
 
     def _add_slurm_policies(self):
@@ -599,7 +625,7 @@ class ClusterCdkStack(core.Stack):
                     ),
                 ]
             ),
-            roles=[self.root_iam_role.ref],
+            roles=[self.head_node_iam_role.ref],
         )
 
     def _add_head_security_group(self):
@@ -690,6 +716,34 @@ class ClusterCdkStack(core.Stack):
             )
             fsx_id = fsx_resource.ref
 
+        # [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,
+        # export_path,import_path,weekly_maintenance_start_time,deployment_type,
+        # per_unit_storage_throughput,daily_automatic_backup_start_time,
+        # automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,
+        # auto_import_policy,storage_type,drive_cache_type]",
+        self._storage_resource_options[shared_fsx.shared_storage_type] = ",".join(
+            str(item)
+            for item in [
+                shared_fsx.mount_dir,
+                fsx_id,
+                shared_fsx.storage_capacity or "NONE",
+                shared_fsx.kms_key_id or "NONE",
+                shared_fsx.imported_file_chunk_size or "NONE",
+                shared_fsx.export_path or "NONE",
+                shared_fsx.import_path or "NONE",
+                shared_fsx.weekly_maintenance_start_time or "NONE",
+                shared_fsx.deployment_type or "NONE",
+                shared_fsx.per_unit_storage_throughput or "NONE",
+                shared_fsx.daily_automatic_backup_start_time or "NONE",
+                shared_fsx.automatic_backup_retention_days or "NONE",
+                shared_fsx.copy_tags_to_backups if shared_fsx.copy_tags_to_backups is not None else "NONE",
+                shared_fsx.backup_id or "NONE",
+                shared_fsx.auto_import_policy or "NONE",
+                shared_fsx.storage_type or "NONE",
+                shared_fsx.drive_cache_type or "NONE",
+            ]
+        )
+
         return fsx_id
 
     def _add_efs_storage(self, id: str, shared_efs: SharedEfs):
@@ -723,6 +777,23 @@ class ClusterCdkStack(core.Stack):
             self._cluster_config.head_node.networking.security_groups,
             self._cluster_config.head_node.networking.subnet_id,
             checked_availability_zones,
+        )
+
+        # [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,
+        # throughput_mode,exists_valid_head_node_mt,exists_valid_compute_mt]
+        self._storage_resource_options[shared_efs.shared_storage_type] = ",".join(
+            str(item)
+            for item in [
+                shared_efs.mount_dir,
+                efs_id,
+                shared_efs.performance_mode or "NONE",
+                shared_efs.kms_key_id or "NONE",
+                shared_efs.provisioned_throughput or "NONE",
+                shared_efs.encrypted if shared_efs.encrypted is not None else "NONE",
+                shared_efs.throughput_mode or "NONE",
+                "NONE",  # Useless
+                "NONE",  # Useless
+            ]
         )
         return efs_id
 
@@ -787,7 +858,7 @@ class ClusterCdkStack(core.Stack):
         head_lt_nw_interfaces = [
             CfnLaunchTemplate.NetworkInterfaceProperty(device_index=0, network_interface_id=self.head_eni.ref)
         ]
-        for if_number in range(1, self._cluster_config.head_node.instance_type_info.max_network_interface_count() - 1):
+        for if_number in range(1, self._cluster_config.head_node.max_network_interface_count - 1):
             head_lt_nw_interfaces.append(
                 CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=if_number,
@@ -802,11 +873,13 @@ class ClusterCdkStack(core.Stack):
         with open(user_data_file_path, "r") as user_data_file:
             head_node_lt_user_data = user_data_file.read()
 
+        # Root volume
         if self._cluster_config.head_node.storage and self._cluster_config.head_node.storage.root_volume:
             root_volume = copy.deepcopy(self._cluster_config.head_node.storage.root_volume)
         else:
             root_volume = Ebs()
 
+        # Block device mapping
         block_device_mappings = []
         for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
             device_name = "/dev/xvdb{0}".format(device_name_index)
@@ -823,9 +896,11 @@ class ClusterCdkStack(core.Stack):
                 ),
             )
         )
+
+        # Head node Launch Template
         head_node_launch_template = CfnLaunchTemplate(
             scope=self,
-            id="HeadNodeServerLaunchTemplate",
+            id="HeadNodeLaunchTemplate",
             launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=self._cluster_config.head_node.instance_type,
                 cpu_options=CfnLaunchTemplate.CpuOptionsProperty(
@@ -852,7 +927,7 @@ class ClusterCdkStack(core.Stack):
                                     Architecture=self._cluster_config.head_node.architecture,
                                 ),
                             ),
-                            CfnTag(key="aws-parallelcluster-networking", value=""),  # TODO: is this needed?
+                            CfnTag(key="aws-parallelcluster-networking", value=f"EFA={self._head_node_efa_enabled}"),
                             CfnTag(
                                 key="aws-parallelcluster-filesystem",
                                 value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
@@ -875,7 +950,7 @@ class ClusterCdkStack(core.Stack):
                 ],
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self._cluster_config.ami_id,
-                ebs_optimized=self._cluster_config.head_node.instance_type_info.is_ebs_optimized(),
+                ebs_optimized=self._cluster_config.head_node.is_ebs_optimized,
                 iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
                 user_data=Fn.base64(
                     Fn.sub(
@@ -898,9 +973,7 @@ class ClusterCdkStack(core.Stack):
                             "CookbookVersion": self.packages_versions["cookbook"],
                             "ChefVersion": self.packages_versions["chef"],
                             "BerkshelfVersion": self.packages_versions["berkshelf"],
-                            "IamRoleName": self.root_iam_role.ref
-                            if self._condition_create_ec2_iam_role()
-                            else self._cluster_config.head_node.iam.roles.instance_role,
+                            "IamRoleName": self.head_node_iam_role.ref,
                         },
                     )
                 ),
@@ -908,13 +981,74 @@ class ClusterCdkStack(core.Stack):
         )
 
         # Metadata
-        head_node_launch_template.add_metadata("cfn-lint", {"config": {"ignore_checks": ["E3002"]}})
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
+        # CloudFormation::Init metadata
+        pre_install_action = self._cluster_config.head_node.get_custom_action(event=CustomActionEvent.NODE_START)
+        post_install_action = self._cluster_config.head_node.get_custom_action(event=CustomActionEvent.NODE_CONFIGURED)
+        dna_json = json.dumps(
+            {
+                "cfncluster": {
+                    "stack_name": self.stack_name,
+                    "enable_efa": self._head_node_efa_enabled(),
+                    "cfn_raid_vol_ids": self._get_shared_storage_ids(SharedStorageType.RAID),
+                    "cfn_raid_parameters": self._get_shared_storage_options(SharedStorageType.RAID),
+                    "cfn_scheduler_slots": "cores"
+                    if self._cluster_config.head_node.disable_simultaneous_multithreading
+                    else "vcpus",
+                    "cfn_disable_hyperthreading_manually": str(self._condition_disable_hyperthreading_manually()),
+                    "cfn_base_os": self._cluster_config.image.os,
+                    "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
+                    "cfn_preinstall_args": pre_install_action.args if pre_install_action else "NONE",
+                    "cfn_postinstall": post_install_action.script if pre_install_action else "NONE",
+                    "cfn_postinstall_args": post_install_action.args if pre_install_action else "NONE",
+                    "cfn_region": self.region,
+                    "cfn_efs": self._get_shared_storage_ids(SharedStorageType.EFS),
+                    "cfn_efs_shared_dir": self._get_shared_storage_options(SharedStorageType.EFS),  # FIXME
+                    "cfn_fsx_fs_id": self._get_shared_storage_ids(SharedStorageType.FSX),
+                    "cfn_fsx_options": self._get_shared_storage_options(SharedStorageType.FSX),
+                    "cfn_volume": self._get_shared_storage_ids(SharedStorageType.EBS),
+                    "cfn_scheduler": self._cluster_config.scheduling.scheduler,
+                    "cfn_encrypted_ephemeral": self._cluster_config.head_node.storage.ephemeral_volume.encrypted
+                    if self._cluster_config.head_node.storage
+                    and self._cluster_config.head_node.storage.ephemeral_volume
+                    else "NONE",
+                    "cfn_ephemeral_dir": self._cluster_config.head_node.storage.ephemeral_volume.mount_dir
+                    if self._cluster_config.head_node.storage
+                    and self._cluster_config.head_node.storage.ephemeral_volume
+                    else "NONE",
+                    # "cfn_shared_dir": self._cluster_config.head_node.storage.root_volume.mount_dir  # TODO
+                    # if self._cluster_config.head_node.storage and self._cluster_config.head_node.storage.root_volume
+                    # else "NONE",
+                    "cfn_proxy": self._cluster_config.head_node.networking.proxy
+                    if self._cluster_config.head_node.networking.proxy
+                    else "NONE",
+                    "cfn_dns_domain": "${ClusterDNSDomain}",  # TODO
+                    "cfn_hosted_zone": "${ClusterHostedZone}",  # TODO
+                    # "cfn_max_queue_size": "${MaxSize}",
+                    # "compute_instance_type": "${ComputeInstanceType}",
+                    "cfn_node_type": "MasterServer",  # FIXME
+                    "cfn_cluster_user": OS_MAPPING[self._cluster_config.image.os]["user"],
+                    "cfn_ddb_table": "${DynamoDBTable}",  # TODO
+                    # "cfn_sqs_queue": "${SQSQueueName}",
+                    "dcv_enabled": self._cluster_config.head_node.dcv.enabled
+                    if self._cluster_config.head_node.dcv
+                    else "false",
+                    "dcv_port": self._cluster_config.head_node.dcv.port
+                    if self._cluster_config.head_node.dcv
+                    else "NONE",
+                    "enable_intel_hpc_platform": "true" if self._condition_enable_intel_hpc_platform() else "false",
+                    "cfn_cluster_cw_logging_enabled": "true" if self._condition_cw_logging_enabled() else "false",
+                    "cluster_s3_bucket": self._bucket.name,
+                    "cluster_config_s3_key": f"{self._bucket.artifact_directory}/configs/cluster-config.yaml",
+                    "cluster_config_version": self._cluster_config.config_version,
+                },
+                "run_list": f"recipe[aws-parallelcluster::{self._cluster_config.scheduling.scheduler}_config]",
+            },
+            indent=4,
+        )
 
-        # CloudFormation Init
-        # TODO: Finish implementation and fix deployConfigFiles
-        head_node_cfn_init = CloudFormationInit.from_config_sets(
-            config_sets={
+        cfn_init = {
+            "configSets": {
                 "default": [
                     "deployConfigFiles",
                     "cfnHupConfig",
@@ -926,33 +1060,179 @@ class ClusterCdkStack(core.Stack):
                 ],
                 "update": ["deployConfigFiles", "chefUpdate"],
             },
-            configs={
-                "deployConfigFiles": InitConfig(
-                    [
-                        InitFile.from_file_inline(
-                            target_file_name="/tmp/dna.json", source_file_name=user_data_file_path, base64_encoded=True
+            "deployConfigFiles": {
+                "files": {
+                    "/tmp/dna.json": {
+                        "content": dna_json,
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "encoding": "plain",
+                    },
+                    "/etc/chef/client.rb": {
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "content": "cookbook_path ['/etc/chef/cookbooks']",
+                    },
+                    # NOTE: Removed support for ExtraJson
+                    # /tmp/extra.json: ... content: !Ref 'ExtraJson'
+                },
+                "commands": {
+                    "mkdir": {"command": "mkdir -p /etc/chef/ohai/hints"},
+                    "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
+                    "jq": {
+                        "command": (
+                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 "
+                            "| .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json "
+                            '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
                         )
-                    ]
-                )
+                    },
+                },
             },
+            "cfnHupConfig": {
+                "files": {
+                    "/etc/cfn/hooks.d/parallelcluster-update.conf": {
+                        "content": Fn.sub(
+                            (
+                                "[parallelcluster-update]\n"
+                                "triggers=post.update\n"
+                                "path=Resources.HeadNodeLaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
+                                "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
+                                "cfn-init -v --stack ${StackName} --role=${IamRoleName} "
+                                "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
+                                "runas=root\n"
+                            ),
+                            {
+                                "StackName": self.stack_name,
+                                "Region": self.region,
+                                "IamRoleName": self.head_node_iam_role.ref,
+                            },
+                        ),
+                        "mode": "000400",
+                        "owner": "root",
+                        "group": "root",
+                    },
+                    "/etc/cfn/cfn-hup.conf": {
+                        "content": Fn.sub(
+                            "[main]\nstack=${StackId}\nregion=${Region}\nrole=${IamRoleName}\ninterval=2",
+                            {
+                                "StackId": self.stack_id,
+                                "Region": self.region,
+                                "IamRoleName": self.head_node_iam_role.ref,
+                            },
+                        ),
+                        "mode": "000400",
+                        "owner": "root",
+                        "group": "root",
+                    },
+                }
+            },
+            "chefPrepEnv": {
+                "commands": {
+                    "chef": {
+                        "command": (
+                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "--logfile /var/log/chef-client.log --force-formatter --no-color "
+                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
+                            "--override-runlist aws-parallelcluster::prep_env"
+                        ),
+                        "cwd": "/etc/chef",
+                    }
+                }
+            },
+            "shellRunPreInstall": {
+                "commands": {"runpreinstall": {"command": "/opt/parallelcluster/scripts/fetch_and_run -preinstall"}}
+            },
+            "chefConfig": {
+                "commands": {
+                    "chef": {
+                        "command": (
+                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "--logfile /var/log/chef-client.log --force-formatter --no-color "
+                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
+                        ),
+                        "cwd": "/etc/chef",
+                    }
+                }
+            },
+            "shellRunPostInstall": {
+                "commands": {"runpostinstall": {"command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"}}
+            },
+            "chefFinalize": {
+                "commands": {
+                    "chef": {
+                        "command": (
+                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "--logfile /var/log/chef-client.log --force-formatter --no-color "
+                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
+                            "--override-runlist aws-parallelcluster::finalize"
+                        ),
+                        "cwd": "/etc/chef",
+                    },
+                    "bootstrap": {
+                        "command": (
+                            "[ ! -f /opt/parallelcluster/.bootstrapped ] && echo ${cookbook_version} "
+                            "| tee /opt/parallelcluster/.bootstrapped || exit 0"
+                        )  # TODO check
+                    },
+                }
+            },
+            "chefUpdate": {
+                "commands": {
+                    "chef": {
+                        "command": (
+                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "--logfile /var/log/chef-client.log --force-formatter --no-color "
+                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
+                            "--override-runlist aws-parallelcluster::update_head_node"
+                        ),
+                        "cwd": "/etc/chef",
+                    }
+                }
+            },
+        }
+
+        head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
+        self.head_node_instance = CfnInstance(
+            self,
+            id="MasterServer",  # FIXME
+            launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
+                launch_template_id=head_node_launch_template.ref,
+                version=head_node_launch_template.attr_latest_version_number,
+            ),
+        )
+        self.head_node_instance.cfn_options.creation_policy = CfnCreationPolicy(
+            resource_signal=core.CfnResourceSignal(count=1, timeout="PT30M")
         )
 
-        head_node_launch_template.add_metadata("AWS::CloudFormation::Init", head_node_cfn_init)
+        if hasattr(self, "update_waiter_lambda"):
+            CustomResource(
+                self,
+                "UpdateWaiterCustomResource",
+                service_token=self.update_waiter_lambda.function_arn,
+                properties={"ConfigVersion": self._cluster_config.config_version, "DynamoDBTable": ""},  # TODO
+            )
+
+    def _head_node_efa_enabled(self):
+        return self._cluster_config.head_node.efa.enabled if self._cluster_config.head_node.efa else "NONE"
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
-    def _condition_create_ec2_iam_role(self):
-        """Root role is created if head instance role or one of compute node instance roles is not specified."""
-        # TODO: split root role in head and compute roles
+    def _condition_create_head_node_iam_role(self):
+        """Head node role is created if head instance role is not specified."""
         head_node = self._cluster_config.head_node
-        role_needed = not head_node.iam or not head_node.iam.roles or not head_node.iam.roles.instance_role
+        return not head_node.iam or not head_node.iam.roles or not head_node.iam.roles.instance_role
 
-        if not role_needed:
-            for queue in self._cluster_config.scheduling.queues:
-                role_needed = not queue.iam or not queue.iam.roles or not queue.iam.roles.instance_role
-                if role_needed:
-                    break
-        return role_needed
+    def _condition_create_compute_iam_role(self, queue):
+        """Compute Iam role is created if queue instance role is not specified."""
+        return not queue.iam or not queue.iam.roles or not queue.iam.roles.instance_role
+
+    def _condition_disable_hyperthreading_manually(self):
+        return (
+            self._cluster_config.head_node.disable_simultaneous_multithreading
+            and not self._cluster_config.head_node.disable_simultaneous_multithreading_via_cpu_options
+        )
 
     def _condition_create_lambda_iam_role(self):
         return (
@@ -966,7 +1246,7 @@ class ClusterCdkStack(core.Stack):
         return self._cluster_config.iam and self._cluster_config.iam.s3_access
 
     def _condition_add_slurm_iam_policies(self):
-        return self._condition_create_ec2_iam_role() and self._cluster_config.scheduling.scheduler == "slurm"
+        return self._condition_create_head_node_iam_role() and self._cluster_config.scheduling.scheduler == "slurm"
 
     def _condition_create_compute_security_group(self):
         # Compute security group must be created if at list one queue's networking does not specify security groups
@@ -982,6 +1262,23 @@ class ClusterCdkStack(core.Stack):
     def _condition_is_slurm(self):
         return self._cluster_config.scheduling.scheduler == "slurm"
 
+    def _condition_cw_logging_enabled(self):
+        return (
+            self._cluster_config.monitoring.logs.cloud_watch.enabled
+            if self._cluster_config.monitoring
+            and self._cluster_config.monitoring.logs
+            and self._cluster_config.monitoring.logs.cloud_watch
+            else False
+        )
+
+    def _condition_enable_intel_hpc_platform(self):
+        return (
+            self._cluster_config.additional_packages.intel_select_solutions.install_intel_software
+            if self._cluster_config.additional_packages
+            and self._cluster_config.additional_packages.intel_select_solutions
+            else False
+        )
+
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
     def _add_outputs(self):
@@ -996,29 +1293,38 @@ class ClusterCdkStack(core.Stack):
             value=OS_MAPPING[self._cluster_config.image.os]["user"],
         )
 
+        # Head Node Instance ID
+        CfnOutput(
+            scope=self,
+            id="MasterInstanceID",  # FIXME
+            description="ID of the head node instance",
+            value=self.head_node_instance.ref,
+        )
+
         # Head Node Private IP
-        # TODO: take from created head node
-        head_private_ip = "10.0.0.2"
+        CfnOutput(
+            scope=self,
+            id="MasterPrivateIP",  # FIXME
+            description="Private IP Address of the head node",
+            value=self.head_node_instance.attr_private_ip,
+        )
+
+        CfnOutput(
+            scope=self,
+            id="MasterPrivateDnsName",  # FIXME
+            description="Private DNS name of the head node",
+            value=self.head_node_instance.attr_private_dns_name,
+        )
 
         # Head Node Public IP
-        # TODO: take from created head node
-        head_public_ip = "176.32.103.200"
-
-        # GangliaPrivateURL
-        CfnOutput(
-            scope=self,
-            id="GangliaPrivateURL",
-            description="Private URL to access Ganglia (disabled by default)",
-            value="http://{0}/ganglia/".format(head_private_ip),
-        )
-
-        # GangliaPublicURL
-        CfnOutput(
-            scope=self,
-            id="GangliaPublicURL",
-            description="Public URL to access Ganglia (disabled by default)",
-            value="http://{0}/ganglia/".format(head_public_ip),
-        )
+        head_public_ip = self.head_node_instance.attr_public_ip
+        if head_public_ip:
+            CfnOutput(
+                scope=self,
+                id="MasterPublicIP",  # FIXME
+                description="Private IP Address of the head node",
+                value=head_public_ip,
+            )
 
         # ResourcesS3Bucket
         CfnOutput(
