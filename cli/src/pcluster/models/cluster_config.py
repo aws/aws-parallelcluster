@@ -26,6 +26,7 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    MAX_STORAGE_COUNT,
 )
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import (
@@ -96,8 +97,6 @@ LOGGER = logging.getLogger(__name__)
 # pylint: disable=C0302
 
 # ---------------------- Storage ---------------------- #
-
-MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1}
 
 
 class Ebs(Resource):
@@ -868,7 +867,7 @@ class BaseClusterConfig(Resource):
             self._execute_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
 
     def _register_storage_validators(self):
-        storage_count = {"ebs": 0, "efs": 0, "fsx": 0}
+        storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}
         if self.shared_storage:
             for storage in self.shared_storage:
                 if isinstance(storage, SharedFsx):
@@ -885,7 +884,10 @@ class BaseClusterConfig(Resource):
                         os=self.image.os,
                     )
                 if isinstance(storage, SharedEbs):
-                    storage_count["ebs"] += 1
+                    if storage.raid:
+                        storage_count["raid"] += 1
+                    else:
+                        storage_count["ebs"] += 1
                 if isinstance(storage, SharedEfs):
                     storage_count["efs"] += 1
                     if storage.file_system_id:
@@ -895,7 +897,7 @@ class BaseClusterConfig(Resource):
                             head_node_avail_zone=self.head_node.networking.availability_zone,
                         )
 
-            for storage_type in ["ebs", "efs", "fsx"]:
+            for storage_type in ["ebs", "efs", "fsx", "raid"]:
                 self._execute_validator(
                     NumberOfStorageValidator,
                     storage_type=storage_type.upper(),

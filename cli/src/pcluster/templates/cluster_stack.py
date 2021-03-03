@@ -652,25 +652,16 @@ class ClusterCdkStack(core.Stack):
 
     def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
-        storage_id = None
-        cfn_resource_id = "{0}{1}".format(
-            storage.shared_storage_type.name, len(self._storage_resource_ids[storage.shared_storage_type])
-        )
-        if storage.shared_storage_type == SharedStorageType.FSX:
-            storage_id = self._add_fsx_storage(cfn_resource_id, storage)
-        elif storage.shared_storage_type == SharedStorageType.EBS:
-            storage_id = self._add_ebs_volume(cfn_resource_id, storage)
-        elif storage.shared_storage_type == SharedStorageType.EFS:
-            storage_id = self._add_efs_storage(cfn_resource_id, storage)
-        elif storage.shared_storage_type == SharedStorageType.RAID:
-            storage_id = self._add_raid_volume(cfn_resource_id, storage)
-
-        # Store filesystem id
         storage_ids_list = self._storage_resource_ids[storage.shared_storage_type]
-        if not storage_ids_list:
-            storage_ids_list = []
-            self._storage_resource_ids[storage.shared_storage_type] = storage_ids_list
-        storage_ids_list.append(storage_id)
+        cfn_resource_id = "{0}{1}".format(storage.shared_storage_type.name, len(storage_ids_list))
+        if storage.shared_storage_type == SharedStorageType.FSX:
+            storage_ids_list.append(self._add_fsx_storage(cfn_resource_id, storage))
+        elif storage.shared_storage_type == SharedStorageType.EBS:
+            storage_ids_list.append(self._add_ebs_volume(cfn_resource_id, storage))
+        elif storage.shared_storage_type == SharedStorageType.EFS:
+            storage_ids_list.append(self._add_efs_storage(cfn_resource_id, storage))
+        elif storage.shared_storage_type == SharedStorageType.RAID:
+            storage_ids_list.extend(self._add_raid_volume(cfn_resource_id, storage))
 
     def _add_fsx_storage(self, id: str, shared_fsx: SharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
@@ -757,32 +748,34 @@ class ClusterCdkStack(core.Stack):
                 )
             checked_availability_zones.append(availability_zone)
 
-    def _add_raid_volume(self, id: str, shared_ebs: SharedEbs):
-        """Add specific Cfn Resources to map the EBS storage."""
-        # TODO: add RAID storage
-        return f"fake_id{id}-{shared_ebs.mount_dir}"
+    def _add_raid_volume(self, id_prefix: str, shared_ebs: SharedEbs):
+        """Add specific Cfn Resources to map the RAID EBS storage."""
+        ebs_ids = []
+        for index in range(shared_ebs.raid.number_of_volumes):
+            ebs_ids.append(self._add_cfn_volume(f"{id_prefix}Volume{index}", shared_ebs))
+        return ebs_ids
 
     def _add_ebs_volume(self, id: str, shared_ebs: SharedEbs):
         """Add specific Cfn Resources to map the EBS storage."""
         ebs_id = shared_ebs.volume_id
         if not ebs_id and shared_ebs.mount_dir:
-            ebs_resource = ec2.CfnVolume(
-                scope=self,
-                id=id,
-                availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
-                    self._cluster_config.head_node.networking.subnet_id
-                ),
-                encrypted=shared_ebs.encrypted,
-                iops=shared_ebs.iops,
-                throughput=shared_ebs.throughput,
-                kms_key_id=shared_ebs.kms_key_id,
-                size=shared_ebs.size,
-                snapshot_id=shared_ebs.snapshot_id,
-                volume_type=shared_ebs.volume_type,
-            )
-            ebs_id = ebs_resource.ref
+            ebs_id = self._add_cfn_volume(id, shared_ebs)
 
         return ebs_id
+
+    def _add_cfn_volume(self, id: str, shared_ebs: SharedEbs):
+        return ec2.CfnVolume(
+            scope=self,
+            id=id,
+            availability_zone=self._cluster_config.head_node.networking.availability_zone,
+            encrypted=shared_ebs.encrypted,
+            iops=shared_ebs.iops,
+            throughput=shared_ebs.throughput,
+            kms_key_id=shared_ebs.kms_key_id,
+            size=shared_ebs.size,
+            snapshot_id=shared_ebs.snapshot_id,
+            volume_type=shared_ebs.volume_type,
+        ).ref
 
     def _add_head_node(self):
         # LT security groups
