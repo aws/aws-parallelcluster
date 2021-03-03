@@ -32,15 +32,15 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
     """EC2 Instance type and base ami compatibility validator."""
 
     def _validate(self, instance_type: str, image: str):
-        ami_id, ami_info = self._validate_base_ami(image)
+        image_info = self._validate_base_ami(image)
         instance_architectures = self._validate_instance_type(instance_type)
-        if ami_id is not None and instance_architectures:
-            ami_architecture = ami_info.get("Architecture", "")
+        if image_info and instance_architectures:
+            ami_architecture = image_info.architecture
             if ami_architecture not in instance_architectures:
                 self._add_failure(
                     "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the "
                     "instance type {2} chosen ({3}). Use either a different AMI or a different instance type.".format(
-                        ami_id, ami_architecture, instance_type, instance_architectures
+                        image_info.id, ami_architecture, instance_type, instance_architectures
                     ),
                     FailureLevel.ERROR,
                 )
@@ -48,11 +48,11 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
     def _validate_base_ami(self, image: str):
         try:
             ami_id = imagebuilder_utils.get_ami_id(image)
-            ami_info = AWSApi.instance().ec2.describe_image(ami_id=ami_id)
-            return ami_id, ami_info
+            image_info = AWSApi.instance().ec2.describe_image(ami_id=ami_id)
+            return image_info
         except AWSClientError:
             self._add_failure(f"Invalid image '{image}'.", FailureLevel.ERROR)
-            return None, None
+            return None
 
     def _validate_instance_type(self, instance_type: str):
         if instance_type not in AWSApi.instance().ec2.list_instance_types():

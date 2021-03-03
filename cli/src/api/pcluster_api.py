@@ -26,7 +26,7 @@ from pcluster.models.cluster import (
     NodeType,
 )
 from pcluster.models.cluster_resources import ClusterInstance
-from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError
+from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, StackError
 from pcluster.utils import get_installed_version, get_region
 from pcluster.validators.common import FailureLevel
 
@@ -80,16 +80,38 @@ class ClusterInstanceInfo:
         return json.dumps(self.__dict__)
 
 
-class ImageInfo:
+class ImageBuilderInfo:
     """Minimal representation of a building image."""
 
-    def __init__(self, imagebuilder: ImageBuilder):
-        self.image_name = imagebuilder.stack.name
-        self.imagebuild_status = imagebuilder.imagebuild_status
-        self.stack_status = imagebuilder.stack.status
-        self.stack_arn = imagebuilder.stack.id
+    def __init__(self, imagebuilder: ImageBuilder, stack=None):
+        self.stack_exist = False
+        self.image_exist = False
         self.region = get_region()
-        self.version = imagebuilder.stack.version
+        # image config file url
+        self.image_configuration = imagebuilder.config_url
+
+        if stack:
+            # imagebuilder stack info
+            self.stack_exist = True
+            self.stack_name = imagebuilder.stack.name
+            self.stack_status = imagebuilder.stack.status
+            self.stack_arn = imagebuilder.stack.id
+            self.tags = imagebuilder.stack.tags
+            self.version = imagebuilder.stack.version
+            self.creation_time = imagebuilder.stack.creation_time
+
+            # build image process status by stack status mapping
+            self.imagebuild_status = imagebuilder.imagebuild_status
+        else:
+            # image info
+            self.image_exist = True
+            self.image_name = imagebuilder.image.name
+            self.image_id = imagebuilder.image.id
+            self.image_state = imagebuilder.image.state
+            self.image_architecture = imagebuilder.image.architecture
+            self.image_tags = imagebuilder.image.tags
+            self.imagebuild_status = "BUILD_COMPLETE"
+            self.creation_time = imagebuilder.image.creation_date
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -278,8 +300,50 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             imagebuilder = ImageBuilder(image_name=image_name, config=imagebuilder_config)
             imagebuilder.create(disable_rollback)
-            return ImageInfo(imagebuilder)
+            return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
         except ImageBuilderActionError as e:
             return ApiFailure(str(e), e.validation_failures)
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
+    def delete_image(image_name: str, region: str, force: bool = False):
+        """
+        Delete image and imagebuilder stack.
+
+        :param image_name: the image name(the same as cfn stack name)
+        :param region: AWS region
+        :param force: Delete image even if the image is shared or instance is using it
+        """
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+            # retrieve imagebuilder config and generate model
+            imagebuilder = ImageBuilder(image_name)
+            imagebuilder.delete(force=force)
+            try:
+                return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
+            except StackError:
+                return ImageBuilderInfo(imagebuilder)
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
+    def describe_image(image_name: str, region: str):
+        """
+        Get image information.
+
+        :param image_name: the image name(the same as cfn stack name)
+        :param region: AWS region
+        """
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            imagebuilder = ImageBuilder(image_name)
+            try:
+                return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
+            except StackError:
+                return ImageBuilderInfo(imagebuilder)
         except Exception as e:
             return ApiFailure(str(e))
