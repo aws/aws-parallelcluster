@@ -410,10 +410,12 @@ class ClusterCdkStack(core.Stack):
                                 actions=s3_policy_actions,
                                 effect=Effect.ALLOW,
                                 resources=[
-                                    self.format_arn(service="s3", resource=self._bucket.name),
+                                    self.format_arn(service="s3", resource=self._bucket.name, region="", account=""),
                                     self.format_arn(
                                         service="s3",
                                         resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
+                                        region="",
+                                        account="",
                                     ),
                                 ],
                                 sid="S3BucketPolicy",
@@ -433,7 +435,7 @@ class ClusterCdkStack(core.Stack):
                     actions=["ec2:TerminateInstances"],
                     resources=["*"],
                     effect=Effect.ALLOW,
-                    conditions=[{"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}}],
+                    conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
                     sid="FleetTerminatePolicy",
                 ),
             )
@@ -503,6 +505,8 @@ class ClusterCdkStack(core.Stack):
                             self.format_arn(
                                 service="s3",
                                 resource="{0}-aws-parallelcluster/*".format(self.region),
+                                region="",
+                                account="",
                             )
                         ],
                     ),
@@ -514,6 +518,8 @@ class ClusterCdkStack(core.Stack):
                             self.format_arn(
                                 service="s3",
                                 resource="{0}/{1}/batch/".format(self._bucket.name, self._bucket.artifact_directory),
+                                region="",
+                                account="",
                             )
                         ],
                     ),
@@ -524,7 +530,7 @@ class ClusterCdkStack(core.Stack):
                         sid="BatchJobPassRole",
                         actions=["iam:PassRole"],
                         effect=Effect.ALLOW,
-                        resources=[self.format_arn(service="iam", resource="role/parallelcluster-*")],
+                        resources=[self.format_arn(service="iam", region="", resource="role/parallelcluster-*")],
                     ),
                     PolicyStatement(
                         sid="DcvLicense",
@@ -534,6 +540,8 @@ class ClusterCdkStack(core.Stack):
                             self.format_arn(
                                 service="s3",
                                 resource="dcv-license.{0}/*".format(self.region),
+                                region="",
+                                account="",
                             )
                         ],
                     ),
@@ -554,7 +562,7 @@ class ClusterCdkStack(core.Stack):
                         effect=Effect.ALLOW,
                         actions=["ec2:TerminateInstances"],
                         resources=["*"],
-                        conditions=[{"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}}],
+                        conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
                     ),
                     PolicyStatement(
                         sid="EC2",
@@ -575,10 +583,12 @@ class ClusterCdkStack(core.Stack):
                         if self._bucket.remove_on_deletion
                         else ["s3:*"],
                         resources=[
-                            self.format_arn(service="s3", resource=self._bucket.name),
+                            self.format_arn(service="s3", resource=self._bucket.name, region="", account=""),
                             self.format_arn(
                                 service="s3",
                                 resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
+                                region="",
+                                account="",
                             ),
                         ],
                     ),
