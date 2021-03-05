@@ -261,7 +261,7 @@ class Cluster:
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
                 self.template_body = CDKTemplateBuilder().build_cluster_template(
-                    cluster_config=self.config, bucket=self.bucket
+                    cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
                 )
                 # print(yaml.dump(cluster.cluster_template_body))
 

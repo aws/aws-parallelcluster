@@ -20,8 +20,7 @@ from ..models.cluster_dummy_model import dummy_bucket, dummy_cluster
 def test_cluster_builder(mocker):
     mock_aws_api()
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_cluster(mocker),
-        bucket=dummy_bucket(),
+        cluster_config=dummy_cluster(mocker), bucket=dummy_bucket(), stack_name="parallelcluster-dummyname"
     )
     print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template
