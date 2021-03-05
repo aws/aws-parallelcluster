@@ -959,14 +959,35 @@ class ClusterCdkStack(core.Stack):
                 else None,
                 block_device_mappings=block_device_mappings,
                 key_name=head_node.ssh.key_name,
+                network_interfaces=head_lt_nw_interfaces,
+                image_id=self._cluster_config.ami_id,
+                ebs_optimized=head_node.is_ebs_optimized,
+                iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
+                user_data=Fn.base64(
+                    Fn.sub(
+                        head_node_lt_user_data,
+                        {
+                            "YumProxy": head_node.networking.proxy if head_node.networking.proxy else "_none_",
+                            "DnfProxy": head_node.networking.proxy if head_node.networking.proxy else "",
+                            "AptProxy": head_node.networking.proxy if head_node.networking.proxy else "false",
+                            "ProxyServer": head_node.networking.proxy if head_node.networking.proxy else "NONE",
+                            "CustomChefCookbook": self._custom_chef_cookbook(),
+                            "ParallelClusterVersion": self.packages_versions["parallelcluster"],
+                            "CookbookVersion": self.packages_versions["cookbook"],
+                            "ChefVersion": self.packages_versions["chef"],
+                            "BerkshelfVersion": self.packages_versions["berkshelf"],
+                            "IamRoleName": self.head_node_iam_role.ref,
+                        },
+                    )
+                ),
                 tag_specifications=[
                     CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=[
-                            CfnTag(key="Application", value=self.stack_name),
                             CfnTag(key="Name", value="Master"),  # FIXME
-                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
                             CfnTag(key="ClusterName", value=self._cluster_name()),
+                            CfnTag(key="Application", value=self.stack_name),
+                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
                             CfnTag(
                                 key="aws-parallelcluster-attributes",
                                 value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
@@ -1000,27 +1021,6 @@ class ClusterCdkStack(core.Stack):
                         ],
                     ),
                 ],
-                network_interfaces=head_lt_nw_interfaces,
-                image_id=self._cluster_config.ami_id,
-                ebs_optimized=head_node.is_ebs_optimized,
-                iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
-                user_data=Fn.base64(
-                    Fn.sub(
-                        head_node_lt_user_data,
-                        {
-                            "YumProxy": head_node.networking.proxy if head_node.networking.proxy else "_none_",
-                            "DnfProxy": head_node.networking.proxy if head_node.networking.proxy else "",
-                            "AptProxy": head_node.networking.proxy if head_node.networking.proxy else "false",
-                            "ProxyServer": head_node.networking.proxy if head_node.networking.proxy else "NONE",
-                            "CustomChefCookbook": self._custom_chef_cookbook(),
-                            "ParallelClusterVersion": self.packages_versions["parallelcluster"],
-                            "CookbookVersion": self.packages_versions["cookbook"],
-                            "ChefVersion": self.packages_versions["chef"],
-                            "BerkshelfVersion": self.packages_versions["berkshelf"],
-                            "IamRoleName": self.head_node_iam_role.ref,
-                        },
-                    )
-                ),
             ),
         )
 
