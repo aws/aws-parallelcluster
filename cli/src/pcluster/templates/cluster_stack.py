@@ -125,7 +125,7 @@ class ClusterCdkStack(core.Stack):
 
     def _get_shared_storage_options(self, storage_type: SharedStorageType):
         default_storage_options = {
-            SharedStorageType.EBS: "NONE",
+            SharedStorageType.EBS: "NONE,NONE,NONE,NONE,NONE",
             SharedStorageType.RAID: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
             SharedStorageType.EFS: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
             SharedStorageType.FSX: (
@@ -842,6 +842,24 @@ class ClusterCdkStack(core.Stack):
         ebs_ids = []
         for index in range(shared_ebs.raid.number_of_volumes):
             ebs_ids.append(self._add_cfn_volume(f"{id_prefix}Volume{index}", shared_ebs))
+
+        # [shared_dir,raid_type,num_of_raid_volumes,volume_type,volume_size,volume_iops,encrypted,
+        # ebs_kms_key_id,volume_throughput]
+        self._storage_resource_options[shared_ebs.shared_storage_type] = ",".join(
+            str(item)
+            for item in [
+                shared_ebs.mount_dir,
+                shared_ebs.raid.raid_type,
+                shared_ebs.raid.number_of_volumes,
+                shared_ebs.volume_type,
+                shared_ebs.size,
+                shared_ebs.iops,
+                shared_ebs.encrypted if shared_ebs.encrypted is not None else "NONE",
+                shared_ebs.kms_key_id or "NONE",
+                shared_ebs.throughput,
+            ]
+        )
+
         return ebs_ids
 
     def _add_ebs_volume(self, id: str, shared_ebs: SharedEbs):
@@ -849,6 +867,13 @@ class ClusterCdkStack(core.Stack):
         ebs_id = shared_ebs.volume_id
         if not ebs_id and shared_ebs.mount_dir:
             ebs_id = self._add_cfn_volume(id, shared_ebs)
+
+        # Append mount dir to list of shared dirs
+        self._storage_resource_options[shared_ebs.shared_storage_type] += (
+            f",{shared_ebs.mount_dir}"
+            if self._storage_resource_options[shared_ebs.shared_storage_type]
+            else f"{shared_ebs.mount_dir}"
+        )
 
         return ebs_id
 
@@ -999,7 +1024,7 @@ class ClusterCdkStack(core.Stack):
                             ),
                             CfnTag(
                                 key="aws-parallelcluster-networking",
-                                value=f"EFA={self._condition_head_node_efa_enabled}",
+                                value="EFA={0}".format("true" if head_node.efa and head_node.efa.enabled else "NONE"),
                             ),
                             CfnTag(
                                 key="aws-parallelcluster-filesystem",
@@ -1033,7 +1058,7 @@ class ClusterCdkStack(core.Stack):
             {
                 "cfncluster": {
                     "stack_name": self.stack_name,
-                    "enable_efa": self._condition_head_node_efa_enabled(),
+                    "enable_efa": "true" if head_node.efa and head_node.efa.enabled else "NONE",
                     "cfn_raid_vol_ids": self._get_shared_storage_ids(SharedStorageType.RAID),
                     "cfn_raid_parameters": self._get_shared_storage_options(SharedStorageType.RAID),
                     "cfn_scheduler_slots": "cores" if head_node.disable_simultaneous_multithreading else "vcpus",
@@ -1055,19 +1080,14 @@ class ClusterCdkStack(core.Stack):
                     else "NONE",
                     "cfn_ephemeral_dir": head_node.storage.ephemeral_volume.mount_dir
                     if head_node.storage and head_node.storage.ephemeral_volume
-                    else "NONE",
-                    # "cfn_shared_dir": head_node.storage.root_volume.mount_dir  # TODO
-                    # if head_node.storage and head_node.storage.root_volume
-                    # else "NONE",
+                    else "/scratch",
+                    "cfn_shared_dir": self._get_shared_storage_options(SharedStorageType.EBS),
                     "cfn_proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
-                    "cfn_dns_domain": "${ClusterDNSDomain}",  # TODO
-                    "cfn_hosted_zone": "${ClusterHostedZone}",  # TODO
-                    # "cfn_max_queue_size": "${MaxSize}",
-                    # "compute_instance_type": "${ComputeInstanceType}",
+                    "cfn_dns_domain": "" if self._condition_disable_cluster_dns() else "${ClusterDNSDomain}",
+                    "cfn_hosted_zone": "" if self._condition_disable_cluster_dns() else "${ClusterHostedZone}",
                     "cfn_node_type": "MasterServer",  # FIXME
                     "cfn_cluster_user": OS_MAPPING[self._cluster_config.image.os]["user"],
                     "cfn_ddb_table": self._dynamo_db_table.ref,
-                    # "cfn_sqs_queue": "${SQSQueueName}",
                     "dcv_enabled": head_node.dcv.enabled if head_node.dcv else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self._condition_enable_intel_hpc_platform() else "false",
@@ -1109,8 +1129,16 @@ class ClusterCdkStack(core.Stack):
                         "group": "root",
                         "content": "cookbook_path ['/etc/chef/cookbooks']",
                     },
-                    # NOTE: Removed support for ExtraJson
-                    # /tmp/extra.json: ... content: !Ref 'ExtraJson'
+                    "/tmp/extra.json": {
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "content": self._cluster_config.dev_settings.cookbook.extra_chef_attributes
+                        if self._cluster_config.dev_settings
+                        and self._cluster_config.dev_settings.cookbook
+                        and self._cluster_config.dev_settings.cookbook.extra_chef_attributes
+                        else "",
+                    },
                 },
                 "commands": {
                     "mkdir": {"command": "mkdir -p /etc/chef/ohai/hints"},
@@ -1311,6 +1339,13 @@ class ClusterCdkStack(core.Stack):
             if self._cluster_config.additional_packages
             and self._cluster_config.additional_packages.intel_select_solutions
             else False
+        )
+
+    def _condition_disable_cluster_dns(self):
+        return (
+            self._cluster_config.scheduling.settings
+            and self._cluster_config.scheduling.settings.dns
+            and self._cluster_config.scheduling.settings.dns.disable_managed_dns
         )
 
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
