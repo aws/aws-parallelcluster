@@ -360,7 +360,7 @@ class _BaseNetworking(Resource):
         proxy: Proxy = None,
     ):
         super().__init__()
-        self.assign_public_ip = Resource.init_param(assign_public_ip, default=False)
+        self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.security_groups = Resource.init_param(security_groups)
         self.additional_security_groups = Resource.init_param(additional_security_groups)
         self.proxy = proxy
