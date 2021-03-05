@@ -29,6 +29,7 @@ from pcluster.models.cluster_config import (
     SlurmQueue,
     SlurmScheduling,
     Ssh,
+    Tag,
 )
 from pcluster.models.common import Resource
 
@@ -83,7 +84,7 @@ def dummy_cluster(mocker):
     """Generate dummy cluster."""
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
-    compute_resources = [SlurmComputeResource(name="test", instance_type="test")]
+    compute_resources = [SlurmComputeResource(name="dummy_compute_resource1", instance_type="dummyc5.xlarge")]
     queue_networking1 = QueueNetworking(
         subnet_ids=["dummy-subnet-1", "dummy-subnet-2"], security_groups=["sg-1", "sg-2"]
     )
@@ -92,9 +93,9 @@ def dummy_cluster(mocker):
     )
     queue_networking3 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
     queues = [
-        SlurmQueue(name="testQueue1", networking=queue_networking1, compute_resources=compute_resources),
-        SlurmQueue(name="testQueue2", networking=queue_networking2, compute_resources=compute_resources),
-        SlurmQueue(name="testQueue3", networking=queue_networking3, compute_resources=compute_resources),
+        SlurmQueue(name="queue1", networking=queue_networking1, compute_resources=compute_resources),
+        SlurmQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
+        SlurmQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
     ]
     scheduling = SlurmScheduling(queues=queues)
     # shared storage
@@ -103,8 +104,7 @@ def dummy_cluster(mocker):
     shared_storage.append(dummy_ebs("/ebs1"))
     shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))
     shared_storage.append(dummy_ebs("/ebs3", raid=Raid(raid_type=1, number_of_volumes=5)))
-    shared_storage.append(dummy_efs("/efs1"))
-    shared_storage.append(dummy_efs("/efs2", file_system_id="fs-efs-1"))
+    shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
     shared_storage.append(dummy_raid("/raid1"))
 
     cluster = DummySlurmCluster(image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage)
@@ -117,6 +117,7 @@ def dummy_cluster(mocker):
         ]
     )
 
+    cluster.tags = [Tag(key="test", value="testvalue")]
     return cluster
 
 

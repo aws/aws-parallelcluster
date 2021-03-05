@@ -14,7 +14,7 @@
 #
 import copy
 import json
-from hashlib import sha1, sha256
+from hashlib import sha1
 
 import pkg_resources
 from aws_cdk import aws_dynamodb as dynamodb
@@ -29,6 +29,7 @@ from aws_cdk.aws_ec2 import (
     CfnInstance,
     CfnLaunchTemplate,
     CfnNetworkInterface,
+    CfnPlacementGroup,
     CfnSecurityGroup,
     CfnSecurityGroupEgress,
     CfnSecurityGroupIngress,
@@ -59,6 +60,7 @@ from pcluster import utils
 from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
     ClusterBucket,
+    ComputeType,
     CustomActionEvent,
     Ebs,
     SharedEbs,
@@ -113,8 +115,10 @@ class ClusterCdkStack(core.Stack):
 
     def _custom_chef_cookbook(self):
         return (
-            self._cluster_config.dev_settings.cookbook
-            if self._cluster_config.dev_settings and self._cluster_config.dev_settings.cookbook
+            self._cluster_config.dev_settings.cookbook.chef_cookbook
+            if self._cluster_config.dev_settings
+            and self._cluster_config.dev_settings.cookbook
+            and self._cluster_config.dev_settings.cookbook.chef_cookbook
             else "NONE"
         )
 
@@ -136,6 +140,51 @@ class ClusterCdkStack(core.Stack):
             self._storage_resource_options[storage_type]
             if self._storage_resource_options[storage_type]
             else default_storage_options[storage_type]
+        )
+
+    def _get_block_device_mappings(self, node_config):
+        # Default block device mapping
+        block_device_mappings = []
+        for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
+            device_name = "/dev/xvdb{0}".format(device_name_index)
+            virtual_name = "ephemeral{0}".format(virtual_name_index)
+            block_device_mappings.append(
+                ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
+            )
+
+        # Root volume
+        if node_config.storage and node_config.storage.root_volume:
+            root_volume = copy.deepcopy(node_config.storage.root_volume)
+        else:
+            root_volume = Ebs()
+
+        block_device_mappings.append(
+            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
+                device_name=OS_MAPPING[self._cluster_config.image.os]["root-device"],
+                ebs=ec2.CfnLaunchTemplate.EbsProperty(
+                    volume_size=root_volume.size,
+                    volume_type=root_volume.volume_type,
+                ),
+            )
+        )
+        return block_device_mappings
+
+    def _get_custom_tags(self):
+        custom_tags = []
+        if self._cluster_config.tags:
+            custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in self._cluster_config.tags]
+        return custom_tags
+
+    def _create_hash_suffix(self, string_to_hash):
+        return sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()
+
+    def _get_extra_chef_attributes(self):
+        return (
+            self._cluster_config.dev_settings.cookbook.extra_chef_attributes
+            if self._cluster_config.dev_settings
+            and self._cluster_config.dev_settings.cookbook
+            and self._cluster_config.dev_settings.cookbook.extra_chef_attributes
+            else ""
         )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -212,8 +261,8 @@ class ClusterCdkStack(core.Stack):
         # Head Node
         self._add_head_node()
 
-        # Compute Fleet Substack
-        # TODO: inline resources
+        # Compute Fleet
+        self._add_compute_fleet()
 
     def _add_terminate_compute_fleet_custom_resource(self):
         if self._condition_is_slurm():
@@ -949,30 +998,6 @@ class ClusterCdkStack(core.Stack):
         with open(user_data_file_path, "r") as user_data_file:
             head_node_lt_user_data = user_data_file.read()
 
-        # Root volume
-        if head_node.storage and head_node.storage.root_volume:
-            root_volume = copy.deepcopy(head_node.storage.root_volume)
-        else:
-            root_volume = Ebs()
-
-        # Block device mapping
-        block_device_mappings = []
-        for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
-            device_name = "/dev/xvdb{0}".format(device_name_index)
-            virtual_name = "ephemeral{0}".format(virtual_name_index)
-            block_device_mappings.append(
-                ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
-            )
-        block_device_mappings.append(
-            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
-                device_name=OS_MAPPING[self._cluster_config.image.os]["root-device"],
-                ebs=ec2.CfnLaunchTemplate.EbsProperty(
-                    volume_size=root_volume.size,
-                    volume_type=root_volume.volume_type,
-                ),
-            )
-        )
-
         # Head node Launch Template
         head_node_launch_template = CfnLaunchTemplate(
             scope=self,
@@ -982,7 +1007,7 @@ class ClusterCdkStack(core.Stack):
                 cpu_options=CfnLaunchTemplate.CpuOptionsProperty(core_count=head_node.vcpus, threads_per_core=1)
                 if head_node.pass_cpu_options_in_launch_template
                 else None,
-                block_device_mappings=block_device_mappings,
+                block_device_mappings=self._get_block_device_mappings(head_node),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self._cluster_config.ami_id,
@@ -1035,7 +1060,8 @@ class ClusterCdkStack(core.Stack):
                                     fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
                                 ),
                             ),
-                        ],
+                        ]
+                        + self._get_custom_tags(),
                     ),
                     CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
@@ -1043,7 +1069,8 @@ class ClusterCdkStack(core.Stack):
                             CfnTag(key="ClusterName", value=self._cluster_name()),
                             CfnTag(key="Application", value=self.stack_name),
                             CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
-                        ],
+                        ]
+                        + self._get_custom_tags(),
                     ),
                 ],
             ),
@@ -1062,7 +1089,9 @@ class ClusterCdkStack(core.Stack):
                     "cfn_raid_vol_ids": self._get_shared_storage_ids(SharedStorageType.RAID),
                     "cfn_raid_parameters": self._get_shared_storage_options(SharedStorageType.RAID),
                     "cfn_scheduler_slots": "cores" if head_node.disable_simultaneous_multithreading else "vcpus",
-                    "cfn_disable_hyperthreading_manually": str(self._condition_disable_hyperthreading_manually()),
+                    "cfn_disable_hyperthreading_manually": "true"
+                    if self._condition_disable_hyperthreading_manually(head_node)
+                    else "false",
                     "cfn_base_os": self._cluster_config.image.os,
                     "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
                     "cfn_preinstall_args": pre_install_action.args if pre_install_action else "NONE",
@@ -1133,11 +1162,7 @@ class ClusterCdkStack(core.Stack):
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
-                        "content": self._cluster_config.dev_settings.cookbook.extra_chef_attributes
-                        if self._cluster_config.dev_settings
-                        and self._cluster_config.dev_settings.cookbook
-                        and self._cluster_config.dev_settings.cookbook.extra_chef_attributes
-                        else "",
+                        "content": self._get_extra_chef_attributes(),
                     },
                 },
                 "commands": {
@@ -1276,10 +1301,205 @@ class ClusterCdkStack(core.Stack):
                 properties={"ConfigVersion": self._cluster_config.config_version, "DynamoDBTable": ""},  # TODO
             )
 
-    # -- Conditions -------------------------------------------------------------------------------------------------- #
+    def _add_compute_fleet(self):
 
-    def _condition_head_node_efa_enabled(self):
-        return self._cluster_config.head_node.efa.enabled if self._cluster_config.head_node.efa else "NONE"
+        # LT userdata
+        user_data_file_path = pkg_resources.resource_filename(__name__, "../resources/compute_node/user_data.sh")
+        with open(user_data_file_path, "r") as user_data_file:
+            compute_node_lt_user_data = user_data_file.read()
+
+        for queue in self._cluster_config.scheduling.queues:
+
+            # LT security groups
+            queue_lt_security_groups = []
+            if queue.networking.security_groups:
+                queue_lt_security_groups.extend(queue.networking.security_groups)
+            if queue.networking.additional_security_groups:
+                queue_lt_security_groups.extend(queue.networking.additional_security_groups)
+            if self._compute_security_group:
+                queue_lt_security_groups.append(self._compute_security_group.ref)
+
+            queue_placement_group = None
+            if queue.networking.placement_group and queue.networking.placement_group.enabled:
+                if queue.networking.placement_group.id:
+                    queue_placement_group = queue.networking.placement_group.id
+                else:
+                    # Create Placement Group
+                    queue_placement_group = CfnPlacementGroup(
+                        scope=self, id=f"PlacementGroup{self._create_hash_suffix(queue.name)}", strategy="cluster"
+                    ).ref
+
+            pre_install_action = queue.get_custom_action(event=CustomActionEvent.NODE_START)
+            post_install_action = queue.get_custom_action(event=CustomActionEvent.NODE_CONFIGURED)
+
+            for compute_resource in queue.compute_resources:
+                instance_type = compute_resource.instance_type
+
+                # LT network interfaces
+                compute_lt_nw_interfaces = [
+                    CfnLaunchTemplate.NetworkInterfaceProperty(
+                        device_index=0,
+                        associate_public_ip_address=queue.networking.assign_public_ip
+                        if compute_resource.max_network_interface_count == 1
+                        else None,  # parameter not supported for instance types with multiple network interfaces
+                    )
+                ]
+                for device_index in range(1, compute_resource.max_network_interface_count - 1):
+                    compute_lt_nw_interfaces.append(
+                        CfnLaunchTemplate.NetworkInterfaceProperty(
+                            device_index=device_index,
+                            network_card_index=device_index,
+                            interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
+                            groups=queue_lt_security_groups,
+                            subnet_id=queue.networking.subnet_ids[0],  # FIXME slurm supports a single subnet
+                        )
+                    )
+
+                instance_market_options = None
+                if queue.compute_type == ComputeType.SPOT:
+                    instance_market_options = CfnLaunchTemplate.InstanceMarketOptionsProperty(
+                        market_type="spot",
+                        spot_options=CfnLaunchTemplate.SpotOptionsProperty(
+                            spot_instance_type="one-time",
+                            instance_interruption_behavior="terminate",
+                            max_price=compute_resource.spot_price,
+                        ),
+                    )
+
+                CfnLaunchTemplate(
+                    scope=self,
+                    id=f"ComputeServerLaunchTemplate{self._create_hash_suffix(queue.name + instance_type)}",
+                    launch_template_name=f"{self._cluster_name()}-{queue.name}-{instance_type}",
+                    launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
+                        instance_type=instance_type,
+                        cpu_options=CfnLaunchTemplate.CpuOptionsProperty(
+                            core_count=compute_resource.vcpus, threads_per_core=1
+                        )
+                        if compute_resource.pass_cpu_options_in_launch_template
+                        else None,
+                        block_device_mappings=self._get_block_device_mappings(queue),
+                        # key_name=,
+                        network_interfaces=compute_lt_nw_interfaces,
+                        placement=queue_placement_group,
+                        image_id=self._cluster_config.ami_id,
+                        ebs_optimized=compute_resource.is_ebs_optimized,
+                        iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(
+                            name=self.root_instance_profile.ref
+                        ),
+                        instance_market_options=instance_market_options,
+                        user_data=Fn.base64(
+                            Fn.sub(
+                                compute_node_lt_user_data,
+                                {
+                                    "YumProxy": queue.networking.proxy if queue.networking.proxy else "_none_",
+                                    "DnfProxy": queue.networking.proxy if queue.networking.proxy else "",
+                                    "AptProxy": queue.networking.proxy if queue.networking.proxy else "false",
+                                    "ProxyServer": queue.networking.proxy if queue.networking.proxy else "NONE",
+                                    "CustomChefCookbook": self._custom_chef_cookbook(),
+                                    "ParallelClusterVersion": self.packages_versions["parallelcluster"],
+                                    "CookbookVersion": self.packages_versions["cookbook"],
+                                    "ChefVersion": self.packages_versions["chef"],
+                                    "BerkshelfVersion": self.packages_versions["berkshelf"],
+                                    "IamRoleName": self.head_node_iam_role.ref,  # TODO split roles
+                                    "EnableEfa": "efa"
+                                    if compute_resource.efa and compute_resource.efa.enabled
+                                    else "NONE",
+                                    "RAIDOptions": self._get_shared_storage_options(SharedStorageType.RAID),
+                                    "VCpus": str(compute_resource.vcpus),
+                                    "DisableHyperThreadingManually": "true"
+                                    if self._condition_disable_hyperthreading_manually(compute_resource)
+                                    else "false",
+                                    "BaseOS": self._cluster_config.image.os,
+                                    "PreInstallScript": pre_install_action.script if pre_install_action else "NONE",
+                                    "PreInstallArgs": pre_install_action.args if pre_install_action else "NONE",
+                                    "PostInstallScript": post_install_action.script if pre_install_action else "NONE",
+                                    "PostInstallArgs": post_install_action.args if pre_install_action else "NONE",
+                                    "EFSId": self._get_shared_storage_ids(SharedStorageType.EFS),
+                                    "EFSOptions": self._get_shared_storage_options(SharedStorageType.EFS),  # FIXME
+                                    "FSXId": self._get_shared_storage_ids(SharedStorageType.FSX),
+                                    "FSXOptions": self._get_shared_storage_options(SharedStorageType.FSX),
+                                    "Scheduler": self._cluster_config.scheduling.scheduler,
+                                    "EncryptedEphemeral": "true"
+                                    if queue.storage
+                                    and queue.storage.ephemeral_volume
+                                    and queue.storage.ephemeral_volume.encrypted
+                                    else "NONE",
+                                    "EphemeralDir": queue.storage.ephemeral_volume.mount_dir
+                                    if queue.storage and queue.storage.ephemeral_volume
+                                    else "/scratch",
+                                    "EbsSharedDirs": self._get_shared_storage_options(SharedStorageType.EBS),
+                                    "ClusterDNSDomain": ""
+                                    if self._condition_disable_cluster_dns()
+                                    else "${ClusterDNSDomain}",  # TODO
+                                    "ClusterHostedZone": ""
+                                    if self._condition_disable_cluster_dns()
+                                    else "${ClusterHostedZone}",  # TODO
+                                    "OSUser": OS_MAPPING[self._cluster_config.image.os]["user"],
+                                    "DynamoDBTable": self._dynamo_db_table.ref,
+                                    "IntelHPCPlatform": "true"
+                                    if self._condition_enable_intel_hpc_platform()
+                                    else "false",
+                                    "CWLoggingEnabled": "true" if self._condition_cw_logging_enabled() else "false",
+                                    "QueueName": queue.name,
+                                    "EnableEfaGdr": "compute"
+                                    if compute_resource.efa and compute_resource.efa.gdr_support
+                                    else "NONE",
+                                    "ExtraJson": self._get_extra_chef_attributes(),
+                                },
+                            )
+                        ),
+                        monitoring=CfnLaunchTemplate.MonitoringProperty(enabled=False),
+                        tag_specifications=[
+                            CfnLaunchTemplate.TagSpecificationProperty(
+                                resource_type="instance",
+                                tags=[
+                                    CfnTag(key="Name", value="Compute"),
+                                    CfnTag(key="ClusterName", value=self._cluster_name()),
+                                    CfnTag(key="Application", value=self.stack_name),
+                                    CfnTag(key="QueueName", value=queue.name),
+                                    CfnTag(key="aws-parallelcluster-node-type", value="Compute"),
+                                    CfnTag(
+                                        key="aws-parallelcluster-attributes",
+                                        value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
+                                            BaseOS=self._cluster_config.image.os,
+                                            Scheduler=self._cluster_config.scheduling.scheduler,
+                                            Version=utils.get_installed_version(),
+                                            Architecture=compute_resource.architecture,
+                                        ),
+                                    ),
+                                    CfnTag(
+                                        key="aws-parallelcluster-networking",
+                                        value="EFA={0}".format(
+                                            "true" if compute_resource.efa and compute_resource.efa.enabled else "NONE"
+                                        ),
+                                    ),
+                                    CfnTag(
+                                        key="aws-parallelcluster-filesystem",
+                                        value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
+                                            efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
+                                            multiebs=len(self._storage_resource_ids[SharedStorageType.EBS]),
+                                            raid=len(self._storage_resource_ids[SharedStorageType.RAID]),
+                                            fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
+                                        ),
+                                    ),
+                                ]
+                                + self._get_custom_tags(),
+                            ),
+                            CfnLaunchTemplate.TagSpecificationProperty(
+                                resource_type="volume",
+                                tags=[
+                                    CfnTag(key="ClusterName", value=self._cluster_name()),
+                                    CfnTag(key="Application", value=self.stack_name),
+                                    CfnTag(key="QueueName", value=queue.name),
+                                    CfnTag(key="aws-parallelcluster-node-type", value="Compute"),  # FIXME
+                                ]
+                                + self._get_custom_tags(),
+                            ),
+                        ],
+                    ),
+                )
+
+    # -- Conditions -------------------------------------------------------------------------------------------------- #
 
     def _condition_create_head_node_iam_role(self):
         """Head node role is created if head instance role is not specified."""
@@ -1290,10 +1510,10 @@ class ClusterCdkStack(core.Stack):
         """Compute Iam role is created if queue instance role is not specified."""
         return not queue.iam or not queue.iam.roles or not queue.iam.roles.instance_role
 
-    def _condition_disable_hyperthreading_manually(self):
+    def _condition_disable_hyperthreading_manually(self, node_config):
         return (
-            self._cluster_config.head_node.disable_simultaneous_multithreading
-            and not self._cluster_config.head_node.disable_simultaneous_multithreading_via_cpu_options
+            node_config.disable_simultaneous_multithreading
+            and not node_config.disable_simultaneous_multithreading_via_cpu_options
         )
 
     def _condition_create_lambda_iam_role(self):

@@ -401,7 +401,7 @@ class QueueNetworking(_BaseNetworking):
 
     def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
         super().__init__(**kwargs)
-        self.subnet_ids = Resource.init_param(subnet_ids)
+        self.subnet_ids = Resource.init_param(subnet_ids)  # FIXME slurm support a single subnet id
         self.placement_group = placement_group
 
 
@@ -685,12 +685,12 @@ class HeadNode(Resource):
         )
 
     @property
-    def architecture(self):
+    def architecture(self) -> str:
         """Compute cluster's architecture based on its head node instance type."""
         return self._instance_type_info.supported_architecture()[0]
 
     @property
-    def vcpus(self):
+    def vcpus(self) -> int:
         """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
         instance_type_info = self._instance_type_info
         default_threads_per_core = instance_type_info.default_threads_per_core()
@@ -723,11 +723,11 @@ class HeadNode(Resource):
         return self.__instance_type_info
 
     @property
-    def disable_simultaneous_multithreading_via_cpu_options(self):
+    def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
         return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
 
-    def get_custom_action(self, event: CustomActionEvent):
+    def get_custom_action(self, event: CustomActionEvent) -> CustomAction:
         """Return the first CustomAction corresponding to the specified event."""
         return (
             next((action for action in self.custom_actions if action.event == event), None)
@@ -753,6 +753,7 @@ class BaseComputeResource(Resource):
         self.disable_simultaneous_multithreading = Resource.init_param(
             disable_simultaneous_multithreading, default=False
         )
+        self.__instance_type_info = None
 
     def _validate(self):
         self._execute_validator(NameValidator, name=self.name)
@@ -763,10 +764,47 @@ class BaseComputeResource(Resource):
         )
 
     @property
-    def architecture(self):
+    def architecture(self) -> str:
         """Compute cluster's architecture based on its head node instance type."""
-        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        return instance_type_info.supported_architecture()[0]
+        return self._instance_type_info.supported_architecture()[0]
+
+    @property
+    def vcpus(self) -> int:
+        """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
+        instance_type_info = self._instance_type_info
+        default_threads_per_core = instance_type_info.default_threads_per_core()
+        return (
+            instance_type_info.vcpus_count()
+            if not self.disable_simultaneous_multithreading
+            else (instance_type_info.vcpus_count() // default_threads_per_core)
+        )
+
+    @property
+    def pass_cpu_options_in_launch_template(self) -> bool:
+        """Check whether CPU Options must be passed in launch template for head node."""
+        return self.disable_simultaneous_multithreading and self._instance_type_info.is_cpu_options_supported_in_lt()
+
+    @property
+    def is_ebs_optimized(self) -> bool:
+        """Return True if the instance has optimized EBS support."""
+        return self._instance_type_info.is_ebs_optimized()
+
+    @property
+    def max_network_interface_count(self) -> int:
+        """Return max number of NICs for the instance."""
+        return self._instance_type_info.max_network_interface_count()
+
+    @property
+    def _instance_type_info(self) -> InstanceTypeInfo:
+        """Return instance type information as returned from aws ec2 describe-instance-types."""
+        if not self.__instance_type_info:
+            self.__instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return self.__instance_type_info
+
+    @property
+    def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
+        """Return true if simultaneous multithreading must be disabled through cpu options."""
+        return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
 
 
 class ComputeType(Enum):
@@ -1177,6 +1215,14 @@ class SlurmQueue(BaseQueue):
     def instance_type_list(self):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
+
+    def get_custom_action(self, event: CustomActionEvent):
+        """Return the first CustomAction corresponding to the specified event."""
+        return (
+            next((action for action in self.custom_actions if action.event == event), None)
+            if self.custom_actions
+            else None
+        )
 
 
 class Dns(Resource):

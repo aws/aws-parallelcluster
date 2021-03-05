@@ -12,7 +12,6 @@ import os
 
 from common.aws.aws_api import AWSApi
 from common.boto3.cfn import CfnClient
-from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
