@@ -14,6 +14,7 @@
 #
 import copy
 import json
+from hashlib import sha1, sha256
 
 import pkg_resources
 from aws_cdk import aws_dynamodb as dynamodb
@@ -201,9 +202,6 @@ class ClusterCdkStack(core.Stack):
         # ToDo: evaluate other approaches to store cluster states
         self._add_dynamo_db_table()
 
-        # Compute Fleet Substack
-        # TODO: inline resources
-
         # CloudWatchDashboardSubstack
         # TODO: inline resources
 
@@ -213,6 +211,9 @@ class ClusterCdkStack(core.Stack):
 
         # Head Node
         self._add_head_node()
+
+        # Compute Fleet Substack
+        # TODO: inline resources
 
     def _add_terminate_compute_fleet_custom_resource(self):
         if self._condition_is_slurm():
@@ -889,12 +890,14 @@ class ClusterCdkStack(core.Stack):
         self._dynamo_db_table = table
 
     def _add_head_node(self):
+        head_node = self._cluster_config.head_node
+
         # LT security groups
         head_lt_security_groups = []
-        if self._cluster_config.head_node.networking.security_groups:
-            head_lt_security_groups.extend(self._cluster_config.head_node.networking.security_groups)
-        if self._cluster_config.head_node.networking.additional_security_groups:
-            head_lt_security_groups.extend(self._cluster_config.head_node.networking.additional_security_groups)
+        if head_node.networking.security_groups:
+            head_lt_security_groups.extend(head_node.networking.security_groups)
+        if head_node.networking.additional_security_groups:
+            head_lt_security_groups.extend(head_node.networking.additional_security_groups)
         if self._head_security_group:
             head_lt_security_groups.append(self._head_security_group.ref)
 
@@ -902,13 +905,13 @@ class ClusterCdkStack(core.Stack):
         head_lt_nw_interfaces = [
             CfnLaunchTemplate.NetworkInterfaceProperty(device_index=0, network_interface_id=self.head_eni.ref)
         ]
-        for if_number in range(1, self._cluster_config.head_node.max_network_interface_count - 1):
+        for if_number in range(1, head_node.max_network_interface_count - 1):
             head_lt_nw_interfaces.append(
                 CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=if_number,
                     network_card_index=if_number,
                     groups=head_lt_security_groups,
-                    subnet_id=self._cluster_config.head_node.networking.subnet_id,
+                    subnet_id=head_node.networking.subnet_id,
                 )
             )
 
@@ -918,8 +921,8 @@ class ClusterCdkStack(core.Stack):
             head_node_lt_user_data = user_data_file.read()
 
         # Root volume
-        if self._cluster_config.head_node.storage and self._cluster_config.head_node.storage.root_volume:
-            root_volume = copy.deepcopy(self._cluster_config.head_node.storage.root_volume)
+        if head_node.storage and head_node.storage.root_volume:
+            root_volume = copy.deepcopy(head_node.storage.root_volume)
         else:
             root_volume = Ebs()
 
@@ -946,14 +949,12 @@ class ClusterCdkStack(core.Stack):
             scope=self,
             id="HeadNodeLaunchTemplate",
             launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
-                instance_type=self._cluster_config.head_node.instance_type,
-                cpu_options=CfnLaunchTemplate.CpuOptionsProperty(
-                    core_count=self._cluster_config.head_node.vcpus, threads_per_core=1
-                )
-                if self._cluster_config.head_node.pass_cpu_options_in_launch_template
+                instance_type=head_node.instance_type,
+                cpu_options=CfnLaunchTemplate.CpuOptionsProperty(core_count=head_node.vcpus, threads_per_core=1)
+                if head_node.pass_cpu_options_in_launch_template
                 else None,
                 block_device_mappings=block_device_mappings,
-                key_name=self._cluster_config.head_node.ssh.key_name,
+                key_name=head_node.ssh.key_name,
                 tag_specifications=[
                     CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
@@ -968,10 +969,13 @@ class ClusterCdkStack(core.Stack):
                                     BaseOS=self._cluster_config.image.os,
                                     Scheduler=self._cluster_config.scheduling.scheduler,
                                     Version=utils.get_installed_version(),
-                                    Architecture=self._cluster_config.head_node.architecture,
+                                    Architecture=head_node.architecture,
                                 ),
                             ),
-                            CfnTag(key="aws-parallelcluster-networking", value=f"EFA={self._head_node_efa_enabled}"),
+                            CfnTag(
+                                key="aws-parallelcluster-networking",
+                                value=f"EFA={self._condition_head_node_efa_enabled}",
+                            ),
                             CfnTag(
                                 key="aws-parallelcluster-filesystem",
                                 value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
@@ -994,24 +998,16 @@ class ClusterCdkStack(core.Stack):
                 ],
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self._cluster_config.ami_id,
-                ebs_optimized=self._cluster_config.head_node.is_ebs_optimized,
+                ebs_optimized=head_node.is_ebs_optimized,
                 iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
                 user_data=Fn.base64(
                     Fn.sub(
                         head_node_lt_user_data,
                         {
-                            "YumProxy": self._cluster_config.head_node.networking.proxy
-                            if self._cluster_config.head_node.networking.proxy
-                            else "_none_",
-                            "DnfProxy": self._cluster_config.head_node.networking.proxy
-                            if self._cluster_config.head_node.networking.proxy
-                            else "",
-                            "AptProxy": self._cluster_config.head_node.networking.proxy
-                            if self._cluster_config.head_node.networking.proxy
-                            else "false",
-                            "ProxyServer": self._cluster_config.head_node.networking.proxy
-                            if self._cluster_config.head_node.networking.proxy
-                            else "NONE",
+                            "YumProxy": head_node.networking.proxy if head_node.networking.proxy else "_none_",
+                            "DnfProxy": head_node.networking.proxy if head_node.networking.proxy else "",
+                            "AptProxy": head_node.networking.proxy if head_node.networking.proxy else "false",
+                            "ProxyServer": head_node.networking.proxy if head_node.networking.proxy else "NONE",
                             "CustomChefCookbook": self._custom_chef_cookbook(),
                             "ParallelClusterVersion": self.packages_versions["parallelcluster"],
                             "CookbookVersion": self.packages_versions["cookbook"],
@@ -1027,18 +1023,16 @@ class ClusterCdkStack(core.Stack):
         # Metadata
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
-        pre_install_action = self._cluster_config.head_node.get_custom_action(event=CustomActionEvent.NODE_START)
-        post_install_action = self._cluster_config.head_node.get_custom_action(event=CustomActionEvent.NODE_CONFIGURED)
+        pre_install_action = head_node.get_custom_action(event=CustomActionEvent.NODE_START)
+        post_install_action = head_node.get_custom_action(event=CustomActionEvent.NODE_CONFIGURED)
         dna_json = json.dumps(
             {
                 "cfncluster": {
                     "stack_name": self.stack_name,
-                    "enable_efa": self._head_node_efa_enabled(),
+                    "enable_efa": self._condition_head_node_efa_enabled(),
                     "cfn_raid_vol_ids": self._get_shared_storage_ids(SharedStorageType.RAID),
                     "cfn_raid_parameters": self._get_shared_storage_options(SharedStorageType.RAID),
-                    "cfn_scheduler_slots": "cores"
-                    if self._cluster_config.head_node.disable_simultaneous_multithreading
-                    else "vcpus",
+                    "cfn_scheduler_slots": "cores" if head_node.disable_simultaneous_multithreading else "vcpus",
                     "cfn_disable_hyperthreading_manually": str(self._condition_disable_hyperthreading_manually()),
                     "cfn_base_os": self._cluster_config.image.os,
                     "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
@@ -1052,20 +1046,16 @@ class ClusterCdkStack(core.Stack):
                     "cfn_fsx_options": self._get_shared_storage_options(SharedStorageType.FSX),
                     "cfn_volume": self._get_shared_storage_ids(SharedStorageType.EBS),
                     "cfn_scheduler": self._cluster_config.scheduling.scheduler,
-                    "cfn_encrypted_ephemeral": self._cluster_config.head_node.storage.ephemeral_volume.encrypted
-                    if self._cluster_config.head_node.storage
-                    and self._cluster_config.head_node.storage.ephemeral_volume
+                    "cfn_encrypted_ephemeral": head_node.storage.ephemeral_volume.encrypted
+                    if head_node.storage and head_node.storage.ephemeral_volume
                     else "NONE",
-                    "cfn_ephemeral_dir": self._cluster_config.head_node.storage.ephemeral_volume.mount_dir
-                    if self._cluster_config.head_node.storage
-                    and self._cluster_config.head_node.storage.ephemeral_volume
+                    "cfn_ephemeral_dir": head_node.storage.ephemeral_volume.mount_dir
+                    if head_node.storage and head_node.storage.ephemeral_volume
                     else "NONE",
-                    # "cfn_shared_dir": self._cluster_config.head_node.storage.root_volume.mount_dir  # TODO
-                    # if self._cluster_config.head_node.storage and self._cluster_config.head_node.storage.root_volume
+                    # "cfn_shared_dir": head_node.storage.root_volume.mount_dir  # TODO
+                    # if head_node.storage and head_node.storage.root_volume
                     # else "NONE",
-                    "cfn_proxy": self._cluster_config.head_node.networking.proxy
-                    if self._cluster_config.head_node.networking.proxy
-                    else "NONE",
+                    "cfn_proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
                     "cfn_dns_domain": "${ClusterDNSDomain}",  # TODO
                     "cfn_hosted_zone": "${ClusterHostedZone}",  # TODO
                     # "cfn_max_queue_size": "${MaxSize}",
@@ -1074,12 +1064,8 @@ class ClusterCdkStack(core.Stack):
                     "cfn_cluster_user": OS_MAPPING[self._cluster_config.image.os]["user"],
                     "cfn_ddb_table": self._dynamo_db_table.ref,
                     # "cfn_sqs_queue": "${SQSQueueName}",
-                    "dcv_enabled": self._cluster_config.head_node.dcv.enabled
-                    if self._cluster_config.head_node.dcv
-                    else "false",
-                    "dcv_port": self._cluster_config.head_node.dcv.port
-                    if self._cluster_config.head_node.dcv
-                    else "NONE",
+                    "dcv_enabled": head_node.dcv.enabled if head_node.dcv else "false",
+                    "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self._condition_enable_intel_hpc_platform() else "false",
                     "cfn_cluster_cw_logging_enabled": "true" if self._condition_cw_logging_enabled() else "false",
                     "cluster_s3_bucket": self._bucket.name,
@@ -1258,10 +1244,10 @@ class ClusterCdkStack(core.Stack):
                 properties={"ConfigVersion": self._cluster_config.config_version, "DynamoDBTable": ""},  # TODO
             )
 
-    def _head_node_efa_enabled(self):
-        return self._cluster_config.head_node.efa.enabled if self._cluster_config.head_node.efa else "NONE"
-
     # -- Conditions -------------------------------------------------------------------------------------------------- #
+
+    def _condition_head_node_efa_enabled(self):
+        return self._cluster_config.head_node.efa.enabled if self._cluster_config.head_node.efa else "NONE"
 
     def _condition_create_head_node_iam_role(self):
         """Head node role is created if head instance role is not specified."""

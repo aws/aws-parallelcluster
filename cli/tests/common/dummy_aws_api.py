@@ -89,19 +89,6 @@ class DummyEc2Client(Ec2Client):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
-    def get_availability_zone_of_subnet(self, subnet_id):
-        subnets_azs = {
-            "dummy-subnet-1": "dummy-az-1",
-            "dummy-subnet-2": "dummy-az-2",
-            "dummy-subnet-3": "dummy-az-3",
-        }
-        availability_zone = subnets_azs.get(subnet_id, None)
-        if not availability_zone:
-            raise AWSClientError(
-                self.get_availability_zone_of_subnet.__name__, "Invalid subnet ID: {0}".format(subnet_id)
-            )
-        return availability_zone
-
     def get_instance_type_info(self, instance_type):
         return DummyInstanceTypeInfo(instance_type)
 
@@ -133,20 +120,19 @@ class DummyEfsClient(Ec2Client):
 class DummyS3Client(S3Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-
-    pass
+        pass
 
 
 class DummyImageBuilderClient(ImageBuilderClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
-
-    pass
+        pass
 
 
 class DummyKmsClient(KmsClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
+        pass
 
 
 def dummy_ec2_client():
