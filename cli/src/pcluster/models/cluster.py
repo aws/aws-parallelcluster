@@ -249,9 +249,10 @@ class Cluster:
 
         # Add tags information to the stack
         version = get_installed_version()
-        tags = copy.deepcopy(self.config.tags) or []
-        tags.append(Tag(key="Version", value=version))
-        tags = [{"Key": tag.key, "Value": tag.value} for tag in tags]
+        if self.config.tags is None:
+            self.config.tags = []
+        self.config.tags.append(Tag(key="Version", value=version))
+        cfn_tags = [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]
 
         # Create bucket if needed
         self._setup_cluster_bucket()
@@ -273,7 +274,7 @@ class Cluster:
                 stack_name=self.stack_name,
                 template_url=self.template_url,
                 disable_rollback=disable_rollback,
-                tags=tags,
+                tags=cfn_tags,
             )
 
             self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
