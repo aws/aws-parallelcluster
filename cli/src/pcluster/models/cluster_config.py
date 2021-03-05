@@ -769,6 +769,13 @@ class BaseComputeResource(Resource):
         return instance_type_info.supported_architecture()[0]
 
 
+class ComputeType(Enum):
+    """Enum to identify the type compute supported by the queues."""
+
+    ONDEMAND = "ONDEMAND"
+    SPOT = "SPOT"
+
+
 class BaseQueue(Resource):
     """Represent the generic Queue resource."""
 
@@ -784,7 +791,7 @@ class BaseQueue(Resource):
         self.name = Resource.init_param(name)
         self.networking = networking
         self.storage = storage
-        self.compute_type = Resource.init_param(compute_type, default="ONDEMAND")
+        self.compute_type = Resource.init_param(compute_type, default=ComputeType.ONDEMAND)
         self.iam = iam
 
     def _validate(self):

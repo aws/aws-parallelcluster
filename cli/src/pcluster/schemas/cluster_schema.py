@@ -32,6 +32,7 @@ from pcluster.models.cluster_config import (
     CloudWatchLogs,
     ClusterDevSettings,
     CommonSchedulingSettings,
+    ComputeType,
     CustomAction,
     CustomActionEvent,
     Dashboards,
@@ -617,7 +618,7 @@ class BaseQueueSchema(BaseSchema):
     name = fields.Str()
     networking = fields.Nested(QueueNetworkingSchema, required=True)
     storage = fields.Nested(StorageSchema)
-    compute_type = fields.Str(validate=validate.OneOf(["ONDEMAND", "SPOT"]))
+    compute_type = fields.Str(validate=validate.OneOf([event.value for event in ComputeType]))
     iam = fields.Nested(IamSchema)
 
 
