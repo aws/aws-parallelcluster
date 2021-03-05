@@ -95,7 +95,7 @@ class ClusterCdkStack(core.Stack):
     def _init_mappings(self):
         self.packages_versions = {
             "parallelcluster": utils.get_installed_version(),
-            "cookbook": "aws-parallelcluster-cookbook-2.10.1",
+            "cookbook": "aws-parallelcluster-cookbook-2.10.2",
             "chef": "15.11.8",
             "berkshelf": "7.0.10",
             "ami": "dev",
