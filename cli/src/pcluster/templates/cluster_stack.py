@@ -16,10 +16,12 @@ import copy
 import json
 
 import pkg_resources
+from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import core
+from aws_cdk.aws_dynamodb import CfnTable
 from aws_cdk.aws_ec2 import (
     CfnEIP,
     CfnEIPAssociation,
@@ -40,7 +42,16 @@ from aws_cdk.aws_iam import (
     ServicePrincipal,
 )
 from aws_cdk.aws_lambda import CfnFunction
-from aws_cdk.core import CfnCreationPolicy, CfnCustomResource, CfnOutput, CfnStack, CfnTag, CustomResource, Fn
+from aws_cdk.core import (
+    CfnCreationPolicy,
+    CfnCustomResource,
+    CfnDeletionPolicy,
+    CfnOutput,
+    CfnStack,
+    CfnTag,
+    CustomResource,
+    Fn,
+)
 
 from common.aws.aws_api import AWSApi
 from pcluster import utils
@@ -55,6 +66,7 @@ from pcluster.models.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
+from pcluster.utils import get_availability_zone_of_subnet
 
 # pylint: disable=too-many-lines
 
@@ -185,8 +197,9 @@ class ClusterCdkStack(core.Stack):
         # TerminateComputeFleetCustomResource
         self._add_terminate_compute_fleet_custom_resource()
 
-        # RAIDSubstack
-        # TODO: inline resources
+        # DynamoDB to store cluster states
+        # ToDo: evaluate other approaches to store cluster states
+        self._add_dynamo_db_table()
 
         # Compute Fleet Substack
         # TODO: inline resources
@@ -517,7 +530,7 @@ class ClusterCdkStack(core.Stack):
                             "dynamodb:DescribeTable",
                         ],
                         effect=Effect.ALLOW,
-                        resources=[self.format_arn(service="dynamodb", resource="table/${AWS::StackName}")],
+                        resources=[self.format_arn(service="dynamodb", resource=f"table/{self.stack_name}")],
                     ),
                     PolicyStatement(
                         sid="S3GetObj",
@@ -750,6 +763,7 @@ class ClusterCdkStack(core.Stack):
         """Add specific Cfn Resources to map the EFS storage."""
         # EFS FileSystem
         efs_id = shared_efs.file_system_id
+        new_file_system = efs_id is None
         if not efs_id and shared_efs.mount_dir:
             efs_resource = efs.CfnFileSystem(
                 scope=self,
@@ -765,18 +779,21 @@ class ClusterCdkStack(core.Stack):
         checked_availability_zones = []
         # Mount Targets for Compute Fleet
         compute_subnet_ids = self._cluster_config.compute_subnet_ids
+        compute_node_sgs = self._cluster_config.compute_security_groups or [self._compute_security_group.ref]
         for subnet_id in compute_subnet_ids:
             self._add_efs_mount_target(
-                id, efs_id, self._cluster_config.compute_security_groups, subnet_id, checked_availability_zones
+                id, efs_id, compute_node_sgs, subnet_id, checked_availability_zones, new_file_system
             )
 
         # Mount Target for Head Node
+        head_node_sgs = self._cluster_config.head_node.networking.security_groups or [self._head_security_group.ref]
         self._add_efs_mount_target(
             id,
             efs_id,
-            self._cluster_config.head_node.networking.security_groups,
+            head_node_sgs,
             self._cluster_config.head_node.networking.subnet_id,
             checked_availability_zones,
+            new_file_system,
         )
 
         # [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,
@@ -798,14 +815,18 @@ class ClusterCdkStack(core.Stack):
         return efs_id
 
     def _add_efs_mount_target(
-        self, efs_cfn_resource_id, file_system_id, security_groups, subnet_id, checked_availability_zones
+        self,
+        efs_cfn_resource_id,
+        file_system_id,
+        security_groups,
+        subnet_id,
+        checked_availability_zones,
+        new_file_system,
     ):
         """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
-        availability_zone = AWSApi.instance().ec2.get_availability_zone_of_subnet(subnet_id)
+        availability_zone = get_availability_zone_of_subnet(subnet_id)
         if availability_zone not in checked_availability_zones:
-            mount_target_id = AWSApi.instance().efs.get_efs_mount_target_id(file_system_id, availability_zone)
-
-            if not mount_target_id:
+            if new_file_system or not AWSApi.instance().efs.get_efs_mount_target_id(file_system_id, availability_zone):
                 efs.CfnMountTarget(
                     scope=self,
                     id="{0}MT{1}".format(efs_cfn_resource_id, availability_zone),
@@ -843,6 +864,29 @@ class ClusterCdkStack(core.Stack):
             snapshot_id=shared_ebs.snapshot_id,
             volume_type=shared_ebs.volume_type,
         ).ref
+
+    def _add_dynamo_db_table(self):
+        table = dynamodb.CfnTable(
+            scope=self,
+            id="DynamoDBTable",
+            table_name=self.stack_name,
+            attribute_definitions=[
+                CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
+                CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
+            ],
+            key_schema=[CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
+            global_secondary_indexes=[
+                CfnTable.GlobalSecondaryIndexProperty(
+                    index_name="InstanceId",
+                    key_schema=[CfnTable.KeySchemaProperty(attribute_name="InstanceId", key_type="HASH")],
+                    projection=CfnTable.ProjectionProperty(projection_type="ALL"),
+                )
+            ],
+            billing_mode="PAY_PER_REQUEST",
+        )
+        table.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        table.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
+        self._dynamo_db_table = table
 
     def _add_head_node(self):
         # LT security groups
@@ -1028,7 +1072,7 @@ class ClusterCdkStack(core.Stack):
                     # "compute_instance_type": "${ComputeInstanceType}",
                     "cfn_node_type": "MasterServer",  # FIXME
                     "cfn_cluster_user": OS_MAPPING[self._cluster_config.image.os]["user"],
-                    "cfn_ddb_table": "${DynamoDBTable}",  # TODO
+                    "cfn_ddb_table": self._dynamo_db_table.ref,
                     # "cfn_sqs_queue": "${SQSQueueName}",
                     "dcv_enabled": self._cluster_config.head_node.dcv.enabled
                     if self._cluster_config.head_node.dcv

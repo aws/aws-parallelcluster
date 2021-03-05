@@ -28,10 +28,10 @@ class CDKTemplateBuilder:
     """Create the template, starting from the given resources."""
 
     @staticmethod
-    def build_cluster_template(cluster_config: BaseClusterConfig, bucket: ClusterBucket):
+    def build_cluster_template(cluster_config: BaseClusterConfig, bucket: ClusterBucket, stack_name: str):
         """Build template for the given cluster and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
-            output_file = "parallelcluster-cluster"  # TODO: pass stack name as argument
+            output_file = str(stack_name)
             app = core.App(outdir=str(tempdir))
             ClusterCdkStack(app, output_file, cluster_config, bucket)
             app.synth()

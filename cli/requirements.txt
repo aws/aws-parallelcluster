@@ -8,6 +8,7 @@ PyYAML>=5.3.1
 jinja2>=2.11.0
 marshmallow
 aws-cdk.core
+aws-cdk.aws-dynamodb
 aws-cdk.aws-ec2
 aws-cdk.aws-fsx
 aws-cdk.aws-imagebuilder
