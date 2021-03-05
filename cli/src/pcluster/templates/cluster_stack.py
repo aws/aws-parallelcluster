@@ -903,13 +903,17 @@ class ClusterCdkStack(core.Stack):
 
         # LT network interfaces
         head_lt_nw_interfaces = [
-            CfnLaunchTemplate.NetworkInterfaceProperty(device_index=0, network_interface_id=self.head_eni.ref)
+            CfnLaunchTemplate.NetworkInterfaceProperty(
+                device_index=0,
+                network_interface_id=self.head_eni.ref,
+                associate_public_ip_address=head_node.networking.assign_public_ip,
+            )
         ]
-        for if_number in range(1, head_node.max_network_interface_count - 1):
+        for device_index in range(1, head_node.max_network_interface_count - 1):
             head_lt_nw_interfaces.append(
                 CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=if_number,
-                    network_card_index=if_number,
+                    device_index=device_index,
+                    network_card_index=device_index,
                     groups=head_lt_security_groups,
                     subnet_id=head_node.networking.subnet_id,
                 )
