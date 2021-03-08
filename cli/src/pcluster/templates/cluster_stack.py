@@ -46,7 +46,6 @@ from aws_cdk.aws_iam import (
 from aws_cdk.aws_lambda import CfnFunction
 from aws_cdk.core import (
     CfnCreationPolicy,
-    CfnCustomResource,
     CfnDeletionPolicy,
     CfnOutput,
     CfnStack,
@@ -112,6 +111,9 @@ class ClusterCdkStack(core.Stack):
 
     def _cluster_name(self):
         return Fn.select(1, Fn.split("parallelcluster-", self.stack_name))
+
+    def _stack_unique_id(self):
+        return Fn.select(2, Fn.split("/", self.stack_id))
 
     def _custom_chef_cookbook(self):
         return (
@@ -184,7 +186,7 @@ class ClusterCdkStack(core.Stack):
             if self._cluster_config.dev_settings
             and self._cluster_config.dev_settings.cookbook
             and self._cluster_config.dev_settings.cookbook.extra_chef_attributes
-            else ""
+            else "{}"
         )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -266,14 +268,12 @@ class ClusterCdkStack(core.Stack):
 
     def _add_terminate_compute_fleet_custom_resource(self):
         if self._condition_is_slurm():
-            self.terminate_compute_fleet_custom_resource = CfnCustomResource(
+            self.terminate_compute_fleet_custom_resource = CustomResource(
                 scope=self,
                 id="TerminateComputeFleetCustomResource",
                 service_token=self.cleanup_resources_function.attr_arn,
+                properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"}
             )
-            self.terminate_compute_fleet_custom_resource.add_property_override("StackName", self.stack_name)
-            self.terminate_compute_fleet_custom_resource.add_property_override("Action", "TERMINATE_EC2_INSTANCES")
-
             # TODO: add depends_on resources from CloudWatchLogsSubstack, ComputeFleetHITSubstack
             # self.terminate_compute_fleet_custom_resource.add_depends_on(...)
 
@@ -281,12 +281,10 @@ class ClusterCdkStack(core.Stack):
         return CfnFunction(
             scope=self,
             id="CleanupResourcesFunction",
-            function_name=Fn.sub(
-                "pcluster-CleanupResources-${StackId}", {"StackId": Fn.select(2, Fn.split("/", self.stack_id))}
-            ),
+            function_name=f"pcluster-CleanupResources-{self._stack_unique_id()}",
             code=CfnFunction.CodeProperty(
                 s3_bucket=self._bucket.name,
-                s3_key="{0}/custom_resources_code/artifacts.zip".format(self._bucket.artifact_directory),
+                s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
             ),
             handler="cleanup_resources.handler",
             memory_size=128,
@@ -602,7 +600,7 @@ class ClusterCdkStack(core.Stack):
                         resources=[
                             self.format_arn(
                                 service="s3",
-                                resource="{0}/{1}/batch/".format(self._bucket.name, self._bucket.artifact_directory),
+                                resource=f"{self._bucket.name}/{self._bucket.artifact_directory}/batch/",
                                 region="",
                                 account="",
                             )
@@ -671,7 +669,7 @@ class ClusterCdkStack(core.Stack):
                             self.format_arn(service="s3", resource=self._bucket.name, region="", account=""),
                             self.format_arn(
                                 service="s3",
-                                resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
+                                resource=f"{self._bucket.name}/{self._bucket.artifact_directory}/*",
                                 region="",
                                 account="",
                             ),
@@ -720,20 +718,17 @@ class ClusterCdkStack(core.Stack):
         )
 
     def _add_cleanup_resources_bucket_custom_resource(self):
-        cleanup_resources_bucket_custom_resource = CfnCustomResource(
+        return CustomResource(
             scope=self,
             id="CleanupResourcesS3BucketCustomResource",
             service_token=self.cleanup_resources_function.attr_arn,
+            properties={
+                "ResourcesS3Bucket": self._bucket.name,
+                "ArtifactS3RootDirectory": self._bucket.artifact_directory,
+                "RemoveBucketOnDeletion": self._bucket.remove_on_deletion,
+                "Action": "DELETE_S3_ARTIFACTS",
+            }
         )
-        cleanup_resources_bucket_custom_resource.add_property_override("ResourcesS3Bucket", self._bucket.name)
-        cleanup_resources_bucket_custom_resource.add_property_override(
-            "ArtifactS3RootDirectory", self._bucket.artifact_directory
-        )
-        cleanup_resources_bucket_custom_resource.add_property_override(
-            "RemoveBucketOnDeletion", self._bucket.remove_on_deletion
-        )
-        cleanup_resources_bucket_custom_resource.add_property_override("Action", "DELETE_S3_ARTIFACTS")
-        return cleanup_resources_bucket_custom_resource
 
     def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
@@ -1528,7 +1523,7 @@ class ClusterCdkStack(core.Stack):
         return self._cluster_config.iam and self._cluster_config.iam.s3_access
 
     def _condition_add_slurm_iam_policies(self):
-        return self._condition_create_head_node_iam_role() and self._cluster_config.scheduling.scheduler == "slurm"
+        return self._condition_create_head_node_iam_role() and self._condition_is_slurm()
 
     def _condition_create_compute_security_group(self):
         # Compute security group must be created if at list one queue's networking does not specify security groups

@@ -39,6 +39,7 @@ class Ec2Client(Boto3Client):
         return list(self._paginate_results(self._client.describe_subnets, SubnetIds=subnet_ids))
 
     @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def get_subnet_vpc(self, subnet_id):
         """Return a vpc associated to the given subnet."""
         subnets = self.describe_subnets([subnet_id])
