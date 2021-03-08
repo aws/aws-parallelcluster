@@ -117,6 +117,12 @@ class ClusterCdkStack(core.Stack):
             else "NONE"
         )
 
+    def _get_user_data_content(self, user_data_path: str):
+        user_data_file_path = pkg_resources.resource_filename(__name__, user_data_path)
+        with open(user_data_file_path, "r") as user_data_file:
+            user_data_content = user_data_file.read()
+        return user_data_content
+
     def _get_shared_storage_ids(self, storage_type: SharedStorageType):
         return (
             ",".join(self._storage_resource_ids[storage_type]) if self._storage_resource_ids[storage_type] else "NONE"
@@ -181,6 +187,43 @@ class ClusterCdkStack(core.Stack):
             and self._cluster_config.dev_settings.cookbook.extra_chef_attributes
             else "{}"
         )
+
+    def _get_default_instance_tags(self, node, node_type):
+        return [
+            CfnTag(key="Name", value=node_type),
+            CfnTag(key="ClusterName", value=self._cluster_name()),
+            CfnTag(key="Application", value=self.stack_name),
+            CfnTag(key="aws-parallelcluster-node-type", value=node_type),
+            CfnTag(
+                key="aws-parallelcluster-attributes",
+                value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
+                    BaseOS=self._cluster_config.image.os,
+                    Scheduler=self._cluster_config.scheduling.scheduler,
+                    Version=utils.get_installed_version(),
+                    Architecture=node.architecture,
+                ),
+            ),
+            CfnTag(
+                key="aws-parallelcluster-networking",
+                value="EFA={0}".format("true" if node.efa and node.efa.enabled else "NONE"),
+            ),
+            CfnTag(
+                key="aws-parallelcluster-filesystem",
+                value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
+                    efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
+                    multiebs=len(self._storage_resource_ids[SharedStorageType.EBS]),
+                    raid=len(self._storage_resource_ids[SharedStorageType.RAID]),
+                    fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
+                ),
+            ),
+        ]
+
+    def _get_default_volume_tags(self, node_type):
+        return [
+            CfnTag(key="ClusterName", value=self._cluster_name()),
+            CfnTag(key="Application", value=self.stack_name),
+            CfnTag(key="aws-parallelcluster-node-type", value=node_type),
+        ]
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -970,11 +1013,6 @@ class ClusterCdkStack(core.Stack):
                 )
             )
 
-        # LT userdata
-        user_data_file_path = pkg_resources.resource_filename(__name__, "../resources/head_node/user_data.sh")
-        with open(user_data_file_path, "r") as user_data_file:
-            head_node_lt_user_data = user_data_file.read()
-
         # Head node Launch Template
         head_node_launch_template = CfnLaunchTemplate(
             scope=self,
@@ -992,7 +1030,7 @@ class ClusterCdkStack(core.Stack):
                 iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
                 user_data=Fn.base64(
                     Fn.sub(
-                        head_node_lt_user_data,
+                        self._get_user_data_content("../resources/head_node/user_data.sh"),
                         {
                             "YumProxy": head_node.networking.proxy if head_node.networking.proxy else "_none_",
                             "DnfProxy": head_node.networking.proxy if head_node.networking.proxy else "",
@@ -1010,44 +1048,11 @@ class ClusterCdkStack(core.Stack):
                 tag_specifications=[
                     CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
-                        tags=[
-                            CfnTag(key="Name", value="Master"),  # FIXME
-                            CfnTag(key="ClusterName", value=self._cluster_name()),
-                            CfnTag(key="Application", value=self.stack_name),
-                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
-                            CfnTag(
-                                key="aws-parallelcluster-attributes",
-                                value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
-                                    BaseOS=self._cluster_config.image.os,
-                                    Scheduler=self._cluster_config.scheduling.scheduler,
-                                    Version=utils.get_installed_version(),
-                                    Architecture=head_node.architecture,
-                                ),
-                            ),
-                            CfnTag(
-                                key="aws-parallelcluster-networking",
-                                value="EFA={0}".format("true" if head_node.efa and head_node.efa.enabled else "NONE"),
-                            ),
-                            CfnTag(
-                                key="aws-parallelcluster-filesystem",
-                                value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
-                                    efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
-                                    multiebs=len(self._storage_resource_ids[SharedStorageType.EBS]),
-                                    raid=len(self._storage_resource_ids[SharedStorageType.RAID]),
-                                    fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
-                                ),
-                            ),
-                        ]
-                        + self._get_custom_tags(),
+                        tags=self._get_default_instance_tags(head_node, "Master") + self._get_custom_tags(),
                     ),
                     CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
-                        tags=[
-                            CfnTag(key="ClusterName", value=self._cluster_name()),
-                            CfnTag(key="Application", value=self.stack_name),
-                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),  # FIXME
-                        ]
-                        + self._get_custom_tags(),
+                        tags=self._get_default_volume_tags("Master") + self._get_custom_tags(),
                     ),
                 ],
             ),
@@ -1280,11 +1285,6 @@ class ClusterCdkStack(core.Stack):
 
         self._add_update_waiter_lambda()
 
-        # LT userdata
-        user_data_file_path = pkg_resources.resource_filename(__name__, "../resources/compute_node/user_data.sh")
-        with open(user_data_file_path, "r") as user_data_file:
-            compute_node_lt_user_data = user_data_file.read()
-
         for queue in self._cluster_config.scheduling.queues:
 
             # LT security groups
@@ -1366,7 +1366,7 @@ class ClusterCdkStack(core.Stack):
                         instance_market_options=instance_market_options,
                         user_data=Fn.base64(
                             Fn.sub(
-                                compute_node_lt_user_data,
+                                self._get_user_data_content("../resources/compute_node/user_data.sh"),
                                 {
                                     "YumProxy": queue.networking.proxy if queue.networking.proxy else "_none_",
                                     "DnfProxy": queue.networking.proxy if queue.networking.proxy else "",
@@ -1429,47 +1429,14 @@ class ClusterCdkStack(core.Stack):
                         tag_specifications=[
                             CfnLaunchTemplate.TagSpecificationProperty(
                                 resource_type="instance",
-                                tags=[
-                                    CfnTag(key="Name", value="Compute"),
-                                    CfnTag(key="ClusterName", value=self._cluster_name()),
-                                    CfnTag(key="Application", value=self.stack_name),
-                                    CfnTag(key="QueueName", value=queue.name),
-                                    CfnTag(key="aws-parallelcluster-node-type", value="Compute"),
-                                    CfnTag(
-                                        key="aws-parallelcluster-attributes",
-                                        value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
-                                            BaseOS=self._cluster_config.image.os,
-                                            Scheduler=self._cluster_config.scheduling.scheduler,
-                                            Version=utils.get_installed_version(),
-                                            Architecture=compute_resource.architecture,
-                                        ),
-                                    ),
-                                    CfnTag(
-                                        key="aws-parallelcluster-networking",
-                                        value="EFA={0}".format(
-                                            "true" if compute_resource.efa and compute_resource.efa.enabled else "NONE"
-                                        ),
-                                    ),
-                                    CfnTag(
-                                        key="aws-parallelcluster-filesystem",
-                                        value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
-                                            efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
-                                            multiebs=len(self._storage_resource_ids[SharedStorageType.EBS]),
-                                            raid=len(self._storage_resource_ids[SharedStorageType.RAID]),
-                                            fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
-                                        ),
-                                    ),
-                                ]
+                                tags=self._get_default_instance_tags(compute_resource, "Compute")
+                                + [CfnTag(key="QueueName", value=queue.name)]
                                 + self._get_custom_tags(),
                             ),
                             CfnLaunchTemplate.TagSpecificationProperty(
                                 resource_type="volume",
-                                tags=[
-                                    CfnTag(key="ClusterName", value=self._cluster_name()),
-                                    CfnTag(key="Application", value=self.stack_name),
-                                    CfnTag(key="QueueName", value=queue.name),
-                                    CfnTag(key="aws-parallelcluster-node-type", value="Compute"),  # FIXME
-                                ]
+                                tags=self._get_default_volume_tags("Compute")
+                                + [CfnTag(key="QueueName", value=queue.name)]
                                 + self._get_custom_tags(),
                             ),
                         ],
