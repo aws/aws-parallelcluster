@@ -195,7 +195,6 @@ class Cluster:
         self.__stack = stack
         self.bucket = None
         self.template_body = None
-        self.config_version = None
         self.__config = None
 
     @property
@@ -258,12 +257,13 @@ class Cluster:
 
         creation_result = None
         try:
+            self._upload_config()
+
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
                 self.template_body = CDKTemplateBuilder().build_cluster_template(
                     cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
                 )
-                # print(yaml.dump(cluster.cluster_template_body))
 
             # upload cluster artifacts and generated template
             self._upload_artifacts()
@@ -321,6 +321,27 @@ class Cluster:
         artifact_directory = generate_random_name_with_prefix(self.stack_name)
         self.bucket = ClusterBucket(name, artifact_directory, remove_on_deletion)
 
+    def _upload_config(self):
+        """Upload source config and save config version."""
+        if not self.bucket:
+            ClusterActionError("S3 bucket must be created before uploading artifacts.")
+
+        try:
+            # Upload original config
+            if self.config.source_config:
+                result = AWSApi.instance().s3.put_object(
+                    bucket_name=self.bucket.name,
+                    body=yaml.dump(self.config.source_config),
+                    key=self._get_config_key(),
+                )
+                # config version will be stored in DB by the cookbook at the first update
+                self.config.config_version = result.get("VersionId")
+
+        except Exception as e:
+            raise ClusterActionError(
+                f"Unable to upload cluster config to the S3 bucket {self.bucket.name} due to exception: {e}"
+            )
+
     def _upload_artifacts(self):
         """
         Upload cluster specific resources and cluster template.
@@ -346,15 +367,6 @@ class Cluster:
                     body=yaml.dump(self.template_body),
                     key=self._get_default_template_key(),
                 )
-            # Upload original config
-            if self.config.source_config:
-                result = AWSApi.instance().s3.put_object(
-                    bucket_name=self.bucket.name,
-                    body=yaml.dump(self.config.source_config),
-                    key=self._get_config_key(),
-                )
-                # config version will be stored in DB by the cookbook at the first update
-                self.config_version = result.get("VersionId")
 
         except Exception as e:
             raise ClusterActionError(

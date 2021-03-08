@@ -110,6 +110,7 @@ def dummy_cluster(mocker):
     cluster = DummySlurmCluster(image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage)
     cluster.cluster_s3_bucket = "s3://dummy-s3-bucket"
     cluster.additional_resources = "https://additional.template.url"
+    cluster.config_version = "1.0"
     cluster.iam = Iam(
         s3_access=[
             S3Access("dummy-readonly-bucket", type="READ_ONLY"),
