@@ -21,6 +21,7 @@ from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
+from aws_cdk import aws_route53 as route53
 from aws_cdk import core
 from aws_cdk.aws_dynamodb import CfnTable
 from aws_cdk.aws_ec2 import (
@@ -44,15 +45,7 @@ from aws_cdk.aws_iam import (
     ServicePrincipal,
 )
 from aws_cdk.aws_lambda import CfnFunction
-from aws_cdk.core import (
-    CfnCreationPolicy,
-    CfnDeletionPolicy,
-    CfnOutput,
-    CfnStack,
-    CfnTag,
-    CustomResource,
-    Fn,
-)
+from aws_cdk.core import CfnCreationPolicy, CfnDeletionPolicy, CfnOutput, CfnStack, CfnTag, CustomResource, Fn
 
 from common.aws.aws_api import AWSApi
 from pcluster import utils
@@ -236,18 +229,11 @@ class ClusterCdkStack(core.Stack):
         # AWSBatchStack
         # TODO: inline resources
 
-        # CleanupResourcesFunctionExecutionRole
-        if self._condition_create_lambda_iam_role():
-            self._add_iam_lambda_role()
-
-        # CleanupResourcesFunction
-        self.cleanup_resources_function = self._add_cleanup_resources_function()
+        # Cleanup Resources Lambda Function
+        self.cleanup_resources_function = self._add_cleanup_resources_lambda()
 
         # CleanupResourcesS3BucketCustomResource
         self.cleanup_resources_bucket_custom_resource = self._add_cleanup_resources_bucket_custom_resource()
-
-        # TerminateComputeFleetCustomResource
-        self._add_terminate_compute_fleet_custom_resource()
 
         # DynamoDB to store cluster states
         # ToDo: evaluate other approaches to store cluster states
@@ -260,24 +246,81 @@ class ClusterCdkStack(core.Stack):
             for storage in self._cluster_config.shared_storage:
                 self._add_shared_storage(storage)
 
+        # Compute Fleet
+        if self._condition_is_slurm():
+            self._add_slurm_compute_fleet()
+
         # Head Node
         self._add_head_node()
 
-        # Compute Fleet
-        self._add_compute_fleet()
+    def _add_cleanup_resources_lambda(self):
 
-    def _add_terminate_compute_fleet_custom_resource(self):
-        if self._condition_is_slurm():
-            self.terminate_compute_fleet_custom_resource = CustomResource(
+        cleanup_resources_lambda_execution_role = None
+        if self._condition_create_lambda_iam_role():
+            s3_policy_actions = ["s3:DeleteObject", "s3:DeleteObjectVersion", "s3:ListBucket", "s3:ListBucketVersions"]
+            if self._bucket.remove_on_deletion:
+                s3_policy_actions.append("s3:DeleteBucket")
+
+            cleanup_resources_lambda_execution_role = CfnRole(
                 scope=self,
-                id="TerminateComputeFleetCustomResource",
-                service_token=self.cleanup_resources_function.attr_arn,
-                properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"}
+                id="CleanupResourcesFunctionExecutionRole",
+                assume_role_policy_document=PolicyDocument(
+                    statements=[
+                        PolicyStatement(
+                            actions=["sts:AssumeRole"],
+                            effect=Effect.ALLOW,
+                            principals=[ServicePrincipal(service="lambda.amazonaws.com")],
+                        )
+                    ],
+                ),
+                path="/",
+                policies=[
+                    CfnRole.PolicyProperty(
+                        policy_document=PolicyDocument(
+                            statements=[
+                                PolicyStatement(
+                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
+                                    effect=Effect.ALLOW,
+                                    resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
+                                    sid="CloudWatchLogsPolicy",
+                                ),
+                                PolicyStatement(
+                                    actions=s3_policy_actions,
+                                    effect=Effect.ALLOW,
+                                    resources=[
+                                        self.format_arn(
+                                            service="s3", resource=self._bucket.name, region="", account=""
+                                        ),
+                                        self.format_arn(
+                                            service="s3",
+                                            resource=f"{self._bucket.name}/{self._bucket.artifact_directory}/*",
+                                            region="",
+                                            account="",
+                                        ),
+                                    ],
+                                    sid="S3BucketPolicy",
+                                ),
+                            ],
+                        ),
+                        policy_name="LambdaPolicy",
+                    ),
+                ],
             )
-            # TODO: add depends_on resources from CloudWatchLogsSubstack, ComputeFleetHITSubstack
-            # self.terminate_compute_fleet_custom_resource.add_depends_on(...)
 
-    def _add_cleanup_resources_function(self):
+            if self._condition_is_slurm():
+                cleanup_resources_lambda_execution_role.policies[0].policy_document.add_statements(
+                    PolicyStatement(
+                        actions=["ec2:DescribeInstances"], resources=["*"], effect=Effect.ALLOW, sid="DescribeInstances"
+                    ),
+                    PolicyStatement(
+                        actions=["ec2:TerminateInstances"],
+                        resources=["*"],
+                        effect=Effect.ALLOW,
+                        conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
+                        sid="FleetTerminatePolicy",
+                    ),
+                )
+
         return CfnFunction(
             scope=self,
             id="CleanupResourcesFunction",
@@ -288,8 +331,8 @@ class ClusterCdkStack(core.Stack):
             ),
             handler="cleanup_resources.handler",
             memory_size=128,
-            role=self.cleanup_resources_function_execution_role.attr_arn
-            if self._condition_create_lambda_iam_role()
+            role=cleanup_resources_lambda_execution_role.attr_arn
+            if cleanup_resources_lambda_execution_role
             else self.format_arn(
                 service="iam",
                 region="",
@@ -461,67 +504,6 @@ class ClusterCdkStack(core.Stack):
             ),
             path="/",
         )
-
-    def _add_iam_lambda_role(self):
-        s3_policy_actions = ["s3:DeleteObject", "s3:DeleteObjectVersion", "s3:ListBucket", "s3:ListBucketVersions"]
-        if self._bucket.remove_on_deletion:
-            s3_policy_actions.append("s3:DeleteBucket")
-        self.cleanup_resources_function_execution_role = CfnRole(
-            scope=self,
-            id="CleanupResourcesFunctionExecutionRole",
-            assume_role_policy_document=PolicyDocument(
-                statements=[
-                    PolicyStatement(
-                        actions=["sts:AssumeRole"],
-                        effect=Effect.ALLOW,
-                        principals=[ServicePrincipal(service="lambda.amazonaws.com")],
-                    )
-                ],
-            ),
-            path="/",
-            policies=[
-                CfnRole.PolicyProperty(
-                    policy_document=PolicyDocument(
-                        statements=[
-                            PolicyStatement(
-                                actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                effect=Effect.ALLOW,
-                                resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
-                                sid="CloudWatchLogsPolicy",
-                            ),
-                            PolicyStatement(
-                                actions=s3_policy_actions,
-                                effect=Effect.ALLOW,
-                                resources=[
-                                    self.format_arn(service="s3", resource=self._bucket.name, region="", account=""),
-                                    self.format_arn(
-                                        service="s3",
-                                        resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
-                                        region="",
-                                        account="",
-                                    ),
-                                ],
-                                sid="S3BucketPolicy",
-                            ),
-                        ],
-                    ),
-                    policy_name="LambdaPolicy",
-                ),
-            ],
-        )
-        if self._condition_is_slurm():
-            self.cleanup_resources_function_execution_role.policies[0].policy_document.add_statements(
-                PolicyStatement(
-                    actions=["ec2:DescribeInstances"], resources=["*"], effect=Effect.ALLOW, sid="DescribeInstances"
-                ),
-                PolicyStatement(
-                    actions=["ec2:TerminateInstances"],
-                    resources=["*"],
-                    effect=Effect.ALLOW,
-                    conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
-                    sid="FleetTerminatePolicy",
-                ),
-            )
 
     def _add_parallelcluster_policies(self):
         CfnPolicy(
@@ -727,7 +709,7 @@ class ClusterCdkStack(core.Stack):
                 "ArtifactS3RootDirectory": self._bucket.artifact_directory,
                 "RemoveBucketOnDeletion": self._bucket.remove_on_deletion,
                 "Action": "DELETE_S3_ARTIFACTS",
-            }
+            },
         )
 
     def _add_shared_storage(self, storage):
@@ -1107,8 +1089,10 @@ class ClusterCdkStack(core.Stack):
                     else "/scratch",
                     "cfn_shared_dir": self._get_shared_storage_options(SharedStorageType.EBS),
                     "cfn_proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
-                    "cfn_dns_domain": "" if self._condition_disable_cluster_dns() else "${ClusterDNSDomain}",
-                    "cfn_hosted_zone": "" if self._condition_disable_cluster_dns() else "${ClusterHostedZone}",
+                    "cfn_dns_domain": "" if self._condition_disable_cluster_dns() else self.cluster_hosted_zone.name,
+                    "cfn_hosted_zone": ""
+                    if self._condition_disable_cluster_dns()
+                    else self.cluster_hosted_zone.attr_id,
                     "cfn_node_type": "MasterServer",  # FIXME
                     "cfn_cluster_user": OS_MAPPING[self._cluster_config.image.os]["user"],
                     "cfn_ddb_table": self._dynamo_db_table.ref,
@@ -1288,15 +1272,13 @@ class ClusterCdkStack(core.Stack):
             resource_signal=core.CfnResourceSignal(count=1, timeout="PT30M")
         )
 
-        if hasattr(self, "update_waiter_lambda"):
-            CustomResource(
-                self,
-                "UpdateWaiterCustomResource",
-                service_token=self.update_waiter_lambda.function_arn,
-                properties={"ConfigVersion": self._cluster_config.config_version, "DynamoDBTable": ""},  # TODO
-            )
+    def _add_slurm_compute_fleet(self):
 
-    def _add_compute_fleet(self):
+        self.cluster_hosted_zone = None
+        if not self._condition_disable_cluster_dns():
+            self.cluster_hosted_zone = self._add_private_hosted_zone()
+
+        self._add_update_waiter_lambda()
 
         # LT userdata
         user_data_file_path = pkg_resources.resource_filename(__name__, "../resources/compute_node/user_data.sh")
@@ -1425,10 +1407,10 @@ class ClusterCdkStack(core.Stack):
                                     "EbsSharedDirs": self._get_shared_storage_options(SharedStorageType.EBS),
                                     "ClusterDNSDomain": ""
                                     if self._condition_disable_cluster_dns()
-                                    else "${ClusterDNSDomain}",  # TODO
+                                    else self.cluster_hosted_zone.name,
                                     "ClusterHostedZone": ""
                                     if self._condition_disable_cluster_dns()
-                                    else "${ClusterHostedZone}",  # TODO
+                                    else self.cluster_hosted_zone.attr_id,
                                     "OSUser": OS_MAPPING[self._cluster_config.image.os]["user"],
                                     "DynamoDBTable": self._dynamo_db_table.ref,
                                     "IntelHPCPlatform": "true"
@@ -1493,6 +1475,223 @@ class ClusterCdkStack(core.Stack):
                         ],
                     ),
                 )
+
+        CustomResource(
+            scope=self,
+            id="TerminateComputeFleetCustomResource",
+            service_token=self.cleanup_resources_function.attr_arn,
+            properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"},
+        )
+        # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
+        # terminate_compute_fleet_custom_resource.add_depends_on()
+
+        CfnOutput(
+            scope=self,
+            id="ConfigVersion",
+            description="Version of the config used to generate the stack",
+            value=self._cluster_config.config_version,
+        )
+
+    def _add_private_hosted_zone(self):
+        cluster_hosted_zone = route53.CfnHostedZone(
+            self,
+            id="Route53HostedZone",
+            name=f"{self._cluster_name()}.pcluster",
+            vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self._cluster_config.vpc_id, vpc_region=self.region)],
+        )
+
+        if self._condition_create_head_node_iam_role():
+            CfnPolicy(
+                scope=self,
+                id="ParallelClusterSlurmRoute53Policies",
+                policy_name="parallelcluster-slurm-route53",
+                policy_document=PolicyDocument(
+                    statements=[
+                        PolicyStatement(
+                            sid="Route53Add",
+                            effect=Effect.ALLOW,
+                            actions=["route53:ChangeResourceRecordSets"],
+                            resources=[
+                                self.format_arn(
+                                    service="route53",
+                                    region="",
+                                    account="",
+                                    resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
+                                ),
+                            ],
+                        ),
+                    ]
+                ),
+                roles=[self.head_node_iam_role.ref],  # TODO use compute fleet role
+            )
+
+        cleanup_route53_lambda_execution_role = None
+        if self._condition_create_lambda_iam_role():
+            cleanup_route53_lambda_execution_role = CfnRole(
+                scope=self,
+                id="CleanupRoute53FunctionExecutionRole",
+                assume_role_policy_document=PolicyDocument(
+                    statements=[
+                        PolicyStatement(
+                            actions=["sts:AssumeRole"],
+                            effect=Effect.ALLOW,
+                            principals=[ServicePrincipal(service="lambda.amazonaws.com")],
+                        )
+                    ],
+                ),
+                path="/",
+                policies=[
+                    CfnRole.PolicyProperty(
+                        policy_document=PolicyDocument(
+                            statements=[
+                                PolicyStatement(
+                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
+                                    effect=Effect.ALLOW,
+                                    resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
+                                    sid="CloudWatchLogsPolicy",
+                                ),
+                                PolicyStatement(
+                                    actions=["route53:ListResourceRecordSets", "route53:ChangeResourceRecordSets"],
+                                    effect=Effect.ALLOW,
+                                    resources=[
+                                        self.format_arn(
+                                            service="route53",
+                                            region="",
+                                            account="",
+                                            resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
+                                        ),
+                                    ],
+                                    sid="Route53DeletePolicy",
+                                ),
+                            ],
+                        ),
+                        policy_name="LambdaPolicy",
+                    ),
+                ],
+            )
+
+        cleanup_route53_lambda = CfnFunction(
+            scope=self,
+            id="CleanupRoute53Function",
+            function_name=f"pcluster-CleanupRoute53-{self._stack_unique_id()}",
+            code=CfnFunction.CodeProperty(
+                s3_bucket=self._bucket.name,
+                s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
+            ),
+            handler="cleanup_resources.handler",
+            memory_size=128,
+            role=cleanup_route53_lambda_execution_role.attr_arn
+            if cleanup_route53_lambda_execution_role
+            else self.format_arn(
+                service="iam",
+                region="",
+                account=self.account,
+                resource="role/{0}".format(self._cluster_config.iam.roles.custom_lambda_resources),
+            ),
+            runtime="python3.8",
+            timeout=900,
+        )
+
+        CustomResource(
+            scope=self,
+            id="CleanupRoute53CustomResource",
+            service_token=cleanup_route53_lambda.attr_arn,
+            properties={"ClusterHostedZone": cluster_hosted_zone.attr_id, "Action": "DELETE_DNS_RECORDS"},
+        )
+
+        CfnOutput(
+            scope=self,
+            id="ClusterHostedZone",
+            description="Id of the private hosted zone created within the cluster",
+            value=cluster_hosted_zone.attr_id,
+        )
+        CfnOutput(
+            scope=self,
+            id="ClusterDNSDomain",
+            description="DNS Domain of the private hosted zone created within the cluster",
+            value=cluster_hosted_zone.name,
+        )
+
+        return cluster_hosted_zone
+
+    def _add_update_waiter_lambda(self):
+        update_waiter_lambda_execution_role = None
+        if self._condition_create_lambda_iam_role():
+            update_waiter_lambda_execution_role = CfnRole(
+                scope=self,
+                id="UpdateWaiterFunctionExecutionRole",
+                assume_role_policy_document=PolicyDocument(
+                    statements=[
+                        PolicyStatement(
+                            actions=["sts:AssumeRole"],
+                            effect=Effect.ALLOW,
+                            principals=[ServicePrincipal(service="lambda.amazonaws.com")],
+                        )
+                    ],
+                ),
+                path="/",
+                policies=[
+                    CfnRole.PolicyProperty(
+                        policy_document=PolicyDocument(
+                            statements=[
+                                PolicyStatement(
+                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
+                                    effect=Effect.ALLOW,
+                                    resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
+                                    sid="CloudWatchLogsPolicy",
+                                ),
+                                PolicyStatement(
+                                    actions=["dynamodb:GetItem", "dynamodb:PutItem"],
+                                    effect=Effect.ALLOW,
+                                    resources=[
+                                        self.format_arn(
+                                            service="dynamodb",
+                                            account=self.account,
+                                            resource=f"table/{self._dynamo_db_table.ref}",
+                                        ),
+                                    ],
+                                    sid="DynamoDBTable",
+                                ),
+                            ],
+                        ),
+                        policy_name="LambdaPolicy",
+                    ),
+                ],
+            )
+
+        update_waiter_lambda = CfnFunction(
+            scope=self,
+            id="UpdateWaiterFunction",
+            function_name=f"pcluster-UpdateWaiter-{self._stack_unique_id()}",
+            code=CfnFunction.CodeProperty(
+                s3_bucket=self._bucket.name,
+                s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
+            ),
+            handler="wait_for_update.handler",
+            memory_size=128,
+            role=update_waiter_lambda_execution_role.attr_arn
+            if update_waiter_lambda_execution_role
+            else self.format_arn(
+                service="iam",
+                region="",
+                account=self.account,
+                resource="role/{0}".format(self._cluster_config.iam.roles.custom_lambda_resources),
+            ),
+            runtime="python3.8",
+            timeout=900,
+        )
+
+        CustomResource(
+            self,
+            "UpdateWaiterCustomResource",
+            service_token=update_waiter_lambda.attr_arn,
+            properties={
+                "ConfigVersion": self._cluster_config.config_version,
+                "DynamoDBTable": self._dynamo_db_table.ref,
+            },
+        )
+
+        CfnOutput(scope=self, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
