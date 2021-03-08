@@ -570,8 +570,18 @@ def build_image(args):
         response = PclusterApi().build_image(
             imagebuilder_config=load_yaml_dict(args.config_file), image_name=args.image_name, region=utils.get_region()
         )
-        LOGGER.info("Response:")
-        LOGGER.info({"image": response.__repr__()})
+        if isinstance(response, ApiFailure):
+            message = "Build image failed. {0}.".format(response.message if response.message else "")
+            if response.validation_failures:
+                message += "\nValidation failures:\n"
+                message += "\n".join(
+                    [f"{result.level.name}: {result.message}" for result in response.validation_failures]
+                )
+            utils.error(message)
+        else:
+            LOGGER.info("Build image started successfully.")
+            LOGGER.info("Response:")
+            LOGGER.info({"image": response.__repr__()})
     except Exception as e:
         utils.error(
             "Error parsing configuration file {0}.\nDouble check it's a valid Yaml file. "
