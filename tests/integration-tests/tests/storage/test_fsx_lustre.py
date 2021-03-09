@@ -140,9 +140,7 @@ def _test_fsx_lustre_configuration_options(
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
 # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
@@ -201,9 +199,7 @@ def _test_fsx_lustre(
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("instance")
 # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os, scheduler):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
@@ -374,15 +370,12 @@ def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, r
     # example output: "192.168.46.168@tcp:/cg7k7bmv 1.7T /fsx_mount_dir"
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    mount_options = {
-        "default": "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount",
-        "alinux": "defaults,_netdev,flock,user_xattr,noatime",
-    }
+    mount_options = "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount"
 
     assert_that(result.stdout).matches(
         r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/{mount_name}"
         r" {mount_dir} lustre {mount_options} 0 0".format(
-            mount_name=mount_name, mount_dir=mount_dir, mount_options=mount_options.get(os, mount_options["default"])
+            mount_name=mount_name, mount_dir=mount_dir, mount_options=mount_options
         )
     )
 

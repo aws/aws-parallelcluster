@@ -15,12 +15,10 @@ Allowed values for Scheduler:
 3. slurm
 4. awsbatch
 Allowed values for Operating System:
-1. alinux
-2. alinux2
-3. centos7
-4. centos8
-5. ubuntu1604
-6. ubuntu1804
+1. alinux2
+2. centos7
+3. centos8
+4. ubuntu1804
 Allowed values for VPC ID:
   #  id            name                                 number_of_subnets
 ---  ------------  ---------------------------------  -------------------

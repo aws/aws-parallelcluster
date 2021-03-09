@@ -157,11 +157,9 @@ class ClusterModel(ABC):
     def _get_official_image_name_prefix(self, os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
         suffixes = {
-            "alinux": "amzn-hvm",
             "alinux2": "amzn2-hvm",
             "centos7": "centos7-hvm",
             "centos8": "centos8-hvm",
-            "ubuntu1604": "ubuntu-1604-lts-hvm",
             "ubuntu1804": "ubuntu-1804-lts-hvm",
         }
         return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
