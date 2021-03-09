@@ -1070,7 +1070,6 @@ class ClusterCdkStack(core.Stack):
                     "enable_efa": "true" if head_node.efa and head_node.efa.enabled else "NONE",
                     "cfn_raid_vol_ids": self._get_shared_storage_ids(SharedStorageType.RAID),
                     "cfn_raid_parameters": self._get_shared_storage_options(SharedStorageType.RAID),
-                    "cfn_scheduler_slots": "cores" if head_node.disable_simultaneous_multithreading else "vcpus",
                     "cfn_disable_hyperthreading_manually": "true"
                     if self._condition_disable_hyperthreading_manually(head_node)
                     else "false",
@@ -1414,7 +1413,6 @@ class ClusterCdkStack(core.Stack):
                             "IamRoleName": self.head_node_iam_role.ref,  # TODO split roles
                             "EnableEfa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
                             "RAIDOptions": self._get_shared_storage_options(SharedStorageType.RAID),
-                            "VCpus": str(compute_resource.vcpus),
                             "DisableHyperThreadingManually": "true"
                             if self._condition_disable_hyperthreading_manually(compute_resource)
                             else "false",
