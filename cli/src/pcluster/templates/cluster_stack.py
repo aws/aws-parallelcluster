@@ -21,31 +21,10 @@ from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_route53 as route53
 from aws_cdk import core
-from aws_cdk.aws_dynamodb import CfnTable
-from aws_cdk.aws_ec2 import (
-    CfnEIP,
-    CfnEIPAssociation,
-    CfnInstance,
-    CfnLaunchTemplate,
-    CfnNetworkInterface,
-    CfnPlacementGroup,
-    CfnSecurityGroup,
-    CfnSecurityGroupEgress,
-    CfnSecurityGroupIngress,
-)
-from aws_cdk.aws_iam import (
-    CfnInstanceProfile,
-    CfnPolicy,
-    CfnRole,
-    Effect,
-    PolicyDocument,
-    PolicyStatement,
-    ServicePrincipal,
-)
-from aws_cdk.aws_lambda import CfnFunction
-from aws_cdk.core import CfnCreationPolicy, CfnDeletionPolicy, CfnOutput, CfnStack, CfnTag, CustomResource, Fn
 
 from common.aws.aws_api import AWSApi
 from pcluster import utils
@@ -103,10 +82,10 @@ class ClusterCdkStack(core.Stack):
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
     def _cluster_name(self):
-        return Fn.select(1, Fn.split("parallelcluster-", self.stack_name))
+        return core.Fn.select(1, core.Fn.split("parallelcluster-", self.stack_name))
 
     def _stack_unique_id(self):
-        return Fn.select(2, Fn.split("/", self.stack_id))
+        return core.Fn.select(2, core.Fn.split("/", self.stack_id))
 
     def _custom_chef_cookbook(self):
         return (
@@ -173,7 +152,7 @@ class ClusterCdkStack(core.Stack):
     def _get_custom_tags(self):
         custom_tags = []
         if self._cluster_config.tags:
-            custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in self._cluster_config.tags]
+            custom_tags = [core.CfnTag(key=tag.key, value=tag.value) for tag in self._cluster_config.tags]
         return custom_tags
 
     def _create_hash_suffix(self, string_to_hash):
@@ -190,11 +169,11 @@ class ClusterCdkStack(core.Stack):
 
     def _get_default_instance_tags(self, node, node_type):
         return [
-            CfnTag(key="Name", value=node_type),
-            CfnTag(key="ClusterName", value=self._cluster_name()),
-            CfnTag(key="Application", value=self.stack_name),
-            CfnTag(key="aws-parallelcluster-node-type", value=node_type),
-            CfnTag(
+            core.CfnTag(key="Name", value=node_type),
+            core.CfnTag(key="ClusterName", value=self._cluster_name()),
+            core.CfnTag(key="Application", value=self.stack_name),
+            core.CfnTag(key="aws-parallelcluster-node-type", value=node_type),
+            core.CfnTag(
                 key="aws-parallelcluster-attributes",
                 value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
                     BaseOS=self._cluster_config.image.os,
@@ -203,11 +182,11 @@ class ClusterCdkStack(core.Stack):
                     Architecture=node.architecture,
                 ),
             ),
-            CfnTag(
+            core.CfnTag(
                 key="aws-parallelcluster-networking",
                 value="EFA={0}".format("true" if node.efa and node.efa.enabled else "NONE"),
             ),
-            CfnTag(
+            core.CfnTag(
                 key="aws-parallelcluster-filesystem",
                 value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
                     efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
@@ -220,9 +199,9 @@ class ClusterCdkStack(core.Stack):
 
     def _get_default_volume_tags(self, node_type):
         return [
-            CfnTag(key="ClusterName", value=self._cluster_name()),
-            CfnTag(key="Application", value=self.stack_name),
-            CfnTag(key="aws-parallelcluster-node-type", value=node_type),
+            core.CfnTag(key="ClusterName", value=self._cluster_name()),
+            core.CfnTag(key="Application", value=self.stack_name),
+            core.CfnTag(key="aws-parallelcluster-node-type", value=node_type),
         ]
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -257,7 +236,7 @@ class ClusterCdkStack(core.Stack):
 
         # Head Node EIP
         if self._cluster_config.head_node.networking.assign_public_ip:
-            self._head_eip = CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
+            self._head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
 
         # ParallelCluster managed security groups
         self._add_security_groups()
@@ -267,7 +246,7 @@ class ClusterCdkStack(core.Stack):
 
         # AdditionalCfnStack
         if self._cluster_config.additional_resources:
-            CfnStack(scope=self, id="AdditionalCfnStack", template_url=self._cluster_config.additional_resources)
+            core.CfnStack(scope=self, id="AdditionalCfnStack", template_url=self._cluster_config.additional_resources)
 
         # AWSBatchStack
         # TODO: inline resources
@@ -304,32 +283,32 @@ class ClusterCdkStack(core.Stack):
             if self._bucket.remove_on_deletion:
                 s3_policy_actions.append("s3:DeleteBucket")
 
-            cleanup_resources_lambda_execution_role = CfnRole(
+            cleanup_resources_lambda_execution_role = iam.CfnRole(
                 scope=self,
                 id="CleanupResourcesFunctionExecutionRole",
-                assume_role_policy_document=PolicyDocument(
+                assume_role_policy_document=iam.PolicyDocument(
                     statements=[
-                        PolicyStatement(
+                        iam.PolicyStatement(
                             actions=["sts:AssumeRole"],
-                            effect=Effect.ALLOW,
-                            principals=[ServicePrincipal(service="lambda.amazonaws.com")],
+                            effect=iam.Effect.ALLOW,
+                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
                         )
                     ],
                 ),
                 path="/",
                 policies=[
-                    CfnRole.PolicyProperty(
-                        policy_document=PolicyDocument(
+                    iam.CfnRole.PolicyProperty(
+                        policy_document=iam.PolicyDocument(
                             statements=[
-                                PolicyStatement(
+                                iam.PolicyStatement(
                                     actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=Effect.ALLOW,
+                                    effect=iam.Effect.ALLOW,
                                     resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
                                     sid="CloudWatchLogsPolicy",
                                 ),
-                                PolicyStatement(
+                                iam.PolicyStatement(
                                     actions=s3_policy_actions,
-                                    effect=Effect.ALLOW,
+                                    effect=iam.Effect.ALLOW,
                                     resources=[
                                         self.format_arn(
                                             service="s3", resource=self._bucket.name, region="", account=""
@@ -352,23 +331,26 @@ class ClusterCdkStack(core.Stack):
 
             if self._condition_is_slurm():
                 cleanup_resources_lambda_execution_role.policies[0].policy_document.add_statements(
-                    PolicyStatement(
-                        actions=["ec2:DescribeInstances"], resources=["*"], effect=Effect.ALLOW, sid="DescribeInstances"
+                    iam.PolicyStatement(
+                        actions=["ec2:DescribeInstances"],
+                        resources=["*"],
+                        effect=iam.Effect.ALLOW,
+                        sid="DescribeInstances",
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         actions=["ec2:TerminateInstances"],
                         resources=["*"],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
                         sid="FleetTerminatePolicy",
                     ),
                 )
 
-        return CfnFunction(
+        return awslambda.CfnFunction(
             scope=self,
             id="CleanupResourcesFunction",
             function_name=f"pcluster-CleanupResources-{self._stack_unique_id()}",
-            code=CfnFunction.CodeProperty(
+            code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=self._bucket.name,
                 s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
             ),
@@ -393,7 +375,7 @@ class ClusterCdkStack(core.Stack):
             head_eni_groupset.append(self._head_security_group.ref)
         elif self._cluster_config.head_node.networking.security_groups:
             head_eni_groupset.extend(self._cluster_config.head_node.networking.security_groups)
-        head_eni = CfnNetworkInterface(
+        head_eni = ec2.CfnNetworkInterface(
             scope=self,
             id="HeadNodeENI",
             description="AWS ParallelCluster head node interface",
@@ -403,7 +385,7 @@ class ClusterCdkStack(core.Stack):
         )
         # AssociateEIP
         if self._cluster_config.head_node.networking.assign_public_ip:
-            CfnEIPAssociation(
+            ec2.CfnEIPAssociation(
                 scope=self,
                 id="AssociateEIP",
                 allocation_id=self._head_eip.attr_allocation_id,
@@ -421,7 +403,7 @@ class ClusterCdkStack(core.Stack):
         # Head Node Security Group Ingress
         # Access to head node from compute nodes
         if self._condition_create_head_security_group() and self._condition_create_compute_security_group():
-            CfnSecurityGroupIngress(
+            ec2.CfnSecurityGroupIngress(
                 scope=self,
                 id="HeadNodeSecurityGroupIngress",
                 ip_protocol="-1",
@@ -433,7 +415,7 @@ class ClusterCdkStack(core.Stack):
         if self._condition_create_compute_security_group():
             # ComputeSecurityGroupEgress
             # Access to other compute nodes from compute nodes
-            compute_security_group_egress = CfnSecurityGroupEgress(
+            compute_security_group_egress = ec2.CfnSecurityGroupEgress(
                 scope=self,
                 id="ComputeSecurityGroupEgress",
                 ip_protocol="-1",
@@ -445,7 +427,7 @@ class ClusterCdkStack(core.Stack):
 
             # ComputeSecurityGroupNormalEgress
             # Internet access from compute nodes
-            CfnSecurityGroupEgress(
+            ec2.CfnSecurityGroupEgress(
                 scope=self,
                 id="ComputeSecurityGroupNormalEgress",
                 ip_protocol="-1",
@@ -457,7 +439,7 @@ class ClusterCdkStack(core.Stack):
 
             # ComputeSecurityGroupIngress
             # Access to compute nodes from other compute nodes
-            CfnSecurityGroupIngress(
+            ec2.CfnSecurityGroupIngress(
                 scope=self,
                 id="ComputeSecurityGroupIngress",
                 ip_protocol="-1",
@@ -468,14 +450,14 @@ class ClusterCdkStack(core.Stack):
             )
 
     def _add_compute_security_group(self):
-        return CfnSecurityGroup(
+        return ec2.CfnSecurityGroup(
             scope=self,
             id="ComputeSecurityGroup",
             group_description="Allow access to resources in subnets behind front",
             vpc_id=self._cluster_config.vpc_id,
             security_group_ingress=[
                 # Access from master security group
-                CfnSecurityGroup.IngressProperty(
+                ec2.CfnSecurityGroup.IngressProperty(
                     source_security_group_id=self._head_security_group.ref,
                     ip_protocol="-1",
                     from_port=0,
@@ -491,26 +473,26 @@ class ClusterCdkStack(core.Stack):
         read_write_s3_resources = [
             s3_access.bucket_name for s3_access in self._cluster_config.iam.s3_access if s3_access.type != "READ_ONLY"
         ]
-        s3_access_policy = CfnPolicy(
+        s3_access_policy = iam.CfnPolicy(
             scope=self,
             id="S3AccessPolicies",
-            policy_document=PolicyDocument(statements=[]),
+            policy_document=iam.PolicyDocument(statements=[]),
             roles=[self.head_node_iam_role.ref],
             policy_name="S3Access",
         )
         if read_only_s3_resources:
             s3_access_policy.policy_document.add_statements(
-                PolicyStatement(
+                iam.PolicyStatement(
                     sid="S3Read",
-                    effect=Effect.ALLOW,
+                    effect=iam.Effect.ALLOW,
                     actions=["s3:Get*", "s3:List*"],
                     resources=read_only_s3_resources,
                 )
             )
         if read_write_s3_resources:
             s3_access_policy.policy_document.add_statements(
-                PolicyStatement(
-                    sid="S3ReadWrite", effect=Effect.ALLOW, actions=["s3:*"], resources=read_write_s3_resources
+                iam.PolicyStatement(
+                    sid="S3ReadWrite", effect=iam.Effect.ALLOW, actions=["s3:*"], resources=read_write_s3_resources
                 )
             )
 
@@ -520,7 +502,7 @@ class ClusterCdkStack(core.Stack):
             self._cluster_config.head_iam_role,
             self._cluster_config.compute_iam_role,
         ]
-        return CfnInstanceProfile(
+        return iam.CfnInstanceProfile(
             scope=self,
             id="RootInstanceProfile",
             roles=[role for role in root_instance_profile_roles if role is not None],
@@ -528,16 +510,16 @@ class ClusterCdkStack(core.Stack):
         )
 
     def _add_root_iam_role(self):
-        return CfnRole(
+        return iam.CfnRole(
             scope=self,
             id="RootRole",
             managed_policy_arns=self._cluster_config.iam.additional_iam_policies if self._cluster_config.iam else None,
-            assume_role_policy_document=PolicyDocument(
+            assume_role_policy_document=iam.PolicyDocument(
                 statements=[
-                    PolicyStatement(
-                        effect=Effect.ALLOW,
+                    iam.PolicyStatement(
+                        effect=iam.Effect.ALLOW,
                         principals=[
-                            ServicePrincipal(
+                            iam.ServicePrincipal(
                                 service="ec2.{0}".format(self.url_suffix),
                             )
                         ],
@@ -549,13 +531,13 @@ class ClusterCdkStack(core.Stack):
         )
 
     def _add_parallelcluster_policies(self):
-        CfnPolicy(
+        iam.CfnPolicy(
             scope=self,
             id="ParallelClusterPolicies",
             policy_name="parallelcluster",
-            policy_document=PolicyDocument(
+            policy_document=iam.PolicyDocument(
                 statements=[
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="Ec2",
                         actions=[
                             "ec2:DescribeVolumes",
@@ -565,13 +547,13 @@ class ClusterCdkStack(core.Stack):
                             "ec2:DescribeInstances",
                             "ec2:DescribeInstanceTypes",
                         ],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=["*"],
                     ),
-                    PolicyStatement(
-                        sid="DynamoDBList", actions=["dynamodb:ListTables"], effect=Effect.ALLOW, resources=["*"]
+                    iam.PolicyStatement(
+                        sid="DynamoDBList", actions=["dynamodb:ListTables"], effect=iam.Effect.ALLOW, resources=["*"]
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="SQSQueue",
                         actions=[
                             "sqs:SendMessage",
@@ -580,20 +562,20 @@ class ClusterCdkStack(core.Stack):
                             "sqs:DeleteMessage",
                             "sqs:GetQueueUrl",
                         ],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=[self.format_arn(service="sqs", resource=self.stack_name)],
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="Cloudformation",
                         actions=[
                             "cloudformation:DescribeStacks",
                             "cloudformation:DescribeStackResource",
                             "cloudformation:SignalResource",
                         ],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=[self.format_arn(service="cloudformation", resource="stack/parallelcluster-*/*")],
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="DynamoDBTable",
                         actions=[
                             "dynamodb:PutItem",
@@ -602,13 +584,13 @@ class ClusterCdkStack(core.Stack):
                             "dynamodb:DeleteItem",
                             "dynamodb:DescribeTable",
                         ],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=[self.format_arn(service="dynamodb", resource=f"table/{self.stack_name}")],
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="S3GetObj",
                         actions=["s3:GetObject"],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=[
                             self.format_arn(
                                 service="s3",
@@ -618,10 +600,10 @@ class ClusterCdkStack(core.Stack):
                             )
                         ],
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="S3PutObj",
                         actions=["s3:PutObject"],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=[
                             self.format_arn(
                                 service="s3",
@@ -631,19 +613,19 @@ class ClusterCdkStack(core.Stack):
                             )
                         ],
                     ),
-                    PolicyStatement(
-                        sid="FSx", actions=["fsx:DescribeFileSystems"], effect=Effect.ALLOW, resources=["*"]
+                    iam.PolicyStatement(
+                        sid="FSx", actions=["fsx:DescribeFileSystems"], effect=iam.Effect.ALLOW, resources=["*"]
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="BatchJobPassRole",
                         actions=["iam:PassRole"],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=[self.format_arn(service="iam", region="", resource="role/parallelcluster-*")],
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="DcvLicense",
                         actions=["s3:GetObject"],
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         resources=[
                             self.format_arn(
                                 service="s3",
@@ -659,22 +641,22 @@ class ClusterCdkStack(core.Stack):
         )
 
     def _add_slurm_policies(self):
-        CfnPolicy(
+        iam.CfnPolicy(
             scope=self,
             id="ParallelClusterSlurmPolicies",
             policy_name="parallelcluster-slurm",
-            policy_document=PolicyDocument(
+            policy_document=iam.PolicyDocument(
                 statements=[
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="EC2Terminate",
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         actions=["ec2:TerminateInstances"],
                         resources=["*"],
                         conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="EC2",
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         actions=[
                             "ec2:DescribeInstances",
                             "ec2:DescribeLaunchTemplates",
@@ -684,9 +666,9 @@ class ClusterCdkStack(core.Stack):
                         ],
                         resources=["*"],
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="ResourcesS3Bucket",
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         actions=["s3:ListBucket", "s3:ListBucketVersions", "s3:GetObject*", "s3:PutObject*"]
                         if self._bucket.remove_on_deletion
                         else ["s3:*"],
@@ -700,9 +682,9 @@ class ClusterCdkStack(core.Stack):
                             ),
                         ],
                     ),
-                    PolicyStatement(
+                    iam.PolicyStatement(
                         sid="DynamoDBTableQuery",
-                        effect=Effect.ALLOW,
+                        effect=iam.Effect.ALLOW,
                         actions=["dynamodb:Query"],
                         resources=[
                             self.format_arn(service="dynamodb", resource="table/{0}".format(self.stack_name)),
@@ -717,7 +699,7 @@ class ClusterCdkStack(core.Stack):
     def _add_head_security_group(self):
         head_security_group_ingress = [
             # SSH access
-            CfnSecurityGroup.IngressProperty(
+            ec2.CfnSecurityGroup.IngressProperty(
                 ip_protocol="tcp",
                 from_port=22,
                 to_port=22,
@@ -727,14 +709,14 @@ class ClusterCdkStack(core.Stack):
         if self._cluster_config.head_node.dcv and self._cluster_config.head_node.dcv.enabled:
             head_security_group_ingress.append(
                 # DCV access
-                CfnSecurityGroup.IngressProperty(
+                ec2.CfnSecurityGroup.IngressProperty(
                     ip_protocol="tcp",
                     from_port=self._cluster_config.head_node.dcv.port,
                     to_port=self._cluster_config.head_node.dcv.port,
                     cidr_ip=self._cluster_config.head_node.dcv.allowed_ips,
                 )
             )
-        return CfnSecurityGroup(
+        return ec2.CfnSecurityGroup(
             scope=self,
             id="HeadNodeSecurityGroup",
             group_description="Enable access to the head node",
@@ -743,7 +725,7 @@ class ClusterCdkStack(core.Stack):
         )
 
     def _add_cleanup_resources_bucket_custom_resource(self):
-        return CustomResource(
+        return core.CustomResource(
             scope=self,
             id="CleanupResourcesS3BucketCustomResource",
             service_token=self.cleanup_resources_function.attr_arn,
@@ -966,21 +948,21 @@ class ClusterCdkStack(core.Stack):
             id="DynamoDBTable",
             table_name=self.stack_name,
             attribute_definitions=[
-                CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
-                CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
+                dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
+                dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
             ],
-            key_schema=[CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
+            key_schema=[dynamodb.CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
             global_secondary_indexes=[
-                CfnTable.GlobalSecondaryIndexProperty(
+                dynamodb.CfnTable.GlobalSecondaryIndexProperty(
                     index_name="InstanceId",
-                    key_schema=[CfnTable.KeySchemaProperty(attribute_name="InstanceId", key_type="HASH")],
-                    projection=CfnTable.ProjectionProperty(projection_type="ALL"),
+                    key_schema=[dynamodb.CfnTable.KeySchemaProperty(attribute_name="InstanceId", key_type="HASH")],
+                    projection=dynamodb.CfnTable.ProjectionProperty(projection_type="ALL"),
                 )
             ],
             billing_mode="PAY_PER_REQUEST",
         )
-        table.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
-        table.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
+        table.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        table.cfn_options.deletion_policy = core.CfnDeletionPolicy.DELETE
         self._dynamo_db_table = table
 
     def _add_head_node(self):
@@ -997,7 +979,7 @@ class ClusterCdkStack(core.Stack):
 
         # LT network interfaces
         head_lt_nw_interfaces = [
-            CfnLaunchTemplate.NetworkInterfaceProperty(
+            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                 device_index=0,
                 network_interface_id=self.head_eni.ref,
                 associate_public_ip_address=head_node.networking.assign_public_ip,
@@ -1005,7 +987,7 @@ class ClusterCdkStack(core.Stack):
         ]
         for device_index in range(1, head_node.max_network_interface_count - 1):
             head_lt_nw_interfaces.append(
-                CfnLaunchTemplate.NetworkInterfaceProperty(
+                ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=device_index,
                     network_card_index=device_index,
                     groups=head_lt_security_groups,
@@ -1014,12 +996,12 @@ class ClusterCdkStack(core.Stack):
             )
 
         # Head node Launch Template
-        head_node_launch_template = CfnLaunchTemplate(
+        head_node_launch_template = ec2.CfnLaunchTemplate(
             scope=self,
             id="HeadNodeLaunchTemplate",
-            launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
+            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=head_node.instance_type,
-                cpu_options=CfnLaunchTemplate.CpuOptionsProperty(core_count=head_node.vcpus, threads_per_core=1)
+                cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(core_count=head_node.vcpus, threads_per_core=1)
                 if head_node.pass_cpu_options_in_launch_template
                 else None,
                 block_device_mappings=self._get_block_device_mappings(head_node),
@@ -1027,9 +1009,11 @@ class ClusterCdkStack(core.Stack):
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self._cluster_config.ami_id,
                 ebs_optimized=head_node.is_ebs_optimized,
-                iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
-                user_data=Fn.base64(
-                    Fn.sub(
+                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
+                    name=self.root_instance_profile.ref
+                ),
+                user_data=core.Fn.base64(
+                    core.Fn.sub(
                         self._get_user_data_content("../resources/head_node/user_data.sh"),
                         {
                             "YumProxy": head_node.networking.proxy if head_node.networking.proxy else "_none_",
@@ -1046,11 +1030,11 @@ class ClusterCdkStack(core.Stack):
                     )
                 ),
                 tag_specifications=[
-                    CfnLaunchTemplate.TagSpecificationProperty(
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=self._get_default_instance_tags(head_node, "Master") + self._get_custom_tags(),
                     ),
-                    CfnLaunchTemplate.TagSpecificationProperty(
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=self._get_default_volume_tags("Master") + self._get_custom_tags(),
                     ),
@@ -1165,7 +1149,7 @@ class ClusterCdkStack(core.Stack):
             "cfnHupConfig": {
                 "files": {
                     "/etc/cfn/hooks.d/parallelcluster-update.conf": {
-                        "content": Fn.sub(
+                        "content": core.Fn.sub(
                             (
                                 "[parallelcluster-update]\n"
                                 "triggers=post.update\n"
@@ -1186,7 +1170,7 @@ class ClusterCdkStack(core.Stack):
                         "group": "root",
                     },
                     "/etc/cfn/cfn-hup.conf": {
-                        "content": Fn.sub(
+                        "content": core.Fn.sub(
                             "[main]\nstack=${StackId}\nregion=${Region}\nrole=${IamRoleName}\ninterval=2",
                             {
                                 "StackId": self.stack_id,
@@ -1266,7 +1250,7 @@ class ClusterCdkStack(core.Stack):
         }
 
         head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
-        self.head_node_instance = CfnInstance(
+        self.head_node_instance = ec2.CfnInstance(
             self,
             id="MasterServer",  # FIXME
             launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
@@ -1274,7 +1258,7 @@ class ClusterCdkStack(core.Stack):
                 version=head_node_launch_template.attr_latest_version_number,
             ),
         )
-        self.head_node_instance.cfn_options.creation_policy = CfnCreationPolicy(
+        self.head_node_instance.cfn_options.creation_policy = core.CfnCreationPolicy(
             resource_signal=core.CfnResourceSignal(count=1, timeout="PT30M")
         )
 
@@ -1303,7 +1287,7 @@ class ClusterCdkStack(core.Stack):
                     queue_placement_group = queue.networking.placement_group.id
                 else:
                     # Create Placement Group
-                    queue_placement_group = CfnPlacementGroup(
+                    queue_placement_group = ec2.CfnPlacementGroup(
                         scope=self, id=f"PlacementGroup{self._create_hash_suffix(queue.name)}", strategy="cluster"
                     ).ref
 
@@ -1323,7 +1307,7 @@ class ClusterCdkStack(core.Stack):
                     queue_placement_group,
                 )
 
-        CustomResource(
+        core.CustomResource(
             scope=self,
             id="TerminateComputeFleetCustomResource",
             service_token=self.cleanup_resources_function.attr_arn,
@@ -1332,7 +1316,7 @@ class ClusterCdkStack(core.Stack):
         # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
         # terminate_compute_fleet_custom_resource.add_depends_on()
 
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="ConfigVersion",
             description="Version of the config used to generate the stack",
@@ -1351,7 +1335,7 @@ class ClusterCdkStack(core.Stack):
     ):
         # LT network interfaces
         compute_lt_nw_interfaces = [
-            CfnLaunchTemplate.NetworkInterfaceProperty(
+            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                 device_index=0,
                 associate_public_ip_address=queue.networking.assign_public_ip
                 if compute_resource.max_network_interface_count == 1
@@ -1360,7 +1344,7 @@ class ClusterCdkStack(core.Stack):
         ]
         for device_index in range(1, compute_resource.max_network_interface_count - 1):
             compute_lt_nw_interfaces.append(
-                CfnLaunchTemplate.NetworkInterfaceProperty(
+                ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=device_index,
                     network_card_index=device_index,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
@@ -1371,22 +1355,24 @@ class ClusterCdkStack(core.Stack):
 
         instance_market_options = None
         if queue.compute_type == ComputeType.SPOT:
-            instance_market_options = CfnLaunchTemplate.InstanceMarketOptionsProperty(
+            instance_market_options = ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
                 market_type="spot",
-                spot_options=CfnLaunchTemplate.SpotOptionsProperty(
+                spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
                     spot_instance_type="one-time",
                     instance_interruption_behavior="terminate",
                     max_price=compute_resource.spot_price,
                 ),
             )
 
-        CfnLaunchTemplate(
+        ec2.CfnLaunchTemplate(
             scope=self,
             id=f"ComputeServerLaunchTemplate{self._create_hash_suffix(queue.name + instance_type)}",
             launch_template_name=f"{self._cluster_name()}-{queue.name}-{instance_type}",
-            launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
+            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=instance_type,
-                cpu_options=CfnLaunchTemplate.CpuOptionsProperty(core_count=compute_resource.vcpus, threads_per_core=1)
+                cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(
+                    core_count=compute_resource.vcpus, threads_per_core=1
+                )
                 if compute_resource.pass_cpu_options_in_launch_template
                 else None,
                 block_device_mappings=self._get_block_device_mappings(queue),
@@ -1395,10 +1381,12 @@ class ClusterCdkStack(core.Stack):
                 placement=queue_placement_group,
                 image_id=self._cluster_config.ami_id,
                 ebs_optimized=compute_resource.is_ebs_optimized,
-                iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
+                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
+                    name=self.root_instance_profile.ref
+                ),
                 instance_market_options=instance_market_options,
-                user_data=Fn.base64(
-                    Fn.sub(
+                user_data=core.Fn.base64(
+                    core.Fn.sub(
                         self._get_user_data_content("../resources/compute_node/user_data.sh"),
                         {
                             "YumProxy": queue.networking.proxy if queue.networking.proxy else "_none_",
@@ -1455,18 +1443,18 @@ class ClusterCdkStack(core.Stack):
                         },
                     )
                 ),
-                monitoring=CfnLaunchTemplate.MonitoringProperty(enabled=False),
+                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=False),
                 tag_specifications=[
-                    CfnLaunchTemplate.TagSpecificationProperty(
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=self._get_default_instance_tags(compute_resource, "Compute")
-                        + [CfnTag(key="QueueName", value=queue.name)]
+                        + [core.CfnTag(key="QueueName", value=queue.name)]
                         + self._get_custom_tags(),
                     ),
-                    CfnLaunchTemplate.TagSpecificationProperty(
+                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=self._get_default_volume_tags("Compute")
-                        + [CfnTag(key="QueueName", value=queue.name)]
+                        + [core.CfnTag(key="QueueName", value=queue.name)]
                         + self._get_custom_tags(),
                     ),
                 ],
@@ -1482,15 +1470,15 @@ class ClusterCdkStack(core.Stack):
         )
 
         if self._condition_create_head_node_iam_role():
-            CfnPolicy(
+            iam.CfnPolicy(
                 scope=self,
                 id="ParallelClusterSlurmRoute53Policies",
                 policy_name="parallelcluster-slurm-route53",
-                policy_document=PolicyDocument(
+                policy_document=iam.PolicyDocument(
                     statements=[
-                        PolicyStatement(
+                        iam.PolicyStatement(
                             sid="Route53Add",
-                            effect=Effect.ALLOW,
+                            effect=iam.Effect.ALLOW,
                             actions=["route53:ChangeResourceRecordSets"],
                             resources=[
                                 self.format_arn(
@@ -1508,32 +1496,32 @@ class ClusterCdkStack(core.Stack):
 
         cleanup_route53_lambda_execution_role = None
         if self._condition_create_lambda_iam_role():
-            cleanup_route53_lambda_execution_role = CfnRole(
+            cleanup_route53_lambda_execution_role = iam.CfnRole(
                 scope=self,
                 id="CleanupRoute53FunctionExecutionRole",
-                assume_role_policy_document=PolicyDocument(
+                assume_role_policy_document=iam.PolicyDocument(
                     statements=[
-                        PolicyStatement(
+                        iam.PolicyStatement(
                             actions=["sts:AssumeRole"],
-                            effect=Effect.ALLOW,
-                            principals=[ServicePrincipal(service="lambda.amazonaws.com")],
+                            effect=iam.Effect.ALLOW,
+                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
                         )
                     ],
                 ),
                 path="/",
                 policies=[
-                    CfnRole.PolicyProperty(
-                        policy_document=PolicyDocument(
+                    iam.CfnRole.PolicyProperty(
+                        policy_document=iam.PolicyDocument(
                             statements=[
-                                PolicyStatement(
+                                iam.PolicyStatement(
                                     actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=Effect.ALLOW,
+                                    effect=iam.Effect.ALLOW,
                                     resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
                                     sid="CloudWatchLogsPolicy",
                                 ),
-                                PolicyStatement(
+                                iam.PolicyStatement(
                                     actions=["route53:ListResourceRecordSets", "route53:ChangeResourceRecordSets"],
-                                    effect=Effect.ALLOW,
+                                    effect=iam.Effect.ALLOW,
                                     resources=[
                                         self.format_arn(
                                             service="route53",
@@ -1551,11 +1539,11 @@ class ClusterCdkStack(core.Stack):
                 ],
             )
 
-        cleanup_route53_lambda = CfnFunction(
+        cleanup_route53_lambda = awslambda.CfnFunction(
             scope=self,
             id="CleanupRoute53Function",
             function_name=f"pcluster-CleanupRoute53-{self._stack_unique_id()}",
-            code=CfnFunction.CodeProperty(
+            code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=self._bucket.name,
                 s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
             ),
@@ -1573,20 +1561,20 @@ class ClusterCdkStack(core.Stack):
             timeout=900,
         )
 
-        CustomResource(
+        core.CustomResource(
             scope=self,
             id="CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
             properties={"ClusterHostedZone": cluster_hosted_zone.attr_id, "Action": "DELETE_DNS_RECORDS"},
         )
 
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
             value=cluster_hosted_zone.attr_id,
         )
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
@@ -1598,32 +1586,32 @@ class ClusterCdkStack(core.Stack):
     def _add_update_waiter_lambda(self):
         update_waiter_lambda_execution_role = None
         if self._condition_create_lambda_iam_role():
-            update_waiter_lambda_execution_role = CfnRole(
+            update_waiter_lambda_execution_role = iam.CfnRole(
                 scope=self,
                 id="UpdateWaiterFunctionExecutionRole",
-                assume_role_policy_document=PolicyDocument(
+                assume_role_policy_document=iam.PolicyDocument(
                     statements=[
-                        PolicyStatement(
+                        iam.PolicyStatement(
                             actions=["sts:AssumeRole"],
-                            effect=Effect.ALLOW,
-                            principals=[ServicePrincipal(service="lambda.amazonaws.com")],
+                            effect=iam.Effect.ALLOW,
+                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
                         )
                     ],
                 ),
                 path="/",
                 policies=[
-                    CfnRole.PolicyProperty(
-                        policy_document=PolicyDocument(
+                    iam.CfnRole.PolicyProperty(
+                        policy_document=iam.PolicyDocument(
                             statements=[
-                                PolicyStatement(
+                                iam.PolicyStatement(
                                     actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=Effect.ALLOW,
+                                    effect=iam.Effect.ALLOW,
                                     resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
                                     sid="CloudWatchLogsPolicy",
                                 ),
-                                PolicyStatement(
+                                iam.PolicyStatement(
                                     actions=["dynamodb:GetItem", "dynamodb:PutItem"],
-                                    effect=Effect.ALLOW,
+                                    effect=iam.Effect.ALLOW,
                                     resources=[
                                         self.format_arn(
                                             service="dynamodb",
@@ -1640,11 +1628,11 @@ class ClusterCdkStack(core.Stack):
                 ],
             )
 
-        update_waiter_lambda = CfnFunction(
+        update_waiter_lambda = awslambda.CfnFunction(
             scope=self,
             id="UpdateWaiterFunction",
             function_name=f"pcluster-UpdateWaiter-{self._stack_unique_id()}",
-            code=CfnFunction.CodeProperty(
+            code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=self._bucket.name,
                 s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
             ),
@@ -1662,7 +1650,7 @@ class ClusterCdkStack(core.Stack):
             timeout=900,
         )
 
-        CustomResource(
+        core.CustomResource(
             self,
             "UpdateWaiterCustomResource",
             service_token=update_waiter_lambda.attr_arn,
@@ -1672,7 +1660,7 @@ class ClusterCdkStack(core.Stack):
             },
         )
 
-        CfnOutput(scope=self, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
+        core.CfnOutput(scope=self, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
@@ -1750,7 +1738,7 @@ class ClusterCdkStack(core.Stack):
         self._add_shared_storage_outputs()
 
         # ClusterUser
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="ClusterUser",
             description="Username to login to head node",
@@ -1758,7 +1746,7 @@ class ClusterCdkStack(core.Stack):
         )
 
         # Head Node Instance ID
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="MasterInstanceID",  # FIXME
             description="ID of the head node instance",
@@ -1766,14 +1754,14 @@ class ClusterCdkStack(core.Stack):
         )
 
         # Head Node Private IP
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="MasterPrivateIP",  # FIXME
             description="Private IP Address of the head node",
             value=self.head_node_instance.attr_private_ip,
         )
 
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="MasterPrivateDnsName",  # FIXME
             description="Private DNS name of the head node",
@@ -1783,7 +1771,7 @@ class ClusterCdkStack(core.Stack):
         # Head Node Public IP
         head_public_ip = self.head_node_instance.attr_public_ip
         if head_public_ip:
-            CfnOutput(
+            core.CfnOutput(
                 scope=self,
                 id="MasterPublicIP",  # FIXME
                 description="Private IP Address of the head node",
@@ -1791,7 +1779,7 @@ class ClusterCdkStack(core.Stack):
             )
 
         # ResourcesS3Bucket
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="ResourcesS3Bucket",
             description="S3 user bucket where AWS ParallelCluster resources are stored",
@@ -1799,7 +1787,7 @@ class ClusterCdkStack(core.Stack):
         )
 
         # ArtifactS3RootDirectory
-        CfnOutput(
+        core.CfnOutput(
             scope=self,
             id="ArtifactS3RootDirectory",
             description="Root directory in S3 bucket where cluster artifacts are stored",
@@ -1813,7 +1801,7 @@ class ClusterCdkStack(core.Stack):
         # BatchUserRole
         # TODO: take values from Batch resources
 
-        CfnOutput(id="Scheduler", scope=self, value=self._cluster_config.scheduling.scheduler)
+        core.CfnOutput(id="Scheduler", scope=self, value=self._cluster_config.scheduling.scheduler)
 
     def _add_shared_storage_outputs(self):
         """Add the ids of the managed filesystem to the Stack Outputs."""
