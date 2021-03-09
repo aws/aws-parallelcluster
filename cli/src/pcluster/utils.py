@@ -562,9 +562,9 @@ def get_supported_os_for_scheduler(scheduler):
     :param scheduler: the scheduler for which we want to know the supported os
     :return: an array of strings of the supported OSes
     """
-    oses = ["alinux", "alinux2"]
+    oses = ["alinux2"]
     if scheduler != "awsbatch":
-        oses.extend(["centos7", "centos8", "ubuntu1604", "ubuntu1804"])
+        oses.extend(["centos7", "centos8", "ubuntu1804"])
     return list(oses)
 
 
@@ -572,7 +572,7 @@ def get_supported_os_for_architecture(architecture):
     """Return list of supported OSes for the specified architecture."""
     oses = ["alinux2", "ubuntu1804", "centos8"]
     if architecture == "x86_64":
-        oses.extend(["centos7", "alinux", "ubuntu1604"])
+        oses.extend(["centos7"])
     return oses
 
 

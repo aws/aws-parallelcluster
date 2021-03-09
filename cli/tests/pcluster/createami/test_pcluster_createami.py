@@ -77,7 +77,7 @@ def test_get_default_createami_instance_type(
         # instance type arch is not compatible with base AMI arch
         ("ami-id-three", "t2.xlarge", "alinux2", "arm64", ["x86_64"], ["alinux2"]),
         # instance type arch compatible with base AMI arch, but OS isn't
-        ("ami-id-four", "m6g.xlarge", "alinux", "arm64", ["arm64"], ["alinux2"]),
+        ("ami-id-four", "m6g.xlarge", "centos7", "arm64", ["arm64"], ["alinux2"]),
     ],
 )
 def test_validate_createami_args_architecture_compatibility(

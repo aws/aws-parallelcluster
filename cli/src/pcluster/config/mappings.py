@@ -57,7 +57,6 @@ from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     architecture_os_validator,
-    base_os_validator,
     cluster_type_validator,
     cluster_validator,
     compute_instance_type_validator,
@@ -812,8 +811,8 @@ CLUSTER_COMMON_PARAMS = [
     ("base_os", {
         "type": BaseOSCfnParam,
         "cfn_param_mapping": "BaseOS",
-        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
-        "validators": [base_os_validator, architecture_os_validator],
+        "allowed_values": ["alinux2", "ubuntu1804", "centos7", "centos8"],
+        "validators": [architecture_os_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
