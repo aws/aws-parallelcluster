@@ -1303,6 +1303,12 @@ def _get_efa_enabled_instance_types(errors):
             Filters=[{"Name": "network-info.efa-supported", "Values": ["true"]}],
         ):
             instance_types.append(response.get("InstanceType"))
+
+        # Add data from additional instance types
+        for instance_type in InstanceTypeInfo.additional_instance_types_data().keys():
+            instance_type_info = InstanceTypeInfo.init_from_instance_type(instance_type)
+            if instance_type_info.is_efa_supported() and instance_type not in instance_types:
+                instance_types.append(instance_type)
     except ClientError as e:
         errors.append(
             "Failed retrieving efa enabled instance types: {0}".format(e.response.get("Error").get("Message"))
