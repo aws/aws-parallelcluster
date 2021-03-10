@@ -20,7 +20,6 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
-from aws_cdk import aws_lambda as awslambda
 from aws_cdk import core
 
 from common.aws.aws_api import AWSApi
@@ -37,13 +36,15 @@ from pcluster.models.cluster_config import (
     SlurmClusterConfig,
 )
 from pcluster.templates.cdk_builder_utils import (
+    PclusterLambdaConstruct,
     create_hash_suffix,
     get_block_device_mappings,
+    get_cloud_watch_logs_policy_statement,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_lambda_policy_statement,
+    get_lambda_assume_role_policy_document,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -201,20 +202,12 @@ class ClusterCdkStack(core.Stack):
             cleanup_resources_lambda_role = iam.CfnRole(
                 scope=self,
                 id="CleanupResourcesFunctionExecutionRole",
-                assume_role_policy_document=iam.PolicyDocument(
-                    statements=[get_lambda_policy_statement()],
-                ),
                 path="/",
+                assume_role_policy_document=get_lambda_assume_role_policy_document(),
                 policies=[
                     iam.CfnRole.PolicyProperty(
                         policy_document=iam.PolicyDocument(
                             statements=[
-                                iam.PolicyStatement(
-                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
-                                    sid="CloudWatchLogsPolicy",
-                                ),
                                 iam.PolicyStatement(
                                     actions=s3_policy_actions,
                                     effect=iam.Effect.ALLOW,
@@ -236,26 +229,27 @@ class ClusterCdkStack(core.Stack):
                 ],
             )
 
-        cleanup_resources_lambda = awslambda.CfnFunction(
+            cleanup_resources_lambda_role.policies[0].policy_document.add_statements(
+                get_cloud_watch_logs_policy_statement(
+                    resource=self.format_arn(service="logs", account="*", region="*", resource="*")
+                )
+            )
+
+        cleanup_resources_lambda = PclusterLambdaConstruct(
             scope=self,
-            id="CleanupResourcesFunction",
-            function_name=f"pcluster-CleanupResources-{self._stack_unique_id()}",
-            code=awslambda.CfnFunction.CodeProperty(
-                s3_bucket=self.bucket.name,
-                s3_key=f"{self.bucket.artifact_directory}/custom_resources_code/artifacts.zip",
-            ),
-            handler="cleanup_resources.handler",
-            memory_size=128,
-            role=cleanup_resources_lambda_role.attr_arn
+            id="CleanupResourcesFunctionConstruct",
+            function_name="CleanupResources",
+            bucket=self.bucket,
+            execution_role=cleanup_resources_lambda_role.attr_arn
             if cleanup_resources_lambda_role
             else self.format_arn(
                 service="iam",
                 region="",
+                account=self.account,
                 resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
             ),
-            runtime="python3.8",
-            timeout=900,
-        )
+            handler_func="cleanup_resources",
+        ).lambda_func
 
         core.CustomResource(
             scope=self,

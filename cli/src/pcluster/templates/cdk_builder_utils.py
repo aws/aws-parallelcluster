@@ -16,6 +16,7 @@ from typing import Union
 import pkg_resources
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as awslambda
 from aws_cdk import core
 
 from pcluster.constants import COOKBOOK_PACKAGES_VERSIONS, OS_MAPPING, PCLUSTER_STACK_PREFIX
@@ -23,6 +24,7 @@ from pcluster.models.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
     BaseQueue,
+    ClusterBucket,
     Ebs,
     HeadNode,
     SharedStorageType,
@@ -170,10 +172,59 @@ def get_default_volume_tags(stack_name: str, node_type: str):
     ]
 
 
-def get_lambda_policy_statement():
-    """Return default Lambda policy statement."""
-    return iam.PolicyStatement(
-        actions=["sts:AssumeRole"],
-        effect=iam.Effect.ALLOW,
-        principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
+def get_lambda_assume_role_policy_document():
+    """Return default Lambda assume role policy document."""
+    return iam.PolicyDocument(
+        statements=[
+            iam.PolicyStatement(
+                actions=["sts:AssumeRole"],
+                effect=iam.Effect.ALLOW,
+                principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
+            )
+        ]
     )
+
+
+def get_cloud_watch_logs_policy_statement(resource: str):
+    """Return CloudWatch Logs policy statement."""
+    return iam.PolicyStatement(
+        actions=["logs:CreateLogStream", "logs:PutLogEvents"],
+        effect=iam.Effect.ALLOW,
+        resources=[resource],
+        sid="CloudWatchLogsPolicy",
+    )
+
+
+class PclusterLambdaConstruct(core.Construct):
+    """Create a Lambda function with some pre-filled fields."""
+
+    def __init__(
+        self,
+        scope: core.Construct,
+        id: str,
+        function_name: str,
+        bucket: ClusterBucket,
+        execution_role: iam.CfnRole,
+        handler_func: str,
+    ):
+        super().__init__(scope, id)
+        self.lambda_func = awslambda.CfnFunction(
+            scope=scope,
+            id=f"{function_name}Function",
+            function_name=f"pcluster-{function_name}-{self._stack_unique_id()}",
+            code=awslambda.CfnFunction.CodeProperty(
+                s3_bucket=bucket.name,
+                s3_key=f"{bucket.artifact_directory}/custom_resources_code/artifacts.zip",
+            ),
+            handler=f"{handler_func}.handler",
+            memory_size=128,
+            role=execution_role,
+            runtime="python3.8",
+            timeout=900,
+        )
+
+    def _stack_unique_id(self):
+        return core.Fn.select(2, core.Fn.split("/", core.Stack.of(self).stack_id))
+
+    def _format_arn(self, **kwargs):
+        return core.Stack.of(self).format_arn(**kwargs)
