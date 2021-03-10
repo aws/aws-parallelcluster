@@ -25,14 +25,17 @@ from pcluster.models.cluster_config import (
     SlurmClusterConfig,
 )
 from pcluster.templates.cdk_builder_utils import (
+    PclusterLambdaConstruct,
     cluster_name,
     create_hash_suffix,
     get_block_device_mappings,
+    get_cloud_watch_logs_policy_statement,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_lambda_policy_statement,
+    get_lambda_assume_role_policy_document,
+    get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -62,6 +65,7 @@ class SlurmConstruct(core.Construct):
         **kwargs,
     ):
         super().__init__(scope, id)
+        self.stack_scope = scope
         self.stack_name = stack_name
         self.config = cluster_config
         self.bucket = bucket
@@ -127,7 +131,7 @@ class SlurmConstruct(core.Construct):
         suffix = create_hash_suffix(node_name)
 
         iam.CfnPolicy(
-            scope=self,
+            scope=self.stack_scope,
             id=f"SlurmPolicies{suffix}",
             policy_name="parallelcluster-slurm",
             policy_document=iam.PolicyDocument(
@@ -214,7 +218,7 @@ class SlurmConstruct(core.Construct):
                 else:
                     # Create Placement Group
                     queue_placement_group = ec2.CfnPlacementGroup(
-                        scope=self, id=f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
+                        scope=self.stack_scope, id=f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
                     ).ref
 
             queue_pre_install_action = queue.get_custom_action(event=CustomActionEvent.NODE_START)
@@ -234,7 +238,7 @@ class SlurmConstruct(core.Construct):
                 )
 
         core.CustomResource(
-            scope=self,
+            scope=self.stack_scope,
             id="TerminateComputeFleetCustomResource",
             service_token=self.cleanup_lambda.attr_arn,
             properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"},
@@ -243,7 +247,7 @@ class SlurmConstruct(core.Construct):
         # terminate_compute_fleet_custom_resource.add_depends_on()
 
         core.CfnOutput(
-            scope=self,
+            scope=self.stack_scope,
             id="ConfigVersion",
             description="Version of the config used to generate the stack",
             value=self.config.config_version,
@@ -251,7 +255,7 @@ class SlurmConstruct(core.Construct):
 
     def _add_private_hosted_zone(self):
         cluster_hosted_zone = route53.CfnHostedZone(
-            scope=self,
+            scope=self.stack_scope,
             id="Route53HostedZone",
             name=f"{cluster_name(self.stack_name)}.pcluster",
             vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
@@ -260,7 +264,7 @@ class SlurmConstruct(core.Construct):
         head_node_role_info = self.instance_roles.get("HeadNode")
         if head_node_role_info.get("IsNew"):
             iam.CfnPolicy(
-                scope=self,
+                scope=self.stack_scope,
                 id="ParallelClusterSlurmRoute53Policies",
                 policy_name="parallelcluster-slurm-route53",
                 policy_document=iam.PolicyDocument(
@@ -286,22 +290,14 @@ class SlurmConstruct(core.Construct):
         cleanup_route53_lambda_execution_role = None
         if self.cleanup_lambda_role:
             cleanup_route53_lambda_execution_role = iam.CfnRole(
-                scope=self,
+                scope=self.stack_scope,
                 id="CleanupRoute53FunctionExecutionRole",
-                assume_role_policy_document=iam.PolicyDocument(
-                    statements=[get_lambda_policy_statement()],
-                ),
+                assume_role_policy_document=get_lambda_assume_role_policy_document(),
                 path="/",
                 policies=[
                     iam.CfnRole.PolicyProperty(
                         policy_document=iam.PolicyDocument(
                             statements=[
-                                iam.PolicyStatement(
-                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[self._format_arn(service="logs", account="*", region="*", resource="*")],
-                                    sid="CloudWatchLogsPolicy",
-                                ),
                                 iam.PolicyStatement(
                                     actions=["route53:ListResourceRecordSets", "route53:ChangeResourceRecordSets"],
                                     effect=iam.Effect.ALLOW,
@@ -322,43 +318,43 @@ class SlurmConstruct(core.Construct):
                 ],
             )
 
-        cleanup_route53_lambda = awslambda.CfnFunction(
-            scope=self,
-            id="CleanupRoute53Function",
-            function_name=f"pcluster-CleanupRoute53-{self._stack_unique_id()}",
-            code=awslambda.CfnFunction.CodeProperty(
-                s3_bucket=self.bucket.name,
-                s3_key=f"{self.bucket.artifact_directory}/custom_resources_code/artifacts.zip",
-            ),
-            handler="cleanup_resources.handler",
-            memory_size=128,
-            role=cleanup_route53_lambda_execution_role.attr_arn
+            cleanup_route53_lambda_execution_role.policies[0].policy_document.add_statements(
+                get_cloud_watch_logs_policy_statement(
+                    resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                )
+            )
+
+        cleanup_route53_lambda = PclusterLambdaConstruct(
+            scope=self.stack_scope,
+            id="CleanupRoute53FunctionConstruct",
+            function_name="CleanupRoute53",
+            bucket=self.bucket,
+            execution_role=cleanup_route53_lambda_execution_role.attr_arn
             if cleanup_route53_lambda_execution_role
             else self._format_arn(
                 service="iam",
                 region="",
-                account=self._stack_account,
                 resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
+                account=self._stack_account,
             ),
-            runtime="python3.8",
-            timeout=900,
-        )
+            handler_func="cleanup_resources",
+        ).lambda_func
 
         core.CustomResource(
-            scope=self,
+            scope=self.stack_scope,
             id="CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
             properties={"ClusterHostedZone": cluster_hosted_zone.attr_id, "Action": "DELETE_DNS_RECORDS"},
         )
 
         core.CfnOutput(
-            scope=self,
+            scope=self.stack_scope,
             id="ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
             value=cluster_hosted_zone.attr_id,
         )
         core.CfnOutput(
-            scope=self,
+            scope=self.stack_scope,
             id="ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
             value=cluster_hosted_zone.name,
@@ -370,28 +366,14 @@ class SlurmConstruct(core.Construct):
         update_waiter_lambda_execution_role = None
         if self.cleanup_lambda_role:
             update_waiter_lambda_execution_role = iam.CfnRole(
-                scope=self,
+                scope=self.stack_scope,
                 id="UpdateWaiterFunctionExecutionRole",
-                assume_role_policy_document=iam.PolicyDocument(
-                    statements=[
-                        iam.PolicyStatement(
-                            actions=["sts:AssumeRole"],
-                            effect=iam.Effect.ALLOW,
-                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
-                        )
-                    ],
-                ),
+                assume_role_policy_document=get_lambda_assume_role_policy_document(),
                 path="/",
                 policies=[
                     iam.CfnRole.PolicyProperty(
                         policy_document=iam.PolicyDocument(
                             statements=[
-                                iam.PolicyStatement(
-                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[self._format_arn(service="logs", account="*", region="*", resource="*")],
-                                    sid="CloudWatchLogsPolicy",
-                                ),
                                 iam.PolicyStatement(
                                     actions=["dynamodb:GetItem", "dynamodb:PutItem"],
                                     effect=iam.Effect.ALLOW,
@@ -411,30 +393,30 @@ class SlurmConstruct(core.Construct):
                 ],
             )
 
-        update_waiter_lambda = awslambda.CfnFunction(
-            scope=self,
-            id="UpdateWaiterFunction",
-            function_name=f"pcluster-UpdateWaiter-{self._stack_unique_id()}",
-            code=awslambda.CfnFunction.CodeProperty(
-                s3_bucket=self.bucket.name,
-                s3_key=f"{self.bucket.artifact_directory}/custom_resources_code/artifacts.zip",
-            ),
-            handler="wait_for_update.handler",
-            memory_size=128,
-            role=update_waiter_lambda_execution_role.attr_arn
+            update_waiter_lambda_execution_role.policies[0].policy_document.add_statements(
+                get_cloud_watch_logs_policy_statement(
+                    resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                )
+            )
+
+        update_waiter_lambda = PclusterLambdaConstruct(
+            scope=self.stack_scope,
+            id="UpdateWaiterFunctionConstruct",
+            function_name="UpdateWaiter",
+            bucket=self.bucket,
+            execution_role=update_waiter_lambda_execution_role.attr_arn
             if update_waiter_lambda_execution_role
             else self._format_arn(
                 service="iam",
-                region="",
                 account=self._stack_account,
                 resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
+                region="",
             ),
-            runtime="python3.8",
-            timeout=900,
-        )
+            handler_func="wait_for_update",
+        ).lambda_func
 
         core.CustomResource(
-            self,
+            self.stack_scope,
             "UpdateWaiterCustomResource",
             service_token=update_waiter_lambda.attr_arn,
             properties={
@@ -443,7 +425,7 @@ class SlurmConstruct(core.Construct):
             },
         )
 
-        core.CfnOutput(scope=self, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
+        core.CfnOutput(scope=self.stack_scope, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
     def _add_compute_resource_launch_template(
         self,
@@ -487,7 +469,7 @@ class SlurmConstruct(core.Construct):
             )
 
         ec2.CfnLaunchTemplate(
-            scope=self,
+            scope=self.stack_scope,
             id=f"ComputeServerLaunchTemplate{create_hash_suffix(queue.name + instance_type)}",
             launch_template_name=f"{cluster_name(self.stack_name)}-{queue.name}-{instance_type}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
