@@ -152,6 +152,7 @@ def assert_param_validator(
     capsys=None,
     expected_warning=None,
     extra_patches=None,
+    use_mock_instance_type_info=True,
 ):
     config_parser = configparser.ConfigParser()
 
@@ -163,7 +164,8 @@ def assert_param_validator(
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
-    mock_instance_type_info(mocker)
+    if use_mock_instance_type_info:
+        mock_instance_type_info(mocker)
 
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):

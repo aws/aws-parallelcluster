@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import json
 import os
 import re
 
@@ -1545,6 +1546,26 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
             None,
             None,
         ),
+        # Additional instance type
+        (
+            {
+                "enable_efa": "compute",
+                "compute_instance_type": "additional-instance-type",
+                "base_os": "alinux2",
+                "scheduler": "sge",
+                "placement_group": "DYNAMIC",
+                "instance_types_data": json.dumps(
+                    {
+                        "additional-instance-type": {
+                            "InstanceType": "additional-instance-type",
+                            "NetworkInfo": {"EfaSupported": True},
+                        }
+                    }
+                ),
+            },
+            None,
+            None,
+        ),
     ],
 )
 def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_error, expected_warning):
@@ -1558,7 +1579,21 @@ def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_err
         ]
         boto3_stubber("ec2", mocked_requests)
     config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
+
+    # Patch to prevent instance type validators to fail with additional instance type
+    extra_patches = {
+        "pcluster.config.validators.get_supported_instance_types": ["t2.large", "additional-instance-type"],
+    }
+
+    utils.assert_param_validator(
+        mocker,
+        config_parser_dict,
+        expected_error,
+        capsys,
+        expected_warning,
+        extra_patches=extra_patches,
+        use_mock_instance_type_info=False,
+    )
 
 
 @pytest.mark.parametrize(

@@ -1,11 +1,11 @@
 """This module provides unit tests for the functions in the pcluster.utils module."""
-
 import json
 import logging
 import os
 from itertools import product
 from re import escape
 
+import configparser
 import pytest
 from assertpy import assert_that
 from botocore.exceptions import ClientError, EndpointConnectionError
@@ -13,6 +13,7 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 import pcluster.utils as utils
 from pcluster.utils import Cache, get_bucket_url
 from tests.common import MockedBoto3Request
+from tests.pcluster.config.utils import init_pcluster_config_from_configparser
 
 FAKE_CLUSTER_NAME = "cluster_name"
 FAKE_STACK_NAME = utils.get_stack_name(FAKE_CLUSTER_NAME)
@@ -842,7 +843,7 @@ def test_get_cce_emsg_containing_supported_instance_types(mocker, boto3_stubber,
 def test_get_supported_instance_types(mocker, boto3_stubber, generate_error):
     """Verify that get_supported_instance_types behaves as expected."""
     dummy_message = "dummy error message"
-    dummy_instance_types = ["c5.xlarge", "m6g.xlarge"]
+    dummy_instance_types = {"c5.xlarge", "m6g.xlarge"}
     error_patch = mocker.patch("pcluster.utils.error")
     mocked_requests = [
         MockedBoto3Request(
@@ -1130,3 +1131,54 @@ class TestInstanceTypeInfo:
             utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal")
 
         utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal", exit_on_error=False)
+
+
+@pytest.mark.parametrize(
+    "instance_type, instance_types_data, ec2_data_available, expected_instance_type_resolved, expected_error_msg",
+    [
+        # provided instance_types_data
+        ("unknown.xlarge", {"unknown.xlarge": {"InstanceType": "unknown.xlarge"}}, False, True, None),
+        # instance_types_data not provided, ec2 data available
+        ("unknown.xlarge", "", True, True, None),
+        # instance_types_data not provided, ec2 data not available
+        ("unknown.xlarge", "", False, False, "Failed when retrieving instance type data for instance unknown.xlarge"),
+    ],
+)
+def test_instance_types_data(
+    boto3_stubber,
+    instance_type,
+    instance_types_data,
+    ec2_data_available,
+    expected_instance_type_resolved,
+    expected_error_msg,
+):
+    Cache.clear_all()
+    utils.InstanceTypeInfo.clear_additional_instance_types_data()
+    config_parser_dict = {"cluster default": {"instance_types_data": instance_types_data}}
+
+    # If no additional instance type is provided, a request to boto3 is expected
+    if not instance_types_data:
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response={"InstanceTypes": [{"InstanceType": "{0}".format(instance_type)}]},
+                expected_params={
+                    "InstanceTypes": [instance_type],
+                },
+                generate_error=not ec2_data_available,
+            ),
+        ]
+        boto3_stubber("ec2", mocked_requests)
+
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+
+    if expected_instance_type_resolved:
+        instance_type_info = utils.InstanceTypeInfo.init_from_instance_type(instance_type)
+        assert_that(instance_type_info).is_not_none()
+        assert_that(instance_type_info.instance_type_data.get("InstanceType") == instance_type)
+    else:
+        with pytest.raises(SystemExit, match=expected_error_msg):
+            utils.InstanceTypeInfo.init_from_instance_type(instance_type)

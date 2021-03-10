@@ -318,9 +318,11 @@ def get_supported_instance_types():
     """Return the list of instance types available in the given region."""
     ec2_client = boto3.client("ec2")
     try:
-        return [
+        supported_instance_types = set(
             offering.get("InstanceType") for offering in paginate_boto3(ec2_client.describe_instance_type_offerings)
-        ]
+        )
+        supported_instance_types.update(InstanceTypeInfo.additional_instance_types_data().keys())
+        return supported_instance_types
     except ClientError as client_err:
         error(
             "Error when getting supported instance types via DescribeInstanceTypeOfferings: {0}".format(
@@ -1240,10 +1242,33 @@ class Cache:
 
 
 class InstanceTypeInfo:
-    """Data object wrapping the result of a describe_instance_types call."""
+    """
+    Data object wrapping the result of a describe_instance_types call.
+
+    TODO: This class stores additional instance types data globally. In the future we should have a separate instance
+    per cluster configuration.
+    """
+
+    # Additional data used to describe instance types
+    __additional_instance_types_data = {}
 
     def __init__(self, instance_type_data):
         self.instance_type_data = instance_type_data
+
+    @staticmethod
+    def load_additional_instance_types_data(instance_types_data):
+        """Load additional data to describe instance types."""
+        InstanceTypeInfo.__additional_instance_types_data.update(instance_types_data)
+
+    @staticmethod
+    def clear_additional_instance_types_data():
+        """Clear the additional data used to describe instance types."""
+        InstanceTypeInfo.__additional_instance_types_data = {}
+
+    @staticmethod
+    def additional_instance_types_data():
+        """Get the additional data used to describe instance types."""
+        return InstanceTypeInfo.__additional_instance_types_data
 
     @staticmethod
     @Cache.cached
@@ -1255,10 +1280,14 @@ class InstanceTypeInfo:
         The function exits with error if exit_on_error is set to True.
         """
         try:
-            ec2_client = boto3.client("ec2")
-            return InstanceTypeInfo(
-                ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
-            )
+            if instance_type in InstanceTypeInfo.additional_instance_types_data():
+                instance_type_data = InstanceTypeInfo.additional_instance_types_data()[instance_type]
+            else:
+                ec2_client = boto3.client("ec2")
+                instance_type_data = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get(
+                    "InstanceTypes"
+                )[0]
+            return InstanceTypeInfo(instance_type_data)
         except ClientError as e:
             error(
                 "Failed when retrieving instance type data for instance {0}: {1}".format(
