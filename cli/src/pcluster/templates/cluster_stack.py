@@ -24,7 +24,7 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import core
 
 from common.aws.aws_api import AWSApi
-from pcluster.constants import COOKBOOK_PACKAGES_VERSIONS, OS_MAPPING
+from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
     BaseQueue,
     ClusterBucket,
@@ -39,9 +39,11 @@ from pcluster.models.cluster_config import (
 from pcluster.templates.cdk_builder_utils import (
     create_hash_suffix,
     get_block_device_mappings,
+    get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
+    get_lambda_policy_statement,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -71,6 +73,7 @@ class ClusterCdkStack(core.Stack):
 
         self.instance_roles = {}
         self.instance_profiles = {}
+        self.compute_security_groups = {}
         self.shared_storage_ids = {storage_type: [] for storage_type in SharedStorageType}
         self.shared_storage_options = {storage_type: "NONE" for storage_type in SharedStorageType}
 
@@ -81,6 +84,27 @@ class ClusterCdkStack(core.Stack):
 
     def _stack_unique_id(self):
         return core.Fn.select(2, core.Fn.split("/", self.stack_id))
+
+    def _get_head_node_security_groups(self):
+        """Return the security groups to be used for the head node, created by us OR provided by the user."""
+        return self.config.head_node.networking.security_groups or [self._head_security_group.ref]
+
+    def _get_head_node_security_groups_full(self):
+        """Return full security groups to be used for the head node, default plus additional ones."""
+        head_node_group_set = self._get_head_node_security_groups()
+        # Additional security groups
+        if self.config.head_node.networking.additional_security_groups:
+            head_node_group_set.extend(self.config.head_node.networking.additional_security_groups)
+
+        return head_node_group_set
+
+    def _get_compute_security_groups(self):
+        """Return list of security groups to be used for the compute, created by us AND provided by the user."""
+        compute_group_set = self.config.compute_security_groups
+        if self._compute_security_group:
+            compute_group_set.append(self._compute_security_group.ref)
+
+        return compute_group_set
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -96,7 +120,7 @@ class ClusterCdkStack(core.Stack):
             self._add_role_and_policies(queue, queue.name)
 
         # Managed security groups
-        self.head_security_group, self.compute_security_group = self._add_security_groups()
+        self._head_security_group, self._compute_security_group = self._add_security_groups()
 
         # Head Node ENI
         self._head_eni = self._add_head_eni()
@@ -124,19 +148,19 @@ class ClusterCdkStack(core.Stack):
 
         # Compute Fleet and scheduler related resources
         self.scheduler_resources = None
-        if self.config.scheduling.scheduler == "slurm":
+        if self._condition_is_slurm():
             self.scheduler_resources = SlurmConstruct(
-                self,
-                "Slurm",
+                scope=self,
+                id="Slurm",
                 stack_name=self._stack_name,
                 cluster_config=self.config,
                 bucket=self.bucket,
                 dynamodb_table=self.dynamodb_table,
                 instance_roles=self.instance_roles,
                 instance_profiles=self.instance_profiles,
-                cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user.
+                cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
                 cleanup_lambda=cleanup_lambda,
-                compute_security_group=self.compute_security_group,  # None if provided by the user.
+                compute_security_groups=self.compute_security_groups,  # Empty dict if provided by the user
                 shared_storage_ids=self.shared_storage_ids,
                 shared_storage_options=self.shared_storage_options,
             )
@@ -178,13 +202,7 @@ class ClusterCdkStack(core.Stack):
                 scope=self,
                 id="CleanupResourcesFunctionExecutionRole",
                 assume_role_policy_document=iam.PolicyDocument(
-                    statements=[
-                        iam.PolicyStatement(
-                            actions=["sts:AssumeRole"],
-                            effect=iam.Effect.ALLOW,
-                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
-                        )
-                    ],
+                    statements=[get_lambda_policy_statement()],
                 ),
                 path="/",
                 policies=[
@@ -255,14 +273,7 @@ class ClusterCdkStack(core.Stack):
 
     def _add_head_eni(self):
         """Create Head Node Elastic Network Interface."""
-        head_eni_groupset = []
-        if self.config.head_node.networking.additional_security_groups:
-            head_eni_groupset.extend(self.config.head_node.networking.additional_security_groups)
-
-        if self._condition_create_head_security_group():
-            head_eni_groupset.append(self.head_security_group.ref)
-        elif self.config.head_node.networking.security_groups:
-            head_eni_groupset.extend(self.config.head_node.networking.security_groups)
+        head_eni_group_set = self._get_head_node_security_groups_full()
 
         head_eni = ec2.CfnNetworkInterface(
             scope=self,
@@ -270,7 +281,7 @@ class ClusterCdkStack(core.Stack):
             description="AWS ParallelCluster head node interface",
             subnet_id=self.config.head_node.networking.subnet_id,
             source_dest_check=False,
-            group_set=head_eni_groupset,
+            group_set=head_eni_group_set,
         )
 
         # Create and associate EIP to Head Node
@@ -287,15 +298,21 @@ class ClusterCdkStack(core.Stack):
         return head_eni
 
     def _add_security_groups(self):
+        """Associate security group to Head node and queues."""
         # Head Node Security Group
         head_security_group = None
-        if self._condition_create_head_security_group():
+        if not self.config.head_node.networking.security_groups:
             head_security_group = self._add_head_security_group()
 
-        # ComputeSecurityGroup
+        # Compute Security Groups
         compute_security_group = None
-        if self._condition_create_compute_security_group():
-            compute_security_group = self._add_compute_security_group()
+        for queue in self.config.scheduling.queues:
+            if not queue.networking.security_groups:
+                if not compute_security_group:
+                    # Create a new security group
+                    compute_security_group = self._add_compute_security_group()
+                # Associate created security group to the queue
+                self.compute_security_groups[queue.name] = compute_security_group
 
         if head_security_group and compute_security_group:
             # Access to head node from compute nodes
@@ -604,7 +621,7 @@ class ClusterCdkStack(core.Stack):
                 file_system_type="LUSTRE",
                 storage_type=shared_fsx.drive_cache_type,
                 subnet_ids=self.config.compute_subnet_ids,
-                security_group_ids=self.config.compute_security_groups,
+                security_group_ids=self._get_compute_security_groups(),
             )
             fsx_id = fsx_resource.ref
 
@@ -656,16 +673,18 @@ class ClusterCdkStack(core.Stack):
             efs_id = efs_resource.ref
 
         checked_availability_zones = []
+
         # Mount Targets for Compute Fleet
         compute_subnet_ids = self.config.compute_subnet_ids
-        compute_node_sgs = self.config.compute_security_groups or [self.compute_security_group.ref]
+        compute_node_sgs = self._get_compute_security_groups()
+
         for subnet_id in compute_subnet_ids:
             self._add_efs_mount_target(
                 id, efs_id, compute_node_sgs, subnet_id, checked_availability_zones, new_file_system
             )
 
         # Mount Target for Head Node
-        head_node_sgs = self.config.head_node.networking.security_groups or [self.head_security_group.ref]
+        head_node_sgs = self._get_head_node_security_groups()
         self._add_efs_mount_target(
             id,
             efs_id,
@@ -794,15 +813,7 @@ class ClusterCdkStack(core.Stack):
 
     def _add_head_node(self):
         head_node = self.config.head_node
-
-        # LT security groups
-        head_lt_security_groups = []
-        if head_node.networking.security_groups:
-            head_lt_security_groups.extend(head_node.networking.security_groups)
-        if head_node.networking.additional_security_groups:
-            head_lt_security_groups.extend(head_node.networking.additional_security_groups)
-        if self.head_security_group:
-            head_lt_security_groups.append(self.head_security_group.ref)
+        head_lt_security_groups = self._get_head_node_security_groups_full()
 
         # LT network interfaces
         head_lt_nw_interfaces = [
@@ -843,16 +854,8 @@ class ClusterCdkStack(core.Stack):
                     core.Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
                         {
-                            "YumProxy": head_node.networking.proxy if head_node.networking.proxy else "_none_",
-                            "DnfProxy": head_node.networking.proxy if head_node.networking.proxy else "",
-                            "AptProxy": head_node.networking.proxy if head_node.networking.proxy else "false",
-                            "ProxyServer": head_node.networking.proxy if head_node.networking.proxy else "NONE",
-                            "CustomChefCookbook": self.config.custom_chef_cookbook or "NONE",
-                            "ParallelClusterVersion": COOKBOOK_PACKAGES_VERSIONS["parallelcluster"],
-                            "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
-                            "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
-                            "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
-                            "IamRoleName": self.instance_roles["HeadNode"]["RoleRef"],
+                            **{"IamRoleName": self.instance_roles["HeadNode"]["RoleRef"]},
+                            **get_common_user_data_env(head_node, self.config),
                         },
                     )
                 ),
@@ -918,10 +921,10 @@ class ClusterCdkStack(core.Stack):
                     ),
                     "cfn_proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
                     "cfn_dns_domain": self.scheduler_resources.cluster_hosted_zone.name
-                    if self.scheduler_resources.cluster_hosted_zone
+                    if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
                     "cfn_hosted_zone": self.scheduler_resources.cluster_hosted_zone.attr_id
-                    if self.scheduler_resources.cluster_hosted_zone
+                    if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
                     "cfn_node_type": "MasterServer",  # FIXME
                     "cfn_cluster_user": OS_MAPPING[self.config.image.os]["user"],
@@ -1120,16 +1123,8 @@ class ClusterCdkStack(core.Stack):
     def _condition_create_s3_access_policies(self):
         return self.config.iam and self.config.iam.s3_access
 
-    def _condition_create_compute_security_group(self):
-        # Compute security group must be created if at list one queue's networking does not specify security groups
-        condition = False
-        for queue in self.config.scheduling.queues:
-            if not queue.networking.security_groups:
-                condition = True
-        return condition
-
-    def _condition_create_head_security_group(self):
-        return not self.config.head_node.networking.security_groups
+    def _condition_is_slurm(self):
+        return self.config.scheduling.scheduler == "slurm"
 
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 

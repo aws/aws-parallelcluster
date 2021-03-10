@@ -16,7 +16,7 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_route53 as route53
 from aws_cdk import core
 
-from pcluster.constants import COOKBOOK_PACKAGES_VERSIONS, OS_MAPPING
+from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
     ClusterBucket,
     ComputeType,
@@ -28,9 +28,11 @@ from pcluster.templates.cdk_builder_utils import (
     cluster_name,
     create_hash_suffix,
     get_block_device_mappings,
+    get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
+    get_lambda_policy_statement,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -54,7 +56,7 @@ class SlurmConstruct(core.Construct):
         instance_profiles: dict,
         cleanup_lambda_role: iam.CfnRole,
         cleanup_lambda: awslambda.CfnFunction,
-        compute_security_group: ec2.CfnSecurityGroup,
+        compute_security_groups: dict,
         shared_storage_ids: dict,
         shared_storage_options: dict,
         **kwargs,
@@ -68,7 +70,7 @@ class SlurmConstruct(core.Construct):
         self.instance_profiles = instance_profiles
         self.cleanup_lambda_role = cleanup_lambda_role
         self.cleanup_lambda = cleanup_lambda
-        self.compute_security_group = compute_security_group
+        self.compute_security_groups = compute_security_groups
         self.shared_storage_ids = shared_storage_ids
         self.shared_storage_options = shared_storage_options
 
@@ -77,11 +79,11 @@ class SlurmConstruct(core.Construct):
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
     @property
-    def _region(self):
+    def _stack_region(self):
         return core.Stack.of(self).region
 
     @property
-    def _account(self):
+    def _stack_account(self):
         return core.Stack.of(self).account
 
     def _stack_unique_id(self):
@@ -89,6 +91,22 @@ class SlurmConstruct(core.Construct):
 
     def _format_arn(self, **kwargs):
         return core.Stack.of(self).format_arn(**kwargs)
+
+    def _get_queue_security_groups_full(self, queue):
+        """Return full security groups to be used for the queeu, default plus additional ones."""
+        queue_security_groups = []
+
+        # Default security groups, created by us or provided by the user
+        if self.compute_security_groups and self.compute_security_groups.get(queue.name, None):
+            queue_security_groups.append(self.compute_security_groups[queue.name])
+        elif queue.networking.security_groups:
+            queue_security_groups.extend(queue.networking.security_groups)
+
+        # Additional security groups
+        if queue.networking.additional_security_groups:
+            queue_security_groups.extend(queue.networking.additional_security_groups)
+
+        return queue_security_groups
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -187,15 +205,7 @@ class SlurmConstruct(core.Construct):
             self.cluster_hosted_zone = self._add_private_hosted_zone()
 
         for queue in self.config.scheduling.queues:
-
-            # LT security groups
-            queue_lt_security_groups = []
-            if queue.networking.security_groups:
-                queue_lt_security_groups.extend(queue.networking.security_groups)
-            if queue.networking.additional_security_groups:
-                queue_lt_security_groups.extend(queue.networking.additional_security_groups)
-            if self.compute_security_group:
-                queue_lt_security_groups.append(self.compute_security_group.ref)
+            queue_lt_security_groups = self._get_queue_security_groups_full(queue)
 
             queue_placement_group = None
             if queue.networking.placement_group and queue.networking.placement_group.enabled:
@@ -244,7 +254,7 @@ class SlurmConstruct(core.Construct):
             scope=self,
             id="Route53HostedZone",
             name=f"{cluster_name(self.stack_name)}.pcluster",
-            vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._region)],
+            vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
         )
 
         head_node_role_info = self.instance_roles.get("HeadNode")
@@ -279,13 +289,7 @@ class SlurmConstruct(core.Construct):
                 scope=self,
                 id="CleanupRoute53FunctionExecutionRole",
                 assume_role_policy_document=iam.PolicyDocument(
-                    statements=[
-                        iam.PolicyStatement(
-                            actions=["sts:AssumeRole"],
-                            effect=iam.Effect.ALLOW,
-                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
-                        )
-                    ],
+                    statements=[get_lambda_policy_statement()],
                 ),
                 path="/",
                 policies=[
@@ -333,7 +337,7 @@ class SlurmConstruct(core.Construct):
             else self._format_arn(
                 service="iam",
                 region="",
-                account=self._account,
+                account=self._stack_account,
                 resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
             ),
             runtime="python3.8",
@@ -394,7 +398,7 @@ class SlurmConstruct(core.Construct):
                                     resources=[
                                         self._format_arn(
                                             service="dynamodb",
-                                            account=self._account,
+                                            account=self._stack_account,
                                             resource=f"table/{self.dynamodb_table.ref}",
                                         ),
                                     ],
@@ -422,7 +426,7 @@ class SlurmConstruct(core.Construct):
             else self._format_arn(
                 service="iam",
                 region="",
-                account=self._account,
+                account=self._stack_account,
                 resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
             ),
             runtime="python3.8",
@@ -507,63 +511,63 @@ class SlurmConstruct(core.Construct):
                     core.Fn.sub(
                         get_user_data_content("../resources/compute_node/user_data.sh"),
                         {
-                            "YumProxy": queue.networking.proxy if queue.networking.proxy else "_none_",
-                            "DnfProxy": queue.networking.proxy if queue.networking.proxy else "",
-                            "AptProxy": queue.networking.proxy if queue.networking.proxy else "false",
-                            "ProxyServer": queue.networking.proxy if queue.networking.proxy else "NONE",
-                            "CustomChefCookbook": self.config.custom_chef_cookbook or "NONE",
-                            "ParallelClusterVersion": COOKBOOK_PACKAGES_VERSIONS["parallelcluster"],
-                            "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
-                            "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
-                            "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
-                            "IamRoleName": str(self.instance_roles[queue.name]["RoleRef"]),
-                            "EnableEfa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
-                            "RAIDOptions": get_shared_storage_options_by_type(
-                                self.shared_storage_options, SharedStorageType.RAID
-                            ),
-                            "DisableHyperThreadingManually": "true"
-                            if compute_resource.disable_simultaneous_multithreading_manually
-                            else "false",
-                            "BaseOS": self.config.image.os,
-                            "PreInstallScript": queue_pre_install_action.script if queue_pre_install_action else "NONE",
-                            "PreInstallArgs": queue_pre_install_action.args if queue_pre_install_action else "NONE",
-                            "PostInstallScript": queue_post_install_action.script
-                            if queue_pre_install_action
-                            else "NONE",
-                            "PostInstallArgs": queue_post_install_action.args if queue_pre_install_action else "NONE",
-                            "EFSId": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EFS),
-                            "EFSOptions": get_shared_storage_options_by_type(
-                                self.shared_storage_options, SharedStorageType.EFS
-                            ),  # FIXME
-                            "FSXId": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.FSX),
-                            "FSXOptions": get_shared_storage_options_by_type(
-                                self.shared_storage_options, SharedStorageType.FSX
-                            ),
-                            "Scheduler": self.config.scheduling.scheduler,
-                            "EncryptedEphemeral": "true"
-                            if queue.storage
-                            and queue.storage.ephemeral_volume
-                            and queue.storage.ephemeral_volume.encrypted
-                            else "NONE",
-                            "EphemeralDir": queue.storage.ephemeral_volume.mount_dir
-                            if queue.storage and queue.storage.ephemeral_volume
-                            else "/scratch",
-                            "EbsSharedDirs": get_shared_storage_options_by_type(
-                                self.shared_storage_options, SharedStorageType.EBS
-                            ),
-                            "ClusterDNSDomain": str(self.cluster_hosted_zone.name) if self.cluster_hosted_zone else "",
-                            "ClusterHostedZone": str(self.cluster_hosted_zone.attr_id)
-                            if self.cluster_hosted_zone
-                            else "",
-                            "OSUser": OS_MAPPING[self.config.image.os]["user"],
-                            "DynamoDBTable": self.dynamodb_table.ref,
-                            "IntelHPCPlatform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
-                            "CWLoggingEnabled": "true" if self.config.is_cw_logging_enabled else "false",
-                            "QueueName": queue.name,
-                            "EnableEfaGdr": "compute"
-                            if compute_resource.efa and compute_resource.efa.gdr_support
-                            else "NONE",
-                            "ExtraJson": self.config.extra_chef_attributes,
+                            **{
+                                "IamRoleName": str(self.instance_roles[queue.name]["RoleRef"]),
+                                "EnableEfa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
+                                "RAIDOptions": get_shared_storage_options_by_type(
+                                    self.shared_storage_options, SharedStorageType.RAID
+                                ),
+                                "DisableHyperThreadingManually": "true"
+                                if compute_resource.disable_simultaneous_multithreading_manually
+                                else "false",
+                                "BaseOS": self.config.image.os,
+                                "PreInstallScript": queue_pre_install_action.script
+                                if queue_pre_install_action
+                                else "NONE",
+                                "PreInstallArgs": queue_pre_install_action.args if queue_pre_install_action else "NONE",
+                                "PostInstallScript": queue_post_install_action.script
+                                if queue_pre_install_action
+                                else "NONE",
+                                "PostInstallArgs": queue_post_install_action.args
+                                if queue_pre_install_action
+                                else "NONE",
+                                "EFSId": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EFS),
+                                "EFSOptions": get_shared_storage_options_by_type(
+                                    self.shared_storage_options, SharedStorageType.EFS
+                                ),  # FIXME
+                                "FSXId": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.FSX),
+                                "FSXOptions": get_shared_storage_options_by_type(
+                                    self.shared_storage_options, SharedStorageType.FSX
+                                ),
+                                "Scheduler": self.config.scheduling.scheduler,
+                                "EncryptedEphemeral": "true"
+                                if queue.storage
+                                and queue.storage.ephemeral_volume
+                                and queue.storage.ephemeral_volume.encrypted
+                                else "NONE",
+                                "EphemeralDir": queue.storage.ephemeral_volume.mount_dir
+                                if queue.storage and queue.storage.ephemeral_volume
+                                else "/scratch",
+                                "EbsSharedDirs": get_shared_storage_options_by_type(
+                                    self.shared_storage_options, SharedStorageType.EBS
+                                ),
+                                "ClusterDNSDomain": str(self.cluster_hosted_zone.name)
+                                if self.cluster_hosted_zone
+                                else "",
+                                "ClusterHostedZone": str(self.cluster_hosted_zone.attr_id)
+                                if self.cluster_hosted_zone
+                                else "",
+                                "OSUser": OS_MAPPING[self.config.image.os]["user"],
+                                "DynamoDBTable": self.dynamodb_table.ref,
+                                "IntelHPCPlatform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
+                                "CWLoggingEnabled": "true" if self.config.is_cw_logging_enabled else "false",
+                                "QueueName": queue.name,
+                                "EnableEfaGdr": "compute"
+                                if compute_resource.efa and compute_resource.efa.gdr_support
+                                else "NONE",
+                                "ExtraJson": self.config.extra_chef_attributes,
+                            },
+                            **get_common_user_data_env(queue, self.config),
                         },
                     )
                 ),
