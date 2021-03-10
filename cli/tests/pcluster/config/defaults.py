@@ -148,6 +148,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "network_interfaces_count": ["1", "1"],
     "cluster_resource_bucket": None,
     "iam_lambda_role": None,
+    "instance_types_data": {},
 }
 
 DEFAULT_CLUSTER_HIT_DICT = {
@@ -198,6 +199,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "network_interfaces_count": ["1", "1"],
     "cluster_resource_bucket": None,  # cluster_resource_bucket no default, but this is here to make testing easier
     "iam_lambda_role": None,
+    "instance_types_data": {},
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -230,8 +232,8 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 63
-CFN_HIT_CONFIG_NUM_OF_PARAMS = 53
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 64
+CFN_HIT_CONFIG_NUM_OF_PARAMS = 54
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ArtifactS3RootDirectory", "RemoveBucketOnDeletion"]
@@ -350,6 +352,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "Architecture": "x86_64",
     "NetworkInterfacesCount": "1,1",
     "IAMLambdaRoleName": "NONE",
+    "InstanceTypesData": "{}",
 }
 
 
@@ -421,6 +424,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "Architecture": "x86_64",
     "NetworkInterfacesCount": "1,1",
     "IAMLambdaRoleName": "NONE",
+    "InstanceTypesData": "{}",
 }
 
 

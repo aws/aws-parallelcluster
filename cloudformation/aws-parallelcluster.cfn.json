@@ -382,6 +382,11 @@
       "Description": "Comma separated string of [head node network interfaces], [compute network interfaces].",
       "Type": "CommaDelimitedList",
       "Default": "1,1"
+    },
+    "InstanceTypesData": {
+      "Description": "Json string with information about instance types, as returned from EC2 describe-instance-types",
+      "Type": "String",
+      "Default": "{}"
     }
   },
   "Conditions": {
@@ -3251,6 +3256,9 @@
                 "Ref": "NetworkInterfacesCount"
               }
             ]
+          },
+          "InstanceTypesData": {
+            "Ref": "InstanceTypesData"
           }
         },
         "TemplateURL": {
@@ -3676,6 +3684,9 @@
                 "Ref": "NetworkInterfacesCount"
               }
             ]
+          },
+          "InstanceTypesData": {
+            "Ref": "InstanceTypesData"
           }
         },
         "TemplateURL": {

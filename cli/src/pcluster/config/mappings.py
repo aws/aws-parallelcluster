@@ -30,6 +30,7 @@ from pcluster.config.cfn_param_types import (
     HeadNodeAvailabilityZoneCfnParam,
     HeadNodeInstanceTypeCfnParam,
     IntCfnParam,
+    JsonCfnParam,
     MaintainInitialSizeCfnParam,
     NetworkInterfacesCountCfnParam,
     QueueSizeCfnParam,
@@ -1024,6 +1025,12 @@ CLUSTER_COMMON_PARAMS = [
     ("iam_lambda_role", {
         "cfn_param_mapping": "IAMLambdaRoleName",
         "update_policy": UpdatePolicy.SUPPORTED,
+    }),
+    ("instance_types_data", {
+        "type": JsonCfnParam,
+        "default": {},
+        "cfn_param_mapping": "InstanceTypesData",
+        "update_policy": UpdatePolicy.SUPPORTED
     }),
 ]
 
