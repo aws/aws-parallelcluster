@@ -14,7 +14,10 @@ CHANGELOG
 - Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 
   `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
    `--subnet-id`.
-- Add `--image-name`, `--config`, `--region` to `build-image` command
+- Add `--image-name`, `--config`, `--region` to `build-image` command.
+- Split head node and compute fleet instance roles and add possibility to configure a different instance role 
+  for each queue.
+
 
 2.10.1
 ------

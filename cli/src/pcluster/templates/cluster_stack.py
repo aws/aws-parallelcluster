@@ -12,34 +12,41 @@
 #
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
-import copy
 import json
-from hashlib import sha1
+from typing import Union
 
-import pkg_resources
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
-from aws_cdk import aws_route53 as route53
 from aws_cdk import core
 
 from common.aws.aws_api import AWSApi
-from pcluster import utils
-from pcluster.constants import OS_MAPPING
+from pcluster.constants import COOKBOOK_PACKAGES_VERSIONS, OS_MAPPING
 from pcluster.models.cluster_config import (
+    BaseQueue,
     ClusterBucket,
-    ComputeType,
     CustomActionEvent,
-    Ebs,
+    HeadNode,
     SharedEbs,
     SharedEfs,
     SharedFsx,
     SharedStorageType,
     SlurmClusterConfig,
 )
+from pcluster.templates.cdk_builder_utils import (
+    create_hash_suffix,
+    get_block_device_mappings,
+    get_custom_tags,
+    get_default_instance_tags,
+    get_default_volume_tags,
+    get_shared_storage_ids_by_type,
+    get_shared_storage_options_by_type,
+    get_user_data_content,
+)
+from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_availability_zone_of_subnet
 
 # pylint: disable=too-many-lines
@@ -52,157 +59,28 @@ class ClusterCdkStack(core.Stack):
         self,
         scope: core.Construct,
         construct_id: str,
+        stack_name: str,
         cluster_config: SlurmClusterConfig,
         bucket: ClusterBucket,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        self._cluster_config = cluster_config
-        self._bucket = bucket
+        self._stack_name = stack_name
+        self.config = cluster_config
+        self.bucket = bucket
 
-        self._init_mappings()
+        self.instance_roles = {}
+        self.instance_profiles = {}
+        self.shared_storage_ids = {storage_type: [] for storage_type in SharedStorageType}
+        self.shared_storage_options = {storage_type: "NONE" for storage_type in SharedStorageType}
+
         self._add_resources()
         self._add_outputs()
 
-    # -- Mappings ---------------------------------------------------------------------------------------------------- #
-
-    def _init_mappings(self):
-        self.packages_versions = {
-            "parallelcluster": utils.get_installed_version(),
-            "cookbook": "aws-parallelcluster-cookbook-2.10.2",
-            "chef": "15.11.8",
-            "berkshelf": "7.0.10",
-            "ami": "dev",
-        }
-
-        # Storage filesystem Ids
-        self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorageType}
-        self._storage_resource_options = {storage_type: "NONE" for storage_type in SharedStorageType}
-
     # -- Utility methods --------------------------------------------------------------------------------------------- #
-
-    def _cluster_name(self):
-        return core.Fn.select(1, core.Fn.split("parallelcluster-", self.stack_name))
 
     def _stack_unique_id(self):
         return core.Fn.select(2, core.Fn.split("/", self.stack_id))
-
-    def _custom_chef_cookbook(self):
-        return (
-            self._cluster_config.dev_settings.cookbook.chef_cookbook
-            if self._cluster_config.dev_settings
-            and self._cluster_config.dev_settings.cookbook
-            and self._cluster_config.dev_settings.cookbook.chef_cookbook
-            else "NONE"
-        )
-
-    def _get_user_data_content(self, user_data_path: str):
-        user_data_file_path = pkg_resources.resource_filename(__name__, user_data_path)
-        with open(user_data_file_path, "r") as user_data_file:
-            user_data_content = user_data_file.read()
-        return user_data_content
-
-    def _get_shared_storage_ids(self, storage_type: SharedStorageType):
-        return (
-            ",".join(self._storage_resource_ids[storage_type]) if self._storage_resource_ids[storage_type] else "NONE"
-        )
-
-    def _get_shared_storage_options(self, storage_type: SharedStorageType):
-        default_storage_options = {
-            SharedStorageType.EBS: "NONE,NONE,NONE,NONE,NONE",
-            SharedStorageType.RAID: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-            SharedStorageType.EFS: "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-            SharedStorageType.FSX: (
-                "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
-            ),
-        }
-        return (
-            self._storage_resource_options[storage_type]
-            if self._storage_resource_options[storage_type]
-            else default_storage_options[storage_type]
-        )
-
-    def _get_block_device_mappings(self, node_config):
-        # Default block device mapping
-        block_device_mappings = []
-        for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
-            device_name = "/dev/xvdb{0}".format(device_name_index)
-            virtual_name = "ephemeral{0}".format(virtual_name_index)
-            block_device_mappings.append(
-                ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
-            )
-
-        # Root volume
-        if node_config.storage and node_config.storage.root_volume:
-            root_volume = copy.deepcopy(node_config.storage.root_volume)
-        else:
-            root_volume = Ebs()
-
-        block_device_mappings.append(
-            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
-                device_name=OS_MAPPING[self._cluster_config.image.os]["root-device"],
-                ebs=ec2.CfnLaunchTemplate.EbsProperty(
-                    volume_size=root_volume.size,
-                    volume_type=root_volume.volume_type,
-                ),
-            )
-        )
-        return block_device_mappings
-
-    def _get_custom_tags(self):
-        custom_tags = []
-        if self._cluster_config.tags:
-            custom_tags = [core.CfnTag(key=tag.key, value=tag.value) for tag in self._cluster_config.tags]
-        return custom_tags
-
-    def _create_hash_suffix(self, string_to_hash):
-        return sha1(string_to_hash.encode("utf-8")).hexdigest()[:16].capitalize()
-
-    def _get_extra_chef_attributes(self):
-        return (
-            self._cluster_config.dev_settings.cookbook.extra_chef_attributes
-            if self._cluster_config.dev_settings
-            and self._cluster_config.dev_settings.cookbook
-            and self._cluster_config.dev_settings.cookbook.extra_chef_attributes
-            else "{}"
-        )
-
-    def _get_default_instance_tags(self, node, node_type):
-        return [
-            core.CfnTag(key="Name", value=node_type),
-            core.CfnTag(key="ClusterName", value=self._cluster_name()),
-            core.CfnTag(key="Application", value=self.stack_name),
-            core.CfnTag(key="aws-parallelcluster-node-type", value=node_type),
-            core.CfnTag(
-                key="aws-parallelcluster-attributes",
-                value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
-                    BaseOS=self._cluster_config.image.os,
-                    Scheduler=self._cluster_config.scheduling.scheduler,
-                    Version=utils.get_installed_version(),
-                    Architecture=node.architecture,
-                ),
-            ),
-            core.CfnTag(
-                key="aws-parallelcluster-networking",
-                value="EFA={0}".format("true" if node.efa and node.efa.enabled else "NONE"),
-            ),
-            core.CfnTag(
-                key="aws-parallelcluster-filesystem",
-                value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
-                    efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
-                    multiebs=len(self._storage_resource_ids[SharedStorageType.EBS]),
-                    raid=len(self._storage_resource_ids[SharedStorageType.RAID]),
-                    fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
-                ),
-            ),
-        ]
-
-    def _get_default_volume_tags(self, node_type):
-        return [
-            core.CfnTag(key="ClusterName", value=self._cluster_name()),
-            core.CfnTag(key="Application", value=self.stack_name),
-            core.CfnTag(key="aws-parallelcluster-node-type", value=node_type),
-        ]
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -211,79 +89,92 @@ class ClusterCdkStack(core.Stack):
         # TODO: inline cw-logs-substack
 
         # Head Node EC2 Iam Role
-        self.head_node_iam_role = (
-            self._add_root_iam_role()
-            if self._condition_create_head_node_iam_role()
-            else self._cluster_config.head_node.iam.roles.instance_role
-        )
-        # TODO split head node and queues roles
+        self._add_role_and_policies(self.config.head_node, "HeadNode")
 
-        # Root Instance Profile
-        self.root_instance_profile = self._add_root_instance_profile()
+        # Compute Nodes EC2 Iam Roles
+        for queue in self.config.scheduling.queues:
+            self._add_role_and_policies(queue, queue.name)
 
-        # ParallelCluster Policies
-        if self._condition_create_head_node_iam_role():
-            self._add_parallelcluster_policies()
-            # TODO attach policies to each queue instance role
-
-        # Slurm Policies
-        if self._condition_add_slurm_iam_policies():
-            self._add_slurm_policies()
-
-        # S3 Access Policies
-        if self._condition_create_s3_access_policies():
-            self._add_s3_access_policies()
-
-        # Head Node EIP
-        if self._cluster_config.head_node.networking.assign_public_ip:
-            self._head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
-
-        # ParallelCluster managed security groups
-        self._add_security_groups()
+        # Managed security groups
+        self.head_security_group, self.compute_security_group = self._add_security_groups()
 
         # Head Node ENI
-        self.head_eni = self._add_head_eni()
+        self._head_eni = self._add_head_eni()
 
-        # AdditionalCfnStack
-        if self._cluster_config.additional_resources:
-            core.CfnStack(scope=self, id="AdditionalCfnStack", template_url=self._cluster_config.additional_resources)
+        # Additional Cfn Stack
+        if self.config.additional_resources:
+            core.CfnStack(scope=self, id="AdditionalCfnStack", template_url=self.config.additional_resources)
 
         # AWSBatchStack
         # TODO: inline resources
 
         # Cleanup Resources Lambda Function
-        self.cleanup_resources_function = self._add_cleanup_resources_lambda()
-
-        # CleanupResourcesS3BucketCustomResource
-        self.cleanup_resources_bucket_custom_resource = self._add_cleanup_resources_bucket_custom_resource()
+        cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
 
         # DynamoDB to store cluster states
         # ToDo: evaluate other approaches to store cluster states
-        self._add_dynamo_db_table()
+        self.dynamodb_table = self._add_dynamodb_table()
 
         # CloudWatchDashboardSubstack
         # TODO: inline resources
 
-        if self._cluster_config.shared_storage:
-            for storage in self._cluster_config.shared_storage:
+        if self.config.shared_storage:
+            for storage in self.config.shared_storage:
                 self._add_shared_storage(storage)
 
-        # Compute Fleet
-        if self._condition_is_slurm():
-            self._add_slurm_compute_fleet()
+        # Compute Fleet and scheduler related resources
+        self.scheduler_resources = None
+        if self.config.scheduling.scheduler == "slurm":
+            self.scheduler_resources = SlurmConstruct(
+                self,
+                "Slurm",
+                stack_name=self._stack_name,
+                cluster_config=self.config,
+                bucket=self.bucket,
+                dynamodb_table=self.dynamodb_table,
+                instance_roles=self.instance_roles,
+                instance_profiles=self.instance_profiles,
+                cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user.
+                cleanup_lambda=cleanup_lambda,
+                compute_security_group=self.compute_security_group,  # None if provided by the user.
+                shared_storage_ids=self.shared_storage_ids,
+                shared_storage_options=self.shared_storage_options,
+            )
 
         # Head Node
         self._add_head_node()
 
-    def _add_cleanup_resources_lambda(self):
+    def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
+        """Create role and policies for the given node/queue."""
+        suffix = create_hash_suffix(name)
+        if node.instance_role:
+            node_role_ref = node.instance_role
+            is_new = False
+        else:
+            node_role_ref = self._add_node_role(f"Role{suffix}")
+            is_new = True
 
-        cleanup_resources_lambda_execution_role = None
+            # ParallelCluster Policies
+            self._add_pcluster_policies_to_role(node_role_ref, f"ParallelClusterPolicies{suffix}")
+
+            # S3 Access Policies
+            if self._condition_create_s3_access_policies():
+                self._add_s3_access_policies_to_role(node_role_ref, f"S3AccessPolicies{suffix}")
+
+        self.instance_roles[name] = {"RoleRef": node_role_ref, "IsNew": is_new}
+
+        # Head node Instance Profile
+        self.instance_profiles[name] = self._add_instance_profile(node_role_ref, f"InstanceProfile{suffix}")
+
+    def _add_cleanup_resources_lambda(self):
+        """Create Lambda cleanup resources function and its role."""
+        cleanup_resources_lambda_role = None
         if self._condition_create_lambda_iam_role():
             s3_policy_actions = ["s3:DeleteObject", "s3:DeleteObjectVersion", "s3:ListBucket", "s3:ListBucketVersions"]
-            if self._bucket.remove_on_deletion:
+            if self.bucket.remove_on_deletion:
                 s3_policy_actions.append("s3:DeleteBucket")
 
-            cleanup_resources_lambda_execution_role = iam.CfnRole(
+            cleanup_resources_lambda_role = iam.CfnRole(
                 scope=self,
                 id="CleanupResourcesFunctionExecutionRole",
                 assume_role_policy_document=iam.PolicyDocument(
@@ -310,12 +201,10 @@ class ClusterCdkStack(core.Stack):
                                     actions=s3_policy_actions,
                                     effect=iam.Effect.ALLOW,
                                     resources=[
-                                        self.format_arn(
-                                            service="s3", resource=self._bucket.name, region="", account=""
-                                        ),
+                                        self.format_arn(service="s3", resource=self.bucket.name, region="", account=""),
                                         self.format_arn(
                                             service="s3",
-                                            resource=f"{self._bucket.name}/{self._bucket.artifact_directory}/*",
+                                            resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/*",
                                             region="",
                                             account="",
                                         ),
@@ -329,157 +218,173 @@ class ClusterCdkStack(core.Stack):
                 ],
             )
 
-            if self._condition_is_slurm():
-                cleanup_resources_lambda_execution_role.policies[0].policy_document.add_statements(
-                    iam.PolicyStatement(
-                        actions=["ec2:DescribeInstances"],
-                        resources=["*"],
-                        effect=iam.Effect.ALLOW,
-                        sid="DescribeInstances",
-                    ),
-                    iam.PolicyStatement(
-                        actions=["ec2:TerminateInstances"],
-                        resources=["*"],
-                        effect=iam.Effect.ALLOW,
-                        conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
-                        sid="FleetTerminatePolicy",
-                    ),
-                )
-
-        return awslambda.CfnFunction(
+        cleanup_resources_lambda = awslambda.CfnFunction(
             scope=self,
             id="CleanupResourcesFunction",
             function_name=f"pcluster-CleanupResources-{self._stack_unique_id()}",
             code=awslambda.CfnFunction.CodeProperty(
-                s3_bucket=self._bucket.name,
-                s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
+                s3_bucket=self.bucket.name,
+                s3_key=f"{self.bucket.artifact_directory}/custom_resources_code/artifacts.zip",
             ),
             handler="cleanup_resources.handler",
             memory_size=128,
-            role=cleanup_resources_lambda_execution_role.attr_arn
-            if cleanup_resources_lambda_execution_role
+            role=cleanup_resources_lambda_role.attr_arn
+            if cleanup_resources_lambda_role
             else self.format_arn(
                 service="iam",
                 region="",
-                resource="role/{0}".format(self._cluster_config.iam.roles.custom_lambda_resources),
+                resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
             ),
             runtime="python3.8",
             timeout=900,
         )
 
+        core.CustomResource(
+            scope=self,
+            id="CleanupResourcesS3BucketCustomResource",
+            service_token=cleanup_resources_lambda.attr_arn,
+            properties={
+                "ResourcesS3Bucket": self.bucket.name,
+                "ArtifactS3RootDirectory": self.bucket.artifact_directory,
+                "RemoveBucketOnDeletion": self.bucket.remove_on_deletion,
+                "Action": "DELETE_S3_ARTIFACTS",
+            },
+        )
+
+        return cleanup_resources_lambda_role, cleanup_resources_lambda
+
     def _add_head_eni(self):
+        """Create Head Node Elastic Network Interface."""
         head_eni_groupset = []
-        if self._cluster_config.head_node.networking.additional_security_groups:
-            head_eni_groupset.extend(self._cluster_config.head_node.networking.additional_security_groups)
+        if self.config.head_node.networking.additional_security_groups:
+            head_eni_groupset.extend(self.config.head_node.networking.additional_security_groups)
+
         if self._condition_create_head_security_group():
-            head_eni_groupset.append(self._head_security_group.ref)
-        elif self._cluster_config.head_node.networking.security_groups:
-            head_eni_groupset.extend(self._cluster_config.head_node.networking.security_groups)
+            head_eni_groupset.append(self.head_security_group.ref)
+        elif self.config.head_node.networking.security_groups:
+            head_eni_groupset.extend(self.config.head_node.networking.security_groups)
+
         head_eni = ec2.CfnNetworkInterface(
             scope=self,
             id="HeadNodeENI",
             description="AWS ParallelCluster head node interface",
-            subnet_id=self._cluster_config.head_node.networking.subnet_id,
+            subnet_id=self.config.head_node.networking.subnet_id,
             source_dest_check=False,
             group_set=head_eni_groupset,
         )
-        # AssociateEIP
-        if self._cluster_config.head_node.networking.assign_public_ip:
+
+        # Create and associate EIP to Head Node
+        if self.config.head_node.networking.assign_public_ip:
+            head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
+
             ec2.CfnEIPAssociation(
                 scope=self,
                 id="AssociateEIP",
-                allocation_id=self._head_eip.attr_allocation_id,
+                allocation_id=head_eip.attr_allocation_id,
                 network_interface_id=head_eni.ref,
             )
+
         return head_eni
 
     def _add_security_groups(self):
         # Head Node Security Group
+        head_security_group = None
         if self._condition_create_head_security_group():
-            self._head_security_group = self._add_head_security_group()
+            head_security_group = self._add_head_security_group()
+
         # ComputeSecurityGroup
+        compute_security_group = None
         if self._condition_create_compute_security_group():
-            self._compute_security_group = self._add_compute_security_group()
-        # Head Node Security Group Ingress
-        # Access to head node from compute nodes
-        if self._condition_create_head_security_group() and self._condition_create_compute_security_group():
+            compute_security_group = self._add_compute_security_group()
+
+        if head_security_group and compute_security_group:
+            # Access to head node from compute nodes
             ec2.CfnSecurityGroupIngress(
                 scope=self,
-                id="HeadNodeSecurityGroupIngress",
+                id="HeadNodeSecurityGroupComputeIngress",
                 ip_protocol="-1",
                 from_port=0,
                 to_port=65535,
-                source_security_group_id=self._compute_security_group.ref,
-                group_id=self._head_security_group.ref,
-            )
-        if self._condition_create_compute_security_group():
-            # ComputeSecurityGroupEgress
-            # Access to other compute nodes from compute nodes
-            compute_security_group_egress = ec2.CfnSecurityGroupEgress(
-                scope=self,
-                id="ComputeSecurityGroupEgress",
-                ip_protocol="-1",
-                from_port=0,
-                to_port=65535,
-                destination_security_group_id=self._compute_security_group.ref,
-                group_id=self._compute_security_group.ref,
+                source_security_group_id=compute_security_group.ref,
+                group_id=head_security_group.ref,
             )
 
-            # ComputeSecurityGroupNormalEgress
-            # Internet access from compute nodes
-            ec2.CfnSecurityGroupEgress(
-                scope=self,
-                id="ComputeSecurityGroupNormalEgress",
-                ip_protocol="-1",
-                from_port=0,
-                to_port=65535,
-                cidr_ip="0.0.0.0/0",
-                group_id=self._compute_security_group.ref,
-            ).add_depends_on(compute_security_group_egress)
-
-            # ComputeSecurityGroupIngress
-            # Access to compute nodes from other compute nodes
+            # Access to compute nodes from head node
             ec2.CfnSecurityGroupIngress(
                 scope=self,
-                id="ComputeSecurityGroupIngress",
+                id="ComputeSecurityGroupHeadNodeIngress",
                 ip_protocol="-1",
                 from_port=0,
                 to_port=65535,
-                source_security_group_id=self._compute_security_group.ref,
-                group_id=self._compute_security_group.ref,
+                source_security_group_id=head_security_group.ref,
+                group_id=compute_security_group.ref,
             )
+
+        return head_security_group, compute_security_group
 
     def _add_compute_security_group(self):
-        return ec2.CfnSecurityGroup(
+        compute_security_group = ec2.CfnSecurityGroup(
             scope=self,
             id="ComputeSecurityGroup",
-            group_description="Allow access to resources in subnets behind front",
-            vpc_id=self._cluster_config.vpc_id,
-            security_group_ingress=[
-                # Access from master security group
-                ec2.CfnSecurityGroup.IngressProperty(
-                    source_security_group_id=self._head_security_group.ref,
-                    ip_protocol="-1",
-                    from_port=0,
-                    to_port=65535,
-                )
-            ],
+            group_description="Allow access to compute nodes",
+            vpc_id=self.config.vpc_id,
         )
 
-    def _add_s3_access_policies(self):
+        # ComputeSecurityGroupEgress
+        # Access to other compute nodes from compute nodes
+        compute_security_group_egress = ec2.CfnSecurityGroupEgress(
+            scope=self,
+            id="ComputeSecurityGroupEgress",
+            ip_protocol="-1",
+            from_port=0,
+            to_port=65535,
+            destination_security_group_id=compute_security_group.ref,
+            group_id=compute_security_group.ref,
+        )
+
+        # ComputeSecurityGroupNormalEgress
+        # Internet access from compute nodes
+        ec2.CfnSecurityGroupEgress(
+            scope=self,
+            id="ComputeSecurityGroupNormalEgress",
+            ip_protocol="-1",
+            from_port=0,
+            to_port=65535,
+            cidr_ip="0.0.0.0/0",
+            group_id=compute_security_group.ref,
+        ).add_depends_on(compute_security_group_egress)
+
+        # ComputeSecurityGroupIngress
+        # Access to compute nodes from other compute nodes
+        ec2.CfnSecurityGroupIngress(
+            scope=self,
+            id="ComputeSecurityGroupIngress",
+            ip_protocol="-1",
+            from_port=0,
+            to_port=65535,
+            source_security_group_id=compute_security_group.ref,
+            group_id=compute_security_group.ref,
+        )
+
+        return compute_security_group
+
+    def _add_s3_access_policies_to_role(self, role_ref: str, name: str):
+        """Attach S3 policies to given role."""
         read_only_s3_resources = [
-            s3_access.bucket_name for s3_access in self._cluster_config.iam.s3_access if s3_access.type == "READ_ONLY"
+            s3_access.bucket_name for s3_access in self.config.iam.s3_access if s3_access.type == "READ_ONLY"
         ]
         read_write_s3_resources = [
-            s3_access.bucket_name for s3_access in self._cluster_config.iam.s3_access if s3_access.type != "READ_ONLY"
+            s3_access.bucket_name for s3_access in self.config.iam.s3_access if s3_access.type != "READ_ONLY"
         ]
+
         s3_access_policy = iam.CfnPolicy(
             scope=self,
-            id="S3AccessPolicies",
+            id=name,
             policy_document=iam.PolicyDocument(statements=[]),
-            roles=[self.head_node_iam_role.ref],
+            roles=[role_ref],
             policy_name="S3Access",
         )
+
         if read_only_s3_resources:
             s3_access_policy.policy_document.add_statements(
                 iam.PolicyStatement(
@@ -489,6 +394,7 @@ class ClusterCdkStack(core.Stack):
                     resources=read_only_s3_resources,
                 )
             )
+
         if read_write_s3_resources:
             s3_access_policy.policy_document.add_statements(
                 iam.PolicyStatement(
@@ -496,24 +402,14 @@ class ClusterCdkStack(core.Stack):
                 )
             )
 
-    def _add_root_instance_profile(self):
-        root_instance_profile_roles = [
-            self.head_node_iam_role.ref if hasattr(self, "head_node_iam_role") else None,
-            self._cluster_config.head_iam_role,
-            self._cluster_config.compute_iam_role,
-        ]
-        return iam.CfnInstanceProfile(
-            scope=self,
-            id="RootInstanceProfile",
-            roles=[role for role in root_instance_profile_roles if role is not None],
-            path="/",
-        )
+    def _add_instance_profile(self, role_ref: str, name: str):
+        return iam.CfnInstanceProfile(scope=self, id=name, roles=[role_ref], path="/").ref
 
-    def _add_root_iam_role(self):
+    def _add_node_role(self, name: str):
         return iam.CfnRole(
             scope=self,
-            id="RootRole",
-            managed_policy_arns=self._cluster_config.iam.additional_iam_policies if self._cluster_config.iam else None,
+            id=name,
+            managed_policy_arns=self.config.iam.additional_iam_policies if self.config.iam else None,
             assume_role_policy_document=iam.PolicyDocument(
                 statements=[
                     iam.PolicyStatement(
@@ -528,12 +424,12 @@ class ClusterCdkStack(core.Stack):
                 ]
             ),
             path="/",
-        )
+        ).ref
 
-    def _add_parallelcluster_policies(self):
+    def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
         iam.CfnPolicy(
             scope=self,
-            id="ParallelClusterPolicies",
+            id=name,
             policy_name="parallelcluster",
             policy_document=iam.PolicyDocument(
                 statements=[
@@ -563,7 +459,7 @@ class ClusterCdkStack(core.Stack):
                             "sqs:GetQueueUrl",
                         ],
                         effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="sqs", resource=self.stack_name)],
+                        resources=[self.format_arn(service="sqs", resource=self._stack_name)],
                     ),
                     iam.PolicyStatement(
                         sid="Cloudformation",
@@ -585,7 +481,7 @@ class ClusterCdkStack(core.Stack):
                             "dynamodb:DescribeTable",
                         ],
                         effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="dynamodb", resource=f"table/{self.stack_name}")],
+                        resources=[self.format_arn(service="dynamodb", resource=f"table/{self._stack_name}")],
                     ),
                     iam.PolicyStatement(
                         sid="S3GetObj",
@@ -607,7 +503,7 @@ class ClusterCdkStack(core.Stack):
                         resources=[
                             self.format_arn(
                                 service="s3",
-                                resource=f"{self._bucket.name}/{self._bucket.artifact_directory}/batch/",
+                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/",
                                 region="",
                                 account="",
                             )
@@ -637,63 +533,7 @@ class ClusterCdkStack(core.Stack):
                     ),
                 ]
             ),
-            roles=[self.head_node_iam_role.ref],
-        )
-
-    def _add_slurm_policies(self):
-        iam.CfnPolicy(
-            scope=self,
-            id="ParallelClusterSlurmPolicies",
-            policy_name="parallelcluster-slurm",
-            policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        sid="EC2Terminate",
-                        effect=iam.Effect.ALLOW,
-                        actions=["ec2:TerminateInstances"],
-                        resources=["*"],
-                        conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
-                    ),
-                    iam.PolicyStatement(
-                        sid="EC2",
-                        effect=iam.Effect.ALLOW,
-                        actions=[
-                            "ec2:DescribeInstances",
-                            "ec2:DescribeLaunchTemplates",
-                            "ec2:RunInstances",
-                            "ec2:DescribeInstanceStatus",
-                            "ec2:CreateTags",
-                        ],
-                        resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="ResourcesS3Bucket",
-                        effect=iam.Effect.ALLOW,
-                        actions=["s3:ListBucket", "s3:ListBucketVersions", "s3:GetObject*", "s3:PutObject*"]
-                        if self._bucket.remove_on_deletion
-                        else ["s3:*"],
-                        resources=[
-                            self.format_arn(service="s3", resource=self._bucket.name, region="", account=""),
-                            self.format_arn(
-                                service="s3",
-                                resource=f"{self._bucket.name}/{self._bucket.artifact_directory}/*",
-                                region="",
-                                account="",
-                            ),
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="DynamoDBTableQuery",
-                        effect=iam.Effect.ALLOW,
-                        actions=["dynamodb:Query"],
-                        resources=[
-                            self.format_arn(service="dynamodb", resource="table/{0}".format(self.stack_name)),
-                            self.format_arn(service="dynamodb", resource="table/{0}/index/*".format(self.stack_name)),
-                        ],
-                    ),
-                ]
-            ),
-            roles=[self.head_node_iam_role.ref],
+            roles=[role_ref],
         )
 
     def _add_head_security_group(self):
@@ -703,43 +543,30 @@ class ClusterCdkStack(core.Stack):
                 ip_protocol="tcp",
                 from_port=22,
                 to_port=22,
-                cidr_ip=self._cluster_config.head_node.ssh.allowed_ips,
+                cidr_ip=self.config.head_node.ssh.allowed_ips,
             ),
         ]
-        if self._cluster_config.head_node.dcv and self._cluster_config.head_node.dcv.enabled:
+        if self.config.head_node.dcv and self.config.head_node.dcv.enabled:
             head_security_group_ingress.append(
                 # DCV access
                 ec2.CfnSecurityGroup.IngressProperty(
                     ip_protocol="tcp",
-                    from_port=self._cluster_config.head_node.dcv.port,
-                    to_port=self._cluster_config.head_node.dcv.port,
-                    cidr_ip=self._cluster_config.head_node.dcv.allowed_ips,
+                    from_port=self.config.head_node.dcv.port,
+                    to_port=self.config.head_node.dcv.port,
+                    cidr_ip=self.config.head_node.dcv.allowed_ips,
                 )
             )
         return ec2.CfnSecurityGroup(
             scope=self,
             id="HeadNodeSecurityGroup",
             group_description="Enable access to the head node",
-            vpc_id=self._cluster_config.vpc_id,
+            vpc_id=self.config.vpc_id,
             security_group_ingress=head_security_group_ingress,
-        )
-
-    def _add_cleanup_resources_bucket_custom_resource(self):
-        return core.CustomResource(
-            scope=self,
-            id="CleanupResourcesS3BucketCustomResource",
-            service_token=self.cleanup_resources_function.attr_arn,
-            properties={
-                "ResourcesS3Bucket": self._bucket.name,
-                "ArtifactS3RootDirectory": self._bucket.artifact_directory,
-                "RemoveBucketOnDeletion": self._bucket.remove_on_deletion,
-                "Action": "DELETE_S3_ARTIFACTS",
-            },
         )
 
     def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
-        storage_ids_list = self._storage_resource_ids[storage.shared_storage_type]
+        storage_ids_list = self.shared_storage_ids[storage.shared_storage_type]
         cfn_resource_id = "{0}{1}".format(storage.shared_storage_type.name, len(storage_ids_list))
         if storage.shared_storage_type == SharedStorageType.FSX:
             storage_ids_list.append(self._add_fsx_storage(cfn_resource_id, storage))
@@ -776,8 +603,8 @@ class ClusterCdkStack(core.Stack):
                 id=id,
                 file_system_type="LUSTRE",
                 storage_type=shared_fsx.drive_cache_type,
-                subnet_ids=self._cluster_config.compute_subnet_ids,
-                security_group_ids=self._cluster_config.compute_security_groups,
+                subnet_ids=self.config.compute_subnet_ids,
+                security_group_ids=self.config.compute_security_groups,
             )
             fsx_id = fsx_resource.ref
 
@@ -786,7 +613,7 @@ class ClusterCdkStack(core.Stack):
         # per_unit_storage_throughput,daily_automatic_backup_start_time,
         # automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,
         # auto_import_policy,storage_type,drive_cache_type]",
-        self._storage_resource_options[shared_fsx.shared_storage_type] = ",".join(
+        self.shared_storage_options[shared_fsx.shared_storage_type] = ",".join(
             str(item)
             for item in [
                 shared_fsx.mount_dir,
@@ -830,27 +657,27 @@ class ClusterCdkStack(core.Stack):
 
         checked_availability_zones = []
         # Mount Targets for Compute Fleet
-        compute_subnet_ids = self._cluster_config.compute_subnet_ids
-        compute_node_sgs = self._cluster_config.compute_security_groups or [self._compute_security_group.ref]
+        compute_subnet_ids = self.config.compute_subnet_ids
+        compute_node_sgs = self.config.compute_security_groups or [self.compute_security_group.ref]
         for subnet_id in compute_subnet_ids:
             self._add_efs_mount_target(
                 id, efs_id, compute_node_sgs, subnet_id, checked_availability_zones, new_file_system
             )
 
         # Mount Target for Head Node
-        head_node_sgs = self._cluster_config.head_node.networking.security_groups or [self._head_security_group.ref]
+        head_node_sgs = self.config.head_node.networking.security_groups or [self.head_security_group.ref]
         self._add_efs_mount_target(
             id,
             efs_id,
             head_node_sgs,
-            self._cluster_config.head_node.networking.subnet_id,
+            self.config.head_node.networking.subnet_id,
             checked_availability_zones,
             new_file_system,
         )
 
         # [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,
         # throughput_mode,exists_valid_head_node_mt,exists_valid_compute_mt]
-        self._storage_resource_options[shared_efs.shared_storage_type] = ",".join(
+        self.shared_storage_options[shared_efs.shared_storage_type] = ",".join(
             str(item)
             for item in [
                 shared_efs.mount_dir,
@@ -896,7 +723,7 @@ class ClusterCdkStack(core.Stack):
 
         # [shared_dir,raid_type,num_of_raid_volumes,volume_type,volume_size,volume_iops,encrypted,
         # ebs_kms_key_id,volume_throughput]
-        self._storage_resource_options[shared_ebs.shared_storage_type] = ",".join(
+        self.shared_storage_options[shared_ebs.shared_storage_type] = ",".join(
             str(item)
             for item in [
                 shared_ebs.mount_dir,
@@ -920,9 +747,9 @@ class ClusterCdkStack(core.Stack):
             ebs_id = self._add_cfn_volume(id, shared_ebs)
 
         # Append mount dir to list of shared dirs
-        self._storage_resource_options[shared_ebs.shared_storage_type] += (
+        self.shared_storage_options[shared_ebs.shared_storage_type] += (
             f",{shared_ebs.mount_dir}"
-            if self._storage_resource_options[shared_ebs.shared_storage_type]
+            if self.shared_storage_options[shared_ebs.shared_storage_type]
             else f"{shared_ebs.mount_dir}"
         )
 
@@ -932,7 +759,7 @@ class ClusterCdkStack(core.Stack):
         return ec2.CfnVolume(
             scope=self,
             id=id,
-            availability_zone=self._cluster_config.head_node.networking.availability_zone,
+            availability_zone=self.config.head_node.networking.availability_zone,
             encrypted=shared_ebs.encrypted,
             iops=shared_ebs.iops,
             throughput=shared_ebs.throughput,
@@ -942,11 +769,11 @@ class ClusterCdkStack(core.Stack):
             volume_type=shared_ebs.volume_type,
         ).ref
 
-    def _add_dynamo_db_table(self):
+    def _add_dynamodb_table(self):
         table = dynamodb.CfnTable(
             scope=self,
             id="DynamoDBTable",
-            table_name=self.stack_name,
+            table_name=self._stack_name,
             attribute_definitions=[
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
@@ -963,10 +790,10 @@ class ClusterCdkStack(core.Stack):
         )
         table.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         table.cfn_options.deletion_policy = core.CfnDeletionPolicy.DELETE
-        self._dynamo_db_table = table
+        return table
 
     def _add_head_node(self):
-        head_node = self._cluster_config.head_node
+        head_node = self.config.head_node
 
         # LT security groups
         head_lt_security_groups = []
@@ -974,14 +801,14 @@ class ClusterCdkStack(core.Stack):
             head_lt_security_groups.extend(head_node.networking.security_groups)
         if head_node.networking.additional_security_groups:
             head_lt_security_groups.extend(head_node.networking.additional_security_groups)
-        if self._head_security_group:
-            head_lt_security_groups.append(self._head_security_group.ref)
+        if self.head_security_group:
+            head_lt_security_groups.append(self.head_security_group.ref)
 
         # LT network interfaces
         head_lt_nw_interfaces = [
             ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                 device_index=0,
-                network_interface_id=self.head_eni.ref,
+                network_interface_id=self._head_eni.ref,
                 associate_public_ip_address=head_node.networking.assign_public_ip,
             )
         ]
@@ -1004,40 +831,43 @@ class ClusterCdkStack(core.Stack):
                 cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(core_count=head_node.vcpus, threads_per_core=1)
                 if head_node.pass_cpu_options_in_launch_template
                 else None,
-                block_device_mappings=self._get_block_device_mappings(head_node),
+                block_device_mappings=get_block_device_mappings(head_node, self.config.image.os),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
-                image_id=self._cluster_config.ami_id,
+                image_id=self.config.ami_id,
                 ebs_optimized=head_node.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
-                    name=self.root_instance_profile.ref
+                    name=self.instance_profiles["HeadNode"]
                 ),
                 user_data=core.Fn.base64(
                     core.Fn.sub(
-                        self._get_user_data_content("../resources/head_node/user_data.sh"),
+                        get_user_data_content("../resources/head_node/user_data.sh"),
                         {
                             "YumProxy": head_node.networking.proxy if head_node.networking.proxy else "_none_",
                             "DnfProxy": head_node.networking.proxy if head_node.networking.proxy else "",
                             "AptProxy": head_node.networking.proxy if head_node.networking.proxy else "false",
                             "ProxyServer": head_node.networking.proxy if head_node.networking.proxy else "NONE",
-                            "CustomChefCookbook": self._custom_chef_cookbook(),
-                            "ParallelClusterVersion": self.packages_versions["parallelcluster"],
-                            "CookbookVersion": self.packages_versions["cookbook"],
-                            "ChefVersion": self.packages_versions["chef"],
-                            "BerkshelfVersion": self.packages_versions["berkshelf"],
-                            "IamRoleName": self.head_node_iam_role.ref,
+                            "CustomChefCookbook": self.config.custom_chef_cookbook or "NONE",
+                            "ParallelClusterVersion": COOKBOOK_PACKAGES_VERSIONS["parallelcluster"],
+                            "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
+                            "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
+                            "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
+                            "IamRoleName": self.instance_roles["HeadNode"]["RoleRef"],
                         },
                     )
                 ),
                 tag_specifications=[
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
-                        tags=self._get_default_instance_tags(head_node, "Master") + self._get_custom_tags(),
+                        tags=get_default_instance_tags(
+                            self._stack_name, self.config, head_node, "Master", self.shared_storage_ids
+                        )
+                        + get_custom_tags(self.config),  # FIXME HeadNode
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
-                        tags=self._get_default_volume_tags("Master") + self._get_custom_tags(),
-                    ),
+                        tags=get_default_volume_tags(self._stack_name, "Master") + get_custom_tags(self.config),
+                    ),  # FIXME HeadNode
                 ],
             ),
         )
@@ -1050,25 +880,31 @@ class ClusterCdkStack(core.Stack):
         dna_json = json.dumps(
             {
                 "cfncluster": {
-                    "stack_name": self.stack_name,
+                    "stack_name": self._stack_name,
                     "enable_efa": "true" if head_node.efa and head_node.efa.enabled else "NONE",
-                    "cfn_raid_vol_ids": self._get_shared_storage_ids(SharedStorageType.RAID),
-                    "cfn_raid_parameters": self._get_shared_storage_options(SharedStorageType.RAID),
+                    "cfn_raid_vol_ids": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.RAID),
+                    "cfn_raid_parameters": get_shared_storage_options_by_type(
+                        self.shared_storage_options, SharedStorageType.RAID
+                    ),
                     "cfn_disable_hyperthreading_manually": "true"
-                    if self._condition_disable_hyperthreading_manually(head_node)
+                    if head_node.disable_simultaneous_multithreading_manually
                     else "false",
-                    "cfn_base_os": self._cluster_config.image.os,
+                    "cfn_base_os": self.config.image.os,
                     "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
                     "cfn_preinstall_args": pre_install_action.args if pre_install_action else "NONE",
                     "cfn_postinstall": post_install_action.script if pre_install_action else "NONE",
                     "cfn_postinstall_args": post_install_action.args if pre_install_action else "NONE",
                     "cfn_region": self.region,
-                    "cfn_efs": self._get_shared_storage_ids(SharedStorageType.EFS),
-                    "cfn_efs_shared_dir": self._get_shared_storage_options(SharedStorageType.EFS),  # FIXME
-                    "cfn_fsx_fs_id": self._get_shared_storage_ids(SharedStorageType.FSX),
-                    "cfn_fsx_options": self._get_shared_storage_options(SharedStorageType.FSX),
-                    "cfn_volume": self._get_shared_storage_ids(SharedStorageType.EBS),
-                    "cfn_scheduler": self._cluster_config.scheduling.scheduler,
+                    "cfn_efs": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EFS),
+                    "cfn_efs_shared_dir": get_shared_storage_options_by_type(
+                        self.shared_storage_options, SharedStorageType.EFS
+                    ),  # FIXME
+                    "cfn_fsx_fs_id": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.FSX),
+                    "cfn_fsx_options": get_shared_storage_options_by_type(
+                        self.shared_storage_options, SharedStorageType.FSX
+                    ),
+                    "cfn_volume": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EBS),
+                    "cfn_scheduler": self.config.scheduling.scheduler,
                     "cfn_encrypted_ephemeral": "true"
                     if head_node.storage
                     and head_node.storage.ephemeral_volume
@@ -1077,26 +913,29 @@ class ClusterCdkStack(core.Stack):
                     "cfn_ephemeral_dir": head_node.storage.ephemeral_volume.mount_dir
                     if head_node.storage and head_node.storage.ephemeral_volume
                     else "/scratch",
-                    "cfn_shared_dir": self._get_shared_storage_options(SharedStorageType.EBS),
+                    "cfn_shared_dir": get_shared_storage_options_by_type(
+                        self.shared_storage_options, SharedStorageType.EBS
+                    ),
                     "cfn_proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
-                    "cfn_dns_domain": "" if self._condition_disable_cluster_dns() else self.cluster_hosted_zone.name,
-                    "cfn_hosted_zone": ""
-                    if self._condition_disable_cluster_dns()
-                    else self.cluster_hosted_zone.attr_id,
+                    "cfn_dns_domain": self.scheduler_resources.cluster_hosted_zone.name
+                    if self.scheduler_resources.cluster_hosted_zone
+                    else "",
+                    "cfn_hosted_zone": self.scheduler_resources.cluster_hosted_zone.attr_id
+                    if self.scheduler_resources.cluster_hosted_zone
+                    else "",
                     "cfn_node_type": "MasterServer",  # FIXME
-                    "cfn_cluster_user": OS_MAPPING[self._cluster_config.image.os]["user"],
-                    "cfn_ddb_table": self._dynamo_db_table.ref,
+                    "cfn_cluster_user": OS_MAPPING[self.config.image.os]["user"],
+                    "cfn_ddb_table": self.dynamodb_table.ref,
                     "dcv_enabled": head_node.dcv.enabled if head_node.dcv else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
-                    "enable_intel_hpc_platform": "true" if self._condition_enable_intel_hpc_platform() else "false",
-                    "cfn_cluster_cw_logging_enabled": "true" if self._condition_cw_logging_enabled() else "false",
-                    "cluster_s3_bucket": self._bucket.name,
-                    "cluster_config_s3_key": f"{self._bucket.artifact_directory}/configs/cluster-config.yaml",
-                    "cluster_config_version": self._cluster_config.config_version,
-                    "instance_types_data_s3_key": f"{self._bucket.artifact_directory}"
-                    "/configs/instance-types-data.json",
+                    "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
+                    "cfn_cluster_cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
+                    "cluster_s3_bucket": self.bucket.name,
+                    "cluster_config_s3_key": f"{self.bucket.artifact_directory}/configs/cluster-config.yaml",
+                    "cluster_config_version": self.config.config_version,
+                    "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/instance-types-data.json",
                 },
-                "run_list": f"recipe[aws-parallelcluster::{self._cluster_config.scheduling.scheduler}_config]",
+                "run_list": f"recipe[aws-parallelcluster::{self.config.scheduling.scheduler}_config]",
             },
             indent=4,
         )
@@ -1133,7 +972,7 @@ class ClusterCdkStack(core.Stack):
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
-                        "content": self._get_extra_chef_attributes(),
+                        "content": self.config.extra_chef_attributes,
                     },
                 },
                 "commands": {
@@ -1162,9 +1001,9 @@ class ClusterCdkStack(core.Stack):
                                 "runas=root\n"
                             ),
                             {
-                                "StackName": self.stack_name,
+                                "StackName": self._stack_name,
                                 "Region": self.region,
-                                "IamRoleName": self.head_node_iam_role.ref,
+                                "IamRoleName": self.instance_roles["HeadNode"]["RoleRef"],
                             },
                         ),
                         "mode": "000400",
@@ -1177,7 +1016,7 @@ class ClusterCdkStack(core.Stack):
                             {
                                 "StackId": self.stack_id,
                                 "Region": self.region,
-                                "IamRoleName": self.head_node_iam_role.ref,
+                                "IamRoleName": self.instance_roles["HeadNode"]["RoleRef"],
                             },
                         ),
                         "mode": "000400",
@@ -1264,474 +1103,33 @@ class ClusterCdkStack(core.Stack):
             resource_signal=core.CfnResourceSignal(count=1, timeout="PT30M")
         )
 
-    def _add_slurm_compute_fleet(self):
-
-        self.cluster_hosted_zone = None
-        if not self._condition_disable_cluster_dns():
-            self.cluster_hosted_zone = self._add_private_hosted_zone()
-
-        self._add_update_waiter_lambda()
-
-        for queue in self._cluster_config.scheduling.queues:
-
-            # LT security groups
-            queue_lt_security_groups = []
-            if queue.networking.security_groups:
-                queue_lt_security_groups.extend(queue.networking.security_groups)
-            if queue.networking.additional_security_groups:
-                queue_lt_security_groups.extend(queue.networking.additional_security_groups)
-            if self._compute_security_group:
-                queue_lt_security_groups.append(self._compute_security_group.ref)
-
-            queue_placement_group = None
-            if queue.networking.placement_group and queue.networking.placement_group.enabled:
-                if queue.networking.placement_group.id:
-                    queue_placement_group = queue.networking.placement_group.id
-                else:
-                    # Create Placement Group
-                    queue_placement_group = ec2.CfnPlacementGroup(
-                        scope=self, id=f"PlacementGroup{self._create_hash_suffix(queue.name)}", strategy="cluster"
-                    ).ref
-
-            queue_pre_install_action = queue.get_custom_action(event=CustomActionEvent.NODE_START)
-            queue_post_install_action = queue.get_custom_action(event=CustomActionEvent.NODE_CONFIGURED)
-
-            for compute_resource in queue.compute_resources:
-                instance_type = compute_resource.instance_type
-
-                self._add_compute_resource_launch_template(
-                    queue,
-                    compute_resource,
-                    instance_type,
-                    queue_pre_install_action,
-                    queue_post_install_action,
-                    queue_lt_security_groups,
-                    queue_placement_group,
-                )
-
-        core.CustomResource(
-            scope=self,
-            id="TerminateComputeFleetCustomResource",
-            service_token=self.cleanup_resources_function.attr_arn,
-            properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"},
-        )
-        # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
-        # terminate_compute_fleet_custom_resource.add_depends_on()
-
-        core.CfnOutput(
-            scope=self,
-            id="ConfigVersion",
-            description="Version of the config used to generate the stack",
-            value=self._cluster_config.config_version,
-        )
-
-    def _add_compute_resource_launch_template(
-        self,
-        queue,
-        compute_resource,
-        instance_type,
-        queue_pre_install_action,
-        queue_post_install_action,
-        queue_lt_security_groups,
-        queue_placement_group,
-    ):
-        # LT network interfaces
-        compute_lt_nw_interfaces = [
-            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                device_index=0,
-                associate_public_ip_address=queue.networking.assign_public_ip
-                if compute_resource.max_network_interface_count == 1
-                else None,  # parameter not supported for instance types with multiple network interfaces
-            )
-        ]
-        for device_index in range(1, compute_resource.max_network_interface_count - 1):
-            compute_lt_nw_interfaces.append(
-                ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=device_index,
-                    network_card_index=device_index,
-                    interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
-                    groups=queue_lt_security_groups,
-                    subnet_id=queue.networking.subnet_ids[0],  # FIXME slurm supports a single subnet
-                )
-            )
-
-        instance_market_options = None
-        if queue.compute_type == ComputeType.SPOT:
-            instance_market_options = ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
-                market_type="spot",
-                spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
-                    spot_instance_type="one-time",
-                    instance_interruption_behavior="terminate",
-                    max_price=compute_resource.spot_price,
-                ),
-            )
-
-        ec2.CfnLaunchTemplate(
-            scope=self,
-            id=f"ComputeServerLaunchTemplate{self._create_hash_suffix(queue.name + instance_type)}",
-            launch_template_name=f"{self._cluster_name()}-{queue.name}-{instance_type}",
-            launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
-                instance_type=instance_type,
-                cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(
-                    core_count=compute_resource.vcpus, threads_per_core=1
-                )
-                if compute_resource.pass_cpu_options_in_launch_template
-                else None,
-                block_device_mappings=self._get_block_device_mappings(queue),
-                # key_name=,
-                network_interfaces=compute_lt_nw_interfaces,
-                placement=queue_placement_group,
-                image_id=self._cluster_config.ami_id,
-                ebs_optimized=compute_resource.is_ebs_optimized,
-                iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
-                    name=self.root_instance_profile.ref
-                ),
-                instance_market_options=instance_market_options,
-                user_data=core.Fn.base64(
-                    core.Fn.sub(
-                        self._get_user_data_content("../resources/compute_node/user_data.sh"),
-                        {
-                            "YumProxy": queue.networking.proxy if queue.networking.proxy else "_none_",
-                            "DnfProxy": queue.networking.proxy if queue.networking.proxy else "",
-                            "AptProxy": queue.networking.proxy if queue.networking.proxy else "false",
-                            "ProxyServer": queue.networking.proxy if queue.networking.proxy else "NONE",
-                            "CustomChefCookbook": self._custom_chef_cookbook(),
-                            "ParallelClusterVersion": self.packages_versions["parallelcluster"],
-                            "CookbookVersion": self.packages_versions["cookbook"],
-                            "ChefVersion": self.packages_versions["chef"],
-                            "BerkshelfVersion": self.packages_versions["berkshelf"],
-                            "IamRoleName": self.head_node_iam_role.ref,  # TODO split roles
-                            "EnableEfa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
-                            "RAIDOptions": self._get_shared_storage_options(SharedStorageType.RAID),
-                            "DisableHyperThreadingManually": "true"
-                            if self._condition_disable_hyperthreading_manually(compute_resource)
-                            else "false",
-                            "BaseOS": self._cluster_config.image.os,
-                            "PreInstallScript": queue_pre_install_action.script if queue_pre_install_action else "NONE",
-                            "PreInstallArgs": queue_pre_install_action.args if queue_pre_install_action else "NONE",
-                            "PostInstallScript": queue_post_install_action.script
-                            if queue_pre_install_action
-                            else "NONE",
-                            "PostInstallArgs": queue_post_install_action.args if queue_pre_install_action else "NONE",
-                            "EFSId": self._get_shared_storage_ids(SharedStorageType.EFS),
-                            "EFSOptions": self._get_shared_storage_options(SharedStorageType.EFS),  # FIXME
-                            "FSXId": self._get_shared_storage_ids(SharedStorageType.FSX),
-                            "FSXOptions": self._get_shared_storage_options(SharedStorageType.FSX),
-                            "Scheduler": self._cluster_config.scheduling.scheduler,
-                            "EncryptedEphemeral": "true"
-                            if queue.storage
-                            and queue.storage.ephemeral_volume
-                            and queue.storage.ephemeral_volume.encrypted
-                            else "NONE",
-                            "EphemeralDir": queue.storage.ephemeral_volume.mount_dir
-                            if queue.storage and queue.storage.ephemeral_volume
-                            else "/scratch",
-                            "EbsSharedDirs": self._get_shared_storage_options(SharedStorageType.EBS),
-                            "ClusterDNSDomain": ""
-                            if self._condition_disable_cluster_dns()
-                            else self.cluster_hosted_zone.name,
-                            "ClusterHostedZone": ""
-                            if self._condition_disable_cluster_dns()
-                            else self.cluster_hosted_zone.attr_id,
-                            "OSUser": OS_MAPPING[self._cluster_config.image.os]["user"],
-                            "DynamoDBTable": self._dynamo_db_table.ref,
-                            "IntelHPCPlatform": "true" if self._condition_enable_intel_hpc_platform() else "false",
-                            "CWLoggingEnabled": "true" if self._condition_cw_logging_enabled() else "false",
-                            "QueueName": queue.name,
-                            "EnableEfaGdr": "compute"
-                            if compute_resource.efa and compute_resource.efa.gdr_support
-                            else "NONE",
-                            "ExtraJson": self._get_extra_chef_attributes(),
-                        },
-                    )
-                ),
-                monitoring=ec2.CfnLaunchTemplate.MonitoringProperty(enabled=False),
-                tag_specifications=[
-                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
-                        resource_type="instance",
-                        tags=self._get_default_instance_tags(compute_resource, "Compute")
-                        + [core.CfnTag(key="QueueName", value=queue.name)]
-                        + self._get_custom_tags(),
-                    ),
-                    ec2.CfnLaunchTemplate.TagSpecificationProperty(
-                        resource_type="volume",
-                        tags=self._get_default_volume_tags("Compute")
-                        + [core.CfnTag(key="QueueName", value=queue.name)]
-                        + self._get_custom_tags(),
-                    ),
-                ],
-            ),
-        )
-
-    def _add_private_hosted_zone(self):
-        cluster_hosted_zone = route53.CfnHostedZone(
-            self,
-            id="Route53HostedZone",
-            name=f"{self._cluster_name()}.pcluster",
-            vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self._cluster_config.vpc_id, vpc_region=self.region)],
-        )
-
-        if self._condition_create_head_node_iam_role():
-            iam.CfnPolicy(
-                scope=self,
-                id="ParallelClusterSlurmRoute53Policies",
-                policy_name="parallelcluster-slurm-route53",
-                policy_document=iam.PolicyDocument(
-                    statements=[
-                        iam.PolicyStatement(
-                            sid="Route53Add",
-                            effect=iam.Effect.ALLOW,
-                            actions=["route53:ChangeResourceRecordSets"],
-                            resources=[
-                                self.format_arn(
-                                    service="route53",
-                                    region="",
-                                    account="",
-                                    resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
-                                ),
-                            ],
-                        ),
-                    ]
-                ),
-                roles=[self.head_node_iam_role.ref],  # TODO use compute fleet role
-            )
-
-        cleanup_route53_lambda_execution_role = None
-        if self._condition_create_lambda_iam_role():
-            cleanup_route53_lambda_execution_role = iam.CfnRole(
-                scope=self,
-                id="CleanupRoute53FunctionExecutionRole",
-                assume_role_policy_document=iam.PolicyDocument(
-                    statements=[
-                        iam.PolicyStatement(
-                            actions=["sts:AssumeRole"],
-                            effect=iam.Effect.ALLOW,
-                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
-                        )
-                    ],
-                ),
-                path="/",
-                policies=[
-                    iam.CfnRole.PolicyProperty(
-                        policy_document=iam.PolicyDocument(
-                            statements=[
-                                iam.PolicyStatement(
-                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
-                                    sid="CloudWatchLogsPolicy",
-                                ),
-                                iam.PolicyStatement(
-                                    actions=["route53:ListResourceRecordSets", "route53:ChangeResourceRecordSets"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[
-                                        self.format_arn(
-                                            service="route53",
-                                            region="",
-                                            account="",
-                                            resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
-                                        ),
-                                    ],
-                                    sid="Route53DeletePolicy",
-                                ),
-                            ],
-                        ),
-                        policy_name="LambdaPolicy",
-                    ),
-                ],
-            )
-
-        cleanup_route53_lambda = awslambda.CfnFunction(
-            scope=self,
-            id="CleanupRoute53Function",
-            function_name=f"pcluster-CleanupRoute53-{self._stack_unique_id()}",
-            code=awslambda.CfnFunction.CodeProperty(
-                s3_bucket=self._bucket.name,
-                s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
-            ),
-            handler="cleanup_resources.handler",
-            memory_size=128,
-            role=cleanup_route53_lambda_execution_role.attr_arn
-            if cleanup_route53_lambda_execution_role
-            else self.format_arn(
-                service="iam",
-                region="",
-                account=self.account,
-                resource="role/{0}".format(self._cluster_config.iam.roles.custom_lambda_resources),
-            ),
-            runtime="python3.8",
-            timeout=900,
-        )
-
-        core.CustomResource(
-            scope=self,
-            id="CleanupRoute53CustomResource",
-            service_token=cleanup_route53_lambda.attr_arn,
-            properties={"ClusterHostedZone": cluster_hosted_zone.attr_id, "Action": "DELETE_DNS_RECORDS"},
-        )
-
-        core.CfnOutput(
-            scope=self,
-            id="ClusterHostedZone",
-            description="Id of the private hosted zone created within the cluster",
-            value=cluster_hosted_zone.attr_id,
-        )
-        core.CfnOutput(
-            scope=self,
-            id="ClusterDNSDomain",
-            description="DNS Domain of the private hosted zone created within the cluster",
-            value=cluster_hosted_zone.name,
-        )
-
-        return cluster_hosted_zone
-
-    def _add_update_waiter_lambda(self):
-        update_waiter_lambda_execution_role = None
-        if self._condition_create_lambda_iam_role():
-            update_waiter_lambda_execution_role = iam.CfnRole(
-                scope=self,
-                id="UpdateWaiterFunctionExecutionRole",
-                assume_role_policy_document=iam.PolicyDocument(
-                    statements=[
-                        iam.PolicyStatement(
-                            actions=["sts:AssumeRole"],
-                            effect=iam.Effect.ALLOW,
-                            principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
-                        )
-                    ],
-                ),
-                path="/",
-                policies=[
-                    iam.CfnRole.PolicyProperty(
-                        policy_document=iam.PolicyDocument(
-                            statements=[
-                                iam.PolicyStatement(
-                                    actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[self.format_arn(service="logs", account="*", region="*", resource="*")],
-                                    sid="CloudWatchLogsPolicy",
-                                ),
-                                iam.PolicyStatement(
-                                    actions=["dynamodb:GetItem", "dynamodb:PutItem"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[
-                                        self.format_arn(
-                                            service="dynamodb",
-                                            account=self.account,
-                                            resource=f"table/{self._dynamo_db_table.ref}",
-                                        ),
-                                    ],
-                                    sid="DynamoDBTable",
-                                ),
-                            ],
-                        ),
-                        policy_name="LambdaPolicy",
-                    ),
-                ],
-            )
-
-        update_waiter_lambda = awslambda.CfnFunction(
-            scope=self,
-            id="UpdateWaiterFunction",
-            function_name=f"pcluster-UpdateWaiter-{self._stack_unique_id()}",
-            code=awslambda.CfnFunction.CodeProperty(
-                s3_bucket=self._bucket.name,
-                s3_key=f"{self._bucket.artifact_directory}/custom_resources_code/artifacts.zip",
-            ),
-            handler="wait_for_update.handler",
-            memory_size=128,
-            role=update_waiter_lambda_execution_role.attr_arn
-            if update_waiter_lambda_execution_role
-            else self.format_arn(
-                service="iam",
-                region="",
-                account=self.account,
-                resource="role/{0}".format(self._cluster_config.iam.roles.custom_lambda_resources),
-            ),
-            runtime="python3.8",
-            timeout=900,
-        )
-
-        core.CustomResource(
-            self,
-            "UpdateWaiterCustomResource",
-            service_token=update_waiter_lambda.attr_arn,
-            properties={
-                "ConfigVersion": self._cluster_config.config_version,
-                "DynamoDBTable": self._dynamo_db_table.ref,
-            },
-        )
-
-        core.CfnOutput(scope=self, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
-
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
-    def _condition_create_head_node_iam_role(self):
-        """Head node role is created if head instance role is not specified."""
-        head_node = self._cluster_config.head_node
-        return not head_node.iam or not head_node.iam.roles or not head_node.iam.roles.instance_role
-
-    def _condition_create_compute_iam_role(self, queue):
-        """Compute Iam role is created if queue instance role is not specified."""
-        return not queue.iam or not queue.iam.roles or not queue.iam.roles.instance_role
-
-    def _condition_disable_hyperthreading_manually(self, node_config):
-        return (
-            node_config.disable_simultaneous_multithreading
-            and not node_config.disable_simultaneous_multithreading_via_cpu_options
-        )
+    def _condition_create_iam_role(self, node: Union[HeadNode, BaseQueue]):
+        """Iam role is created if instance role is not specified."""
+        return not node.iam or not node.iam.roles or not node.iam.roles.instance_role
 
     def _condition_create_lambda_iam_role(self):
         return (
-            not self._cluster_config.iam
-            or not self._cluster_config.iam.roles
-            or not self._cluster_config.iam.roles.custom_lambda_resources
-            or self._cluster_config.iam.roles.get_param("custom_lambda_resources").implied
+            not self.config.iam
+            or not self.config.iam.roles
+            or not self.config.iam.roles.custom_lambda_resources
+            or self.config.iam.roles.get_param("custom_lambda_resources").implied
         )
 
     def _condition_create_s3_access_policies(self):
-        return self._cluster_config.iam and self._cluster_config.iam.s3_access
-
-    def _condition_add_slurm_iam_policies(self):
-        return self._condition_create_head_node_iam_role() and self._condition_is_slurm()
+        return self.config.iam and self.config.iam.s3_access
 
     def _condition_create_compute_security_group(self):
         # Compute security group must be created if at list one queue's networking does not specify security groups
         condition = False
-        for queue in self._cluster_config.scheduling.queues:
+        for queue in self.config.scheduling.queues:
             if not queue.networking.security_groups:
                 condition = True
         return condition
 
     def _condition_create_head_security_group(self):
-        return not self._cluster_config.head_node.networking.security_groups
-
-    def _condition_is_slurm(self):
-        return self._cluster_config.scheduling.scheduler == "slurm"
-
-    def _condition_cw_logging_enabled(self):
-        return (
-            self._cluster_config.monitoring.logs.cloud_watch.enabled
-            if self._cluster_config.monitoring
-            and self._cluster_config.monitoring.logs
-            and self._cluster_config.monitoring.logs.cloud_watch
-            else False
-        )
-
-    def _condition_enable_intel_hpc_platform(self):
-        return (
-            self._cluster_config.additional_packages.intel_select_solutions.install_intel_software
-            if self._cluster_config.additional_packages
-            and self._cluster_config.additional_packages.intel_select_solutions
-            else False
-        )
-
-    def _condition_disable_cluster_dns(self):
-        return (
-            self._cluster_config.scheduling.settings
-            and self._cluster_config.scheduling.settings.dns
-            and self._cluster_config.scheduling.settings.dns.disable_managed_dns
-        )
+        return not self.config.head_node.networking.security_groups
 
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
@@ -1744,7 +1142,7 @@ class ClusterCdkStack(core.Stack):
             scope=self,
             id="ClusterUser",
             description="Username to login to head node",
-            value=OS_MAPPING[self._cluster_config.image.os]["user"],
+            value=OS_MAPPING[self.config.image.os]["user"],
         )
 
         # Head Node Instance ID
@@ -1785,7 +1183,7 @@ class ClusterCdkStack(core.Stack):
             scope=self,
             id="ResourcesS3Bucket",
             description="S3 user bucket where AWS ParallelCluster resources are stored",
-            value=self._bucket.name,
+            value=self.bucket.name,
         )
 
         # ArtifactS3RootDirectory
@@ -1793,7 +1191,7 @@ class ClusterCdkStack(core.Stack):
             scope=self,
             id="ArtifactS3RootDirectory",
             description="Root directory in S3 bucket where cluster artifacts are stored",
-            value=self._bucket.artifact_directory,
+            value=self.bucket.artifact_directory,
         )
 
         # BatchComputeEnvironmentArn
@@ -1803,11 +1201,11 @@ class ClusterCdkStack(core.Stack):
         # BatchUserRole
         # TODO: take values from Batch resources
 
-        core.CfnOutput(id="Scheduler", scope=self, value=self._cluster_config.scheduling.scheduler)
+        core.CfnOutput(id="Scheduler", scope=self, value=self.config.scheduling.scheduler)
 
     def _add_shared_storage_outputs(self):
         """Add the ids of the managed filesystem to the Stack Outputs."""
-        for storage_type, storage_ids in self._storage_resource_ids.items():
+        for storage_type, storage_ids in self.shared_storage_ids.items():
             core.CfnOutput(
                 scope=self,
                 id="{0}Ids".format(storage_type.name),

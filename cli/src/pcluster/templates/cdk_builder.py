@@ -33,7 +33,7 @@ class CDKTemplateBuilder:
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = str(stack_name)
             app = core.App(outdir=str(tempdir))
-            ClusterCdkStack(app, output_file, cluster_config, bucket)
+            ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 
