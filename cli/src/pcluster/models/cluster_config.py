@@ -728,6 +728,16 @@ class HeadNode(Resource):
         """Return true if simultaneous multithreading must be disabled through cpu options."""
         return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
 
+    @property
+    def disable_simultaneous_multithreading_manually(self) -> bool:
+        """Return true if simultaneous multithreading must be disabled with a cookbook script."""
+        return self.disable_simultaneous_multithreading and not self.disable_simultaneous_multithreading_via_cpu_options
+
+    @property
+    def instance_role(self):
+        """Return the IAM role for head node, if set."""
+        return self.iam.roles.instance_role if self.iam and self.iam.roles else None
+
     def get_custom_action(self, event: CustomActionEvent) -> CustomAction:
         """Return the first CustomAction corresponding to the specified event."""
         return (
@@ -807,6 +817,11 @@ class BaseComputeResource(Resource):
         """Return true if simultaneous multithreading must be disabled through cpu options."""
         return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
 
+    @property
+    def disable_simultaneous_multithreading_manually(self) -> bool:
+        """Return true if simultaneous multithreading must be disabled with a cookbook script."""
+        return self.disable_simultaneous_multithreading and not self.disable_simultaneous_multithreading_via_cpu_options
+
 
 class ComputeType(Enum):
     """Enum to identify the type compute supported by the queues."""
@@ -835,6 +850,11 @@ class BaseQueue(Resource):
 
     def _validate(self):
         self._execute_validator(NameValidator, name=self.name)
+
+    @property
+    def instance_role(self):
+        """Return the IAM role for compute nodes, if set."""
+        return self.iam.roles.instance_role if self.iam and self.iam.roles else None
 
 
 class CommonSchedulingSettings(Resource):
@@ -1036,22 +1056,6 @@ class BaseClusterConfig(Resource):
         )
 
     @property
-    def head_iam_role(self):
-        """Return the IAM role for head node, if set."""
-        role = None
-        if self.iam and self.iam.roles:
-            role = self.iam.roles.head_node
-        return role
-
-    @property
-    def compute_iam_role(self):
-        """Return the IAM role for compute nodes, if set."""
-        role = None
-        if self.iam and self.iam.roles:
-            role = self.iam.roles.compute_node
-        return role
-
-    @property
     def vpc_id(self):
         """Return the VPC of the cluster."""
         return AWSApi.instance().ec2.get_subnet_vpc(self.head_node.networking.subnet_id)
@@ -1069,6 +1073,42 @@ class BaseClusterConfig(Resource):
     def scheduler_resources(self):
         """Return scheduler resources. To be overridden with scheduler specific logic, if any."""
         return None
+
+    @property
+    def is_intel_hpc_platform_enabled(self):
+        """Return True if intel hpc platform is enabled."""
+        return (
+            self.additional_packages.intel_select_solutions.install_intel_software
+            if self.additional_packages and self.additional_packages.intel_select_solutions
+            else False
+        )
+
+    @property
+    def is_cw_logging_enabled(self):
+        """Return True if CloudWatch logging is enabled."""
+        return (
+            self.monitoring.logs.cloud_watch.enabled
+            if self.monitoring and self.monitoring.logs and self.monitoring.logs.cloud_watch
+            else False
+        )
+
+    @property
+    def extra_chef_attributes(self):
+        """Return extra chef attributes."""
+        return (
+            self.dev_settings.cookbook.extra_chef_attributes
+            if self.dev_settings and self.dev_settings.cookbook and self.dev_settings.cookbook.extra_chef_attributes
+            else "{}"
+        )
+
+    @property
+    def custom_chef_cookbook(self):
+        """Return custom chef cookbook value or None."""
+        return (
+            self.dev_settings.cookbook.chef_cookbook
+            if self.dev_settings and self.dev_settings.cookbook and self.dev_settings.cookbook.chef_cookbook
+            else None
+        )
 
 
 class AwsbatchComputeResource(BaseComputeResource):
