@@ -17,7 +17,7 @@ CHANGELOG
 - Add `--image-name`, `--config`, `--region` to `build-image` command.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
-
+- Add possibility to configure different security groups for each queue.
 
 2.10.1
 ------

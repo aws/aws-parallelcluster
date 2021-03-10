@@ -15,9 +15,10 @@ from typing import Union
 
 import pkg_resources
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_iam as iam
 from aws_cdk import core
 
-from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
+from pcluster.constants import COOKBOOK_PACKAGES_VERSIONS, OS_MAPPING, PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
@@ -72,6 +73,21 @@ def get_user_data_content(user_data_path: str):
     with open(user_data_file_path, "r") as user_data_file:
         user_data_content = user_data_file.read()
     return user_data_content
+
+
+def get_common_user_data_env(node: Union[HeadNode, BaseQueue], config: BaseClusterConfig) -> dict:
+    """Return a dict containing the common env variables to be replaced in user data."""
+    return {
+        "YumProxy": node.networking.proxy if node.networking.proxy else "_none_",
+        "DnfProxy": node.networking.proxy if node.networking.proxy else "",
+        "AptProxy": node.networking.proxy if node.networking.proxy else "false",
+        "ProxyServer": node.networking.proxy if node.networking.proxy else "NONE",
+        "CustomChefCookbook": config.custom_chef_cookbook or "NONE",
+        "ParallelClusterVersion": COOKBOOK_PACKAGES_VERSIONS["parallelcluster"],
+        "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
+        "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
+        "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
+    }
 
 
 def cluster_name(stack_name: str):
@@ -152,3 +168,12 @@ def get_default_volume_tags(stack_name: str, node_type: str):
         core.CfnTag(key="Application", value=stack_name),
         core.CfnTag(key="aws-parallelcluster-node-type", value=node_type),
     ]
+
+
+def get_lambda_policy_statement():
+    """Return default Lambda policy statement."""
+    return iam.PolicyStatement(
+        actions=["sts:AssumeRole"],
+        effect=iam.Effect.ALLOW,
+        principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
+    )
