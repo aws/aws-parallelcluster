@@ -26,6 +26,7 @@ from pcluster.config.cfn_param_types import ClusterCfnSection
 from pcluster.config.mappings import ALIASES, AWS, GLOBAL
 from pcluster.config.param_types import StorageData
 from pcluster.utils import (
+    InstanceTypeInfo,
     get_cfn_param,
     get_file_section_name,
     get_installed_version,
@@ -100,6 +101,8 @@ class PclusterConfig(object):
             self.__init_sections_from_cfn(cluster_name)
         else:
             self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
+            # Load instance types data if present in config file
+            self.__init_additional_instance_types_data()
 
         self.__autorefresh = auto_refresh  # Initialization completed
 
@@ -587,3 +590,9 @@ class PclusterConfig(object):
         config_metadata_param = self.get_section("cluster").get_param("cluster_config_metadata")
         self.__sections = pcluster_config.__sections
         self.get_section("cluster").set_param("cluster_config_metadata", config_metadata_param)
+
+    def __init_additional_instance_types_data(self):
+        """Store additional instance type information coming from instance_types_data parameter."""
+        InstanceTypeInfo.load_additional_instance_types_data(
+            self.get_section("cluster").get_param_value("instance_types_data")
+        )

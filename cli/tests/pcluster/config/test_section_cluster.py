@@ -17,6 +17,12 @@ from pcluster.config.mappings import CLUSTER_HIT, CLUSTER_SIT
 from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
 
 
+@pytest.fixture()
+def boto3_stubber_path():
+    """Specify that boto3_mocker should stub calls to boto3 for the pcluster.utils module."""
+    return "pcluster.utils.boto3"
+
+
 @pytest.mark.parametrize(
     "cfn_params_dict, expected_section_dict, expected_section_label",
     [
