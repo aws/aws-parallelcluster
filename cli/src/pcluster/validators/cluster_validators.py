@@ -14,7 +14,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from common.aws.aws_api import AWSApi
-from pcluster.constants import CIDR_ALL_IPS
+from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_OSES
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     InstanceTypeInfo,
@@ -33,7 +33,7 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": ["centos7", "centos8", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "x86_64": SUPPORTED_OSES,
     "arm64": ["ubuntu1804", "alinux2", "centos8"],
 }
 
