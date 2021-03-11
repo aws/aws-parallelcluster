@@ -1105,6 +1105,7 @@ class InstanceTypeInfo:
 
     def gpu_count(self):
         """Return the number of GPUs for the instance."""
+        # FixMe: this method is not used in the pcluster3 CLI
         gpu_info = self.instance_type_data.get("GpuInfo", None)
 
         gpu_count = 0

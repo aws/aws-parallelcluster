@@ -611,7 +611,8 @@ class ClusterDevSettings(BaseDevSettings):
 
     def _validate(self):
         super()._validate()
-        self._execute_validator(UrlValidator, url=self.cluster_template)
+        if self.cluster_template:
+            self._execute_validator(UrlValidator, url=self.cluster_template)
 
 
 # ---------------------- Nodes and Cluster ---------------------- #
@@ -687,12 +688,12 @@ class HeadNode(Resource):
     @property
     def architecture(self) -> str:
         """Compute cluster's architecture based on its head node instance type."""
-        return self._instance_type_info.supported_architecture()[0]
+        return self.instance_type_info.supported_architecture()[0]
 
     @property
     def vcpus(self) -> int:
         """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
-        instance_type_info = self._instance_type_info
+        instance_type_info = self.instance_type_info
         default_threads_per_core = instance_type_info.default_threads_per_core()
         return (
             instance_type_info.vcpus_count()
@@ -703,20 +704,20 @@ class HeadNode(Resource):
     @property
     def pass_cpu_options_in_launch_template(self) -> bool:
         """Check whether CPU Options must be passed in launch template for head node."""
-        return self.disable_simultaneous_multithreading and self._instance_type_info.is_cpu_options_supported_in_lt()
+        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
 
     @property
     def is_ebs_optimized(self) -> bool:
         """Return True if the instance has optimized EBS support."""
-        return self._instance_type_info.is_ebs_optimized()
+        return self.instance_type_info.is_ebs_optimized()
 
     @property
     def max_network_interface_count(self) -> int:
         """Return max number of NICs for the instance."""
-        return self._instance_type_info.max_network_interface_count()
+        return self.instance_type_info.max_network_interface_count()
 
     @property
-    def _instance_type_info(self) -> InstanceTypeInfo:
+    def instance_type_info(self) -> InstanceTypeInfo:
         """Return head node instance type information as returned from aws ec2 describe-instance-types."""
         if not self.__instance_type_info:
             self.__instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
@@ -1163,6 +1164,11 @@ class SlurmComputeResource(BaseComputeResource):
         self.spot_price = Resource.init_param(spot_price)
         self.efa = efa
 
+    @property
+    def instance_type_info(self) -> InstanceTypeInfo:
+        """Return instance type information."""
+        return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+
     def _validate(self):
         super()._validate()
         self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
@@ -1259,6 +1265,17 @@ class SlurmClusterConfig(BaseClusterConfig):
     def __init__(self, scheduling: SlurmScheduling, **kwargs):
         super().__init__(**kwargs)
         self.scheduling = scheduling
+
+    def get_instance_types_data(self):
+        """Get instance type infos for all instance types used in the configuration file."""
+        result = {}
+        instance_type_info = self.head_node.instance_type_info
+        result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                instance_type_info = compute_resource.instance_type_info
+                result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+        return result
 
     def _validate(self):
         super()._validate()

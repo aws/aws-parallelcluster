@@ -12,6 +12,7 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
+import json
 import logging
 import time
 from enum import Enum
@@ -25,7 +26,7 @@ from common.aws.aws_resources import InstanceInfo, StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
-from pcluster.models.cluster_config import ClusterBucket, Tag
+from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket, SlurmScheduling, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import (
@@ -217,7 +218,7 @@ class Cluster:
         return self.__source_config
 
     @property
-    def config(self):
+    def config(self) -> BaseClusterConfig:
         """Return ClusterConfig object."""
         if not self.__config:
             # TODO what if there is a ValidationError
@@ -368,6 +369,13 @@ class Cluster:
                     key=self._get_default_template_key(),
                 )
 
+            # Fixme: the code doesn't work for awsbatch
+            if isinstance(self.config.scheduling, SlurmScheduling):
+                AWSApi.instance().s3.put_object(
+                    bucket_name=self.bucket.name,
+                    body=json.dumps(self.config.get_instance_types_data()),
+                    key=self._get_instance_types_data_key(),
+                )
         except Exception as e:
             raise ClusterActionError(
                 f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
@@ -394,6 +402,9 @@ class Cluster:
 
     def _get_config_key(self):
         return f"{self.bucket.artifact_directory}/configs/cluster-config.yaml"
+
+    def _get_instance_types_data_key(self):
+        return f"{self.bucket.artifact_directory}/configs/instance-types-data.json"
 
     def delete(self, keep_logs: bool = True):
         """Delete cluster."""

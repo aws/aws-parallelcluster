@@ -69,7 +69,7 @@ class ClusterCdkStack(core.Stack):
     def _init_mappings(self):
         self.packages_versions = {
             "parallelcluster": utils.get_installed_version(),
-            "cookbook": "aws-parallelcluster-cookbook-2.10.1",
+            "cookbook": "aws-parallelcluster-cookbook-2.10.2",
             "chef": "15.11.8",
             "berkshelf": "7.0.10",
             "ami": "dev",
@@ -1093,6 +1093,8 @@ class ClusterCdkStack(core.Stack):
                     "cluster_s3_bucket": self._bucket.name,
                     "cluster_config_s3_key": f"{self._bucket.artifact_directory}/configs/cluster-config.yaml",
                     "cluster_config_version": self._cluster_config.config_version,
+                    "instance_types_data_s3_key": f"{self._bucket.artifact_directory}"
+                    "/configs/instance-types-data.json",
                 },
                 "run_list": f"recipe[aws-parallelcluster::{self._cluster_config.scheduling.scheduler}_config]",
             },
