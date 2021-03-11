@@ -576,11 +576,9 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
     "architecture, os, expected_message",
     [
         # Supported combinations
-        ("x86_64", "alinux", None),
         ("x86_64", "alinux2", None),
         ("x86_64", "centos7", None),
         ("x86_64", "centos8", None),
-        ("x86_64", "ubuntu1604", None),
         ("x86_64", "ubuntu1804", None),
         ("arm64", "ubuntu1804", None),
         ("arm64", "alinux2", None),
@@ -596,20 +594,6 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
         (
             "arm64",
             "centos7",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "arm64",
-            "alinux",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "arm64",
-            "ubuntu1604",
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),
@@ -670,8 +654,6 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
 @pytest.mark.parametrize(
     "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
     [
-        (True, "alinux", "t2.medium", None, None, "Please double check the os configuration"),
-        (False, "alinux", "t2.medium", None, None, None),  # doesn't fail because DCV is disabled
         (True, "centos7", "t2.medium", None, None, None),
         (True, "centos8", "t2.medium", None, None, None),
         (True, "ubuntu1804", "t2.medium", None, None, None),
@@ -720,9 +702,7 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
     [
         ("centos7", None),
         ("centos8", None),
-        ("alinux", "the operating system is required to be set"),
         ("alinux2", "the operating system is required to be set"),
-        ("ubuntu1604", "the operating system is required to be set"),
         ("ubuntu1804", "the operating system is required to be set"),
         # TODO migrate the parametrization below to unit test for the whole model
         # intel hpc disabled, you can use any os
