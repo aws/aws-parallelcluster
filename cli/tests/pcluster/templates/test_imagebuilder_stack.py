@@ -1260,6 +1260,10 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    mocker.patch(
+        "pcluster.utils.get_installed_version",
+        return_value="2.10.1",
+    )
     dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
     generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild, "Pcluster")
 
