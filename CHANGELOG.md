@@ -6,8 +6,9 @@ CHANGELOG
 
 **CHANGES**
 
+- Changed format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
 - Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
-- Add `--disable-update-check` parameter for the `create` command.
+- Add `--suppress-validators`, `--validation-failure-level` and`--disable-update-check` parameters to `create` command.
 - Deprecate `--config` parameter for `delete`, `status`, `start`, `stop`, `instances` and `list` commands.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
 - Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 

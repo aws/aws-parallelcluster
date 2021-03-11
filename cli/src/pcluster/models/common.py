@@ -117,7 +117,7 @@ class Resource(ABC):
         """Create a resource attribute backed by a Configuration Parameter."""
         return Resource.Param(value, default=default, update_policy=update_policy)
 
-    def validate(self):
+    def validate(self) -> List[ValidationResult]:
         """Execute registered validators."""
         # Cleanup failures
         self._validation_failures.clear()

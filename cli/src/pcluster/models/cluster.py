@@ -38,6 +38,7 @@ from pcluster.utils import (
     grouper,
     upload_resources_artifacts,
 )
+from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -235,16 +236,23 @@ class Cluster:
         """Return the cluster status."""
         return self.stack.status
 
-    def create(self, disable_rollback: bool = False):
+    def create(
+        self,
+        disable_rollback: bool = False,
+        suppress_validators: bool = False,
+        validation_failure_level: FailureLevel = FailureLevel.ERROR,
+    ):
         """Create cluster."""
         # check cluster existence
         if AWSApi.instance().cfn.stack_exists(self.stack_name):
             raise ClusterActionError(f"Cluster {self.name} already exists")
 
-        validation_failures = self.config.validate()
-        if validation_failures:
-            # TODO skip validation errors
-            raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+        if not suppress_validators:
+            validation_failures = self.config.validate()
+            for failure in validation_failures:
+                if failure.level.value > FailureLevel(validation_failure_level).value:
+                    # Raise the exception if there is a failure with a level greater than the specified one
+                    raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
 
         # Add tags information to the stack
         version = get_installed_version()
