@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pcluster.constants import SUPPORTED_OSS
 
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
@@ -16,7 +17,7 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 def get_supported_dcv_os(architecture):
     """Return a list of all the operating system supported by DCV."""
     architectures_dict = {
-        "x86_64": ["centos7", "centos8", "ubuntu1804", "alinux2"],
+        "x86_64": SUPPORTED_OSS,
         "arm64": ["ubuntu1804", "alinux2", "centos8"],
     }
     return architectures_dict.get(architecture, [])

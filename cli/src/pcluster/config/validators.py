@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 
-from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
+from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSS
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     InstanceTypeInfo,
@@ -90,7 +90,7 @@ FSX_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": ["centos7", "centos8", "ubuntu1804", "alinux2"],
+    "x86_64": SUPPORTED_OSS,
     "arm64": ["ubuntu1804", "alinux2", "centos8"],
 }
 

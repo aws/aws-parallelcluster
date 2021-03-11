@@ -29,6 +29,7 @@ import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
 import pcluster.createami as createami
 import pcluster.utils as utils
+from pcluster.constants import SUPPORTED_OSS
 from pcluster.dcv.connect import dcv_connect
 
 LOGGER = logging.getLogger(__name__)
@@ -360,7 +361,7 @@ Variables substituted::
         "--os",
         dest="base_ami_os",
         required=True,
-        help="Specifies the OS of the base AMI. " "Valid options are: alinux2, ubuntu1804, centos7, centos8.",
+        help="Specifies the OS of the base AMI. " "Valid options are: %s." % ", ".join(SUPPORTED_OSS),
     )
     pami.add_argument(
         "-i",
