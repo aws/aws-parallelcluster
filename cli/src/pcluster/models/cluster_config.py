@@ -21,6 +21,7 @@ import pkg_resources
 from common.aws.aws_api import AWSApi
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    CW_LOGS_RETENTION_DAYS_DEFAULT,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
     EBS_VOLUME_SIZE_DEFAULT,
@@ -451,7 +452,7 @@ class CloudWatchLogs(Resource):
     ):
         super().__init__()
         self.enabled = Resource.init_param(enabled, default=True)
-        self.retention_in_days = Resource.init_param(retention_in_days, default=14)
+        self.retention_in_days = Resource.init_param(retention_in_days, default=CW_LOGS_RETENTION_DAYS_DEFAULT)
         self.log_group_id = Resource.init_param(log_group_id)
         self.kms_key_id = Resource.init_param(kms_key_id)
 
@@ -764,63 +765,9 @@ class BaseComputeResource(Resource):
         self.disable_simultaneous_multithreading = Resource.init_param(
             disable_simultaneous_multithreading, default=False
         )
-        self.__instance_type_info = None
 
     def _validate(self):
         self._execute_validator(NameValidator, name=self.name)
-        self._execute_validator(
-            DisableSimultaneousMultithreadingArchitectureValidator,
-            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
-            architecture=self.architecture,
-        )
-
-    @property
-    def architecture(self) -> str:
-        """Compute cluster's architecture based on its head node instance type."""
-        return self._instance_type_info.supported_architecture()[0]
-
-    @property
-    def vcpus(self) -> int:
-        """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
-        instance_type_info = self._instance_type_info
-        default_threads_per_core = instance_type_info.default_threads_per_core()
-        return (
-            instance_type_info.vcpus_count()
-            if not self.disable_simultaneous_multithreading
-            else (instance_type_info.vcpus_count() // default_threads_per_core)
-        )
-
-    @property
-    def pass_cpu_options_in_launch_template(self) -> bool:
-        """Check whether CPU Options must be passed in launch template for head node."""
-        return self.disable_simultaneous_multithreading and self._instance_type_info.is_cpu_options_supported_in_lt()
-
-    @property
-    def is_ebs_optimized(self) -> bool:
-        """Return True if the instance has optimized EBS support."""
-        return self._instance_type_info.is_ebs_optimized()
-
-    @property
-    def max_network_interface_count(self) -> int:
-        """Return max number of NICs for the instance."""
-        return self._instance_type_info.max_network_interface_count()
-
-    @property
-    def _instance_type_info(self) -> InstanceTypeInfo:
-        """Return instance type information as returned from aws ec2 describe-instance-types."""
-        if not self.__instance_type_info:
-            self.__instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
-        return self.__instance_type_info
-
-    @property
-    def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
-        """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
-
-    @property
-    def disable_simultaneous_multithreading_manually(self) -> bool:
-        """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.disable_simultaneous_multithreading_via_cpu_options
 
 
 class ComputeType(Enum):
@@ -920,14 +867,6 @@ class BaseClusterConfig(Resource):
                     instance_type=compute_resource.instance_type,
                     image=self.ami_id,
                 )
-                if compute_resource.efa:
-                    self._execute_validator(
-                        EfaOsArchitectureValidator,
-                        efa_enabled=compute_resource.efa.enabled,
-                        os=self.image.os,
-                        # FIXME: head_node.architecture vs compute_resource.architecture?
-                        architecture=self.head_node.architecture,
-                    )
         if self.head_node.efa:
             self._execute_validator(
                 EfaOsArchitectureValidator,
@@ -1189,7 +1128,7 @@ class AwsbatchClusterConfig(BaseClusterConfig):
     @property
     def scheduler_resources(self):
         """Return scheduler specific resources."""
-        return pkg_resources.resource_filename(__name__, "resources/batch")
+        return pkg_resources.resource_filename(__name__, "../resources/batch")
 
 
 class SlurmComputeResource(BaseComputeResource):
@@ -1203,6 +1142,7 @@ class SlurmComputeResource(BaseComputeResource):
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
         self.efa = efa
+        self.__instance_type_info = None
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
@@ -1217,6 +1157,11 @@ class SlurmComputeResource(BaseComputeResource):
             min_count=self.min_count,
             max_count=self.max_count,
         )
+        self._execute_validator(
+            DisableSimultaneousMultithreadingArchitectureValidator,
+            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
+            architecture=self.architecture,
+        )
         if self.efa:
             self._execute_validator(
                 EfaValidator,
@@ -1224,6 +1169,54 @@ class SlurmComputeResource(BaseComputeResource):
                 efa_enabled=self.efa.enabled,
                 gdr_support=self.efa.gdr_support,
             )
+
+    @property
+    def architecture(self) -> str:
+        """Compute cluster's architecture based on its head node instance type."""
+        return self._instance_type_info.supported_architecture()[0]
+
+    @property
+    def vcpus(self) -> int:
+        """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
+        instance_type_info = self._instance_type_info
+        default_threads_per_core = instance_type_info.default_threads_per_core()
+        return (
+            instance_type_info.vcpus_count()
+            if not self.disable_simultaneous_multithreading
+            else (instance_type_info.vcpus_count() // default_threads_per_core)
+        )
+
+    @property
+    def pass_cpu_options_in_launch_template(self) -> bool:
+        """Check whether CPU Options must be passed in launch template for head node."""
+        return self.disable_simultaneous_multithreading and self._instance_type_info.is_cpu_options_supported_in_lt()
+
+    @property
+    def is_ebs_optimized(self) -> bool:
+        """Return True if the instance has optimized EBS support."""
+        return self._instance_type_info.is_ebs_optimized()
+
+    @property
+    def max_network_interface_count(self) -> int:
+        """Return max number of NICs for the instance."""
+        return self._instance_type_info.max_network_interface_count()
+
+    @property
+    def _instance_type_info(self) -> InstanceTypeInfo:
+        """Return instance type information as returned from aws ec2 describe-instance-types."""
+        if not self.__instance_type_info:
+            self.__instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return self.__instance_type_info
+
+    @property
+    def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
+        """Return true if simultaneous multithreading must be disabled through cpu options."""
+        return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
+
+    @property
+    def disable_simultaneous_multithreading_manually(self) -> bool:
+        """Return true if simultaneous multithreading must be disabled with a cookbook script."""
+        return self.disable_simultaneous_multithreading and not self.disable_simultaneous_multithreading_via_cpu_options
 
 
 class SlurmQueue(BaseQueue):
@@ -1328,6 +1321,14 @@ class SlurmClusterConfig(BaseClusterConfig):
                     instance_type=compute_resource.instance_type,
                     architecture=self.head_node.architecture,
                 )
+                if compute_resource.efa:
+                    self._execute_validator(
+                        EfaOsArchitectureValidator,
+                        efa_enabled=compute_resource.efa.enabled,
+                        os=self.image.os,
+                        # FIXME: head_node.architecture vs compute_resource.architecture?
+                        architecture=self.head_node.architecture,
+                    )
 
 
 class ClusterBucket:

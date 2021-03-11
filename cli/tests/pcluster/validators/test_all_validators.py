@@ -56,7 +56,7 @@ def test_all_validators_are_called(test_datadir, mocker):
         "pcluster.models.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
     )
     mocker.patch(
-        "pcluster.models.cluster_config.BaseComputeResource.architecture",
+        "pcluster.models.cluster_config.SlurmComputeResource.architecture",
         new_callable=PropertyMock(return_value="x86_64"),
     )
     mocker.patch(
@@ -169,7 +169,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         "pcluster.models.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
     )
     mocker.patch(
-        "pcluster.models.cluster_config.BaseComputeResource.architecture",
+        "pcluster.models.cluster_config.SlurmComputeResource.architecture",
         new_callable=PropertyMock(return_value="x86_64"),
     )
 
