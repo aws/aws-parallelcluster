@@ -146,7 +146,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
     test_efs.py::test_efs_compute_az:
       dimensions:

@@ -173,7 +173,7 @@ disable_hyperthreading:
   test_disable_hyperthreading.py::test_sit_disable_hyperthreading:
     dimensions:
       # Manually disabled HT
-      {%- for os, scheduler in [("centos8", "torque"), ("ubuntu1804", "sge")] %}
+      {%- for os, scheduler in [("centos7", "torque"), ("ubuntu1804", "sge")] %}
       - regions: ["sa-east-1"]
         instances: ["m4.xlarge"]
         oss: ["{{ os }}"]

@@ -111,7 +111,13 @@ from pcluster.config.validators import (
     tags_validator,
     url_validator,
 )
-from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
+from pcluster.constants import (
+    CIDR_ALL_IPS,
+    FSX_HDD_THROUGHPUT,
+    FSX_SSD_THROUGHPUT,
+    SUPPORTED_ARCHITECTURES,
+    SUPPORTED_OSS,
+)
 
 CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator, region_validator]
 # This file contains a definition of all the sections and the parameters configurable by the user
@@ -811,7 +817,7 @@ CLUSTER_COMMON_PARAMS = [
     ("base_os", {
         "type": BaseOSCfnParam,
         "cfn_param_mapping": "BaseOS",
-        "allowed_values": ["alinux2", "ubuntu1804", "centos7", "centos8"],
+        "allowed_values": SUPPORTED_OSS,
         "validators": [architecture_os_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
