@@ -5,6 +5,7 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 
+- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2.
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
 
 **CHANGES**
