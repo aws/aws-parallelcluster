@@ -18,6 +18,8 @@ CHANGELOG
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
 - Add possibility to configure different security groups for each queue.
+- Add support for multiple subnets when using AWS Batch.
+- Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
 
 2.10.1
 ------

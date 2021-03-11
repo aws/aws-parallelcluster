@@ -19,7 +19,12 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import core
 
-from pcluster.constants import COOKBOOK_PACKAGES_VERSIONS, OS_MAPPING, PCLUSTER_STACK_PREFIX
+from pcluster.constants import (
+    CW_LOGS_RETENTION_DAYS_DEFAULT,
+    COOKBOOK_PACKAGES_VERSIONS,
+    OS_MAPPING,
+    PCLUSTER_STACK_PREFIX,
+)
 from pcluster.models.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
@@ -117,11 +122,12 @@ def get_shared_storage_options_by_type(shared_storage_options: dict, storage_typ
     )
 
 
-def get_custom_tags(config: BaseClusterConfig):
+def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     """Return a list of tags set by the user."""
-    custom_tags = []
-    if config.tags:
-        custom_tags = [core.CfnTag(key=tag.key, value=tag.value) for tag in config.tags]
+    if raw_dict:
+        custom_tags = {tag.key: tag.value for tag in config.tags} if config.tags else {}
+    else:
+        custom_tags = [core.CfnTag(key=tag.key, value=tag.value) for tag in config.tags] if config.tags else []
     return custom_tags
 
 
@@ -131,45 +137,41 @@ def get_default_instance_tags(
     node: Union[HeadNode, BaseComputeResource],
     node_type: str,
     shared_storage_ids: dict,
+    raw_dict: bool = False,
 ):
     """Return a list of default tags to be used for instances."""
-    return [
-        core.CfnTag(key="Name", value=node_type),
-        core.CfnTag(key="ClusterName", value=cluster_name(stack_name)),
-        core.CfnTag(key="Application", value=stack_name),
-        core.CfnTag(key="aws-parallelcluster-node-type", value=node_type),
-        core.CfnTag(
-            key="aws-parallelcluster-attributes",
-            value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
-                BaseOS=config.image.os,
-                Scheduler=config.scheduling.scheduler,
-                Version=get_installed_version(),
-                Architecture=node.architecture,
-            ),
+    tags = {
+        "Name": node_type,
+        "ClusterName": cluster_name(stack_name),
+        "Application": stack_name,
+        "aws-parallelcluster-node-type": node_type,
+        "aws-parallelcluster-attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
+            BaseOS=config.image.os,
+            Scheduler=config.scheduling.scheduler,
+            Version=get_installed_version(),
+            Architecture=node.architecture if hasattr(node, "architecture") else "NONE",
         ),
-        core.CfnTag(
-            key="aws-parallelcluster-networking",
-            value="EFA={0}".format("true" if node.efa and node.efa.enabled else "NONE"),
+        "aws-parallelcluster-networking": "EFA={0}".format(
+            "true" if hasattr(node, "efa") and node.efa and node.efa.enabled else "NONE"
         ),
-        core.CfnTag(
-            key="aws-parallelcluster-filesystem",
-            value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
-                efs=len(shared_storage_ids[SharedStorageType.EFS]),
-                multiebs=len(shared_storage_ids[SharedStorageType.EBS]),
-                raid=len(shared_storage_ids[SharedStorageType.RAID]),
-                fsx=len(shared_storage_ids[SharedStorageType.FSX]),
-            ),
+        "aws-parallelcluster-filesystem": "efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
+            efs=len(shared_storage_ids[SharedStorageType.EFS]),
+            multiebs=len(shared_storage_ids[SharedStorageType.EBS]),
+            raid=len(shared_storage_ids[SharedStorageType.RAID]),
+            fsx=len(shared_storage_ids[SharedStorageType.FSX]),
         ),
-    ]
+    }
+    return tags if raw_dict else [core.CfnTag(key=key, value=value) for key, value in tags.items()]
 
 
-def get_default_volume_tags(stack_name: str, node_type: str):
+def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = False):
     """Return a list of default tags to be used for volumes."""
-    return [
-        core.CfnTag(key="ClusterName", value=cluster_name(stack_name)),
-        core.CfnTag(key="Application", value=stack_name),
-        core.CfnTag(key="aws-parallelcluster-node-type", value=node_type),
-    ]
+    tags = {
+        "ClusterName": cluster_name(stack_name),
+        "Application": stack_name,
+        "aws-parallelcluster-node-type": node_type,
+    }
+    return tags if raw_dict else [core.CfnTag(key=key, value=value) for key, value in tags.items()]
 
 
 def get_lambda_assume_role_policy_document():
@@ -185,7 +187,7 @@ def get_lambda_assume_role_policy_document():
     )
 
 
-def get_cloud_watch_logs_policy_statement(resource: str):
+def get_cloud_watch_logs_policy_statement(resource: str) -> iam.PolicyStatement:
     """Return CloudWatch Logs policy statement."""
     return iam.PolicyStatement(
         actions=["logs:CreateLogStream", "logs:PutLogEvents"],
@@ -193,6 +195,32 @@ def get_cloud_watch_logs_policy_statement(resource: str):
         resources=[resource],
         sid="CloudWatchLogsPolicy",
     )
+
+
+def get_cloud_watch_logs_retention_days(config: BaseClusterConfig) -> int:
+    """Return value to use for CloudWatch logs retention days."""
+    return (
+        config.monitoring.logs.cloud_watch.retention_in_days
+        if config.is_cw_logging_enabled
+        else CW_LOGS_RETENTION_DAYS_DEFAULT
+    )
+
+
+def get_queue_security_groups_full(compute_security_groups: dict, queue: BaseQueue):
+    """Return full security groups to be used for the queue, default plus additional ones."""
+    queue_security_groups = []
+
+    # Default security groups, created by us or provided by the user
+    if compute_security_groups and compute_security_groups.get(queue.name, None):
+        queue_security_groups.append(compute_security_groups[queue.name])
+    elif queue.networking.security_groups:
+        queue_security_groups.extend(queue.networking.security_groups)
+
+    # Additional security groups
+    if queue.networking.additional_security_groups:
+        queue_security_groups.extend(queue.networking.additional_security_groups)
+
+    return queue_security_groups
 
 
 class PclusterLambdaConstruct(core.Construct):
@@ -206,6 +234,7 @@ class PclusterLambdaConstruct(core.Construct):
         bucket: ClusterBucket,
         execution_role: iam.CfnRole,
         handler_func: str,
+        timeout: int = 900,
     ):
         super().__init__(scope, id)
         self.lambda_func = awslambda.CfnFunction(
@@ -220,7 +249,7 @@ class PclusterLambdaConstruct(core.Construct):
             memory_size=128,
             role=execution_role,
             runtime="python3.8",
-            timeout=900,
+            timeout=timeout,
         )
 
     def _stack_unique_id(self):

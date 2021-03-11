@@ -52,3 +52,5 @@ COOKBOOK_PACKAGES_VERSIONS = {
     "berkshelf": "7.0.10",
     "ami": "dev",
 }
+
+CW_LOGS_RETENTION_DAYS_DEFAULT = 14

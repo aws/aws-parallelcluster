@@ -96,22 +96,6 @@ class SlurmConstruct(core.Construct):
     def _format_arn(self, **kwargs):
         return core.Stack.of(self).format_arn(**kwargs)
 
-    def _get_queue_security_groups_full(self, queue):
-        """Return full security groups to be used for the queeu, default plus additional ones."""
-        queue_security_groups = []
-
-        # Default security groups, created by us or provided by the user
-        if self.compute_security_groups and self.compute_security_groups.get(queue.name, None):
-            queue_security_groups.append(self.compute_security_groups[queue.name])
-        elif queue.networking.security_groups:
-            queue_security_groups.extend(queue.networking.security_groups)
-
-        # Additional security groups
-        if queue.networking.additional_security_groups:
-            queue_security_groups.extend(queue.networking.additional_security_groups)
-
-        return queue_security_groups
-
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
     def _add_resources(self):
@@ -209,7 +193,7 @@ class SlurmConstruct(core.Construct):
             self.cluster_hosted_zone = self._add_private_hosted_zone()
 
         for queue in self.config.scheduling.queues:
-            queue_lt_security_groups = self._get_queue_security_groups_full(queue)
+            queue_lt_security_groups = get_queue_security_groups_full(self.compute_security_groups, queue)
 
             queue_placement_group = None
             if queue.networking.placement_group and queue.networking.placement_group.enabled:

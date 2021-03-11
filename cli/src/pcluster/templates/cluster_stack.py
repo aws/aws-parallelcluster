@@ -35,6 +35,7 @@ from pcluster.models.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
+from pcluster.templates.awsbatch_builder import AwsbatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     create_hash_suffix,
@@ -167,7 +168,22 @@ class ClusterCdkStack(core.Stack):
             )
 
         # Head Node
-        self._add_head_node()
+        self.head_node_instance = self._add_head_node()
+
+        # AWS Batch related resources
+        if self.config.scheduling.scheduler == "awsbatch":
+            self.scheduler_resources = AwsbatchConstruct(
+                scope=self,
+                id="Awsbatch",
+                stack_name=self._stack_name,
+                cluster_config=self.config,
+                bucket=self.bucket,
+                create_lambda_roles=self._condition_create_lambda_iam_role(),
+                compute_security_groups=self.compute_security_groups,  # Empty dict if provided by the user
+                shared_storage_ids=self.shared_storage_ids,
+                shared_storage_options=self.shared_storage_options,
+                head_node_instance=self.head_node_instance,
+            )
 
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
         """Create role and policies for the given node/queue."""
@@ -306,7 +322,7 @@ class ClusterCdkStack(core.Stack):
                     # Create a new security group
                     compute_security_group = self._add_compute_security_group()
                 # Associate created security group to the queue
-                self.compute_security_groups[queue.name] = compute_security_group
+                self.compute_security_groups[queue.name] = compute_security_group.ref
 
         if head_security_group and compute_security_group:
             # Access to head node from compute nodes
@@ -1088,7 +1104,7 @@ class ClusterCdkStack(core.Stack):
         }
 
         head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
-        self.head_node_instance = ec2.CfnInstance(
+        head_node_instance = ec2.CfnInstance(
             self,
             id="MasterServer",  # FIXME
             launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
@@ -1096,9 +1112,11 @@ class ClusterCdkStack(core.Stack):
                 version=head_node_launch_template.attr_latest_version_number,
             ),
         )
-        self.head_node_instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+        head_node_instance.cfn_options.creation_policy = core.CfnCreationPolicy(
             resource_signal=core.CfnResourceSignal(count=1, timeout="PT30M")
         )
+
+        return head_node_instance
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
