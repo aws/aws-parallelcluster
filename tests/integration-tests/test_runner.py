@@ -71,6 +71,7 @@ TEST_DEFAULTS = {
     "keep_logs_on_cluster_failure": False,
     "keep_logs_on_test_failure": False,
     "tests_root_dir": "./tests",
+    "instance_types_data": None,
 }
 
 
@@ -251,6 +252,13 @@ def _init_argparser():
     custom_group.add_argument(
         "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install")
     )
+    custom_group.add_argument(
+        "--instance-types-data",
+        help="Additional information about instance types used in the tests. The format is a JSON map "
+        "instance_type -> data, where data must respect the same structure returned by ec2 "
+        "describe-instance-types",
+        default=TEST_DEFAULTS.get("instance_types_data"),
+    )
 
     banchmarks_group = parser.add_argument_group("Benchmarks")
     banchmarks_group.add_argument(
@@ -380,6 +388,9 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append(" or ".join(list(_join_with_not(args.features))))
     if args.tests_config:
         _set_tests_config_args(args, pytest_args, out_dir)
+    if args.instance_types_data:
+        pytest_args.append("--instance-types-data-file={0}".format(args.instance_types_data))
+
     if regions:
         pytest_args.append("--regions")
         pytest_args.extend(regions)
