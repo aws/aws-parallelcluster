@@ -30,7 +30,7 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from api.pcluster_api import ApiFailure, ClusterInfo, FullClusterInfo, PclusterApi
+from api.pcluster_api import ApiFailure, ClusterInfo, ClusterStackInfo, PclusterApi
 from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX
@@ -244,8 +244,10 @@ def create(args):
         cluster_name=args.cluster_name,
         region=utils.get_region(),
         disable_rollback=args.norollback,
+        suppress_validators=args.suppress_validators,
+        validation_failure_level=args.validation_failure_level,
     )
-    if isinstance(result, ClusterInfo):
+    if isinstance(result, ClusterStackInfo):
         print(f"Cluster creation started successfully. {result}")
 
         if not args.nowait:
@@ -253,7 +255,7 @@ def create(args):
             LOGGER.info("")
 
             result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, ClusterInfo):
+            if isinstance(result, ClusterStackInfo):
                 _print_stack_outputs(result.stack_outputs)
             else:
                 utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
@@ -363,7 +365,7 @@ def instances(args):
     """Print the list of instances associated to the cluster."""
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, FullClusterInfo):
+        if isinstance(result, ClusterInfo):
             cluster_instances = []
             if result.head_node:
                 cluster_instances.append(("Head node\t", result.head_node.id))
@@ -393,7 +395,7 @@ def ssh(args, extra_args):
     """
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, FullClusterInfo):
+        if isinstance(result, ClusterInfo):
             try:
                 from shlex import quote as cmd_quote
             except ImportError:
@@ -425,7 +427,7 @@ def status(args):  # noqa: C901 FIXME!!!
     """Get cluster status."""
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterInfo):
+        if isinstance(result, ClusterStackInfo):
             # print(f"{result}")
             sys.stdout.write("\rStatus: %s" % result.stack_status)
             sys.stdout.flush()
@@ -450,7 +452,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 sys.stdout.write("\rStatus: %s\n" % result.stack_status)
                 sys.stdout.flush()
                 if result.stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
-                    if isinstance(result, FullClusterInfo) and result.head_node:
+                    if isinstance(result, ClusterInfo) and result.head_node:
                         head_node_state = result.head_node.state
                         LOGGER.info("MasterServer: %s" % head_node_state.upper())
                         if head_node_state == "running":
@@ -487,7 +489,7 @@ def delete(args):
     try:
         # delete cluster raises an exception if stack does not exist
         result = PclusterApi().delete_cluster(args.cluster_name, utils.get_region(), args.keep_logs)
-        if isinstance(result, ClusterInfo):
+        if isinstance(result, ClusterStackInfo):
             print(f"Cluster deletion started correctly. {result}")
         else:
             utils.error(f"Cluster deletion failed. {result.message}")
@@ -499,7 +501,7 @@ def delete(args):
             while result.stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
                 result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-                if isinstance(result, ClusterInfo):
+                if isinstance(result, ClusterStackInfo):
                     events = utils.get_stack_events(result.stack_name, raise_on_error=True)[0]
                     resource_status = (
                         "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))

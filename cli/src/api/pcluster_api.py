@@ -19,6 +19,7 @@ from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatu
 from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
 from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError
 from pcluster.utils import get_installed_version, get_region
+from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,12 +32,8 @@ class ApiFailure:
         self.validation_failures = validation_failures or []
 
 
-class ClusterInfo:
-    """
-    Minimal representation of a running cluster.
-
-    All the information are retrieved from the stack.
-    """
+class ClusterStackInfo:
+    """Minimal representation of a running cluster. All the information are retrieved from the stack."""
 
     def __init__(self, stack: ClusterStack):
         # Cluster info
@@ -54,8 +51,8 @@ class ClusterInfo:
         return json.dumps(self.__dict__)
 
 
-class FullClusterInfo(ClusterInfo):
-    """Full representation of a running cluster."""
+class ClusterInfo(ClusterStackInfo):
+    """Full representation of a running cluster. Info are retrieved from stack, config file and running resources."""
 
     def __init__(self, cluster: Cluster):
         super().__init__(cluster.stack)
@@ -92,7 +89,14 @@ class PclusterApi:
         pass
 
     @staticmethod
-    def create_cluster(cluster_config: dict, cluster_name: str, region: str, disable_rollback: bool = False):
+    def create_cluster(
+        cluster_config: dict,
+        cluster_name: str,
+        region: str,
+        disable_rollback: bool = False,
+        suppress_validators: bool = False,
+        validation_failure_level: FailureLevel = None,
+    ):
         """
         Load cluster model from cluster_config and create stack.
 
@@ -100,14 +104,16 @@ class PclusterApi:
         :param cluster_name: the name to assign to the cluster
         :param region: AWS region
         :param disable_rollback: Disable rollback in case of failures
+        :param suppress_validators: Disable validator execution
+        :param validation_failure_level: Min validation level that will cause the creation to fail
         """
         try:
             # Generate model from config dict and validate
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
             cluster = Cluster(cluster_name, cluster_config)
-            cluster.create(disable_rollback)
-            return ClusterInfo(cluster.stack)
+            cluster.create(disable_rollback, suppress_validators, validation_failure_level)
+            return ClusterStackInfo(cluster.stack)
         except ClusterActionError as e:
             return ApiFailure(str(e), e.validation_failures)
         except Exception as e:
@@ -123,9 +129,9 @@ class PclusterApi:
             cluster = Cluster(cluster_name)
             cluster.delete(keep_logs)
             if PclusterApi._is_version_2(cluster):
-                return ClusterInfo(cluster.stack)
+                return ClusterStackInfo(cluster.stack)
             else:
-                return FullClusterInfo(cluster)
+                return ClusterInfo(cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -138,9 +144,9 @@ class PclusterApi:
 
             cluster = Cluster(cluster_name)
             if PclusterApi._is_version_2(cluster):
-                return ClusterInfo(cluster.stack)
+                return ClusterStackInfo(cluster.stack)
             else:
-                return FullClusterInfo(cluster)
+                return ClusterInfo(cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -161,7 +167,7 @@ class PclusterApi:
                     "This operation may only be performed using the same ParallelCluster "
                     "version used to create the cluster."
                 )
-            return FullClusterInfo(cluster)
+            return ClusterInfo(cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -173,7 +179,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             stacks = AWSApi.instance().cfn.list_pcluster_stacks()
-            return [ClusterInfo(ClusterStack(stack)) for stack in stacks]
+            return [ClusterStackInfo(ClusterStack(stack)) for stack in stacks]
 
         except Exception as e:
             return ApiFailure(str(e))

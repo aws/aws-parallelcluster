@@ -20,9 +20,12 @@ from enum import Enum
 class FailureLevel(Enum):
     """Validation failure level."""
 
-    ERROR = 40
-    WARNING = 30
     INFO = 20
+    WARNING = 30
+    ERROR = 40
+
+    def __str__(self):
+        return str(self.name)
 
 
 class ValidationResult:

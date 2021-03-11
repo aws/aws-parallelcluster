@@ -26,6 +26,7 @@ import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
 import pcluster.utils as utils
 from pcluster.dcv.connect import dcv_connect
+from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -120,6 +121,13 @@ def _addarg_nowait(subparser):
     )
 
 
+def _failure_level_type(failure_level_string):
+    try:
+        return FailureLevel[failure_level_string.upper()]
+    except KeyError:
+        raise argparse.ArgumentError()
+
+
 def _get_parser():
     """
     Initialize ArgumentParser for pcluster commands.
@@ -160,6 +168,16 @@ Examples::
         action="store_true",
         default=False,
         help="Disable check for ParallelCluster updates.",
+    )
+    pcreate.add_argument(
+        "--suppress-validators", action="store_true", default=False, help="Disable validators execution."
+    )
+    pcreate.add_argument(
+        "--validation-failure-level",
+        type=_failure_level_type,
+        choices=list(FailureLevel),
+        default=FailureLevel.ERROR.name,
+        help="Min validation level that will cause the creation to fail.",
     )
     _addarg_config(pcreate)
     _addarg_region(pcreate)
