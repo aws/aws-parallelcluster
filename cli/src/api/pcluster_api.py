@@ -44,8 +44,12 @@ class ClusterStackInfo:
         self.stack_name = stack.name
         self.stack_status = stack.status
         self.stack_outputs = stack.outputs
+        if stack.is_working_status:
+            self.head_node_ip = stack.head_node_ip
+            self.user = stack.head_node_user
         self.region = get_region()
         self.version = stack.version
+        self.scheduler = stack.scheduler
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -56,15 +60,9 @@ class ClusterInfo(ClusterStackInfo):
 
     def __init__(self, cluster: Cluster):
         super().__init__(cluster.stack)
-        stack_status = cluster.stack.updated_status()
-        if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
-            # Head node info
+        if cluster.stack.is_working_status:
             self.head_node = cluster.head_node_instance
-            self.head_node_ip = cluster.head_node_ip
-            self.user = cluster.head_node_user
         self.compute_instances = cluster.compute_instances
-        # Config info
-        self.scheduler = cluster.config.scheduling.scheduler
 
 
 class ImageInfo:

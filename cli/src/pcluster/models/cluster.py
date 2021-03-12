@@ -96,6 +96,21 @@ class ClusterStack(StackInfo):
         """Return the artifact directory of the bucket used to store cluster information."""
         return self._get_output("ArtifactS3RootDirectory")
 
+    @property
+    def head_node_user(self):
+        """Return the output storing cluster user."""
+        return self._get_output("ClusterUser")
+
+    @property
+    def head_node_ip(self):
+        """Return the IP to be used to connect to the head node, public or private."""
+        return self._get_output("MasterPublicIP") or self._get_output("MasterPrivateIP")
+
+    @property
+    def scheduler(self):
+        """Return the scheduler used in the cluster."""
+        return self._get_output("Scheduler")
+
     def get_cluster_config_dict(self):
         """Retrieve cluster config content."""
         if not self.s3_bucket_name:
