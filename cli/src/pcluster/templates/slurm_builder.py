@@ -58,7 +58,7 @@ class SlurmConstruct(core.Construct):
         cleanup_lambda_role: iam.CfnRole,
         cleanup_lambda: awslambda.CfnFunction,
         compute_security_groups: dict,
-        shared_storage_ids: dict,
+        shared_storage_mappings: dict,
         shared_storage_options: dict,
         **kwargs,
     ):
@@ -73,7 +73,7 @@ class SlurmConstruct(core.Construct):
         self.cleanup_lambda_role = cleanup_lambda_role
         self.cleanup_lambda = cleanup_lambda
         self.compute_security_groups = compute_security_groups
-        self.shared_storage_ids = shared_storage_ids
+        self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
 
         self._add_resources()
@@ -473,11 +473,15 @@ class SlurmConstruct(core.Construct):
                                 "PostInstallArgs": queue_post_install_action.args
                                 if queue_pre_install_action
                                 else "NONE",
-                                "EFSId": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EFS),
+                                "EFSId": get_shared_storage_ids_by_type(
+                                    self.shared_storage_mappings, SharedStorageType.EFS
+                                ),
                                 "EFSOptions": get_shared_storage_options_by_type(
                                     self.shared_storage_options, SharedStorageType.EFS
                                 ),  # FIXME
-                                "FSXId": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.FSX),
+                                "FSXId": get_shared_storage_ids_by_type(
+                                    self.shared_storage_mappings, SharedStorageType.FSX
+                                ),
                                 "FSXOptions": get_shared_storage_options_by_type(
                                     self.shared_storage_options, SharedStorageType.FSX
                                 ),
@@ -518,7 +522,7 @@ class SlurmConstruct(core.Construct):
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=get_default_instance_tags(
-                            self.stack_name, self.config, compute_resource, "Compute", self.shared_storage_ids
+                            self.stack_name, self.config, compute_resource, "Compute", self.shared_storage_mappings
                         )
                         + [core.CfnTag(key="QueueName", value=queue.name)]
                         + get_custom_tags(self.config),

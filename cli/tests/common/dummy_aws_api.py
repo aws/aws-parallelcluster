@@ -94,6 +94,19 @@ class DummyEc2Client(Ec2Client):
     def get_official_image_id(self, os, architecture):
         return "dummy-ami-id"
 
+    def describe_subnets(self, subnet_ids):
+        return [
+            {
+                "AvailabilityZone": "string",
+                "AvailabilityZoneId": "string",
+                "SubnetId": "subnet-123",
+                "VpcId": "vpc-123",
+            },
+        ]
+
+    def get_subnet_vpc(self, subnet_id):
+        return "vpc-123"
+
 
 class DummyEfsClient(Ec2Client):
     def __init__(self):
