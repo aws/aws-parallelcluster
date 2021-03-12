@@ -1,0 +1,47 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: String
+  Ssh:
+    KeyName: String
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Awsbatch:
+    Queues:
+      - Name: queue1
+        Networking:
+          SubnetIds:
+            - subnet-12345678
+            - subnet-23456789
+        ComputeResources:
+          - Name: compute_resource1
+            InstanceType: c4.xlarge
+            MaxvCpus: 10
+SharedStorage:
+  - MountDir: /my/mount/ebs1
+    Ebs:
+      VolumeType: sc1
+  - MountDir: /my/mount/ebs2
+    Ebs:
+      VolumeType: st1
+  - MountDir: /my/mount/ebs3
+    Ebs:
+      VolumeType: gp2
+  - MountDir: /my/mount/ebs4
+    Ebs:
+      VolumeType: sc1
+  - MountDir: /my/mount/ebs5
+    Ebs:
+      VolumeType: st1
+Monitoring:
+  DetailedMonitoring: true
+  Logs:
+    CloudWatch:
+      Enabled: false
+      RetentionInDays: 14
+      LogGroupId: String
+      KmsKeyId: String
+  Dashboards:
+    CloudWatch:
+      Enabled: true

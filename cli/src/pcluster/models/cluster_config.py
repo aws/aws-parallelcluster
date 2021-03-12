@@ -21,6 +21,8 @@ import pkg_resources
 from common.aws.aws_api import AWSApi
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    CW_DASHBOARD_ENABLED_DEFAULT,
+    CW_LOGS_ENABLED_DEFAULT,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
     DEFAULT_MAX_COUNT,
     DEFAULT_MIN_COUNT,
@@ -451,7 +453,7 @@ class CloudWatchLogs(Resource):
         kms_key_id: str = None,
     ):
         super().__init__()
-        self.enabled = Resource.init_param(enabled, default=True)
+        self.enabled = Resource.init_param(enabled, default=CW_LOGS_ENABLED_DEFAULT)
         self.retention_in_days = Resource.init_param(retention_in_days, default=CW_LOGS_RETENTION_DAYS_DEFAULT)
         self.log_group_id = Resource.init_param(log_group_id)
         self.kms_key_id = Resource.init_param(kms_key_id)
@@ -469,7 +471,7 @@ class CloudWatchDashboards(Resource):
         enabled: bool = None,
     ):
         super().__init__()
-        self.enabled = Resource.init_param(enabled, default=True)
+        self.enabled = Resource.init_param(enabled, default=CW_DASHBOARD_ENABLED_DEFAULT)
 
 
 class Logs(Resource):
@@ -844,7 +846,7 @@ class BaseClusterConfig(Resource):
         self.dev_settings = dev_settings
         self.cluster_template_body = None
         self.source_config = None
-        self.config_version = None
+        self.config_version = ""
 
     def _validate(self):
         self._execute_validator(
@@ -1030,6 +1032,20 @@ class BaseClusterConfig(Resource):
             if self.monitoring and self.monitoring.logs and self.monitoring.logs.cloud_watch
             else False
         )
+
+    @property
+    def is_cw_dashboard_enabled(self):
+        """Return True if CloudWatch Dashboard is enabled."""
+        return (
+            self.monitoring.dashboards.cloud_watch.enabled
+            if self.monitoring and self.monitoring.dashboards and self.monitoring.dashboards.cloud_watch
+            else False
+        )
+
+    @property
+    def is_dcv_enabled(self):
+        """Return True if DCV is enabled."""
+        return self.head_node.dcv and self.head_node.dcv.enabled
 
     @property
     def extra_chef_attributes(self):

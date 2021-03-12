@@ -13,6 +13,7 @@
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
 import json
+from collections import namedtuple
 from datetime import datetime
 from typing import Union
 
@@ -54,10 +55,13 @@ from pcluster.templates.cdk_builder_utils import (
     get_shared_storage_options_by_type,
     get_user_data_content,
 )
+from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
 from pcluster.utils import get_availability_zone_of_subnet
 
 # pylint: disable=too-many-lines
+
+StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
 
 class ClusterCdkStack(core.Stack):
@@ -80,7 +84,7 @@ class ClusterCdkStack(core.Stack):
         self.instance_roles = {}
         self.instance_profiles = {}
         self.compute_security_groups = {}
-        self.shared_storage_ids = {storage_type: [] for storage_type in SharedStorageType}
+        self.shared_storage_mappings = {storage_type: [] for storage_type in SharedStorageType}
         self.shared_storage_options = {storage_type: "NONE" for storage_type in SharedStorageType}
 
         self._add_resources()
@@ -117,7 +121,7 @@ class ClusterCdkStack(core.Stack):
     def _add_resources(self):
         # Cloud Watch Logs
         if self.config.is_cw_logging_enabled:
-            self._add_cluster_log_group()
+            self.log_group = self._add_cluster_log_group()
 
         # Head Node EC2 Iam Role
         self._add_role_and_policies(self.config.head_node, "HeadNode")
@@ -146,9 +150,6 @@ class ClusterCdkStack(core.Stack):
         # ToDo: evaluate other approaches to store cluster states
         self.dynamodb_table = self._add_dynamodb_table()
 
-        # CloudWatchDashboardSubstack
-        # TODO: inline resources
-
         if self.config.shared_storage:
             for storage in self.config.shared_storage:
                 self._add_shared_storage(storage)
@@ -168,7 +169,7 @@ class ClusterCdkStack(core.Stack):
                 cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
                 cleanup_lambda=cleanup_lambda,
                 compute_security_groups=self.compute_security_groups,  # Empty dict if provided by the user
-                shared_storage_ids=self.shared_storage_ids,
+                shared_storage_mappings=self.shared_storage_mappings,
                 shared_storage_options=self.shared_storage_options,
             )
 
@@ -185,19 +186,32 @@ class ClusterCdkStack(core.Stack):
                 bucket=self.bucket,
                 create_lambda_roles=self._condition_create_lambda_iam_role(),
                 compute_security_groups=self.compute_security_groups,  # Empty dict if provided by the user
-                shared_storage_ids=self.shared_storage_ids,
+                shared_storage_mappings=self.shared_storage_mappings,
                 shared_storage_options=self.shared_storage_options,
                 head_node_instance=self.head_node_instance,
             )
 
+        # CloudWatchDashboardSubstack
+        if self.config.is_cw_dashboard_enabled:
+            self.cloudwatch_dashboard = CWDashboardConstruct(
+                scope=self,
+                id="PclusterDashboard",
+                stack_name=self.stack_name,
+                cluster_config=self.config,
+                head_node_instance=self.head_node_instance,
+                shared_storage_mappings=self.shared_storage_mappings,
+                cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
+            )
+
     def _add_cluster_log_group(self):
         timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
-        logs.CfnLogGroup(
+        log_group = logs.CfnLogGroup(
             scope=self,
             id="CleanupResourcesFunctionLogGroup",
             log_group_name=f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}",
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
+        return log_group
 
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
         """Create role and policies for the given node/queue."""
@@ -576,7 +590,8 @@ class ClusterCdkStack(core.Stack):
                 cidr_ip=self.config.head_node.ssh.allowed_ips,
             ),
         ]
-        if self.config.head_node.dcv and self.config.head_node.dcv.enabled:
+
+        if self.config.is_dcv_enabled:
             head_security_group_ingress.append(
                 # DCV access
                 ec2.CfnSecurityGroup.IngressProperty(
@@ -596,14 +611,14 @@ class ClusterCdkStack(core.Stack):
 
     def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
-        storage_ids_list = self.shared_storage_ids[storage.shared_storage_type]
+        storage_ids_list = self.shared_storage_mappings[storage.shared_storage_type]
         cfn_resource_id = "{0}{1}".format(storage.shared_storage_type.name, len(storage_ids_list))
         if storage.shared_storage_type == SharedStorageType.FSX:
-            storage_ids_list.append(self._add_fsx_storage(cfn_resource_id, storage))
+            storage_ids_list.append(StorageInfo(self._add_fsx_storage(cfn_resource_id, storage), storage))
         elif storage.shared_storage_type == SharedStorageType.EBS:
-            storage_ids_list.append(self._add_ebs_volume(cfn_resource_id, storage))
+            storage_ids_list.append(StorageInfo(self._add_ebs_volume(cfn_resource_id, storage), storage))
         elif storage.shared_storage_type == SharedStorageType.EFS:
-            storage_ids_list.append(self._add_efs_storage(cfn_resource_id, storage))
+            storage_ids_list.append(StorageInfo(self._add_efs_storage(cfn_resource_id, storage), storage))
         elif storage.shared_storage_type == SharedStorageType.RAID:
             storage_ids_list.extend(self._add_raid_volume(cfn_resource_id, storage))
 
@@ -751,7 +766,7 @@ class ClusterCdkStack(core.Stack):
         """Add specific Cfn Resources to map the RAID EBS storage."""
         ebs_ids = []
         for index in range(shared_ebs.raid.number_of_volumes):
-            ebs_ids.append(self._add_cfn_volume(f"{id_prefix}Volume{index}", shared_ebs))
+            ebs_ids.append(StorageInfo(self._add_cfn_volume(f"{id_prefix}Volume{index}", shared_ebs), shared_ebs))
 
         # [shared_dir,raid_type,num_of_raid_volumes,volume_type,volume_size,volume_iops,encrypted,
         # ebs_kms_key_id,volume_throughput]
@@ -876,7 +891,7 @@ class ClusterCdkStack(core.Stack):
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=get_default_instance_tags(
-                            self._stack_name, self.config, head_node, "Master", self.shared_storage_ids
+                            self._stack_name, self.config, head_node, "Master", self.shared_storage_mappings
                         )
                         + get_custom_tags(self.config),  # FIXME HeadNode
                     ),
@@ -898,7 +913,9 @@ class ClusterCdkStack(core.Stack):
                 "cfncluster": {
                     "stack_name": self._stack_name,
                     "enable_efa": "true" if head_node.efa and head_node.efa.enabled else "NONE",
-                    "cfn_raid_vol_ids": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.RAID),
+                    "cfn_raid_vol_ids": get_shared_storage_ids_by_type(
+                        self.shared_storage_mappings, SharedStorageType.RAID
+                    ),
                     "cfn_raid_parameters": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.RAID
                     ),
@@ -911,15 +928,17 @@ class ClusterCdkStack(core.Stack):
                     "cfn_postinstall": post_install_action.script if pre_install_action else "NONE",
                     "cfn_postinstall_args": post_install_action.args if pre_install_action else "NONE",
                     "cfn_region": self.region,
-                    "cfn_efs": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EFS),
+                    "cfn_efs": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
                     "cfn_efs_shared_dir": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EFS
                     ),  # FIXME
-                    "cfn_fsx_fs_id": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.FSX),
+                    "cfn_fsx_fs_id": get_shared_storage_ids_by_type(
+                        self.shared_storage_mappings, SharedStorageType.FSX
+                    ),
                     "cfn_fsx_options": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.FSX
                     ),
-                    "cfn_volume": get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EBS),
+                    "cfn_volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
                     "cfn_scheduler": self.config.scheduling.scheduler,
                     "cfn_encrypted_ephemeral": "true"
                     if head_node.storage
@@ -1215,10 +1234,10 @@ class ClusterCdkStack(core.Stack):
 
     def _add_shared_storage_outputs(self):
         """Add the ids of the managed filesystem to the Stack Outputs."""
-        for storage_type, storage_ids in self.shared_storage_ids.items():
+        for storage_type, storage_list in self.shared_storage_mappings.items():
             core.CfnOutput(
                 scope=self,
                 id="{0}Ids".format(storage_type.name),
                 description="{0} Filesystem IDs".format(storage_type.name),
-                value=",".join(storage_ids),
+                value=",".join(storage.id for storage in storage_list),
             )

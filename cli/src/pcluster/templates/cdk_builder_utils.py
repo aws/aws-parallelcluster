@@ -105,7 +105,11 @@ def cluster_name(stack_name: str):
 
 def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
     """Return shared storage ids from the given list for the given type."""
-    return ",".join(shared_storage_ids[storage_type]) if shared_storage_ids[storage_type] else "NONE"
+    return (
+        ",".join(storage_mapping.id for storage_mapping in shared_storage_ids[storage_type])
+        if shared_storage_ids[storage_type]
+        else "NONE"
+    )
 
 
 def get_shared_storage_options_by_type(shared_storage_options: dict, storage_type: SharedStorageType):

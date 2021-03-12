@@ -47,7 +47,7 @@ class AwsbatchConstruct(core.Construct):
         bucket: ClusterBucket,
         create_lambda_roles: bool,
         compute_security_groups: dict,
-        shared_storage_ids: dict,
+        shared_storage_mappings: dict,
         shared_storage_options: dict,
         head_node_instance: ec2.CfnInstance,
         **kwargs,
@@ -59,7 +59,7 @@ class AwsbatchConstruct(core.Construct):
         self.bucket = bucket
         self.create_lambda_roles = create_lambda_roles
         self.compute_security_groups = compute_security_groups
-        self.shared_storage_ids = shared_storage_ids
+        self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
         self.head_node_instance = head_node_instance
 
@@ -158,7 +158,7 @@ class AwsbatchConstruct(core.Construct):
                         self.config,
                         self.compute_resource,
                         "Batch Compute",
-                        self.shared_storage_ids,
+                        self.shared_storage_mappings,
                         raw_dict=True,
                     ),
                     **get_custom_tags(self.config, raw_dict=True),
@@ -479,7 +479,7 @@ class AwsbatchConstruct(core.Construct):
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_EFS_FS_ID",
-                    value=get_shared_storage_ids_by_type(self.shared_storage_ids, SharedStorageType.EFS),
+                    value=get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_RAID_SHARED_DIR",
