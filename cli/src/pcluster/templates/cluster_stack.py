@@ -40,6 +40,7 @@ from pcluster.models.cluster_config import (
 from pcluster.templates.awsbatch_builder import AwsbatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
+    add_lambda_cfn_role,
     cluster_name,
     create_hash_suffix,
     get_block_device_mappings,
@@ -49,7 +50,6 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_lambda_assume_role_policy_document,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -229,40 +229,28 @@ class ClusterCdkStack(core.Stack):
             if self.bucket.remove_on_deletion:
                 s3_policy_actions.append("s3:DeleteBucket")
 
-            cleanup_resources_lambda_role = iam.CfnRole(
+            cleanup_resources_lambda_role = add_lambda_cfn_role(
                 scope=self,
-                id="CleanupResourcesFunctionExecutionRole",
-                path="/",
-                assume_role_policy_document=get_lambda_assume_role_policy_document(),
-                policies=[
-                    iam.CfnRole.PolicyProperty(
-                        policy_document=iam.PolicyDocument(
-                            statements=[
-                                iam.PolicyStatement(
-                                    actions=s3_policy_actions,
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[
-                                        self.format_arn(service="s3", resource=self.bucket.name, region="", account=""),
-                                        self.format_arn(
-                                            service="s3",
-                                            resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/*",
-                                            region="",
-                                            account="",
-                                        ),
-                                    ],
-                                    sid="S3BucketPolicy",
-                                ),
-                            ],
-                        ),
-                        policy_name="LambdaPolicy",
+                function_id="CleanupResources",
+                statements=[
+                    iam.PolicyStatement(
+                        actions=s3_policy_actions,
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self.format_arn(service="s3", resource=self.bucket.name, region="", account=""),
+                            self.format_arn(
+                                service="s3",
+                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/*",
+                                region="",
+                                account="",
+                            ),
+                        ],
+                        sid="S3BucketPolicy",
+                    ),
+                    get_cloud_watch_logs_policy_statement(
+                        resource=self.format_arn(service="logs", account="*", region="*", resource="*")
                     ),
                 ],
-            )
-
-            cleanup_resources_lambda_role.policies[0].policy_document.add_statements(
-                get_cloud_watch_logs_policy_statement(
-                    resource=self.format_arn(service="logs", account="*", region="*", resource="*")
-                )
             )
 
         cleanup_resources_lambda = PclusterLambdaConstruct(

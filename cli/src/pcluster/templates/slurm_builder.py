@@ -26,6 +26,7 @@ from pcluster.models.cluster_config import (
 )
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
+    add_lambda_cfn_role,
     cluster_name,
     create_hash_suffix,
     get_block_device_mappings,
@@ -34,14 +35,11 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_lambda_assume_role_policy_document,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
 )
-
-# pylint disable=R0801
 
 
 class SlurmConstruct(core.Construct):
@@ -273,39 +271,27 @@ class SlurmConstruct(core.Construct):
 
         cleanup_route53_lambda_execution_role = None
         if self.cleanup_lambda_role:
-            cleanup_route53_lambda_execution_role = iam.CfnRole(
+            cleanup_route53_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
-                id="CleanupRoute53FunctionExecutionRole",
-                assume_role_policy_document=get_lambda_assume_role_policy_document(),
-                path="/",
-                policies=[
-                    iam.CfnRole.PolicyProperty(
-                        policy_document=iam.PolicyDocument(
-                            statements=[
-                                iam.PolicyStatement(
-                                    actions=["route53:ListResourceRecordSets", "route53:ChangeResourceRecordSets"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[
-                                        self._format_arn(
-                                            service="route53",
-                                            region="",
-                                            account="",
-                                            resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
-                                        ),
-                                    ],
-                                    sid="Route53DeletePolicy",
-                                ),
-                            ],
-                        ),
-                        policy_name="LambdaPolicy",
+                function_id="CleanupRoute53",
+                statements=[
+                    iam.PolicyStatement(
+                        actions=["route53:ListResourceRecordSets", "route53:ChangeResourceRecordSets"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="route53",
+                                region="",
+                                account="",
+                                resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
+                            ),
+                        ],
+                        sid="Route53DeletePolicy",
+                    ),
+                    get_cloud_watch_logs_policy_statement(
+                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
                     ),
                 ],
-            )
-
-            cleanup_route53_lambda_execution_role.policies[0].policy_document.add_statements(
-                get_cloud_watch_logs_policy_statement(
-                    resource=self._format_arn(service="logs", account="*", region="*", resource="*")
-                )
             )
 
         cleanup_route53_lambda = PclusterLambdaConstruct(
@@ -350,38 +336,26 @@ class SlurmConstruct(core.Construct):
     def _add_update_waiter_lambda(self):
         update_waiter_lambda_execution_role = None
         if self.cleanup_lambda_role:
-            update_waiter_lambda_execution_role = iam.CfnRole(
+            update_waiter_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
-                id="UpdateWaiterFunctionExecutionRole",
-                assume_role_policy_document=get_lambda_assume_role_policy_document(),
-                path="/",
-                policies=[
-                    iam.CfnRole.PolicyProperty(
-                        policy_document=iam.PolicyDocument(
-                            statements=[
-                                iam.PolicyStatement(
-                                    actions=["dynamodb:GetItem", "dynamodb:PutItem"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[
-                                        self._format_arn(
-                                            service="dynamodb",
-                                            account=self._stack_account,
-                                            resource=f"table/{self.dynamodb_table.ref}",
-                                        ),
-                                    ],
-                                    sid="DynamoDBTable",
-                                ),
-                            ],
-                        ),
-                        policy_name="LambdaPolicy",
+                function_id="UpdateWaiter",
+                statements=[
+                    iam.PolicyStatement(
+                        actions=["dynamodb:GetItem", "dynamodb:PutItem"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="dynamodb",
+                                account=self._stack_account,
+                                resource=f"table/{self.dynamodb_table.ref}",
+                            ),
+                        ],
+                        sid="DynamoDBTable",
+                    ),
+                    get_cloud_watch_logs_policy_statement(
+                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
                     ),
                 ],
-            )
-
-            update_waiter_lambda_execution_role.policies[0].policy_document.add_statements(
-                get_cloud_watch_logs_policy_statement(
-                    resource=self._format_arn(service="logs", account="*", region="*", resource="*")
-                )
             )
 
         update_waiter_lambda = PclusterLambdaConstruct(

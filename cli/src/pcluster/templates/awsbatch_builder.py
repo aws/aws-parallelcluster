@@ -23,12 +23,12 @@ from aws_cdk import core
 from pcluster.models.cluster_config import AwsbatchClusterConfig, ClusterBucket, ComputeType, SharedStorageType
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
+    add_lambda_cfn_role,
     cluster_name,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
     get_custom_tags,
     get_default_instance_tags,
-    get_lambda_assume_role_policy_document,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
@@ -611,38 +611,27 @@ class AwsbatchConstruct(core.Construct):
     def _add_manage_docker_images_lambda(self):
         manage_docker_images_lambda_execution_role = None
         if self.create_lambda_roles:
-            manage_docker_images_lambda_execution_role = iam.CfnRole(
+
+            manage_docker_images_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
-                id="ManageDockerImagesFunctionExecutionRole",
-                assume_role_policy_document=get_lambda_assume_role_policy_document(),
-                policies=[
-                    iam.CfnRole.PolicyProperty(
-                        policy_document=iam.PolicyDocument(
-                            statements=[
-                                iam.PolicyStatement(
-                                    actions=["ecr:BatchDeleteImage", "ecr:ListImages"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[self._docker_images_repo.attr_arn],
-                                    sid="ECRPolicy",
-                                ),
-                                iam.PolicyStatement(
-                                    actions=["codebuild:BatchGetBuilds", "codebuild:StartBuild"],
-                                    effect=iam.Effect.ALLOW,
-                                    resources=[self._code_build_image_builder_project.attr_arn],
-                                    sid="CodeBuildPolicy",
-                                ),
-                            ],
-                        ),
-                        policy_name="LambdaPolicy",
+                function_id="ManageDockerImages",
+                statements=[
+                    iam.PolicyStatement(
+                        actions=["ecr:BatchDeleteImage", "ecr:ListImages"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[self._docker_images_repo.attr_arn],
+                        sid="ECRPolicy",
+                    ),
+                    iam.PolicyStatement(
+                        actions=["codebuild:BatchGetBuilds", "codebuild:StartBuild"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[self._code_build_image_builder_project.attr_arn],
+                        sid="CodeBuildPolicy",
+                    ),
+                    get_cloud_watch_logs_policy_statement(
+                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
                     ),
                 ],
-                path="/",
-            )
-
-            manage_docker_images_lambda_execution_role.policies[0].policy_document.add_statements(
-                get_cloud_watch_logs_policy_statement(
-                    resource=self._format_arn(service="logs", account="*", region="*", resource="*")
-                )
             )
 
         return PclusterLambdaConstruct(
@@ -698,22 +687,13 @@ class AwsbatchConstruct(core.Construct):
     def _add_code_build_notification_lambda(self):
         build_notification_lambda_execution_role = None
         if self.create_lambda_roles:
-            build_notification_lambda_execution_role = iam.CfnRole(
+            build_notification_lambda_execution_role = add_lambda_cfn_role(
                 scope=self.stack_scope,
-                id="BuildNotificationFunctionExecutionRole",
-                assume_role_policy_document=get_lambda_assume_role_policy_document(),
-                path="/",
-                policies=[
-                    iam.CfnRole.PolicyProperty(
-                        policy_document=iam.PolicyDocument(
-                            statements=[
-                                get_cloud_watch_logs_policy_statement(
-                                    resource=self._format_arn(service="logs", account="*", region="*", resource="*")
-                                )
-                            ]
-                        ),
-                        policy_name="LambdaPolicy",
-                    ),
+                function_id="BuildNotification",
+                statements=[
+                    get_cloud_watch_logs_policy_statement(
+                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                    )
                 ],
             )
 
