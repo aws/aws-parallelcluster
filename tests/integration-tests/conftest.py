@@ -418,7 +418,7 @@ def inject_additional_config_settings(cluster_config, request, region):
         config[cluster_template]["extra_json"] = json.dumps(extra_json)
 
     # Additional instance types data is copied it into config files to make it available at cluster creation
-    instance_types_data = request.config.getoption("instance_types_data")
+    instance_types_data = request.config.getoption("instance_types_data", None)
     if instance_types_data:
         config[cluster_template]["instance_types_data"] = json.dumps(instance_types_data)
 
