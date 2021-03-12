@@ -11,7 +11,7 @@
 
 import copy
 from hashlib import sha1
-from typing import Union
+from typing import List, Union
 
 import pkg_resources
 from aws_cdk import aws_ec2 as ec2
@@ -222,6 +222,22 @@ def get_queue_security_groups_full(compute_security_groups: dict, queue: BaseQue
         queue_security_groups.extend(queue.networking.additional_security_groups)
 
     return queue_security_groups
+
+
+def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement]):
+    """Return a CfnRole to be used for a Lambda function."""
+    return iam.CfnRole(
+        scope=scope,
+        id=f"{function_id}FunctionExecutionRole",
+        assume_role_policy_document=get_lambda_assume_role_policy_document(),
+        path="/",
+        policies=[
+            iam.CfnRole.PolicyProperty(
+                policy_document=iam.PolicyDocument(statements=statements),
+                policy_name="LambdaPolicy",
+            ),
+        ],
+    )
 
 
 class PclusterLambdaConstruct(core.Construct):
