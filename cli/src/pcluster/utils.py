@@ -421,7 +421,7 @@ def _get_instance_families_from_types(instance_types):
             families.add(match.group(1))
         else:
             LOGGER.debug("Unable to parse instance family for instance type {0}".format(instance_type))
-    return list(families)
+    return families
 
 
 def _batch_instance_types_and_families_are_supported(candidate_types_and_families, known_types_and_families):
@@ -441,8 +441,8 @@ def get_supported_batch_instance_types():
     """
     supported_instance_types = get_supported_instance_types()
     supported_instance_families = _get_instance_families_from_types(supported_instance_types)
-    known_exceptions = ["optimal"]
-    supported_instance_types_and_families = supported_instance_types + supported_instance_families + known_exceptions
+    known_exceptions = {"optimal"}
+    supported_instance_types_and_families = supported_instance_types | supported_instance_families | known_exceptions
     try:
         emsg = _get_cce_emsg_containing_supported_instance_types()
         parsed_instance_types_and_families = _parse_supported_instance_types_and_families_from_cce_emsg(emsg)

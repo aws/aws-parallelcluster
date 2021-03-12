@@ -685,10 +685,10 @@ def test_get_supported_batch_instance_types(
     """Verify functions are called and errors are handled as expected when getting supported batch instance types."""
     # Dummy values
     dummy_error_message = "dummy error message"
-    dummy_batch_instance_types = ["batch-instance-type"]
-    dummy_batch_instance_families = ["batch-instance-family"]
-    dummy_all_instance_types = dummy_batch_instance_types + ["non-batch-instance-type"]
-    dummy_all_instance_families = dummy_batch_instance_families + ["non-batch-instance-family"]
+    dummy_batch_instance_types = {"batch-instance-type"}
+    dummy_batch_instance_families = {"batch-instance-family"}
+    dummy_all_instance_types = dummy_batch_instance_types | {"non-batch-instance-type"}
+    dummy_all_instance_families = dummy_batch_instance_families | {"non-batch-instance-family"}
     # Mock all functions called by the function
     api_function_patch = mocker.patch(
         "pcluster.utils._get_cce_emsg_containing_supported_instance_types",
@@ -700,7 +700,7 @@ def test_get_supported_batch_instance_types(
         "pcluster.utils._parse_supported_instance_types_and_families_from_cce_emsg",
         side_effect=utils.BatchErrorMessageParsingException
         if raise_error_parsing_function
-        else lambda emsg: dummy_batch_instance_types + dummy_batch_instance_families,
+        else lambda emsg: dummy_batch_instance_types | dummy_batch_instance_families,
     )
     supported_instance_types_patch = mocker.patch(
         "pcluster.utils.get_supported_instance_types", return_value=dummy_all_instance_types
@@ -712,7 +712,7 @@ def test_get_supported_batch_instance_types(
         "pcluster.utils._batch_instance_types_and_families_are_supported", return_value=types_parsed_from_emsg_are_known
     )
     # this list contains values that are assumed to be supported instance types in all regions
-    assumed_supported = ["optimal"]
+    assumed_supported = {"optimal"}
     returned_value = utils.get_supported_batch_instance_types()
     # The functions that call the Batch CreateComputeEnvironment API, and those that get all
     # supported instance types and families should always be called.
@@ -731,15 +731,15 @@ def test_get_supported_batch_instance_types(
         candidates_are_supported_patch.assert_not_called()
     else:
         candidates_are_supported_patch.assert_called_with(
-            dummy_batch_instance_types + dummy_batch_instance_families,
-            dummy_all_instance_types + dummy_all_instance_families + assumed_supported,
+            dummy_batch_instance_types | dummy_batch_instance_families,
+            dummy_all_instance_types | dummy_all_instance_families | assumed_supported,
         )
     # If either of the functions don't succeed, get_supported_instance_types return value should be
     # used as a fallback.
     assert_that(returned_value).is_equal_to(
-        dummy_all_instance_types + dummy_all_instance_families + assumed_supported
+        dummy_all_instance_types | dummy_all_instance_families | assumed_supported
         if any([raise_error_api_function, raise_error_parsing_function, not types_parsed_from_emsg_are_known])
-        else dummy_batch_instance_types + dummy_batch_instance_families
+        else dummy_batch_instance_types | dummy_batch_instance_families
     )
 
 
