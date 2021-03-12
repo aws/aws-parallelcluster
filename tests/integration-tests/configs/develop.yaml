@@ -74,3 +74,11 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: {{ common.SCHEDULERS_TRAD }}
+        - regions: ["cn-north-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_CHINA_ARM }}
+          schedulers: ["slurm"]
+        - regions: ["us-gov-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_GOVCLOUD_ARM }}
+          schedulers: ["slurm"]
