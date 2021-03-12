@@ -133,11 +133,6 @@ class AwsbatchConstruct(core.Construct):
         self._code_build_notification_rule = self._add_code_build_notification_rule()
         self._manage_docker_images_custom_resource.add_depends_on(self._code_build_notification_rule)
 
-        # Log groups
-        self._add_code_build_log_group()
-        self._add_manage_docker_images_log_group()
-        self._add_code_build_notification_log_group()
-
     def _add_compute_env(self):
         return batch.CfnComputeEnvironment(
             scope=self.stack_scope,
@@ -555,6 +550,15 @@ class AwsbatchConstruct(core.Construct):
         )
 
     def _add_code_build_docker_image_builder_project(self):
+        log_group_name = f"/aws/codebuild/{cluster_name(self.stack_name)}-CodeBuildDockerImageBuilderProject"
+
+        logs.CfnLogGroup(
+            scope=self.stack_scope,
+            id="CodeBuildLogGroup",
+            log_group_name=log_group_name,
+            retention_in_days=get_cloud_watch_logs_retention_days(self.config),
+        )
+
         return codebuild.CfnProject(
             scope=self.stack_scope,
             id="CodeBuildDockerImageBuilderProj",
@@ -599,8 +603,7 @@ class AwsbatchConstruct(core.Construct):
             ),
             logs_config=codebuild.CfnProject.LogsConfigProperty(
                 cloud_watch_logs=codebuild.CfnProject.CloudWatchLogsConfigProperty(
-                    group_name=f"/aws/codebuild/{cluster_name(self.stack_name)}-CodeBuildDockerImageBuilderProject",
-                    status="ENABLED",
+                    group_name=log_group_name, status="ENABLED"
                 )
             ),
         )
@@ -645,8 +648,9 @@ class AwsbatchConstruct(core.Construct):
         return PclusterLambdaConstruct(
             scope=self.stack_scope,
             id="ManageDockerImagesFunctionConstruct",
-            function_name="ManageDockerImages",
+            function_id="ManageDockerImages",
             bucket=self.bucket,
+            config=self.config,
             execution_role=manage_docker_images_lambda_execution_role.attr_arn
             if manage_docker_images_lambda_execution_role
             else self._format_arn(
@@ -716,8 +720,9 @@ class AwsbatchConstruct(core.Construct):
         return PclusterLambdaConstruct(
             scope=self.stack_scope,
             id="BuildNotificationFunctionConstruct",
-            function_name="BuildNotification",
+            function_id="BuildNotification",
             bucket=self.bucket,
+            config=self.config,
             execution_role=build_notification_lambda_execution_role.attr_arn
             if build_notification_lambda_execution_role
             else self._format_arn(
@@ -751,30 +756,6 @@ class AwsbatchConstruct(core.Construct):
             id="DockerBuildWaitCondition",
             handle=self._docker_build_wait_condition_handle.ref,
             timeout="3600",
-        )
-
-    def _add_code_build_log_group(self):
-        return logs.CfnLogGroup(
-            scope=self.stack_scope,
-            id="CodeBuildLogGroup",
-            log_group_name=f"/aws/codebuild/{self.stack_name}-CodeBuildDockerImageBuilderProject",
-            retention_in_days=get_cloud_watch_logs_retention_days(self.config),
-        )
-
-    def _add_manage_docker_images_log_group(self):
-        return logs.CfnLogGroup(
-            scope=self.stack_scope,
-            id="ManageDockerImagesFunctionLogGroup",
-            log_group_name=f"/aws/lambda/pcluster-ManageDockerImages-{self._stack_unique_id()}",
-            retention_in_days=get_cloud_watch_logs_retention_days(self.config),
-        )
-
-    def _add_code_build_notification_log_group(self):
-        return logs.CfnLogGroup(
-            scope=self.stack_scope,
-            id="BuildNotificationFunctionLogGroup",
-            log_group_name=f"/aws/lambda/pcluster-SendBuildNotificat-{self._stack_unique_id()}",
-            retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #

@@ -13,6 +13,7 @@
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
 import json
+from datetime import datetime
 from typing import Union
 
 from aws_cdk import aws_dynamodb as dynamodb
@@ -20,6 +21,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
+from aws_cdk import aws_logs as logs
 from aws_cdk import core
 
 from common.aws.aws_api import AWSApi
@@ -38,9 +40,11 @@ from pcluster.models.cluster_config import (
 from pcluster.templates.awsbatch_builder import AwsbatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
+    cluster_name,
     create_hash_suffix,
     get_block_device_mappings,
     get_cloud_watch_logs_policy_statement,
+    get_cloud_watch_logs_retention_days,
     get_common_user_data_env,
     get_custom_tags,
     get_default_instance_tags,
@@ -111,8 +115,9 @@ class ClusterCdkStack(core.Stack):
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
     def _add_resources(self):
-        # CloudWatchLogsSubstack
-        # TODO: inline cw-logs-substack
+        # Cloud Watch Logs
+        if self.config.is_cw_logging_enabled:
+            self._add_cluster_log_group()
 
         # Head Node EC2 Iam Role
         self._add_role_and_policies(self.config.head_node, "HeadNode")
@@ -185,6 +190,15 @@ class ClusterCdkStack(core.Stack):
                 head_node_instance=self.head_node_instance,
             )
 
+    def _add_cluster_log_group(self):
+        timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
+        logs.CfnLogGroup(
+            scope=self,
+            id="CleanupResourcesFunctionLogGroup",
+            log_group_name=f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}",
+            retention_in_days=get_cloud_watch_logs_retention_days(self.config),
+        )
+
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
         """Create role and policies for the given node/queue."""
         suffix = create_hash_suffix(name)
@@ -254,8 +268,9 @@ class ClusterCdkStack(core.Stack):
         cleanup_resources_lambda = PclusterLambdaConstruct(
             scope=self,
             id="CleanupResourcesFunctionConstruct",
-            function_name="CleanupResources",
+            function_id="CleanupResources",
             bucket=self.bucket,
+            config=self.config,
             execution_role=cleanup_resources_lambda_role.attr_arn
             if cleanup_resources_lambda_role
             else self.format_arn(

@@ -17,11 +17,12 @@ import pkg_resources
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
+from aws_cdk import aws_logs as logs
 from aws_cdk import core
 
 from pcluster.constants import (
-    CW_LOGS_RETENTION_DAYS_DEFAULT,
     COOKBOOK_PACKAGES_VERSIONS,
+    CW_LOGS_RETENTION_DAYS_DEFAULT,
     OS_MAPPING,
     PCLUSTER_STACK_PREFIX,
 )
@@ -230,17 +231,28 @@ class PclusterLambdaConstruct(core.Construct):
         self,
         scope: core.Construct,
         id: str,
-        function_name: str,
+        function_id: str,
         bucket: ClusterBucket,
+        config: BaseClusterConfig,
         execution_role: iam.CfnRole,
         handler_func: str,
         timeout: int = 900,
     ):
         super().__init__(scope, id)
+
+        function_name = f"pcluster-{function_id}-{self._stack_unique_id()}"
+
+        self.log_group = logs.CfnLogGroup(
+            scope=self,
+            id=f"{function_id}FunctionLogGroup",
+            log_group_name=f"/aws/lambda/{function_name}",
+            retention_in_days=get_cloud_watch_logs_retention_days(config),
+        )
+
         self.lambda_func = awslambda.CfnFunction(
             scope=scope,
-            id=f"{function_name}Function",
-            function_name=f"pcluster-{function_name}-{self._stack_unique_id()}",
+            id=f"{function_id}Function",
+            function_name=function_name,
             code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=bucket.name,
                 s3_key=f"{bucket.artifact_directory}/custom_resources_code/artifacts.zip",

@@ -311,8 +311,9 @@ class SlurmConstruct(core.Construct):
         cleanup_route53_lambda = PclusterLambdaConstruct(
             scope=self.stack_scope,
             id="CleanupRoute53FunctionConstruct",
-            function_name="CleanupRoute53",
+            function_id="CleanupRoute53",
             bucket=self.bucket,
+            config=self.config,
             execution_role=cleanup_route53_lambda_execution_role.attr_arn
             if cleanup_route53_lambda_execution_role
             else self._format_arn(
@@ -386,8 +387,9 @@ class SlurmConstruct(core.Construct):
         update_waiter_lambda = PclusterLambdaConstruct(
             scope=self.stack_scope,
             id="UpdateWaiterFunctionConstruct",
-            function_name="UpdateWaiter",
+            function_id="UpdateWaiter",
             bucket=self.bucket,
+            config=self.config,
             execution_role=update_waiter_lambda_execution_role.attr_arn
             if update_waiter_lambda_execution_role
             else self._format_arn(
