@@ -39,6 +39,11 @@ class StackInfo:
         """Return the status of the stack."""
         return self._stack_data.get("StackStatus")
 
+    @property
+    def is_working_status(self):
+        """Return true if the stack is in a working status."""
+        return self.status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
+
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)
 

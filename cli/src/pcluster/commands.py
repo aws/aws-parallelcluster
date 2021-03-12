@@ -394,12 +394,13 @@ def ssh(args, extra_args):
     :param extra_args: pcluster CLI extra_args
     """
     try:
+        try:
+            from shlex import quote as cmd_quote
+        except ImportError:
+            from pipes import quote as cmd_quote
+
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterInfo):
-            try:
-                from shlex import quote as cmd_quote
-            except ImportError:
-                from pipes import quote as cmd_quote
+        if isinstance(result, ClusterStackInfo):
 
             # build command
             cmd = "ssh {CFN_USER}@{MASTER_IP} {ARGS}".format(
