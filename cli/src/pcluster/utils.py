@@ -322,7 +322,7 @@ def get_supported_instance_types():
             offering.get("InstanceType") for offering in paginate_boto3(ec2_client.describe_instance_type_offerings)
         )
         supported_instance_types.update(InstanceTypeInfo.additional_instance_types_data().keys())
-        return supported_instance_types
+        return list(supported_instance_types)
     except ClientError as client_err:
         error(
             "Error when getting supported instance types via DescribeInstanceTypeOfferings: {0}".format(

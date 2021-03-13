@@ -843,7 +843,7 @@ def test_get_cce_emsg_containing_supported_instance_types(mocker, boto3_stubber,
 def test_get_supported_instance_types(mocker, boto3_stubber, generate_error):
     """Verify that get_supported_instance_types behaves as expected."""
     dummy_message = "dummy error message"
-    dummy_instance_types = {"c5.xlarge", "m6g.xlarge"}
+    dummy_instance_types = ["c5.xlarge", "m6g.xlarge"]
     error_patch = mocker.patch("pcluster.utils.error")
     mocked_requests = [
         MockedBoto3Request(
@@ -863,6 +863,7 @@ def test_get_supported_instance_types(mocker, boto3_stubber, generate_error):
         )
         error_patch.assert_called_with(expected_error_message)
     else:
+        list.sort(return_value)
         assert_that(return_value).is_equal_to(dummy_instance_types)
         error_patch.assert_not_called()
 
