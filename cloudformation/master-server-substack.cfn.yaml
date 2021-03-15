@@ -600,9 +600,9 @@ Resources:
                       "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
                       "cluster_s3_bucket": "${ResourcesS3Bucket}",
                       "cluster_config_s3_key": "${ArtifactS3RootDirectory}/configs/cluster-config.json",
-                      "cluster_config_version": "${HITConfigVersion}"
+                      "cluster_config_version": "${HITConfigVersion}",
+                      "instance_types_data": ${InstanceTypesData}
                     },
-                    "instance_types_data": ${InstanceTypesData},
                     "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
                   }
                 - SchedulerSlots: !If
