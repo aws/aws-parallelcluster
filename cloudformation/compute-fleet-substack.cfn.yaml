@@ -457,9 +457,9 @@ Resources:
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
                         "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
-                        "enable_efa_gdr": "${EFAGDR}",
-                        "instance_types_data": ${InstanceTypesData}
+                        "enable_efa_gdr": "${EFAGDR}"
                       },
+                      "instance_types_data": ${InstanceTypesData},
                       "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
                     }
 
