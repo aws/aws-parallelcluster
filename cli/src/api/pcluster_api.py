@@ -32,13 +32,17 @@ class ApiFailure:
         self.validation_failures = validation_failures or []
 
 
-class ClusterStackInfo:
-    """Minimal representation of a running cluster. All the information are retrieved from the stack."""
+class ClusterInfo:
+    """Representation of a running cluster."""
 
-    def __init__(self, stack: ClusterStack):
+    def __init__(self, stack: ClusterStack, cluster: Cluster = None):
         # Cluster info
         self.name = stack.cluster_name
-        self.status = stack.status  # FIXME
+        self.region = get_region()
+        self.version = stack.version
+        self.scheduler = stack.scheduler
+        self.status = stack.status  # FIXME cluster status should be different from stack status
+
         # Stack info
         self.stack_arn = stack.id
         self.stack_name = stack.name
@@ -47,22 +51,17 @@ class ClusterStackInfo:
         if stack.is_working_status:
             self.head_node_ip = stack.head_node_ip
             self.user = stack.head_node_user
-        self.region = get_region()
-        self.version = stack.version
-        self.scheduler = stack.scheduler
+
+        # Add information from running resources. Config file is required.
+        self.head_node = None
+        self.compute_instances = None
+        if cluster:
+            if stack.is_working_status:
+                self.head_node = cluster.head_node_instance
+            self.compute_instances = cluster.compute_instances
 
     def __repr__(self):
         return json.dumps(self.__dict__)
-
-
-class ClusterInfo(ClusterStackInfo):
-    """Full representation of a running cluster. Info are retrieved from stack, config file and running resources."""
-
-    def __init__(self, cluster: Cluster):
-        super().__init__(cluster.stack)
-        if cluster.stack.is_working_status:
-            self.head_node = cluster.head_node_instance
-        self.compute_instances = cluster.compute_instances
 
 
 class ImageInfo:
@@ -111,7 +110,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             cluster = Cluster(cluster_name, cluster_config)
             cluster.create(disable_rollback, suppress_validators, validation_failure_level)
-            return ClusterStackInfo(cluster.stack)
+            return ClusterInfo(cluster.stack)
         except ClusterActionError as e:
             return ApiFailure(str(e), e.validation_failures)
         except Exception as e:
@@ -126,10 +125,7 @@ class PclusterApi:
             # retrieve cluster config and generate model
             cluster = Cluster(cluster_name)
             cluster.delete(keep_logs)
-            if PclusterApi._is_version_2(cluster):
-                return ClusterStackInfo(cluster.stack)
-            else:
-                return ClusterInfo(cluster)
+            return ClusterInfo(cluster.stack, cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -141,10 +137,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             cluster = Cluster(cluster_name)
-            if PclusterApi._is_version_2(cluster):
-                return ClusterStackInfo(cluster.stack)
-            else:
-                return ClusterInfo(cluster)
+            return ClusterInfo(cluster.stack, cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -165,7 +158,7 @@ class PclusterApi:
                     "This operation may only be performed using the same ParallelCluster "
                     "version used to create the cluster."
                 )
-            return ClusterInfo(cluster)
+            return ClusterInfo(cluster.stack, cluster)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -177,7 +170,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             stacks = AWSApi.instance().cfn.list_pcluster_stacks()
-            return [ClusterStackInfo(ClusterStack(stack)) for stack in stacks]
+            return [ClusterInfo(ClusterStack(stack)) for stack in stacks]
 
         except Exception as e:
             return ApiFailure(str(e))

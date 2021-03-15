@@ -30,7 +30,7 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from api.pcluster_api import ApiFailure, ClusterInfo, ClusterStackInfo, PclusterApi
+from api.pcluster_api import ApiFailure, ClusterInfo, PclusterApi
 from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX
@@ -247,15 +247,15 @@ def create(args):
         suppress_validators=args.suppress_validators,
         validation_failure_level=args.validation_failure_level,
     )
-    if isinstance(result, ClusterStackInfo):
-        print(f"Cluster creation started successfully. {result}")
+    if isinstance(result, ClusterInfo):
+        print("Cluster creation started successfully.")
 
         if not args.nowait:
             verified = utils.verify_stack_creation(result.stack_name)
             LOGGER.info("")
 
             result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, ClusterStackInfo):
+            if isinstance(result, ClusterInfo):
                 _print_stack_outputs(result.stack_outputs)
             else:
                 utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
@@ -400,7 +400,7 @@ def ssh(args, extra_args):
             from pipes import quote as cmd_quote
 
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterStackInfo):
+        if isinstance(result, ClusterInfo):
 
             # build command
             cmd = "ssh {CFN_USER}@{MASTER_IP} {ARGS}".format(
@@ -428,8 +428,7 @@ def status(args):  # noqa: C901 FIXME!!!
     """Get cluster status."""
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterStackInfo):
-            # print(f"{result}")
+        if isinstance(result, ClusterInfo):
             sys.stdout.write("\rStatus: %s" % result.stack_status)
             sys.stdout.flush()
             if not args.nowait:
@@ -490,8 +489,8 @@ def delete(args):
     try:
         # delete cluster raises an exception if stack does not exist
         result = PclusterApi().delete_cluster(args.cluster_name, utils.get_region(), args.keep_logs)
-        if isinstance(result, ClusterStackInfo):
-            print(f"Cluster deletion started correctly. {result}")
+        if isinstance(result, ClusterInfo):
+            print("Cluster deletion started correctly.")
         else:
             utils.error(f"Cluster deletion failed. {result.message}")
 
@@ -502,7 +501,7 @@ def delete(args):
             while result.stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
                 result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-                if isinstance(result, ClusterStackInfo):
+                if isinstance(result, ClusterInfo):
                     events = utils.get_stack_events(result.stack_name, raise_on_error=True)[0]
                     resource_status = (
                         "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
