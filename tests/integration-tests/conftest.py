@@ -48,6 +48,7 @@ from utils import (
     delete_s3_bucket,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
+    get_instance_info,
     get_vpc_snakecase_value,
     random_alphanumeric,
     set_credentials,
@@ -824,6 +825,24 @@ def architecture(request, instance, region):
         supported_architecture = get_architecture_supported_by_instance_type(instance, region)
         request.config.cache.set(f"{instance}/architecture", supported_architecture)
     return supported_architecture
+
+
+@pytest.fixture()
+def default_threads_per_core(request, instance, region):
+    """Return the default threads per core for the given instance type."""
+    # NOTE: currently, .metal instances do not contain the DefaultThreadsPerCore
+    #       attribute in their VCpuInfo section. This is a known limitation with the
+    #       ec2 DescribeInstanceTypes API. For these instance types an assumption
+    #       is made that if the instance's supported architectures list includes
+    #       x86_64 then the default is 2, otherwise it's 1.
+    logging.info(f"Getting defaul threads per core for instance type {instance}")
+    instance_type_data = get_instance_info(instance, region)
+    threads_per_core = instance_type_data.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
+    if threads_per_core is None:
+        supported_architectures = instance_type_data.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
+        threads_per_core = 2 if "x86_64" in supported_architectures else 1
+    logging.info(f"Defaul threads per core for instance type {instance} : {threads_per_core}")
+    return threads_per_core
 
 
 @pytest.fixture(scope="session")
