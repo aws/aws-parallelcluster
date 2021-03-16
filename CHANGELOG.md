@@ -29,7 +29,6 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 
-- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2.
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
 
 **CHANGES**
@@ -37,6 +36,26 @@ CHANGELOG
 - Make `key_name` parameter optional to support cluster configurations without a key pair. 
 - Remove support for Python 3.4
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
+
+2.10.3
+------
+**ENHANCEMENTS**
+
+- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2. 
+
+**CHANGES**
+
+- Upgrade EFA installer to version 1.11.2
+  - EFA configuration: efa-config-1.7 (no change)
+  - EFA profile: efa-profile-1.4 (from efa-profile-1.3)
+  - EFA kernel module: efa-1.10.2 (no change)
+  - RDMA core: rdma-core-31.2amzn (no change)
+  - Libfabric: libfabric-1.11.1amzn1.0 (no change)
+  - Open MPI: openmpi40-aws-4.1.0 (no change)
+
+**BUG FIXES**
+
+- Fix issue with ``awsbsub`` command when setting environment variables for the job submission 
 
 2.10.2
 ------
