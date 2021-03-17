@@ -101,8 +101,9 @@ class PclusterConfig(object):
             self.__init_sections_from_cfn(cluster_name)
         else:
             self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
-            # Load instance types data if present in config file
-            self.__init_additional_instance_types_data()
+
+        # Load instance types data if available
+        self.__init_additional_instance_types_data()
 
         self.__autorefresh = auto_refresh  # Initialization completed
 
