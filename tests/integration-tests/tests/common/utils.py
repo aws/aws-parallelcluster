@@ -67,7 +67,9 @@ AMI_TYPE_DICT = {
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
+def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None):
+    if additional_filters is None:
+        additional_filters = []
     try:
         if ami_type == "pcluster":
             ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
@@ -77,7 +79,8 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
         else:
             ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
         response = boto3.client("ec2", region_name=region).describe_images(
-            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}],
+            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
+            + additional_filters,
             Owners=AMI_TYPE_DICT.get(ami_type).get(os).get("owners"),
         )
         # Sort on Creation date Desc
