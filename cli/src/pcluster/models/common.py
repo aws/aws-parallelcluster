@@ -177,7 +177,7 @@ class BaseTag(Resource):
 class Cookbook(Resource):
     """Represent the chef cookbook configuration."""
 
-    def __init__(self, chef_cookbook: str, extra_chef_attributes: str = None):
+    def __init__(self, chef_cookbook: str = None, extra_chef_attributes: str = None):
         super().__init__()
         self.chef_cookbook = Resource.init_param(chef_cookbook)
         self.extra_chef_attributes = Resource.init_param(extra_chef_attributes)
