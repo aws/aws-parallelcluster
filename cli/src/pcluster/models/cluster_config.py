@@ -844,21 +844,23 @@ class BaseClusterConfig(Resource):
             os=self.image.os,
             architecture=self.head_node.architecture,
         )
-        self._execute_validator(
-            InstanceTypeBaseAMICompatibleValidator,
-            instance_type=self.head_node.instance_type,
-            image=self.ami_id,
-        )
+        if self.ami_id:
+            self._execute_validator(
+                InstanceTypeBaseAMICompatibleValidator,
+                instance_type=self.head_node.instance_type,
+                image=self.ami_id,
+            )
         self._execute_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
-                self._execute_validator(
-                    InstanceTypeBaseAMICompatibleValidator,
-                    instance_type=compute_resource.instance_type,
-                    image=self.ami_id,
-                )
+                if self.ami_id:
+                    self._execute_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=compute_resource.instance_type,
+                        image=self.ami_id,
+                    )
         if self.head_node.efa:
             self._execute_validator(
                 EfaOsArchitectureValidator,
