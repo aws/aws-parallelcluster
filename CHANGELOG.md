@@ -6,6 +6,8 @@ CHANGELOG
 **ENHANCEMENTS**
 
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+- Add validation for `cluster_type` configuration parameter in `cluster` section
+- Add validation for `compute_type` configuration parameter in `queue` section
 
 **CHANGES**
 
