@@ -265,7 +265,7 @@ def _add_properties_to_report(item):
 
 @pytest.fixture(scope="class")
 @pytest.mark.usefixtures("setup_sts_credentials")
-def clusters_factory(request):
+def clusters_factory(request, region):
     """
     Define a fixture to manage the creation and destruction of clusters.
 
@@ -285,6 +285,7 @@ def clusters_factory(request):
             ),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
+            region=region,
         )
         if not request.config.getoption("cluster"):
             factory.create_cluster(cluster, extra_args=extra_args, raise_on_error=raise_on_error)
@@ -343,7 +344,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, region, request):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
-    The config for a given test is a pcluster.config.ini file stored in the configs_datadir folder.
+    The config for a given test is a pcluster.config.yaml file stored in the configs_datadir folder.
     The config can be written by using Jinja2 template engine.
     The current renderer already replaces placeholders for current keys:
         {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
@@ -461,20 +462,6 @@ def _get_arn_partition(region):
         return "aws"
 
 
-def _enable_sanity_check_if_unset(cluster_config):
-    config = configparser.ConfigParser()
-    config.read(cluster_config)
-
-    if "global" not in config:
-        config.add_section("global")
-
-    if "sanity_check" not in config["global"]:
-        config["global"]["sanity_check"] = "true"
-
-    with cluster_config.open(mode="w") as f:
-        config.write(f)
-
-
 def _get_default_template_values(vpc_stack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = get_vpc_snakecase_value(vpc_stack)
@@ -544,6 +531,16 @@ def setup_sts_credentials(region, request):
     set_credentials(region, request.config.getoption("credential"))
     yield
     unset_credentials()
+
+
+# FixMe: double check if this fixture introduce unnecessary implication.
+#  The alternative way is to use --region for all cluster operations.
+@pytest.fixture(scope="class", autouse=True)
+def setup_env_variable(region):
+    """Setup environment for the integ tests"""
+    os.environ["AWS_DEFAULT_REGION"] = region
+    yield
+    del os.environ["AWS_DEFAULT_REGION"]
 
 
 def get_az_id_to_az_name_map(region, credential):

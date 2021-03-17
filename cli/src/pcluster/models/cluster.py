@@ -400,7 +400,7 @@ class Cluster:
             if self.config.source_config:
                 result = AWSApi.instance().s3.put_object(
                     bucket_name=self.bucket.name,
-                    body=yaml.dump(self.config.source_config),
+                    body=yaml.dump(ClusterSchema().dump(self.config)),
                     key=self._get_config_key(),
                 )
                 # config version will be stored in DB by the cookbook at the first update
