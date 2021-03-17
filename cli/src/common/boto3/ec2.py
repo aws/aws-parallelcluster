@@ -11,6 +11,7 @@
 from common.aws.aws_resources import InstanceInfo
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 from pcluster import utils
+from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG
 from pcluster.utils import Cache, InstanceTypeInfo
 
 
@@ -54,6 +55,26 @@ class Ec2Client(Boto3Client):
         if result.get("Images"):
             return result.get("Images")[0]
         raise AWSClientError(function_name="describe_image", message=f"Image {ami_id} not found")
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_images(self, ami_ids, filters, owners):
+        """Return a list of dict of ami info."""
+        result = self._client.describe_images(ImageIds=ami_ids, Filters=filters, Owners=owners)
+        if result.get("Images"):
+            return result.get("Images")
+        raise AWSClientError(function_name="describe_images", message="No image matching the search criteria found")
+
+    def image_exists(self, image_name):
+        """Return a boolean describing whether or not an image with the given search criteria exists."""
+        filters = [{"Name": "tag:" + PCLUSTER_IMAGE_NAME_TAG, "Values": [image_name]}]
+        owners = ["self"]
+        try:
+            self.describe_images(ami_ids=[], filters=filters, owners=owners)
+            return True
+        except AWSClientError as e:
+            if "No image matching the search criteria found" in str(e):
+                return False
+            raise e
 
     @AWSExceptionHandler.handle_client_exception
     def describe_key_pair(self, key_name):
