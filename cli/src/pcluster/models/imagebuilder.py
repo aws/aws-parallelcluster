@@ -149,7 +149,11 @@ class ImageBuilder:
         # validate image name
         self._validate_image_name()
 
-        # check imagebuilder stack existence
+        # check image existence
+        if AWSApi.instance().ec2.image_exists(self.image_name):
+            raise ImageBuilderActionError(f"ParallelCluster image {self.image_name} already exists")
+
+        # check stack existence
         if AWSApi.instance().cfn.stack_exists(self.image_name):
             raise ImageBuilderActionError(f"ImageBuilder stack {self.image_name} already exists")
 

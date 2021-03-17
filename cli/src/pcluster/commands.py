@@ -565,7 +565,7 @@ def _get_default_template_url(region):
 
 def build_image(args):
     """Build AWS ParallelCluster AMI."""
-    LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
+    LOGGER.info("Building AWS ParallelCluster image. This could take a while...")
     try:
         response = PclusterApi().build_image(
             imagebuilder_config=load_yaml_dict(args.config_file), image_name=args.image_name, region=utils.get_region()
