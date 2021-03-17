@@ -140,6 +140,7 @@ def mock_instance_type_info(mocker, instance_type="t2.micro"):
                 "InstanceType": instance_type,
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
                 "NetworkInfo": {"EfaSupported": False},
+                "SupportedUsageClasses": ["on-demand", "spot"],
             }
         ),
     )
