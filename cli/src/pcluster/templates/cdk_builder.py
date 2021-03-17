@@ -41,12 +41,12 @@ class CDKTemplateBuilder:
         return generated_template
 
     @staticmethod
-    def build_imagebuilder_template(imagebuild: ImageBuilderConfig, image_name: str, bucket: S3Bucket):
+    def build_imagebuilder_template(image_config: ImageBuilderConfig, image_name: str, bucket: S3Bucket):
         """Build template for the given imagebuilder and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "imagebuilder"
             app = core.App(outdir=str(tempdir))
-            ImageBuilderCdkStack(app, output_file, imagebuild, image_name, bucket)
+            ImageBuilderCdkStack(app, output_file, image_config, image_name, bucket)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 

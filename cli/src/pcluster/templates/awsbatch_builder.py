@@ -26,6 +26,7 @@ from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
     cluster_name,
+    get_assume_role_policy_document,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
     get_custom_tags,
@@ -192,15 +193,7 @@ class AwsbatchConstruct(core.Construct):
                     resource="policy/service-role/AmazonEC2ContainerServiceforEC2Role",
                 )
             ],
-            assume_role_policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        principals=[iam.ServicePrincipal(service=f"ec2.{self._url_suffix}")],
-                        actions=["sts:AssumeRole"],
-                    )
-                ]
-            ),
+            assume_role_policy_document=get_assume_role_policy_document(f"ec2.{self._url_suffix}"),
         )
 
         iam_instance_profile = iam.CfnInstanceProfile(
@@ -222,15 +215,7 @@ class AwsbatchConstruct(core.Construct):
                     resource="policy/service-role/AmazonECSTaskExecutionRolePolicy",
                 ),
             ],
-            assume_role_policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        principals=[iam.ServicePrincipal(service="ecs-tasks.amazonaws.com")],
-                        actions=["sts:AssumeRole"],
-                    )
-                ]
-            ),
+            assume_role_policy_document=get_assume_role_policy_document("ecs-tasks.amazonaws.com"),
             policies=[
                 iam.CfnRole.PolicyProperty(
                     policy_name="s3PutObject",
@@ -311,15 +296,7 @@ class AwsbatchConstruct(core.Construct):
                     service="iam", account="aws", region="", resource="policy/service-role/AWSBatchServiceRole"
                 )
             ],
-            assume_role_policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        principals=[iam.ServicePrincipal(service="batch.amazonaws.com")],
-                        actions=["sts:AssumeRole"],
-                    )
-                ]
-            ),
+            assume_role_policy_document=get_assume_role_policy_document("batch.amazonaws.com"),
         )
 
     def _add_batch_user_role(self):
@@ -441,15 +418,7 @@ class AwsbatchConstruct(core.Construct):
                     resource="policy/service-role/AmazonEC2SpotFleetTaggingRole",
                 )
             ],
-            assume_role_policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        principals=[iam.ServicePrincipal(service="spotfleet.amazonaws.com")],
-                        actions=["sts:AssumeRole"],
-                    )
-                ]
-            ),
+            assume_role_policy_document=get_assume_role_policy_document("spotfleet.amazonaws.com"),
         )
 
     def _get_container_properties(self):
@@ -496,15 +465,7 @@ class AwsbatchConstruct(core.Construct):
         return iam.CfnRole(
             scope=self.stack_scope,
             id="CodeBuildRole",
-            assume_role_policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        principals=[iam.ServicePrincipal(service="codebuild.amazonaws.com")],
-                        actions=["sts:AssumeRole"],
-                    )
-                ]
-            ),
+            assume_role_policy_document=get_assume_role_policy_document("codebuild.amazonaws.com"),
         )
 
     def _add_code_build_policy(self):

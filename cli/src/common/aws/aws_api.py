@@ -13,6 +13,7 @@ from common.boto3.cfn import CfnClient
 from common.boto3.dynamodb import DynamodbClient
 from common.boto3.ec2 import Ec2Client
 from common.boto3.efs import EfsClient
+from common.boto3.iam import IamClient
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
 from common.boto3.s3 import S3Client
@@ -43,6 +44,7 @@ class AWSApi:
         self.imagebuilder = ImageBuilderClient()
         self.sts = StsClient()
         self.s3_resource = S3Resource()
+        self.iam = IamClient()
 
     @staticmethod
     def instance():
