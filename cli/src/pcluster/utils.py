@@ -1350,3 +1350,12 @@ class InstanceTypeInfo:
     def is_efa_supported(self):
         """Check whether EFA is supported."""
         return self.instance_type_data.get("NetworkInfo").get("EfaSupported")
+
+    def supported_usage_classes(self):
+        """Return the list supported usage classes."""
+        supported_classes = self.instance_type_data.get("SupportedUsageClasses", [])
+        if "on-demand" in supported_classes:
+            # Replace official AWS with internal naming convention
+            supported_classes.remove("on-demand")
+            supported_classes.append("ondemand")
+        return supported_classes
