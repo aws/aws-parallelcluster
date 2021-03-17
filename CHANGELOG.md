@@ -5,7 +5,10 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 
-- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2. 
+- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2.
+- Add validation for `cluster_type` configuration parameter in `cluster` section
+- Add validation for `compute_type` configuration parameter in `queue` section
+ 
 
 **CHANGES**
 

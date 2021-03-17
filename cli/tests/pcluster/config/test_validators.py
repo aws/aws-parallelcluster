@@ -27,6 +27,8 @@ from pcluster.config.validators import (
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     LOGFILE_LOGGER,
     architecture_os_validator,
+    check_usage_class,
+    cluster_type_validator,
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
     efa_gdr_validator,
@@ -34,6 +36,7 @@ from pcluster.config.validators import (
     fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
+    queue_compute_type_validator,
     queue_validator,
     settings_validator,
 )
@@ -2808,3 +2811,96 @@ def test_efa_os_arch_validator(mocker, cluster_dict, architecture, expected_erro
 def test_ebs_volume_throughput_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "usage_class, supported_usage_classes, expected_error_message, expected_warning_message",
+    [
+        ("ondemand", ["ondemand", "spot"], None, None),
+        ("spot", ["ondemand", "spot"], None, None),
+        ("ondemand", ["ondemand"], None, None),
+        ("spot", ["spot"], None, None),
+        ("spot", [], None, "Could not check support for usage class 'spot' with instance type 'instance-type'"),
+        ("ondemand", [], None, "Could not check support for usage class 'ondemand' with instance type 'instance-type'"),
+        ("spot", ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'", None),
+        ("ondemand", ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'", None),
+    ],
+)
+def test_check_usage_class(
+    mocker, usage_class, supported_usage_classes, expected_error_message, expected_warning_message
+):
+    # This test checks the common logic triggered from cluster_type_validator and queue_compute_type_validator.
+    instance_type_info_mock = mocker.MagicMock()
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type", return_value=instance_type_info_mock
+    )
+    instance_type_info_mock.supported_usage_classes.return_value = supported_usage_classes
+
+    errors = []
+    warnings = []
+    check_usage_class("instance-type", usage_class, errors, warnings)
+
+    if expected_error_message:
+        assert_that(errors).contains(expected_error_message)
+    else:
+        assert_that(errors).is_empty()
+
+    if expected_warning_message:
+        assert_that(warnings).contains(expected_warning_message)
+    else:
+        assert_that(warnings).is_empty()
+
+
+@pytest.mark.parametrize(
+    "scheduler, expected_usage_class_check", [("sge", True), ("torque", True), ("slurm", True), ("awsbatch", False)]
+)
+def test_cluster_type_validator(mocker, scheduler, expected_usage_class_check):
+    # Usage class validation logic is tested in `test_check_usage_class`.
+    # This test only makes sure that the logic is triggered from validator.
+    mock = mocker.patch("pcluster.config.validators.check_usage_class", return_value=None)
+    cluster_dict = {"compute_instance_type": "t2.micro", "scheduler": scheduler}
+    config_parser_dict = {"cluster default": cluster_dict}
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    errors, warnings = cluster_type_validator("compute_type", "spot", pcluster_config)
+    if expected_usage_class_check:
+        mock.assert_called_with("t2.micro", "spot", [], [])
+    else:
+        mock.assert_not_called()
+
+    assert_that(errors).is_equal_to([])
+    assert_that(warnings).is_equal_to([])
+
+
+@pytest.mark.parametrize("compute_type", [("ondemand"), ("spot")])
+def test_queue_compute_type_validator(mocker, compute_type):
+    # Usage class validation logic is tested in `test_check_usage_class`.
+    # This test only makes sure that the logic is triggered from validator.
+    mock = mocker.patch("pcluster.config.validators.check_usage_class", return_value=None)
+
+    config_parser_dict = {
+        "cluster default": {
+            "queue_settings": "q1",
+        },
+        "queue q1": {"compute_resource_settings": "q1cr1, q1cr2", "compute_type": compute_type},
+        "compute_resource q1cr1": {"instance_type": "q1cr1_instance_type"},
+        "compute_resource q1cr2": {"instance_type": "q1cr2_instance_type"},
+    }
+
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    errors, warnings = queue_compute_type_validator("queue", "q1", pcluster_config)
+    mock.assert_has_calls(
+        [
+            mocker.call("q1cr1_instance_type", compute_type, [], []),
+            mocker.call("q1cr2_instance_type", compute_type, [], []),
+        ],
+        any_order=True,
+    )
+
+    assert_that(errors).is_equal_to([])
+    assert_that(warnings).is_equal_to([])

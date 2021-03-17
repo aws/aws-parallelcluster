@@ -58,6 +58,7 @@ from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     architecture_os_validator,
     base_os_validator,
+    cluster_type_validator,
     cluster_validator,
     compute_instance_type_validator,
     compute_resource_validator,
@@ -99,6 +100,7 @@ from pcluster.config.validators import (
     intel_hpc_os_validator,
     kms_key_validator,
     maintain_initial_size_validator,
+    queue_compute_type_validator,
     queue_settings_validator,
     queue_validator,
     s3_bucket_uri_validator,
@@ -723,7 +725,7 @@ QUEUE = {
     "type": QueueJsonSection,
     "key": "queue",
     "default_label": "default",
-    "validators": [queue_validator],
+    "validators": [queue_validator, queue_compute_type_validator],
     "max_resources": 5,
     "params": OrderedDict([
         ("compute_type", {
@@ -1103,6 +1105,7 @@ CLUSTER_SIT = {
                 "default": "ondemand",
                 "allowed_values": ["ondemand", "spot"],
                 "cfn_param_mapping": "ClusterType",
+                "validators": [cluster_type_validator],
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("spot_price", {
