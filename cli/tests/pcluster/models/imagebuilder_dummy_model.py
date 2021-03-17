@@ -13,6 +13,7 @@ from pcluster.models.imagebuilder_config import (
     Build,
     Component,
     DistributionConfiguration,
+    Iam,
     Image,
     ImageBuilderConfig,
     ImagebuilderDevSettings,
@@ -29,6 +30,7 @@ CLASS_DICT = {
     "components": Component,
     "cookbook": Cookbook,
     "distribution_configuration": DistributionConfiguration,
+    "iam": Iam,
 }
 
 

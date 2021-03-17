@@ -44,6 +44,7 @@ from pcluster.templates.cdk_builder_utils import (
     add_lambda_cfn_role,
     cluster_name,
     create_hash_suffix,
+    get_assume_role_policy_document,
     get_block_device_mappings,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
@@ -466,19 +467,7 @@ class ClusterCdkStack(core.Stack):
             scope=self,
             id=name,
             managed_policy_arns=additional_iam_policies,
-            assume_role_policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        principals=[
-                            iam.ServicePrincipal(
-                                service="ec2.{0}".format(self.url_suffix),
-                            )
-                        ],
-                        actions=["sts:AssumeRole"],
-                    )
-                ]
-            ),
+            assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
             path="/",
         ).ref
 

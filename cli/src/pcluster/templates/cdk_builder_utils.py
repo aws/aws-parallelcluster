@@ -198,14 +198,14 @@ def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = Fa
     return tags if raw_dict else [core.CfnTag(key=key, value=value) for key, value in tags.items()]
 
 
-def get_lambda_assume_role_policy_document():
-    """Return default Lambda assume role policy document."""
+def get_assume_role_policy_document(service: str):
+    """Return default service assume role policy document."""
     return iam.PolicyDocument(
         statements=[
             iam.PolicyStatement(
                 actions=["sts:AssumeRole"],
                 effect=iam.Effect.ALLOW,
-                principals=[iam.ServicePrincipal(service="lambda.amazonaws.com")],
+                principals=[iam.ServicePrincipal(service=service)],
             )
         ]
     )
@@ -252,7 +252,7 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
     return iam.CfnRole(
         scope=scope,
         id=f"{function_id}FunctionExecutionRole",
-        assume_role_policy_document=get_lambda_assume_role_policy_document(),
+        assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
         path="/",
         policies=[
             iam.CfnRole.PolicyProperty(

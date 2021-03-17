@@ -296,7 +296,7 @@ class ImageBuilder:
 
             # Generate cdk cfn template
             self.template_body = CDKTemplateBuilder().build_imagebuilder_template(
-                imagebuild=self.config, image_name=self.image_name, bucket=self.bucket
+                image_config=self.config, image_name=self.image_name, bucket=self.bucket
             )
 
             # upload generated template

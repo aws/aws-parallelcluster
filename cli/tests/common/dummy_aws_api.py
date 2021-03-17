@@ -14,6 +14,7 @@ from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.cfn import CfnClient
 from common.boto3.ec2 import Ec2Client
+from common.boto3.iam import IamClient
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
 from common.boto3.s3 import S3Client
@@ -78,6 +79,7 @@ class _DummyAWSApi(AWSApi):
         self.kms = _DummyKmsClient()
         self.sts = _DummyStsClient()
         self.s3_resource = _DummyS3Resource()
+        self.iam = _DummyIamClient()
         # TODO: mock all clients
 
 
@@ -155,6 +157,12 @@ class _DummyStsClient(StsClient):
 
 
 class _DummyS3Resource(S3Resource):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+
+class _DummyIamClient(IamClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass

@@ -22,6 +22,7 @@ from pcluster.models.imagebuilder_config import (
     Build,
     Component,
     DistributionConfiguration,
+    Iam,
     Image,
     ImageBuilderConfig,
     ImagebuilderDevSettings,
@@ -123,10 +124,22 @@ class DistributionConfigurationSchema(BaseSchema):
             raise ValidationError(message="'{0}' is invalid".format(value))
 
 
+class IamSchema(BaseSchema):
+    """Represent the schema of the ImageBuilder IAM."""
+
+    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:(role|instance-profile)/"))
+    cleanup_lambda_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Iam(**data)
+
+
 class BuildSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Build."""
 
-    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:(role|instance-profile)/"))
+    iam = fields.Nested(IamSchema)
     instance_type = fields.Str(required=True)
     components = fields.List(fields.Nested(ComponentSchema))
     parent_image = fields.Str(required=True, validate=validate.Regexp("^ami|arn"))

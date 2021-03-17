@@ -20,6 +20,7 @@ from pcluster.models.common import BaseDevSettings, BaseTag, ExtraChefAttributes
 from pcluster.utils import get_region
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
+from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.s3_validators import S3BucketRegionValidator, S3BucketValidator
@@ -76,6 +77,25 @@ class DistributionConfiguration(Resource):
         self.launch_permission = Resource.init_param(launch_permission)
 
 
+class Iam(Resource):
+    """Represent the IAM configuration for the ImageBuilder."""
+
+    def __init__(self, instance_role: str = None, cleanup_lambda_role: str = None):
+        super().__init__()
+        self.instance_role = Resource.init_param(instance_role)
+        self.cleanup_lambda_role = Resource.init_param(cleanup_lambda_role)
+
+    def _validate(self):
+        if self.instance_role:
+            if self.instance_role.split("/", 1)[0].endswith("instance-profile"):
+                self._execute_validator(InstanceProfileValidator, instance_profile_arn=self.instance_role)
+            else:
+                self._execute_validator(RoleValidator, role_arn=self.instance_role)
+
+        if self.cleanup_lambda_role:
+            self._execute_validator(RoleValidator, role_arn=self.cleanup_lambda_role)
+
+
 class Build(Resource):
     """Represent the build configuration for the ImageBuilder."""
 
@@ -83,7 +103,7 @@ class Build(Resource):
         self,
         instance_type: str,
         parent_image: str,
-        instance_role: str = None,
+        iam: Iam = None,
         subnet_id: str = None,
         tags: List[BaseTag] = None,
         security_group_ids: List[str] = None,
@@ -92,7 +112,7 @@ class Build(Resource):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
         self.parent_image = Resource.init_param(parent_image)
-        self.instance_role = Resource.init_param(instance_role)
+        self.iam = iam
         self.tags = tags
         self.subnet_id = Resource.init_param(subnet_id)
         self.security_group_ids = security_group_ids

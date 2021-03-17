@@ -22,3 +22,13 @@ class IamClient(Boto3Client):
     def get_policy(self, iam_policy):
         """Get policy information."""
         self._client.get_policy(PolicyArn=iam_policy)
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_role(self, role_name):
+        """Get role information."""
+        self._client.get_role(RoleName=role_name)
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_instance_profile(self, instance_profile_name):
+        """Get instance profile information."""
+        self._client.get_instance_profile(InstanceProfileName=instance_profile_name)
