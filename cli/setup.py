@@ -22,6 +22,7 @@ def readme():
 
 
 VERSION = "2.10.3"
+CDK_VERSION = "1.94"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
@@ -30,6 +31,23 @@ REQUIRES = [
     "ipaddress>=1.0.22",
     "PyYAML==5.2" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "PyYAML>=5.3.1",
     "jinja2==2.10.1" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "jinja2>=2.11.0",
+    "marshmallow~=3.10",
+    "aws-cdk.core~=" + CDK_VERSION,
+    "aws-cdk.aws-batch~=" + CDK_VERSION,
+    "aws_cdk.aws-cloudwatch~=" + CDK_VERSION,
+    "aws-cdk.aws-codebuild~=" + CDK_VERSION,
+    "aws-cdk.aws-dynamodb~=" + CDK_VERSION,
+    "aws-cdk.aws-ec2~=" + CDK_VERSION,
+    "aws-cdk.aws-efs~=" + CDK_VERSION,
+    "aws-cdk.aws-events~=" + CDK_VERSION,
+    "aws-cdk.aws-fsx~=" + CDK_VERSION,
+    "aws-cdk.aws-imagebuilder~=" + CDK_VERSION,
+    "aws-cdk.aws-iam~=" + CDK_VERSION,
+    "aws_cdk.aws-lambda~=" + CDK_VERSION,
+    "aws-cdk.aws-logs~=" + CDK_VERSION,
+    "aws-cdk.aws-route53~=" + CDK_VERSION,
+    "aws-cdk.aws-ssm~=" + CDK_VERSION,
+    "aws-cdk.aws-sqs~=" + CDK_VERSION,
 ]
 
 if sys.version_info < (3, 4):
