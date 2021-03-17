@@ -1,0 +1,10 @@
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  cfn-init:
+    test_cfn_init.py::test_replace_compute_on_failure:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: ["c5.xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
