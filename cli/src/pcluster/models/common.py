@@ -71,10 +71,11 @@ class Resource(ABC):
             """Return the update policy."""
             return self.__update_policy()
 
-    def __init__(self):
+    def __init__(self, implied: bool = False):
         # Parameters registry
         self.__params = {}
         self._validation_failures: List[ValidationResult] = []
+        self.implied = implied
 
     @property
     def params(self):

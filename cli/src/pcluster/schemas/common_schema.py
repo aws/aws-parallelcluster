@@ -76,25 +76,29 @@ class BaseSchema(Schema):
     @pre_dump
     def remove_implied_values(self, data, **kwargs):
         """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
-        for key, value in vars(data).copy().items():
-            if _is_implied(data, key, value):
-                delattr(data, key)
-            if isinstance(value, list):
-                value[:] = [v for v in value if not _is_implied(data, key, v)]
+        if self.context.get("delete_defaults_when_dump"):
+            for key, value in vars(data).copy().items():
+                if _is_implied(data, key, value):
+                    delattr(data, key)
+                if isinstance(value, list):
+                    value[:] = [v for v in value if not _is_implied(data, key, v)]
         return data
 
     @pre_dump
     def unwrap_marked_class(self, data, **kwargs):
         """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
-        for key, value in vars(data).items():
-            if data.get_param(key) is not None:
-                setattr(data, key, value)
+        if self.context.get("delete_defaults_when_dump"):
+            for key, value in vars(data).items():
+                if data.get_param(key) is not None:
+                    setattr(data, key, value)
         return data
 
     @post_dump
     def remove_none_values(self, data, **kwargs):
         """Remove None values before creating the Yaml format."""
-        return {key: value for key, value in data.items() if value is not None and value != []}
+        if self.context.get("delete_defaults_when_dump"):
+            return {key: value for key, value in data.items() if value is not None and value != []}
+        return data
 
 
 def _is_implied(resource, attr, value):

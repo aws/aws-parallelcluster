@@ -227,6 +227,7 @@ def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
 @pytest.mark.parametrize("existing_tags", [({}), ({"test": "testvalue"}), ({"Version": "OldVersionToBeOverridden"})])
 def test_tags(mocker, existing_tags):
     """Verify that the function to get the tags list behaves as expected."""
+    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
     cluster = dummy_cluster()
     cluster.config = dummy_slurm_cluster_config(mocker)
 

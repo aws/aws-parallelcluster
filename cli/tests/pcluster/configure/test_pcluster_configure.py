@@ -379,6 +379,7 @@ class MockHandler:
         _mock_list_vpcs_and_subnets(self.mocker, empty_region, partition)
         _mock_parallel_cluster_config(self.mocker)
         mocker.patch("pcluster.configure.easyconfig.get_default_instance_type", return_value="t2.micro")
+        mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
         if mock_availability_zone:
             _mock_availability_zone(self.mocker)
 

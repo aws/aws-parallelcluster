@@ -435,10 +435,16 @@ class Dcv(Resource):
 class Efa(Resource):
     """Represent the EFA configuration."""
 
-    def __init__(self, enabled: bool = None, gdr_support: bool = None):
-        super().__init__()
-        self.enabled = Resource.init_param(enabled, default=True)
+    def __init__(self, enabled: bool = None, gdr_support: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.enabled = enabled
         self.gdr_support = Resource.init_param(gdr_support, default=False)
+
+    def init_default_efa_enabled(self, instance_type: str):
+        """Set EFA if by default if the instance type support it."""
+        self.enabled = Resource.init_param(
+            self.enabled, default=AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
+        )
 
 
 # ---------------------- Monitoring ---------------------- #
@@ -447,12 +453,8 @@ class Efa(Resource):
 class CloudWatchLogs(Resource):
     """Represent the CloudWatch configuration in Logs."""
 
-    def __init__(
-        self,
-        enabled: bool = None,
-        retention_in_days: int = None,
-    ):
-        super().__init__()
+    def __init__(self, enabled: bool = None, retention_in_days: int = None, **kwargs):
+        super().__init__(**kwargs)
         self.enabled = Resource.init_param(enabled, default=CW_LOGS_ENABLED_DEFAULT)
         self.retention_in_days = Resource.init_param(retention_in_days, default=CW_LOGS_RETENTION_DAYS_DEFAULT)
 
@@ -471,38 +473,27 @@ class CloudWatchDashboards(Resource):
 class Logs(Resource):
     """Represent the CloudWatch Logs configuration."""
 
-    def __init__(
-        self,
-        cloud_watch: CloudWatchLogs = None,
-    ):
-        super().__init__()
-        self.cloud_watch = cloud_watch
+    def __init__(self, cloud_watch: CloudWatchLogs = None, **kwargs):
+        super().__init__(**kwargs)
+        self.cloud_watch = cloud_watch or CloudWatchLogs(implied=True)
 
 
 class Dashboards(Resource):
     """Represent the Dashboards configuration."""
 
-    def __init__(
-        self,
-        cloud_watch: CloudWatchDashboards = None,
-    ):
-        super().__init__()
+    def __init__(self, cloud_watch: CloudWatchDashboards = None, **kwargs):
+        super().__init__(**kwargs)
         self.cloud_watch = cloud_watch
 
 
 class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
-    def __init__(
-        self,
-        detailed_monitoring: bool = None,
-        logs: Logs = None,
-        dashboards: Dashboards = None,
-    ):
-        super().__init__()
+    def __init__(self, detailed_monitoring: bool = None, logs: Logs = None, dashboards: Dashboards = None, **kwargs):
+        super().__init__(**kwargs)
         self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
-        self.logs = logs
-        self.dashboards = dashboards
+        self.logs = logs or Logs(implied=True)
+        self.dashboards = dashboards or Dashboards(implied=True)
 
 
 # ---------------------- Others ---------------------- #
@@ -664,7 +655,6 @@ class HeadNode(Resource):
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
         dcv: Dcv = None,
-        efa: Efa = None,
         custom_actions: List[CustomAction] = None,
         iam: Iam = None,
     ):
@@ -677,7 +667,6 @@ class HeadNode(Resource):
         self.ssh = ssh
         self.local_storage = local_storage
         self.dcv = dcv
-        self.efa = efa
         self.custom_actions = custom_actions
         self.iam = iam
         self.__instance_type_info = None
@@ -826,7 +815,7 @@ class BaseClusterConfig(Resource):
         self.image = image
         self.head_node = head_node
         self.shared_storage = shared_storage
-        self.monitoring = monitoring
+        self.monitoring = monitoring or Monitoring(implied=True)
         self.additional_packages = additional_packages
         self.tags = tags
         self.iam = iam
@@ -861,13 +850,6 @@ class BaseClusterConfig(Resource):
                         instance_type=compute_resource.instance_type,
                         image=self.ami_id,
                     )
-        if self.head_node.efa:
-            self._execute_validator(
-                EfaOsArchitectureValidator,
-                efa_enabled=self.head_node.efa.enabled,
-                os=self.image.os,
-                architecture=self.head_node.architecture,
-            )
         self._register_storage_validators()
 
         if self.head_node.dcv:
@@ -1157,7 +1139,8 @@ class SlurmComputeResource(BaseComputeResource):
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
-        self.efa = efa
+        self.efa = efa or Efa(implied=True)
+        self.efa.init_default_efa_enabled(self.instance_type)
         self.__instance_type_info = None
 
     @property
@@ -1178,13 +1161,12 @@ class SlurmComputeResource(BaseComputeResource):
             disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
             architecture=self.architecture,
         )
-        if self.efa:
-            self._execute_validator(
-                EfaValidator,
-                instance_type=self.instance_type,
-                efa_enabled=self.efa.enabled,
-                gdr_support=self.efa.gdr_support,
-            )
+        self._execute_validator(
+            EfaValidator,
+            instance_type=self.instance_type,
+            efa_enabled=self.efa.enabled,
+            gdr_support=self.efa.gdr_support,
+        )
 
     @property
     def architecture(self) -> str:
@@ -1251,20 +1233,19 @@ class SlurmQueue(BaseQueue):
             instance_type_list=self.instance_type_list,
         )
         for compute_resource in self.compute_resources:
-            if compute_resource.efa:
+            self._execute_validator(
+                EfaSecurityGroupValidator,
+                efa_enabled=compute_resource.efa,
+                security_groups=self.networking.security_groups,
+                additional_security_groups=self.networking.additional_security_groups,
+            )
+            if self.networking.placement_group:
                 self._execute_validator(
-                    EfaSecurityGroupValidator,
+                    EfaPlacementGroupValidator,
                     efa_enabled=compute_resource.efa,
-                    security_groups=self.networking.security_groups,
-                    additional_security_groups=self.networking.additional_security_groups,
+                    placement_group_id=self.networking.placement_group.id,
+                    placement_group_enabled=self.networking.placement_group.enabled,
                 )
-                if self.networking.placement_group:
-                    self._execute_validator(
-                        EfaPlacementGroupValidator,
-                        efa_enabled=compute_resource.efa,
-                        placement_group_id=self.networking.placement_group.id,
-                        placement_group_enabled=self.networking.placement_group.enabled,
-                    )
 
     @property
     def instance_type_list(self):
@@ -1291,9 +1272,9 @@ class Dns(Resource):
 class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
-    def __init__(self, scaledown_idletime: int, dns: Dns = None):
-        super().__init__()
-        self.scaledown_idletime = Resource.init_param(scaledown_idletime)
+    def __init__(self, scaledown_idletime: int = None, dns: Dns = None, **kwargs):
+        super().__init__(**kwargs)
+        self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
         self.dns = dns
 
 
@@ -1304,7 +1285,7 @@ class SlurmScheduling(Resource):
         super().__init__()
         self.scheduler = "slurm"
         self.queues = queues
-        self.settings = settings
+        self.settings = settings or SlurmSettings(implied=True)
 
 
 class SlurmClusterConfig(BaseClusterConfig):
@@ -1336,14 +1317,13 @@ class SlurmClusterConfig(BaseClusterConfig):
                     instance_type=compute_resource.instance_type,
                     architecture=self.head_node.architecture,
                 )
-                if compute_resource.efa:
-                    self._execute_validator(
-                        EfaOsArchitectureValidator,
-                        efa_enabled=compute_resource.efa.enabled,
-                        os=self.image.os,
-                        # FIXME: head_node.architecture vs compute_resource.architecture?
-                        architecture=self.head_node.architecture,
-                    )
+                self._execute_validator(
+                    EfaOsArchitectureValidator,
+                    efa_enabled=compute_resource.efa.enabled,
+                    os=self.image.os,
+                    # FIXME: head_node.architecture vs compute_resource.architecture?
+                    architecture=self.head_node.architecture,
+                )
 
 
 class ClusterBucket:
