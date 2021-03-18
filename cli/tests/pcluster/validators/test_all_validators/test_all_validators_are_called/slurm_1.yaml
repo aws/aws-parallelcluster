@@ -115,7 +115,6 @@ Scheduling:
             Efa:
               Enabled: true
               GdrSupport: false
-            AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point1
     Ebs:
