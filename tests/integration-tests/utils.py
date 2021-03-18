@@ -145,7 +145,7 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
 
 
 def _describe_cluster_instances(
-        stack_name, region, filter_by_node_type=None, filter_by_name=None, filter_by_instance_types=None
+    stack_name, region, filter_by_node_type=None, filter_by_name=None, filter_by_instance_types=None
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
