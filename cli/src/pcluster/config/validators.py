@@ -1185,7 +1185,7 @@ def queue_validator(section_key, section_label, pcluster_config):
 
     instance_types = []
     for compute_resource_label in compute_resource_labels:
-        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label)
+        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label.strip())
         if compute_resource:
             instance_type = compute_resource.get_param_value("instance_type")
             if instance_type in instance_types:
@@ -1205,6 +1205,21 @@ def queue_validator(section_key, section_label, pcluster_config):
     if queue_section.get_param_value("enable_efa_gdr") and not queue_section.get_param_value("enable_efa"):
         errors.append("The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'")
 
+    return errors, warnings
+
+
+def queue_compute_type_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+    queue_section = pcluster_config.get_section(section_key, section_label)
+    compute_resource_labels = str(queue_section.get_param_value("compute_resource_settings") or "").split(",")
+
+    for compute_resource_label in compute_resource_labels:
+        # Check that usage class set in queue section is supported by all compute resource instance types
+        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label.strip())
+        if compute_resource:
+            instance_type = compute_resource.get_param_value("instance_type")
+            check_usage_class(instance_type, queue_section.get_param_value("compute_type"), errors, warnings)
     return errors, warnings
 
 
@@ -1601,3 +1616,26 @@ def ebs_volume_throughput_validator(section_key, section_label, pcluster_config)
             )
 
     return errors, warnings
+
+
+def cluster_type_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
+    if scheduler != "awsbatch":
+        compute_instance_type = pcluster_config.get_section("cluster").get_param_value("compute_instance_type")
+        check_usage_class(compute_instance_type, param_value, errors, warnings)
+
+    return errors, warnings
+
+
+def check_usage_class(instance_type, usage_class, errors, warnings):
+    supported_usage_classes = InstanceTypeInfo.init_from_instance_type(instance_type).supported_usage_classes()
+
+    if not supported_usage_classes:
+        warnings.append(
+            "Could not check support for usage class '{0}' with instance type '{1}'".format(usage_class, instance_type)
+        )
+    elif usage_class not in supported_usage_classes:
+        errors.append("Usage type '{0}' not supported with instance type '{1}'".format(usage_class, instance_type))
