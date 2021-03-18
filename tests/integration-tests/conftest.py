@@ -466,6 +466,9 @@ def _get_default_template_values(vpc_stack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = get_vpc_snakecase_value(vpc_stack)
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
+    scheduler = default_values.get("scheduler")
+    if scheduler is not None:
+        default_values["scheduler"] = scheduler.title()
     default_values["key_name"] = request.config.getoption("key_name")
 
     return default_values
