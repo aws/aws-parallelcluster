@@ -404,6 +404,9 @@ class SlurmConstruct(core.Construct):
                 associate_public_ip_address=queue.networking.assign_public_ip
                 if compute_resource.max_network_interface_count == 1
                 else None,  # parameter not supported for instance types with multiple network interfaces
+                interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
+                groups=queue_lt_security_groups,
+                subnet_id=queue.networking.subnet_ids[0],  # FIXME slurm supports a single subnet
             )
         ]
         for device_index in range(1, compute_resource.max_network_interface_count - 1):
