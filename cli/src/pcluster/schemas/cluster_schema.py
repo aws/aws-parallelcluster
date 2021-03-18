@@ -335,7 +335,9 @@ class PlacementGroupSchema(BaseSchema):
 class QueueNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of Queue."""
 
-    subnet_ids = fields.List(fields.Str(validate=get_field_validator("subnet_id")), required=True)
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")), validate=validate.Length(equal=1), required=True
+    )
     placement_group = fields.Nested(PlacementGroupSchema)
 
     @post_load
