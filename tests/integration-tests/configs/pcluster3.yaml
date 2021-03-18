@@ -4,7 +4,27 @@ test-suites:
   cfn-init:
     test_cfn_init.py::test_replace_compute_on_failure:
       dimensions:
-        - regions: ["us-east-2"]
-          instances: ["c5.xlarge"]
+        - regions: ["af-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
+          schedulers: ["slurm"]
+  dns:
+    test_dns.py::test_hit_no_cluster_dns_mpi:
+      dimensions:
+        - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+  create:
+    test_create.py::test_create_wrong_os:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]  # os must be different from centos7 to test os validation logic when wrong os is provided
+          schedulers: ["slurm"]
+    test_create.py::test_create_wrong_pcluster_version:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
