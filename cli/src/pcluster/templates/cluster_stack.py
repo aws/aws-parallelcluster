@@ -411,13 +411,17 @@ class ClusterCdkStack(core.Stack):
 
         return compute_security_group
 
-    def _add_s3_access_policies_to_role(self, node, role_ref: str, name: str):
+    def _add_s3_access_policies_to_role(self, node: Union[HeadNode, BaseQueue], role_ref: str, name: str):
         """Attach S3 policies to given role."""
         read_only_s3_resources = [
-            s3_access.bucket_name for s3_access in node.iam.s3_access if not s3_access.enable_write_access
+            self.format_arn(service="s3", resource=s3_access.bucket_name + "*", region="", account="")
+            for s3_access in node.iam.s3_access
+            if not s3_access.enable_write_access
         ]
         read_write_s3_resources = [
-            s3_access.bucket_name for s3_access in node.iam.s3_access if s3_access.enable_write_access
+            self.format_arn(service="s3", resource=s3_access.bucket_name + "/*", region="", account="")
+            for s3_access in node.iam.s3_access
+            if s3_access.enable_write_access
         ]
 
         s3_access_policy = iam.CfnPolicy(
@@ -1152,7 +1156,7 @@ class ClusterCdkStack(core.Stack):
             or self.config.iam.roles.get_param("custom_lambda_resources").implied
         )
 
-    def _condition_create_s3_access_policies(self, node):
+    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue]):
         return node.iam and node.iam.s3_access
 
     def _condition_is_slurm(self):
