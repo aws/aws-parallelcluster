@@ -150,7 +150,7 @@ def dummy_awsbatch_cluster_config(mocker):
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
     compute_resources = [
-        AwsbatchComputeResource(name="dummy_compute_resource1", instance_type="dummyc5.xlarge,optimal")
+        AwsbatchComputeResource(name="dummy_compute_resource1", instance_types="dummyc5.xlarge,optimal")
     ]
     queue_networking = QueueNetworking(
         subnet_ids=["dummy-subnet-1", "dummy-subnet-2"], security_groups=["sg-1", "sg-2"]

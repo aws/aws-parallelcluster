@@ -748,12 +748,10 @@ class BaseComputeResource(Resource):
     def __init__(
         self,
         name: str,
-        instance_type: str,
         disable_simultaneous_multithreading: bool = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
-        self.instance_type = Resource.init_param(instance_type)
         self.disable_simultaneous_multithreading = Resource.init_param(
             disable_simultaneous_multithreading, default=False
         )
@@ -1061,6 +1059,7 @@ class AwsbatchComputeResource(BaseComputeResource):
 
     def __init__(
         self,
+        instance_types: str = None,
         max_vcpus: int = None,
         min_vcpus: int = None,
         desired_vcpus: int = None,
@@ -1068,6 +1067,7 @@ class AwsbatchComputeResource(BaseComputeResource):
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.instance_types = Resource.init_param(instance_types)
         self.max_vcpus = Resource.init_param(max_vcpus, default=DEFAULT_MAX_COUNT)
         self.min_vcpus = Resource.init_param(min_vcpus, default=DEFAULT_MIN_COUNT)
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=self.min_vcpus)
@@ -1141,9 +1141,16 @@ class SlurmComputeResource(BaseComputeResource):
     """Represent the Slurm Compute Resource."""
 
     def __init__(
-        self, max_count: int = None, min_count: int = None, spot_price: float = None, efa: Efa = None, **kwargs
+        self,
+        instance_type: str = None,
+        max_count: int = None,
+        min_count: int = None,
+        spot_price: float = None,
+        efa: Efa = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
+        self.instance_type = Resource.init_param(instance_type)
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)

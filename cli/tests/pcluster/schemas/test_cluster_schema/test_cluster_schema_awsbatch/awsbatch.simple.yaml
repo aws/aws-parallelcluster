@@ -15,7 +15,7 @@ Scheduling:
             - subnet-12345678
         ComputeResources:
           - Name: compute_resource1
-            InstanceType: c4.xlarge,c5.large|optimal|c5,c4
+            InstanceTypes: c4.xlarge,c5.large|optimal|c5,c4
             MaxvCpus: 10
 SharedStorage:
   - MountDir: /shared
