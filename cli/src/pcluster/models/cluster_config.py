@@ -638,7 +638,7 @@ class CustomAction(Resource):
         super().__init__()
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)
-        self.event = Resource.init_param(event)
+        self.event = Resource.init_param(event, default=CustomActionEvent.NODE_CONFIGURED)
 
     def _validate(self):
         self._execute_validator(UrlValidator, url=self.script)

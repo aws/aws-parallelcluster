@@ -923,8 +923,8 @@ class ClusterCdkStack(core.Stack):
                     "cfn_base_os": self.config.image.os,
                     "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
                     "cfn_preinstall_args": pre_install_action.args if pre_install_action else "NONE",
-                    "cfn_postinstall": post_install_action.script if pre_install_action else "NONE",
-                    "cfn_postinstall_args": post_install_action.args if pre_install_action else "NONE",
+                    "cfn_postinstall": post_install_action.script if post_install_action else "NONE",
+                    "cfn_postinstall_args": post_install_action.args if post_install_action else "NONE",
                     "cfn_region": self.region,
                     "cfn_efs": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
                     "cfn_efs_shared_dir": get_shared_storage_options_by_type(

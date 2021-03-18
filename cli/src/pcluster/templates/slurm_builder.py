@@ -466,12 +466,14 @@ class SlurmConstruct(core.Construct):
                                 "PreInstallScript": queue_pre_install_action.script
                                 if queue_pre_install_action
                                 else "NONE",
-                                "PreInstallArgs": queue_pre_install_action.args if queue_pre_install_action else "NONE",
+                                "PreInstallArgs": queue_pre_install_action.args
+                                if queue_pre_install_action and queue_pre_install_action.args
+                                else "NONE",
                                 "PostInstallScript": queue_post_install_action.script
-                                if queue_pre_install_action
+                                if queue_post_install_action
                                 else "NONE",
                                 "PostInstallArgs": queue_post_install_action.args
-                                if queue_pre_install_action
+                                if queue_post_install_action and queue_post_install_action.args
                                 else "NONE",
                                 "EFSId": get_shared_storage_ids_by_type(
                                     self.shared_storage_mappings, SharedStorageType.EFS
