@@ -671,8 +671,6 @@ class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
     disable_managed_dns = fields.Bool()
-    domain = fields.Str()
-    hosted_zone_id = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):

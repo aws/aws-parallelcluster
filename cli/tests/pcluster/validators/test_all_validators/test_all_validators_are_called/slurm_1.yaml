@@ -53,8 +53,6 @@ Scheduling:
       ScaledownIdletime: 10
       Dns:
         DisableManagedDns: true
-        Domain: String
-        HostedZoneId: String
     Queues:
       - Name: queue1
         ComputeType: ONDEMAND
