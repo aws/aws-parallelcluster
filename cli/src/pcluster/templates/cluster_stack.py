@@ -84,7 +84,7 @@ class ClusterCdkStack(core.Stack):
         self.instance_profiles = {}
         self.compute_security_groups = {}
         self.shared_storage_mappings = {storage_type: [] for storage_type in SharedStorageType}
-        self.shared_storage_options = {storage_type: "NONE" for storage_type in SharedStorageType}
+        self.shared_storage_options = {storage_type: "" for storage_type in SharedStorageType}
 
         self._add_resources()
         self._add_outputs()
