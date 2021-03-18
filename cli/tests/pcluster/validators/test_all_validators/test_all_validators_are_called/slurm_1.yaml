@@ -10,16 +10,13 @@ HeadNode:
     SecurityGroups:
       - sg-12345678
       - sg-23456789
-    AdditionalSecurityGroups:
-      - sg-34567890
-      - sg-45678901
     Proxy:
       HttpProxyAddress: String  # https://proxy-address:port
   DisableSimultaneousMultithreading: false
   Ssh:
     KeyName: ec2-key-name
     AllowedIps: 1.2.3.4/32
-  Storage:
+  LocalStorage:
     RootVolume:
       Size: 40
       Encrypted: true
@@ -89,7 +86,7 @@ Scheduling:
           AdditionalIamPolicies:
             - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
       - Name: queue2
-        Storage:
+        LocalStorage:
           RootVolume:
             Size:  35
             Encrypted:  true
@@ -105,8 +102,6 @@ Scheduling:
             - subnet-12345678
             - subnet-23456789
           AssignPublicIp: true
-          SecurityGroups:
-            - sg-12345678
           AdditionalSecurityGroups:
             - sg-23456789
           PlacementGroup:

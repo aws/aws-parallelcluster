@@ -166,7 +166,7 @@ class EphemeralVolume(Resource):
         self.mount_dir = Resource.init_param(mount_dir, default="/scratch")
 
 
-class Storage(Resource):
+class LocalStorage(Resource):
     """Represent the entire node storage configuration."""
 
     def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
@@ -660,7 +660,7 @@ class HeadNode(Resource):
         networking: HeadNodeNetworking,
         ssh: Ssh,
         disable_simultaneous_multithreading: bool = None,
-        storage: Storage = None,
+        local_storage: LocalStorage = None,
         dcv: Dcv = None,
         efa: Efa = None,
         custom_actions: List[CustomAction] = None,
@@ -673,7 +673,7 @@ class HeadNode(Resource):
         )
         self.networking = networking
         self.ssh = ssh
-        self.storage = storage
+        self.local_storage = local_storage
         self.dcv = dcv
         self.efa = efa
         self.custom_actions = custom_actions
@@ -786,14 +786,14 @@ class BaseQueue(Resource):
         self,
         name: str,
         networking: QueueNetworking,
-        storage: Storage = None,
+        local_storage: LocalStorage = None,
         compute_type: str = None,
         iam: Iam = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
         self.networking = networking
-        self.storage = storage
+        self.local_storage = local_storage
         self.compute_type = Resource.init_param(compute_type, default=ComputeType.ONDEMAND)
         self.iam = iam
 
@@ -966,8 +966,8 @@ class BaseClusterConfig(Resource):
             for storage in self.shared_storage:
                 mount_dir_list.append(storage.mount_dir)
 
-        if self.head_node.storage and self.head_node.storage.ephemeral_volume:
-            mount_dir_list.append(self.head_node.storage.ephemeral_volume.mount_dir)
+        if self.head_node.local_storage and self.head_node.local_storage.ephemeral_volume:
+            mount_dir_list.append(self.head_node.local_storage.ephemeral_volume.mount_dir)
 
         return mount_dir_list
 
@@ -1104,10 +1104,10 @@ class AwsbatchQueue(BaseQueue):
         name: str,
         networking: QueueNetworking,
         compute_resources: List[AwsbatchComputeResource],
-        storage: Storage = None,
+        local_storage: LocalStorage = None,
         compute_type: str = None,
     ):
-        super().__init__(name, networking, storage, compute_type)
+        super().__init__(name, networking, local_storage, compute_type)
         self.compute_resources = compute_resources
 
 

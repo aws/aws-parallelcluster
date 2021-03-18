@@ -7,9 +7,6 @@ HeadNode:
     SubnetId: subnet-12345678  # subnet-xxx
     ElasticIp: String  # true|false|EIP-id
     AssignPublicIp: true  # true|false
-    SecurityGroups:
-      - sg-12345678  # sg-xxxx
-      - sg-23456789
     AdditionalSecurityGroups:
       - sg-12345678  # sg-xxxx
       - sg-23456789
@@ -25,7 +22,7 @@ HeadNode:
   Ssh:
     KeyName: String  # ec2-key-name
     AllowedIps: 1.2.3.4/32  # 1.2.3.4/32
-  Storage:
+  LocalStorage:
     RootVolume:
       Size: 37  # 35
       Encrypted: true  # true
@@ -44,7 +41,7 @@ Scheduling:
   Awsbatch:
     Queues:
       - Name: String  # queue
-        Storage:
+        LocalStorage:
           RootVolume:
             Size: 38  # 35
             Encrypted: true  # true
@@ -62,8 +59,6 @@ Scheduling:
             - subnet-23456789
           AssignPublicIp: true  # true|false
           SecurityGroups:
-            - sg-12345678  # sg-xxxx
-          AdditionalSecurityGroups:
             - sg-12345678  # sg-xxxx
           PlacementGroup:
             Enabled: true  # true

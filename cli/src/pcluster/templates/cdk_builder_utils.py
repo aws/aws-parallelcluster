@@ -49,7 +49,7 @@ def get_block_device_mappings(node_config: Union[HeadNode, BaseQueue], os: str):
         )
 
     # Root volume
-    if node_config.storage and node_config.storage.root_volume:
+    if node_config.local_storage and node_config.local_storage.root_volume:
         root_volume = copy.deepcopy(node_config.storage.root_volume)
     else:
         root_volume = Ebs()
