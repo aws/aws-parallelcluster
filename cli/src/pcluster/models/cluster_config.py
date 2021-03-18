@@ -757,13 +757,11 @@ class BaseComputeResource(Resource):
         self,
         name: str,
         instance_type: str,
-        allocation_strategy: str = None,
         disable_simultaneous_multithreading: bool = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
         self.instance_type = Resource.init_param(instance_type)
-        self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
         self.disable_simultaneous_multithreading = Resource.init_param(
             disable_simultaneous_multithreading, default=False
         )

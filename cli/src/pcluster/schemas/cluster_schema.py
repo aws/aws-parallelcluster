@@ -585,7 +585,6 @@ class _ComputeResourceSchema(BaseSchema):
     """Represent the schema of the ComputeResource."""
 
     name = fields.Str(required=True)
-    allocation_strategy = fields.Str()
     disable_simultaneous_multithreading = fields.Bool()
     efa = fields.Nested(EfaSchema)
 
