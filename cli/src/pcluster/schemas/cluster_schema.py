@@ -465,7 +465,7 @@ class S3AccessSchema(BaseSchema):
     """Represent the schema of S3 access."""
 
     bucket_name = fields.Str(required=True)
-    type = fields.Str(validate=validate.OneOf(["READ_ONLY", "READ_WRITE"]))
+    enable_write_access = fields.Bool()
 
     @post_load
     def make_resource(self, data, **kwargs):

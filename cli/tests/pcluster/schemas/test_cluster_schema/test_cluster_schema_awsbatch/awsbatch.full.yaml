@@ -118,7 +118,7 @@ Iam:
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
   S3Access:
     - BucketName: String
-      Type: READ_WRITE # READ_ONLY | READ_WRITE
+      EnableWriteAccess: False
   AdditionalIamPolicies:
     - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
     - Policy: policy2
