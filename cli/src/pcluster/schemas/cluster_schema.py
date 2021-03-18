@@ -604,7 +604,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
 class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Batch ComputeResource."""
 
-    instance_type = fields.Str(required=True)  # TODO it is a comma separated list
+    instance_types = fields.Str()  # TODO it is a comma separated list
     max_vcpus = fields.Int(data_key="MaxvCpus", validate=validate.Range(min=1))
     min_vcpus = fields.Int(data_key="MinvCpus", validate=validate.Range(min=0))
     desired_vcpus = fields.Int(data_key="DesiredvCpus", validate=validate.Range(min=0))
