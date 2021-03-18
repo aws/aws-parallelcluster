@@ -570,7 +570,6 @@ class HeadNodeSchema(BaseSchema):
     ssh = fields.Nested(SshSchema, required=True)
     local_storage = fields.Nested(LocalStorageSchema)
     dcv = fields.Nested(DcvSchema)
-    efa = fields.Nested(EfaSchema)
     custom_actions = fields.Nested(
         CustomActionSchema, many=True
     )  # TODO validate to avoid more than one script for event type or add support for them.
