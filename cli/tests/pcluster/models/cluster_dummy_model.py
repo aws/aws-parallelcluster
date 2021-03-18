@@ -136,8 +136,8 @@ def dummy_slurm_cluster_config(mocker):
     cluster.config_version = "1.0"
     cluster.iam = Iam(
         s3_access=[
-            S3Access("dummy-readonly-bucket", type="READ_ONLY"),
-            S3Access("dummy-readwrite-bucket", type="READ_WRITE"),
+            S3Access("dummy-readonly-bucket", enable_write_access=True),
+            S3Access("dummy-readwrite-bucket"),
         ]
     )
 
@@ -174,8 +174,8 @@ def dummy_awsbatch_cluster_config(mocker):
     cluster.config_version = "1.0"
     cluster.iam = Iam(
         s3_access=[
-            S3Access("dummy-readonly-bucket", type="READ_ONLY"),
-            S3Access("dummy-readwrite-bucket", type="READ_WRITE"),
+            S3Access("dummy-readonly-bucket", enable_write_access=False),
+            S3Access("dummy-readwrite-bucket", enable_write_access=True),
         ]
     )
 

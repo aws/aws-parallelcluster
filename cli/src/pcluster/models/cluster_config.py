@@ -539,11 +539,11 @@ class S3Access(Resource):
     def __init__(
         self,
         bucket_name: str,
-        type: str = None,
+        enable_write_access: bool = None,
     ):
         super().__init__()
         self.bucket_name = Resource.init_param(bucket_name)
-        self.type = Resource.init_param(type, default="READ_ONLY")
+        self.enable_write_access = Resource.init_param(enable_write_access, default=False)
 
 
 class AdditionalIamPolicy(Resource):

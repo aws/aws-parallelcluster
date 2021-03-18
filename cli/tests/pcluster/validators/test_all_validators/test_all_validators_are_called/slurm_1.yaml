@@ -44,7 +44,7 @@ HeadNode:
       CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
     S3Access:
       - BucketName: String
-        Type: READ_ONLY
+        EnableWriteAccess: True
     AdditionalIamPolicies:
       - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
 Scheduling:
@@ -77,7 +77,7 @@ Scheduling:
             CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
           S3Access:
             - BucketName: String
-              Type: READ_ONLY
+              EnableWriteAccess: False
           AdditionalIamPolicies:
             - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
       - Name: queue2
@@ -153,7 +153,6 @@ Iam:
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
   S3Access:
     - BucketName: String
-      Type: READ_ONLY
   AdditionalIamPolicies:
     - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
     - Policy: policy2
