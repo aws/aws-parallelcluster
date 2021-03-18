@@ -393,8 +393,6 @@ class CloudWatchLogsSchema(BaseSchema):
     retention_in_days = fields.Int(
         validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653])
     )
-    log_group_id = fields.Str()
-    kms_key_id = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):
