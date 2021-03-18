@@ -398,6 +398,13 @@ class Cluster:
         try:
             # Upload original config
             if self.config.source_config:
+                AWSApi.instance().s3.put_object(
+                    bucket_name=self.bucket.name,
+                    body=yaml.dump(self.config.source_config),
+                    key=self._get_original_config_key(),
+                )
+            # Upload config with default values and sections
+            if self.config:
                 result = AWSApi.instance().s3.put_object(
                     bucket_name=self.bucket.name,
                     body=yaml.dump(ClusterSchema().dump(self.config)),
@@ -467,6 +474,9 @@ class Cluster:
 
     def _get_default_template_key(self):
         return f"{self.bucket.artifact_directory}/templates/aws-parallelcluster.cfn.yaml"
+
+    def _get_original_config_key(self):
+        return f"{self.bucket.artifact_directory}/configs/cluster-config-original.yaml"
 
     def _get_config_key(self):
         return f"{self.bucket.artifact_directory}/configs/cluster-config.yaml"

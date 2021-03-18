@@ -33,7 +33,9 @@ def _check_cluster_schema(test_datadir, config_file_name):
     print(cluster)
 
     # Re-create Yaml file from model and compare content
-    output_json = ClusterSchema().dump(cluster)
+    cluster_schema = ClusterSchema()
+    cluster_schema.context = {"delete_defaults_when_dump": True}
+    output_json = cluster_schema.dump(cluster)
     assert_that(json.dumps(input_yaml, sort_keys=True)).is_equal_to(json.dumps(output_json, sort_keys=True))
 
     # Print output yaml
@@ -42,7 +44,8 @@ def _check_cluster_schema(test_datadir, config_file_name):
 
 
 @pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.full.yaml"])
-def test_cluster_schema_slurm(test_datadir, config_file_name):
+def test_cluster_schema_slurm(mocker, test_datadir, config_file_name):
+    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
     _check_cluster_schema(test_datadir, config_file_name)
 
 
@@ -104,7 +107,8 @@ FAKE_QUEUE_LIST = [
         (DUMMY_REQUIRED_QUEUE, None),
     ],
 )
-def test_slurm_scheduling_schema(queues, failure_message):
+def test_slurm_scheduling_schema(mocker, queues, failure_message):
+    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
     scheduling_schema = {}
     if queues:
         scheduling_schema["Queues"] = queues
