@@ -13,7 +13,6 @@ Scheduling:
         Networking:
           SubnetIds:
             - subnet-12345678
-            - subnet-23456789
         ComputeResources:
           - Name: compute_resource1
             InstanceType: c4.xlarge

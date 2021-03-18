@@ -56,7 +56,6 @@ Scheduling:
         Networking:
           SubnetIds:
             - subnet-12345678
-            - subnet-23456789
           AssignPublicIp: true  # true|false
           SecurityGroups:
             - sg-12345678  # sg-xxxx
