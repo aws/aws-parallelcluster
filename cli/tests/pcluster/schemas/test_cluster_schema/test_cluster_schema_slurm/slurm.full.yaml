@@ -39,14 +39,10 @@ HeadNode:
       Event: NODE_START
       RunAs: String
   Iam:
-    Roles:
-      InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
-      CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
       - BucketName: String
         EnableWriteAccess: True
-    AdditionalIamPolicies:
-      - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
 Scheduling:
   Slurm:
     Settings:
@@ -72,9 +68,6 @@ Scheduling:
             Event: NODE_START
             RunAs: String
         Iam:
-          Roles:
-            InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
-            CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
           S3Access:
             - BucketName: String
               EnableWriteAccess: False
@@ -149,14 +142,7 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
-    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
-  S3Access:
-    - BucketName: String
-      EnableWriteAccess: False
-  AdditionalIamPolicies:
-    - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
-    - Policy: policy2
 Monitoring:
   DetailedMonitoring: true  # false
   Logs:

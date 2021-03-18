@@ -525,11 +525,9 @@ class Roles(Resource):
 
     def __init__(
         self,
-        instance_role: str = None,
         custom_lambda_resources: str = None,
     ):
         super().__init__()
-        self.instance_role = Resource.init_param(instance_role)
         self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
 
 
@@ -561,18 +559,29 @@ class AdditionalIamPolicy(Resource):
 
 
 class Iam(Resource):
-    """Represent the IAM configuration."""
+    """Represent the IAM configuration for HeadNode and Queue."""
+
+    def __init__(
+        self,
+        s3_access: List[S3Access] = None,
+        additional_iam_policies: List[AdditionalIamPolicy] = None,
+        instance_role: str = None,
+    ):
+        super().__init__()
+        self.s3_access = s3_access
+        self.additional_iam_policies = additional_iam_policies
+        self.instance_role = Resource.init_param(instance_role)
+
+
+class ClusterIam(Resource):
+    """Represent the IAM configuration for Cluster."""
 
     def __init__(
         self,
         roles: Roles = None,
-        s3_access: List[S3Access] = None,
-        additional_iam_policies: List[AdditionalIamPolicy] = None,
     ):
         super().__init__()
         self.roles = roles
-        self.s3_access = s3_access
-        self.additional_iam_policies = additional_iam_policies
 
 
 class IntelSelectSolutions(Resource):
@@ -731,7 +740,7 @@ class HeadNode(Resource):
     @property
     def instance_role(self):
         """Return the IAM role for head node, if set."""
-        return self.iam.roles.instance_role if self.iam and self.iam.roles else None
+        return self.iam.instance_role if self.iam else None
 
     def get_custom_action(self, event: CustomActionEvent) -> CustomAction:
         """Return the first CustomAction corresponding to the specified event."""
@@ -791,7 +800,7 @@ class BaseQueue(Resource):
     @property
     def instance_role(self):
         """Return the IAM role for compute nodes, if set."""
-        return self.iam.roles.instance_role if self.iam and self.iam.roles else None
+        return self.iam.instance_role if self.iam else None
 
 
 class CommonSchedulingSettings(Resource):
@@ -813,7 +822,7 @@ class BaseClusterConfig(Resource):
         monitoring: Monitoring = None,
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
-        iam: Iam = None,
+        iam: ClusterIam = None,
         cluster_s3_bucket: str = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,

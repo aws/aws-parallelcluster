@@ -114,14 +114,7 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
-    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
-  S3Access:
-    - BucketName: String
-      EnableWriteAccess: False
-  AdditionalIamPolicies:
-    - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
-    - Policy: policy2
 Monitoring:
   DetailedMonitoring: true  # false
   Logs:
