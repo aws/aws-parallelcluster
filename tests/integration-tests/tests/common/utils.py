@@ -108,9 +108,8 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
             Filters=[
                 {"Name": "name", "Values": [official_ami_name]},
                 {"Name": "architecture", "Values": [architecture]},
-                {"Name": "is-public", "Values": ["true"]},
             ],
-            Owners=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("owners"),
+            Owners=["self"],
         ).get("Images", [])
         ami_id = client.copy_image(
             Description="This AMI is a copy from an official AMI but uses a different naming. "
