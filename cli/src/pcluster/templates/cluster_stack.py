@@ -912,7 +912,6 @@ class ClusterCdkStack(core.Stack):
             {
                 "cfncluster": {
                     "stack_name": self._stack_name,
-                    "enable_efa": "true" if head_node.efa and head_node.efa.enabled else "NONE",
                     "cfn_raid_vol_ids": get_shared_storage_ids_by_type(
                         self.shared_storage_mappings, SharedStorageType.RAID
                     ),

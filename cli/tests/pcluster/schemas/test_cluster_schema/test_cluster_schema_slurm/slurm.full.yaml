@@ -38,9 +38,6 @@ HeadNode:
         - stirng2
       Event: NODE_START
       RunAs: String
-  Efa:
-    Enabled: false
-    GdrSupport: false
   Iam:
     Roles:
       InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
