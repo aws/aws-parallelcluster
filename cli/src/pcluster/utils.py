@@ -1258,7 +1258,7 @@ class InstanceTypeInfo:
     @staticmethod
     def load_additional_instance_types_data(instance_types_data):
         """Load additional data to describe instance types."""
-        InstanceTypeInfo.__additional_instance_types_data.update(instance_types_data)
+        InstanceTypeInfo.__additional_instance_types_data = instance_types_data if instance_types_data else {}
 
     @staticmethod
     def clear_additional_instance_types_data():
@@ -1353,7 +1353,7 @@ class InstanceTypeInfo:
 
     def supported_usage_classes(self):
         """Return the list supported usage classes."""
-        supported_classes = self.instance_type_data.get("SupportedUsageClasses", [])
+        supported_classes = list(self.instance_type_data.get("SupportedUsageClasses", []))
         if "on-demand" in supported_classes:
             # Replace official AWS with internal naming convention
             supported_classes.remove("on-demand")
