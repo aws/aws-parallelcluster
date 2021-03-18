@@ -28,8 +28,11 @@ def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_rea
     logging.info("Testing HIT cluster with cluster DNS disabled.")
     scaledown_idletime = 3
     max_queue_size = 3
+    min_queue_size = 1
     slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size, min_queue_size=min_queue_size
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
