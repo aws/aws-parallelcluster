@@ -449,18 +449,10 @@ class CloudWatchLogs(Resource):
         self,
         enabled: bool = None,
         retention_in_days: int = None,
-        log_group_id: str = None,
-        kms_key_id: str = None,
     ):
         super().__init__()
         self.enabled = Resource.init_param(enabled, default=CW_LOGS_ENABLED_DEFAULT)
         self.retention_in_days = Resource.init_param(retention_in_days, default=CW_LOGS_RETENTION_DAYS_DEFAULT)
-        self.log_group_id = Resource.init_param(log_group_id)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-
-    def _validate(self):
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class CloudWatchDashboards(Resource):

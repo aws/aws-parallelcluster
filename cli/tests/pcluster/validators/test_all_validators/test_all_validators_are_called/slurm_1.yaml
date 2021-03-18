@@ -163,8 +163,6 @@ Monitoring:
     CloudWatch:
       Enabled: true  # true
       RetentionInDays: 30  # 14
-      LogGroupId: String
-      KmsKeyId: String
   Dashboards:
     CloudWatch:
       Enabled: true  # true
