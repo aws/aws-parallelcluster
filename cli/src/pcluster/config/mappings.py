@@ -1040,7 +1040,7 @@ CLUSTER_COMMON_PARAMS = [
         "type": JsonCfnParam,
         "default": {},
         "cfn_param_mapping": "InstanceTypesData",
-        "update_policy": UpdatePolicy.IGNORED
+        "update_policy": UpdatePolicy.UNSUPPORTED
     }),
 ]
 
