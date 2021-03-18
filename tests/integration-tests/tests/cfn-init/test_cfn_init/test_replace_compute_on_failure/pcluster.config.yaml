@@ -12,7 +12,7 @@ HeadNode:
   CustomActions:
     - Script: s3://{{ bucket_name }}/post_install.sh
 Scheduling:
-  Slurm: # Fixme: retrieve from {{ scheduler }}, but we need to make it camelcased
+  {{ scheduler }}:
     Settings:
       ScaledownIdletime: 10
     Queues:
