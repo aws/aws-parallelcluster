@@ -6,6 +6,8 @@ CHANGELOG
 **ENHANCEMENTS**
 
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+- Add validation for `cluster_type` configuration parameter in `cluster` section
+- Add validation for `compute_type` configuration parameter in `queue` section
 
 **CHANGES**
 
@@ -227,6 +229,12 @@ CHANGELOG
   - Libfabric: ``libfabric-1.10.1amzn1.1`` (no change)
   - Open MPI: ``openmpi40-aws-4.0.3`` (no change)
 - Upgrade Slurm to version 20.02.4.
+- Apply the following changes to Slurm configuration:
+  - Assign a range of 10 ports to Slurmctld in order to better perform with large cluster settings
+  - Configure cloud scheduling logic
+  - Set `ReconfigFlags=KeepPartState`
+  - Set `MessageTimeout=60`
+  - Set `TaskPlugin=task/affinity,task/cgroup` together with `TaskAffinity=no` and `ConstrainCores=yes` in cgroup.conf
 - Upgrade NICE DCV to version 2020.1-9012.
 - Use private IP instead of master node hostname when mounting shared NFS drives.
 - Add new log streams to CloudWatch: chef-client, clustermgtd, computemgtd, slurm_resume, slurm_suspend.
