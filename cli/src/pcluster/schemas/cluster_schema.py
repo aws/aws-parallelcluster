@@ -31,6 +31,7 @@ from pcluster.models.cluster_config import (
     CloudWatchDashboards,
     CloudWatchLogs,
     ClusterDevSettings,
+    ClusterIam,
     CommonSchedulingSettings,
     ComputeType,
     CustomAction,
@@ -452,7 +453,6 @@ class MonitoringSchema(BaseSchema):
 class RolesSchema(BaseSchema):
     """Represent the schema of roles."""
 
-    instance_role = fields.Str()
     custom_lambda_resources = fields.Str()
 
     @post_load
@@ -484,12 +484,29 @@ class AdditionalIamPolicySchema(BaseSchema):
         return AdditionalIamPolicy(**data)
 
 
-class IamSchema(BaseSchema):
-    """Represent the schema of IAM."""
+class ClusterIamSchema(BaseSchema):
+    """Represent the schema of IAM for Cluster."""
 
     roles = fields.Nested(RolesSchema)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ClusterIam(**data)
+
+
+class IamSchema(BaseSchema):
+    """Represent the schema of IAM for HeadNode and Queue."""
+
+    instance_role = fields.Str()
     s3_access = fields.Nested(S3AccessSchema, many=True)
     additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
+
+    @validates_schema
+    def no_coexist_security_groups(self, data, **kwargs):
+        """Validate that security_groups and additional_security_groups are not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
+            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -742,7 +759,7 @@ class ClusterSchema(BaseSchema):
     monitoring = fields.Nested(MonitoringSchema)
     additional_packages = fields.Nested(AdditionalPackagesSchema)
     tags = fields.Nested(TagSchema, many=True)
-    iam = fields.Nested(IamSchema)
+    iam = fields.Nested(ClusterIamSchema)
     cluster_s3_bucket = fields.Str()
     additional_resources = fields.Str()
     dev_settings = fields.Nested(ClusterDevSettingsSchema)
