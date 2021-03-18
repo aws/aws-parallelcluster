@@ -487,12 +487,12 @@ class SlurmConstruct(core.Construct):
                                 ),
                                 "Scheduler": self.config.scheduling.scheduler,
                                 "EncryptedEphemeral": "true"
-                                if queue.storage
-                                and queue.storage.ephemeral_volume
-                                and queue.storage.ephemeral_volume.encrypted
+                                if queue.local_storage
+                                and queue.local_storage.ephemeral_volume
+                                and queue.local_storage.ephemeral_volume.encrypted
                                 else "NONE",
-                                "EphemeralDir": queue.storage.ephemeral_volume.mount_dir
-                                if queue.storage and queue.storage.ephemeral_volume
+                                "EphemeralDir": queue.local_storage.ephemeral_volume.mount_dir
+                                if queue.local_storage and queue.local_storage.ephemeral_volume
                                 else "/scratch",
                                 "EbsSharedDirs": get_shared_storage_options_by_type(
                                     self.shared_storage_options, SharedStorageType.EBS

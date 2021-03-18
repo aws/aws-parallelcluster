@@ -46,6 +46,7 @@ from pcluster.models.cluster_config import (
     Iam,
     Image,
     IntelSelectSolutions,
+    LocalStorage,
     Logs,
     Monitoring,
     PlacementGroup,
@@ -63,7 +64,6 @@ from pcluster.models.cluster_config import (
     SlurmScheduling,
     SlurmSettings,
     Ssh,
-    Storage,
 )
 from pcluster.schemas.common_schema import BaseDevSettingsSchema, BaseSchema, TagSchema, get_field_validator
 from pcluster.validators.cluster_validators import FSX_MESSAGES
@@ -131,8 +131,8 @@ class EphemeralVolumeSchema(BaseSchema):
         return EphemeralVolume(**data)
 
 
-class StorageSchema(BaseSchema):
-    """Represent the schema of storage attached to a node."""
+class LocalStorageSchema(BaseSchema):
+    """Represent the schema of local storage attached to a node."""
 
     root_volume = fields.Nested(RootVolumeSchema)
     ephemeral_volume = fields.Nested(EphemeralVolumeSchema)
@@ -140,7 +140,7 @@ class StorageSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Storage(**data)
+        return LocalStorage(**data)
 
 
 class EfsSchema(BaseSchema):
@@ -273,7 +273,7 @@ class SharedStorageSchema(BaseSchema):
     @validates_schema
     def only_one_storage(self, data, **kwargs):
         """Validate that there is one and only one setting."""
-        if not self.only_one_field(data, ["ebs", "efs", "fsx"], **kwargs):
+        if self.fields_coexist(data=data, field_list=["ebs", "efs", "fsx"], one_required=True, **kwargs):
             raise ValidationError(
                 "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
             )
@@ -300,6 +300,12 @@ class BaseNetworkingSchema(BaseSchema):
     assign_public_ip = fields.Bool()
     security_groups = fields.List(fields.Str(validate=get_field_validator("security_group_id")))
     proxy = fields.Nested(ProxySchema)
+
+    @validates_schema
+    def no_coexist_security_groups(self, data, **kwargs):
+        """Validate that security_groups and additional_security_groups are not co-exist."""
+        if self.fields_coexist(data, ["security_groups", "additional_security_groups"], **kwargs):
+            raise ValidationError("SecurityGroups and AdditionalSecurityGroups can not be configured together.")
 
 
 class HeadNodeNetworkingSchema(BaseNetworkingSchema):
@@ -560,7 +566,7 @@ class HeadNodeSchema(BaseSchema):
     disable_simultaneous_multithreading = fields.Bool()
     networking = fields.Nested(HeadNodeNetworkingSchema, required=True)
     ssh = fields.Nested(SshSchema, required=True)
-    storage = fields.Nested(StorageSchema)
+    local_storage = fields.Nested(LocalStorageSchema)
     dcv = fields.Nested(DcvSchema)
     efa = fields.Nested(EfaSchema)
     custom_actions = fields.Nested(
@@ -617,7 +623,7 @@ class BaseQueueSchema(BaseSchema):
 
     name = fields.Str()
     networking = fields.Nested(QueueNetworkingSchema, required=True)
-    storage = fields.Nested(StorageSchema)
+    local_storage = fields.Nested(LocalStorageSchema)
     compute_type = fields.Str(validate=validate.OneOf([event.value for event in ComputeType]))
     iam = fields.Nested(IamSchema)
 
@@ -708,7 +714,7 @@ class SchedulingSchema(BaseSchema):
     @validates_schema
     def only_one_scheduling_type(self, data, **kwargs):
         """Validate that there is one and only one type of scheduling."""
-        if not self.only_one_field(data, ["slurm", "awsbatch", "custom"], **kwargs):
+        if self.fields_coexist(data=data, field_list=["slurm", "awsbatch", "custom"], one_required=True, **kwargs):
             raise ValidationError("You must provide scheduler configuration")
 
     @post_load

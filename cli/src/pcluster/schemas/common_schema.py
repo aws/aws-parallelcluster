@@ -53,18 +53,23 @@ class BaseSchema(Schema):
         if field_obj.data_key is None:
             field_obj.data_key = camelcase(field_name)
 
-    def only_one_field(self, data, field_list, **kwargs):
+    def fields_coexist(self, data, field_list, one_required=False, **kwargs):
         """
-        Check that the Schema contains only one of the given fields.
+        Check if at least two fileds in the filed lists co-exist in the schema.
 
-        :param data: the
+        :param data: data to be checked
         :param field_list: list including the name of the fields to check
+        :param one_required: True if one of the field is required to be existed
         :return: True if one and only one field is not None
         """
         if kwargs.get("partial"):
             # If the schema is to be loaded partially, do not check existence constrain.
             return True
-        return len([data.get(field_name) for field_name in field_list if data.get(field_name)]) == 1
+        if one_required:
+            result = len([data.get(field_name) for field_name in field_list if data.get(field_name)]) != 1
+        else:
+            result = len([data.get(field_name) for field_name in field_list if data.get(field_name)]) > 1
+        return result
 
     @pre_dump
     def remove_implied_values(self, data, **kwargs):

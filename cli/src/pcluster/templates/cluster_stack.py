@@ -941,12 +941,12 @@ class ClusterCdkStack(core.Stack):
                     "cfn_volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
                     "cfn_scheduler": self.config.scheduling.scheduler,
                     "cfn_encrypted_ephemeral": "true"
-                    if head_node.storage
-                    and head_node.storage.ephemeral_volume
-                    and head_node.storage.ephemeral_volume.encrypted
+                    if head_node.local_storage
+                    and head_node.local_storage.ephemeral_volume
+                    and head_node.local_storage.ephemeral_volume.encrypted
                     else "NONE",
-                    "cfn_ephemeral_dir": head_node.storage.ephemeral_volume.mount_dir
-                    if head_node.storage and head_node.storage.ephemeral_volume
+                    "cfn_ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
+                    if head_node.local_storage and head_node.local_storage.ephemeral_volume
                     else "/scratch",
                     "cfn_shared_dir": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EBS

@@ -7,9 +7,6 @@ HeadNode:
     SubnetId: subnet-12345678  # subnet-xxx
     ElasticIp: String  # true|false|EIP-id
     AssignPublicIp: True  # true|false
-    SecurityGroups:
-      - sg-12345678
-      - sg-23456789
     AdditionalSecurityGroups:
       - sg-34567890
       - sg-45678901
@@ -19,7 +16,7 @@ HeadNode:
   Ssh:
     KeyName: ec2-key-name
     AllowedIps: 1.2.3.4/32
-  Storage:
+  LocalStorage:
     RootVolume:
       Size: 40
       Encrypted: true
@@ -89,7 +86,7 @@ Scheduling:
           AdditionalIamPolicies:
             - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
       - Name: queue2
-        Storage:
+        LocalStorage:
           RootVolume:
             Size:  35
             Encrypted:  true
@@ -107,8 +104,6 @@ Scheduling:
           AssignPublicIp: true
           SecurityGroups:
             - sg-12345678
-          AdditionalSecurityGroups:
-            - sg-23456789
           PlacementGroup:
             Enabled: true
             Id: String
