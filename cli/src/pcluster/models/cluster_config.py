@@ -1283,11 +1283,9 @@ class SlurmQueue(BaseQueue):
 class Dns(Resource):
     """Represent the DNS settings."""
 
-    def __init__(self, disable_managed_dns: bool = None, domain: str = None, hosted_zone_id: str = None):
+    def __init__(self, disable_managed_dns: bool = None):
         super().__init__()
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
-        self.domain = Resource.init_param(domain)
-        self.hosted_zone_id = Resource.init_param(hosted_zone_id)
 
 
 class SlurmSettings(CommonSchedulingSettings):
