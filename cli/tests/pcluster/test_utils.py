@@ -10,6 +10,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 import pcluster.utils as utils
+from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import Cache, get_bucket_url
 from tests.utils import MockedBoto3Request
 
@@ -27,6 +28,16 @@ def test_get_stack_name():
     """Test utils.get_stack_name."""
     expected_stack_name = "parallelcluster-{0}".format(FAKE_CLUSTER_NAME)
     assert_that(utils.get_stack_name(FAKE_CLUSTER_NAME)).is_equal_to(expected_stack_name)
+
+
+def dummy_cluster_stack():
+    """Return dummy cluster stack object."""
+    return ClusterStack({"StackName": FAKE_STACK_NAME})
+
+
+def dummy_cluster(name=FAKE_CLUSTER_NAME):
+    """Return dummy cluster object."""
+    return Cluster(name, stack=dummy_cluster_stack())
 
 
 @pytest.mark.parametrize(
@@ -141,7 +152,7 @@ def test_get_stack_retry(boto3_stubber, mocker):
     sleep_mock.assert_called_with(5)
 
 
-def test_verify_stack_creation_retry(boto3_stubber, mocker):
+def test_verify_stack_status_retry(boto3_stubber, mocker):
     sleep_mock = mocker.patch("pcluster.utils.time.sleep")
     mocker.patch(
         "pcluster.utils.get_stack",
@@ -161,8 +172,9 @@ def test_verify_stack_creation_retry(boto3_stubber, mocker):
             expected_params={"StackName": FAKE_STACK_NAME},
         ),
     ]
-    client = boto3_stubber("cloudformation", mocked_requests * 2)
-    assert_that(utils.verify_stack_creation(FAKE_STACK_NAME, client)).is_false()
+    client = boto3_stubber("cloudformation", mocked_requests)
+    verified = utils.verify_stack_status(FAKE_STACK_NAME, ["CREATE_IN_PROGRESS"], "CREATE_COMPLETE", client)
+    assert_that(verified).is_false()
     sleep_mock.assert_called_with(5)
 
 

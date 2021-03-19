@@ -29,6 +29,7 @@ from marshmallow import (
     validates_schema,
 )
 
+from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.models.cluster_config import (
     AdditionalIamPolicy,
@@ -42,7 +43,6 @@ from pcluster.models.cluster_config import (
     CloudWatchLogs,
     ClusterDevSettings,
     ClusterIam,
-    CommonSchedulingSettings,
     ComputeType,
     CustomAction,
     CustomActionEvent,
@@ -82,15 +82,50 @@ from pcluster.validators.cluster_validators import FSX_MESSAGES
 # ---------------------- Storage ---------------------- #
 
 
-class _BaseEbsSchema(BaseSchema):
-    """Represent the schema shared by SharedEBS and RootVolume section."""
+class HeadNodeRootVolumeSchema(BaseSchema):
+    """Represent the RootVolume schema for the Head node."""
 
-    size = fields.Int()
-    encrypted = fields.Bool()
+    volume_type = fields.Str(
+        validate=get_field_validator("volume_type"),
+        update_policy=UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED, action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"]
+        ),
+    )
+    iops = fields.Int(update_policy=UpdatePolicy.SUPPORTED)
+    size = fields.Int(
+        update_policy=UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED,
+            fail_reason=UpdatePolicy.FAIL_REASONS["ebs_volume_resize"],
+            action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"],
+        )
+    )
+    kms_key_id = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    throughput = fields.Int(update_policy=UpdatePolicy.SUPPORTED)
+    encrypted = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Ebs(**data)
+
+    @validates("size")
+    def validate_size(self, value):
+        """Validate the size of root volume."""
+        if value < EBS_VOLUME_SIZE_DEFAULT:
+            raise ValidationError(
+                f"Root volume size {value} is invalid. It must be at least {EBS_VOLUME_SIZE_DEFAULT}."
+            )
 
 
-class RootVolumeSchema(_BaseEbsSchema):
-    """Represent the RootVolume schema."""
+class QueueRootVolumeSchema(BaseSchema):
+    """Represent the RootVolume schema for the queue."""
+
+    volume_type = fields.Str(validate=get_field_validator("volume_type"), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    iops = fields.Int(update_policy=UpdatePolicy.SUPPORTED)
+    size = fields.Int(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    kms_key_id = fields.Str(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    throughput = fields.Int(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    encrypted = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -109,8 +144,8 @@ class RootVolumeSchema(_BaseEbsSchema):
 class RaidSchema(BaseSchema):
     """Represent the schema of the parameters specific to Raid. It is a child of EBS schema."""
 
-    raid_type = fields.Int(data_key="Type", validate=validate.OneOf([0, 1]))
-    number_of_volumes = fields.Int(validate=validate.Range(min=2, max=5))
+    raid_type = fields.Int(data_key="Type", validate=validate.OneOf([0, 1]), update_policy=UpdatePolicy.UNSUPPORTED)
+    number_of_volumes = fields.Int(validate=validate.Range(min=2, max=5), update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -118,23 +153,40 @@ class RaidSchema(BaseSchema):
         return Raid(**data)
 
 
-class EbsSchema(_BaseEbsSchema):
+class EbsSchema(BaseSchema):
     """Represent the schema of EBS."""
 
-    iops = fields.Int()
-    kms_key_id = fields.Str()
-    throughput = fields.Int()
-    snapshot_id = fields.Str(validate=validate.Regexp(r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$"))
-    volume_id = fields.Str(validate=validate.Regexp(r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$"))
-    volume_type = fields.Str(validate=get_field_validator("volume_type"))
-    raid = fields.Nested(RaidSchema)
+    volume_type = fields.Str(
+        validate=get_field_validator("volume_type"),
+        update_policy=UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED, action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"]
+        ),
+    )
+    iops = fields.Int(update_policy=UpdatePolicy.SUPPORTED)
+    size = fields.Int(
+        update_policy=UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED,
+            fail_reason=UpdatePolicy.FAIL_REASONS["ebs_volume_resize"],
+            action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"],
+        )
+    )
+    kms_key_id = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    throughput = fields.Int(update_policy=UpdatePolicy.SUPPORTED)
+    encrypted = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    snapshot_id = fields.Str(
+        validate=validate.Regexp(r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$"), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    volume_id = fields.Str(
+        validate=validate.Regexp(r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$"), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    raid = fields.Nested(RaidSchema, update_policy=UpdatePolicy.UNSUPPORTED)
 
 
-class EphemeralVolumeSchema(BaseSchema):
+class HeadNodeEphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
-    encrypted = fields.Bool()
-    mount_dir = fields.Str(validate=get_field_validator("file_path"))
+    encrypted = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    mount_dir = fields.Str(validate=get_field_validator("file_path"), update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -142,11 +194,35 @@ class EphemeralVolumeSchema(BaseSchema):
         return EphemeralVolume(**data)
 
 
-class LocalStorageSchema(BaseSchema):
-    """Represent the schema of local storage attached to a node."""
+class QueueEphemeralVolumeSchema(BaseSchema):
+    """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
-    root_volume = fields.Nested(RootVolumeSchema)
-    ephemeral_volume = fields.Nested(EphemeralVolumeSchema)
+    encrypted = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    mount_dir = fields.Str(validate=get_field_validator("file_path"), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return EphemeralVolume(**data)
+
+
+class HeadNodeStorageSchema(BaseSchema):
+    """Represent the schema of storage attached to a node."""
+
+    root_volume = fields.Nested(HeadNodeRootVolumeSchema, update_policy=UpdatePolicy.UNSUPPORTED)
+    ephemeral_volume = fields.Nested(HeadNodeEphemeralVolumeSchema, update_policy=UpdatePolicy.UNSUPPORTED)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return LocalStorage(**data)
+
+
+class QueueStorageSchema(BaseSchema):
+    """Represent the schema of storage attached to a node."""
+
+    root_volume = fields.Nested(QueueRootVolumeSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    ephemeral_volume = fields.Nested(QueueEphemeralVolumeSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -157,12 +233,18 @@ class LocalStorageSchema(BaseSchema):
 class EfsSchema(BaseSchema):
     """Represent the EFS schema."""
 
-    encrypted = fields.Bool()
-    kms_key_id = fields.Str()
-    performance_mode = fields.Str(validate=validate.OneOf(["generalPurpose", "maxIO"]))
-    throughput_mode = fields.Str(validate=validate.OneOf(["provisioned", "bursting"]))
-    provisioned_throughput = fields.Int(validate=validate.Range(min=1, max=1024))
-    file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}$"))
+    encrypted = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    kms_key_id = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    performance_mode = fields.Str(
+        validate=validate.OneOf(["generalPurpose", "maxIO"]), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    throughput_mode = fields.Str(
+        validate=validate.OneOf(["provisioned", "bursting"]), update_policy=UpdatePolicy.SUPPORTED
+    )
+    provisioned_throughput = fields.Int(validate=validate.Range(min=1, max=1024), update_policy=UpdatePolicy.SUPPORTED)
+    file_system_id = fields.Str(
+        validate=validate.Regexp(r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}$"), update_policy=UpdatePolicy.UNSUPPORTED
+    )
 
     @validates_schema
     def validate_existence_of_mode_throughput(self, data, **kwargs):
@@ -189,24 +271,39 @@ class EfsSchema(BaseSchema):
 class FsxSchema(BaseSchema):
     """Represent the FSX schema."""
 
-    storage_capacity = fields.Int()
-    deployment_type = fields.Str(validate=validate.OneOf(["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"]))
-    imported_file_chunk_size = fields.Int(
-        validate=validate.Range(min=1, max=512000, error="has a minimum size of 1 MiB, and max size of 512,000 MiB")
+    storage_capacity = fields.Int(update_policy=UpdatePolicy.UNSUPPORTED)
+    deployment_type = fields.Str(
+        validate=validate.OneOf(["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"]), update_policy=UpdatePolicy.UNSUPPORTED
     )
-    export_path = fields.Str()
-    import_path = fields.Str()
-    weekly_maintenance_start_time = fields.Str(validate=validate.Regexp(r"^[1-7]:([01]\d|2[0-3]):([0-5]\d)$"))
-    automatic_backup_retention_days = fields.Int(validate=validate.Range(min=0, max=35))
-    copy_tags_to_backups = fields.Bool()
-    daily_automatic_backup_start_time = fields.Str(validate=validate.Regexp(r"^([01]\d|2[0-3]):([0-5]\d)$"))
-    per_unit_storage_throughput = fields.Int(validate=validate.OneOf(FSX_SSD_THROUGHPUT + FSX_HDD_THROUGHPUT))
-    backup_id = fields.Str(validate=validate.Regexp("^(backup-[0-9a-f]{8,})$"))
-    kms_key_id = fields.Str()
-    file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"))
-    auto_import_policy = fields.Str(validate=validate.OneOf(["NEW", "NEW_CHANGED"]))
-    drive_cache_type = fields.Str(validate=validate.OneOf(["READ"]))
-    fsx_storage_type = fields.Str(data_key="StorageType", validate=validate.OneOf(["HDD", "SSD"]))
+    imported_file_chunk_size = fields.Int(
+        validate=validate.Range(min=1, max=512000, error="has a minimum size of 1 MiB, and max size of 512,000 MiB"),
+        update_policy=UpdatePolicy.UNSUPPORTED,
+    )
+    export_path = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    import_path = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    weekly_maintenance_start_time = fields.Str(
+        validate=validate.Regexp(r"^[1-7]:([01]\d|2[0-3]):([0-5]\d)$"), update_policy=UpdatePolicy.SUPPORTED
+    )
+    automatic_backup_retention_days = fields.Int(
+        validate=validate.Range(min=0, max=35), update_policy=UpdatePolicy.SUPPORTED
+    )
+    copy_tags_to_backups = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    daily_automatic_backup_start_time = fields.Str(
+        validate=validate.Regexp(r"^([01]\d|2[0-3]):([0-5]\d)$"), update_policy=UpdatePolicy.SUPPORTED
+    )
+    per_unit_storage_throughput = fields.Int(
+        validate=validate.OneOf(FSX_SSD_THROUGHPUT + FSX_HDD_THROUGHPUT), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    backup_id = fields.Str(validate=validate.Regexp("^(backup-[0-9a-f]{8,})$"), update_policy=UpdatePolicy.UNSUPPORTED)
+    kms_key_id = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"), update_policy=UpdatePolicy.UNSUPPORTED)
+    auto_import_policy = fields.Str(
+        validate=validate.OneOf(["NEW", "NEW_CHANGED"]), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    drive_cache_type = fields.Str(validate=validate.OneOf(["READ"]), update_policy=UpdatePolicy.UNSUPPORTED)
+    fsx_storage_type = fields.Str(
+        data_key="StorageType", validate=validate.OneOf(["HDD", "SSD"]), update_policy=UpdatePolicy.UNSUPPORTED
+    )
 
     @validates_schema
     def validate_file_system_id_ignored_parameters(self, data, **kwargs):
@@ -247,12 +344,16 @@ class FsxSchema(BaseSchema):
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
-    mount_dir = fields.Str(required=True, validate=get_field_validator("file_path"))
-    name = fields.Str(required=True)
-    storage_type = fields.Str(required=True, validate=validate.OneOf(["Ebs", "FsxLustre", "Efs"]))
-    ebs = fields.Nested(EbsSchema)
-    efs = fields.Nested(EfsSchema)
-    fsx = fields.Nested(FsxSchema)
+    mount_dir = fields.Str(
+        required=True, validate=get_field_validator("file_path"), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    name = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    storage_type = fields.Str(
+        required=True, validate=validate.OneOf(["Ebs", "FsxLustre", "Efs"]), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    ebs = fields.Nested(EbsSchema, update_policy=UpdatePolicy.UNSUPPORTED)
+    efs = fields.Nested(EfsSchema, update_policy=UpdatePolicy.UNSUPPORTED)
+    fsx = fields.Nested(FsxSchema, update_policy=UpdatePolicy.UNSUPPORTED)
 
     @pre_load
     def preprocess(self, data, **kwargs):
@@ -267,7 +368,7 @@ class SharedStorageSchema(BaseSchema):
 
     @post_load
     def make_resource(self, data, **kwargs):
-        """Generate the right type of shared storage according to the child type (EBS vs EFS vs FSx)."""
+        """Generate the right type of shared storage according to the child type (EBS vs EFS vs FsxLustre)."""
         if data.get("efs") is not None:
             return SharedEfs(data.get("mount_dir"), data.get("name"), **data.get("efs"))
         if data.get("fsx") is not None:
@@ -279,9 +380,11 @@ class SharedStorageSchema(BaseSchema):
     @pre_dump
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema."""
-        child = copy.copy(data)
+        child = copy.deepcopy(data)
+        # Move SharedXxx as a child to be automatically managed by marshmallow
         storage_type = "ebs" if data.shared_storage_type.value == "raid" else data.shared_storage_type.value
         setattr(data, storage_type, child)
+        # Restore storage type
         data.storage_type = "FsxLustre" if data.shared_storage_type.value == "fsx" else storage_type.capitalize()
         return data
 
@@ -315,10 +418,21 @@ class SharedStorageSchema(BaseSchema):
 # ---------------------- Networking ---------------------- #
 
 
-class ProxySchema(BaseSchema):
-    """Represent the schema of proxy."""
+class HeadNodeProxySchema(BaseSchema):
+    """Represent the schema of proxy for the Head node."""
 
-    http_proxy_address = fields.Str()
+    http_proxy_address = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Proxy(**data)
+
+
+class QueueProxySchema(BaseSchema):
+    """Represent the schema of proxy for a queue."""
+
+    http_proxy_address = fields.Str(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -329,10 +443,12 @@ class ProxySchema(BaseSchema):
 class BaseNetworkingSchema(BaseSchema):
     """Represent the schema of common networking parameters used by head and compute nodes."""
 
-    additional_security_groups = fields.List(fields.Str(validate=get_field_validator("security_group_id")))
-    assign_public_ip = fields.Bool()
-    security_groups = fields.List(fields.Str(validate=get_field_validator("security_group_id")))
-    proxy = fields.Nested(ProxySchema)
+    additional_security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")), update_policy=UpdatePolicy.SUPPORTED
+    )
+    security_groups = fields.List(
+        fields.Str(validate=get_field_validator("security_group_id")), update_policy=UpdatePolicy.SUPPORTED
+    )
 
     @validates_schema
     def no_coexist_security_groups(self, data, **kwargs):
@@ -344,8 +460,12 @@ class BaseNetworkingSchema(BaseSchema):
 class HeadNodeNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of the HeadNode."""
 
-    subnet_id = fields.Str(required=True, validate=get_field_validator("subnet_id"))
-    elastic_ip = fields.Str()
+    subnet_id = fields.Str(
+        required=True, validate=get_field_validator("subnet_id"), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+    elastic_ip = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    assign_public_ip = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    proxy = fields.Nested(HeadNodeProxySchema, update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -356,8 +476,8 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
 class PlacementGroupSchema(BaseSchema):
     """Represent the schema of placement group."""
 
-    enabled = fields.Bool()
-    id = fields.Str()
+    enabled = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    id = fields.Str(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -369,9 +489,14 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of Queue."""
 
     subnet_ids = fields.List(
-        fields.Str(validate=get_field_validator("subnet_id")), validate=validate.Length(equal=1), required=True
+        fields.Str(validate=get_field_validator("subnet_id")),
+        required=True,
+        validate=validate.Length(equal=1),
+        update_policy=UpdatePolicy.COMPUTE_FLEET_STOP,
     )
-    placement_group = fields.Nested(PlacementGroupSchema)
+    placement_group = fields.Nested(PlacementGroupSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    assign_public_ip = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    proxy = fields.Nested(QueueProxySchema, update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -382,8 +507,8 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
 class SshSchema(BaseSchema):
     """Represent the schema of the SSH."""
 
-    key_name = fields.Str(required=True)
-    allowed_ips = fields.Str(validate=get_field_validator("cidr"))
+    key_name = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    allowed_ips = fields.Str(validate=get_field_validator("cidr"), update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -394,9 +519,9 @@ class SshSchema(BaseSchema):
 class DcvSchema(BaseSchema):
     """Represent the schema of DCV."""
 
-    enabled = fields.Bool()
-    port = fields.Int()
-    allowed_ips = fields.Str(validate=get_field_validator("cidr"))
+    enabled = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    port = fields.Int(update_policy=UpdatePolicy.UNSUPPORTED)
+    allowed_ips = fields.Str(validate=get_field_validator("cidr"), update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -405,10 +530,10 @@ class DcvSchema(BaseSchema):
 
 
 class EfaSchema(BaseSchema):
-    """Represent the schema of EFA."""
+    """Represent the schema of EFA for a Compute Resource."""
 
-    enabled = fields.Bool()
-    gdr_support = fields.Bool()
+    enabled = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    gdr_support = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -422,9 +547,10 @@ class EfaSchema(BaseSchema):
 class CloudWatchLogsSchema(BaseSchema):
     """Represent the schema of the CloudWatchLogs section."""
 
-    enabled = fields.Bool()
+    enabled = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
     retention_in_days = fields.Int(
-        validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653])
+        validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
+        update_policy=UpdatePolicy.SUPPORTED,
     )
 
     @post_load
@@ -436,7 +562,7 @@ class CloudWatchLogsSchema(BaseSchema):
 class CloudWatchDashboardsSchema(BaseSchema):
     """Represent the schema of the CloudWatchDashboards section."""
 
-    enabled = fields.Bool()
+    enabled = fields.Bool(update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -447,7 +573,7 @@ class CloudWatchDashboardsSchema(BaseSchema):
 class LogsSchema(BaseSchema):
     """Represent the schema of the Logs section."""
 
-    cloud_watch = fields.Nested(CloudWatchLogsSchema)
+    cloud_watch = fields.Nested(CloudWatchLogsSchema, update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -458,7 +584,7 @@ class LogsSchema(BaseSchema):
 class DashboardsSchema(BaseSchema):
     """Represent the schema of the Dashboards section."""
 
-    cloud_watch = fields.Nested(CloudWatchDashboardsSchema)
+    cloud_watch = fields.Nested(CloudWatchDashboardsSchema, update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -469,9 +595,9 @@ class DashboardsSchema(BaseSchema):
 class MonitoringSchema(BaseSchema):
     """Represent the schema of the Monitoring section."""
 
-    detailed_monitoring = fields.Bool()
-    logs = fields.Nested(LogsSchema)
-    dashboards = fields.Nested(DashboardsSchema)
+    detailed_monitoring = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    logs = fields.Nested(LogsSchema, update_policy=UpdatePolicy.UNSUPPORTED)
+    dashboards = fields.Nested(DashboardsSchema, update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -485,7 +611,7 @@ class MonitoringSchema(BaseSchema):
 class RolesSchema(BaseSchema):
     """Represent the schema of roles."""
 
-    custom_lambda_resources = fields.Str()
+    custom_lambda_resources = fields.Str(update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -496,8 +622,8 @@ class RolesSchema(BaseSchema):
 class S3AccessSchema(BaseSchema):
     """Represent the schema of S3 access."""
 
-    bucket_name = fields.Str(required=True)
-    enable_write_access = fields.Bool()
+    bucket_name = fields.Str(required=True, update_policy=UpdatePolicy.SUPPORTED)
+    enable_write_access = fields.Bool(update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -508,7 +634,7 @@ class S3AccessSchema(BaseSchema):
 class AdditionalIamPolicySchema(BaseSchema):
     """Represent the schema of Additional IAM policy."""
 
-    policy = fields.Str(required=True)
+    policy = fields.Str(required=True, update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -530,9 +656,11 @@ class ClusterIamSchema(BaseSchema):
 class IamSchema(BaseSchema):
     """Represent the schema of IAM for HeadNode and Queue."""
 
-    instance_role = fields.Str()
-    s3_access = fields.Nested(S3AccessSchema, many=True)
-    additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
+    instance_role = fields.Str(update_policy=UpdatePolicy.SUPPORTED)
+    s3_access = fields.Nested(S3AccessSchema, many=True, update_policy=UpdatePolicy.SUPPORTED, update_key="BucketName")
+    additional_iam_policies = fields.Nested(
+        AdditionalIamPolicySchema, many=True, update_policy=UpdatePolicy.SUPPORTED, update_key="Policy"
+    )
 
     @validates_schema
     def no_coexist_security_groups(self, data, **kwargs):
@@ -549,7 +677,7 @@ class IamSchema(BaseSchema):
 class IntelSelectSolutionsSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
-    install_intel_software = fields.Bool()
+    install_intel_software = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -560,7 +688,7 @@ class IntelSelectSolutionsSchema(BaseSchema):
 class AdditionalPackagesSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
-    intel_select_solutions = fields.Nested(IntelSelectSolutionsSchema)
+    intel_select_solutions = fields.Nested(IntelSelectSolutionsSchema, update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -571,7 +699,7 @@ class AdditionalPackagesSchema(BaseSchema):
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of Dev Setting."""
 
-    cluster_template = fields.Str()
+    cluster_template = fields.Str(update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -585,8 +713,10 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
 class ImageSchema(BaseSchema):
     """Represent the schema of the Image."""
 
-    os = fields.Str(required=True, validate=validate.OneOf(SUPPORTED_OSES))
-    custom_ami = fields.Str(validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"))
+    os = fields.Str(required=True, validate=validate.OneOf(SUPPORTED_OSES), update_policy=UpdatePolicy.UNSUPPORTED)
+    custom_ami = fields.Str(
+        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"), update_policy=UpdatePolicy.UNSUPPORTED
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -594,12 +724,30 @@ class ImageSchema(BaseSchema):
         return Image(**data)
 
 
-class CustomActionSchema(BaseSchema):
-    """Represent the schema of the custom action."""
+class HeadNodeCustomActionSchema(BaseSchema):
+    """Represent the schema of the custom action for the Head node."""
 
-    script = fields.Str(required=True)
-    args = fields.List(fields.Str())
-    event = fields.Str(validate=validate.OneOf([event.value for event in CustomActionEvent]))
+    script = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    args = fields.List(fields.Str(), update_policy=UpdatePolicy.UNSUPPORTED)
+    event = fields.Str(
+        validate=validate.OneOf([event.value for event in CustomActionEvent]), update_policy=UpdatePolicy.UNSUPPORTED
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomAction(**data)
+
+
+class QueueCustomActionSchema(BaseSchema):
+    """Represent the schema of the custom action for the queue."""
+
+    script = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    args = fields.List(fields.Str(), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    event = fields.Str(
+        validate=validate.OneOf([event.value for event in CustomActionEvent]),
+        update_policy=UpdatePolicy.COMPUTE_FLEET_STOP,
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -610,16 +758,16 @@ class CustomActionSchema(BaseSchema):
 class HeadNodeSchema(BaseSchema):
     """Represent the schema of the HeadNode."""
 
-    instance_type = fields.Str(required=True)
-    disable_simultaneous_multithreading = fields.Bool()
-    networking = fields.Nested(HeadNodeNetworkingSchema, required=True)
-    ssh = fields.Nested(SshSchema, required=True)
-    local_storage = fields.Nested(LocalStorageSchema)
-    dcv = fields.Nested(DcvSchema)
+    instance_type = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    disable_simultaneous_multithreading = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
+    networking = fields.Nested(HeadNodeNetworkingSchema, required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    ssh = fields.Nested(SshSchema, required=True, update_policy=UpdatePolicy.SUPPORTED)
+    local_storage = fields.Nested(HeadNodeStorageSchema, update_policy=UpdatePolicy.SUPPORTED)
+    dcv = fields.Nested(DcvSchema, update_policy=UpdatePolicy.UNSUPPORTED)
     custom_actions = fields.Nested(
-        CustomActionSchema, many=True
+        HeadNodeCustomActionSchema, many=True, update_policy=UpdatePolicy.UNSUPPORTED, update_key="Script"
     )  # TODO validate to avoid more than one script for event type or add support for them.
-    iam = fields.Nested(IamSchema)
+    iam = fields.Nested(IamSchema, update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -630,18 +778,18 @@ class HeadNodeSchema(BaseSchema):
 class _ComputeResourceSchema(BaseSchema):
     """Represent the schema of the ComputeResource."""
 
-    name = fields.Str(required=True)
-    disable_simultaneous_multithreading = fields.Bool()
-    efa = fields.Nested(EfaSchema)
+    name = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    disable_simultaneous_multithreading = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
 
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
-    instance_type = fields.Str(required=True)
-    max_count = fields.Int(validate=validate.Range(min=1))
-    min_count = fields.Int(validate=validate.Range(min=0))
-    spot_price = fields.Float(validate=validate.Range(min=0))
+    instance_type = fields.Str(required=True, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    max_count = fields.Int(validate=validate.Range(min=1), update_policy=UpdatePolicy.MAX_COUNT)
+    min_count = fields.Int(validate=validate.Range(min=0), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    spot_price = fields.Float(validate=validate.Range(min=0), update_policy=UpdatePolicy.SUPPORTED)
+    efa = fields.Nested(EfaSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -652,11 +800,17 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
 class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Batch ComputeResource."""
 
-    instance_types = fields.Str()  # TODO it is a comma separated list
-    max_vcpus = fields.Int(data_key="MaxvCpus", validate=validate.Range(min=1))
-    min_vcpus = fields.Int(data_key="MinvCpus", validate=validate.Range(min=0))
-    desired_vcpus = fields.Int(data_key="DesiredvCpus", validate=validate.Range(min=0))
-    spot_bid_percentage = fields.Float(validate=validate.Range(min=0, max=1, min_inclusive=False))
+    instance_types = fields.Str(required=True, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    max_vcpus = fields.Int(
+        data_key="MaxvCpus", validate=validate.Range(min=1), update_policy=UpdatePolicy.AWSBATCH_CE_MAX_RESIZE
+    )
+    min_vcpus = fields.Int(data_key="MinvCpus", validate=validate.Range(min=0), update_policy=UpdatePolicy.SUPPORTED)
+    desired_vcpus = fields.Int(
+        data_key="DesiredvCpus", validate=validate.Range(min=0), update_policy=UpdatePolicy.IGNORED
+    )
+    spot_bid_percentage = fields.Float(
+        validate=validate.Range(min=0, max=1, min_inclusive=False), update_policy=UpdatePolicy.SUPPORTED
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -667,18 +821,24 @@ class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
 class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
-    name = fields.Str()
-    networking = fields.Nested(QueueNetworkingSchema, required=True)
-    local_storage = fields.Nested(LocalStorageSchema)
-    compute_type = fields.Str(validate=validate.OneOf([event.value for event in ComputeType]))
-    iam = fields.Nested(IamSchema)
+    name = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    networking = fields.Nested(QueueNetworkingSchema, required=True, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    local_storage = fields.Nested(QueueStorageSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    compute_type = fields.Str(
+        validate=validate.OneOf([event.value for event in ComputeType]), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP
+    )
+    iam = fields.Nested(IamSchema, update_policy=UpdatePolicy.SUPPORTED)
 
 
 class SlurmQueueSchema(BaseQueueSchema):
     """Represent the schema of a Slurm Queue."""
 
-    compute_resources = fields.Nested(SlurmComputeResourceSchema, many=True)
-    custom_actions = fields.Nested(CustomActionSchema, many=True)
+    compute_resources = fields.Nested(
+        SlurmComputeResourceSchema, many=True, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP, update_key="Name"
+    )
+    custom_actions = fields.Nested(
+        QueueCustomActionSchema, many=True, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP, update_key="Script"
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -689,7 +849,13 @@ class SlurmQueueSchema(BaseQueueSchema):
 class AwsbatchQueueSchema(BaseQueueSchema):
     """Represent the schema of a Batch Queue."""
 
-    compute_resources = fields.Nested(AwsbatchComputeResourceSchema, many=True, validate=validate.Length(equal=1))
+    compute_resources = fields.Nested(
+        AwsbatchComputeResourceSchema,
+        many=True,
+        validate=validate.Length(equal=1),
+        update_policy=UpdatePolicy.COMPUTE_FLEET_STOP,
+        update_key="Name",
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -697,25 +863,10 @@ class AwsbatchQueueSchema(BaseQueueSchema):
         return AwsbatchQueue(**data)
 
 
-class _BaseSchedulerSettingsSchema(BaseSchema):
-    """Represent the schema of the common scheduler settings."""
-
-    scaledown_idletime = fields.Int()
-
-
-class AwsbatchSettingsSchema(_BaseSchedulerSettingsSchema):
-    """Represent the schema of the Awsbatch Settings."""
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return CommonSchedulingSettings(**data)
-
-
 class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
-    disable_managed_dns = fields.Bool()
+    disable_managed_dns = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -723,10 +874,11 @@ class DnsSchema(BaseSchema):
         return Dns(**data)
 
 
-class SlurmSettingsSchema(_BaseSchedulerSettingsSchema):
+class SlurmSettingsSchema(BaseSchema):
     """Represent the schema of the Scheduling Settings."""
 
-    dns = fields.Nested(DnsSchema)
+    scaledown_idletime = fields.Int(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    dns = fields.Nested(DnsSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -737,22 +889,30 @@ class SlurmSettingsSchema(_BaseSchedulerSettingsSchema):
 class SlurmSchema(BaseSchema):
     """Represent the schema of the Slurm section."""
 
-    settings = fields.Nested(SlurmSettingsSchema)
-    queues = fields.Nested(SlurmQueueSchema, many=True, required=True)
+    settings = fields.Nested(SlurmSettingsSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+    queues = fields.Nested(
+        SlurmQueueSchema, many=True, required=True, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP, update_key="Name"
+    )
 
 
 class AwsbatchSchema(BaseSchema):
     """Represent the schema of the Awsbatch section."""
 
-    settings = fields.Nested(AwsbatchSettingsSchema)
-    queues = fields.Nested(AwsbatchQueueSchema, many=True, required=True, validate=validate.Length(equal=1))
+    queues = fields.Nested(
+        AwsbatchQueueSchema,
+        many=True,
+        required=True,
+        validate=validate.Length(equal=1),
+        update_policy=UpdatePolicy.COMPUTE_FLEET_STOP,
+        update_key="Name",
+    )
 
 
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
-    slurm = fields.Nested(SlurmSchema)
-    awsbatch = fields.Nested(AwsbatchSchema)
+    slurm = fields.Nested(SlurmSchema, update_policy=UpdatePolicy.SUPPORTED)
+    awsbatch = fields.Nested(AwsbatchSchema, update_policy=UpdatePolicy.SUPPORTED)
     # custom = fields.Str(CustomSchema)
 
     @validates_schema
@@ -782,18 +942,26 @@ class SchedulingSchema(BaseSchema):
 class ClusterSchema(BaseSchema):
     """Represent the schema of the Cluster."""
 
-    image = fields.Nested(ImageSchema, required=True)
-    head_node = fields.Nested(HeadNodeSchema, required=True)
-    scheduling = fields.Nested(SchedulingSchema, required=True)
-    shared_storage = fields.Nested(SharedStorageSchema, many=True)
+    image = fields.Nested(ImageSchema, required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    head_node = fields.Nested(HeadNodeSchema, required=True, update_policy=UpdatePolicy.SUPPORTED)
+    scheduling = fields.Nested(SchedulingSchema, required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    shared_storage = fields.Nested(
+        SharedStorageSchema,
+        many=True,
+        update_policy=UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED,
+            fail_reason=UpdatePolicy.FAIL_REASONS["shared_storage_change"],
+        ),
+        update_key="Name",
+    )
 
-    monitoring = fields.Nested(MonitoringSchema)
-    additional_packages = fields.Nested(AdditionalPackagesSchema)
-    tags = fields.Nested(TagSchema, many=True)
-    iam = fields.Nested(ClusterIamSchema)
-    cluster_s3_bucket = fields.Str()
-    additional_resources = fields.Str()
-    dev_settings = fields.Nested(ClusterDevSettingsSchema)
+    monitoring = fields.Nested(MonitoringSchema, update_policy=UpdatePolicy.SUPPORTED)
+    additional_packages = fields.Nested(AdditionalPackagesSchema, update_policy=UpdatePolicy.UNSUPPORTED)
+    tags = fields.Nested(TagSchema, many=True, update_policy=UpdatePolicy.SUPPORTED, update_key="Key")
+    iam = fields.Nested(ClusterIamSchema, update_policy=UpdatePolicy.SUPPORTED)
+    cluster_s3_bucket = fields.Str(update_policy=UpdatePolicy.READ_ONLY_RESOURCE_BUCKET)
+    additional_resources = fields.Str(update_policy=UpdatePolicy.SUPPORTED)
+    dev_settings = fields.Nested(ClusterDevSettingsSchema, update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load(pass_original=True)
     def make_resource(self, data, original_data, **kwargs):

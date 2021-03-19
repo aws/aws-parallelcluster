@@ -201,34 +201,6 @@ def test_setup_bucket_with_resources_deletion_failure(mocker, caplog):
 
 
 @pytest.mark.parametrize(
-    "base_cluster_model, target_cluster_model, expected_result, expected_message",
-    [
-        (ClusterModel.SIT, ClusterModel.SIT, True, None),
-        (ClusterModel.HIT, ClusterModel.HIT, True, None),
-        (ClusterModel.SIT, ClusterModel.HIT, False, "is not compatible with the existing cluster"),
-        (ClusterModel.HIT, ClusterModel.SIT, False, "must be converted to the latest format"),
-    ],
-)
-def test_update_failure_on_different_cluster_models(
-    mocker, caplog, base_cluster_model, target_cluster_model, expected_result, expected_message
-):
-    base_config = _mock_pcluster_config(mocker, "slurm", "us-east-1")
-    base_config.cluster_model = base_cluster_model
-    base_config.cluster_name = "test_cluster"
-
-    target_config = _mock_pcluster_config(mocker, "slurm", "us-east-1")
-    target_config.cluster_model = target_cluster_model
-    target_config.config_file = "config_file"
-
-    models_check = update._check_cluster_models(base_config, target_config, "default")
-    assert_that(models_check).is_equal_to(expected_result)
-    if expected_message:
-        assert_that(caplog.text).contains(expected_message)
-    else:
-        assert_that(caplog.text).is_empty()
-
-
-@pytest.mark.parametrize(
     "cluster_name, should_trigger_error",
     [
         ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),

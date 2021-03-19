@@ -17,6 +17,7 @@
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
 from common.utils import validate_json_format
+from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster_config import BaseTag
 from pcluster.models.common import Cookbook
@@ -53,9 +54,10 @@ class BaseSchema(Schema):
         if field_obj.data_key is None:
             field_obj.data_key = camelcase(field_name)
 
-    def fields_coexist(self, data, field_list, one_required=False, **kwargs):
+    @staticmethod
+    def fields_coexist(data, field_list, one_required=False, **kwargs):
         """
-        Check if at least two fileds in the filed lists co-exist in the schema.
+        Check if at least two fields in the filed lists co-exist in the schema.
 
         :param data: data to be checked
         :param field_list: list including the name of the fields to check
@@ -112,8 +114,8 @@ def _is_implied(resource, attr, value):
 class TagSchema(BaseSchema):
     """Represent the schema of Tag section."""
 
-    key = fields.Str(validate=validate.Length(max=128))
-    value = fields.Str(validate=validate.Length(max=256))
+    key = fields.Str(validate=validate.Length(max=128), update_policy=UpdatePolicy.UNSUPPORTED)
+    value = fields.Str(validate=validate.Length(max=256), update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -124,8 +126,12 @@ class TagSchema(BaseSchema):
 class CookbookSchema(BaseSchema):
     """Represent the schema of cookbook."""
 
-    chef_cookbook = fields.Str()
-    extra_chef_attributes = fields.Str()
+    chef_cookbook = fields.Str(
+        update_policy=UpdatePolicy(UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["cookbook_update"])
+    )
+    extra_chef_attributes = fields.Str(
+        update_policy=UpdatePolicy(UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["cookbook_update"])
+    )
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -143,6 +149,6 @@ class CookbookSchema(BaseSchema):
 class BaseDevSettingsSchema(BaseSchema):
     """Represent the common schema of Dev Setting for ImageBuilder and Cluster."""
 
-    cookbook = fields.Nested(CookbookSchema)
-    node_package = fields.Str()
-    aws_batch_cli_package = fields.Str()
+    cookbook = fields.Nested(CookbookSchema, update_policy=UpdatePolicy.UNSUPPORTED)
+    node_package = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    aws_batch_cli_package = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)

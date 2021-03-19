@@ -58,6 +58,16 @@ class CfnClient(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
+    def update_stack_from_url(self, stack_name: str, tags: list, template_url: str):
+        """Update CFN stack by using the given template url."""
+        return self._client.update_stack(
+            StackName=stack_name,
+            TemplateURL=template_url,
+            Capabilities=["CAPABILITY_IAM"],
+            Tags=tags,
+        )
+
+    @AWSExceptionHandler.handle_client_exception
     def describe_stack(self, stack_name: str):
         """Get information for the given stack."""
         return self._client.describe_stacks(StackName=stack_name).get("Stacks")[0]

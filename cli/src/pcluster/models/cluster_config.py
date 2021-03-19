@@ -175,8 +175,8 @@ class SharedEbs(Ebs):
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
-        self.mount_dir = mount_dir
-        self.name = name
+        self.mount_dir = Resource.init_param(mount_dir)
+        self.name = Resource.init_param(name)
         self.shared_storage_type = SharedStorageType.RAID if raid else SharedStorageType.EBS
         self.snapshot_id = Resource.init_param(snapshot_id)
         self.volume_id = Resource.init_param(volume_id)
@@ -184,6 +184,7 @@ class SharedEbs(Ebs):
 
     def _validate(self):
         super()._validate()
+        self._execute_validator(NameValidator, name=self.name)
         self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
         self._execute_validator(
             EbsVolumeIopsValidator,
@@ -224,8 +225,8 @@ class SharedEfs(Resource):
         file_system_id: str = None,
     ):
         super().__init__()
-        self.mount_dir = mount_dir
-        self.name = name
+        self.mount_dir = Resource.init_param(mount_dir)
+        self.name = Resource.init_param(name)
         self.shared_storage_type = SharedStorageType.EFS
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
@@ -235,6 +236,7 @@ class SharedEfs(Resource):
         self.file_system_id = Resource.init_param(file_system_id)
 
     def _validate(self):
+        self._execute_validator(NameValidator, name=self.name)
         if self.kms_key_id:
             self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
@@ -265,8 +267,8 @@ class SharedFsx(Resource):
         fsx_storage_type: str = None,
     ):
         super().__init__()
-        self.mount_dir = mount_dir
-        self.name = name
+        self.mount_dir = Resource.init_param(mount_dir)
+        self.name = Resource.init_param(name)
         self.shared_storage_type = SharedStorageType.FSX
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
@@ -287,6 +289,7 @@ class SharedFsx(Resource):
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
 
     def _validate(self):
+        self._execute_validator(NameValidator, name=self.name)
         self._execute_validator(
             FsxS3Validator,
             import_path=self.import_path,
@@ -802,14 +805,6 @@ class BaseQueue(Resource):
         return self.iam.instance_role if self.iam else None
 
 
-class CommonSchedulingSettings(Resource):
-    """Represent the common scheduler settings."""
-
-    def __init__(self, scaledown_idletime: int):
-        super().__init__()
-        self.scaledown_idletime = Resource.init_param(scaledown_idletime)
-
-
 class BaseClusterConfig(Resource):
     """Represent the common Cluster config."""
 
@@ -1112,11 +1107,10 @@ class AwsbatchQueue(BaseQueue):
 class AwsbatchScheduling(Resource):
     """Represent a Awsbatch Scheduling resource."""
 
-    def __init__(self, queues: List[AwsbatchQueue], settings: CommonSchedulingSettings = None):
+    def __init__(self, queues: List[AwsbatchQueue]):
         super().__init__()
         self.scheduler = "awsbatch"
         self.queues = queues
-        self.settings = settings
 
 
 class AwsbatchClusterConfig(BaseClusterConfig):
@@ -1293,11 +1287,12 @@ class Dns(Resource):
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
 
 
-class SlurmSettings(CommonSchedulingSettings):
+class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
     def __init__(self, scaledown_idletime: int, dns: Dns = None):
-        super().__init__(scaledown_idletime)
+        super().__init__()
+        self.scaledown_idletime = Resource.init_param(scaledown_idletime)
         self.dns = dns
 
 
