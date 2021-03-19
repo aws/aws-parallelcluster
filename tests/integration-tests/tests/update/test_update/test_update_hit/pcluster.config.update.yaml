@@ -29,6 +29,8 @@ HeadNode:
       - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
 Scheduling:
   {{ scheduler }}:
+    Settings:
+      ScaledownIdletime: 30
     Queues:
       - Name: queue1
         ComputeSettings:

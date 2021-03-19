@@ -216,9 +216,8 @@ class SgeCommands(SchedulerCommands):
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(  # noqa: D102
-        self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None
-    ):
+    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None):
+        """Submit job with script."""
         if not additional_files:
             additional_files = []
         if not script_args:
@@ -308,7 +307,7 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(  # noqa: D102
+    def submit_command(
         self,
         command,
         nodes=0,
@@ -320,6 +319,7 @@ class SlurmCommands(SchedulerCommands):
         other_options=None,
         raise_on_error=True,
     ):
+        """Submit job with command."""
         job_submit_command = "--wrap='{0}'".format(command)
 
         return self._submit_batch_job(
@@ -334,7 +334,7 @@ class SlurmCommands(SchedulerCommands):
             raise_on_error=raise_on_error,
         )
 
-    def submit_script(  # noqa: D102
+    def submit_script(
         self,
         script,
         script_args=None,
@@ -348,6 +348,7 @@ class SlurmCommands(SchedulerCommands):
         additional_files=None,
         raise_on_error=True,
     ):
+        """Submit job with script."""
         if not additional_files:
             additional_files = []
         if not script_args:
