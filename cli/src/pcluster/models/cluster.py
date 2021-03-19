@@ -20,11 +20,13 @@ from typing import List
 
 import pkg_resources
 import yaml
+from marshmallow import ValidationError
 
 from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import InstanceInfo, StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
+from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket, SlurmScheduling, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -38,7 +40,7 @@ from pcluster.utils import (
     grouper,
     upload_resources_artifacts,
 )
-from pcluster.validators.common import FailureLevel
+from pcluster.validators.common import FailureLevel, ValidationResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,9 +58,10 @@ class NodeType(Enum):
 class ClusterActionError(Exception):
     """Represent an error during the execution of an action on the cluster."""
 
-    def __init__(self, message: str, validation_failures: list = None):
+    def __init__(self, message: str, validation_failures: list = None, update_changes: list = None):
         super().__init__(message)
         self.validation_failures = validation_failures or []
+        self.update_changes = update_changes or []
 
 
 class ClusterStack(StackInfo):
@@ -114,9 +117,9 @@ class ClusterStack(StackInfo):
     def get_cluster_config_dict(self):
         """Retrieve cluster config content."""
         if not self.s3_bucket_name:
-            raise ClusterActionError("Unable to retrieve S3 Bucket name.")
+            raise ClusterActionError("Unable to retrieve S3 Bucket name")
         if not self.s3_artifact_directory:
-            raise ClusterActionError("Unable to retrieve Artifact S3 Root Directory.")
+            raise ClusterActionError("Unable to retrieve Artifact S3 Root Directory")
 
         table_name = self.name
         config_version = None
@@ -214,6 +217,9 @@ class Cluster:
         self.template_body = None
         self.__config = None
 
+        self.__has_running_capacity = None
+        self.__running_capacity = None
+
     @property
     def stack(self):
         """Return the ClusterStack object."""
@@ -237,9 +243,15 @@ class Cluster:
     def config(self) -> BaseClusterConfig:
         """Return ClusterConfig object."""
         if not self.__config:
-            # TODO what if there is a ValidationError
-            self.__config = ClusterSchema().load(self.source_config)
+            try:
+                self.__config = ClusterSchema().load(self.source_config)
+            except ValidationError as e:
+                raise ClusterActionError(f"Unable to parse configuration file. {e}")
         return self.__config
+
+    @config.setter
+    def config(self, value):
+        self.__config = value
 
     @property
     def stack_name(self):
@@ -258,29 +270,36 @@ class Cluster:
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
         """Create cluster."""
-        # check cluster existence
-        if AWSApi.instance().cfn.stack_exists(self.stack_name):
-            raise ClusterActionError(f"Cluster {self.name} already exists")
-
-        if not suppress_validators:
-            validation_failures = self.config.validate()
-            for failure in validation_failures:
-                if failure.level.value > FailureLevel(validation_failure_level).value:
-                    # Raise the exception if there is a failure with a level greater than the specified one
-                    raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
-
-        # Add tags information to the stack
-        version = get_installed_version()
-        if self.config.tags is None:
-            self.config.tags = []
-        self.config.tags.append(Tag(key="Version", value=version))
-        cfn_tags = [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]
-
-        # Create bucket if needed
-        self._setup_cluster_bucket()
-
         creation_result = None
         try:
+            # check cluster existence
+            if AWSApi.instance().cfn.stack_exists(self.stack_name):
+                raise ClusterActionError(f"Cluster {self.name} already exists")
+
+            try:
+                # syntactic validation
+                self.config = ClusterSchema().load(self.source_config)
+                if not suppress_validators:
+                    # semantic validation
+                    LOGGER.info("Validating cluster configuration...")
+                    validation_failures = self.config.validate()
+
+                    for failure in validation_failures:
+                        if failure.level.value >= FailureLevel(validation_failure_level).value:
+                            # Raise the exception if there is a failure with a level greater than the specified one
+                            raise ClusterActionError(
+                                "Configuration is invalid", validation_failures=validation_failures
+                            )
+
+            except ValidationError as e:
+                # syntactic failure
+                validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
+                raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+
+            # Create bucket if needed
+            self.bucket = self._setup_cluster_bucket()
+
+            self._add_version_tag()
             self._upload_config()
 
             # Create template if not provided by the user
@@ -297,23 +316,25 @@ class Cluster:
                 stack_name=self.stack_name,
                 template_url=self.template_url,
                 disable_rollback=disable_rollback,
-                tags=cfn_tags,
+                tags=self._get_cfn_tags(),
             )
 
             self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
 
+        except ClusterActionError as e:
+            raise e
         except Exception as e:
             LOGGER.critical(e)
-            if not creation_result:
+            if not creation_result and self.bucket:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete()
             raise ClusterActionError(f"Cluster creation failed.\n{e}")
 
-    def _setup_cluster_bucket(self):
+    def _setup_cluster_bucket(self) -> ClusterBucket:
         """
-        Create pcluster bucket, if needed, and attach info to the cluster itself.
+        Create pcluster bucket, if needed.
 
         If no bucket specified, create a bucket associated to the given stack.
         Created bucket needs to be removed on cluster deletion.
@@ -327,7 +348,7 @@ class Cluster:
                 check_s3_bucket_exists(name)
             except Exception as e:
                 LOGGER.error("Unable to access config-specified S3 bucket %s: %s", name, e)
-                raise
+                raise e
         else:
             # Create 1 bucket per cluster named "parallelcluster-{random_string}" if bucket is not provided
             # This bucket needs to be removed on cluster deletion
@@ -337,13 +358,13 @@ class Cluster:
             LOGGER.debug("Creating S3 bucket for cluster resources, named %s", name)
             try:
                 create_s3_bucket(name)
-            except Exception:
+            except Exception as e:
                 LOGGER.error("Unable to create S3 bucket %s.", name)
-                raise
+                raise e
 
         # Use "{stack_name}-{random_string}" as directory in bucket
         artifact_directory = generate_random_name_with_prefix(self.stack_name)
-        self.bucket = ClusterBucket(name, artifact_directory, remove_on_deletion)
+        return ClusterBucket(name, artifact_directory, remove_on_deletion)
 
     def _upload_config(self):
         """Upload source config and save config version."""
@@ -400,9 +421,9 @@ class Cluster:
                     key=self._get_instance_types_data_key(),
                 )
         except Exception as e:
-            raise ClusterActionError(
-                f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
-            )
+            message = f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
+            LOGGER.error(message)
+            raise ClusterActionError(message)
 
     @property
     def template_url(self):
@@ -510,69 +531,177 @@ class Cluster:
             raise ClusterActionError("Head node: {0}\nCannot get ip address.".format(head_node.state.upper()))
         return ip_address
 
+    def has_running_capacity(self, updated_value: bool = False):
+        """Return True if the cluster has running capacity. Note: the value will be cached."""
+        if self.__has_running_capacity is None or updated_value:
+            if self.stack.scheduler == "slurm":
+                self.__has_running_capacity = (
+                    ComputeFleetStatusManager(self.name).get_status() != ComputeFleetStatus.STOPPED
+                )
+            elif self.stack.scheduler == "awsbatch":
+                self.__has_running_capacity = self.get_running_capacity() > 0
+        return self.__has_running_capacity
+
+    def get_running_capacity(self, updated_value: bool = False):
+        """Return the number of instances or desired capacity. Note: the value will be cached."""
+        if self.__running_capacity is None or updated_value:
+            if self.stack.scheduler == "slurm":
+                self.__running_capacity = len(self.compute_instances)
+            elif self.stack.scheduler == "awsbatch":
+                self.__running_capacity = AWSApi.instance().batch.get_compute_environment_capacity(
+                    ce_name=self.stack.batch_compute_environment,
+                )
+        return self.__running_capacity
+
     def start(self):
         """Start the cluster."""
-        scheduler = self.config.scheduling.scheduler
-        if scheduler == "awsbatch":
-            LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
-            try:
-                compute_resource = self.config.scheduling.queues[0].compute_resources[0]
+        try:
+            scheduler = self.config.scheduling.scheduler
+            if scheduler == "awsbatch":
+                LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
+                try:
+                    compute_resource = self.config.scheduling.queues[0].compute_resources[0]
 
-                AWSApi.instance().batch.enable_compute_environment(
-                    ce_name=self.stack.batch_compute_environment,
-                    min_vcpus=compute_resource.min_vcpus,
-                    max_vcpus=compute_resource.max_vcpus,
-                    desired_vcpus=compute_resource.desired_vcpus,
-                )
-            except Exception as e:
-                raise ClusterActionError(f"Unable to enable Batch compute environment. {str(e)}")
+                    AWSApi.instance().batch.enable_compute_environment(
+                        ce_name=self.stack.batch_compute_environment,
+                        min_vcpus=compute_resource.min_vcpus,
+                        max_vcpus=compute_resource.max_vcpus,
+                        desired_vcpus=compute_resource.desired_vcpus,
+                    )
+                except Exception as e:
+                    raise ClusterActionError(f"Unable to enable Batch compute environment. {str(e)}")
 
-        else:  # scheduler == "slurm"
-            stack_status = self.stack.status
-            if "IN_PROGRESS" in stack_status:
-                raise ClusterActionError(f"Cannot start compute fleet while stack is in {stack_status} status.")
-            if "FAILED" in stack_status:
-                LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
+            else:  # scheduler == "slurm"
+                stack_status = self.stack.status
+                if "IN_PROGRESS" in stack_status:
+                    raise ClusterActionError(f"Cannot start compute fleet while stack is in {stack_status} status.")
+                if "FAILED" in stack_status:
+                    LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
 
-            try:
                 compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
                 compute_fleet_status_manager.update_status(
                     ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
                 )
-            except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
-                raise ClusterActionError(
-                    "Failed when starting compute fleet due to a concurrent update of the status. "
-                    "Please retry the operation."
-                )
-            except Exception as e:
-                raise ClusterActionError(f"Failed when starting compute fleet with error: {str(e)}")
+        except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
+            raise ClusterActionError(
+                "Failed when starting compute fleet due to a concurrent update of the status. "
+                "Please retry the operation."
+            )
+        except ClusterActionError as e:
+            raise e
+        except Exception as e:
+            raise ClusterActionError(f"Failed when starting compute fleet with error: {str(e)}")
 
     def stop(self):
         """Stop compute fleet of the cluster."""
-        scheduler = self.config.scheduling.scheduler
-        if scheduler == "awsbatch":
-            LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
-            try:
-                AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
-            except Exception as e:
-                raise ClusterActionError(f"Unable to disable Batch compute environment. {str(e)}")
+        try:
+            scheduler = self.config.scheduling.scheduler
+            if scheduler == "awsbatch":
+                LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
+                try:
+                    AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
+                except Exception as e:
+                    raise ClusterActionError(f"Unable to disable Batch compute environment. {str(e)}")
 
-        else:  # scheduler == "slurm"
-            stack_status = self.stack.status
-            if "IN_PROGRESS" in stack_status:
-                raise ClusterActionError(f"Cannot stop compute fleet while stack is in {stack_status} status.")
-            if "FAILED" in stack_status:
-                LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
+            else:  # scheduler == "slurm"
+                stack_status = self.stack.status
+                if "IN_PROGRESS" in stack_status:
+                    raise ClusterActionError(f"Cannot stop compute fleet while stack is in {stack_status} status.")
+                if "FAILED" in stack_status:
+                    LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
 
-            try:
                 compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
                 compute_fleet_status_manager.update_status(
                     ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
                 )
-            except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
-                raise ClusterActionError(
-                    "Failed when stopping compute fleet due to a concurrent update of the status. "
-                    "Please retry the operation."
+        except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
+            raise ClusterActionError(
+                "Failed when stopping compute fleet due to a concurrent update of the status. "
+                "Please retry the operation."
+            )
+        except ClusterActionError as e:
+            raise e
+        except Exception as e:
+            raise ClusterActionError(f"Failed when stopping compute fleet with error: {str(e)}")
+
+    def update(
+        self,
+        cluster_config: dict,
+        suppress_validators: bool = False,
+        validation_failure_level: FailureLevel = FailureLevel.ERROR,
+        force: bool = False,
+    ):
+        """Update cluster."""
+        try:
+            # check cluster existence
+            if not AWSApi.instance().cfn.stack_exists(self.stack_name):
+                raise ClusterActionError(f"Cluster {self.name} does not exist")
+
+            if "IN_PROGRESS" in self.stack.status:
+                raise ClusterActionError(f"Cannot execute update while stack is in {self.stack.status} status.")
+
+            if not suppress_validators:
+                LOGGER.info("Validating cluster configuration...")
+                try:
+                    # syntactic validation
+                    target_config = ClusterSchema().load(cluster_config)
+                    # semantic validation
+                    validation_failures = target_config.validate()
+                except ValidationError as e:
+                    validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
+
+                for failure in validation_failures:
+                    if failure.level.value >= FailureLevel(validation_failure_level).value:
+                        # Raise the exception if there is a failure with a level greater than the specified one
+                        raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+                LOGGER.info("Validation succeeded.")
+
+            patch = ConfigPatch(cluster=self, base_config=self.source_config, target_config=cluster_config)
+            patch_allowed, update_changes = patch.check()
+            if not (patch_allowed or force):
+                raise ClusterActionError("Update failure", update_changes=update_changes)
+
+            # Retrieve bucket information
+            self.bucket = ClusterBucket(
+                name=self.stack.s3_bucket_name,
+                artifact_directory=self.stack.s3_artifact_directory,
+                remove_on_deletion=True,
+            )
+            self._add_version_tag()
+            self._upload_config()
+
+            # Create template if not provided by the user
+            if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
+                self.template_body = CDKTemplateBuilder().build_cluster_template(
+                    cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
                 )
-            except Exception as e:
-                raise ClusterActionError(f"Failed when stopping compute fleet with error: {str(e)}")
+
+            # upload cluster artifacts and generated template
+            self._upload_artifacts()
+
+            LOGGER.info("Updating stack named: %s", self.stack_name)
+            AWSApi.instance().cfn.update_stack_from_url(
+                stack_name=self.stack_name,
+                template_url=self.template_url,
+                tags=self._get_cfn_tags(),
+            )
+
+            self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
+            LOGGER.debug("StackId: %s", self.stack.id)
+            LOGGER.info("Status: %s", self.stack.status)
+
+        except ClusterActionError as e:
+            raise e
+        except Exception as e:
+            LOGGER.critical(e)
+            raise ClusterActionError(f"Cluster update failed.\n{e}")
+
+    def _add_version_tag(self):
+        """Add version tag to the stack."""
+        if self.config.tags is None:
+            self.config.tags = []
+        self.config.tags.append(Tag(key="Version", value=get_installed_version()))
+
+    def _get_cfn_tags(self):
+        """Return tag list in the format expected by CFN."""
+        return [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]

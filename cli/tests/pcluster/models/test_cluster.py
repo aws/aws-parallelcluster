@@ -14,11 +14,12 @@ import pytest
 from assertpy import assert_that
 
 from common.aws.aws_resources import InstanceInfo
-from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack, NodeType
-from pcluster.models.cluster_config import Resource
+from pcluster.models.cluster import ClusterActionError, NodeType
+from pcluster.models.cluster_config import Resource, Tag
 from pcluster.validators.common import FailureLevel, Validator
 from tests.common.dummy_aws_api import DummyAWSApi
-from tests.pcluster.test_utils import FAKE_CLUSTER_NAME, FAKE_STACK_NAME
+from tests.pcluster.models.cluster_dummy_model import dummy_slurm_cluster_config
+from tests.pcluster.test_utils import dummy_cluster
 
 
 class FakeInfoValidator(Validator):
@@ -176,7 +177,7 @@ def test_describe_instances(mocker, node_type, expected_response, expected_insta
         ],
     )
 
-    cluster = Cluster(FAKE_CLUSTER_NAME, stack=ClusterStack({"StackName": FAKE_STACK_NAME}))
+    cluster = dummy_cluster()
     instances = cluster._describe_instances(node_type=node_type)
 
     assert_that(instances).is_length(expected_instances)
@@ -208,11 +209,8 @@ def test_describe_instances(mocker, node_type, expected_response, expected_insta
     ids=["public_ip", "private_ip", "stopped"],
 )
 def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
-
-    cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
-    mocker.patch.object(cluster_stack, "updated_status")
-
-    cluster = Cluster(FAKE_CLUSTER_NAME, stack=cluster_stack)
+    cluster = dummy_cluster()
+    mocker.patch.object(cluster.stack, "updated_status")
     describe_cluster_instances_mock = mocker.patch.object(
         cluster, "_describe_instances", return_value=[InstanceInfo(head_node_instance)]
     )
@@ -223,3 +221,48 @@ def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
     else:
         assert_that(cluster.head_node_ip).is_equal_to(expected_ip)
         describe_cluster_instances_mock.assert_called_with(node_type=NodeType.HEAD_NODE)
+
+
+@pytest.mark.parametrize("existing_tags", [({}), ({"test": "testvalue"}), ({"Version": "OldVersionToBeOverridden"})])
+def test_tags(mocker, existing_tags):
+    """Verify that the function to get the tags list behaves as expected."""
+    cluster = dummy_cluster()
+    cluster.config = dummy_slurm_cluster_config(mocker)
+
+    # Populate config with list of existing tags
+    existing_tags_list = [Tag(key=tag_name, value=tag_value) for tag_name, tag_value in existing_tags.items()]
+    cluster.config.tags = existing_tags_list
+
+    # Expected tags:
+    installed_version = "FakeInstalledVersion"
+    tags = {"Version": installed_version}
+    tags.update(existing_tags)
+    expected_tags_list = _sort_tags([Tag(key=tag_name, value=tag_value) for tag_name, tag_value in tags.items()])
+    expected_cfn_tags = _sort_cfn_tags([{"Key": tag_name, "Value": tag_value} for tag_name, tag_value in tags.items()])
+
+    # Test method to add version tag
+    get_version_patch = mocker.patch("pcluster.models.cluster.get_installed_version", return_value=installed_version)
+    cluster._add_version_tag()
+    assert_that(get_version_patch.call_count).is_equal_to(1)
+    assert_that(
+        all(
+            [
+                source.value == target.value
+                for source, target in zip(_sort_tags(cluster.config.tags), expected_tags_list)
+            ]
+        )
+    ).is_true()
+
+    # Test method to retrieve CFN tags
+    cfn_tags = _sort_cfn_tags(cluster._get_cfn_tags())
+    assert_that(
+        all([source["Value"] == target["Value"] for source, target in zip(cfn_tags, expected_cfn_tags)])
+    ).is_true()
+
+
+def _sort_tags(tags):
+    return sorted(tags, key=lambda tag: tag.key)
+
+
+def _sort_cfn_tags(tags):
+    return sorted(tags, key=lambda tag: tag["Key"])

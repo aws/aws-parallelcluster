@@ -40,7 +40,6 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 from jinja2 import BaseLoader, Environment
 from pkg_resources import packaging
 
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import (
     PCLUSTER_STACK_PREFIX,
     SUPPORTED_ARCHITECTURES,
@@ -632,7 +631,7 @@ def get_stack_events(stack_name, raise_on_error=False):
         )
 
 
-def verify_stack_creation(stack_name, cfn_client=None):
+def verify_stack_status(stack_name, waiting_states, successful_state, cfn_client=None):
     """
     Wait for the stack creation to be completed and notify if the stack creation fails.
 
@@ -644,7 +643,7 @@ def verify_stack_creation(stack_name, cfn_client=None):
         cfn_client = boto3.client("cloudformation")
     status = get_stack(stack_name, cfn_client).get("StackStatus")
     resource_status = ""
-    while status == "CREATE_IN_PROGRESS":
+    while status in waiting_states:
         status = get_stack(stack_name, cfn_client).get("StackStatus")
         events = get_stack_events(stack_name, raise_on_error=True)[0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
@@ -656,14 +655,12 @@ def verify_stack_creation(stack_name, cfn_client=None):
     # print the last status update in the logs
     if resource_status != "":
         LOGGER.debug(resource_status)
-    if status != "CREATE_COMPLETE":
-        LOGGER.critical("\nCluster creation failed.  Failed events:")
-        _log_stack_failure_recursive(stack_name)
+    if status != successful_state:
         return False
     return True
 
 
-def _log_stack_failure_recursive(stack_name, indent=2):
+def log_stack_failure_recursive(stack_name, indent=2):
     """Log stack failures in recursive manner, until there is no substack layer."""
     events = get_stack_events(stack_name, raise_on_error=True)
     for event in events:
@@ -680,7 +677,7 @@ def _log_stack_failure_recursive(stack_name, indent=2):
                 )
                 substack_name = substack_error.group(1) if substack_error else None
                 if substack_name:
-                    _log_stack_failure_recursive(substack_name, indent=indent + 2)
+                    log_stack_failure_recursive(substack_name, indent=indent + 2)
 
 
 def _log_failed_cfn_event(event, indent):
@@ -880,24 +877,6 @@ def ellipsize(text, max_length):
 
 def policy_name_to_arn(policy_name):
     return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
-
-
-def cluster_has_running_capacity(stack_name):
-    if not hasattr(cluster_has_running_capacity, "cached_result"):
-        stack = get_stack(stack_name)
-        scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
-        if is_hit_enabled_cluster(stack):
-            cluster_has_running_capacity.cached_result = (
-                ComputeFleetStatusManager(get_cluster_name(stack_name)).get_status() != ComputeFleetStatus.STOPPED
-            )
-        else:
-            cluster_has_running_capacity.cached_result = (
-                get_batch_ce_capacity(stack_name) > 0
-                if scheduler == "awsbatch"
-                else get_asg_settings(stack_name).get("DesiredCapacity") > 0
-            )
-
-    return cluster_has_running_capacity.cached_result
 
 
 def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):

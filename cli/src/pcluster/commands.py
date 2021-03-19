@@ -235,43 +235,55 @@ def create(args):
     LOGGER.info("Beginning cluster creation for cluster: %s", args.cluster_name)
     LOGGER.debug("CLI args: %s", str(args))
 
-    if not args.disable_update_check:
-        utils.check_if_latest_version()
+    try:
+        if not args.disable_update_check:
+            utils.check_if_latest_version()
 
-    cluster_config = _parse_config_file(config_file=args.config_file)
-    result = PclusterApi().create_cluster(
-        cluster_config=cluster_config,
-        cluster_name=args.cluster_name,
-        region=utils.get_region(),
-        disable_rollback=args.norollback,
-        suppress_validators=args.suppress_validators,
-        validation_failure_level=args.validation_failure_level,
-    )
-    if isinstance(result, ClusterInfo):
-        print("Cluster creation started successfully.")
+        cluster_config = _parse_config_file(config_file=args.config_file)
+        result = PclusterApi().create_cluster(
+            cluster_config=cluster_config,
+            cluster_name=args.cluster_name,
+            region=utils.get_region(),
+            disable_rollback=args.norollback,
+            suppress_validators=args.suppress_validators,
+            validation_failure_level=args.validation_failure_level,
+        )
+        if isinstance(result, ClusterInfo):
+            print("Cluster creation started successfully.")
 
-        if not args.nowait:
-            verified = utils.verify_stack_creation(result.stack_name)
-            LOGGER.info("")
+            if not args.nowait:
+                verified = utils.verify_stack_status(
+                    result.stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_state="CREATE_COMPLETE"
+                )
+                if not verified:
+                    LOGGER.critical("\nCluster creation failed.  Failed events:")
+                    utils.log_stack_failure_recursive(result.stack_name)
+                    sys.exit(1)
 
-            result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, ClusterInfo):
-                _print_stack_outputs(result.stack_outputs)
+                LOGGER.info("")
+                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+                if isinstance(result, ClusterInfo):
+                    print_stack_outputs(result.stack_outputs)
+                else:
+                    utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
             else:
-                utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
-            if not verified:
-                sys.exit(1)
+                LOGGER.info("Status: %s", result.stack_status)
         else:
-            LOGGER.info("Status: %s", result.stack_status)
-    else:
-        message = "Cluster creation failed. {0}.".format(result.message if result.message else "")
-        if result.validation_failures:
-            message += "\nValidation failures:\n"
-            message += "\n".join([f"{result.level.name}: {result.message}" for result in result.validation_failures])
+            message = "Cluster creation failed. {0}.".format(result.message if result.message else "")
+            if result.validation_failures:
+                message += "\nValidation failures:\n"
+                message += "\n".join(
+                    [f"{result.level.name}: {result.message}" for result in result.validation_failures]
+                )
 
-        utils.error(message)
+            utils.error(message)
+
+    except KeyboardInterrupt:
+        LOGGER.info("\nExiting...")
+        sys.exit(0)
 
 
+# TODO removed
 def evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
     """
     Determine the CloudFormation Template URL to use.
@@ -295,7 +307,7 @@ def _print_compute_fleet_status(cluster_name, stack_outputs):
             LOGGER.info("ComputeFleetStatus: %s", compute_fleet_status)
 
 
-def _print_stack_outputs(stack_outputs):
+def print_stack_outputs(stack_outputs):
     """
     Print a limited set of the CloudFormation Stack outputs.
 
@@ -456,7 +468,7 @@ def status(args):  # noqa: C901 FIXME!!!
                         head_node_state = result.head_node.state
                         LOGGER.info("MasterServer: %s" % head_node_state.upper())
                         if head_node_state == "running":
-                            _print_stack_outputs(result.stack_outputs)
+                            print_stack_outputs(result.stack_outputs)
                     _print_compute_fleet_status(args.cluster_name, result.stack_outputs)
                 elif result.stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
                     events = utils.get_stack_events(result.stack_name)

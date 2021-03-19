@@ -16,18 +16,19 @@ from assertpy import assert_that
 from pcluster.schemas.cluster_schema import (
     AwsbatchComputeResourceSchema,
     AwsbatchQueueSchema,
-    BaseNetworkingSchema,
     CloudWatchLogsSchema,
     DcvSchema,
     EbsSchema,
     EfsSchema,
-    EphemeralVolumeSchema,
     FsxSchema,
+    HeadNodeEphemeralVolumeSchema,
     HeadNodeNetworkingSchema,
+    HeadNodeRootVolumeSchema,
     ImageSchema,
+    QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
+    QueueRootVolumeSchema,
     RaidSchema,
-    RootVolumeSchema,
     SchedulingSchema,
     SharedStorageSchema,
     SlurmComputeResourceSchema,
@@ -69,7 +70,8 @@ def test_scheduler_validator(scheduler, expected_message):
 )
 def test_mount_dir_validator(mount_dir, expected_message):
     _validate_and_assert_error(SharedStorageSchema(), {"MountDir": mount_dir}, expected_message)
-    _validate_and_assert_error(EphemeralVolumeSchema(), {"MountDir": mount_dir}, expected_message)
+    _validate_and_assert_error(HeadNodeEphemeralVolumeSchema(), {"MountDir": mount_dir}, expected_message)
+    _validate_and_assert_error(QueueEphemeralVolumeSchema(), {"MountDir": mount_dir}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -84,7 +86,8 @@ def test_mount_dir_validator(mount_dir, expected_message):
     ],
 )
 def test_root_volume_size_validator(size, expected_message):
-    _validate_and_assert_error(RootVolumeSchema(), {"Size": size}, expected_message)
+    _validate_and_assert_error(HeadNodeRootVolumeSchema(), {"Size": size}, expected_message)
+    _validate_and_assert_error(QueueRootVolumeSchema(), {"Size": size}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -537,7 +540,8 @@ def test_raid_validator(section_dict, expected_message):
 )
 def test_base_networking_validator(section_dict, expected_message):
     """Verify that cw_log behaves as expected when parsed in a config file."""
-    _validate_and_assert_error(BaseNetworkingSchema(), section_dict, expected_message)
+    _validate_and_assert_error(HeadNodeNetworkingSchema(), section_dict, expected_message)
+    _validate_and_assert_error(QueueNetworkingSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(

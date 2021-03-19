@@ -418,7 +418,7 @@ def _validate_config(config_parser, pcluster_config):
 def duplicate_config_file(dst_config_file, test_datadir):
     # Make a copy of the src template to the target file.
     # The two resulting PClusterConfig instances will be identical
-    src_config_file_path = os.path.join(str(test_datadir), "pcluster.config.ini")
+    src_config_file_path = os.path.join(str(test_datadir), "pcluster.config.yaml")
     dst_config_file_path = os.path.join(str(test_datadir), dst_config_file)
     shutil.copy(src_config_file_path, dst_config_file_path)
 

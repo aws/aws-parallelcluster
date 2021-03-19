@@ -11,7 +11,7 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.cli_commands.update import _format_report_column, _get_target_config_tags_list
+from pcluster.cli_commands.update import _format_report_column
 
 
 @pytest.mark.parametrize(
@@ -25,22 +25,3 @@ from pcluster.cli_commands.update import _format_report_column, _get_target_conf
 )
 def test_format_change_value(value, expected_output):
     assert_that(_format_report_column(value)).is_equal_to(expected_output)
-
-
-@pytest.mark.parametrize("config_file_tags", [{}, {"Version": "NotInstalledVersion"}])
-def test_get_target_config_tags_list(mocker, config_file_tags):
-    """Verify that the function to get the tags list used when updating a cluster behaves as expected."""
-    installed_version = "FakeInstalledVersion"
-    tags = {"Version": installed_version}
-    tags.update(config_file_tags)
-    expected_tags_list = [{"Key": tag_name, "Value": tag_value} for tag_name, tag_value in tags.items()]
-    get_version_patch = mocker.patch(
-        "pcluster.cli_commands.update.utils.get_installed_version", return_value=installed_version
-    )
-    mocked_config = mocker.MagicMock()
-    mocked_config.get_section("cluster").get_param_value.side_effect = lambda param: {"tags": config_file_tags}.get(
-        param
-    )
-    observed_tags_list = _get_target_config_tags_list(mocked_config)
-    assert_that(get_version_patch.call_count).is_equal_to(1)
-    assert_that(observed_tags_list).is_equal_to(expected_tags_list)
