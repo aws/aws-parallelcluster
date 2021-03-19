@@ -109,43 +109,12 @@ class Ebs(Resource):
 
     def __init__(
         self,
-        volume_type: str = None,
-        iops: int = None,
         size: int = None,
         encrypted: bool = None,
-        kms_key_id: str = None,
-        throughput: int = None,
     ):
         super().__init__()
-        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
-        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.encrypted = Resource.init_param(encrypted, default=False)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
-
-    def _validate(self):
-        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
-        self._execute_validator(
-            EbsVolumeIopsValidator,
-            volume_type=self.volume_type,
-            volume_size=self.size,
-            volume_iops=self.iops,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_throughput=self.throughput,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputIopsValidator,
-            volume_type=self.volume_type,
-            volume_iops=self.iops,
-            volume_throughput=self.throughput,
-        )
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
 
 
 class Raid(Resource):
@@ -200,7 +169,13 @@ class SharedEbs(Ebs):
         volume_id: str = None,
         raid: Raid = None,
     ):
-        Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
+        super().__init__()
+        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
+        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
+        self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
+        self.encrypted = Resource.init_param(encrypted, default=False)
+        self.kms_key_id = Resource.init_param(kms_key_id)
+        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
         self.mount_dir = mount_dir
         self.shared_storage_type = SharedStorageType.RAID if raid else SharedStorageType.EBS
         self.snapshot_id = Resource.init_param(snapshot_id)
@@ -208,7 +183,27 @@ class SharedEbs(Ebs):
         self.raid = raid
 
     def _validate(self):
-        super()._validate()
+        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
+        self._execute_validator(
+            EbsVolumeIopsValidator,
+            volume_type=self.volume_type,
+            volume_size=self.size,
+            volume_iops=self.iops,
+        )
+        self._execute_validator(
+            EbsVolumeThroughputValidator,
+            volume_type=self.volume_type,
+            volume_throughput=self.throughput,
+        )
+        self._execute_validator(
+            EbsVolumeThroughputIopsValidator,
+            volume_type=self.volume_type,
+            volume_iops=self.iops,
+            volume_throughput=self.throughput,
+        )
+        if self.kms_key_id:
+            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._execute_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
         self._execute_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
 

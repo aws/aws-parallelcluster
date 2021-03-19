@@ -75,11 +75,7 @@ from pcluster.validators.cluster_validators import FSX_MESSAGES
 class _BaseEbsSchema(BaseSchema):
     """Represent the schema shared by SharedEBS and RootVolume section."""
 
-    volume_type = fields.Str(validate=get_field_validator("volume_type"))
-    iops = fields.Int()
     size = fields.Int()
-    kms_key_id = fields.Str()
-    throughput = fields.Int()
     encrypted = fields.Bool()
 
 
@@ -115,8 +111,12 @@ class RaidSchema(BaseSchema):
 class EbsSchema(_BaseEbsSchema):
     """Represent the schema of EBS."""
 
+    iops = fields.Int()
+    kms_key_id = fields.Str()
+    throughput = fields.Int()
     snapshot_id = fields.Str(validate=validate.Regexp(r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$"))
     volume_id = fields.Str(validate=validate.Regexp(r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$"))
+    volume_type = fields.Str(validate=get_field_validator("volume_type"))
     raid = fields.Nested(RaidSchema)
 
 
@@ -238,6 +238,7 @@ class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
     mount_dir = fields.Str(required=True, validate=get_field_validator("file_path"))
+    name = fields.Str()
     ebs = fields.Nested(EbsSchema)
     efs = fields.Nested(EfsSchema)
     fsx = fields.Nested(FsxSchema, data_key="FsxLustre")

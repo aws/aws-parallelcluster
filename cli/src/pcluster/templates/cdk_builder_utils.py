@@ -57,10 +57,7 @@ def get_block_device_mappings(node_config: Union[HeadNode, BaseQueue], os: str):
     block_device_mappings.append(
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
             device_name=OS_MAPPING[os]["root-device"],
-            ebs=ec2.CfnLaunchTemplate.EbsProperty(
-                volume_size=root_volume.size,
-                volume_type=root_volume.volume_type,
-            ),
+            ebs=ec2.CfnLaunchTemplate.EbsProperty(volume_size=root_volume.size, encrypted=root_volume.encrypted),
         )
     )
     return block_device_mappings
