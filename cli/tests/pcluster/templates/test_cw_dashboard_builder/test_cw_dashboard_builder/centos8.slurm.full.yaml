@@ -73,6 +73,7 @@ SharedStorage:
   - MountDir: /my/mount/fsx1
     FsxLustre:
       StorageCapacity: 1200
+      WeeklyMaintenanceStartTime: "1:00:00"
 Monitoring:
   DetailedMonitoring: true
   Logs:
