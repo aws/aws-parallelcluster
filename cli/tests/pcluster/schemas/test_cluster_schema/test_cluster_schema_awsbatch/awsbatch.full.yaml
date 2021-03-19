@@ -93,7 +93,7 @@ SharedStorage:
       ImportedFileChunkSize: 10  # 1024
       ExportPath: String  # s3://bucket/folder
       ImportPath: String  # s3://bucket
-      #WeeklyMaintenanceStartTime: 1:00:00  # 1:00:00
+      WeeklyMaintenanceStartTime: "1:00:00"  # "1:00:00"
       AutomaticBackupRetentionDays: 1  # 0
       CopyTagsToBackups: true  # true
       DailyAutomaticBackupStartTime: 01:03  # 01:03
