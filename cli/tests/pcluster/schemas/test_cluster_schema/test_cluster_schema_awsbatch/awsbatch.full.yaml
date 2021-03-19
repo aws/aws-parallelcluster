@@ -26,10 +26,6 @@ HeadNode:
     RootVolume:
       Size: 37  # 35
       Encrypted: true  # true
-      KmsKeyId: String
-      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-      Iops: 23
-      Throughput: 21
     EphemeralVolume:
       Encrypted: true  # true
       MountDir: String  # /scratch
@@ -45,10 +41,6 @@ Scheduling:
           RootVolume:
             Size: 38  # 35
             Encrypted: true  # true
-            KmsKeyId: String
-            VolumeType: sc1  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-            Iops: 1
-            Throughput: 2
           EphemeralVolume:
             Encrypted: true  # true
             MountDir: String  # /scratch
