@@ -5,9 +5,9 @@ test-suites:
 {% include 'common/common.yaml' %}
 {% endfilter %}
   runtime_bake:
-    test_runtime_bake.py::test_runtime_bake:  # These are currently skipped
+    test_runtime_bake.py::test_runtime_bake: # arm instance tests are temporarily skipped
       dimensions:
-        {%- for os, scheduler in [("alinux2", "slurm"), ("ubuntu2004", "torque"), ("centos7", "sge")] %}
+        {%- for os, scheduler in [("centos8", "torque"), ("centos7", "sge"), ("alinux2", "slurm"), ("ubuntu2004", "torque")] %}
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]
@@ -19,12 +19,12 @@ test-suites:
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1804", "sge"), ("alinux2", "slurm")] %}
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["{{ os }}"]
-          schedulers: ["{{ scheduler }}"]
-        {%- endfor %}
+#        {%- for os, scheduler in [("ubuntu1804", "sge"), ("alinux2", "slurm")] %}
+#        - regions: ["us-east-1"]
+#          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+#          oss: ["{{ os }}"]
+#          schedulers: ["{{ scheduler }}"]
+#        {%- endfor %}
   scaling:
     test_scaling.py::test_nodewatcher_terminates_failing_node:
       dimensions:
