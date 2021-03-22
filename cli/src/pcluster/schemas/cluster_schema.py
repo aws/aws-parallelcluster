@@ -17,7 +17,17 @@
 import copy
 import re
 
-from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
+from marshmallow import (
+    ValidationError,
+    fields,
+    post_dump,
+    post_load,
+    pre_dump,
+    pre_load,
+    validate,
+    validates,
+    validates_schema,
+)
 
 from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.models.cluster_config import (
@@ -238,20 +248,35 @@ class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
     mount_dir = fields.Str(required=True, validate=get_field_validator("file_path"))
-    name = fields.Str()
+    name = fields.Str(required=True)
+    storage_type = fields.Str(required=True, validate=validate.OneOf(["Ebs", "FsxLustre", "Efs"]))
     ebs = fields.Nested(EbsSchema)
     efs = fields.Nested(EfsSchema)
-    fsx = fields.Nested(FsxSchema, data_key="FsxLustre")
+    fsx = fields.Nested(FsxSchema)
+
+    @pre_load
+    def preprocess(self, data, **kwargs):
+        """Before load the data into schema, change the settings to adapt different storage types."""
+        try:
+            if data.get("StorageType") == "Efs":
+                data["Efs"] = data.pop("Settings")
+            elif data.get("StorageType") == "Ebs":
+                data["Ebs"] = data.pop("Settings")
+            elif data.get("StorageType") == "FsxLustre":
+                data["Fsx"] = data.pop("Settings")
+            return data
+        except IndexError as exception:
+            raise ValidationError(f" Settings is required to be set for SharedStorage: {exception}")
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FSx)."""
         if data.get("efs"):
-            return SharedEfs(data.get("mount_dir"), **data.get("efs"))
+            return SharedEfs(data.get("mount_dir"), data.get("name"), **data.get("efs"))
         if data.get("fsx"):
-            return SharedFsx(data.get("mount_dir"), **data.get("fsx"))
+            return SharedFsx(data.get("mount_dir"), data.get("name"), **data.get("fsx"))
         if data.get("ebs"):
-            return SharedEbs(data.get("mount_dir"), **data.get("ebs"))
+            return SharedEbs(data.get("mount_dir"), data.get("name"), **data.get("ebs"))
         return None
 
     @pre_dump
@@ -260,6 +285,18 @@ class SharedStorageSchema(BaseSchema):
         child = copy.copy(data)
         storage_type = "ebs" if data.shared_storage_type.value == "raid" else data.shared_storage_type.value
         setattr(data, storage_type, child)
+        data.storage_type = "FsxLustre" if data.shared_storage_type.value == "fsx" else storage_type.capitalize()
+        return data
+
+    @post_dump
+    def post_processed(self, data, **kwargs):
+        """Restore the SharedStorage Schema back to its origin."""
+        if data.get("Efs"):
+            data["Settings"] = data.pop("Efs")
+        elif data.get("Ebs"):
+            data["Settings"] = data.pop("Ebs")
+        elif data.get("Fsx"):
+            data["Settings"] = data.pop("Fsx")
         return data
 
     @validates("mount_dir")

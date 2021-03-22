@@ -31,12 +31,18 @@ Scheduling:
             InstanceType: c4.4xlarge
 SharedStorage:
   - MountDir: /my/mount/point1
-    Ebs:
+    Name: name1
+    StorageType: Ebs
+    Settings:
       VolumeId: vol-12345678
   - MountDir: /my/mount/point2
-    Efs:
+    Name: name2
+    StorageType: Efs
+    Settings:
       Encrypted: True
       KmsKeyId: 1234abcd-12ab-34cd-56ef-1234567890ab
   - MountDir: /my/mount/point3
-    FsxLustre:
+    Name: name3
+    StorageType: FsxLustre
+    Settings:
       StorageCapacity: 3600

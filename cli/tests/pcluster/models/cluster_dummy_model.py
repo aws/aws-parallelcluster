@@ -174,10 +174,11 @@ def dummy_awsbatch_cluster_config(mocker):
     return cluster
 
 
-def dummy_fsx(file_system_id=None, mount_dir="/shared"):
+def dummy_fsx(file_system_id=None, mount_dir="/shared", name="name"):
     """Generate dummy fsx."""
     return SharedFsx(
         mount_dir=mount_dir,
+        name=name,
         file_system_id=file_system_id,
         storage_capacity=300,
         deployment_type="SCRATCH_1",
@@ -197,9 +198,10 @@ def dummy_fsx(file_system_id=None, mount_dir="/shared"):
     )
 
 
-def dummy_ebs(mount_dir, volume_id=None, raid=None):
+def dummy_ebs(mount_dir, name="name", volume_id=None, raid=None):
     return SharedEbs(
         mount_dir=mount_dir,
+        name=name,
         kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         snapshot_id="snapshot-abdcef76",
         volume_type="gp2",
@@ -209,9 +211,10 @@ def dummy_ebs(mount_dir, volume_id=None, raid=None):
     )
 
 
-def dummy_raid(mount_dir, volume_id=None):
+def dummy_raid(mount_dir, name="name", volume_id=None):
     return SharedEbs(
         mount_dir=mount_dir,
+        name="name",
         kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         snapshot_id="snapshot-abdcef76",
         volume_type="gp2",
@@ -221,9 +224,10 @@ def dummy_raid(mount_dir, volume_id=None):
     )
 
 
-def dummy_efs(mount_dir, file_system_id=None):
+def dummy_efs(mount_dir, name="name", file_system_id=None):
     return SharedEfs(
         mount_dir=mount_dir,
+        name=name,
         encrypted=False,
         kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         performance_mode="generalPurpose",
