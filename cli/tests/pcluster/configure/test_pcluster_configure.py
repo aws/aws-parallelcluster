@@ -406,7 +406,6 @@ def get_file_path(test_datadir):
     config = test_datadir / "pcluster.config.yaml"
     output = test_datadir / "output.txt"
     error = test_datadir / "error.txt"
-    #  str for python 2.7 compatibility
     return str(config), str(error), str(output)
 
 
