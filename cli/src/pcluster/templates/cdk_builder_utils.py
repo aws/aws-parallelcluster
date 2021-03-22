@@ -260,7 +260,7 @@ class PclusterLambdaConstruct(core.Construct):
         function_name = f"pcluster-{function_id}-{self._stack_unique_id()}"
 
         self.log_group = logs.CfnLogGroup(
-            scope=self,
+            scope=scope,
             id=f"{function_id}FunctionLogGroup",
             log_group_name=f"/aws/lambda/{function_name}",
             retention_in_days=get_cloud_watch_logs_retention_days(config),
