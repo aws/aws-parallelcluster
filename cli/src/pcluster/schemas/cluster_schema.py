@@ -606,7 +606,6 @@ class CustomActionSchema(BaseSchema):
     script = fields.Str(required=True)
     args = fields.List(fields.Str())
     event = fields.Str(validate=validate.OneOf([event.value for event in CustomActionEvent]))
-    run_as = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):
