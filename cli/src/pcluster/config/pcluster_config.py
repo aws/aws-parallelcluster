@@ -8,14 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from future.moves.collections import OrderedDict
-
 import errno
 import json
 import logging
 import os
 import stat
 import sys
+from collections import OrderedDict
 
 import boto3
 import configparser
