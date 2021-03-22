@@ -641,12 +641,11 @@ class CustomActionEvent(Enum):
 class CustomAction(Resource):
     """Represent a custom action resource."""
 
-    def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
+    def __init__(self, script: str, args: List[str] = None, event: str = None):
         super().__init__()
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)
         self.event = Resource.init_param(event)
-        self.run_as = Resource.init_param(run_as)
 
     def _validate(self):
         self._execute_validator(UrlValidator, url=self.script)

@@ -33,7 +33,6 @@ HeadNode:
         - String  # arg1
         - stirng2
       Event: NODE_START
-      RunAs: String
   Iam:
     InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
@@ -62,7 +61,6 @@ Scheduling:
               - String  # arg1
               - stirng2
             Event: NODE_START
-            RunAs: String
         Iam:
           S3Access:
             - BucketName: String
