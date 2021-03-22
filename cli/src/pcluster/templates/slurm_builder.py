@@ -260,7 +260,7 @@ class SlurmConstruct(core.Construct):
                                     service="route53",
                                     region="",
                                     account="",
-                                    resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
+                                    resource=f"hostedzone/{cluster_hosted_zone.ref}",
                                 ),
                             ],
                         ),
@@ -283,7 +283,7 @@ class SlurmConstruct(core.Construct):
                                 service="route53",
                                 region="",
                                 account="",
-                                resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
+                                resource=f"hostedzone/{cluster_hosted_zone.ref}",
                             ),
                         ],
                         sid="Route53DeletePolicy",
@@ -315,14 +315,14 @@ class SlurmConstruct(core.Construct):
             scope=self.stack_scope,
             id="CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
-            properties={"ClusterHostedZone": cluster_hosted_zone.attr_id, "Action": "DELETE_DNS_RECORDS"},
+            properties={"ClusterHostedZone": cluster_hosted_zone.ref, "Action": "DELETE_DNS_RECORDS"},
         )
 
         core.CfnOutput(
             scope=self.stack_scope,
             id="ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
-            value=cluster_hosted_zone.attr_id,
+            value=cluster_hosted_zone.ref,
         )
         core.CfnOutput(
             scope=self.stack_scope,
@@ -505,7 +505,7 @@ class SlurmConstruct(core.Construct):
                                 "ClusterDNSDomain": str(self.cluster_hosted_zone.name)
                                 if self.cluster_hosted_zone
                                 else "",
-                                "ClusterHostedZone": str(self.cluster_hosted_zone.attr_id)
+                                "ClusterHostedZone": str(self.cluster_hosted_zone.ref)
                                 if self.cluster_hosted_zone
                                 else "",
                                 "OSUser": OS_MAPPING[self.config.image.os]["user"],

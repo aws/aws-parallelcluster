@@ -206,7 +206,7 @@ class ClusterCdkStack(core.Stack):
         timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
         log_group = logs.CfnLogGroup(
             scope=self,
-            id="CleanupResourcesFunctionLogGroup",
+            id="CloudWatchLogGroup",
             log_group_name=f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}",
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
@@ -957,7 +957,7 @@ class ClusterCdkStack(core.Stack):
                     "cfn_dns_domain": self.scheduler_resources.cluster_hosted_zone.name
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
-                    "cfn_hosted_zone": self.scheduler_resources.cluster_hosted_zone.attr_id
+                    "cfn_hosted_zone": self.scheduler_resources.cluster_hosted_zone.ref
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
                     "cfn_node_type": "MasterServer",  # FIXME
