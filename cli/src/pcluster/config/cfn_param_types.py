@@ -268,8 +268,6 @@ class JsonCfnParam(CfnParam):
         """Return internal representation starting from CFN/user-input value."""
         param_value = self.get_default_value()
         try:
-            # Do not convert empty string and use format and yaml.load in place of json.loads
-            # for Python 2.7 compatibility because it returns unicode chars
             if string_value:
                 string_value = str(string_value).strip()
                 if string_value != "NONE":

@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from future.moves.collections import OrderedDict
+from collections import OrderedDict
 
 import boto3
 
@@ -326,8 +326,7 @@ EBS = {
     "max_resources": 5,
     "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_size_snapshot_validator,
                    ebs_volume_throughput_validator],
-    "params": OrderedDict([  # Use OrderedDict because the in python 3.5 a dict is not ordered by default, need it in
-        # the test of hit converter
+    "params": OrderedDict([
         ("shared_dir", {
             "allowed_values": ALLOWED_VALUES["file_path"],
             "cfn_param_mapping": "SharedDir",

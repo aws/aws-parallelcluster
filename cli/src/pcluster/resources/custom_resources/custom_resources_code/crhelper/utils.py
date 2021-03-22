@@ -1,7 +1,6 @@
 # Imported from https://github.com/aws-cloudformation/custom-resource-helper
 # The file has been modified to drop dependency on requests package
 # flake8: noqa
-from __future__ import print_function
 
 import json
 import logging as logging

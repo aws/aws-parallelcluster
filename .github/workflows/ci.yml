@@ -10,8 +10,6 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         name:
-          - Python 2.7 Tests
-          - Python 3.5 Tests
           - Python 3.6 Tests
           - Python 3.7 Tests
           - Python 3.8 Tests
@@ -21,14 +19,6 @@ jobs:
           - CloudFormation Templates Checks
           - Integration Tests Config Checks
         include:
-          - name: Python 2.7 Tests
-            python: 2.7
-            toxdir: cli
-            toxenv: py27-nocov
-          - name: Python 3.5 Tests
-            python: 3.5
-            toxdir: cli
-            toxenv: py35-nocov
           - name: Python 3.6 Tests
             python: 3.6
             toxdir: cli
