@@ -19,7 +19,9 @@ Scheduling:
             MaxvCpus: 10
 SharedStorage:
   - MountDir: /shared
-    Ebs:
+    Name: ebs1
+    StorageType: Ebs
+    Settings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 100
       Size: 150

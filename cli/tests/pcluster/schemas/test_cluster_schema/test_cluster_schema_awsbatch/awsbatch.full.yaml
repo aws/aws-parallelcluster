@@ -67,7 +67,9 @@ Scheduling:
             #AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point
-    Ebs:
+    StorageType: Ebs
+    Name: name1
+    Settings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 10
       Size: 20
@@ -79,7 +81,9 @@ SharedStorage:
         Type: 0  # 0|1
         NumberOfVolumes: 2  # [2-5]
   - MountDir: /my/mount/point2
-    Efs:
+    StorageType: Efs
+    Name: name2
+    Settings:
       Encrypted: true  # true
       KmsKeyId: String  # id-xxx
       PerformanceMode: maxIO  # generalPurpose | maxIO
@@ -87,7 +91,9 @@ SharedStorage:
       ProvisionedThroughput: 1024  # 1024
       FileSystemId: fs-12345678  # fs-xxxx
   - MountDir: /my/mount/point3
-    FsxLustre:
+    StorageType: FsxLustre
+    Name: name3
+    Settings:
       StorageCapacity: 3600  # 3600
       DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 10  # 1024

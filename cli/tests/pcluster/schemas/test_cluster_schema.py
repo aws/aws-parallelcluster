@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import json
+from copy import deepcopy
 
 import pytest
 import yaml
@@ -27,7 +28,8 @@ def _check_cluster_schema(test_datadir, config_file_name):
     # Load cluster model from Yaml file
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     print(input_yaml)
-    cluster = ClusterSchema().load(input_yaml)
+    copy_input_yaml = deepcopy(input_yaml)
+    cluster = ClusterSchema().load(copy_input_yaml)
     print(cluster)
 
     # Re-create Yaml file from model and compare content

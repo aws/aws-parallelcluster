@@ -159,6 +159,7 @@ class SharedEbs(Ebs):
     def __init__(
         self,
         mount_dir: str,
+        name: str,
         volume_type: str = None,
         iops: int = None,
         size: int = None,
@@ -169,20 +170,20 @@ class SharedEbs(Ebs):
         volume_id: str = None,
         raid: Raid = None,
     ):
-        super().__init__()
+        super().__init__(size=size, encrypted=encrypted)
         self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
-        self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
-        self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
         self.mount_dir = mount_dir
+        self.name = name
         self.shared_storage_type = SharedStorageType.RAID if raid else SharedStorageType.EBS
         self.snapshot_id = Resource.init_param(snapshot_id)
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
 
     def _validate(self):
+        super()._validate()
         self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
         self._execute_validator(
             EbsVolumeIopsValidator,
@@ -214,6 +215,7 @@ class SharedEfs(Resource):
     def __init__(
         self,
         mount_dir: str,
+        name: str,
         encrypted: bool = None,
         kms_key_id: str = None,
         performance_mode: str = None,
@@ -223,6 +225,7 @@ class SharedEfs(Resource):
     ):
         super().__init__()
         self.mount_dir = mount_dir
+        self.name = name
         self.shared_storage_type = SharedStorageType.EFS
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
@@ -243,6 +246,7 @@ class SharedFsx(Resource):
     def __init__(
         self,
         mount_dir: str,
+        name: str,
         storage_capacity: int = None,
         deployment_type: str = None,
         export_path: str = None,
@@ -262,6 +266,7 @@ class SharedFsx(Resource):
     ):
         super().__init__()
         self.mount_dir = mount_dir
+        self.name = name
         self.shared_storage_type = SharedStorageType.FSX
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.storage_type = Resource.init_param(storage_type)
