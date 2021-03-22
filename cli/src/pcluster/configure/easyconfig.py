@@ -8,19 +8,6 @@
 # or in the 'LICENSE.txt' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
-from __future__ import absolute_import, print_function  # isort:skip
-
-import yaml
-
-from common.aws.aws_api import AWSApi
-from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT
-
-from future import standard_library  # isort:skip
-
-
-standard_library.install_aliases()
-# fmt: on
 
 import logging
 import os
@@ -28,7 +15,9 @@ import sys
 from collections import OrderedDict
 
 import boto3
+import yaml
 
+from common.aws.aws_api import AWSApi
 from pcluster.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,
@@ -36,6 +25,7 @@ from pcluster.configure.networking import (
     automate_vpc_with_subnet_creation,
 )
 from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
+from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT
 from pcluster.utils import (
     camelcase,
     default_config_file_path,

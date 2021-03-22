@@ -30,6 +30,8 @@ CHANGELOG
 **ENHANCEMENTS**
 
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+- Add validation for `cluster_type` configuration parameter in `cluster` section
+- Add validation for `compute_type` configuration parameter in `queue` section
 
 **CHANGES**
 
@@ -39,8 +41,10 @@ CHANGELOG
   - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds
   - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value for all GPU, Type=tesla
 - Make `key_name` parameter optional to support cluster configurations without a key pair. 
-- Remove support for Python 3.4
+- Remove support for Python versions < 3.6.
+- Remove dependency on `future` package and `__future__` module.
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
+- Add sanity check to prevent cluster creation in non officially supported AWS regions 
 
 2.10.3
 ------

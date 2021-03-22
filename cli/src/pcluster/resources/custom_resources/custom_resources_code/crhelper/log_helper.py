@@ -1,6 +1,5 @@
 # Imported from https://github.com/aws-cloudformation/custom-resource-helper
 # flake8: noqa
-from __future__ import print_function
 
 import json
 import logging
