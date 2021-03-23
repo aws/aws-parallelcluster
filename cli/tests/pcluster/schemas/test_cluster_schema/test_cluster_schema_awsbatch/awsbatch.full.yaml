@@ -7,9 +7,6 @@ HeadNode:
     SubnetId: subnet-12345678  # subnet-xxx
     ElasticIp: String  # true|false|EIP-id
     AssignPublicIp: true  # true|false
-    SecurityGroups:
-      - sg-12345678  # sg-xxxx
-      - sg-23456789
     AdditionalSecurityGroups:
       - sg-12345678  # sg-xxxx
       - sg-23456789
@@ -25,14 +22,10 @@ HeadNode:
   Ssh:
     KeyName: String  # ec2-key-name
     AllowedIps: 1.2.3.4/32  # 1.2.3.4/32
-  Storage:
+  LocalStorage:
     RootVolume:
       Size: 37  # 35
       Encrypted: true  # true
-      KmsKeyId: String
-      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-      Iops: 23
-      Throughput: 21
     EphemeralVolume:
       Encrypted: true  # true
       MountDir: String  # /scratch
@@ -44,14 +37,10 @@ Scheduling:
   Awsbatch:
     Queues:
       - Name: String  # queue
-        Storage:
+        LocalStorage:
           RootVolume:
             Size: 38  # 35
             Encrypted: true  # true
-            KmsKeyId: String
-            VolumeType: sc1  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-            Iops: 1
-            Throughput: 2
           EphemeralVolume:
             Encrypted: true  # true
             MountDir: String  # /scratch
@@ -59,11 +48,8 @@ Scheduling:
         Networking:
           SubnetIds:
             - subnet-12345678
-            - subnet-23456789
           AssignPublicIp: true  # true|false
           SecurityGroups:
-            - sg-12345678  # sg-xxxx
-          AdditionalSecurityGroups:
             - sg-12345678  # sg-xxxx
           PlacementGroup:
             Enabled: true  # true
@@ -72,7 +58,7 @@ Scheduling:
             HttpProxyAddress: String  # https://proxy-address:port
         ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
           - Name: compute_resource
-            InstanceType: optimal,c4.xlarge,c5.large
+            InstanceTypes: optimal,c4.xlarge,c5.large
             MinvCpus: 0  # 0
             DesiredvCpus: 10
             MaxvCpus: 20
@@ -81,7 +67,9 @@ Scheduling:
             #AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point
-    Ebs:
+    StorageType: Ebs
+    Name: name1
+    Settings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 10
       Size: 20
@@ -93,7 +81,9 @@ SharedStorage:
         Type: 0  # 0|1
         NumberOfVolumes: 2  # [2-5]
   - MountDir: /my/mount/point2
-    Efs:
+    StorageType: Efs
+    Name: name2
+    Settings:
       Encrypted: true  # true
       KmsKeyId: String  # id-xxx
       PerformanceMode: maxIO  # generalPurpose | maxIO
@@ -101,13 +91,15 @@ SharedStorage:
       ProvisionedThroughput: 1024  # 1024
       FileSystemId: fs-12345678  # fs-xxxx
   - MountDir: /my/mount/point3
-    FsxLustre:
+    StorageType: FsxLustre
+    Name: name3
+    Settings:
       StorageCapacity: 3600  # 3600
       DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 10  # 1024
       ExportPath: String  # s3://bucket/folder
       ImportPath: String  # s3://bucket
-      #WeeklyMaintenanceStartTime: 1:00:00  # 1:00:00
+      WeeklyMaintenanceStartTime: "1:00:00"  # "1:00:00"
       AutomaticBackupRetentionDays: 1  # 0
       CopyTagsToBackups: true  # true
       DailyAutomaticBackupStartTime: 01:03  # 01:03
@@ -120,22 +112,13 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
-    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
-  S3Access:
-    - BucketName: String
-      Type: READ_WRITE # READ_ONLY | READ_WRITE
-  AdditionalIamPolicies:
-    - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
-    - Policy: policy2
 Monitoring:
   DetailedMonitoring: true  # false
   Logs:
     CloudWatch:
       Enabled: true  # true
       RetentionInDays: 14  # 14
-      LogGroupId: String
-      KmsKeyId: String
   Dashboards:
     CloudWatch:
       Enabled: true  # true

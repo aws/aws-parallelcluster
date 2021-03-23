@@ -109,43 +109,12 @@ class Ebs(Resource):
 
     def __init__(
         self,
-        volume_type: str = None,
-        iops: int = None,
         size: int = None,
         encrypted: bool = None,
-        kms_key_id: str = None,
-        throughput: int = None,
     ):
         super().__init__()
-        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
-        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.encrypted = Resource.init_param(encrypted, default=False)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
-
-    def _validate(self):
-        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
-        self._execute_validator(
-            EbsVolumeIopsValidator,
-            volume_type=self.volume_type,
-            volume_size=self.size,
-            volume_iops=self.iops,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_throughput=self.throughput,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputIopsValidator,
-            volume_type=self.volume_type,
-            volume_iops=self.iops,
-            volume_throughput=self.throughput,
-        )
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
 
 
 class Raid(Resource):
@@ -166,7 +135,7 @@ class EphemeralVolume(Resource):
         self.mount_dir = Resource.init_param(mount_dir, default="/scratch")
 
 
-class Storage(Resource):
+class LocalStorage(Resource):
     """Represent the entire node storage configuration."""
 
     def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
@@ -190,6 +159,7 @@ class SharedEbs(Ebs):
     def __init__(
         self,
         mount_dir: str,
+        name: str,
         volume_type: str = None,
         iops: int = None,
         size: int = None,
@@ -200,8 +170,13 @@ class SharedEbs(Ebs):
         volume_id: str = None,
         raid: Raid = None,
     ):
-        Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
+        super().__init__(size=size, encrypted=encrypted)
+        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
+        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
+        self.kms_key_id = Resource.init_param(kms_key_id)
+        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
         self.mount_dir = mount_dir
+        self.name = name
         self.shared_storage_type = SharedStorageType.RAID if raid else SharedStorageType.EBS
         self.snapshot_id = Resource.init_param(snapshot_id)
         self.volume_id = Resource.init_param(volume_id)
@@ -209,6 +184,27 @@ class SharedEbs(Ebs):
 
     def _validate(self):
         super()._validate()
+        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
+        self._execute_validator(
+            EbsVolumeIopsValidator,
+            volume_type=self.volume_type,
+            volume_size=self.size,
+            volume_iops=self.iops,
+        )
+        self._execute_validator(
+            EbsVolumeThroughputValidator,
+            volume_type=self.volume_type,
+            volume_throughput=self.throughput,
+        )
+        self._execute_validator(
+            EbsVolumeThroughputIopsValidator,
+            volume_type=self.volume_type,
+            volume_iops=self.iops,
+            volume_throughput=self.throughput,
+        )
+        if self.kms_key_id:
+            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
         self._execute_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
         self._execute_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
 
@@ -219,6 +215,7 @@ class SharedEfs(Resource):
     def __init__(
         self,
         mount_dir: str,
+        name: str,
         encrypted: bool = None,
         kms_key_id: str = None,
         performance_mode: str = None,
@@ -228,6 +225,7 @@ class SharedEfs(Resource):
     ):
         super().__init__()
         self.mount_dir = mount_dir
+        self.name = name
         self.shared_storage_type = SharedStorageType.EFS
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
@@ -248,6 +246,7 @@ class SharedFsx(Resource):
     def __init__(
         self,
         mount_dir: str,
+        name: str,
         storage_capacity: int = None,
         deployment_type: str = None,
         export_path: str = None,
@@ -263,13 +262,14 @@ class SharedFsx(Resource):
         file_system_id: str = None,
         auto_import_policy: str = None,
         drive_cache_type: str = None,
-        storage_type: str = None,
+        fsx_storage_type: str = None,
     ):
         super().__init__()
         self.mount_dir = mount_dir
+        self.name = name
         self.shared_storage_type = SharedStorageType.FSX
         self.storage_capacity = Resource.init_param(storage_capacity)
-        self.storage_type = Resource.init_param(storage_type)
+        self.fsx_storage_type = Resource.init_param(fsx_storage_type)
         self.deployment_type = Resource.init_param(deployment_type)
         self.export_path = Resource.init_param(export_path)
         self.import_path = Resource.init_param(import_path)
@@ -284,7 +284,7 @@ class SharedFsx(Resource):
         self.file_system_id = Resource.init_param(file_system_id)
         self.auto_import_policy = Resource.init_param(auto_import_policy)
         self.drive_cache_type = Resource.init_param(drive_cache_type)
-        self.storage_type = Resource.init_param(storage_type)
+        self.fsx_storage_type = Resource.init_param(fsx_storage_type)
 
     def _validate(self):
         self._execute_validator(
@@ -313,7 +313,7 @@ class SharedFsx(Resource):
         )
         self._execute_validator(
             FsxStorageTypeOptionsValidator,
-            storage_type=self.storage_type,
+            storage_type=self.fsx_storage_type,
             deployment_type=self.deployment_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             drive_cache_type=self.drive_cache_type,
@@ -322,7 +322,7 @@ class SharedFsx(Resource):
             FsxStorageCapacityValidator,
             storage_capacity=self.storage_capacity,
             deployment_type=self.deployment_type,
-            storage_type=self.storage_type,
+            storage_type=self.fsx_storage_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             file_system_id=self.file_system_id,
             backup_id=self.backup_id,
@@ -449,18 +449,10 @@ class CloudWatchLogs(Resource):
         self,
         enabled: bool = None,
         retention_in_days: int = None,
-        log_group_id: str = None,
-        kms_key_id: str = None,
     ):
         super().__init__()
         self.enabled = Resource.init_param(enabled, default=CW_LOGS_ENABLED_DEFAULT)
         self.retention_in_days = Resource.init_param(retention_in_days, default=CW_LOGS_RETENTION_DAYS_DEFAULT)
-        self.log_group_id = Resource.init_param(log_group_id)
-        self.kms_key_id = Resource.init_param(kms_key_id)
-
-    def _validate(self):
-        if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class CloudWatchDashboards(Resource):
@@ -533,11 +525,9 @@ class Roles(Resource):
 
     def __init__(
         self,
-        instance_role: str = None,
         custom_lambda_resources: str = None,
     ):
         super().__init__()
-        self.instance_role = Resource.init_param(instance_role)
         self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
 
 
@@ -547,11 +537,11 @@ class S3Access(Resource):
     def __init__(
         self,
         bucket_name: str,
-        type: str = None,
+        enable_write_access: bool = None,
     ):
         super().__init__()
         self.bucket_name = Resource.init_param(bucket_name)
-        self.type = Resource.init_param(type, default="READ_ONLY")
+        self.enable_write_access = Resource.init_param(enable_write_access, default=False)
 
 
 class AdditionalIamPolicy(Resource):
@@ -569,18 +559,29 @@ class AdditionalIamPolicy(Resource):
 
 
 class Iam(Resource):
-    """Represent the IAM configuration."""
+    """Represent the IAM configuration for HeadNode and Queue."""
+
+    def __init__(
+        self,
+        s3_access: List[S3Access] = None,
+        additional_iam_policies: List[AdditionalIamPolicy] = None,
+        instance_role: str = None,
+    ):
+        super().__init__()
+        self.s3_access = s3_access
+        self.additional_iam_policies = additional_iam_policies
+        self.instance_role = Resource.init_param(instance_role)
+
+
+class ClusterIam(Resource):
+    """Represent the IAM configuration for Cluster."""
 
     def __init__(
         self,
         roles: Roles = None,
-        s3_access: List[S3Access] = None,
-        additional_iam_policies: List[AdditionalIamPolicy] = None,
     ):
         super().__init__()
         self.roles = roles
-        self.s3_access = s3_access
-        self.additional_iam_policies = additional_iam_policies
 
 
 class IntelSelectSolutions(Resource):
@@ -640,12 +641,11 @@ class CustomActionEvent(Enum):
 class CustomAction(Resource):
     """Represent a custom action resource."""
 
-    def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
+    def __init__(self, script: str, args: List[str] = None, event: str = None):
         super().__init__()
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)
         self.event = Resource.init_param(event)
-        self.run_as = Resource.init_param(run_as)
 
     def _validate(self):
         self._execute_validator(UrlValidator, url=self.script)
@@ -660,7 +660,7 @@ class HeadNode(Resource):
         networking: HeadNodeNetworking,
         ssh: Ssh,
         disable_simultaneous_multithreading: bool = None,
-        storage: Storage = None,
+        local_storage: LocalStorage = None,
         dcv: Dcv = None,
         efa: Efa = None,
         custom_actions: List[CustomAction] = None,
@@ -673,7 +673,7 @@ class HeadNode(Resource):
         )
         self.networking = networking
         self.ssh = ssh
-        self.storage = storage
+        self.local_storage = local_storage
         self.dcv = dcv
         self.efa = efa
         self.custom_actions = custom_actions
@@ -739,7 +739,7 @@ class HeadNode(Resource):
     @property
     def instance_role(self):
         """Return the IAM role for head node, if set."""
-        return self.iam.roles.instance_role if self.iam and self.iam.roles else None
+        return self.iam.instance_role if self.iam else None
 
     def get_custom_action(self, event: CustomActionEvent) -> CustomAction:
         """Return the first CustomAction corresponding to the specified event."""
@@ -756,14 +756,10 @@ class BaseComputeResource(Resource):
     def __init__(
         self,
         name: str,
-        instance_type: str,
-        allocation_strategy: str = None,
         disable_simultaneous_multithreading: bool = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
-        self.instance_type = Resource.init_param(instance_type)
-        self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
         self.disable_simultaneous_multithreading = Resource.init_param(
             disable_simultaneous_multithreading, default=False
         )
@@ -786,14 +782,14 @@ class BaseQueue(Resource):
         self,
         name: str,
         networking: QueueNetworking,
-        storage: Storage = None,
+        local_storage: LocalStorage = None,
         compute_type: str = None,
         iam: Iam = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
         self.networking = networking
-        self.storage = storage
+        self.local_storage = local_storage
         self.compute_type = Resource.init_param(compute_type, default=ComputeType.ONDEMAND)
         self.iam = iam
 
@@ -803,7 +799,7 @@ class BaseQueue(Resource):
     @property
     def instance_role(self):
         """Return the IAM role for compute nodes, if set."""
-        return self.iam.roles.instance_role if self.iam and self.iam.roles else None
+        return self.iam.instance_role if self.iam else None
 
 
 class CommonSchedulingSettings(Resource):
@@ -825,7 +821,7 @@ class BaseClusterConfig(Resource):
         monitoring: Monitoring = None,
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
-        iam: Iam = None,
+        iam: ClusterIam = None,
         cluster_s3_bucket: str = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
@@ -966,8 +962,8 @@ class BaseClusterConfig(Resource):
             for storage in self.shared_storage:
                 mount_dir_list.append(storage.mount_dir)
 
-        if self.head_node.storage and self.head_node.storage.ephemeral_volume:
-            mount_dir_list.append(self.head_node.storage.ephemeral_volume.mount_dir)
+        if self.head_node.local_storage and self.head_node.local_storage.ephemeral_volume:
+            mount_dir_list.append(self.head_node.local_storage.ephemeral_volume.mount_dir)
 
         return mount_dir_list
 
@@ -1071,6 +1067,7 @@ class AwsbatchComputeResource(BaseComputeResource):
 
     def __init__(
         self,
+        instance_types: str = None,
         max_vcpus: int = None,
         min_vcpus: int = None,
         desired_vcpus: int = None,
@@ -1078,6 +1075,7 @@ class AwsbatchComputeResource(BaseComputeResource):
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.instance_types = Resource.init_param(instance_types)
         self.max_vcpus = Resource.init_param(max_vcpus, default=DEFAULT_MAX_COUNT)
         self.min_vcpus = Resource.init_param(min_vcpus, default=DEFAULT_MIN_COUNT)
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=self.min_vcpus)
@@ -1104,10 +1102,10 @@ class AwsbatchQueue(BaseQueue):
         name: str,
         networking: QueueNetworking,
         compute_resources: List[AwsbatchComputeResource],
-        storage: Storage = None,
+        local_storage: LocalStorage = None,
         compute_type: str = None,
     ):
-        super().__init__(name, networking, storage, compute_type)
+        super().__init__(name, networking, local_storage, compute_type)
         self.compute_resources = compute_resources
 
 
@@ -1151,9 +1149,16 @@ class SlurmComputeResource(BaseComputeResource):
     """Represent the Slurm Compute Resource."""
 
     def __init__(
-        self, max_count: int = None, min_count: int = None, spot_price: float = None, efa: Efa = None, **kwargs
+        self,
+        instance_type: str = None,
+        max_count: int = None,
+        min_count: int = None,
+        spot_price: float = None,
+        efa: Efa = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
+        self.instance_type = Resource.init_param(instance_type)
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
@@ -1283,11 +1288,9 @@ class SlurmQueue(BaseQueue):
 class Dns(Resource):
     """Represent the DNS settings."""
 
-    def __init__(self, disable_managed_dns: bool = None, domain: str = None, hosted_zone_id: str = None):
+    def __init__(self, disable_managed_dns: bool = None):
         super().__init__()
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
-        self.domain = Resource.init_param(domain)
-        self.hosted_zone_id = Resource.init_param(hosted_zone_id)
 
 
 class SlurmSettings(CommonSchedulingSettings):

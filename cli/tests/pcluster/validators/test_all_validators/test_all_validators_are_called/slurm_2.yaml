@@ -20,8 +20,12 @@ Scheduling:
             InstanceType: c5.xlarge
 SharedStorage:
   - MountDir: /my/mount/point2
-    Efs:
+    Name: name1
+    StorageType: Efs
+    Settings:
       FileSystemId: fs-12345678123456789
   - MountDir: /my/mount/point3
-    FsxLustre:
+    Name: name2
+    StorageType: FsxLustre
+    Settings:
       FileSystemId: fs-12345678123456789

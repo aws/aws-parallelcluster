@@ -210,7 +210,7 @@ def configure(args):  # noqa: C901
                 compute_resources.append(
                     {
                         "Name": compute_resource_name,
-                        "InstanceType": "optimal",
+                        "InstanceTypes": "optimal",
                         "MinvCpus": min_cluster_size,
                         "DesiredvCpus": min_cluster_size,
                         "MaxvCpus": max_cluster_size,

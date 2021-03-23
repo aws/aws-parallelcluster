@@ -34,30 +34,42 @@ Scheduling:
             InstanceType: c4.2xlarge
 SharedStorage:
   - MountDir: /my/mount/ebs1
-    Ebs:
+    Name: name1
+    StorageType: Ebs
+    Settings:
       VolumeType: gp2
       Size: 150
       Encrypted: True
   - MountDir: /my/mount/ebs2
-    Ebs:
+    Name: name2
+    StorageType: Ebs
+    Settings:
       VolumeType: io1
       Size: 150
       Encrypted: True
   - MountDir: /my/mount/ebs3
-    Ebs:
+    Name: name3
+    StorageType: Ebs
+    Settings:
       VolumeType: sc1
       Size: 150
       Encrypted: True
   - MountDir: /my/mount/ebs4
-    Ebs:
+    Name: name4
+    StorageType: Ebs
+    Settings:
       VolumeType: st1
       Encrypted: True
   - MountDir: /my/mount/ebs5
-    Ebs:
+    Name: name5
+    StorageType: Ebs
+    Settings:
       VolumeType: gp2
       Encrypted: True
   - MountDir: /my/mount/raid1
-    Ebs:
+    Name: name6
+    StorageType: Ebs
+    Settings:
       VolumeType: gp2
       Size: 20
       Iops: 100
@@ -66,21 +78,24 @@ SharedStorage:
         Type: 1
         NumberOfVolumes: 2
   - MountDir: /my/mount/efs1
-    Efs:
+    Name: name7
+    StorageType: Efs
+    Settings:
       ThroughputMode: bursting
       PerformanceMode: generalPurpose
       Encrypted: False
   - MountDir: /my/mount/fsx1
-    FsxLustre:
+    Name: name8
+    StorageType: FsxLustre
+    Settings:
       StorageCapacity: 1200
+      WeeklyMaintenanceStartTime: "1:00:00"
 Monitoring:
   DetailedMonitoring: true
   Logs:
     CloudWatch:
       Enabled: true
       RetentionInDays: 14
-      LogGroupId: String
-      KmsKeyId: String
   Dashboards:
     CloudWatch:
       Enabled: true

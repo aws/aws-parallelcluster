@@ -220,15 +220,15 @@ class ClusterCdkStack(core.Stack):
             node_role_ref = node.instance_role
             is_new = False
         else:
-            node_role_ref = self._add_node_role(f"Role{suffix}")
+            node_role_ref = self._add_node_role(node, f"Role{suffix}")
             is_new = True
 
             # ParallelCluster Policies
             self._add_pcluster_policies_to_role(node_role_ref, f"ParallelClusterPolicies{suffix}")
 
             # S3 Access Policies
-            if self._condition_create_s3_access_policies():
-                self._add_s3_access_policies_to_role(node_role_ref, f"S3AccessPolicies{suffix}")
+            if self._condition_create_s3_access_policies(node):
+                self._add_s3_access_policies_to_role(node, node_role_ref, f"S3AccessPolicies{suffix}")
 
         self.instance_roles[name] = {"RoleRef": node_role_ref, "IsNew": is_new}
 
@@ -412,13 +412,13 @@ class ClusterCdkStack(core.Stack):
 
         return compute_security_group
 
-    def _add_s3_access_policies_to_role(self, role_ref: str, name: str):
+    def _add_s3_access_policies_to_role(self, node, role_ref: str, name: str):
         """Attach S3 policies to given role."""
         read_only_s3_resources = [
-            s3_access.bucket_name for s3_access in self.config.iam.s3_access if s3_access.type == "READ_ONLY"
+            s3_access.bucket_name for s3_access in node.iam.s3_access if not s3_access.enable_write_access
         ]
         read_write_s3_resources = [
-            s3_access.bucket_name for s3_access in self.config.iam.s3_access if s3_access.type != "READ_ONLY"
+            s3_access.bucket_name for s3_access in node.iam.s3_access if s3_access.enable_write_access
         ]
 
         s3_access_policy = iam.CfnPolicy(
@@ -449,11 +449,11 @@ class ClusterCdkStack(core.Stack):
     def _add_instance_profile(self, role_ref: str, name: str):
         return iam.CfnInstanceProfile(scope=self, id=name, roles=[role_ref], path="/").ref
 
-    def _add_node_role(self, name: str):
+    def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
         return iam.CfnRole(
             scope=self,
             id=name,
-            managed_policy_arns=self.config.iam.additional_iam_policies if self.config.iam else None,
+            managed_policy_arns=node.iam.additional_iam_policies if node.iam else None,
             assume_role_policy_document=iam.PolicyDocument(
                 statements=[
                     iam.PolicyStatement(
@@ -676,7 +676,7 @@ class ClusterCdkStack(core.Stack):
                 shared_fsx.copy_tags_to_backups if shared_fsx.copy_tags_to_backups is not None else "NONE",
                 shared_fsx.backup_id or "NONE",
                 shared_fsx.auto_import_policy or "NONE",
-                shared_fsx.storage_type or "NONE",
+                shared_fsx.fsx_storage_type or "NONE",
                 shared_fsx.drive_cache_type or "NONE",
             ]
         )
@@ -912,7 +912,6 @@ class ClusterCdkStack(core.Stack):
             {
                 "cfncluster": {
                     "stack_name": self._stack_name,
-                    "enable_efa": "true" if head_node.efa and head_node.efa.enabled else "NONE",
                     "cfn_raid_vol_ids": get_shared_storage_ids_by_type(
                         self.shared_storage_mappings, SharedStorageType.RAID
                     ),
@@ -941,12 +940,12 @@ class ClusterCdkStack(core.Stack):
                     "cfn_volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
                     "cfn_scheduler": self.config.scheduling.scheduler,
                     "cfn_encrypted_ephemeral": "true"
-                    if head_node.storage
-                    and head_node.storage.ephemeral_volume
-                    and head_node.storage.ephemeral_volume.encrypted
+                    if head_node.local_storage
+                    and head_node.local_storage.ephemeral_volume
+                    and head_node.local_storage.ephemeral_volume.encrypted
                     else "NONE",
-                    "cfn_ephemeral_dir": head_node.storage.ephemeral_volume.mount_dir
-                    if head_node.storage and head_node.storage.ephemeral_volume
+                    "cfn_ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
+                    if head_node.local_storage and head_node.local_storage.ephemeral_volume
                     else "/scratch",
                     "cfn_shared_dir": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EBS
@@ -1144,7 +1143,7 @@ class ClusterCdkStack(core.Stack):
 
     def _condition_create_iam_role(self, node: Union[HeadNode, BaseQueue]):
         """Iam role is created if instance role is not specified."""
-        return not node.iam or not node.iam.roles or not node.iam.roles.instance_role
+        return not node.iam or not node.iam.instance_role
 
     def _condition_create_lambda_iam_role(self):
         return (
@@ -1154,8 +1153,8 @@ class ClusterCdkStack(core.Stack):
             or self.config.iam.roles.get_param("custom_lambda_resources").implied
         )
 
-    def _condition_create_s3_access_policies(self):
-        return self.config.iam and self.config.iam.s3_access
+    def _condition_create_s3_access_policies(self, node):
+        return node.iam and node.iam.s3_access
 
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"

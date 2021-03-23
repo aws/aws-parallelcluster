@@ -10,23 +10,16 @@ HeadNode:
     SecurityGroups:
       - sg-12345678
       - sg-23456789
-    AdditionalSecurityGroups:
-      - sg-34567890
-      - sg-45678901
     Proxy:
       HttpProxyAddress: String  # https://proxy-address:port
   DisableSimultaneousMultithreading: false
   Ssh:
     KeyName: ec2-key-name
     AllowedIps: 1.2.3.4/32
-  Storage:
+  LocalStorage:
     RootVolume:
       Size: 40
       Encrypted: true
-      KmsKeyId: String
-      VolumeType: gp2
-      Iops: 100
-      Throughput: 150
     EphemeralVolume:
       Encrypted: true
       MountDir: /test
@@ -40,27 +33,17 @@ HeadNode:
         - String  # arg1
         - stirng2
       Event: NODE_START
-      RunAs: String
-  Efa:
-    Enabled: false
-    GdrSupport: false
   Iam:
-    Roles:
-      InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
-      CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
       - BucketName: String
-        Type: READ_ONLY
-    AdditionalIamPolicies:
-      - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+        EnableWriteAccess: True
 Scheduling:
   Slurm:
     Settings:
       ScaledownIdletime: 10
       Dns:
         DisableManagedDns: true
-        Domain: String
-        HostedZoneId: String
     Queues:
       - Name: queue1
         ComputeType: ONDEMAND
@@ -78,35 +61,24 @@ Scheduling:
               - String  # arg1
               - stirng2
             Event: NODE_START
-            RunAs: String
         Iam:
-          Roles:
-            InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
-            CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
           S3Access:
             - BucketName: String
-              Type: READ_ONLY
+              EnableWriteAccess: False
           AdditionalIamPolicies:
             - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
       - Name: queue2
-        Storage:
+        LocalStorage:
           RootVolume:
             Size:  35
             Encrypted:  true
-            KmsKeyId: String
-            VolumeType: gp2
-            Iops: 100
-            Throughput: 100
           EphemeralVolume:
             Encrypted: true
             MountDir: /scratch
         Networking:
           SubnetIds:
             - subnet-12345678
-            - subnet-23456789
           AssignPublicIp: true
-          SecurityGroups:
-            - sg-12345678
           AdditionalSecurityGroups:
             - sg-23456789
           PlacementGroup:
@@ -126,10 +98,11 @@ Scheduling:
             Efa:
               Enabled: true
               GdrSupport: false
-            AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point1
-    Ebs:
+    Name: name1
+    StorageType: Ebs
+    Settings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 100
       Size: 150
@@ -138,17 +111,21 @@ SharedStorage:
       SnapshotId: snap-12345678
       VolumeId: vol-12345678
   - MountDir: /my/mount/point2
-    Efs:
+    Name: name2
+    StorageType: Efs
+    Settings:
       ThroughputMode: provisioned  # bursting | provisioned
       ProvisionedThroughput: 1024
   - MountDir: /my/mount/point3
-    FsxLustre:
+    Name: name3
+    StorageType: FsxLustre
+    Settings:
       StorageCapacity: 3600
       DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 1024
       ExportPath: String  # s3://bucket/folder
       ImportPath: String  # s3://bucket
-      # WeeklyMaintenanceStartTime: 1:00:00
+      WeeklyMaintenanceStartTime: "1:00:00"
       AutomaticBackupRetentionDays: 0
       CopyTagsToBackups: true
       DailyAutomaticBackupStartTime: 01:03
@@ -161,22 +138,13 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
-    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
-  S3Access:
-    - BucketName: String
-      Type: READ_ONLY
-  AdditionalIamPolicies:
-    - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
-    - Policy: policy2
 Monitoring:
   DetailedMonitoring: true  # false
   Logs:
     CloudWatch:
       Enabled: true  # true
       RetentionInDays: 30  # 14
-      LogGroupId: String
-      KmsKeyId: String
   Dashboards:
     CloudWatch:
       Enabled: true  # true

@@ -34,12 +34,16 @@ Scheduling:
             InstanceType: c4.2xlarge
 SharedStorage:
   - MountDir: /my/mount/ebs1
-    Ebs:
+    Name: name1
+    StorageType: Ebs
+    Settings:
       VolumeType: io1
       Size: 150
       Encrypted: True
   - MountDir: /my/mount/raid1
-    Ebs:
+    Name: name2
+    StorageType: Ebs
+    Settings:
       VolumeType: io1
       Size: 20
       Iops: 100
@@ -48,12 +52,16 @@ SharedStorage:
         Type: 1
         NumberOfVolumes: 2
   - MountDir: /my/mount/efs1
-    Efs:
+    Name: name3
+    StorageType: Efs
+    Settings:
       ThroughputMode: bursting
       PerformanceMode: maxIO
       Encrypted: False
   - MountDir: /my/mount/fsx1
-    FsxLustre:
+    Name: name4
+    StorageType: FsxLustre
+    Settings:
       StorageCapacity: 1200
 Monitoring:
   DetailedMonitoring: true
@@ -61,8 +69,6 @@ Monitoring:
     CloudWatch:
       Enabled: true
       RetentionInDays: 14
-      LogGroupId: String
-      KmsKeyId: String
   Dashboards:
     CloudWatch:
       Enabled: true

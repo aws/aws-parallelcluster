@@ -13,26 +13,35 @@ Scheduling:
         Networking:
           SubnetIds:
             - subnet-12345678
-            - subnet-23456789
         ComputeResources:
           - Name: compute_resource1
-            InstanceType: c4.xlarge
+            InstanceTypes: c4.xlarge
             MaxvCpus: 10
 SharedStorage:
   - MountDir: /my/mount/ebs1
-    Ebs:
+    Name: name1
+    StorageType: Ebs
+    Settings:
       VolumeType: sc1
   - MountDir: /my/mount/ebs2
-    Ebs:
+    Name: name2
+    StorageType: Ebs
+    Settings:
       VolumeType: st1
   - MountDir: /my/mount/ebs3
-    Ebs:
+    Name: name3
+    StorageType: Ebs
+    Settings:
       VolumeType: gp2
   - MountDir: /my/mount/ebs4
-    Ebs:
+    Name: name4
+    StorageType: Ebs
+    Settings:
       VolumeType: sc1
   - MountDir: /my/mount/ebs5
-    Ebs:
+    Name: name5
+    StorageType: Ebs
+    Settings:
       VolumeType: st1
 Monitoring:
   DetailedMonitoring: true
@@ -40,8 +49,6 @@ Monitoring:
     CloudWatch:
       Enabled: false
       RetentionInDays: 14
-      LogGroupId: String
-      KmsKeyId: String
   Dashboards:
     CloudWatch:
       Enabled: true

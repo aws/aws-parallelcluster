@@ -17,7 +17,17 @@
 import copy
 import re
 
-from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
+from marshmallow import (
+    ValidationError,
+    fields,
+    post_dump,
+    post_load,
+    pre_dump,
+    pre_load,
+    validate,
+    validates,
+    validates_schema,
+)
 
 from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.models.cluster_config import (
@@ -31,6 +41,7 @@ from pcluster.models.cluster_config import (
     CloudWatchDashboards,
     CloudWatchLogs,
     ClusterDevSettings,
+    ClusterIam,
     CommonSchedulingSettings,
     ComputeType,
     CustomAction,
@@ -46,6 +57,7 @@ from pcluster.models.cluster_config import (
     Iam,
     Image,
     IntelSelectSolutions,
+    LocalStorage,
     Logs,
     Monitoring,
     PlacementGroup,
@@ -63,7 +75,6 @@ from pcluster.models.cluster_config import (
     SlurmScheduling,
     SlurmSettings,
     Ssh,
-    Storage,
 )
 from pcluster.schemas.common_schema import BaseDevSettingsSchema, BaseSchema, TagSchema, get_field_validator
 from pcluster.validators.cluster_validators import FSX_MESSAGES
@@ -74,11 +85,7 @@ from pcluster.validators.cluster_validators import FSX_MESSAGES
 class _BaseEbsSchema(BaseSchema):
     """Represent the schema shared by SharedEBS and RootVolume section."""
 
-    volume_type = fields.Str(validate=get_field_validator("volume_type"))
-    iops = fields.Int()
     size = fields.Int()
-    kms_key_id = fields.Str()
-    throughput = fields.Int()
     encrypted = fields.Bool()
 
 
@@ -114,8 +121,12 @@ class RaidSchema(BaseSchema):
 class EbsSchema(_BaseEbsSchema):
     """Represent the schema of EBS."""
 
+    iops = fields.Int()
+    kms_key_id = fields.Str()
+    throughput = fields.Int()
     snapshot_id = fields.Str(validate=validate.Regexp(r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$"))
     volume_id = fields.Str(validate=validate.Regexp(r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$"))
+    volume_type = fields.Str(validate=get_field_validator("volume_type"))
     raid = fields.Nested(RaidSchema)
 
 
@@ -131,8 +142,8 @@ class EphemeralVolumeSchema(BaseSchema):
         return EphemeralVolume(**data)
 
 
-class StorageSchema(BaseSchema):
-    """Represent the schema of storage attached to a node."""
+class LocalStorageSchema(BaseSchema):
+    """Represent the schema of local storage attached to a node."""
 
     root_volume = fields.Nested(RootVolumeSchema)
     ephemeral_volume = fields.Nested(EphemeralVolumeSchema)
@@ -140,7 +151,7 @@ class StorageSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Storage(**data)
+        return LocalStorage(**data)
 
 
 class EfsSchema(BaseSchema):
@@ -195,7 +206,7 @@ class FsxSchema(BaseSchema):
     file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"))
     auto_import_policy = fields.Str(validate=validate.OneOf(["NEW", "NEW_CHANGED"]))
     drive_cache_type = fields.Str(validate=validate.OneOf(["READ"]))
-    storage_type = fields.Str(validate=validate.OneOf(["HDD", "SSD"]))
+    fsx_storage_type = fields.Str(data_key="StorageType", validate=validate.OneOf(["HDD", "SSD"]))
 
     @validates_schema
     def validate_file_system_id_ignored_parameters(self, data, **kwargs):
@@ -237,19 +248,32 @@ class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
     mount_dir = fields.Str(required=True, validate=get_field_validator("file_path"))
+    name = fields.Str(required=True)
+    storage_type = fields.Str(required=True, validate=validate.OneOf(["Ebs", "FsxLustre", "Efs"]))
     ebs = fields.Nested(EbsSchema)
     efs = fields.Nested(EfsSchema)
-    fsx = fields.Nested(FsxSchema, data_key="FsxLustre")
+    fsx = fields.Nested(FsxSchema)
+
+    @pre_load
+    def preprocess(self, data, **kwargs):
+        """Before load the data into schema, change the settings to adapt different storage types."""
+        if data.get("StorageType") == "Efs":
+            data["Efs"] = data.pop("Settings", {})
+        elif data.get("StorageType") == "Ebs":
+            data["Ebs"] = data.pop("Settings", {})
+        elif data.get("StorageType") == "FsxLustre":
+            data["Fsx"] = data.pop("Settings", {})
+        return data
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FSx)."""
-        if data.get("efs"):
-            return SharedEfs(data.get("mount_dir"), **data.get("efs"))
-        if data.get("fsx"):
-            return SharedFsx(data.get("mount_dir"), **data.get("fsx"))
-        if data.get("ebs"):
-            return SharedEbs(data.get("mount_dir"), **data.get("ebs"))
+        if data.get("efs") is not None:
+            return SharedEfs(data.get("mount_dir"), data.get("name"), **data.get("efs"))
+        if data.get("fsx") is not None:
+            return SharedFsx(data.get("mount_dir"), data.get("name"), **data.get("fsx"))
+        if data.get("ebs") is not None:
+            return SharedEbs(data.get("mount_dir"), data.get("name"), **data.get("ebs"))
         return None
 
     @pre_dump
@@ -258,6 +282,23 @@ class SharedStorageSchema(BaseSchema):
         child = copy.copy(data)
         storage_type = "ebs" if data.shared_storage_type.value == "raid" else data.shared_storage_type.value
         setattr(data, storage_type, child)
+        data.storage_type = "FsxLustre" if data.shared_storage_type.value == "fsx" else storage_type.capitalize()
+        return data
+
+    @post_dump
+    def post_processed(self, data, **kwargs):
+        """Restore the SharedStorage Schema back to its origin."""
+        if data.get("Efs") is not None:
+            storage_type = "Efs"
+        elif data.get("Ebs") is not None:
+            storage_type = "Ebs"
+        elif data.get("Fsx") is not None:
+            storage_type = "Fsx"
+        if data.get(storage_type):
+            data["Settings"] = data.pop(storage_type)
+        else:
+            data.pop(storage_type)
+
         return data
 
     @validates("mount_dir")
@@ -269,14 +310,6 @@ class SharedStorageSchema(BaseSchema):
         #  https://github.com/aws/aws-parallelcluster-cookbook/blob/develop/recipes/head_node_base_config.rb#L51
         if re.match("^/?NONE$", value):
             raise ValidationError(f"{value} cannot be used as a shared directory")
-
-    @validates_schema
-    def only_one_storage(self, data, **kwargs):
-        """Validate that there is one and only one setting."""
-        if not self.only_one_field(data, ["ebs", "efs", "fsx"], **kwargs):
-            raise ValidationError(
-                "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
-            )
 
 
 # ---------------------- Networking ---------------------- #
@@ -300,6 +333,12 @@ class BaseNetworkingSchema(BaseSchema):
     assign_public_ip = fields.Bool()
     security_groups = fields.List(fields.Str(validate=get_field_validator("security_group_id")))
     proxy = fields.Nested(ProxySchema)
+
+    @validates_schema
+    def no_coexist_security_groups(self, data, **kwargs):
+        """Validate that security_groups and additional_security_groups are not co-exist."""
+        if self.fields_coexist(data, ["security_groups", "additional_security_groups"], **kwargs):
+            raise ValidationError("SecurityGroups and AdditionalSecurityGroups can not be configured together.")
 
 
 class HeadNodeNetworkingSchema(BaseNetworkingSchema):
@@ -329,7 +368,9 @@ class PlacementGroupSchema(BaseSchema):
 class QueueNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of Queue."""
 
-    subnet_ids = fields.List(fields.Str(validate=get_field_validator("subnet_id")), required=True)
+    subnet_ids = fields.List(
+        fields.Str(validate=get_field_validator("subnet_id")), validate=validate.Length(equal=1), required=True
+    )
     placement_group = fields.Nested(PlacementGroupSchema)
 
     @post_load
@@ -385,8 +426,6 @@ class CloudWatchLogsSchema(BaseSchema):
     retention_in_days = fields.Int(
         validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653])
     )
-    log_group_id = fields.Str()
-    kms_key_id = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -446,7 +485,6 @@ class MonitoringSchema(BaseSchema):
 class RolesSchema(BaseSchema):
     """Represent the schema of roles."""
 
-    instance_role = fields.Str()
     custom_lambda_resources = fields.Str()
 
     @post_load
@@ -459,7 +497,7 @@ class S3AccessSchema(BaseSchema):
     """Represent the schema of S3 access."""
 
     bucket_name = fields.Str(required=True)
-    type = fields.Str(validate=validate.OneOf(["READ_ONLY", "READ_WRITE"]))
+    enable_write_access = fields.Bool()
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -478,12 +516,29 @@ class AdditionalIamPolicySchema(BaseSchema):
         return AdditionalIamPolicy(**data)
 
 
-class IamSchema(BaseSchema):
-    """Represent the schema of IAM."""
+class ClusterIamSchema(BaseSchema):
+    """Represent the schema of IAM for Cluster."""
 
     roles = fields.Nested(RolesSchema)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ClusterIam(**data)
+
+
+class IamSchema(BaseSchema):
+    """Represent the schema of IAM for HeadNode and Queue."""
+
+    instance_role = fields.Str()
     s3_access = fields.Nested(S3AccessSchema, many=True)
     additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
+
+    @validates_schema
+    def no_coexist_security_groups(self, data, **kwargs):
+        """Validate that security_groups and additional_security_groups are not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
+            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -545,7 +600,6 @@ class CustomActionSchema(BaseSchema):
     script = fields.Str(required=True)
     args = fields.List(fields.Str())
     event = fields.Str(validate=validate.OneOf([event.value for event in CustomActionEvent]))
-    run_as = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -560,9 +614,8 @@ class HeadNodeSchema(BaseSchema):
     disable_simultaneous_multithreading = fields.Bool()
     networking = fields.Nested(HeadNodeNetworkingSchema, required=True)
     ssh = fields.Nested(SshSchema, required=True)
-    storage = fields.Nested(StorageSchema)
+    local_storage = fields.Nested(LocalStorageSchema)
     dcv = fields.Nested(DcvSchema)
-    efa = fields.Nested(EfaSchema)
     custom_actions = fields.Nested(
         CustomActionSchema, many=True
     )  # TODO validate to avoid more than one script for event type or add support for them.
@@ -578,7 +631,6 @@ class _ComputeResourceSchema(BaseSchema):
     """Represent the schema of the ComputeResource."""
 
     name = fields.Str(required=True)
-    allocation_strategy = fields.Str()
     disable_simultaneous_multithreading = fields.Bool()
     efa = fields.Nested(EfaSchema)
 
@@ -600,7 +652,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
 class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Batch ComputeResource."""
 
-    instance_type = fields.Str(required=True)  # TODO it is a comma separated list
+    instance_types = fields.Str()  # TODO it is a comma separated list
     max_vcpus = fields.Int(data_key="MaxvCpus", validate=validate.Range(min=1))
     min_vcpus = fields.Int(data_key="MinvCpus", validate=validate.Range(min=0))
     desired_vcpus = fields.Int(data_key="DesiredvCpus", validate=validate.Range(min=0))
@@ -617,7 +669,7 @@ class BaseQueueSchema(BaseSchema):
 
     name = fields.Str()
     networking = fields.Nested(QueueNetworkingSchema, required=True)
-    storage = fields.Nested(StorageSchema)
+    local_storage = fields.Nested(LocalStorageSchema)
     compute_type = fields.Str(validate=validate.OneOf([event.value for event in ComputeType]))
     iam = fields.Nested(IamSchema)
 
@@ -664,8 +716,6 @@ class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
     disable_managed_dns = fields.Bool()
-    domain = fields.Str()
-    hosted_zone_id = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -708,7 +758,7 @@ class SchedulingSchema(BaseSchema):
     @validates_schema
     def only_one_scheduling_type(self, data, **kwargs):
         """Validate that there is one and only one type of scheduling."""
-        if not self.only_one_field(data, ["slurm", "awsbatch", "custom"], **kwargs):
+        if self.fields_coexist(data=data, field_list=["slurm", "awsbatch", "custom"], one_required=True, **kwargs):
             raise ValidationError("You must provide scheduler configuration")
 
     @post_load
@@ -740,7 +790,7 @@ class ClusterSchema(BaseSchema):
     monitoring = fields.Nested(MonitoringSchema)
     additional_packages = fields.Nested(AdditionalPackagesSchema)
     tags = fields.Nested(TagSchema, many=True)
-    iam = fields.Nested(IamSchema)
+    iam = fields.Nested(ClusterIamSchema)
     cluster_s3_bucket = fields.Str()
     additional_resources = fields.Str()
     dev_settings = fields.Nested(ClusterDevSettingsSchema)
