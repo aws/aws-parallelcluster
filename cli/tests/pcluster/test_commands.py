@@ -16,10 +16,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
-from pcluster.cli_commands import update
-from pcluster.cluster_model import ClusterModel
-from pcluster.commands import _setup_bucket_with_resources, _validate_cluster_name
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
+from pcluster.commands import _setup_bucket_with_resources
 
 
 def _mock_pcluster_config(mocker, scheduler, region, bucket_name=None):
@@ -198,28 +195,3 @@ def test_setup_bucket_with_resources_deletion_failure(mocker, caplog):
         _setup_bucket_with_resources(pcluster_config_mock, storage_data, stack_name, {})
     cleanup_s3_mock.assert_called_with(bucket_name, mock_artifact_dir)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
-
-
-@pytest.mark.parametrize(
-    "cluster_name, should_trigger_error",
-    [
-        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),
-        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", True),
-        ("2AClusterCanNotBeginByANumber", True),
-        ("ClusterCanNotContainUnderscores_LikeThis", True),
-        ("ClusterCanNotContainSpaces LikeThis", True),
-    ],
-)
-def test_validate_cluster_name(cluster_name, should_trigger_error, caplog):
-    error_msg = (
-        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-        "It must start with an alphabetic character and can't be longer than {} characters."
-    ).format(PCLUSTER_NAME_MAX_LENGTH)
-    if should_trigger_error:
-        with pytest.raises(SystemExit):
-            _validate_cluster_name(cluster_name)
-        assert_that(caplog.text).contains(error_msg)
-    else:
-        _validate_cluster_name(cluster_name)
-        for record in caplog.records:
-            assert record.levelname != "CRITICAL"
