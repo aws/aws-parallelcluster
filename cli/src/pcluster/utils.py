@@ -59,7 +59,7 @@ def generate_random_name_with_prefix(name_prefix):
     Example: <name_prefix>-4htvo26lchkqeho1
     """
     random_string = generate_random_prefix()
-    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
+    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])  # nosec
     return output_name
 
 
@@ -69,7 +69,7 @@ def generate_random_prefix():
 
     Example: 4htvo26lchkqeho1
     """
-    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
+    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
 
 
 def create_s3_bucket(bucket_name):
@@ -386,12 +386,11 @@ def get_installed_version():
 def check_if_latest_version():
     """Check if the current package version is the latest one."""
     try:
-        latest = json.loads(urllib.request.urlopen("https://pypi.python.org/pypi/aws-parallelcluster/json").read())[
-            "info"
-        ]["version"]
+        pypi_url = "https://pypi.python.org/pypi/aws-parallelcluster/json"
+        latest = json.loads(urllib.request.urlopen(pypi_url).read())["info"]["version"]  # nosec
         if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
             print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
-    except Exception:
+    except Exception:  # nosec
         pass
 
 
