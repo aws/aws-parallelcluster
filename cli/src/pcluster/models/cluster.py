@@ -276,28 +276,7 @@ class Cluster:
             # check cluster existence
             if AWSApi.instance().cfn.stack_exists(self.stack_name):
                 raise ClusterActionError(f"Cluster {self.name} already exists")
-
-            try:
-                # syntactic validation
-                self.config = ClusterSchema().load(self.source_config)
-
-                # semantic validation
-                if not suppress_validators:
-                    validation_failures = self._validate_cluster_name()
-
-                    LOGGER.info("Validating cluster configuration...")
-                    validation_failures += self.config.validate()
-                    for failure in validation_failures:
-                        if failure.level.value >= FailureLevel(validation_failure_level).value:
-                            # Raise the exception if there is a failure with a level greater than the specified one
-                            raise ClusterActionError(
-                                "Configuration is invalid", validation_failures=validation_failures
-                            )
-
-            except ValidationError as e:
-                # syntactic failure
-                validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
-                raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+            self.config = self._validate_and_parse_config(suppress_validators, validation_failure_level)
 
             # Create bucket if needed
             self.bucket = self._setup_cluster_bucket()
@@ -334,6 +313,36 @@ class Cluster:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete()
             raise ClusterActionError(f"Cluster creation failed.\n{e}")
+
+    def _validate_and_parse_config(self, suppress_validators, validation_failure_level, config_dict=None):
+        """
+        Perform semantic and syntactic validation and return parsed config.
+
+        :param config_dict: config to parse, self.source_config will be used if not specified.
+        """
+        try:
+            LOGGER.info("Validating cluster configuration...")
+            # syntactic validation
+            cluster_config_dict = config_dict or self.source_config
+            config = ClusterSchema().load(cluster_config_dict)
+
+            # semantic validation
+            if not suppress_validators:
+                validation_failures = self._validate_cluster_name()
+
+                validation_failures += config.validate()
+                for failure in validation_failures:
+                    if failure.level.value >= FailureLevel(validation_failure_level).value:
+                        # Raise the exception if there is a failure with a level greater than the specified one
+                        raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+            LOGGER.info("Validation succeeded.")
+
+        except ValidationError as e:
+            # syntactic failure
+            validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
+            raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+
+        return config
 
     def _validate_cluster_name(self):
         validation_failures = []
@@ -655,22 +664,10 @@ class Cluster:
             if "IN_PROGRESS" in self.stack.status:
                 raise ClusterActionError(f"Cannot execute update while stack is in {self.stack.status} status.")
 
-            if not suppress_validators:
-                LOGGER.info("Validating cluster configuration...")
-                try:
-                    # syntactic validation
-                    target_config = ClusterSchema().load(cluster_config)
-                    # semantic validation
-                    validation_failures = target_config.validate()
-                except ValidationError as e:
-                    validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
+            # validate target config
+            self._validate_and_parse_config(suppress_validators, validation_failure_level, cluster_config)
 
-                for failure in validation_failures:
-                    if failure.level.value >= FailureLevel(validation_failure_level).value:
-                        # Raise the exception if there is a failure with a level greater than the specified one
-                        raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
-                LOGGER.info("Validation succeeded.")
-
+            # verify changes
             patch = ConfigPatch(cluster=self, base_config=self.source_config, target_config=cluster_config)
             patch_allowed, update_changes = patch.check()
             if not (patch_allowed or force):
