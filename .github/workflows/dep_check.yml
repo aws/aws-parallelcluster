@@ -1,0 +1,19 @@
+# See https://semgrep.dev/explore to learn about what the checks do.
+name: DepCheck
+on: [pull_request]
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    name: DepCheck
+    steps:
+      - uses: actions/checkout@v1
+      - name: Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          path: './cli'
+          format: 'HTML'
+      - name: Upload Test results
+        uses: actions/upload-artifact@master
+        with:
+          name: Depcheck report
+          path: ${{github.workspace}}/reports
