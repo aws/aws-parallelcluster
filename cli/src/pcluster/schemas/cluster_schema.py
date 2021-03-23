@@ -257,25 +257,22 @@ class SharedStorageSchema(BaseSchema):
     @pre_load
     def preprocess(self, data, **kwargs):
         """Before load the data into schema, change the settings to adapt different storage types."""
-        try:
-            if data.get("StorageType") == "Efs":
-                data["Efs"] = data.pop("Settings")
-            elif data.get("StorageType") == "Ebs":
-                data["Ebs"] = data.pop("Settings")
-            elif data.get("StorageType") == "FsxLustre":
-                data["Fsx"] = data.pop("Settings")
-            return data
-        except IndexError as exception:
-            raise ValidationError(f" Settings is required to be set for SharedStorage: {exception}")
+        if data.get("StorageType") == "Efs":
+            data["Efs"] = data.pop("Settings", {})
+        elif data.get("StorageType") == "Ebs":
+            data["Ebs"] = data.pop("Settings", {})
+        elif data.get("StorageType") == "FsxLustre":
+            data["Fsx"] = data.pop("Settings", {})
+        return data
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FSx)."""
-        if data.get("efs"):
+        if data.get("efs") is not None:
             return SharedEfs(data.get("mount_dir"), data.get("name"), **data.get("efs"))
-        if data.get("fsx"):
+        if data.get("fsx") is not None:
             return SharedFsx(data.get("mount_dir"), data.get("name"), **data.get("fsx"))
-        if data.get("ebs"):
+        if data.get("ebs") is not None:
             return SharedEbs(data.get("mount_dir"), data.get("name"), **data.get("ebs"))
         return None
 
@@ -291,12 +288,17 @@ class SharedStorageSchema(BaseSchema):
     @post_dump
     def post_processed(self, data, **kwargs):
         """Restore the SharedStorage Schema back to its origin."""
-        if data.get("Efs"):
-            data["Settings"] = data.pop("Efs")
-        elif data.get("Ebs"):
-            data["Settings"] = data.pop("Ebs")
-        elif data.get("Fsx"):
-            data["Settings"] = data.pop("Fsx")
+        if data.get("Efs") is not None:
+            storage_type = "Efs"
+        elif data.get("Ebs") is not None:
+            storage_type = "Ebs"
+        elif data.get("Fsx") is not None:
+            storage_type = "Fsx"
+        if data.get(storage_type):
+            data["Settings"] = data.pop(storage_type)
+        else:
+            data.pop(storage_type)
+
         return data
 
     @validates("mount_dir")
@@ -308,14 +310,6 @@ class SharedStorageSchema(BaseSchema):
         #  https://github.com/aws/aws-parallelcluster-cookbook/blob/develop/recipes/head_node_base_config.rb#L51
         if re.match("^/?NONE$", value):
             raise ValidationError(f"{value} cannot be used as a shared directory")
-
-    @validates_schema
-    def only_one_storage(self, data, **kwargs):
-        """Validate that there is one and only one setting."""
-        if self.fields_coexist(data=data, field_list=["ebs", "efs", "fsx"], one_required=True, **kwargs):
-            raise ValidationError(
-                "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
-            )
 
 
 # ---------------------- Networking ---------------------- #
