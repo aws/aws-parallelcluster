@@ -93,25 +93,3 @@ def test_cw_log_settings_param_from_file(mocker, param_key, param_value, expecte
 def test_cw_log_settings_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
     """Verify expected cw_log_settings config file section results from given CFN params."""
     utils.assert_section_from_cfn(mocker, CW_LOG, cfn_params_dict, expected_section_dict)
-
-
-@pytest.mark.parametrize(
-    "settings_label, expected_cfn_params",
-    [
-        ("defaults", DefaultCfnParams["cluster_sit"].value),
-        (
-            "disabled",
-            utils.merge_dicts(
-                DefaultCfnParams["cluster_sit"].value, {"EC2IAMPolicies": "NONE", "CWLogOptions": "false,14"}
-            ),
-        ),
-        ("one_day_retention", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"CWLogOptions": "true,1"})),
-        ("bad_enable_val", SystemExit()),
-        ("empty_enable_val", SystemExit()),
-        ("empty_retention_days", SystemExit()),
-        ("nonexistent", SystemExit()),
-    ],
-)
-def test_cw_log_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
-    """Verify various cw_log sections results in expected CFN parameters."""
-    utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
