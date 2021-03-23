@@ -311,7 +311,7 @@ class ClusterCdkStack(core.Stack):
         )
 
         # Create and associate EIP to Head Node
-        if self.config.head_node.networking.assign_public_ip:
+        if self.config.head_node.networking.elastic_ip:
             head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
 
             ec2.CfnEIPAssociation(

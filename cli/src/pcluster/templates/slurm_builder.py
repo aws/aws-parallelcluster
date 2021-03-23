@@ -445,7 +445,7 @@ class SlurmConstruct(core.Construct):
                 block_device_mappings=get_block_device_mappings(queue, self.config.image.os),
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
-                placement=queue_placement_group,
+                placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=queue_placement_group),
                 image_id=self.config.ami_id,
                 ebs_optimized=compute_resource.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
