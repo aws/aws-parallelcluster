@@ -252,7 +252,7 @@ class CfnResource(object):
 
     @staticmethod
     def _rand_string(l):
-        return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(l))
+        return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(l))  # nosec
 
     def _add_permission(self, rule_arn):
         sid = self._event['LogicalResourceId'] + self._rand_string(8)
