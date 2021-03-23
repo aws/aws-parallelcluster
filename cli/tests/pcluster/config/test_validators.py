@@ -279,7 +279,12 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     "region, base_os, scheduler, expected_message",
     [
         # verify awsbatch supported regions
-        ("ap-northeast-3", "alinux2", "awsbatch", "scheduler is not supported in the .* region"),
+        (
+            "ap-northeast-3",
+            "alinux2",
+            "awsbatch",
+            "Region 'ap-northeast-3' is not yet officially supported by ParallelCluster",
+        ),
         ("us-gov-east-1", "alinux2", "awsbatch", None),
         ("us-gov-west-1", "alinux2", "awsbatch", None),
         ("eu-west-1", "alinux2", "awsbatch", None),
@@ -287,13 +292,19 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("eu-north-1", "alinux2", "awsbatch", None),
         ("cn-north-1", "alinux2", "awsbatch", None),
         ("cn-northwest-1", "alinux2", "awsbatch", None),
-        # verify traditional schedulers are supported in all the regions
+        # verify traditional schedulers are supported in all the regions but ap-northeast-3
         ("cn-northwest-1", "alinux2", "sge", None),
-        ("ap-northeast-3", "alinux2", "sge", None),
+        ("us-gov-east-1", "alinux2", "sge", None),
         ("cn-northwest-1", "alinux2", "slurm", None),
-        ("ap-northeast-3", "alinux2", "slurm", None),
+        ("us-gov-east-1", "alinux2", "slurm", None),
         ("cn-northwest-1", "alinux2", "torque", None),
-        ("ap-northeast-3", "alinux2", "torque", None),
+        ("us-gov-east-1", "alinux2", "torque", None),
+        (
+            "ap-northeast-3",
+            "alinux2",
+            "sge",
+            "Region 'ap-northeast-3' is not yet officially supported by ParallelCluster",
+        ),
         # verify awsbatch supported OSes
         ("eu-west-1", "centos7", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "centos8", "awsbatch", "scheduler supports the following Operating Systems"),
