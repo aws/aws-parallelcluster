@@ -14,6 +14,7 @@ import pytest
 from assertpy import assert_that
 
 from common.aws.aws_resources import InstanceInfo
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.models.cluster import ClusterActionError, NodeType
 from pcluster.models.cluster_config import Resource, Tag
 from pcluster.validators.common import FailureLevel, Validator
@@ -266,3 +267,25 @@ def _sort_tags(tags):
 
 def _sort_cfn_tags(tags):
     return sorted(tags, key=lambda tag: tag["Key"])
+
+
+@pytest.mark.parametrize(
+    "cluster_name, should_trigger_error",
+    [
+        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),
+        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", True),
+        ("2AClusterCanNotBeginByANumber", True),
+        ("ClusterCanNotContainUnderscores_LikeThis", True),
+        ("ClusterCanNotContainSpaces LikeThis", True),
+    ],
+)
+def test_validate_cluster_name(cluster_name, should_trigger_error, caplog):
+    error_msg = (
+        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
+        f"It must start with an alphabetic character and can't be longer than {PCLUSTER_NAME_MAX_LENGTH} characters."
+    )
+    cluster = dummy_cluster(name=cluster_name)
+    failures = cluster._validate_cluster_name()
+    assert_that(failures).is_length(1 if should_trigger_error else 0)
+    if should_trigger_error:
+        assert_that(failures[0].message).is_equal_to(error_msg)
