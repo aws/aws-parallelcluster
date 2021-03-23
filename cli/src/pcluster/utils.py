@@ -134,8 +134,8 @@ def generate_random_name_with_prefix(name_prefix):
 
     Example: <name_prefix>-4htvo26lchkqeho1
     """
-    random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
-    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
+    random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
+    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])  # nosec
     return output_name
 
 
@@ -738,12 +738,11 @@ def get_installed_version():
 def check_if_latest_version():
     """Check if the current package version is the latest one."""
     try:
-        latest = json.loads(urllib.request.urlopen("https://pypi.python.org/pypi/aws-parallelcluster/json").read())[
-            "info"
-        ]["version"]
+        pypi_url = "https://pypi.python.org/pypi/aws-parallelcluster/json"
+        latest = json.loads(urllib.request.urlopen(pypi_url).read())["info"]["version"]  # nosec
         if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
             print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
-    except Exception:
+    except Exception:  # nosec
         pass
 
 
@@ -1096,7 +1095,7 @@ def read_remote_file(url):
             bucket, key = match.group(1), match.group(2)
             file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
         else:
-            with urllib.request.urlopen(url) as f:
+            with urllib.request.urlopen(url) as f:  # nosec
                 file_contents = f.read().decode("utf-8")
         return file_contents
     except Exception as e:
@@ -1112,8 +1111,8 @@ def render_template(template_str, params_dict, tags, config_version=None):
     :param params_dict: Template parameters dict
     """
     try:
-        environment = Environment(loader=BaseLoader)
-        environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
+        environment = Environment(loader=BaseLoader, autoescape=True)
+        environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()  # nosec
         environment.filters["bool"] = lambda value: value.lower() == "true"
         template = environment.from_string(template_str)
         output_from_parsed_template = template.render(config=params_dict, config_version=config_version, tags=tags)

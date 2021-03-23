@@ -27,7 +27,7 @@ def _send_response(response_url, response_body):
     url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
-            connection = HTTPSConnection(host)
+            connection = HTTPSConnection(host)  # nosec
             connection.request(method="PUT", url=url, body=json_response_body, headers=headers)
             response = connection.getresponse()
             logger.info("CloudFormation returned status code: {}".format(response.reason))
