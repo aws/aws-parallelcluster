@@ -35,7 +35,12 @@ class EfsClient(Boto3Client):
             for mount_target in mount_targets.get("MountTargets"):
                 # Check to see if there is an existing mt in the az of the stack
                 mount_target_subnet = mount_target.get("SubnetId")
-                if avail_zone == self._ec2_client.get_availability_zone_of_subnet(mount_target_subnet):
+                if avail_zone == self._ec2_client.get_subnet_avail_zone(mount_target_subnet):
                     mount_target_id = mount_target.get("MountTargetId")
 
         return mount_target_id
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_efs_mount_target_security_groups(self, target_id):
+        """Return list of security groups associated to the given target id."""
+        return self._client.describe_mount_target_security_groups(MountTargetId=target_id).get("SecurityGroups")

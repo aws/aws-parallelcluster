@@ -57,7 +57,6 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_availability_zone_of_subnet
 
 # pylint: disable=too-many-lines
 
@@ -750,7 +749,7 @@ class ClusterCdkStack(core.Stack):
         new_file_system,
     ):
         """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
-        availability_zone = get_availability_zone_of_subnet(subnet_id)
+        availability_zone = AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id)
         if availability_zone not in checked_availability_zones:
             if new_file_system or not AWSApi.instance().efs.get_efs_mount_target_id(file_system_id, availability_zone):
                 efs.CfnMountTarget(

@@ -515,6 +515,7 @@ def get_common_supported_az_for_multi_instance_types(instance_types):
     return common_az
 
 
+# TODO removed
 def get_availability_zone_of_subnet(subnet_id):
     """
     Return the availability zone of the subnet.
@@ -743,6 +744,7 @@ def get_cfn_param(params, key_name):
     return param_value.strip()
 
 
+# TODO removed
 def get_efs_mount_target_id(efs_fs_id, avail_zone):
     """
     Search for a Mount Target Id in given availability zone for the given EFS file system id.

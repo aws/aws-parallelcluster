@@ -37,7 +37,6 @@ from pcluster.utils import (
     delete_s3_artifacts,
     delete_s3_bucket,
     disable_ht_via_cpu_options,
-    get_availability_zone_of_subnet,
     get_partition,
     get_region,
 )
@@ -387,7 +386,7 @@ class HeadNodeNetworking(_BaseNetworking):
     @property
     def availability_zone(self):
         """Compute availability zone from subnet id."""
-        return get_availability_zone_of_subnet(self.subnet_id)
+        return AWSApi.instance().ec2.get_subnet_avail_zone(self.subnet_id)
 
 
 class PlacementGroup(Resource):
