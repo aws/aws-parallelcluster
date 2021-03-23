@@ -1,0 +1,17 @@
+# See https://semgrep.dev/explore to learn about what the checks do.
+name: Semgrep
+on: [pull_request]
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    name: Check
+    steps:
+      - uses: actions/checkout@v1
+      - name: Semgrep Security Audit
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/r2c-security-audit
+      - name: Semgrep Secrets
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/secrets
