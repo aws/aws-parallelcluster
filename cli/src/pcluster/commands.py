@@ -242,7 +242,12 @@ def ssh(args, extra_args):
             log_message = "SSH command: {0}".format(cmd)
             if not args.dryrun:
                 LOGGER.debug(log_message)
-                os.system(cmd)
+                # A nosec comment is appended to the following line in order to disable the B605 check.
+                # This check is disabled for the following reasons:
+                # - The args passed to the remote command are sanitized.
+                # - The default command to which these args is known.
+                # - Users have full control over any customization of the command to which args are passed.
+                os.system(cmd)  # nosec
             else:
                 LOGGER.info(log_message)
         else:

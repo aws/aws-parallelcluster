@@ -286,7 +286,7 @@ class AWSBhostsCommand(object):
         try:
             # connect to batch and ask for compute environments
             batch_client = self.boto3_factory.get_client("batch")
-            next_token = ""
+            next_token = ""  # nosec
             while next_token is not None:
                 response = batch_client.describe_compute_environments(
                     computeEnvironments=compute_environments, nextToken=next_token

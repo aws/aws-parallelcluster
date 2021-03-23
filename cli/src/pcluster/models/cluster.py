@@ -127,7 +127,7 @@ class ClusterStack(StackInfo):
             config_version_item = AWSApi.instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
             if config_version_item or "Item" in config_version_item:
                 config_version = config_version_item["Item"].get("Version")
-        except Exception:
+        except Exception:  # nosec
             # Use latest if not found
             pass
 

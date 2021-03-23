@@ -46,7 +46,7 @@ def wrap_script_to_component(url):
     )
 
     with open(custom_component_script_template_file, "r") as file:
-        custom_component_script_template = yaml.load(file)
+        custom_component_script_template = yaml.load(file)  # nosec
 
     script_url_action = _generate_action("ScriptUrl", "set -v\necho {0}\n".format(url))
     custom_component_script_template["phases"][0]["steps"].insert(0, script_url_action)
