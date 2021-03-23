@@ -194,7 +194,7 @@ def dummy_fsx(file_system_id=None, mount_dir="/shared", name="name"):
         kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         auto_import_policy="NEW",
         drive_cache_type="READ",
-        storage_type="HDD",
+        fsx_storage_type="HDD",
     )
 
 

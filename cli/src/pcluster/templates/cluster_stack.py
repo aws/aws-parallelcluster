@@ -676,7 +676,7 @@ class ClusterCdkStack(core.Stack):
                 shared_fsx.copy_tags_to_backups if shared_fsx.copy_tags_to_backups is not None else "NONE",
                 shared_fsx.backup_id or "NONE",
                 shared_fsx.auto_import_policy or "NONE",
-                shared_fsx.storage_type or "NONE",
+                shared_fsx.fsx_storage_type or "NONE",
                 shared_fsx.drive_cache_type or "NONE",
             ]
         )

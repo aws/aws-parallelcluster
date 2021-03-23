@@ -206,7 +206,7 @@ class FsxSchema(BaseSchema):
     file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{17}$"))
     auto_import_policy = fields.Str(validate=validate.OneOf(["NEW", "NEW_CHANGED"]))
     drive_cache_type = fields.Str(validate=validate.OneOf(["READ"]))
-    storage_type = fields.Str(validate=validate.OneOf(["HDD", "SSD"]))
+    fsx_storage_type = fields.Str(data_key="StorageType", validate=validate.OneOf(["HDD", "SSD"]))
 
     @validates_schema
     def validate_file_system_id_ignored_parameters(self, data, **kwargs):

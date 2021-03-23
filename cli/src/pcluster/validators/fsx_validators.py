@@ -121,12 +121,12 @@ class FsxStorageTypeOptionsValidator(Validator):
 
     def _validate(
         self,
-        storage_type,
+        fsx_storage_type,
         deployment_type,
         per_unit_storage_throughput,
         drive_cache_type,
     ):
-        if storage_type == "HDD":
+        if fsx_storage_type == "HDD":
             if deployment_type != "PERSISTENT_1":
                 self._add_failure(
                     "For HDD filesystems, deployment type must be 'PERSISTENT_1'.",
@@ -161,7 +161,7 @@ class FsxStorageCapacityValidator(Validator):
         self,
         storage_capacity,
         deployment_type,
-        storage_type,
+        fsx_storage_type,
         per_unit_storage_throughput,
         file_system_id,
         backup_id,
@@ -182,7 +182,7 @@ class FsxStorageCapacityValidator(Validator):
                     "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB.",
                     FailureLevel.ERROR,
                 )
-        elif deployment_type == "PERSISTENT_1" and storage_type == "HDD":
+        elif deployment_type == "PERSISTENT_1" and fsx_storage_type == "HDD":
             if per_unit_storage_throughput == 12 and not storage_capacity % 6000 == 0:
                 self._add_failure(
                     "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB.",
