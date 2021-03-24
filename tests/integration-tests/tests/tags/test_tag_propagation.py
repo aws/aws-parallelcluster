@@ -41,7 +41,7 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
     command_line_tags = {"CommandLineTag": "CommandLineTagValue"}
     version_tags = {"Version": get_pcluster_version()}
-    cluster_config = pcluster_config_reader(tags=json.dumps(config_file_tags))
+    cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config, extra_args=["--tags", json.dumps(command_line_tags)])
     cluster_name_tags = {"ClusterName": cluster.name}
 
