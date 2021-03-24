@@ -1,0 +1,28 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: {{ iam_policies }} # Todo: change it to arn instead of name
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        Iam:
+          AdditionalIamPolicies:
+            - Policy: {{ iam_policies }}
+        ComputeResources:
+          - Name: compute-resource-0
+            {% if scheduler == "Awsbatch" %}
+            InstanceTypes: {{ instance }}
+            {% else %}
+            InstanceType: {{ instance }}
+            {% endif %}
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}
