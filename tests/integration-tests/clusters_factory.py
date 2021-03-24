@@ -154,11 +154,6 @@ class Cluster:
         return "parallelcluster-" + self.name
 
     @property
-    def region(self):
-        """Return the aws region the cluster is created in."""
-        return self.region
-
-    @property
     def head_node_ip(self):
         """Return the public ip of the cluster head node."""
         if "MasterPublicIP" in self.cfn_outputs:
