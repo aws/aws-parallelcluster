@@ -15,7 +15,7 @@ from pcluster.utils import Cache
 from tests.utils import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster-name"
-FAKE_STACK_NAME = utils.get_stack_name(FAKE_CLUSTER_NAME)
+FAKE_STACK_NAME = f"parallelcluster-{FAKE_CLUSTER_NAME}"
 
 
 @pytest.fixture()
@@ -26,8 +26,8 @@ def boto3_stubber_path():
 
 def test_get_stack_name():
     """Test utils.get_stack_name."""
-    expected_stack_name = "parallelcluster-{0}".format(FAKE_CLUSTER_NAME)
-    assert_that(utils.get_stack_name(FAKE_CLUSTER_NAME)).is_equal_to(expected_stack_name)
+    cluster = dummy_cluster(FAKE_CLUSTER_NAME)
+    assert_that(cluster.stack_name).is_equal_to(FAKE_STACK_NAME)
 
 
 def dummy_cluster_stack():
