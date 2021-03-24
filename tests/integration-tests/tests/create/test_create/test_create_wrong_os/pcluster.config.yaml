@@ -10,9 +10,9 @@ HeadNode:
 Scheduling:
   {{ scheduler }}:
     Queues:
-      - Name: queue-0
+      - Name: compute
         ComputeResources:
-          - Name: compute-resource-0
+          - Name: default
             InstanceType: {{ instance }}
         Networking:
           SubnetIds:

@@ -16,11 +16,11 @@ Scheduling:
     Settings:
       ScaledownIdletime: 10
     Queues:
-      - Name: queue-0
+      - Name: compute
         CustomActions:
           - Script: s3://{{ bucket_name }}/post_install.sh
         ComputeResources:
-          - Name: compute-resource-0
+          - Name: default
             InstanceType: {{ instance }}
         Networking:
           SubnetIds:

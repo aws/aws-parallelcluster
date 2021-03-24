@@ -9,10 +9,10 @@ HeadNode:
 Scheduling:
   {{ scheduler }}:
     Queues:
-      - Name: queue-0
+      - Name: compute
         ComputeResources:
-          - Name: compute-resource-0
-            InstanceType: {{ instance }}
+          - Name: default
+            {% if scheduler == "Awsbatch" %}InstanceTypes:{% else %}InstanceType:{% endif %} {{ instance }}
             {% if scheduler == "Awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
         Networking:
           SubnetIds:
