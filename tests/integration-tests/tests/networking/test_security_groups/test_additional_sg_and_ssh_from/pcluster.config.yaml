@@ -1,0 +1,29 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+    AdditionalSecurityGroups: {{ additional_sg }}
+  Ssh:
+    KeyName: {{ key_name }}
+    AllowedIps: {{ ssh_from }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            {% if {{ scheduler }} == "Awsbatch" %}
+            InstanceTypes: {{ instance }}
+            MinvCpus: 4
+            MaxvCpus: 4
+            {% else %}
+            InstanceType: {{ instance }}
+            MinCount: 1
+            MaxCount: 1
+            {% endif %}
+        Networking:
+          SubnetIds:
+            - {{ private_additional_cidr_subnet_id }}
+          AdditionalSecurityGroups: {{ additional_sg }}

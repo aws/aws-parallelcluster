@@ -1,0 +1,36 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+    SecurityGroups: {{ vpc_security_group_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            {% if {{ scheduler }} == "Awsbatch" %}
+            InstanceTypes: {{ instance }}
+            MinvCpus: 1
+            {% else %}
+            InstanceType: {{ instance }}
+            MinCount: 1
+            {% endif %}
+        Networking:
+          SubnetIds:
+            - {{ private_additional_cidr_subnet_id }}
+          SecurityGroups: {{ vpc_security_group_id }}
+SharedStorage:
+  - MountDir: efs
+    Name: efs
+    StorageType: Efs
+  - MountDir: fsx
+    Name: Fsx
+    StorageType: FsxLustre
+    Settings:
+      StorageCapacity: 1200
+      DeploymentType: SCRATCH_2
