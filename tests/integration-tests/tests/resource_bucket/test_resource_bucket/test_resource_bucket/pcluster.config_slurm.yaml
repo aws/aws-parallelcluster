@@ -1,0 +1,21 @@
+Image:
+  Os: {{ os }}
+ClusterS3Bucket: {{ resource_bucket }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        ComputeType: ONDEMAND
+        ComputeResources:
+          - Name: compute-resource-0
+            InstanceType: {{ instance }}
+            MinCount: 1
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}
