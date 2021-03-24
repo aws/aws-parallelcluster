@@ -42,6 +42,7 @@ def err_and_exit(message):
 
 def get_log_group(args):
     """Get log group for args.cluster."""
+    # ToDo change log group name to include timestamp
     log_group_name = "/aws/parallelcluster/{}".format(args.cluster)
     logs = boto3.client("logs", region_name=args.region)
     paginator = logs.get_paginator("describe_log_groups")

@@ -13,6 +13,7 @@ from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
+from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
 from aws_cdk import core
 
@@ -53,6 +54,7 @@ class SlurmConstruct(core.Construct):
         cluster_config: SlurmClusterConfig,
         bucket: ClusterBucket,
         dynamodb_table: dynamodb.CfnTable,
+        log_group: logs.CfnLogGroup,
         instance_roles: dict,
         instance_profiles: dict,
         cleanup_lambda_role: iam.CfnRole,
@@ -68,6 +70,7 @@ class SlurmConstruct(core.Construct):
         self.config = cluster_config
         self.bucket = bucket
         self.dynamodb_table = dynamodb_table
+        self.log_group = log_group
         self.instance_roles = instance_roles
         self.instance_profiles = instance_profiles
         self.cleanup_lambda_role = cleanup_lambda_role
@@ -510,6 +513,9 @@ class SlurmConstruct(core.Construct):
                                 else "",
                                 "OSUser": OS_MAPPING[self.config.image.os]["user"],
                                 "DynamoDBTable": self.dynamodb_table.ref,
+                                "LogGroupName": self.log_group.log_group_name
+                                if self.config.monitoring.logs.cloud_watch.enabled
+                                else "NONE",
                                 "IntelHPCPlatform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                                 "CWLoggingEnabled": "true" if self.config.is_cw_logging_enabled else "false",
                                 "QueueName": queue.name,
