@@ -13,6 +13,7 @@ from __future__ import absolute_import, print_function  # isort:skip
 
 import yaml
 
+from common.aws.aws_api import AWSApi
 from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT
 
 from future import standard_library  # isort:skip
@@ -40,10 +41,8 @@ from pcluster.utils import (
     default_config_file_path,
     error,
     get_common_supported_az_for_multi_instance_types,
-    get_default_instance_type,
     get_region,
     get_supported_az_for_one_instance_type,
-    get_supported_instance_types,
     get_supported_os_for_scheduler,
     get_supported_schedulers,
 )
@@ -151,10 +150,10 @@ def configure(args):  # noqa: C901
             get_supported_os_for_scheduler(scheduler),
         )
 
-    default_instance_type = get_default_instance_type()
+    default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
         "Head node instance type",
-        lambda x: x in get_supported_instance_types(),
+        lambda x: x in AWSApi.instance().ec2.describe_instance_type_offerings(),
         default_value=default_instance_type,
     )
     if scheduler == "awsbatch":
@@ -189,7 +188,7 @@ def configure(args):  # noqa: C901
             if scheduler != "awsbatch":
                 compute_instance_type = prompt(
                     f"Compute instance type for {compute_resource_name} in {queue_name}",
-                    lambda x: x in get_supported_instance_types(),
+                    lambda x: x in AWSApi.instance().ec2.describe_instance_type_offerings(),
                     default_value=default_instance_type,
                 )
             min_cluster_size = int(

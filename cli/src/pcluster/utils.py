@@ -609,26 +609,6 @@ def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
         )
 
 
-def get_default_instance_type():
-    """If current region support free tier, return the free tier instance type. Otherwise, return t3.micro ."""
-    if not hasattr(get_default_instance_type, "cache"):
-        get_default_instance_type.cache = {}
-    cache = get_default_instance_type.cache
-    region = os.environ.get("AWS_DEFAULT_REGION")
-    if region not in cache:
-        free_tier_instance_type = []
-        for page in paginate_boto3(
-            boto3.client("ec2").describe_instance_types,
-            Filters=[
-                {"Name": "free-tier-eligible", "Values": ["true"]},
-                {"Name": "current-generation", "Values": ["true"]},
-            ],
-        ):
-            free_tier_instance_type.append(page)
-        cache[region] = free_tier_instance_type[0]["InstanceType"] if free_tier_instance_type else "t3.micro"
-    return cache[region]
-
-
 class Cache:
     """Simple utility class providing a cache mechanism for expensive functions."""
 
