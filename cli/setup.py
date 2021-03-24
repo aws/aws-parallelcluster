@@ -81,7 +81,6 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
-    package_data={"": ["src/examples/config"]},
     long_description=readme(),
     classifiers=[
         "Development Status :: 5 - Production/Stable",
