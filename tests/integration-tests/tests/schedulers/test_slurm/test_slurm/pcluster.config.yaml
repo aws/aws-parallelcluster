@@ -1,0 +1,29 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Slurm:
+    Settings:
+      ScaledownIdletime: {{ scaledown_idletime }}
+    Queues:
+      - Name: ondemand
+        Networking:
+          SubnetId: {{ private_subnet_id }}
+        ComputeResources:
+          - Name: ondemand-1
+            InstanceType: c4.xlarge
+          - Name: on-demand2
+            InstanceType: c5.xlarge
+            MaxCount: 5
+      - Name: gpu
+        ComputeType: ONDEMAND
+        ComputeResources:
+          - Name: gpu-1
+            InstanceType: g3.8xlarge
+          - Name: compute-resource-22
+            MaxCount: 5
