@@ -20,7 +20,6 @@ from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
 
-import hashlib
 import json
 import logging
 import os
@@ -32,12 +31,10 @@ import time
 import urllib.request
 import zipfile
 from io import BytesIO
-from urllib.parse import urlparse
 
 import boto3
 import pkg_resources
 from botocore.exceptions import ClientError, EndpointConnectionError
-from jinja2 import BaseLoader, Environment
 from pkg_resources import packaging
 
 from pcluster.constants import (
@@ -53,19 +50,6 @@ LOGGER = logging.getLogger(__name__)
 
 def get_stack_name(cluster_name):
     return PCLUSTER_STACK_PREFIX + cluster_name
-
-
-def get_cluster_name(stack_name):
-    prefix = PCLUSTER_STACK_PREFIX
-    if stack_name.startswith(prefix):
-        return stack_name[len(prefix) :]  # noqa: E203
-    else:
-        raise Exception("Invalid stack name: {}".format(stack_name))
-
-
-# TODO Moved
-def get_stack_version(stack):
-    return next(iter([tag["Value"] for tag in stack.get("Tags") if tag["Key"] == "Version"]), None)
 
 
 def default_config_file_path():
@@ -87,21 +71,6 @@ def get_partition():
     return next(("aws-" + partition for partition in ["us-gov", "cn"] if get_region().startswith(partition)), "aws")
 
 
-def paginate_boto3(method, **kwargs):
-    """
-    Return a generator for a boto3 call, this allows pagination over an arbitrary number of responses.
-
-    :param method: boto3 method
-    :param kwargs: arguments to method
-    :return: generator with boto3 results
-    """
-    client = method.__self__
-    paginator = client.get_paginator(method.__name__)
-    for page in paginator.paginate(**kwargs).result_key_iters():
-        for result in page:
-            yield result
-
-
 def generate_random_name_with_prefix(name_prefix):
     """
     Generate a random name that is no more than 63 characters long, with the given prefix.
@@ -120,12 +89,6 @@ def generate_random_prefix():
     Example: 4htvo26lchkqeho1
     """
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
-
-
-def get_cloudformation_directory():
-    """Get cloudforamtion directory."""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(current_dir, "..", "..", "..", "cloudformation")
 
 
 def create_s3_bucket(bucket_name):
@@ -229,22 +192,6 @@ def delete_s3_artifacts(bucket_name, artifact_directory):
         )
 
 
-# TODO moved
-def cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket=True):
-    """Cleanup S3 bucket and/or artifact directory."""
-    LOGGER.debug(
-        "Cleaning up S3 resources bucket_name=%s, artifact_directory=%s, remove_bucket=%s",
-        bucket_name,
-        artifact_directory,
-        cleanup_bucket,
-    )
-    if bucket_name:
-        if artifact_directory:
-            delete_s3_artifacts(bucket_name, artifact_directory)
-        if cleanup_bucket:
-            delete_s3_bucket(bucket_name)
-
-
 def _add_file_to_zip(zip_file, path, arcname):
     """
     Add the file at path under the name arcname to the archive represented by zip_file.
@@ -259,7 +206,7 @@ def _add_file_to_zip(zip_file, path, arcname):
         zip_file.writestr(zinfo, input_file.read())
 
 
-def zip_dir(path):
+def _zip_dir(path):
     """
     Create a zip archive containing all files and dirs rooted in path.
 
@@ -293,7 +240,7 @@ def upload_resources_artifacts(bucket_name, artifact_directory, root):
     bucket = boto3.resource("s3").Bucket(bucket_name)
     for res in os.listdir(root):
         if os.path.isdir(os.path.join(root, res)):
-            bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/%s/artifacts.zip" % (artifact_directory, res))
+            bucket.upload_fileobj(_zip_dir(os.path.join(root, res)), "%s/%s/artifacts.zip" % (artifact_directory, res))
         elif os.path.isfile(os.path.join(root, res)):
             bucket.upload_file(os.path.join(root, res), "%s/%s" % (artifact_directory, res))
 
@@ -515,31 +462,6 @@ def get_common_supported_az_for_multi_instance_types(instance_types):
     return common_az
 
 
-# TODO removed
-def get_availability_zone_of_subnet(subnet_id):
-    """
-    Return the availability zone of the subnet.
-
-    :param subnet_id: the id of the subnet.
-    :return: a strings of availability zone name
-    """
-    if not hasattr(get_availability_zone_of_subnet, "cache"):
-        get_availability_zone_of_subnet.cache = {}
-    cache = get_availability_zone_of_subnet.cache
-    if subnet_id not in cache:
-        try:
-            cache[subnet_id] = (
-                boto3.client("ec2").describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("AvailabilityZone")
-            )
-        except ClientError as e:
-            LOGGER.debug(
-                "Unable to detect availability zone for subnet {0}.\n{1}".format(
-                    subnet_id, e.response.get("Error").get("Message")
-                )
-            )
-    return cache.get(subnet_id)
-
-
 def get_supported_os_for_scheduler(scheduler):
     """
     Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
@@ -731,41 +653,6 @@ def error(message, fail_on_error=True):
         print("ERROR: {0}".format(message))
 
 
-# TODO moved
-def get_cfn_param(params, key_name):
-    """
-    Get parameter value from Cloudformation Stack Parameters.
-
-    :param params: Cloudformation Stack Parameters
-    :param key_name: Parameter Key
-    :return: ParameterValue if that parameter exists, otherwise None
-    """
-    param_value = next((i.get("ParameterValue") for i in params if i.get("ParameterKey") == key_name), "NONE")
-    return param_value.strip()
-
-
-# TODO removed
-def get_efs_mount_target_id(efs_fs_id, avail_zone):
-    """
-    Search for a Mount Target Id in given availability zone for the given EFS file system id.
-
-    :param efs_fs_id: EFS file system Id
-    :param avail_zone: Availability zone to verify
-    :return: the mount_target_id or None
-    """
-    mount_target_id = None
-    if efs_fs_id:
-        mount_targets = boto3.client("efs").describe_mount_targets(FileSystemId=efs_fs_id)
-
-        for mount_target in mount_targets.get("MountTargets"):
-            # Check to see if there is an existing mt in the az of the stack
-            mount_target_subnet = mount_target.get("SubnetId")
-            if avail_zone == get_availability_zone_of_subnet(mount_target_subnet):
-                mount_target_id = mount_target.get("MountTargetId")
-
-    return mount_target_id
-
-
 def get_info_for_amis(ami_ids):
     """Get information returned by EC2's describe-images API for the given list of AMIs."""
     try:
@@ -807,47 +694,6 @@ def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
 
 
-# TODO to be deleted
-def get_asg_name(stack_name):
-    outputs = get_stack(stack_name).get("Outputs", [])
-    asg_name = get_stack_output_value(outputs, "ASGName")
-    if not asg_name:
-        # Fallback to old behaviour to preserve backward compatibility
-        resources = get_stack_resources(stack_name)
-        asg_name = next(
-            (r.get("PhysicalResourceId") for r in resources if r.get("LogicalResourceId") == "ComputeFleet"), None
-        )
-        if not asg_name:
-            LOGGER.error("Could not retrieve AutoScaling group name. Please check cluster status.")
-            sys.exit(1)
-    return asg_name
-
-
-# TODO to be deleted
-def get_batch_ce(stack_name):
-    """
-    Get name of the AWS Batch Compute Environment.
-
-    :param stack_name: name of the head node stack
-    :param config: config
-    :return: ce_name or exit if not found
-    """
-    outputs = get_stack(stack_name).get("Outputs")
-    return get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
-
-
-# TODO to be deleted
-def get_batch_ce_capacity(stack_name):
-    client = boto3.client("batch")
-
-    return (
-        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name)])
-        .get("computeEnvironments")[0]
-        .get("computeResources")
-        .get("desiredvCpus")
-    )
-
-
 def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
     while True:
         try:
@@ -857,17 +703,6 @@ def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
                 raise
             LOGGER.debug("Throttling when calling %s function. Will retry in %d seconds.", func.__name__, wait)
             time.sleep(wait)
-
-
-# TODO to be deleted
-def get_asg_settings(stack_name):
-    try:
-        asg_name = get_asg_name(stack_name)
-        asg_client = boto3.client("autoscaling")
-        return asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")[0]
-    except Exception as e:
-        LOGGER.error("Failed when retrieving data for ASG %s with exception %s", asg_name, e)
-        raise
 
 
 def ellipsize(text, max_length):
@@ -896,66 +731,6 @@ def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
         ]
     )
     return res
-
-
-def is_hit_enabled_scheduler(scheduler):
-    return scheduler in ["slurm"]
-
-
-def is_hit_enabled_cluster(cfn_stack):
-    scheduler = get_cfn_param(cfn_stack.get("Parameters"), "Scheduler")
-    stack_version = get_stack_version(cfn_stack)
-    return is_hit_enabled_scheduler(scheduler) and packaging.version.parse(stack_version) >= packaging.version.parse(
-        "2.9.0"
-    )
-
-
-def read_remote_file(url):
-    """Read a remote file from an HTTP or S3 url."""
-    try:
-        if urlparse(url).scheme == "s3":
-            match = re.match(r"s3://(.*?)/(.*)", url)
-            bucket, key = match.group(1), match.group(2)
-            file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
-        else:
-            with urllib.request.urlopen(url) as f:
-                file_contents = f.read().decode("utf-8")
-        return file_contents
-    except Exception as e:
-        LOGGER.error("Failed when reading remote file from url %s: %s", url, e)
-        raise e
-
-
-def render_template(template_str, params_dict, tags, config_version=None):
-    """
-    Render a Jinja template and return the rendered output.
-
-    :param template_str: Template file contents as a string
-    :param params_dict: Template parameters dict
-    """
-    try:
-        environment = Environment(loader=BaseLoader)
-        environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
-        environment.filters["bool"] = lambda value: value.lower() == "true"
-        template = environment.from_string(template_str)
-        output_from_parsed_template = template.render(config=params_dict, config_version=config_version, tags=tags)
-        return output_from_parsed_template
-    except Exception as e:
-        LOGGER.error("Error when rendering template: %s", e)
-        raise e
-
-
-def get_bucket_url(region):
-    """Return the ParallelCluster's bucket url for the provided region."""
-    s3_suffix = ".cn" if region.startswith("cn") else ""
-    return ("https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{suffix}").format(
-        region=region, suffix=s3_suffix
-    )
-
-
-def get_file_section_name(section_key, section_label=None):
-    """Build a section name as in the config file, given section key and label."""
-    return section_key + (" {0}".format(section_label) if section_label else "")
 
 
 def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
