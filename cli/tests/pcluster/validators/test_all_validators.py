@@ -199,16 +199,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         any_order=True,
     )
     key_pair_validator.assert_has_calls([call(key_name="ec2-key-name")])
-    instance_type_validator.assert_has_calls(
-        [
-            call(instance_type="t2.micro"),
-            call(instance_type="c5.2xlarge"),
-            call(instance_type="c4.2xlarge"),
-            call(instance_type="c5.4xlarge"),
-            call(instance_type="c4.4xlarge"),
-        ],
-        any_order=True,
-    )
+    instance_type_validator.assert_has_calls([call(instance_type="t2.micro")])
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
             call(instance_type="t2.micro", image="ami-12345678"),
