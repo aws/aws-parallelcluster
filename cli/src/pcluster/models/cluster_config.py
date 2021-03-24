@@ -842,14 +842,6 @@ class BaseClusterConfig(Resource):
         self._execute_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
-        for queue in self.scheduling.queues:
-            for compute_resource in queue.compute_resources:
-                if self.ami_id:
-                    self._execute_validator(
-                        InstanceTypeBaseAMICompatibleValidator,
-                        instance_type=compute_resource.instance_type,
-                        image=self.ami_id,
-                    )
         self._register_storage_validators()
 
         if self.head_node.dcv:
@@ -1062,7 +1054,7 @@ class AwsbatchComputeResource(BaseComputeResource):
     def _validate(self):
         super()._validate()
         self._execute_validator(
-            AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_type, max_vcpus=self.max_vcpus
+            AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_types, max_vcpus=self.max_vcpus
         )
         self._execute_validator(
             AwsbatchComputeResourceSizeValidator,
@@ -1107,12 +1099,13 @@ class AwsbatchClusterConfig(BaseClusterConfig):
         super()._validate()
         self._execute_validator(AwsbatchRegionValidator, region=self.region)
         self._execute_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+        # TODO add InstanceTypesBaseAMICompatibleValidator
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 self._execute_validator(
                     AwsbatchInstancesArchitectureCompatibilityValidator,
-                    instance_types=compute_resource.instance_type,
+                    instance_types=compute_resource.instance_types,
                     architecture=self.head_node.architecture,
                 )
 
@@ -1150,7 +1143,6 @@ class SlurmComputeResource(BaseComputeResource):
 
     def _validate(self):
         super()._validate()
-        self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
         self._execute_validator(
             ComputeResourceSizeValidator,
             min_count=self.min_count,
@@ -1312,6 +1304,12 @@ class SlurmClusterConfig(BaseClusterConfig):
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
+                if self.ami_id:
+                    self._execute_validator(
+                        InstanceTypeBaseAMICompatibleValidator,
+                        instance_type=compute_resource.instance_type,
+                        image=self.ami_id,
+                    )
                 self._execute_validator(
                     InstanceArchitectureCompatibilityValidator,
                     instance_type=compute_resource.instance_type,
