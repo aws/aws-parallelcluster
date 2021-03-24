@@ -163,6 +163,7 @@ class ClusterCdkStack(core.Stack):
                 cluster_config=self.config,
                 bucket=self.bucket,
                 dynamodb_table=self.dynamodb_table,
+                log_group=self.log_group,
                 instance_roles=self.instance_roles,
                 instance_profiles=self.instance_profiles,
                 cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
@@ -963,6 +964,9 @@ class ClusterCdkStack(core.Stack):
                     "cfn_node_type": "MasterServer",  # FIXME
                     "cfn_cluster_user": OS_MAPPING[self.config.image.os]["user"],
                     "cfn_ddb_table": self.dynamodb_table.ref,
+                    "cfn_log_group_name": self.log_group.log_group_name
+                    if self.config.monitoring.logs.cloud_watch.enabled
+                    else "NONE",
                     "dcv_enabled": head_node.dcv.enabled if head_node.dcv else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",

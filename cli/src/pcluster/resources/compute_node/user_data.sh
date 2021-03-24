@@ -68,6 +68,7 @@ write_files:
           "cfn_shared_dir": "${EbsSharedDirs}",
           "cfn_proxy": "${ProxyServer}",
           "cfn_ddb_table": "${DynamoDBTable}",
+          "cfn_log_group_name": "${LogGroupName}",
           "cfn_dns_domain": "${ClusterDNSDomain}",
           "cfn_hosted_zone": "${ClusterHostedZone}",
           "cfn_node_type": "ComputeFleet",
