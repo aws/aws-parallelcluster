@@ -48,10 +48,6 @@ from pcluster.constants import (
 LOGGER = logging.getLogger(__name__)
 
 
-def get_stack_name(cluster_name):
-    return PCLUSTER_STACK_PREFIX + cluster_name
-
-
 def default_config_file_path():
     """Return the default path for the ParallelCluster configuration file."""
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
