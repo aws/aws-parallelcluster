@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 
 import pcluster.utils as utils
 from pcluster.models.cluster import Cluster, ClusterStack
-from pcluster.utils import Cache, get_bucket_url
+from pcluster.utils import Cache
 from tests.utils import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster-name"
@@ -381,33 +381,6 @@ def test_get_supported_architectures_for_instance_type(mocker, instance_type, su
         get_instance_types_info_patch.assert_not_called()
     else:
         get_instance_types_info_patch.assert_called_with(instance_type)
-
-
-@pytest.mark.parametrize(
-    "scheduler, expected_is_hit_enabled",
-    [
-        ("sge", False),
-        ("slurm", True),
-        ("torque", False),
-        ("awsbatch", False),
-        # doesn't check scheduler's validity, only whether it's slurm or not
-        ("madeup-scheduler", False),
-    ],
-)
-def test_is_hit_enabled_cluster(scheduler, expected_is_hit_enabled):
-    """Verify that the expected schedulers are hit enabled."""
-    assert_that(utils.is_hit_enabled_scheduler(scheduler)).is_equal_to(expected_is_hit_enabled)
-
-
-@pytest.mark.parametrize(
-    "region, expected_url",
-    [
-        ("us-east-1", "https://us-east-1-aws-parallelcluster.s3.us-east-1.amazonaws.com"),
-        ("cn-north-1", "https://cn-north-1-aws-parallelcluster.s3.cn-north-1.amazonaws.com.cn"),
-    ],
-)
-def test_get_bucket_url(region, expected_url):
-    assert_that(get_bucket_url(region)).is_equal_to(expected_url)
 
 
 @pytest.mark.parametrize(

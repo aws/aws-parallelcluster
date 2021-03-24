@@ -9,7 +9,7 @@ from assertpy import assert_that
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
 from pcluster.schemas.cluster_schema import ClusterSchema
-from tests.pcluster.config.utils import mock_instance_type_info
+from pcluster.utils import InstanceTypeInfo
 
 EASYCONFIG = "pcluster.configure.easyconfig."
 NETWORKING = "pcluster.configure.networking."
@@ -18,6 +18,19 @@ UTILS = "pcluster.configure.utils."
 TEMP_PATH_FOR_CONFIG = os.path.join(tempfile.gettempdir(), "test_pcluster_configure")
 PUBLIC_PRIVATE_CONFIGURATION = NetworkConfiguration.PUBLIC_PRIVATE.value.config_type
 PUBLIC_CONFIGURATION = NetworkConfiguration.PUBLIC.value.config_type
+
+
+def _mock_instance_type_info(mocker, instance_type="t2.micro"):
+    mocker.patch(
+        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "NetworkInfo": {"EfaSupported": False},
+            }
+        ),
+    )
 
 
 def _mock_input(mocker, input_in_order):
@@ -285,11 +298,7 @@ def _mock_parallel_cluster_config(mocker):
         "p4d.24xlarge",
     ]
     mocker.patch("pcluster.configure.easyconfig.get_supported_instance_types", return_value=supported_instance_types)
-    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
-    mocker.patch(
-        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type",
-        side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
-    )
+    mocker.patch("pcluster.utils.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
     # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
     #       but it's being included in case that changes in the future.
     mocker.patch(
@@ -298,7 +307,7 @@ def _mock_parallel_cluster_config(mocker):
     )
 
     for instance_type in supported_instance_types:
-        mock_instance_type_info(mocker, instance_type)
+        _mock_instance_type_info(mocker, instance_type)
 
 
 def _run_configuration(mocker, path, with_config=False, region=None):

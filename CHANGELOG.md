@@ -22,7 +22,8 @@ CHANGELOG
 - Add possibility to configure different security groups for each queue.
 - Add support for multiple subnets when using AWS Batch.
 - Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
-- Added timestamp suffix to CloudWatch Log Group name created for the cluster.
+- Add timestamp suffix to CloudWatch Log Group name created for the cluster.
+- Remove `pcluster-config` CLI utility.
 
 2.10.1
 ------
