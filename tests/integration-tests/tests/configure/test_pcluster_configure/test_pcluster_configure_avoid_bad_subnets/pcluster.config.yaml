@@ -1,0 +1,18 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: {{ wrong_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Slurm:
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            InstanceType: t2.micro
+        Networking:
+          SubnetIds:
+            - {{ wrong_subnet_id }}
