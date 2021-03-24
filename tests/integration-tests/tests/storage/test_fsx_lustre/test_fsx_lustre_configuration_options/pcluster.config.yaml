@@ -1,0 +1,52 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+        EnableWriteAccess: False
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            {% if scheduler == "Awsbatch" %}
+            InstanceTypes: {{ instance }}
+            MinvCpus: 4
+            DesiredVcpus: 4
+            {% else %}
+            InstanceType: {{ instance }}
+            MinCount: 1
+            {% endif %}
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: {{ mount_dir }}
+    Name: fsx
+    StorageType: FsxLustre
+    Settings:
+      StorageCapacity: {{ storage_capacity }}
+      ImportedFileChunkSize: 1024
+      ImportPath: s3://{{ bucket_name }}
+      ExportPath: s3://{{ bucket_name }}/export_dir
+      WeeklyMaintenanceStartTime: "1:00:00"
+      DeploymentType: {{ deployment_type }}
+      {% if per_unit_storage_throughput %}
+      PerUnitStorageThroughput: {{ per_unit_storage_throughput }}
+      {% endif %}
+      {% if auto_import_policy %}
+      AutoImportPolicy: {{ auto_import_policy }}
+      {% endif %}
+      {% if drive_cache_type %}
+      DriveCacheType: {{ drive_cache_type }}
+      {% endif %}
+      {% if storage_type %}
+      StorageType: {{ storage_type }}
+      {% endif %}
