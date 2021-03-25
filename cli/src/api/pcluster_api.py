@@ -27,9 +27,10 @@ LOGGER = logging.getLogger(__name__)
 class ApiFailure:
     """Represent a generic api error."""
 
-    def __init__(self, message: str = None, validation_failures: list = None):
+    def __init__(self, message: str = None, validation_failures: list = None, update_changes: list = None):
         self.message = message or "Something went wrong."
         self.validation_failures = validation_failures or []
+        self.update_changes = update_changes or []
 
 
 class ClusterInfo:
@@ -92,7 +93,7 @@ class PclusterApi:
         region: str,
         disable_rollback: bool = False,
         suppress_validators: bool = False,
-        validation_failure_level: FailureLevel = None,
+        validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
         """
         Load cluster model from cluster_config and create stack.
@@ -142,8 +143,24 @@ class PclusterApi:
             return ApiFailure(str(e))
 
     @staticmethod
-    def update_cluster(cluster_name: str, region: str):
-        """Update existing cluster."""
+    def update_cluster(
+        cluster_config: dict,
+        cluster_name: str,
+        region: str,
+        suppress_validators: bool = False,
+        validation_failure_level: FailureLevel = FailureLevel.ERROR,
+        force: bool = False,
+    ):
+        """
+        Update existing cluster.
+
+        :param cluster_config: cluster configuration (yaml dict)
+        :param cluster_name: the name to assign to the cluster
+        :param region: AWS region
+        :param suppress_validators: bool = False,
+        :param validation_failure_level: FailureLevel = FailureLevel.ERROR,
+        :param force: set to True to force stack update
+        """
         try:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
@@ -158,7 +175,11 @@ class PclusterApi:
                     "This operation may only be performed using the same ParallelCluster "
                     "version used to create the cluster."
                 )
+
+            cluster.update(cluster_config, suppress_validators, validation_failure_level, force)  # TODO add dryrun
             return ClusterInfo(cluster.stack, cluster)
+        except ClusterActionError as e:
+            return ApiFailure(str(e), update_changes=e.update_changes, validation_failures=e.validation_failures)
         except Exception as e:
             return ApiFailure(str(e))
 

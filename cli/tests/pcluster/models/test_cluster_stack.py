@@ -20,8 +20,7 @@ from assertpy import assert_that
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError, ClusterStack
 from tests.common.dummy_aws_api import DummyAWSApi
-
-FAKE_STACK_NAME = "parallelcluster-name"
+from tests.pcluster.test_utils import FAKE_STACK_NAME
 
 
 @pytest.mark.parametrize(

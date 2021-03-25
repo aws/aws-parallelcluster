@@ -549,7 +549,7 @@ integration-tests
          ├── $test_file_i.py: contains resources for test cases defined in file $test_file_i.py
          │         └── $test_case_i: contains resources for test case $test_case_i
          │             ├── data_file
-         │             ├── pcluster.config.ini
+         │             ├── pcluster.config.yaml
          │             └── test_script.sh
          └── data: contains common resources to share across all tests
                 └── shared_dir_1
@@ -579,7 +579,7 @@ Similarly to parametrized test cases, also cluster configurations can be paramet
 [Jinja2](http://jinja.pocoo.org/docs/2.10/) templating syntax.
 
 The cluster configuration needed for a given test case needs to reside in the test specific `test_datadir`
-and it needs to be in a file named pcluster.config.ini.
+and it needs to be in a file named pcluster.config.yaml.
 
 Test cases can then inject a fixture called `pcluster_config_reader` which allows to automatically read and render
 the configuration defined for a specific test case and have it automatically parametrized with the default
@@ -591,7 +591,7 @@ def test_case_1(region, instance, os, scheduler, pcluster_config_reader):
     cluster_config = pcluster_config_reader(vpc_id="id-xxx", master_subnet_id="id-xxx", compute_subnet_id="id-xxx")
 ```
 you can simply render the parametrized cluster config which is defined in the file
-`integration-tests/tests/test_feature/test_case_1/pcluster.config.ini`
+`integration-tests/tests/test_feature/test_case_1/pcluster.config.yaml`
 
 Here is an example of the parametrized pcluster config:
 ```INI
@@ -618,7 +618,7 @@ compute_subnet_id = {{ private_subnet_id }}
 ```
 
 The following placeholders are automatically injected by the `pcluster_config_reader` fixture and are
-available in the `pcluster.config.ini` files:
+available in the `pcluster.config.yaml` files:
 * Test dimensions for the specific parametrized test case: `{{ region }}`, `{{ instance }}`, `{{ os }}`,
 `{{ scheduler }}`
 * EC2 key name specified at tests submission time by the user: `{{ key_name }}`
@@ -734,7 +734,7 @@ integration-tests
           └──  test_feature
                     └── test_case_1
                         ├── data_file
-                        ├── pcluster.config.ini
+                        ├── pcluster.config.yaml
                         └── test_script.sh
 
 ```

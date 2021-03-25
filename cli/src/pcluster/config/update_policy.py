@@ -10,8 +10,6 @@
 # limitations under the License.
 from enum import Enum
 
-from pcluster import utils
-
 
 class UpdatePolicy(object):
     """Describes the policy that rules the update of a configuration parameter."""
@@ -101,11 +99,11 @@ class UpdatePolicy(object):
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
     "operating system.",
-    "ebs_sections_change": "EBS sections cannot be added or removed during a 'pcluster update' operation",
-    "extra_json_update": lambda change, patch: "Updating the extra_json parameter is not supported because it only "
-    "applies updates to compute nodes. If you still want to proceed, first stop the cluster with the "
-    "following command:\n{0} -c {1} {2} and then run an update with the --force flag".format(
-        "pcluster stop", patch.config_file, patch.cluster_name
+    "shared_storage_change": "Shared Storage cannot be added or removed during a 'pcluster update' operation",
+    "cookbook_update": lambda change, patch: (
+        "Updating cookbook related parameter is not supported because it only "
+        "applies updates to compute nodes. If you still want to proceed, first stop the cluster with the "
+        f"following command:\npcluster stop {patch.cluster_name} and then run an update with the --force flag"
     ),
 }
 
@@ -115,39 +113,10 @@ UpdatePolicy.ACTIONS_NEEDED = {
         "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html",
         "modify-ebs-volume",
     ),
-    "pcluster_stop": lambda change, patch: "Stop the cluster with the following command:\n{0} -c {1} {2}".format(
-        "pcluster stop", patch.config_file, patch.cluster_name
+    "pcluster_stop": lambda change, patch: (
+        f"Stop the cluster with the following command:\npcluster stop {patch.cluster_name}"
     ),
 }
-
-
-def _check_min_count(change, patch):
-    is_fleet_stopped = not utils.cluster_has_running_capacity(patch.stack_name)
-    if is_fleet_stopped:
-        return True
-
-    new_min, old_min = change.new_value, change.old_value
-    old_max = patch.base_config.get_section(change.section_key, change.section_label).get_param_value("max_count")
-    new_max = patch.target_config.get_section(change.section_key, change.section_label).get_param_value("max_count")
-    return new_min >= old_min and new_max - new_min >= old_max - old_min
-
-
-def _is_bucket_pcluster_generated(stack_name):
-    params = utils.get_stack(stack_name).get("Parameters")
-    return utils.get_cfn_param(params, "RemoveBucketOnDeletion") == "True"
-
-
-def _check_generated_bucket(change, patch):
-
-    # If bucket is generated (no cluster_resource_bucket specified when creating) and no change in config
-    # Old value is retrieve from CFN's ResourcesS3Bucket param, and new value is from config(not specified)
-    # Actual ResourcesS3Bucket will not change when updating, so no actual change when update is applied
-    # Since there is no change, user should not be informed of a change/diff
-    # Print no diff and proceed with updating other parameters
-    # Else display diff
-    # Inform user cluster_resource_bucket/ResourcesS3Bucket will not be updated even if force update
-    return _is_bucket_pcluster_generated(patch.stack_name) and not change.new_value
-
 
 # Base policies
 
@@ -167,11 +136,11 @@ UpdatePolicy.SUPPORTED = UpdatePolicy(level=0, fail_reason="-", condition_checke
 UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
     level=1,
     fail_reason=lambda change, patch: "Max vCPUs can not be lower than the current Desired vCPUs ({0})".format(
-        utils.get_batch_ce_capacity(patch.stack_name)
+        patch.cluster.get_running_capacity()
     ),
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: utils.get_batch_ce_capacity(patch.stack_name)
-    <= patch.target_config.get_section("cluster").get_param_value("max_vcpus"),
+    condition_checker=lambda change, patch: patch.cluster.get_running_capacity()
+    <= patch.target_config["Scheduling"]["Awsbatch"]["Queues"][0]["ComputeResources"][0]["MaxvCpus"],
 )
 
 # Checks resize of max_count
@@ -179,27 +148,8 @@ UpdatePolicy.MAX_COUNT = UpdatePolicy(
     level=1,
     fail_reason=lambda change, patch: "Shrinking a queue requires the compute fleet to be stopped first",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: not utils.cluster_has_running_capacity(patch.stack_name)
+    condition_checker=lambda change, patch: not patch.cluster.has_running_capacity()
     or change.new_value >= change.old_value,
-)
-
-# Checks resize of min_count
-UpdatePolicy.MIN_COUNT = UpdatePolicy(
-    level=1,
-    fail_reason=lambda change, patch: "The applied change may cause existing nodes to be terminated hence requires "
-    "the compute fleet to be stopped first",
-    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=_check_min_count,
-)
-
-# Checks that the value of the parameter has not been decreased
-UpdatePolicy.INCREASE_ONLY = UpdatePolicy(
-    level=2,
-    fail_reason=lambda change, patch: "Value of parameter '{0}' cannot be decreased".format(change.param_key),
-    action_needed=lambda change, patch: "Set the value of parameter '{0}' to '{1}' or greater".format(
-        change.param_key, change.old_value
-    ),
-    condition_checker=lambda change, patch: change.new_value >= change.old_value,
 )
 
 # Update supported only with all compute nodes down
@@ -207,7 +157,7 @@ UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
     level=10,
     fail_reason="All compute nodes must be stopped",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: not utils.cluster_has_running_capacity(patch.stack_name),
+    condition_checker=lambda change, patch: not patch.cluster.has_running_capacity(),
 )
 
 # Update supported only with head node down
@@ -215,7 +165,7 @@ UpdatePolicy.HEAD_NODE_STOP = UpdatePolicy(
     level=20,
     fail_reason="To perform this update action, the head node must be in a stopped state",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: utils.get_head_node_state(patch.stack_name) == "stopped",
+    condition_checker=lambda change, patch: patch.cluster.head_node_instance.state == "stopped",
 )
 
 # Expected Behavior:
@@ -224,17 +174,11 @@ UpdatePolicy.HEAD_NODE_STOP = UpdatePolicy(
 UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
     level=30,
     fail_reason=lambda change, patch: (
-        "'{0}' parameter is a read_only parameter that cannot be updated. "
+        "'{0}' parameter is a read only parameter that cannot be updated. "
         "New value '{1}' will be ignored and old value '{2}' will be used if you force the update."
-    ).format(
-        change.param_key,
-        change.new_value,
-        change.old_value,
-    ),
-    action_needed=lambda change, patch: "Restore the value of parameter '{0}' to '{1}'".format(
-        change.param_key, change.old_value
-    ),
-    condition_checker=_check_generated_bucket,
+    ).format(change.key, change.new_value, change.old_value),
+    action_needed=lambda change, patch: f"Restore the value of parameter '{change.key}' to '{change.old_value}'",
+    condition_checker=lambda change, patch: False,
     # We don't want to show the change if allowed (e.g local value is empty)
     print_succeeded=False,
 )
@@ -252,13 +196,11 @@ UpdatePolicy.UNKNOWN = UpdatePolicy(
 # Update not supported
 UpdatePolicy.UNSUPPORTED = UpdatePolicy(
     level=1000,
-    fail_reason=lambda change, patch: "Update actions are not currently supported for the '{0}' parameter".format(
-        change.param_key
-    ),
+    fail_reason=lambda change, patch: (f"Update actions are not currently supported for the '{change.key}' parameter"),
     action_needed=lambda change, patch: (
-        "Restore '{0}' value to '{1}'".format(change.param_key, change.old_value)
+        f"Restore '{change.key}' value to '{change.old_value}'"
         if change.old_value is not None
-        else "Remove the parameter '{0}'".format(change.param_key)
+        else "{0} the parameter '{1}'".format("Restore" if change.is_list else "Remove", change.key)
     )
     + ". If you need this change, please consider creating a new cluster instead of updating the existing one.",
 )

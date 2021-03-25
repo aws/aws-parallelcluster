@@ -260,7 +260,7 @@ class SlurmConstruct(core.Construct):
                                     service="route53",
                                     region="",
                                     account="",
-                                    resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
+                                    resource=f"hostedzone/{cluster_hosted_zone.ref}",
                                 ),
                             ],
                         ),
@@ -283,7 +283,7 @@ class SlurmConstruct(core.Construct):
                                 service="route53",
                                 region="",
                                 account="",
-                                resource=f"hostedzone/{cluster_hosted_zone.attr_id}",
+                                resource=f"hostedzone/{cluster_hosted_zone.ref}",
                             ),
                         ],
                         sid="Route53DeletePolicy",
@@ -315,14 +315,14 @@ class SlurmConstruct(core.Construct):
             scope=self.stack_scope,
             id="CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
-            properties={"ClusterHostedZone": cluster_hosted_zone.attr_id, "Action": "DELETE_DNS_RECORDS"},
+            properties={"ClusterHostedZone": cluster_hosted_zone.ref, "Action": "DELETE_DNS_RECORDS"},
         )
 
         core.CfnOutput(
             scope=self.stack_scope,
             id="ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
-            value=cluster_hosted_zone.attr_id,
+            value=cluster_hosted_zone.ref,
         )
         core.CfnOutput(
             scope=self.stack_scope,
@@ -404,6 +404,9 @@ class SlurmConstruct(core.Construct):
                 associate_public_ip_address=queue.networking.assign_public_ip
                 if compute_resource.max_network_interface_count == 1
                 else None,  # parameter not supported for instance types with multiple network interfaces
+                interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
+                groups=queue_lt_security_groups,
+                subnet_id=queue.networking.subnet_ids[0],  # FIXME slurm supports a single subnet
             )
         ]
         for device_index in range(1, compute_resource.max_network_interface_count - 1):
@@ -442,7 +445,7 @@ class SlurmConstruct(core.Construct):
                 block_device_mappings=get_block_device_mappings(queue, self.config.image.os),
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
-                placement=queue_placement_group,
+                placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=queue_placement_group),
                 image_id=self.config.ami_id,
                 ebs_optimized=compute_resource.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
@@ -466,12 +469,14 @@ class SlurmConstruct(core.Construct):
                                 "PreInstallScript": queue_pre_install_action.script
                                 if queue_pre_install_action
                                 else "NONE",
-                                "PreInstallArgs": queue_pre_install_action.args if queue_pre_install_action else "NONE",
+                                "PreInstallArgs": queue_pre_install_action.args
+                                if queue_pre_install_action and queue_pre_install_action.args
+                                else "NONE",
                                 "PostInstallScript": queue_post_install_action.script
-                                if queue_pre_install_action
+                                if queue_post_install_action
                                 else "NONE",
                                 "PostInstallArgs": queue_post_install_action.args
-                                if queue_pre_install_action
+                                if queue_post_install_action and queue_post_install_action.args
                                 else "NONE",
                                 "EFSId": get_shared_storage_ids_by_type(
                                     self.shared_storage_mappings, SharedStorageType.EFS
@@ -500,7 +505,7 @@ class SlurmConstruct(core.Construct):
                                 "ClusterDNSDomain": str(self.cluster_hosted_zone.name)
                                 if self.cluster_hosted_zone
                                 else "",
-                                "ClusterHostedZone": str(self.cluster_hosted_zone.attr_id)
+                                "ClusterHostedZone": str(self.cluster_hosted_zone.ref)
                                 if self.cluster_hosted_zone
                                 else "",
                                 "OSUser": OS_MAPPING[self.config.image.os]["user"],

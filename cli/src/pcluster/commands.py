@@ -16,180 +16,24 @@
 
 from __future__ import absolute_import, print_function
 
-import json
 import logging
 import os
-import re
 import sys
 import time
 from builtins import str
 
-import boto3
-import pkg_resources
-from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
 from api.pcluster_api import ApiFailure, ClusterInfo, PclusterApi
 from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX
 
 LOGGER = logging.getLogger(__name__)
 
 
-# TODO moved
-def _setup_bucket_with_resources(pcluster_config, storage_data, stack_name, tags):
-    """
-    Create pcluster bucket if needed and upload cluster specific resources.
-
-    If no bucket specified, create a bucket associated to the given stack.
-    Created bucket needs to be removed on cluster deletion.
-    Artifacts are uploaded to {bucket_name}/{artifact_directory}/.
-    {artifact_directory}/ will be always be cleaned up on cluster deletion or in case of failure.
-    """
-    s3_bucket_name = pcluster_config.get_section("cluster").get_param_value("cluster_resource_bucket")
-    remove_bucket_on_deletion = False
-    # Use "{stack_name}-{random_string}" as directory in bucket
-    artifact_directory = utils.generate_random_name_with_prefix(stack_name)
-    if not s3_bucket_name or s3_bucket_name == "NONE":
-        # Create 1 bucket per cluster named "parallelcluster-{random_string}" if bucket is not provided
-        # This bucket needs to be removed on cluster deletion
-        s3_bucket_name = utils.generate_random_name_with_prefix("parallelcluster")
-        LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
-        try:
-            utils.create_s3_bucket(s3_bucket_name)
-        except Exception:
-            LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
-            raise
-        remove_bucket_on_deletion = True
-    else:
-        # Use user-provided bucket
-        # Do not remove this bucket on deletion, but cleanup artifact directory
-        try:
-            utils.check_s3_bucket_exists(s3_bucket_name)
-        except Exception as e:
-            LOGGER.error("Unable to access config-specified S3 bucket %s: %s", s3_bucket_name, e)
-            raise
-
-    _upload_cluster_artifacts(
-        s3_bucket_name, artifact_directory, pcluster_config, storage_data, tags, remove_bucket_on_deletion
-    )
-
-    return s3_bucket_name, artifact_directory, remove_bucket_on_deletion
-
-
-# TODO moved
-def _upload_cluster_artifacts(
-    s3_bucket_name, artifact_directory, pcluster_config, storage_data, tags, remove_bucket_on_deletion
-):
-    try:
-        scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
-        resources_dirs = ["resources/custom_resources"]
-        if scheduler == "awsbatch":
-            resources_dirs.append("resources/batch")
-
-        for resources_dir in resources_dirs:
-            resources = pkg_resources.resource_filename(__name__, resources_dir)
-            utils.upload_resources_artifacts(
-                s3_bucket_name,
-                artifact_directory,
-                root=resources,
-            )
-        if utils.is_hit_enabled_scheduler(scheduler):
-            upload_hit_resources(s3_bucket_name, artifact_directory, pcluster_config, storage_data.json_params, tags)
-
-        upload_dashboard_resource(
-            s3_bucket_name, artifact_directory, pcluster_config, storage_data.json_params, storage_data.cfn_params
-        )
-    except Exception as e:
-        LOGGER.error("Unable to upload cluster resources to the S3 bucket %s due to exception: %s", s3_bucket_name, e)
-        utils.cleanup_s3_resources(s3_bucket_name, artifact_directory, remove_bucket_on_deletion)
-        raise
-
-
-# TODO to be deleted
-def upload_hit_resources(bucket_name, artifact_directory, pcluster_config, json_params, tags=None):
-    if tags is None:
-        tags = []
-    hit_template_url = pcluster_config.get_section("cluster").get_param_value(
-        "hit_template_url"
-    ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
-        bucket_url=utils.get_bucket_url(pcluster_config.region), version=utils.get_installed_version()
-    )
-    s3_client = boto3.client("s3")
-
-    try:
-        result = s3_client.put_object(
-            Bucket=bucket_name,
-            Body=json.dumps(json_params),
-            Key="{artifact_directory}/configs/cluster-config.json".format(artifact_directory=artifact_directory),
-        )
-        file_contents = utils.read_remote_file(hit_template_url)
-        rendered_template = utils.render_template(file_contents, json_params, tags, result.get("VersionId"))
-    except ClientError as client_error:
-        LOGGER.error("Error when uploading cluster configuration file to bucket %s: %s", bucket_name, client_error)
-        raise
-    except Exception as e:
-        LOGGER.error("Error when generating CloudFormation template from url %s: %s", hit_template_url, e)
-        raise
-
-    try:
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Body=rendered_template,
-            Key="{artifact_directory}/templates/compute-fleet-hit-substack.rendered.cfn.yaml".format(
-                artifact_directory=artifact_directory
-            ),
-        )
-    except Exception as e:
-        LOGGER.error("Error when uploading CloudFormation template to bucket %s: %s", bucket_name, e)
-        raise
-
-
-def upload_dashboard_resource(bucket_name, artifact_directory, pcluster_config, json_params, cfn_params):
-    params = {"json_params": json_params, "cfn_params": cfn_params}
-    cw_dashboard_template_url = pcluster_config.get_section("cluster").get_param_value(
-        "cw_dashboard_template_url"
-    ) or "{bucket_url}/templates/cw-dashboard-substack-{version}.cfn.yaml".format(
-        bucket_url=utils.get_bucket_url(pcluster_config.region),
-        version=utils.get_installed_version(),
-    )
-
-    try:
-        file_contents = utils.read_remote_file(cw_dashboard_template_url)
-        rendered_template = utils.render_template(file_contents, params, {})
-    except Exception as e:
-        LOGGER.error(
-            "Error when generating CloudWatch Dashboard template from path %s: %s", cw_dashboard_template_url, e
-        )
-        raise
-
-    try:
-        boto3.client("s3").put_object(
-            Bucket=bucket_name,
-            Body=rendered_template,
-            Key="{artifact_directory}/templates/cw-dashboard-substack.rendered.cfn.yaml".format(
-                artifact_directory=artifact_directory
-            ),
-        )
-    except Exception as e:
-        LOGGER.error("Error when uploading CloudWatch Dashboard template to bucket %s: %s", bucket_name, e)
-
-
 def version():
     return utils.get_installed_version()
-
-
-def _validate_cluster_name(cluster_name):
-    if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), cluster_name):
-        LOGGER.error(
-            (
-                "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-                "It must start with an alphabetic character and can't be longer than {} characters."
-            ).format(PCLUSTER_NAME_MAX_LENGTH)
-        )
-        sys.exit(1)
 
 
 def _parse_config_file(config_file, fail_on_config_file_absence=True):
@@ -235,56 +79,52 @@ def create(args):
     LOGGER.info("Beginning cluster creation for cluster: %s", args.cluster_name)
     LOGGER.debug("CLI args: %s", str(args))
 
-    if not args.disable_update_check:
-        utils.check_if_latest_version()
+    try:
+        if not args.disable_update_check:
+            utils.check_if_latest_version()
 
-    cluster_config = _parse_config_file(config_file=args.config_file)
-    result = PclusterApi().create_cluster(
-        cluster_config=cluster_config,
-        cluster_name=args.cluster_name,
-        region=utils.get_region(),
-        disable_rollback=args.norollback,
-        suppress_validators=args.suppress_validators,
-        validation_failure_level=args.validation_failure_level,
-    )
-    if isinstance(result, ClusterInfo):
-        print("Cluster creation started successfully.")
+        cluster_config = _parse_config_file(config_file=args.config_file)
+        result = PclusterApi().create_cluster(
+            cluster_config=cluster_config,
+            cluster_name=args.cluster_name,
+            region=utils.get_region(),
+            disable_rollback=args.norollback,
+            suppress_validators=args.suppress_validators,
+            validation_failure_level=args.validation_failure_level,
+        )
+        if isinstance(result, ClusterInfo):
+            print("Cluster creation started successfully.")
 
-        if not args.nowait:
-            verified = utils.verify_stack_creation(result.stack_name)
-            LOGGER.info("")
+            if not args.nowait:
+                verified = utils.verify_stack_status(
+                    result.stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_state="CREATE_COMPLETE"
+                )
+                if not verified:
+                    LOGGER.critical("\nCluster creation failed.  Failed events:")
+                    utils.log_stack_failure_recursive(result.stack_name)
+                    sys.exit(1)
 
-            result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-            if isinstance(result, ClusterInfo):
-                _print_stack_outputs(result.stack_outputs)
+                LOGGER.info("")
+                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+                if isinstance(result, ClusterInfo):
+                    print_stack_outputs(result.stack_outputs)
+                else:
+                    utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
             else:
-                utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
-            if not verified:
-                sys.exit(1)
+                LOGGER.info("Status: %s", result.stack_status)
         else:
-            LOGGER.info("Status: %s", result.stack_status)
-    else:
-        message = "Cluster creation failed. {0}.".format(result.message if result.message else "")
-        if result.validation_failures:
-            message += "\nValidation failures:\n"
-            message += "\n".join([f"{result.level.name}: {result.message}" for result in result.validation_failures])
+            message = "Cluster creation failed. {0}.".format(result.message if result.message else "")
+            if result.validation_failures:
+                message += "\nValidation failures:\n"
+                message += "\n".join(
+                    [f"{result.level.name}: {result.message}" for result in result.validation_failures]
+                )
 
-        utils.error(message)
+            utils.error(message)
 
-
-def evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
-    """
-    Determine the CloudFormation Template URL to use.
-
-    Order is 1) preferred_template_url 2) Config file 3) default for version + region.
-
-    :param pcluster_config: PclusterConfig, it can contain the template_url
-    :param preferred_template_url: preferred template url to use, if not None
-    :return: the evaluated template url
-    """
-    configured_template_url = pcluster_config.get_section("cluster").get_param_value("template_url")
-
-    return preferred_template_url or configured_template_url or _get_default_template_url(pcluster_config.region)
+    except KeyboardInterrupt:
+        LOGGER.info("\nExiting...")
+        sys.exit(0)
 
 
 def _print_compute_fleet_status(cluster_name, stack_outputs):
@@ -295,7 +135,7 @@ def _print_compute_fleet_status(cluster_name, stack_outputs):
             LOGGER.info("ComputeFleetStatus: %s", compute_fleet_status)
 
 
-def _print_stack_outputs(stack_outputs):
+def print_stack_outputs(stack_outputs):
     """
     Print a limited set of the CloudFormation Stack outputs.
 
@@ -318,16 +158,6 @@ def _print_stack_outputs(stack_outputs):
         output_key = output.get("OutputKey")
         if output_key in whitelisted_outputs:
             LOGGER.info("%s: %s", output_key, output.get("OutputValue"))
-
-
-def _get_pcluster_version_from_stack(stack):
-    """
-    Get the version of the stack if tagged.
-
-    :param stack: stack object
-    :return: version or empty string
-    """
-    return next((tag.get("Value") for tag in stack.get("Tags") if tag.get("Key") == "Version"), "")
 
 
 def _colorize(stack_status, args):
@@ -456,7 +286,7 @@ def status(args):  # noqa: C901 FIXME!!!
                         head_node_state = result.head_node.state
                         LOGGER.info("MasterServer: %s" % head_node_state.upper())
                         if head_node_state == "running":
-                            _print_stack_outputs(result.stack_outputs)
+                            print_stack_outputs(result.stack_outputs)
                     _print_compute_fleet_status(args.cluster_name, result.stack_outputs)
                 elif result.stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
                     events = utils.get_stack_events(result.stack_name)
@@ -554,15 +384,6 @@ def stop(args):
         sys.exit(0)
 
 
-def _get_default_template_url(region):
-    return (
-        "https://{REGION}-aws-parallelcluster.s3.{REGION}.amazonaws.com{SUFFIX}/templates/"
-        "aws-parallelcluster-{VERSION}.cfn.json".format(
-            REGION=region, SUFFIX=".cn" if region.startswith("cn") else "", VERSION=utils.get_installed_version()
-        )
-    )
-
-
 def build_image(args):
     """Build AWS ParallelCluster AMI."""
     LOGGER.info("Building AWS ParallelCluster image. This could take a while...")
@@ -587,3 +408,21 @@ def build_image(args):
             "Error parsing configuration file {0}.\nDouble check it's a valid Yaml file. "
             "Error: {1}".format(args.config_file, str(e))
         )
+
+
+def update(args):
+    """Update cluster."""
+    LOGGER.info("Beginning update of cluster: %s", args.cluster_name)
+    LOGGER.debug("CLI args: %s", str(args))
+
+    try:
+        cluster_config = _parse_config_file(config_file=args.config_file)
+        # delete cluster raises an exception if stack does not exist
+        result = PclusterApi().update_cluster(cluster_config, args.cluster_name, utils.get_region())
+        if isinstance(result, ClusterInfo):
+            print("Cluster update started correctly.")
+        else:
+            utils.error(f"Cluster update failed. {result.message}")
+    except KeyboardInterrupt:
+        LOGGER.info("\nExiting...")
+        sys.exit(0)

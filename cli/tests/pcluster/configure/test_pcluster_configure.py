@@ -9,7 +9,8 @@ from assertpy import assert_that
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
 from pcluster.schemas.cluster_schema import ClusterSchema
-from tests.pcluster.config.utils import mock_instance_type_info
+from pcluster.utils import InstanceTypeInfo
+from tests.common.dummy_aws_api import DummyAWSApi
 
 EASYCONFIG = "pcluster.configure.easyconfig."
 NETWORKING = "pcluster.configure.networking."
@@ -18,6 +19,19 @@ UTILS = "pcluster.configure.utils."
 TEMP_PATH_FOR_CONFIG = os.path.join(tempfile.gettempdir(), "test_pcluster_configure")
 PUBLIC_PRIVATE_CONFIGURATION = NetworkConfiguration.PUBLIC_PRIVATE.value.config_type
 PUBLIC_CONFIGURATION = NetworkConfiguration.PUBLIC.value.config_type
+
+
+def _mock_instance_type_info(mocker, instance_type="t2.micro"):
+    mocker.patch(
+        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "NetworkInfo": {"EfaSupported": False},
+            }
+        ),
+    )
 
 
 def _mock_input(mocker, input_in_order):
@@ -284,12 +298,9 @@ def _mock_parallel_cluster_config(mocker):
         "m6g.xlarge",
         "p4d.24xlarge",
     ]
-    mocker.patch("pcluster.configure.easyconfig.get_supported_instance_types", return_value=supported_instance_types)
-    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
-    mocker.patch(
-        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type",
-        side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
-    )
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.boto3.ec2.Ec2Client.describe_instance_type_offerings", return_value=supported_instance_types)
+    mocker.patch("common.boto3.ec2.Ec2Client.get_subnet_avail_zone", return_value="mocked_avail_zone")
     # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
     #       but it's being included in case that changes in the future.
     mocker.patch(
@@ -298,7 +309,7 @@ def _mock_parallel_cluster_config(mocker):
     )
 
     for instance_type in supported_instance_types:
-        mock_instance_type_info(mocker, instance_type)
+        _mock_instance_type_info(mocker, instance_type)
 
 
 def _run_configuration(mocker, path, with_config=False, region=None):
@@ -378,7 +389,9 @@ class MockHandler:
         _mock_list_keys(self.mocker, partition)
         _mock_list_vpcs_and_subnets(self.mocker, empty_region, partition)
         _mock_parallel_cluster_config(self.mocker)
-        mocker.patch("pcluster.configure.easyconfig.get_default_instance_type", return_value="t2.micro")
+        mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+        mocker.patch("common.boto3.ec2.Ec2Client.get_default_instance_type", return_value="t2.micro")
+        mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
         if mock_availability_zone:
             _mock_availability_zone(self.mocker)
 

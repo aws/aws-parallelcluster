@@ -71,10 +71,11 @@ class Resource(ABC):
             """Return the update policy."""
             return self.__update_policy()
 
-    def __init__(self):
+    def __init__(self, implied: bool = False):
         # Parameters registry
         self.__params = {}
         self._validation_failures: List[ValidationResult] = []
+        self.implied = implied
 
     @property
     def params(self):
@@ -177,7 +178,7 @@ class BaseTag(Resource):
 class Cookbook(Resource):
     """Represent the chef cookbook configuration."""
 
-    def __init__(self, chef_cookbook: str, extra_chef_attributes: str = None):
+    def __init__(self, chef_cookbook: str = None, extra_chef_attributes: str = None):
         super().__init__()
         self.chef_cookbook = Resource.init_param(chef_cookbook)
         self.extra_chef_attributes = Resource.init_param(extra_chef_attributes)

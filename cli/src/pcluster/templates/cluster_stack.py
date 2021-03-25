@@ -57,7 +57,6 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import get_availability_zone_of_subnet
 
 # pylint: disable=too-many-lines
 
@@ -85,7 +84,7 @@ class ClusterCdkStack(core.Stack):
         self.instance_profiles = {}
         self.compute_security_groups = {}
         self.shared_storage_mappings = {storage_type: [] for storage_type in SharedStorageType}
-        self.shared_storage_options = {storage_type: "NONE" for storage_type in SharedStorageType}
+        self.shared_storage_options = {storage_type: "" for storage_type in SharedStorageType}
 
         self._add_resources()
         self._add_outputs()
@@ -207,7 +206,7 @@ class ClusterCdkStack(core.Stack):
         timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
         log_group = logs.CfnLogGroup(
             scope=self,
-            id="CleanupResourcesFunctionLogGroup",
+            id="CloudWatchLogGroup",
             log_group_name=f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}",
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
@@ -312,7 +311,7 @@ class ClusterCdkStack(core.Stack):
         )
 
         # Create and associate EIP to Head Node
-        if self.config.head_node.networking.assign_public_ip:
+        if self.config.head_node.networking.elastic_ip:
             head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
 
             ec2.CfnEIPAssociation(
@@ -412,13 +411,17 @@ class ClusterCdkStack(core.Stack):
 
         return compute_security_group
 
-    def _add_s3_access_policies_to_role(self, node, role_ref: str, name: str):
+    def _add_s3_access_policies_to_role(self, node: Union[HeadNode, BaseQueue], role_ref: str, name: str):
         """Attach S3 policies to given role."""
         read_only_s3_resources = [
-            s3_access.bucket_name for s3_access in node.iam.s3_access if not s3_access.enable_write_access
+            self.format_arn(service="s3", resource=s3_access.bucket_name + "*", region="", account="")
+            for s3_access in node.iam.s3_access
+            if not s3_access.enable_write_access
         ]
         read_write_s3_resources = [
-            s3_access.bucket_name for s3_access in node.iam.s3_access if s3_access.enable_write_access
+            self.format_arn(service="s3", resource=s3_access.bucket_name + "/*", region="", account="")
+            for s3_access in node.iam.s3_access
+            if s3_access.enable_write_access
         ]
 
         s3_access_policy = iam.CfnPolicy(
@@ -750,7 +753,7 @@ class ClusterCdkStack(core.Stack):
         new_file_system,
     ):
         """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
-        availability_zone = get_availability_zone_of_subnet(subnet_id)
+        availability_zone = AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id)
         if availability_zone not in checked_availability_zones:
             if new_file_system or not AWSApi.instance().efs.get_efs_mount_target_id(file_system_id, availability_zone):
                 efs.CfnMountTarget(
@@ -924,8 +927,8 @@ class ClusterCdkStack(core.Stack):
                     "cfn_base_os": self.config.image.os,
                     "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
                     "cfn_preinstall_args": pre_install_action.args if pre_install_action else "NONE",
-                    "cfn_postinstall": post_install_action.script if pre_install_action else "NONE",
-                    "cfn_postinstall_args": post_install_action.args if pre_install_action else "NONE",
+                    "cfn_postinstall": post_install_action.script if post_install_action else "NONE",
+                    "cfn_postinstall_args": post_install_action.args if post_install_action else "NONE",
                     "cfn_region": self.region,
                     "cfn_efs": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
                     "cfn_efs_shared_dir": get_shared_storage_options_by_type(
@@ -954,7 +957,7 @@ class ClusterCdkStack(core.Stack):
                     "cfn_dns_domain": self.scheduler_resources.cluster_hosted_zone.name
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
-                    "cfn_hosted_zone": self.scheduler_resources.cluster_hosted_zone.attr_id
+                    "cfn_hosted_zone": self.scheduler_resources.cluster_hosted_zone.ref
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
                     "cfn_node_type": "MasterServer",  # FIXME
@@ -1153,7 +1156,7 @@ class ClusterCdkStack(core.Stack):
             or self.config.iam.roles.get_param("custom_lambda_resources").implied
         )
 
-    def _condition_create_s3_access_policies(self, node):
+    def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue]):
         return node.iam and node.iam.s3_access
 
     def _condition_is_slurm(self):

@@ -1,0 +1,19 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ custom_ami }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: compute
+        ComputeResources:
+          - Name: default
+            InstanceType: {{ instance }}
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}

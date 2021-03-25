@@ -6,21 +6,24 @@ CHANGELOG
 
 **CHANGES**
 
-- Changed format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
+- Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
 - Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
-- Add `--suppress-validators`, `--validation-failure-level` and`--disable-update-check` parameters to `create` command.
+- Deprecate `--cluster-template`, `--extra-parameters`, `--reset-desired` and `--yes` parameters for the `update` command.
 - Deprecate `--config` parameter for `delete`, `status`, `start`, `stop`, `instances` and `list` commands.
+- Add `--suppress-validators`, `--validation-failure-level` and`--disable-update-check` parameters to `create` command.
+- Add `--suppress-validators` and `--validation-failure-level` parameters to `update` command.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
 - Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 
   `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
    `--subnet-id`.
-- Add `--image-name`, `--config`, `--region` to `build-image` command.
+- Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
 - Add possibility to configure different security groups for each queue.
 - Add support for multiple subnets when using AWS Batch.
 - Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
-- Added timestamp suffix to CloudWatch Log Group name created for the cluster.
+- Add timestamp suffix to CloudWatch Log Group name created for the cluster.
+- Remove `pcluster-config` CLI utility.
 
 2.10.1
 ------

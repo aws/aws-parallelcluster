@@ -27,7 +27,7 @@ from pcluster.utils import (
     get_stack,
     get_stack_output_value,
     get_templates_bucket_path,
-    verify_stack_creation,
+    verify_stack_status,
 )
 
 DEFAULT_AWS_REGION_NAME = "us-east-1"
@@ -177,7 +177,9 @@ def _create_network_stack(configuration, parameters):
         )
         LOGGER.debug("StackId: {0}".format(stack.get("StackId")))
         LOGGER.info("Stack Name: {0}".format(stack_name))
-        if not verify_stack_creation(stack_name):
+        if not verify_stack_status(
+            stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_state="CREATE_COMPLETE"
+        ):
             LOGGER.error("Could not create the network configuration")
             sys.exit(0)
         print()
