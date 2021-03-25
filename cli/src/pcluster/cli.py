@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
 
 import errno
 import json
@@ -29,6 +28,7 @@ import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
 import pcluster.createami as createami
 import pcluster.utils as utils
+from pcluster.constants import SUPPORTED_OSS
 from pcluster.dcv.connect import dcv_connect
 
 LOGGER = logging.getLogger(__name__)
@@ -360,8 +360,7 @@ Variables substituted::
         "--os",
         dest="base_ami_os",
         required=True,
-        help="Specifies the OS of the base AMI. "
-        "Valid options are: alinux, ubuntu1604, ubuntu1804, centos7, centos8.",
+        help="Specifies the OS of the base AMI. " "Valid options are: %s." % ", ".join(SUPPORTED_OSS),
     )
     pami.add_argument(
         "-i",

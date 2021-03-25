@@ -8,11 +8,6 @@
 # or in the 'LICENSE.txt' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
-from __future__ import absolute_import, print_function  # isort:skip
-from future import standard_library  # isort:skip
-standard_library.install_aliases()
-# fmt: on
 
 import logging
 import os

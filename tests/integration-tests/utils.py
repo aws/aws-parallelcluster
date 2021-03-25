@@ -23,6 +23,33 @@ from assertpy import assert_that
 from retrying import retry
 
 
+class InstanceTypesData:
+    """Utility class to retrieve instance types information needed for integration tests."""
+
+    # Additional instance types data provided via tests configuration
+    additional_instance_types_data = {}
+
+    @staticmethod
+    def get_instance_info(instance_type, region_name=None):
+        """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
+        if (
+            InstanceTypesData.additional_instance_types_data
+            and instance_type in InstanceTypesData.additional_instance_types_data.keys()
+        ):
+            instance_info = InstanceTypesData.additional_instance_types_data[instance_type]
+        else:
+            try:
+                ec2_client = boto3.client("ec2", region_name=region_name)
+                instance_info = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[
+                    0
+                ]
+            except Exception as exception:
+                logging.error(f"Failed to get instance type info for instance type: {exception}")
+                raise
+
+        return instance_info
+
+
 def retry_if_subprocess_error(exception):
     """Return True if we should retry (in this case when it's a CalledProcessError), False otherwise"""
     return isinstance(exception, subprocess.CalledProcessError)
@@ -334,11 +361,9 @@ def get_vpc_snakecase_value(vpc_stack):
 def get_username_for_os(os):
     """Return username for a given os."""
     usernames = {
-        "alinux": "ec2-user",
         "alinux2": "ec2-user",
         "centos7": "centos",
         "centos8": "centos",
-        "ubuntu1604": "ubuntu",
         "ubuntu1804": "ubuntu",
     }
     return usernames.get(os)
@@ -357,12 +382,7 @@ def remove_keys_from_known_hosts(hostname, host_keys_file, env):
 
 def get_instance_info(instance_type, region_name=None):
     """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
-    try:
-        ec2_client = boto3.client("ec2", region_name=region_name)
-        return ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
-    except Exception as exception:
-        logging.error(f"Failed to get instance type info for instance type: {exception}")
-        raise
+    return InstanceTypesData.get_instance_info(instance_type, region_name)
 
 
 def get_architecture_supported_by_instance_type(instance_type, region_name=None):

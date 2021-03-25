@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 
-from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
+from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSS
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     InstanceTypeInfo,
@@ -39,6 +39,33 @@ from pcluster.utils import (
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
+
+SUPPORTED_REGIONS = [
+    "af-south-1",
+    "ap-east-1",
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "ap-south-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ca-central-1",
+    "cn-north-1",
+    "cn-northwest-1",
+    "eu-central-1",
+    "eu-north-1",
+    "eu-south-1",
+    "eu-west-1",
+    "eu-west-2",
+    "eu-west-3",
+    "me-south-1",
+    "sa-east-1",
+    "us-east-1",
+    "us-east-2",
+    "us-gov-east-1",
+    "us-gov-west-1",
+    "us-west-1",
+    "us-west-2",
+]
 
 DCV_MESSAGES = {
     "warnings": {
@@ -62,7 +89,7 @@ FSX_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": ["centos7", "centos8", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "x86_64": SUPPORTED_OSS,
     "arm64": ["ubuntu1804", "alinux2", "centos8"],
 }
 
@@ -769,6 +796,26 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+def s3_bucket_region_validator(param_key, param_value, pcluster_config):
+    """Validate S3 bucket is in the same region with the cloudformation stack."""
+    errors = []
+    warnings = []
+    s3_client = boto3.client("s3")
+    try:
+        bucket_region = s3_client.get_bucket_location(Bucket=param_value).get("LocationConstraint")
+        # Buckets in Region us-east-1 have a LocationConstraint of null
+        # Example output from get_bucket_location for us-east-1:
+        #   {'ResponseMetadata': {...}, 'LocationConstraint': None}
+        if bucket_region is None:
+            bucket_region = "us-east-1"
+        if bucket_region != pcluster_config.region:
+            errors.append("cluster_resource_bucket must be in the same region of the cluster.")
+    except ClientError as client_error:
+        _process_generic_s3_bucket_error(client_error, param_value, warnings, errors)
+
+    return errors, warnings
+
+
 def _process_generic_s3_bucket_error(client_error, bucket_name, warnings, errors):
     if client_error.response.get("Error").get("Code") == "NoSuchBucket":
         errors.append(
@@ -784,7 +831,7 @@ def _process_generic_s3_bucket_error(client_error, bucket_name, warnings, errors
         )
     else:
         errors.append(
-            "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+            "Unexpected error for S3 bucket '{0}': '{1}'".format(
                 bucket_name, client_error.response.get("Error").get("Message")
             )
         )
@@ -807,24 +854,7 @@ def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
             if s3_bucket_region != pcluster_config.region:
                 errors.append("AutoImport is not supported for cross-region buckets.")
         except ClientError as client_error:
-            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
-                errors.append(
-                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
-            elif client_error.response.get("Error").get("Code") == "AccessDenied":
-                errors.append(
-                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
-            else:
-                errors.append(
-                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
+            _process_generic_s3_bucket_error(client_error, bucket, warnings, errors)
     return errors, warnings
 
 
@@ -1106,19 +1136,6 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def base_os_validator(param_key, param_value, pcluster_config):
-    warnings = []
-
-    eol_2020 = ["alinux"]
-    if param_value in eol_2020:
-        warnings.append(
-            "The operating system you are using ({0}) will reach end-of-life in late 2020. It will be deprecated in "
-            "future releases of ParallelCluster".format(param_value)
-        )
-
-    return [], warnings
-
-
 def tags_validator(param_key, param_value, pcluster_config):
     errors = []
 
@@ -1191,7 +1208,7 @@ def queue_validator(section_key, section_label, pcluster_config):
 
     instance_types = []
     for compute_resource_label in compute_resource_labels:
-        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label)
+        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label.strip())
         if compute_resource:
             instance_type = compute_resource.get_param_value("instance_type")
             if instance_type in instance_types:
@@ -1211,6 +1228,21 @@ def queue_validator(section_key, section_label, pcluster_config):
     if queue_section.get_param_value("enable_efa_gdr") and not queue_section.get_param_value("enable_efa"):
         errors.append("The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'")
 
+    return errors, warnings
+
+
+def queue_compute_type_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+    queue_section = pcluster_config.get_section(section_key, section_label)
+    compute_resource_labels = str(queue_section.get_param_value("compute_resource_settings") or "").split(",")
+
+    for compute_resource_label in compute_resource_labels:
+        # Check that usage class set in queue section is supported by all compute resource instance types
+        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label.strip())
+        if compute_resource:
+            instance_type = compute_resource.get_param_value("instance_type")
+            check_usage_class(instance_type, queue_section.get_param_value("compute_type"), errors, warnings)
     return errors, warnings
 
 
@@ -1272,6 +1304,12 @@ def _get_efa_enabled_instance_types(errors):
             Filters=[{"Name": "network-info.efa-supported", "Values": ["true"]}],
         ):
             instance_types.append(response.get("InstanceType"))
+
+        # Add data from additional instance types
+        for instance_type in InstanceTypeInfo.additional_instance_types_data().keys():
+            instance_type_info = InstanceTypeInfo.init_from_instance_type(instance_type)
+            if instance_type_info.is_efa_supported() and instance_type not in instance_types:
+                instance_types.append(instance_type)
     except ClientError as e:
         errors.append(
             "Failed retrieving efa enabled instance types: {0}".format(e.response.get("Error").get("Message"))
@@ -1601,3 +1639,33 @@ def ebs_volume_throughput_validator(section_key, section_label, pcluster_config)
             )
 
     return errors, warnings
+
+
+def region_validator(section_key, section_label, pcluster_config):
+    errors = []
+    if pcluster_config.region not in SUPPORTED_REGIONS:
+        errors.append("Region '{0}' is not yet officially supported by ParallelCluster".format(pcluster_config.region))
+    return errors, []
+
+
+def cluster_type_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
+    if scheduler != "awsbatch":
+        compute_instance_type = pcluster_config.get_section("cluster").get_param_value("compute_instance_type")
+        check_usage_class(compute_instance_type, param_value, errors, warnings)
+
+    return errors, warnings
+
+
+def check_usage_class(instance_type, usage_class, errors, warnings):
+    supported_usage_classes = InstanceTypeInfo.init_from_instance_type(instance_type).supported_usage_classes()
+
+    if not supported_usage_classes:
+        warnings.append(
+            "Could not check support for usage class '{0}' with instance type '{1}'".format(usage_class, instance_type)
+        )
+    elif usage_class not in supported_usage_classes:
+        errors.append("Usage type '{0}' not supported with instance type '{1}'".format(usage_class, instance_type))

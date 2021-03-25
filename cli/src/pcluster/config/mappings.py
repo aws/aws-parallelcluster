@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from future.moves.collections import OrderedDict
+from collections import OrderedDict
 
 import boto3
 
@@ -30,6 +30,7 @@ from pcluster.config.cfn_param_types import (
     HeadNodeAvailabilityZoneCfnParam,
     HeadNodeInstanceTypeCfnParam,
     IntCfnParam,
+    JsonCfnParam,
     MaintainInitialSizeCfnParam,
     NetworkInterfacesCountCfnParam,
     QueueSizeCfnParam,
@@ -56,7 +57,7 @@ from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     architecture_os_validator,
-    base_os_validator,
+    cluster_type_validator,
     cluster_validator,
     compute_instance_type_validator,
     compute_resource_validator,
@@ -98,8 +99,11 @@ from pcluster.config.validators import (
     intel_hpc_os_validator,
     kms_key_validator,
     maintain_initial_size_validator,
+    queue_compute_type_validator,
     queue_settings_validator,
     queue_validator,
+    region_validator,
+    s3_bucket_region_validator,
     s3_bucket_uri_validator,
     s3_bucket_validator,
     scheduler_validator,
@@ -107,9 +111,15 @@ from pcluster.config.validators import (
     tags_validator,
     url_validator,
 )
-from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
+from pcluster.constants import (
+    CIDR_ALL_IPS,
+    FSX_HDD_THROUGHPUT,
+    FSX_SSD_THROUGHPUT,
+    SUPPORTED_ARCHITECTURES,
+    SUPPORTED_OSS,
+)
 
-CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator]
+CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator, region_validator]
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
 
@@ -316,8 +326,7 @@ EBS = {
     "max_resources": 5,
     "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_size_snapshot_validator,
                    ebs_volume_throughput_validator],
-    "params": OrderedDict([  # Use OrderedDict because the in python 3.5 a dict is not ordered by default, need it in
-        # the test of hit converter
+    "params": OrderedDict([
         ("shared_dir", {
             "allowed_values": ALLOWED_VALUES["file_path"],
             "cfn_param_mapping": "SharedDir",
@@ -680,6 +689,13 @@ COMPUTE_RESOURCE = {
             "visibility": Visibility.PRIVATE,
             "default": 0
         }),
+        ("gpu_type", {
+            "type": JsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": "no_gpu_type"
+        }),
         ("network_interfaces", {
             "type": IntJsonParam,
             # This param is managed automatically
@@ -722,7 +738,7 @@ QUEUE = {
     "type": QueueJsonSection,
     "key": "queue",
     "default_label": "default",
-    "validators": [queue_validator],
+    "validators": [queue_validator, queue_compute_type_validator],
     "max_resources": 5,
     "params": OrderedDict([
         ("compute_type", {
@@ -800,8 +816,8 @@ CLUSTER_COMMON_PARAMS = [
     ("base_os", {
         "type": BaseOSCfnParam,
         "cfn_param_mapping": "BaseOS",
-        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
-        "validators": [base_os_validator, architecture_os_validator],
+        "allowed_values": SUPPORTED_OSS,
+        "validators": [architecture_os_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
@@ -1017,12 +1033,18 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("cluster_resource_bucket", {
         "cfn_param_mapping": "ResourcesS3Bucket",
-        "validators": [s3_bucket_validator],
+        "validators": [s3_bucket_validator, s3_bucket_region_validator],
         "update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET,
     }),
     ("iam_lambda_role", {
         "cfn_param_mapping": "IAMLambdaRoleName",
         "update_policy": UpdatePolicy.SUPPORTED,
+    }),
+    ("instance_types_data", {
+        "type": JsonCfnParam,
+        "default": {},
+        "cfn_param_mapping": "InstanceTypesData",
+        "update_policy": UpdatePolicy.UNSUPPORTED
     }),
 ]
 
@@ -1095,6 +1117,7 @@ CLUSTER_SIT = {
                 "default": "ondemand",
                 "allowed_values": ["ondemand", "spot"],
                 "cfn_param_mapping": "ClusterType",
+                "validators": [cluster_type_validator],
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("spot_price", {

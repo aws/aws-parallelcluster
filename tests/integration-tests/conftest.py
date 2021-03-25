@@ -43,10 +43,12 @@ from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
 from utils import (
+    InstanceTypesData,
     create_s3_bucket,
     delete_s3_bucket,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
+    get_instance_info,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
@@ -86,6 +88,7 @@ def pytest_addoption(parser):
     parser.addoption("--post-install", help="url to post install script")
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
+    parser.addoption("--instance-types-data-file", help="JSON file with additional instance types data")
     parser.addoption(
         "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
     )
@@ -121,6 +124,12 @@ def pytest_configure(config):
     # read tests config file if used
     if config.getoption("tests_config_file", None):
         config.option.tests_config = read_config_file(config.getoption("tests_config_file"))
+
+    # Read instance types data file if used
+    if config.getoption("instance_types_data_file", None):
+        config.option.instance_types_data = _read_json_file(config.getoption("instance_types_data_file"))
+        # Load additional instance types data
+        _set_additional_instance_types_data(config.option.instance_types_data)
 
     # register additional markers
     config.addinivalue_line("markers", "instances(instances_list): run test only against the listed instances.")
@@ -197,6 +206,11 @@ def _log_collected_tests(session):
         with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
             out_f.write("\n".join(collected_tests))
             out_f.write("\n")
+
+
+def _set_additional_instance_types_data(instance_types_data):
+    InstanceTypesData.additional_instance_types_data = instance_types_data
+    logging.info("Additional instance types data loaded: {0}".format(InstanceTypesData.additional_instance_types_data))
 
 
 def pytest_exception_interact(node, call, report):
@@ -363,14 +377,14 @@ def pcluster_config_reader(test_datadir, vpc_stack, region, request):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        add_custom_packages_configs(config_file_path, request, region)
+        inject_additional_config_settings(config_file_path, request, region)
         _enable_sanity_check_if_unset(config_file_path)
         return config_file_path
 
     return _config_renderer
 
 
-def add_custom_packages_configs(cluster_config, request, region):
+def inject_additional_config_settings(cluster_config, request, region):
     config = configparser.ConfigParser()
     config.read(cluster_config)
     cluster_template = "cluster {0}".format(config.get("global", "cluster_template", fallback="default"))
@@ -404,6 +418,11 @@ def add_custom_packages_configs(cluster_config, request, region):
                 extra_json["cluster"] = cluster
     if extra_json:
         config[cluster_template]["extra_json"] = json.dumps(extra_json)
+
+    # Additional instance types data is copied it into config files to make it available at cluster creation
+    instance_types_data = request.config.getoption("instance_types_data", None)
+    if instance_types_data:
+        config[cluster_template]["instance_types_data"] = json.dumps(instance_types_data)
 
     with cluster_config.open(mode="w") as f:
         config.write(f)
@@ -823,6 +842,24 @@ def network_interfaces_count(request, instance, region):
     return network_interfaces_count
 
 
+@pytest.fixture()
+def default_threads_per_core(request, instance, region):
+    """Return the default threads per core for the given instance type."""
+    # NOTE: currently, .metal instances do not contain the DefaultThreadsPerCore
+    #       attribute in their VCpuInfo section. This is a known limitation with the
+    #       ec2 DescribeInstanceTypes API. For these instance types an assumption
+    #       is made that if the instance's supported architectures list includes
+    #       x86_64 then the default is 2, otherwise it's 1.
+    logging.info(f"Getting defaul threads per core for instance type {instance}")
+    instance_type_data = get_instance_info(instance, region)
+    threads_per_core = instance_type_data.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
+    if threads_per_core is None:
+        supported_architectures = instance_type_data.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
+        threads_per_core = 2 if "x86_64" in supported_architectures else 1
+    logging.info(f"Defaul threads per core for instance type {instance} : {threads_per_core}")
+    return threads_per_core
+
+
 @pytest.fixture(scope="session")
 def key_name(request):
     """Return the EC2 key pair name to be used."""
@@ -848,3 +885,12 @@ def pcluster_ami_without_standard_naming(region, os, architecture):
     if ami_id:
         client = boto3.client("ec2", region_name=region)
         client.deregister_image(ImageId=ami_id)
+
+
+def _read_json_file(file):
+    """Read a Json file into a String and raise an exception if the file is invalid."""
+    try:
+        with open(file) as f:
+            return json.load(f)
+    except Exception:
+        logging.exception("Failed when reading json file %s", file)

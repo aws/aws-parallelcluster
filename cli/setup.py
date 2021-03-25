@@ -21,11 +21,10 @@ def readme():
         return f.read()
 
 
-VERSION = "2.10.2"
+VERSION = "2.10.3"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "future>=0.16.0,<=0.18.2",
     "tabulate==0.8.5" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "tabulate>=0.8.2,<=0.8.7",
     "ipaddress>=1.0.22",
     "PyYAML==5.2" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "PyYAML>=5.3.1",
@@ -46,7 +45,7 @@ setup(
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+    python_requires=">=3.6",
     install_requires=REQUIRES,
     entry_points={
         "console_scripts": [
@@ -68,10 +67,7 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

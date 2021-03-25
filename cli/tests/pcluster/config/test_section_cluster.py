@@ -17,6 +17,12 @@ from pcluster.config.mappings import CLUSTER_HIT, CLUSTER_SIT
 from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
 
 
+@pytest.fixture()
+def boto3_stubber_path():
+    """Specify that boto3_mocker should stub calls to boto3 for the pcluster.utils module."""
+    return "pcluster.utils.boto3"
+
+
 @pytest.mark.parametrize(
     "cfn_params_dict, expected_section_dict, expected_section_label",
     [
@@ -125,8 +131,8 @@ def test_sit_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_
             None,
         ),
         (
-            {"cluster default": {"base_os": "alinux"}},
-            {"base_os": "alinux", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
+            {"cluster default": {"base_os": "alinux2"}},
+            {"base_os": "alinux2", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
             None,
         ),
         # invalid value
@@ -181,8 +187,8 @@ def test_sit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
             None,
         ),
         (
-            {"cluster default": {"base_os": "alinux"}},
-            {"base_os": "alinux", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
+            {"cluster default": {"base_os": "alinux2"}},
+            {"base_os": "alinux2", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
             None,
         ),
         # invalid value

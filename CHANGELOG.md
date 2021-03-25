@@ -5,11 +5,42 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 
+- Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+- Add validation for `cluster_type` configuration parameter in `cluster` section
+- Add validation for `compute_type` configuration parameter in `queue` section
+
 **CHANGES**
 
+- Ubuntu 16.04 is no longer supported.
+- Amazon Linux is no longer supported.
+- Upgrade Slurm to version 20.11.4.
+  - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds
+  - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value for all GPU, Type=tesla
 - Make `key_name` parameter optional to support cluster configurations without a key pair. 
-- Remove support for Python 3.4
+- Remove support for Python versions < 3.6.
+- Remove dependency on `future` package and `__future__` module.
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
+- Add sanity check to prevent cluster creation in non officially supported AWS regions 
+
+2.10.3
+------
+**ENHANCEMENTS**
+
+- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2. 
+
+**CHANGES**
+
+- Upgrade EFA installer to version 1.11.2
+  - EFA configuration: efa-config-1.7 (no change)
+  - EFA profile: efa-profile-1.4 (from efa-profile-1.3)
+  - EFA kernel module: efa-1.10.2 (no change)
+  - RDMA core: rdma-core-31.2amzn (no change)
+  - Libfabric: libfabric-1.11.1amzn1.0 (no change)
+  - Open MPI: openmpi40-aws-4.1.0 (no change)
+
+**BUG FIXES**
+
+- Fix issue with ``awsbsub`` command when setting environment variables for the job submission 
 
 2.10.2
 ------
@@ -201,6 +232,12 @@ CHANGELOG
   - Libfabric: ``libfabric-1.10.1amzn1.1`` (no change)
   - Open MPI: ``openmpi40-aws-4.0.3`` (no change)
 - Upgrade Slurm to version 20.02.4.
+- Apply the following changes to Slurm configuration:
+  - Assign a range of 10 ports to Slurmctld in order to better perform with large cluster settings
+  - Configure cloud scheduling logic
+  - Set `ReconfigFlags=KeepPartState`
+  - Set `MessageTimeout=60`
+  - Set `TaskPlugin=task/affinity,task/cgroup` together with `TaskAffinity=no` and `ConstrainCores=yes` in cgroup.conf
 - Upgrade NICE DCV to version 2020.1-9012.
 - Use private IP instead of master node hostname when mounting shared NFS drives.
 - Add new log streams to CloudWatch: chef-client, clustermgtd, computemgtd, slurm_resume, slurm_suspend.

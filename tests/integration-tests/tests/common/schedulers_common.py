@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import os
 import re
 from abc import ABCMeta, abstractmethod
@@ -215,9 +216,8 @@ class SgeCommands(SchedulerCommands):
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(
-        self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None
-    ):  # noqa: D102
+    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None):
+        """Submit job with script."""
         if not additional_files:
             additional_files = []
         if not script_args:
@@ -318,7 +318,8 @@ class SlurmCommands(SchedulerCommands):
         constraint=None,
         other_options=None,
         raise_on_error=True,
-    ):  # noqa: D102
+    ):
+        """Submit job with command."""
         job_submit_command = "--wrap='{0}'".format(command)
 
         return self._submit_batch_job(
@@ -346,7 +347,8 @@ class SlurmCommands(SchedulerCommands):
         other_options=None,
         additional_files=None,
         raise_on_error=True,
-    ):  # noqa: D102
+    ):
+        """Submit job with script."""
         if not additional_files:
             additional_files = []
         if not script_args:
@@ -405,9 +407,41 @@ class SlurmCommands(SchedulerCommands):
         else:
             return self._remote_command_executor.run_remote_command(submission_command, raise_on_error=raise_on_error)
 
+    def _dump_job_output(self, job_info):
+        params = re.split(r"\s+", job_info)
+        stderr = None
+        stdout = None
+        for param in params:
+            match_stderr = re.match(r"StdErr=(.*)?", param)
+            match_stdout = re.match(r"StdOut=(.*)?", param)
+            if match_stderr:
+                stderr = match_stderr.group(1)
+                logging.info("stderr:" + stderr)
+            if match_stdout:
+                stdout = match_stdout.group(1)
+                logging.info("stdout:" + stdout)
+        if stderr is not None or stdout is not None:
+            if stderr == stdout:
+                result = self._remote_command_executor.run_remote_command(f'echo "stderr/stdout:" && cat {stderr}')
+                logging.error(result.stdout)
+            else:
+                if stderr is not None:
+                    stderr_result = self._remote_command_executor.run_remote_command(f'echo "stderr" && cat {stderr}')
+                    logging.error(stderr_result.stdout)
+
+                if stdout is not None:
+                    stdout_result = self._remote_command_executor.run_remote_command(f'echo "stdout" && cat {stdout}')
+                    logging.error(stdout_result.stdout)
+        else:
+            logging.error("Unable to retrieve job output.")
+
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        assert_that(result.stdout).contains("JobState=COMPLETED")
+        try:
+            assert_that(result.stdout).contains("JobState=COMPLETED")
+        except AssertionError:
+            self._dump_job_output(result.stdout)
+            raise
 
     def compute_nodes_count(self, filter_by_partition=None):  # noqa: D102
         return len(self.get_compute_nodes(filter_by_partition))
@@ -470,6 +504,12 @@ class SlurmCommands(SchedulerCommands):
             if filter_by_nodes
             else current_node_states
         )
+
+    def get_node_addr_host(self):
+        """Return a list of nodename, nodeaddr, nodehostname entries."""
+        return self._remote_command_executor.run_remote_command(
+            "/opt/slurm/bin/sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
+        ).stdout.splitlines()
 
     def submit_command_and_assert_job_accepted(self, submit_command_args):
         """Submit a command and assert the job is accepted by scheduler."""

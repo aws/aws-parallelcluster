@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import json
 import os
 import re
 
@@ -26,6 +27,8 @@ from pcluster.config.validators import (
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     LOGFILE_LOGGER,
     architecture_os_validator,
+    check_usage_class,
+    cluster_type_validator,
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
     efa_gdr_validator,
@@ -33,7 +36,10 @@ from pcluster.config.validators import (
     fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
+    queue_compute_type_validator,
     queue_validator,
+    region_validator,
+    s3_bucket_region_validator,
     settings_validator,
 )
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
@@ -273,49 +279,51 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     "region, base_os, scheduler, expected_message",
     [
         # verify awsbatch supported regions
-        ("ap-northeast-3", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
-        ("us-gov-east-1", "alinux", "awsbatch", None),
-        ("us-gov-west-1", "alinux", "awsbatch", None),
-        ("eu-west-1", "alinux", "awsbatch", None),
-        ("us-east-1", "alinux", "awsbatch", None),
-        ("eu-north-1", "alinux", "awsbatch", None),
-        ("cn-north-1", "alinux", "awsbatch", None),
-        ("cn-northwest-1", "alinux", "awsbatch", None),
+        (
+            "ap-northeast-3",
+            "alinux2",
+            "awsbatch",
+            "Region 'ap-northeast-3' is not yet officially supported by ParallelCluster",
+        ),
+        ("us-gov-east-1", "alinux2", "awsbatch", None),
+        ("us-gov-west-1", "alinux2", "awsbatch", None),
+        ("eu-west-1", "alinux2", "awsbatch", None),
+        ("us-east-1", "alinux2", "awsbatch", None),
+        ("eu-north-1", "alinux2", "awsbatch", None),
+        ("cn-north-1", "alinux2", "awsbatch", None),
         ("cn-northwest-1", "alinux2", "awsbatch", None),
-        # verify traditional schedulers are supported in all the regions
-        ("cn-northwest-1", "alinux", "sge", None),
-        ("ap-northeast-3", "alinux", "sge", None),
-        ("cn-northwest-1", "alinux", "slurm", None),
-        ("ap-northeast-3", "alinux", "slurm", None),
-        ("cn-northwest-1", "alinux", "torque", None),
-        ("ap-northeast-3", "alinux", "torque", None),
+        # verify traditional schedulers are supported in all the regions but ap-northeast-3
+        ("cn-northwest-1", "alinux2", "sge", None),
+        ("us-gov-east-1", "alinux2", "sge", None),
+        ("cn-northwest-1", "alinux2", "slurm", None),
+        ("us-gov-east-1", "alinux2", "slurm", None),
+        ("cn-northwest-1", "alinux2", "torque", None),
+        ("us-gov-east-1", "alinux2", "torque", None),
+        (
+            "ap-northeast-3",
+            "alinux2",
+            "sge",
+            "Region 'ap-northeast-3' is not yet officially supported by ParallelCluster",
+        ),
         # verify awsbatch supported OSes
         ("eu-west-1", "centos7", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "centos8", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "ubuntu1604", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "alinux", "awsbatch", None),
         ("eu-west-1", "alinux2", "awsbatch", None),
         # verify sge supports all the OSes
         ("eu-west-1", "centos7", "sge", None),
         ("eu-west-1", "centos8", "sge", None),
-        ("eu-west-1", "ubuntu1604", "sge", None),
         ("eu-west-1", "ubuntu1804", "sge", None),
-        ("eu-west-1", "alinux", "sge", None),
         ("eu-west-1", "alinux2", "sge", None),
         # verify slurm supports all the OSes
         ("eu-west-1", "centos7", "slurm", None),
         ("eu-west-1", "centos8", "slurm", None),
-        ("eu-west-1", "ubuntu1604", "slurm", None),
         ("eu-west-1", "ubuntu1804", "slurm", None),
-        ("eu-west-1", "alinux", "slurm", None),
         ("eu-west-1", "alinux2", "slurm", None),
         # verify torque supports all the OSes
         ("eu-west-1", "centos7", "torque", None),
         ("eu-west-1", "centos8", "torque", None),
-        ("eu-west-1", "ubuntu1604", "torque", None),
         ("eu-west-1", "ubuntu1804", "torque", None),
-        ("eu-west-1", "alinux", "torque", None),
         ("eu-west-1", "alinux2", "torque", None),
     ],
 )
@@ -543,6 +551,105 @@ def test_s3_validator(mocker, boto3_stubber, config, num_calls, bucket, expected
     if bucket:
         _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
     utils.assert_param_validator(mocker, config, expected_message)
+
+
+@pytest.mark.parametrize(
+    "bucket, region, error_code, expected_message, client_error",
+    [
+        (
+            "bucket",
+            "us-east-1",
+            None,
+            None,
+            False,
+        ),
+        (
+            "bucket",
+            "us-west-1",
+            None,
+            None,
+            False,
+        ),
+        (
+            "bucket",
+            "eu-west-1",
+            None,
+            "cluster_resource_bucket must be in the same region of the cluster.",
+            False,
+        ),
+        (
+            "not_existed_bucket",
+            "af-south-1",
+            "NoSuchBucket",
+            "The S3 bucket 'not_existed_bucket' does not appear to exist",
+            True,
+        ),
+        (
+            "access_denied_bucket",
+            "af-south-1",
+            "AccessDenied",
+            "You do not have access to the S3 bucket 'access_denied_bucket'",
+            True,
+        ),
+        (
+            "unexpected_error_bucket",
+            "af-south-1",
+            None,
+            "Unexpected error for S3 bucket",
+            True,
+        ),
+    ],
+)
+def test_s3_bucket_region_validator(mocker, boto3_stubber, error_code, bucket, region, client_error, expected_message):
+    os.environ["AWS_DEFAULT_REGION"] = "us-west-1" if region == "us-west-1" else "us-east-1"
+    if region == "us-east-1":
+        # The actual response when region is us-east-1 is
+        # {'ResponseMetadata': {...}, 'LocationConstraint': None}
+        # But botocore doesn't support mock None response. we mock the return as following
+        get_bucket_location_response = {
+            "ResponseMetadata": {},
+        }
+    else:
+        get_bucket_location_response = {
+            "ResponseMetadata": {},
+            "LocationConstraint": region,
+        }
+    mocked_requests = []
+
+    if error_code is None:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params={"Bucket": bucket},
+                generate_error=client_error is True,
+            )
+        )
+    else:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params={"Bucket": bucket},
+                generate_error=error_code is not None,
+                error_code=error_code,
+            )
+        )
+
+    boto3_stubber("s3", mocked_requests)
+    config = {
+        "cluster default": {"cluster_resource_bucket": bucket},
+    }
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    errors, warnings = s3_bucket_region_validator("cluster_resource_bucket", bucket, pcluster_config)
+
+    if expected_message:
+        assert_that(errors[0]).contains(expected_message)
+    else:
+        assert_that(errors).is_empty()
 
 
 def test_ec2_vpc_id_validator(mocker, boto3_stubber):
@@ -1325,12 +1432,10 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
     [
         ({"enable_intel_hpc_platform": "true", "base_os": "centos7"}, None),
         ({"enable_intel_hpc_platform": "true", "base_os": "centos8"}, None),
-        ({"enable_intel_hpc_platform": "true", "base_os": "alinux"}, "it is required to set the 'base_os'"),
         ({"enable_intel_hpc_platform": "true", "base_os": "alinux2"}, "it is required to set the 'base_os'"),
-        ({"enable_intel_hpc_platform": "true", "base_os": "ubuntu1604"}, "it is required to set the 'base_os'"),
         ({"enable_intel_hpc_platform": "true", "base_os": "ubuntu1804"}, "it is required to set the 'base_os'"),
         # intel hpc disabled, you can use any os
-        ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
+        ({"enable_intel_hpc_platform": "false", "base_os": "alinux2"}, None),
     ],
 )
 def test_intel_hpc_os_validator(mocker, section_dict, expected_message):
@@ -1416,7 +1521,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
             {
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
-                "base_os": "alinux",
+                "base_os": "alinux2",
                 "scheduler": "awsbatch",
             },
             "it is required to set the 'scheduler'",
@@ -1444,6 +1549,26 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
             None,
             None,
         ),
+        # Additional instance type
+        (
+            {
+                "enable_efa": "compute",
+                "compute_instance_type": "additional-instance-type",
+                "base_os": "alinux2",
+                "scheduler": "sge",
+                "placement_group": "DYNAMIC",
+                "instance_types_data": json.dumps(
+                    {
+                        "additional-instance-type": {
+                            "InstanceType": "additional-instance-type",
+                            "NetworkInfo": {"EfaSupported": True},
+                        }
+                    }
+                ),
+            },
+            None,
+            None,
+        ),
     ],
 )
 def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_error, expected_warning):
@@ -1457,7 +1582,21 @@ def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_err
         ]
         boto3_stubber("ec2", mocked_requests)
     config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
+
+    # Patch to prevent instance type validators to fail with additional instance type
+    extra_patches = {
+        "pcluster.config.validators.get_supported_instance_types": ["t2.large", "additional-instance-type"],
+    }
+
+    utils.assert_param_validator(
+        mocker,
+        config_parser_dict,
+        expected_error,
+        capsys,
+        expected_warning,
+        extra_patches=extra_patches,
+        use_mock_instance_type_info=False,
+    )
 
 
 @pytest.mark.parametrize(
@@ -1626,8 +1765,6 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "base_os, instance_type, access_from, expected_error, expected_warning",
     [
-        ("alinux", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
-        ("ubuntu1604", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
         ("centos7", "t2.medium", None, None, None),
         ("centos8", "t2.medium", None, None, None),
         ("ubuntu1804", "t2.medium", None, None, None),
@@ -1671,11 +1808,9 @@ def test_dcv_enabled_validator(
     "architecture, base_os, expected_message",
     [
         # Supported combinations
-        ("x86_64", "alinux", None),
         ("x86_64", "alinux2", None),
         ("x86_64", "centos7", None),
         ("x86_64", "centos8", None),
-        ("x86_64", "ubuntu1604", None),
         ("x86_64", "ubuntu1804", None),
         ("arm64", "ubuntu1804", None),
         ("arm64", "alinux2", None),
@@ -1691,20 +1826,6 @@ def test_dcv_enabled_validator(
         (
             "arm64",
             "centos7",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "arm64",
-            "alinux",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "arm64",
-            "ubuntu1604",
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),
@@ -1741,22 +1862,6 @@ def test_fsx_architecture_os_validator(mocker, architecture, base_os, expected_m
 def test_maintain_initial_size_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "base_os, expected_warning",
-    [
-        ("alinux2", None),
-        ("centos7", None),
-        ("centos8", None),
-        ("ubuntu1604", None),
-        ("ubuntu1804", None),
-        ("alinux", "alinux.*will reach end-of-life in late 2020"),
-    ],
-)
-def test_base_os_validator(mocker, capsys, base_os, expected_warning):
-    config_parser_dict = {"cluster default": {"base_os": base_os}}
-    utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_warning)
 
 
 @pytest.mark.parametrize(
@@ -2184,18 +2289,14 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
     "base_os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux", "x86_64", []),
         ("alinux2", "x86_64", []),
         ("centos7", "x86_64", []),
         ("centos8", "x86_64", []),
-        ("ubuntu1604", "x86_64", []),
         ("ubuntu1804", "x86_64", []),
         # Only a subset of OSes supported for arm64
-        ("alinux", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("alinux2", "arm64", []),
         ("centos7", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("centos8", "arm64", []),
-        ("ubuntu1604", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("ubuntu1804", "arm64", []),
     ],
 )
@@ -2782,3 +2883,115 @@ def test_efa_os_arch_validator(mocker, cluster_dict, architecture, expected_erro
 def test_ebs_volume_throughput_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "region, expected_message",
+    [
+        ("invalid-region", "Region 'invalid-region' is not yet officially supported "),
+        ("us-east-1", None),
+    ],
+)
+def test_region_validator(mocker, region, expected_message):
+    pcluster_config = utils.get_mocked_pcluster_config(mocker)
+    pcluster_config.region = region
+
+    errors, warnings = region_validator("aws", None, pcluster_config)
+    if expected_message:
+        assert_that(len(errors)).is_greater_than(0)
+        assert_that(errors[0]).matches(expected_message)
+    else:
+        assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
+    "usage_class, supported_usage_classes, expected_error_message, expected_warning_message",
+    [
+        ("ondemand", ["ondemand", "spot"], None, None),
+        ("spot", ["ondemand", "spot"], None, None),
+        ("ondemand", ["ondemand"], None, None),
+        ("spot", ["spot"], None, None),
+        ("spot", [], None, "Could not check support for usage class 'spot' with instance type 'instance-type'"),
+        ("ondemand", [], None, "Could not check support for usage class 'ondemand' with instance type 'instance-type'"),
+        ("spot", ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'", None),
+        ("ondemand", ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'", None),
+    ],
+)
+def test_check_usage_class(
+    mocker, usage_class, supported_usage_classes, expected_error_message, expected_warning_message
+):
+    # This test checks the common logic triggered from cluster_type_validator and queue_compute_type_validator.
+    instance_type_info_mock = mocker.MagicMock()
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type", return_value=instance_type_info_mock
+    )
+    instance_type_info_mock.supported_usage_classes.return_value = supported_usage_classes
+
+    errors = []
+    warnings = []
+    check_usage_class("instance-type", usage_class, errors, warnings)
+
+    if expected_error_message:
+        assert_that(errors).contains(expected_error_message)
+    else:
+        assert_that(errors).is_empty()
+
+    if expected_warning_message:
+        assert_that(warnings).contains(expected_warning_message)
+    else:
+        assert_that(warnings).is_empty()
+
+
+@pytest.mark.parametrize(
+    "scheduler, expected_usage_class_check", [("sge", True), ("torque", True), ("slurm", True), ("awsbatch", False)]
+)
+def test_cluster_type_validator(mocker, scheduler, expected_usage_class_check):
+    # Usage class validation logic is tested in `test_check_usage_class`.
+    # This test only makes sure that the logic is triggered from validator.
+    mock = mocker.patch("pcluster.config.validators.check_usage_class", return_value=None)
+    cluster_dict = {"compute_instance_type": "t2.micro", "scheduler": scheduler}
+    config_parser_dict = {"cluster default": cluster_dict}
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    errors, warnings = cluster_type_validator("compute_type", "spot", pcluster_config)
+    if expected_usage_class_check:
+        mock.assert_called_with("t2.micro", "spot", [], [])
+    else:
+        mock.assert_not_called()
+
+    assert_that(errors).is_equal_to([])
+    assert_that(warnings).is_equal_to([])
+
+
+@pytest.mark.parametrize("compute_type", [("ondemand"), ("spot")])
+def test_queue_compute_type_validator(mocker, compute_type):
+    # Usage class validation logic is tested in `test_check_usage_class`.
+    # This test only makes sure that the logic is triggered from validator.
+    mock = mocker.patch("pcluster.config.validators.check_usage_class", return_value=None)
+
+    config_parser_dict = {
+        "cluster default": {
+            "queue_settings": "q1",
+        },
+        "queue q1": {"compute_resource_settings": "q1cr1, q1cr2", "compute_type": compute_type},
+        "compute_resource q1cr1": {"instance_type": "q1cr1_instance_type"},
+        "compute_resource q1cr2": {"instance_type": "q1cr2_instance_type"},
+    }
+
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    errors, warnings = queue_compute_type_validator("queue", "q1", pcluster_config)
+    mock.assert_has_calls(
+        [
+            mocker.call("q1cr1_instance_type", compute_type, [], []),
+            mocker.call("q1cr2_instance_type", compute_type, [], []),
+        ],
+        any_order=True,
+    )
+
+    assert_that(errors).is_equal_to([])
+    assert_that(warnings).is_equal_to([])

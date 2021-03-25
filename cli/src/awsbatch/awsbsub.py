@@ -11,7 +11,6 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-from __future__ import print_function
 
 import os
 import pipes
@@ -283,7 +282,7 @@ def _get_env_and_upload(s3_uploader, env, env_blacklist, env_file, log):
     key_value_list = _get_env_key_value_list(env, log, env_blacklist)
     try:
         # copy env to temporary file
-        with tempfile.NamedTemporaryFile() as dst:
+        with tempfile.NamedTemporaryFile(mode="w") as dst:
             dst.write("\n".join(key_value_list) + "\n")
             dst.flush()
             s3_uploader.put_file(dst.name, env_file)

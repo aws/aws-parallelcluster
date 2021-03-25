@@ -8,15 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
-from __future__ import absolute_import, print_function  # isort:skip
 
 import functools
-
-from future import standard_library  # isort:skip
-standard_library.install_aliases()
-# fmt: on
-
 import hashlib
 import json
 import logging
@@ -318,9 +311,11 @@ def get_supported_instance_types():
     """Return the list of instance types available in the given region."""
     ec2_client = boto3.client("ec2")
     try:
-        return [
+        supported_instance_types = set(
             offering.get("InstanceType") for offering in paginate_boto3(ec2_client.describe_instance_type_offerings)
-        ]
+        )
+        supported_instance_types.update(InstanceTypeInfo.additional_instance_types_data().keys())
+        return list(supported_instance_types)
     except ClientError as client_err:
         error(
             "Error when getting supported instance types via DescribeInstanceTypeOfferings: {0}".format(
@@ -560,9 +555,9 @@ def get_supported_os_for_scheduler(scheduler):
     :param scheduler: the scheduler for which we want to know the supported os
     :return: an array of strings of the supported OSes
     """
-    oses = ["alinux", "alinux2"]
+    oses = ["alinux2"]
     if scheduler != "awsbatch":
-        oses.extend(["centos7", "centos8", "ubuntu1604", "ubuntu1804"])
+        oses.extend(["centos7", "centos8", "ubuntu1804"])
     return list(oses)
 
 
@@ -570,7 +565,7 @@ def get_supported_os_for_architecture(architecture):
     """Return list of supported OSes for the specified architecture."""
     oses = ["alinux2", "ubuntu1804", "centos8"]
     if architecture == "x86_64":
-        oses.extend(["centos7", "alinux", "ubuntu1604"])
+        oses.extend(["centos7"])
     return oses
 
 
@@ -1240,10 +1235,33 @@ class Cache:
 
 
 class InstanceTypeInfo:
-    """Data object wrapping the result of a describe_instance_types call."""
+    """
+    Data object wrapping the result of a describe_instance_types call.
+
+    TODO: This class stores additional instance types data globally. In the future we should have a separate instance
+    per cluster configuration.
+    """
+
+    # Additional data used to describe instance types
+    __additional_instance_types_data = {}
 
     def __init__(self, instance_type_data):
         self.instance_type_data = instance_type_data
+
+    @staticmethod
+    def load_additional_instance_types_data(instance_types_data):
+        """Load additional data to describe instance types."""
+        InstanceTypeInfo.__additional_instance_types_data = instance_types_data if instance_types_data else {}
+
+    @staticmethod
+    def clear_additional_instance_types_data():
+        """Clear the additional data used to describe instance types."""
+        InstanceTypeInfo.__additional_instance_types_data = {}
+
+    @staticmethod
+    def additional_instance_types_data():
+        """Get the additional data used to describe instance types."""
+        return InstanceTypeInfo.__additional_instance_types_data
 
     @staticmethod
     @Cache.cached
@@ -1255,10 +1273,14 @@ class InstanceTypeInfo:
         The function exits with error if exit_on_error is set to True.
         """
         try:
-            ec2_client = boto3.client("ec2")
-            return InstanceTypeInfo(
-                ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
-            )
+            if instance_type in InstanceTypeInfo.additional_instance_types_data():
+                instance_type_data = InstanceTypeInfo.additional_instance_types_data()[instance_type]
+            else:
+                ec2_client = boto3.client("ec2")
+                instance_type_data = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get(
+                    "InstanceTypes"
+                )[0]
+            return InstanceTypeInfo(instance_type_data)
         except ClientError as e:
             error(
                 "Failed when retrieving instance type data for instance {0}: {1}".format(
@@ -1285,6 +1307,12 @@ class InstanceTypeInfo:
                     )
 
         return gpu_count
+
+    def gpu_type(self):
+        """Return name or type of the GPU for the instance."""
+        gpu_info = self.instance_type_data.get("GpuInfo", None)
+        # Remove space and change to all lowercase for name
+        return "no_gpu_type" if not gpu_info else gpu_info.get("Gpus")[0].get("Name").replace(" ", "").lower()
 
     def max_network_interface_count(self):
         """Max number of NICs for the instance."""
@@ -1321,3 +1349,12 @@ class InstanceTypeInfo:
     def is_efa_supported(self):
         """Check whether EFA is supported."""
         return self.instance_type_data.get("NetworkInfo").get("EfaSupported")
+
+    def supported_usage_classes(self):
+        """Return the list supported usage classes."""
+        supported_classes = list(self.instance_type_data.get("SupportedUsageClasses", []))
+        if "on-demand" in supported_classes:
+            # Replace official AWS with internal naming convention
+            supported_classes.remove("on-demand")
+            supported_classes.append("ondemand")
+        return supported_classes

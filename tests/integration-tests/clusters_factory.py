@@ -177,7 +177,7 @@ class Cluster:
     def os(self):
         """Return the os used for the cluster."""
         cluster_template = self.config.get("global", "cluster_template", fallback="default")
-        return self.config.get("cluster {0}".format(cluster_template), "base_os", fallback="alinux")
+        return self.config.get("cluster {0}".format(cluster_template), "base_os", fallback="alinux2")
 
     @property
     def asg(self):
