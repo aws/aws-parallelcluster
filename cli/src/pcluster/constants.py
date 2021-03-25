@@ -62,6 +62,10 @@ CW_DASHBOARD_ENABLED_DEFAULT = True
 CW_LOGS_ENABLED_DEFAULT = True
 
 PCLUSTER_IMAGE_NAME_TAG = "parallelcluster:image_name"
+PCLUSTER_S3_IMAGE_DIR_TAG = "parallelcluster:s3_image_dir"
+PCLUSTER_S3_BUCKET_TAG = "parallelcluster:s3_bucket"
+
+PCLUSTER_S3_BUCKET_VERSION = "v1"
 
 SUPPORTED_REGIONS = [
     "af-south-1",

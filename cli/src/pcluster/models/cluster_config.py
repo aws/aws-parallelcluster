@@ -33,7 +33,7 @@ from pcluster.constants import (
     MAX_STORAGE_COUNT,
 )
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
-from pcluster.utils import delete_s3_artifacts, delete_s3_bucket, get_partition, get_region
+from pcluster.utils import get_partition, get_region
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
@@ -1359,31 +1359,3 @@ class SlurmClusterConfig(BaseClusterConfig):
                     # FIXME: head_node.architecture vs compute_resource.architecture?
                     architecture=self.head_node.architecture,
                 )
-
-
-class ClusterBucket:
-    """Represent the cluster s3 bucket configuration."""
-
-    def __init__(
-        self,
-        name: str,
-        artifact_directory: str,
-        remove_on_deletion: bool,
-    ):
-        super().__init__()
-        self.name = name
-        self.artifact_directory = artifact_directory
-        self.remove_on_deletion = remove_on_deletion
-
-    def delete(self):
-        """Cleanup S3 bucket and/or artifact directory."""
-        LOGGER.debug(
-            "Cleaning up S3 resources bucket_name=%s, artifact_directory=%s, remove_bucket=%s",
-            self.name,
-            self.artifact_directory,
-            self.remove_on_deletion,
-        )
-        if self.artifact_directory:
-            delete_s3_artifacts(self.name, self.artifact_directory)
-        if self.remove_on_deletion:
-            delete_s3_bucket(self.name)

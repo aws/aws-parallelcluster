@@ -80,6 +80,42 @@ class S3Client(Boto3Client):
                 error_code=client_error.response["Error"]["Code"],
             )
 
+    @AWSExceptionHandler.handle_client_exception
+    def create_bucket(self, bucket_name, region):
+        """Create S3 bucket."""
+        if region != "us-east-1":
+            self._client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
+        else:
+            self._client.create_bucket(Bucket=bucket_name)
+
+    @AWSExceptionHandler.handle_client_exception
+    def put_bucket_versioning(self, bucket_name, configuration):
+        """Set bucket versioning property."""
+        self._client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration=configuration)
+
+    @AWSExceptionHandler.handle_client_exception
+    def put_bucket_encryption(self, bucket_name, configuration):
+        """Set bucket encryption property."""
+        self._client.put_bucket_encryption(
+            Bucket=bucket_name,
+            ServerSideEncryptionConfiguration=configuration,
+        )
+
+    @AWSExceptionHandler.handle_client_exception
+    def put_bucket_policy(self, bucket_name, policy):
+        """Set bucket policy property."""
+        self._client.put_bucket_policy(Bucket=bucket_name, Policy=policy)
+
+    @AWSExceptionHandler.handle_client_exception
+    def upload_fileobj(self, bucket_name, file_obj, key):
+        """Upload file-like object to S3 bucket."""
+        self._client.upload_fileobj(Fileobj=file_obj, Bucket=bucket_name, Key=key)
+
+    @AWSExceptionHandler.handle_client_exception
+    def upload_file(self, bucket_name, file_path, key):
+        """Upload file to S3 bucket."""
+        self._client.upload_file(Filename=file_path, Bucket=bucket_name, Key=key)
+
 
 def _process_s3_bucket_error(client_error, bucket_name):
     error_message = client_error.response.get("Error").get("Message")

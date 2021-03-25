@@ -16,6 +16,8 @@ from common.boto3.efs import EfsClient
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
 from common.boto3.s3 import S3Client
+from common.boto3.s3_resource import S3Resource
+from common.boto3.sts import StsClient
 
 
 class AWSApi:
@@ -39,6 +41,8 @@ class AWSApi:
         self.s3 = S3Client()
         self.kms = KmsClient()
         self.imagebuilder = ImageBuilderClient()
+        self.sts = StsClient()
+        self.s3_resource = S3Resource()
 
     @staticmethod
     def instance():
