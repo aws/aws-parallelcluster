@@ -38,7 +38,7 @@ def handler(event, context):
     url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
-            connection = HTTPSConnection(host)  # nosec
+            connection = HTTPSConnection(host)  # nosec nosemgrep
             connection.request(
                 method="PUT", url=url, body=data, headers={"Content-Type": "", "content-length": str(len(data))}
             )

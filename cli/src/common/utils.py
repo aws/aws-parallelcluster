@@ -20,7 +20,7 @@ import yaml
 
 def download_file(url):
     """Download file from given url."""
-    response = urlopen(url)  # nosec
+    response = urlopen(url)  # nosec nosemgrep
     return response.read().decode("utf-8")
 
 

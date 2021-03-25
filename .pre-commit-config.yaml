@@ -24,7 +24,7 @@ repos:
     hooks:
       - id: flake8
         additional_dependencies: [flake8-docstrings, flake8-bugbear, flake8-mypy, flake8-colors, pep8-naming]
-        entry: bash -c 'cd cli && flake8 "$@"'
+        entry: bash -c 'cd cli && flake8 $(for arg in $@; do echo -n "../$arg " ; done)'
 
 
   - repo: https://github.com/timothycrosley/isort
