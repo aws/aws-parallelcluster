@@ -24,6 +24,14 @@ class AWSClientError(Exception):
         if error_code:
             message += f" Error code: {error_code}"
         super().__init__(message)
+        self.error_code = error_code
+
+
+class ImageNotFoundError(AWSClientError):
+    """Error during describe image if image is not found."""
+
+    def __init__(self, function_name: str):
+        super().__init__(function_name=function_name, message="No image matching the search criteria found")
 
 
 class AWSExceptionHandler:
@@ -69,3 +77,10 @@ class Boto3Client(ABC):
         for page in paginator.paginate(**kwargs).result_key_iters():
             for result in page:
                 yield result
+
+
+class Boto3Resource(ABC):
+    """Abstract Boto3 resource."""
+
+    def __init__(self, resource_name: str):
+        self._resource = boto3.resource(resource_name)

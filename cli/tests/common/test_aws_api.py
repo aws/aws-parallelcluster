@@ -15,7 +15,7 @@
 import pytest
 from assertpy import assert_that
 
-from common.boto3.common import AWSClientError
+from common.boto3.common import AWSClientError, ImageNotFoundError
 from tests.common.dummy_aws_api import _DummyAWSApi, mock_aws_api
 
 FAKE_STACK_NAME = "parallelcluster-name"
@@ -44,7 +44,7 @@ def test_stack_exists(mocker, response, is_error):
     "response,is_error",
     [
         (
-            AWSClientError(function_name="describe_images", message="No image matching the search criteria found"),
+            ImageNotFoundError(function_name="describe_images"),
             True,
         ),
         ({"Images": [{"ImageId": FAKE_IMAGE_ID}]}, False),

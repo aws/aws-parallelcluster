@@ -72,107 +72,6 @@ def generate_random_prefix():
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
 
 
-def create_s3_bucket(bucket_name):
-    """
-    Create a new S3 bucket.
-
-    :param bucket_name: name of the S3 bucket to create
-    :param region: aws region
-    :raise ClientError if bucket creation fails
-    """
-    s3_client = boto3.client("s3")
-    """ :type : pyboto3.s3 """
-    region = get_region()
-    if region != "us-east-1":
-        s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
-    else:
-        s3_client.create_bucket(Bucket=bucket_name)
-
-    try:
-        _configure_s3_bucket(bucket_name)
-    except Exception as e:
-        LOGGER.error("Failed when configuring cluster S3 bucket with error %s", e)
-        delete_s3_bucket(bucket_name)
-        raise
-
-
-def check_s3_bucket_exists(bucket_name):
-    """
-    Check that an S3 bucket exists.
-
-    :param bucket_name: name of the S3 bucket to check
-    """
-    s3_client = boto3.client("s3")
-    """ :type : pyboto3.s3 """
-    try:
-        s3_client.head_bucket(Bucket=bucket_name)
-    except Exception as e:
-        LOGGER.debug("Cannot retrieve S3 bucket %s: %s", bucket_name, e)
-        raise
-
-
-def _configure_s3_bucket(bucket_name):
-    s3_client = boto3.client("s3")
-    s3_client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"})
-    s3_client.put_bucket_encryption(
-        Bucket=bucket_name,
-        ServerSideEncryptionConfiguration={
-            "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
-        },
-    )
-    deny_http_policy = (
-        '{{"Id":"DenyHTTP","Version":"2012-10-17","Statement":[{{"Sid":"AllowSSLRequestsOnly","Action":"s3:*",'
-        '"Effect":"Deny","Resource":["arn:{partition}:s3:::{bucket_name}","arn:{partition}:s3:::{bucket_name}/*"],'
-        '"Condition":{{"Bool":{{"aws:SecureTransport":"false"}}}},"Principal":"*"}}]}}'
-    ).format(bucket_name=bucket_name, partition=get_partition())
-    s3_client.put_bucket_policy(Bucket=bucket_name, Policy=deny_http_policy)
-
-
-def delete_s3_bucket(bucket_name):
-    """
-    Delete an S3 bucket together with all stored objects.
-
-    :param bucket_name: name of the S3 bucket to delete
-    """
-    try:
-        LOGGER.info("Deleting bucket %s", bucket_name)
-        bucket = boto3.resource("s3").Bucket(bucket_name)
-        bucket.objects.all().delete()
-        bucket.object_versions.delete()
-        bucket.delete()
-    except boto3.client("s3").exceptions.NoSuchBucket:
-        pass
-    except ClientError as client_err:
-        LOGGER.warning(
-            "Failed to delete S3 bucket %s with error %s. Please delete it manually.",
-            bucket_name,
-            client_err.response.get("Error").get("Message"),
-        )
-
-
-def delete_s3_artifacts(bucket_name, artifact_directory):
-    """
-    Delete cluster artifacts under {bucket_name}/{artifact_directory}.
-
-    :param bucket_name: name of the S3 bucket to delete
-    :param artifact_directory: root directory for all cluster artifacts
-    """
-    try:
-        LOGGER.info("Deleting artifacts under %s/%s", bucket_name, artifact_directory)
-        bucket = boto3.resource("s3").Bucket(bucket_name)
-        bucket.objects.filter(Prefix="%s/" % artifact_directory).delete()
-        bucket.object_versions.filter(Prefix="%s/" % artifact_directory).delete()
-    except boto3.client("s3").exceptions.NoSuchBucket:
-        pass
-    except ClientError as client_err:
-        LOGGER.warning(
-            "Failed to delete cluster S3 artifact under %s/%s with error %s. Please delete them manually.",
-            bucket_name,
-            artifact_directory,
-            client_err.response.get("Error").get("Message"),
-        )
-
-
 def _add_file_to_zip(zip_file, path, arcname):
     """
     Add the file at path under the name arcname to the archive represented by zip_file.
@@ -187,7 +86,7 @@ def _add_file_to_zip(zip_file, path, arcname):
         zip_file.writestr(zinfo, input_file.read())
 
 
-def _zip_dir(path):
+def zip_dir(path):
     """
     Create a zip archive containing all files and dirs rooted in path.
 
@@ -206,24 +105,6 @@ def _zip_dir(path):
                 )
     file_out.seek(0)
     return file_out
-
-
-def upload_resources_artifacts(bucket_name, artifact_directory, root):
-    """
-    Upload to the specified S3 bucket the content of the directory rooted in root path.
-
-    All dirs contained in root dir will be uploaded as zip files to $bucket_name/$dir_name/artifacts.zip.
-    All files contained in root dir will be uploaded to $bucket_name.
-
-    :param bucket_name: name of the S3 bucket where files are uploaded
-    :param root: root directory containing the resources to upload.
-    """
-    bucket = boto3.resource("s3").Bucket(bucket_name)
-    for res in os.listdir(root):
-        if os.path.isdir(os.path.join(root, res)):
-            bucket.upload_fileobj(_zip_dir(os.path.join(root, res)), "%s/%s/artifacts.zip" % (artifact_directory, res))
-        elif os.path.isfile(os.path.join(root, res)):
-            bucket.upload_file(os.path.join(root, res), "%s/%s" % (artifact_directory, res))
 
 
 def get_supported_os_for_scheduler(scheduler):
