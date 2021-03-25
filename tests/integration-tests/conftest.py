@@ -75,7 +75,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
     )
-    parser.addoption("--createami-cookbook-git-ref", help="Git ref of the cookbook used to bake the AMI")
+    parser.addoption("--cookbook-git-ref", help="Git ref of the cookbook used to bake the AMI")
     parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--template-url", help="url to a custom cfn template")
@@ -385,11 +385,11 @@ def add_custom_packages_configs(cluster_config, request, region):
 
     if config_content["Image"].get("CustomAmi") is None:
         additional_filters = []
-        if request.config.getoption("createami_cookbook_git_ref"):
+        if request.config.getoption("cookbook_git_ref"):
             additional_filters.append(
                 {
                     "Name": "tag:parallelcluster_cookbook_ref",
-                    "Values": [request.config.getoption("createami_cookbook_git_ref")],
+                    "Values": [request.config.getoption("cookbook_git_ref")],
                 }
             )
         # FixMe: the code below is a temporary solution to pass AMIs from build process.
