@@ -196,6 +196,8 @@ class ClusterStack(StackInfo):
         """Wait for the given stack to be finished updating."""
         while self.updated_status() == "UPDATE_IN_PROGRESS":
             time.sleep(5)
+        while self.updated_status() == "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS":
+            time.sleep(2)
 
     def get_default_user(self, os: str):
         """Get the default user for the given os."""
