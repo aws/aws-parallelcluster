@@ -507,7 +507,7 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
 class SshSchema(BaseSchema):
     """Represent the schema of the SSH."""
 
-    key_name = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    key_name = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
     allowed_ips = fields.Str(validate=get_field_validator("cidr"), update_policy=UpdatePolicy.SUPPORTED)
 
     @post_load
@@ -761,7 +761,7 @@ class HeadNodeSchema(BaseSchema):
     instance_type = fields.Str(required=True, update_policy=UpdatePolicy.UNSUPPORTED)
     disable_simultaneous_multithreading = fields.Bool(update_policy=UpdatePolicy.UNSUPPORTED)
     networking = fields.Nested(HeadNodeNetworkingSchema, required=True, update_policy=UpdatePolicy.UNSUPPORTED)
-    ssh = fields.Nested(SshSchema, required=True, update_policy=UpdatePolicy.SUPPORTED)
+    ssh = fields.Nested(SshSchema, update_policy=UpdatePolicy.SUPPORTED)
     local_storage = fields.Nested(HeadNodeStorageSchema, update_policy=UpdatePolicy.SUPPORTED)
     dcv = fields.Nested(DcvSchema, update_policy=UpdatePolicy.UNSUPPORTED)
     custom_actions = fields.Nested(

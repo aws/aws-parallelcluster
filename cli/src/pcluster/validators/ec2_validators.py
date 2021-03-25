@@ -87,7 +87,7 @@ class AdditionalIamPolicyValidator(Validator):  # TODO add test
         return [policy_name_to_arn("CloudWatchAgentServerPolicy"), policy_name_to_arn("AWSBatchFullAccess")]
 
 
-class KeyPairValidator(Validator):  # TODO add test
+class KeyPairValidator(Validator):
     """
     EC2 key pair validator.
 
@@ -95,10 +95,17 @@ class KeyPairValidator(Validator):  # TODO add test
     """
 
     def _validate(self, key_name: str):
-        try:
-            AWSApi.instance().ec2.describe_key_pair(key_name)
-        except AWSClientError as e:
-            self._add_failure(str(e), FailureLevel.ERROR)
+        if key_name:
+            try:
+                AWSApi.instance().ec2.describe_key_pair(key_name)
+            except AWSClientError as e:
+                self._add_failure(str(e), FailureLevel.ERROR)
+        else:
+            self._add_failure(
+                "If you do not specify a key pair, you can't connect to the instance unless you choose an AMI "
+                "that is configured to allow users another way to log in",
+                FailureLevel.WARNING,
+            )
 
 
 class PlacementGroupIdValidator(Validator):  # TODO: add tests

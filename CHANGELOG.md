@@ -30,6 +30,7 @@ CHANGELOG
 
 **CHANGES**
 
+- Make `key_name` parameter optional to support cluster configurations without a key pair. 
 - Remove support for Python 3.4
 
 **BUG FIXES**

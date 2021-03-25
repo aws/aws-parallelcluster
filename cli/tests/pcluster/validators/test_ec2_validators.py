@@ -12,7 +12,11 @@
 import pytest
 
 from common.boto3.common import AWSClientError
-from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator, InstanceTypeValidator
+from pcluster.validators.ec2_validators import (
+    InstanceTypeBaseAMICompatibleValidator,
+    InstanceTypeValidator,
+    KeyPairValidator,
+)
 from tests.common.dummy_aws_api import DummyAWSApi
 from tests.pcluster.validators.utils import assert_failure_messages
 
@@ -154,4 +158,19 @@ def test_instance_type_base_ami_compatible_validator(
     )
     mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=instance_architectures)
     actual_failures = InstanceTypeBaseAMICompatibleValidator().execute(instance_type=instance_type, image=parent_image)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "key_pair, side_effect, expected_message",
+    [
+        ("key-name", None, None),
+        (None, None, "If you do not specify a key pair"),
+        ("c5.xlarge", AWSClientError(function_name="describe_key_pair", message="does not exist"), "does not exist"),
+    ],
+)
+def test_key_pair_validator(mocker, key_pair, side_effect, expected_message):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.boto3.ec2.Ec2Client.describe_key_pair", return_value=key_pair, side_effect=side_effect)
+    actual_failures = KeyPairValidator().execute(key_name=key_pair)
     assert_failure_messages(actual_failures, expected_message)
