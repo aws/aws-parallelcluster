@@ -1,8 +1,7 @@
-# See https://semgrep.dev/explore to learn about what the checks do.
 name: DepCheck
 on: [pull_request]
 jobs:
-  semgrep:
+  depcheck:
     runs-on: ubuntu-latest
     name: DepCheck
     steps:

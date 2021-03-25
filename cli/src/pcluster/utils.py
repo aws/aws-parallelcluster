@@ -387,7 +387,7 @@ def check_if_latest_version():
     """Check if the current package version is the latest one."""
     try:
         pypi_url = "https://pypi.python.org/pypi/aws-parallelcluster/json"
-        latest = json.loads(urllib.request.urlopen(pypi_url).read())["info"]["version"]  # nosec
+        latest = json.loads(urllib.request.urlopen(pypi_url).read())["info"]["version"]  # nosec nosemgrep
         if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
             print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
     except Exception:  # nosec
