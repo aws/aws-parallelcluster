@@ -22,3 +22,7 @@ Monitoring:
     CloudWatch:
       Enabled: {{ enable }}
       RetentionInDays: {{ retention_days }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
