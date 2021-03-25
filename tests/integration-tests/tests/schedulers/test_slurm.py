@@ -554,16 +554,16 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     """
     logging.info("Testing no stray process left behind after mpirun job is terminated")
     slurm_commands = SlurmCommands(remote_command_executor)
-    # Assert initial condition
-    assert_that(slurm_commands.compute_nodes_count()).is_equal_to(2)
 
     # Submit mpi_job, which runs Intel MPI benchmarks with intelmpi
     # Leaving 1 vcpu on each node idle so that the process check job can run while mpi_job is running
     result = slurm_commands.submit_script(str(test_datadir / "mpi_job.sh"))
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
-    # Check that mpi processes are started
-    _assert_job_state(slurm_commands, job_id, job_state="RUNNING")
+    # Wait for compute node to start and check that mpi processes are started
+    retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
+        slurm_commands, job_id, job_state="RUNNING"
+    )
     _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=False)
     slurm_commands.cancel_job(job_id)
 
@@ -729,7 +729,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type):
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 20.02.4")
+    assert_that(version).is_equal_to("slurm 20.11.4")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
