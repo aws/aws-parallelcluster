@@ -1780,7 +1780,7 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
         ("alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
         ("ubuntu1804", "m6g.xlarge", None, None, None),
         ("alinux2", "m6g.xlarge", None, None, None),
-        ("centos7", "m6g.xlarge", None, "Please double check the 'base_os' configuration parameter", None),
+        ("centos7", "m6g.xlarge", None, None, None),
         ("centos8", "m6g.xlarge", None, None, None),
     ],
 )
@@ -1825,13 +1825,6 @@ def test_dcv_enabled_validator(
             "alinux2",
             FSX_MESSAGES["errors"]["unsupported_architecture"].format(
                 supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
-            ),
-        ),
-        (
-            "arm64",
-            "centos7",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),
         ),
     ],
@@ -2299,7 +2292,7 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         ("ubuntu1804", "x86_64", []),
         # Only a subset of OSes supported for arm64
         ("alinux2", "arm64", []),
-        ("centos7", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("centos7", "arm64", []),
         ("centos8", "arm64", []),
         ("ubuntu1804", "arm64", []),
     ],
