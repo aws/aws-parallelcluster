@@ -17,6 +17,7 @@ import string
 from os import environ
 from pathlib import Path
 
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -36,7 +37,10 @@ NODE_ROLE_NAMES = {HEAD_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME}
 
 def _get_log_group_name_for_cluster(cluster_name):
     """Return the name of the log group to be created for the given cluster if CloudWatch logging is enabled."""
-    return "/aws/parallelcluster/{0}".format(cluster_name)
+    logs_client = boto3.client("logs")
+    log_groups = logs_client.describe_log_groups(logGroupNamePrefix=f"/aws/parallelcluster/{cluster_name}")["logGroups"]
+    assert_that(log_groups).is_length(1)
+    return log_groups[0]["logGroupName"]
 
 
 def _dump_json(obj, indent=4):
