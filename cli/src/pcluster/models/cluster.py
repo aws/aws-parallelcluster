@@ -492,6 +492,7 @@ class Cluster:
         try:
             self.stack.delete(keep_logs)
             self._terminate_nodes()
+            self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
         except Exception as e:
             self._terminate_nodes()
             raise ClusterActionError(f"Cluster {self.name} did not delete successfully. {e}")
