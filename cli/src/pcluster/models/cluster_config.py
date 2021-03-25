@@ -411,10 +411,10 @@ class QueueNetworking(_BaseNetworking):
 
 
 class Ssh(Resource):
-    """Represent the SSH configuration for a node (or the entire cluster)."""
+    """Represent the SSH configuration for a node."""
 
-    def __init__(self, key_name: str, allowed_ips: str = None):
-        super().__init__()
+    def __init__(self, key_name: str = None, allowed_ips: str = None, **kwargs):
+        super().__init__(**kwargs)
         self.key_name = Resource.init_param(key_name)
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
@@ -651,7 +651,7 @@ class HeadNode(Resource):
         self,
         instance_type: str,
         networking: HeadNodeNetworking,
-        ssh: Ssh,
+        ssh: Ssh = None,
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
         dcv: Dcv = None,
@@ -664,7 +664,7 @@ class HeadNode(Resource):
             disable_simultaneous_multithreading, default=False
         )
         self.networking = networking
-        self.ssh = ssh
+        self.ssh = ssh or Ssh(implied=True)
         self.local_storage = local_storage
         self.dcv = dcv
         self.custom_actions = custom_actions
