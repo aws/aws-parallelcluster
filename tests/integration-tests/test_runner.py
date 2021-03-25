@@ -53,7 +53,7 @@ TEST_DEFAULTS = {
     "custom_node_url": None,
     "custom_cookbook_url": None,
     "createami_custom_cookbook_url": None,
-    "createami_cookbook_git_ref": None,
+    "cookbook_git_ref": None,
     "createami_custom_node_url": None,
     "custom_template_url": None,
     "custom_awsbatchcli_url": None,
@@ -215,9 +215,9 @@ def _init_argparser():
         type=_is_url,
     )
     custom_group.add_argument(
-        "--createami-cookbook-git-ref",
+        "--cookbook-git-ref",
         help="Git ref of the custom cookbook used for the createami command.",
-        default=TEST_DEFAULTS.get("--createami-cookbook-git-ref"),
+        default=TEST_DEFAULTS.get("--cookbook-git-ref"),
     )
     custom_group.add_argument(
         "--createami-custom-node-url",
@@ -439,8 +439,8 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.createami_custom_cookbook_url:
         pytest_args.extend(["--createami-custom-chef-cookbook", args.createami_custom_cookbook_url])
 
-    if args.createami_cookbook_git_ref:
-        pytest_args.extend(["--createami-cookbook-git-ref", args.createami_cookbook_git_ref])
+    if args.cookbook_git_ref:
+        pytest_args.extend(["--cookbook-git-ref", args.cookbook_git_ref])
 
     if args.createami_custom_node_url:
         pytest_args.extend(["--createami-custom-node-package", args.createami_custom_node_url])
