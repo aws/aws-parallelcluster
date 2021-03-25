@@ -17,10 +17,12 @@ from typing import List
 
 from common.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster.models.common import BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
+from pcluster.utils import get_region
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
+from pcluster.validators.s3_validators import S3BucketRegionValidator, S3BucketValidator
 
 # ---------------------- Image ---------------------- #
 
@@ -136,11 +138,13 @@ class ImageBuilderConfig(Resource):
         build: Build,
         image: Image = None,
         dev_settings: ImagebuilderDevSettings = None,
+        custom_s3_bucket: str = None,
     ):
         super().__init__()
         self.image = image
         self.build = build
         self.dev_settings = dev_settings
+        self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
 
     def _validate(self):
         # Volume size validator only validates specified volume size
@@ -155,6 +159,10 @@ class ImageBuilderConfig(Resource):
                 volume_size=self.image.root_volume.size,
                 image=self.build.parent_image,
             )
+
+        if self.custom_s3_bucket:
+            self._execute_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
+            self._execute_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=get_region())
 
 
 # ------------ Attributes class used in imagebuilder resources ----------- #

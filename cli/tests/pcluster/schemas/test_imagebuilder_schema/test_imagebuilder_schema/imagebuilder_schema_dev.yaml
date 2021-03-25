@@ -44,3 +44,5 @@ DevSettings:
     LaunchPermission: |
       { "UserIds": ["123456789012", "345678901234"] }
   TerminateInstanceOnFailure: True
+
+CustomS3Bucket: bucket-name

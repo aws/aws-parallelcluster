@@ -136,7 +136,7 @@ def dummy_slurm_cluster_config(mocker):
     cluster = _DummySlurmClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
-    cluster.cluster_s3_bucket = "s3://dummy-s3-bucket"
+    cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
     cluster.additional_resources = "https://additional.template.url"
     cluster.config_version = "1.0"
     cluster.iam = ClusterIam()
@@ -167,7 +167,7 @@ def dummy_awsbatch_cluster_config(mocker):
     cluster = _DummyAwsbatchClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
-    cluster.cluster_s3_bucket = "s3://dummy-s3-bucket"
+    cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
     cluster.additional_resources = "https://additional.template.url"
     cluster.config_version = "1.0"
     cluster.iam = ClusterIam()

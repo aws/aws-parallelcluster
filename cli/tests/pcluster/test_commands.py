@@ -30,7 +30,7 @@ def _mock_cluster(mocker, scheduler, bucket_name=None):
     else:
         cluster.config = dummy_awsbatch_cluster_config(mocker)
 
-    cluster.config.cluster_s3_bucket = bucket_name
+    cluster.config.custom_s3_bucket = bucket_name
     return cluster
 
 

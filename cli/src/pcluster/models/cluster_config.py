@@ -834,7 +834,7 @@ class BaseClusterConfig(Resource):
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
         iam: ClusterIam = None,
-        cluster_s3_bucket: str = None,
+        custom_s3_bucket: str = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
     ):
@@ -847,7 +847,7 @@ class BaseClusterConfig(Resource):
         self.additional_packages = additional_packages
         self.tags = tags
         self.iam = iam
-        self.cluster_s3_bucket = Resource.init_param(cluster_s3_bucket)
+        self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
         self._bucket = None
         self.additional_resources = Resource.init_param(additional_resources)
         self.dev_settings = dev_settings
@@ -890,9 +890,9 @@ class BaseClusterConfig(Resource):
                 IntelHpcArchitectureValidator,
                 architecture=self.head_node.architecture,
             )
-        if self.cluster_s3_bucket:
-            self._execute_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
-            self._execute_validator(S3BucketRegionValidator, bucket=self.cluster_s3_bucket, region=self.region)
+        if self.custom_s3_bucket:
+            self._execute_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
+            self._execute_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
 
     def _register_storage_validators(self):
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}

@@ -323,10 +323,10 @@ class Cluster:
         If no bucket specified, create a bucket associated to the given stack.
         Created bucket needs to be removed on cluster deletion.
         """
-        if self.config.cluster_s3_bucket:
+        if self.config.custom_s3_bucket:
             # Use user-provided bucket
             # Do not remove this bucket on deletion, but cleanup artifact directory
-            name = self.config.cluster_s3_bucket
+            name = self.config.custom_s3_bucket
             remove_on_deletion = False
             try:
                 check_s3_bucket_exists(name)
@@ -337,7 +337,7 @@ class Cluster:
             # Create 1 bucket per cluster named "parallelcluster-{random_string}" if bucket is not provided
             # This bucket needs to be removed on cluster deletion
             name = generate_random_name_with_prefix("parallelcluster")
-            # self.cluster_s3_bucket = name
+            # self.custom_s3_bucket = name
             remove_on_deletion = True
             LOGGER.debug("Creating S3 bucket for cluster resources, named %s", name)
             try:

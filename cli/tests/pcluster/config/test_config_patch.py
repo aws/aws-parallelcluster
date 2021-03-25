@@ -406,17 +406,17 @@ def test_patch_check_cluster_resource_bucket(
     if expected_error_row:
         error_message_row = [
             [],
-            "ClusterS3Bucket",
+            "CustomS3Bucket",
             old_bucket_name,
             new_bucket_name,
             "ACTION NEEDED",
             (
-                "'ClusterS3Bucket' parameter is a read only parameter that cannot be updated. "
+                "'CustomS3Bucket' parameter is a read only parameter that cannot be updated. "
                 "New value '{0}' will be ignored and old value '{1}' will be used if you force the update.".format(
                     new_bucket_name, old_bucket_name
                 )
             ),
-            f"Restore the value of parameter 'ClusterS3Bucket' to '{old_bucket_name}'",
+            f"Restore the value of parameter 'CustomS3Bucket' to '{old_bucket_name}'",
         ]
         expected_message_rows.append(error_message_row)
     src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "some_old_role"}
