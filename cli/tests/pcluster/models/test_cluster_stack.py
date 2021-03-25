@@ -15,6 +15,7 @@
 import json
 
 import pytest
+import yaml
 from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
@@ -47,30 +48,47 @@ def test_get_stack_template(mocker, template_body, error_message):
         with pytest.raises(ClusterActionError, match=error_message):
             _ = cluster_stack.template
     else:
-        assert_that(cluster_stack.template).is_equal_to(response)
+        assert_that(cluster_stack.template).is_equal_to(yaml.load(response))
 
 
 @pytest.mark.parametrize(
     "stack_statuses",
     [
-        ["UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "UPDATE_COMPLETE"],
-        ["UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "anything other than UPDATE_IN_PROGRESS"],
-        ["UPDATE_COMPLETE"],
+        [
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_COMPLETE",
+            "UPDATE_COMPLETE",
+        ],
+        [
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "anything other than UPDATE_IN_PROGRESS",
+            "anything other than UPDATE_IN_PROGRESS",
+        ],
+        [
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
+            "UPDATE_COMPLETE",
+        ],
+        ["UPDATE_COMPLETE", "UPDATE_COMPLETE"],
     ],
 )
 def test_wait_for_stack_update(mocker, stack_statuses):
     """
     Verify that ClusterStack._wait_for_update behaves as expected.
 
-    _wait_for_update should call updated_status until the StackStatus is anything besides UPDATE_IN_PROGRESS,
+    _wait_for_update should call updated_status until the StackStatus is anything besides UPDATE_IN_PROGRESS and
+    UPDATE_COMPLETE_CLEANUP_IN_PROGRESS.
     use that to get expected call count for updated_status
     """
-    expected_call_count = 0
-    for status_idx, status in enumerate(stack_statuses):
-        if status != "UPDATE_IN_PROGRESS":
-            expected_call_count = status_idx + 1
-            break
-
+    expected_call_count = len(stack_statuses)
     cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
 
     updated_status_mock = mocker.patch.object(cluster_stack, "updated_status", side_effect=stack_statuses)
@@ -114,7 +132,7 @@ def test_update_stack_template(mocker, error_message):
     wait_for_update_mock = mocker.patch.object(cluster_stack, "_wait_for_update")
 
     if error_message is None or "no updates are to be performed" in error_message.lower():
-        cluster_stack._update_template()
+        cluster_stack._update_template(template_body)
         if error_message is None or "no updates are to be performed" not in error_message.lower():
             assert_that(wait_for_update_mock.called).is_true()
         else:

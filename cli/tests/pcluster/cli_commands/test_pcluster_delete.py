@@ -31,6 +31,7 @@ def get_fake_pdelete_args(cluster_name="cluster_name", config_file=None, nowait=
 def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
     """Verify that Cluster.delete behaves as expected."""
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    mocker.patch("common.boto3.cfn.CfnClient.describe_stack")
     mocker.patch("common.boto3.cfn.CfnClient.delete_stack")
     cluster = dummy_cluster()
     persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster.stack, "_persist_cloudwatch_log_groups")
