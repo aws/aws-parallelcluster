@@ -20,7 +20,7 @@ Scheduling:
         CustomActions:
           - Script: s3://{{ bucket_name }}/post_install.sh
         ComputeResources:
-          - Name: default
+          - Name: compute-i1
             InstanceType: {{ instance }}
         Networking:
           SubnetIds:
