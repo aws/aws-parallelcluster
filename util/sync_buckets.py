@@ -125,7 +125,7 @@ def _parse_args():
 
 def _get_s3_object_metadata(s3_url):
     req = urllib.request.Request(url=s3_url, method="HEAD")
-    response = urllib.request.urlopen(req)  # nosec
+    response = urllib.request.urlopen(req)  # nosec nosemgrep
     assert response.status == 200  # nosec
     metadata = {}
     metadata["version_id"] = response.headers.get("x-amz-version-id")
@@ -176,7 +176,7 @@ def _check_file_integrity(file, checksum_file, algorithm):
 
 def _download_file(url, file_path):
     logging.info("Downloading file %s and saving it to %s", url, file_path)
-    urllib.request.urlretrieve(url, file_path)  # nosec
+    urllib.request.urlretrieve(url, file_path)  # nosec nosemgrep
     logging.info("Validating size of downloaded file")
     metadata = _get_s3_object_metadata(url)
     downloaded_file_size = os.stat(file_path).st_size

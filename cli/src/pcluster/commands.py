@@ -522,7 +522,7 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
             # - The args passed to the remote command are sanitized.
             # - The default command to which these args is known.
             # - Users have full control over any customization of the command to which args are passed.
-            os.system(cmd)  # nosec
+            os.system(cmd)  # nosec nosemgrep
         else:
             LOGGER.info(log_message)
     except KeyboardInterrupt:
