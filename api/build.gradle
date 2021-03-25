@@ -1,0 +1,63 @@
+plugins {
+    id("org.openapi.generator") version "5.0.0"
+}
+
+openApiValidate {
+    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.json".toString()
+}
+
+task generatePythonServer(
+        type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask,
+        dependsOn: ['buildSmithyModel', 'openApiValidate']
+) {
+    description "Generate a Python server using Open API Tools Generator."
+    group "ParallelCluster API"
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    generatorName = "python-flask"
+    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.json".toString()
+    outputDir = "$projectDir/generated/python-server".toString()
+    configOptions = [
+            disallowAdditionalPropertiesIfNotPresent: "false"
+    ]
+}
+
+task generatePythonClient(
+        type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask,
+        dependsOn: ['buildSmithyModel', 'openApiValidate']
+) {
+    description "Generate a Python client using Open API Tools Generator."
+    group "ParallelCluster API"
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    generatorName = "python"
+    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.json".toString()
+    outputDir = "$projectDir/generated/python-client".toString()
+}
+
+task buildSmithyModel(type:Exec) {
+    description "Build Smithy model and generate the OpenAPI spec file"
+    group "ParallelCluster API"
+    workingDir "$projectDir/spec"
+    commandLine "./build-model.sh"
+}
+
+task swaggerUI(
+        type:Exec,
+        dependsOn: ['buildSmithyModel', 'openApiValidate']
+) {
+    description "Run a Docker container hosting a Swagger UI with the ParallelCluster API specs."
+    group "ParallelCluster API"
+    workingDir "$projectDir/spec"
+    commandLine "./run-swagger-ui.sh"
+}
+
+task redoc(
+        type:Exec,
+        dependsOn: ['buildSmithyModel', 'openApiValidate']
+) {
+    description "Generate a standalone html page with the redoc documentation of the API"
+    group "ParallelCluster API"
+    workingDir "$projectDir/spec"
+    commandLine "./generate-redoc-bundle.sh"
+}

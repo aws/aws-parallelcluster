@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "plugins": {
+    "openapi": {
+      "service": "parallelcluster#ParallelCluster",
+      "apiGatewayType": "REST",
+      "protocol": "aws.protocols#restJson1",
+      "tags": true,
+      "defaultTimestampFormat": "date-time"
+    }
+  }
+}
