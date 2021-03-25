@@ -81,7 +81,7 @@ class ClusterStack(StackInfo):
     def template(self):
         """Return the template body of the stack."""
         try:
-            return AWSApi.instance().cfn.get_stack_template(self.name)
+            return yaml.safe_load(AWSApi.instance().cfn.get_stack_template(self.name))
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to retrieve template for stack {self.name}. {e}")
 
