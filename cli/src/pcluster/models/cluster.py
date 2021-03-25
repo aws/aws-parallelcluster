@@ -175,17 +175,18 @@ class ClusterStack(StackInfo):
 
     def _persist_stack_resources(self, keys):
         """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
+        template = self.template
         for key in keys:
-            self.template["Resources"][key]["DeletionPolicy"] = "Retain"
+            template["Resources"][key]["DeletionPolicy"] = "Retain"
         try:
-            self._update_template()
+            self._update_template(template)
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
 
-    def _update_template(self):
-        """Update template of the running stack according to self.template."""
+    def _update_template(self, template):
+        """Update template of the running stack according to updated template."""
         try:
-            AWSApi.instance().cfn.update_stack(self.name, self.template, self._params)
+            AWSApi.instance().cfn.update_stack(self.name, template, self._params)
             self._wait_for_update()
         except AWSClientError as e:
             if "no updates are to be performed" in str(e).lower():
