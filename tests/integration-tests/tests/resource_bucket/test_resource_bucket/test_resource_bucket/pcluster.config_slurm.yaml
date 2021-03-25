@@ -1,6 +1,6 @@
 Image:
   Os: {{ os }}
-ClusterS3Bucket: {{ resource_bucket }}
+CustomS3Bucket: {{ resource_bucket }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:

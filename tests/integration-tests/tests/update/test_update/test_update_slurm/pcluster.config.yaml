@@ -5,7 +5,7 @@ Tags:
     Value: value3
   - Key: key2
     Value: value2
-ClusterS3Bucket: {{ resource_bucket }}
+CustomS3Bucket: {{ resource_bucket }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:

@@ -131,7 +131,7 @@ Tags:
     Value: String
   - Key: two
     Value: two22
-#ClusterS3Bucket: String
+#CustomS3Bucket: String
 #AdditionalResources: String  # https://template.url
 #DevSettings:
 #  ClusterTemplate: String

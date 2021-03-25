@@ -26,5 +26,5 @@ SharedStorage:
     Ebs:
       VolumeType: gp2
 {% if cluster_resource_bucket %}
-ClusterS3Bucket: {{ cluster_resource_bucket }}
+CustomS3Bucket: {{ cluster_resource_bucket }}
 {% endif %}
