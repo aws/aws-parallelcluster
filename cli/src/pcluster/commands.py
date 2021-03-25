@@ -20,6 +20,7 @@ import sys
 import time
 from builtins import str
 
+from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
