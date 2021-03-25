@@ -312,7 +312,7 @@ def status(args):  # noqa: C901 FIXME!!!
         sys.exit(0)
 
 
-def delete(args):
+def delete(args):  # noqa: C901
     """Delete cluster described by cluster_name."""
     LOGGER.info("Deleting: %s", args.cluster_name)
     LOGGER.debug("CLI args: %s", str(args))
@@ -338,6 +338,14 @@ def delete(args):
                     ).ljust(80)
                     sys.stdout.write("\r%s" % resource_status)
                     sys.stdout.flush()
+                elif isinstance(result, ApiFailure):
+                    # If stack is already deleted
+                    if f"Cluster {args.cluster_name} doesn't exist." in result.message:
+                        LOGGER.warning(f"\nCluster {args.cluster_name} has already been deleted or does not exist.")
+                        sys.exit(0)
+                    LOGGER.critical(result.message)
+                    sys.stdout.flush()
+                    sys.exit(1)
                 else:
                     utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
 
@@ -349,6 +357,13 @@ def delete(args):
             sys.stdout.flush()
         if result.stack_status == "DELETE_FAILED":
             LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", args.cluster_name)
+    except ClientError as e:
+        if e.response.get("Error").get("Message").endswith("doesn't exist"):
+            LOGGER.warning(f"\nCluster {args.cluster_name} has already been deleted or does not exist.")
+            sys.exit(0)
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.stdout.flush()
+        sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
