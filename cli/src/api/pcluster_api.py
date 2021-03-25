@@ -237,7 +237,7 @@ class PclusterApi:
             # Generate model from imagebuilder config dict
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
-            imagebuilder = ImageBuilder(image_name, imagebuilder_config)
+            imagebuilder = ImageBuilder(image_name=image_name, config=imagebuilder_config)
             imagebuilder.create(disable_rollback)
             return ImageInfo(imagebuilder)
         except ImageBuilderActionError as e:

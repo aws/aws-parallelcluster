@@ -19,6 +19,7 @@ from aws_cdk import core
 
 from common.utils import load_yaml_dict
 from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket
+from pcluster.models.common import S3Bucket
 from pcluster.models.imagebuilder_config import ImageBuilderConfig
 from pcluster.templates.cluster_stack import ClusterCdkStack
 from pcluster.templates.imagebuilder_stack import ImageBuilderCdkStack
@@ -40,12 +41,12 @@ class CDKTemplateBuilder:
         return generated_template
 
     @staticmethod
-    def build_imagebuilder_template(imagebuild: ImageBuilderConfig, image_name: str):
+    def build_imagebuilder_template(imagebuild: ImageBuilderConfig, image_name: str, bucket: S3Bucket):
         """Build template for the given imagebuilder and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "imagebuilder"
             app = core.App(outdir=str(tempdir))
-            ImageBuilderCdkStack(app, output_file, imagebuild, image_name)
+            ImageBuilderCdkStack(app, output_file, imagebuild, image_name, bucket)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 
