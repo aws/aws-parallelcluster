@@ -176,7 +176,7 @@ class ImageBuilderSchema(BaseSchema):
     dev_settings = fields.Nested(ImagebuilderDevSettingsSchema)
     custom_s3_bucket = fields.Str()
 
-    @post_load()
-    def make_resource(self, data, **kwargs):
+    @post_load(pass_original=True)
+    def make_resource(self, data, original_data, **kwargs):
         """Generate resource."""
-        return ImageBuilderConfig(**data)
+        return ImageBuilderConfig(source_config=original_data, **data)

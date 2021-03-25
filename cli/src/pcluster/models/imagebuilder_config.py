@@ -139,12 +139,14 @@ class ImageBuilderConfig(Resource):
         image: Image = None,
         dev_settings: ImagebuilderDevSettings = None,
         custom_s3_bucket: str = None,
+        source_config: str = None
     ):
         super().__init__()
         self.image = image
         self.build = build
         self.dev_settings = dev_settings
         self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
+        self.source_config = source_config
 
     def _validate(self):
         # Volume size validator only validates specified volume size
