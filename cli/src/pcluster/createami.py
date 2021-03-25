@@ -59,7 +59,7 @@ def _get_cookbook_version(template_url, tmpdir):
     tmp_template_file = os.path.join(tmpdir, "aws-parallelcluster-template.json")
     try:
         LOGGER.info("Template: %s", template_url)
-        urlretrieve(url=template_url, filename=tmp_template_file)  # nosec
+        urlretrieve(url=template_url, filename=tmp_template_file)  # nosec nosemgrep
 
         with open(tmp_template_file) as cfn_file:
             cfn_data = json.load(cfn_file)
@@ -84,7 +84,7 @@ def _get_cookbook_dir(region, template_url, args, tmpdir):
         cookbook_url = _get_cookbook_url(region, template_url, args, tmpdir)
         LOGGER.info("Cookbook: %s", cookbook_url)
 
-        urlretrieve(url=cookbook_url, filename=tmp_cookbook_archive)  # nosec
+        urlretrieve(url=cookbook_url, filename=tmp_cookbook_archive)  # nosec nosemgrep
         tar = tarfile.open(tmp_cookbook_archive)
         cookbook_archive_root = tar.firstmember.path
         tar.extractall(path=tmpdir)
@@ -124,7 +124,7 @@ def _get_post_install_script_dir(post_install_script_url, tmp_dir):
             )
 
             if urlparse(post_install_script_url).scheme == "https":
-                urlretrieve(post_install_script_url, filename=tmp_post_install_script_path)  # nosec
+                urlretrieve(post_install_script_url, filename=tmp_post_install_script_path)  # nosec nosemgrep
             elif urlparse(post_install_script_url).scheme == "s3":
                 output = urlparse(post_install_script_url)
                 boto3.client("s3").download_file(output.netloc, output.path.lstrip("/"), tmp_post_install_script_path)

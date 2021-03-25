@@ -739,7 +739,7 @@ def check_if_latest_version():
     """Check if the current package version is the latest one."""
     try:
         pypi_url = "https://pypi.python.org/pypi/aws-parallelcluster/json"
-        latest = json.loads(urllib.request.urlopen(pypi_url).read())["info"]["version"]  # nosec
+        latest = json.loads(urllib.request.urlopen(pypi_url).read())["info"]["version"]  # nosec nosemgrep
         if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
             print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
     except Exception:  # nosec
@@ -1095,7 +1095,7 @@ def read_remote_file(url):
             bucket, key = match.group(1), match.group(2)
             file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
         else:
-            with urllib.request.urlopen(url) as f:  # nosec
+            with urllib.request.urlopen(url) as f:  # nosec nosemgrep
                 file_contents = f.read().decode("utf-8")
         return file_contents
     except Exception as e:
@@ -1112,7 +1112,7 @@ def render_template(template_str, params_dict, tags, config_version=None):
     """
     try:
         environment = Environment(loader=BaseLoader, autoescape=True)
-        environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()  # nosec
+        environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()  # nosec nosemgrep
         environment.filters["bool"] = lambda value: value.lower() == "true"
         template = environment.from_string(template_str)
         output_from_parsed_template = template.render(config=params_dict, config_version=config_version, tags=tags)
