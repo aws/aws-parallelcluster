@@ -25,7 +25,7 @@ from configparser import ConfigParser, NoOptionError, NoSectionError
 from tabulate import tabulate
 
 from awsbatch.utils import fail, get_region_by_stack_id, hide_keys
-from pcluster.config.pcluster_config import default_config_file_path
+from pcluster.utils import default_config_file_path
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
 

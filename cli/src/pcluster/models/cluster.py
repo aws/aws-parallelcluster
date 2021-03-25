@@ -37,7 +37,6 @@ from pcluster.utils import (
     create_s3_bucket,
     generate_random_name_with_prefix,
     get_installed_version,
-    get_stack_name,
     grouper,
     upload_resources_artifacts,
 )
@@ -260,7 +259,7 @@ class Cluster:
     @property
     def stack_name(self):
         """Return stack name."""
-        return get_stack_name(self.name)
+        return PCLUSTER_STACK_PREFIX + self.name
 
     @property
     def status(self):

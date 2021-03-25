@@ -1,0 +1,29 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Slurm:
+    Settings:
+      ScaledownIdletime: {{ scaledown_idletime }}
+    Queues:
+      - Name: ondemand1
+        Networking:
+          SubnetId: {{ private_subnet_id }}
+        ComputeResources:
+          - Name: compute-resource-11
+            InstanceType: c5.large
+          - Name: compute-resource-12
+            InstanceType: {{ instance }}
+            MinCount: 2   # FIXME expecting 3 initial nodes and a min count of 2
+      - Name: ondemand2
+        ComputeResources:
+          - Name: compute-resource-21
+            InstanceType: c5.large
+          - Name: compute-resource-22
+            InstanceType: {{ instance }}
+            MinCount: 2

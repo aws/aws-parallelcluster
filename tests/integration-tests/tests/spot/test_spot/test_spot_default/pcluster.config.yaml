@@ -12,7 +12,7 @@ Scheduling:
       - Name: compute
         ComputeType: SPOT
         ComputeResources:
-          - Name: default
+          - Name: compute-i1
             InstanceType: {{ instance }}
             MinCount: {{ min_count }}
         Networking:

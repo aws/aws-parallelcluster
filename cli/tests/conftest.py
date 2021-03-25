@@ -19,20 +19,6 @@ def clear_env():
         del os.environ["AWS_DEFAULT_REGION"]
 
 
-@pytest.fixture(autouse=True)
-def mock_default_instance(mocker, request):
-    """
-    Mock get_default_instance_type for all tests.
-
-    To disable the mock for certain tests, add annotation `@pytest.mark.nomockdefaultinstance` to the tests.
-    To disable the mock for an entire file, declare global var `pytestmark = pytest.mark.noassertnopendingresponses`
-    """
-    if "nomockdefaultinstance" in request.keywords:
-        # skip mocking
-        return
-    mocker.patch("pcluster.config.cfn_param_types.get_default_instance_type", return_value="t2.micro")
-
-
 @pytest.fixture
 def failed_with_message(capsys):
     """Assert that the command exited with a specific error message."""

@@ -12,7 +12,7 @@ Scheduling:
     Queues:
       - Name: compute
         ComputeResources:
-          - Name: default
+          - Name: compute-i1
             InstanceType: {{ instance }}
         Networking:
           SubnetIds:

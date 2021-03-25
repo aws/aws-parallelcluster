@@ -71,7 +71,6 @@ setup(
     entry_points={
         "console_scripts": [
             "pcluster = pcluster.cli:main",
-            "pcluster-config = pcluster_config.cli:main",
             "awsbqueues = awsbatch.awsbqueues:main",
             "awsbhosts = awsbatch.awsbhosts:main",
             "awsbstat = awsbatch.awsbstat:main",
@@ -82,7 +81,6 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
-    package_data={"": ["src/examples/config"]},
     long_description=readme(),
     classifiers=[
         "Development Status :: 5 - Production/Stable",

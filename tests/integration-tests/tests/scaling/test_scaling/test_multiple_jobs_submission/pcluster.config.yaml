@@ -1,0 +1,20 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Settings:
+      ScaledownIdletime: {{ scaledown_idletime }}
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            InstanceType: {{ instance }}
+        Networking:
+          SubnetIds:
+            - {{ public_subnet_id }}
