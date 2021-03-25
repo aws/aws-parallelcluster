@@ -30,7 +30,8 @@ from common.imagebuilder_utils import (
     InstanceRole,
 )
 from common.utils import get_url_scheme, load_yaml, parse_bucket_url
-from pcluster.models.common import BaseTag
+from pcluster.constants import PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG
+from pcluster.models.common import BaseTag, S3Bucket
 from pcluster.models.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 
@@ -39,7 +40,13 @@ class ImageBuilderCdkStack(core.Stack):
     """Create the Stack for imagebuilder."""
 
     def __init__(
-        self, scope: core.Construct, construct_id: str, imagebuild: ImageBuilderConfig, image_name: str, **kwargs
+        self,
+        scope: core.Construct,
+        construct_id: str,
+        imagebuild: ImageBuilderConfig,
+        image_name: str,
+        bucket: S3Bucket,
+        **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.imagebuild = imagebuild
@@ -101,6 +108,8 @@ class ImageBuilderCdkStack(core.Stack):
         # Add default ami tags information
         tags = copy.deepcopy(image.tags) if image and image.tags else []
         tags.append(BaseTag(key="pcluster_version", value=utils.get_installed_version()))
+        tags.append(BaseTag(key=PCLUSTER_S3_BUCKET_TAG, value=bucket.name))
+        tags.append(BaseTag(key=PCLUSTER_S3_IMAGE_DIR_TAG, value=bucket.artifact_directory))
         ami_tags = {tag.key: tag.value for tag in tags}
 
         # InfrastructureConfiguration

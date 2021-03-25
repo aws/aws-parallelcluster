@@ -139,7 +139,7 @@ class ImageBuilderConfig(Resource):
         image: Image = None,
         dev_settings: ImagebuilderDevSettings = None,
         custom_s3_bucket: str = None,
-        source_config: str = None
+        source_config: str = None,
     ):
         super().__init__()
         self.image = image

@@ -13,18 +13,18 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 import copy
-import json
 import logging
 import re
 
 from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import StackInfo
-from common.boto3.common import AWSClientError
-from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
-from pcluster.models.common import BaseTag
+from common.boto3.common import AWSClientError, ImageNotFoundError
+from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING, search_tag
+from pcluster.constants import PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG
+from pcluster.models.common import BaseTag, S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import get_installed_version
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_region
 from pcluster.validators.common import FailureLevel
 
 ImageBuilderStatusMapping = {
@@ -77,6 +77,16 @@ class ImageBuilderStack(StackInfo):
             self._image_resource = None
 
     @property
+    def s3_bucket_name(self):
+        """Return the name of the bucket used to store image information."""
+        return self._get_tag(PCLUSTER_S3_BUCKET_TAG)
+
+    @property
+    def s3_artifact_directory(self):
+        """Return the artifact directory of the bucket used to store image information."""
+        return self._get_tag(PCLUSTER_S3_IMAGE_DIR_TAG)
+
+    @property
     def version(self):
         """Return the version of ParallelCluster used to create the stack."""
         return self._get_tag("pcluster_version")
@@ -92,14 +102,6 @@ class ImageBuilderStack(StackInfo):
                 return None
         return None
 
-    @property
-    def get_source_config(self):
-        """Get source config from metadata."""
-        try:
-            return AWSApi.instance().cfn.get_template(self.name).get("Metadata").get("Config")
-        except (AWSClientError, KeyError):
-            return None
-
 
 class ImageBuilder:
     """Represent a building image, composed by an ImageBuilder config and an ImageBuilderStack."""
@@ -109,9 +111,23 @@ class ImageBuilder:
         self.__source_config = config
         self.__stack = stack
         self.__config = None
+        self.__bucket = None
         self.template_body = None
-        self.config_version = None
-        self.bucket = None
+        self._s3_artifacts_dict = {
+            "root_directory": "parallelcluster",
+            "root_image_directory": "imagebuilders",
+            "source_config_name": "image-config-original.yaml",
+            "config_name": "image-config.yaml",
+            "template_name": "aws-parallelcluster-imagebuilder.cfn.yaml",
+        }
+        self.__s3_artifact_dir = None
+
+    @property
+    def s3_artifacts_dir(self):
+        """Get s3 artifacts dir."""
+        if self.__s3_artifact_dir is None:
+            self._get_artifact_dir()
+        return self.__s3_artifact_dir
 
     @property
     def stack(self):
@@ -125,9 +141,14 @@ class ImageBuilder:
 
     @property
     def source_config(self):
-        """Return original config used to create the imagebuilder stack."""
+        """Return config used to create the imagebuilder stack."""
         if not self.__source_config:
-            self.__source_config = self.stack.get_source_config
+            try:
+                self.__source_config = self.bucket.get_config(config_name=self._s3_artifacts_dict.get("config_name"))
+            except Exception as e:
+                raise ImageBuilderActionError(
+                    "Unable to load configuration from bucket " f"'{self.bucket.name}/{self.s3_artifacts_dir}'.\n{e}"
+                )
         return self.__source_config
 
     @property
@@ -145,6 +166,89 @@ class ImageBuilder:
         if not self.__config:
             self.__config = ImageBuilderSchema().load(self.source_config)
         return self.__config
+
+    @property
+    def bucket(self):
+        """Return a bucket configuration."""
+        if self.__bucket:
+            return self.__bucket
+
+        if self.__source_config:
+            custom_bucket_name = self.config.custom_s3_bucket
+        else:
+            custom_bucket_name = self._get_custom_bucket()
+
+        self.__bucket = S3BucketFactory.init_s3_bucket(
+            service_name=self.image_name,
+            stack_name=self.image_name,
+            custom_s3_bucket=custom_bucket_name,
+            artifact_directory=self.s3_artifacts_dir,
+        )
+        return self.__bucket
+
+    def _get_custom_bucket(self):
+        """Try to get custom bucket name from image tag or stack tag."""
+        custom_bucket_name = None
+        try:
+            image_info = AWSApi.instance().ec2.describe_image_by_name_tag(self.image_name)
+            custom_bucket_name = search_tag(image_info, PCLUSTER_S3_BUCKET_TAG)
+        except AWSClientError as e:
+            if not isinstance(e, ImageNotFoundError):
+                raise ImageBuilderActionError(f"Unable to get S3 bucket name from image {self.image_name} tag. {e}")
+
+        if custom_bucket_name is None:
+            try:
+                custom_bucket_name = self.stack.s3_bucket_name
+            except AWSClientError as e:
+                raise ImageBuilderActionError(f"Unable to get S3 bucket name from stack {self.stack.name} tag. {e}")
+
+        return (
+            custom_bucket_name
+            if custom_bucket_name != S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), get_region())
+            else None
+        )
+
+    def _get_artifact_dir(self):
+        """Get artifact directory from image tag or stack tag."""
+        try:
+            image_info = AWSApi.instance().ec2.describe_image_by_name_tag(self.image_name)
+            self.__s3_artifact_dir = search_tag(image_info, PCLUSTER_S3_IMAGE_DIR_TAG)
+            if self.__s3_artifact_dir is None:
+                raise ImageNotFoundError
+        except AWSClientError as e:
+            if not isinstance(e, ImageNotFoundError):
+                LOGGER.error("Unable to find tag %s in image %s.", PCLUSTER_S3_IMAGE_DIR_TAG, self.image_name)
+                raise ImageBuilderActionError(f"Unable to get artifact directory from image {self.image_name} tag. {e}")
+
+        try:
+            self.__s3_artifact_dir = self.stack.s3_artifact_directory
+
+            if self.__s3_artifact_dir is None:
+                raise AWSClientError(
+                    function_name="_get_artifact_dir",
+                    message="No artifact directory found in image tag and cloudformation stack tag.",
+                )
+        except AWSClientError as e:
+            LOGGER.error("No artifact directory found in image tag and cloudformation stack tag.")
+            raise ImageBuilderActionError(
+                f"Unable to get artifact directory from image {self.image_name} tag and cloudformation stack tag. {e}"
+            )
+
+    def _generate_artifact_dir(self):
+        """
+        Generate artifact directory in S3 bucket.
+
+        Image artifact dir is generated before cfn stack creation and only generate once.
+        artifact_directory: e.g. parallelcluster/imagebuilders/{image_name}-jfr4odbeonwb1w5k
+        """
+        service_directory = generate_random_name_with_prefix(self.image_name)
+        self.__s3_artifact_dir = "/".join(
+            [
+                self._s3_artifacts_dict.get("root_directory"),
+                self._s3_artifacts_dict.get("root_image_directory"),
+                service_directory,
+            ]
+        )
 
     def create(
         self,
@@ -173,14 +277,18 @@ class ImageBuilder:
                     # Raise the exception if there is a failure with a level equals to or greater than the specified one
                     raise ImageBuilderActionError("Configuration is invalid", validation_failures=validation_failures)
 
+        # Generate artifact directory for image
+        self._generate_artifact_dir()
+
         # Add tags information to the stack
         cfn_tags = copy.deepcopy(self.config.build.tags) or []
         cfn_tags.append(BaseTag(key="pcluster_build_image", value=get_installed_version()))
+        cfn_tags.append(BaseTag(key=PCLUSTER_S3_BUCKET_TAG, value=self.bucket.name))
+        cfn_tags.append(BaseTag(key=PCLUSTER_S3_IMAGE_DIR_TAG, value=self.s3_artifacts_dir))
+        # TODO add tags for build log
         cfn_tags = [{"Key": tag.key, "Value": tag.value} for tag in cfn_tags]
-        # TODO add tags for build config and build log
 
-        self._setup_cluster_bucket()
-
+        creation_result = None
         try:
             self._upload_config()
 
@@ -188,18 +296,18 @@ class ImageBuilder:
 
             # Generate cdk cfn template
             self.template_body = CDKTemplateBuilder().build_imagebuilder_template(
-                imagebuild=self.config, image_name=self.image_name
+                imagebuild=self.config, image_name=self.image_name, bucket=self.bucket
             )
 
             # upload generated template
             self._upload_artifacts()
 
             # Stack creation
-            AWSApi.instance().cfn.create_stack(
+            creation_result = AWSApi.instance().cfn.create_stack_from_url(
                 stack_name=self.image_name,
-                template_body=json.dumps(self.template_body),
-                # TODO template_url instead template_body
-                # template_url=
+                template_url=self.bucket.get_cfn_template_url(
+                    template_name=self._s3_artifacts_dict.get("template_name")
+                ),
                 disable_rollback=disable_rollback,
                 tags=cfn_tags,
             )
@@ -210,7 +318,38 @@ class ImageBuilder:
 
         except Exception as e:
             LOGGER.critical(e)
+            if not creation_result:
+                # Cleanup S3 artifacts if stack is not created yet
+                self.bucket.delete_s3_artifacts()
             raise ImageBuilderActionError(f"ParallelCluster image build infrastructure creation failed.\n{e}")
+
+    def _upload_config(self):
+        """Upload source config to S3 bucket."""
+        try:
+            if self.config:
+                # Upload config with default values
+                self.bucket.upload_config(config=self.config, config_name=self._s3_artifacts_dict.get("config_name"))
+
+                # Upload original config
+                self.bucket.upload_config(
+                    config=self.config.source_config, config_name=self._s3_artifacts_dict.get("source_config_name")
+                )
+
+        except Exception as e:
+            raise ImageBuilderActionError(
+                f"Unable to upload imagebuilder config to the S3 bucket {self.bucket.name} due to exception: {e}"
+            )
+
+    def _upload_artifacts(self):
+        """Upload  artifacts to S3 bucket."""
+        try:
+            if self.template_body:
+                # upload cfn template
+                self.bucket.upload_cfn_template(self.template_body, self._s3_artifacts_dict.get("template_name"))
+        except Exception as e:
+            raise ImageBuilderActionError(
+                f"Unable to upload imagebuilder cfn template to the S3 bucket {self.bucket.name} due to exception: {e}"
+            )
 
     def _validate_image_name(self):
         match = re.match(r"^[-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]$", self.image_name)
@@ -225,15 +364,3 @@ class ImageBuilder:
                     str(1024 - len(AMI_NAME_REQUIRED_SUBSTRING))
                 )
             )
-
-    def _setup_cluster_bucket(self):
-        # TODO
-        pass
-
-    def _upload_config(self):
-        # TODO
-        pass
-
-    def _upload_artifacts(self):
-        # TODO
-        pass

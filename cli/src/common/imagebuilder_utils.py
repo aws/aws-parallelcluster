@@ -66,3 +66,11 @@ def get_resources_directory():
     """Get imagebuilder resources directory."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(current_dir, "..", "pcluster", "resources")
+
+
+def search_tag(resource_info, tag_key):
+    """Search tag in tag list by given tag key."""
+    return next(
+        (tag["Value"] for tag in resource_info.get("Tags", []) if tag["Key"] == tag_key),
+        None,
+    )
