@@ -557,13 +557,22 @@ class Iam(Resource):
     def __init__(
         self,
         s3_access: List[S3Access] = None,
-        additional_iam_policies: List[AdditionalIamPolicy] = None,
+        additional_iam_policies: List[AdditionalIamPolicy] = (),
         instance_role: str = None,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self.s3_access = s3_access
         self.additional_iam_policies = additional_iam_policies
         self.instance_role = Resource.init_param(instance_role)
+
+    @property
+    def additional_iam_policy_arns(self) -> List[str]:
+        """Get list of arn strings from the list of policy objects."""
+        arns = []
+        for policy in self.additional_iam_policies:
+            arns.append(policy.policy)
+        return arns
 
 
 class ClusterIam(Resource):
@@ -668,7 +677,7 @@ class HeadNode(Resource):
         self.local_storage = local_storage
         self.dcv = dcv
         self.custom_actions = custom_actions
-        self.iam = iam
+        self.iam = iam or Iam(implied=True)
         self.__instance_type_info = None
 
     def _validate(self):
@@ -782,7 +791,7 @@ class BaseQueue(Resource):
         self.networking = networking
         self.local_storage = local_storage
         self.compute_type = Resource.init_param(compute_type, default=ComputeType.ONDEMAND)
-        self.iam = iam
+        self.iam = iam or Iam(implied=True)
 
     def _validate(self):
         self._execute_validator(NameValidator, name=self.name)

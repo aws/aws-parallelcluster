@@ -454,10 +454,18 @@ class ClusterCdkStack(core.Stack):
         return iam.CfnInstanceProfile(scope=self, id=name, roles=[role_ref], path="/").ref
 
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
+        additional_iam_policies = node.iam.additional_iam_policy_arns
+        if self.config.monitoring.logs.cloud_watch.enabled:
+            cloud_watch_policy_arn = self.format_arn(
+                service="iam", region="", account="aws", resource="policy/CloudWatchAgentServerPolicy"
+            )
+            if cloud_watch_policy_arn not in additional_iam_policies:
+                additional_iam_policies.append(cloud_watch_policy_arn)
+        # ToDo check if AWSBatchFullAccess needs to be added
         return iam.CfnRole(
             scope=self,
             id=name,
-            managed_policy_arns=node.iam.additional_iam_policies if node.iam else None,
+            managed_policy_arns=additional_iam_policies,
             assume_role_policy_document=iam.PolicyDocument(
                 statements=[
                     iam.PolicyStatement(
