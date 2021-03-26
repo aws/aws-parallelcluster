@@ -145,9 +145,10 @@ class CloudWatchLoggingClusterState:
         """Turn the name of a base OS into the platform."""
         # Special case: alinux2 is how the config file refers to amazon linux 2, but in the chef cookbook
         # (and the cloudwatch log config produced by it) the platform is "amazon".
-        translations = {"alinux2": "amazon"}
-        no_digits = base_os.rstrip(string.digits)
-        return translations.get(no_digits, no_digits)
+        if base_os == "alinux2":
+            return "amazon"
+        else:
+            return base_os.rstrip(string.digits)
 
     def _set_head_node_instance(self, instance):
         """Set the head node instance field in self.cluster_log_state."""
