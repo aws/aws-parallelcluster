@@ -60,7 +60,8 @@ def test_cluster_name_validator(cluster_name, should_trigger_error):
     expected_message = (
         (
             "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-            f"It must start with an alphabetic character and can't be longer than {PCLUSTER_NAME_MAX_LENGTH} characters."
+            "It must start with an alphabetic character and can't be longer "
+            f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
         )
         if should_trigger_error
         else None

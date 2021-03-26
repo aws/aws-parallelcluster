@@ -441,12 +441,6 @@ class Efa(Resource):
         self.enabled = enabled
         self.gdr_support = Resource.init_param(gdr_support, default=False)
 
-    def init_default_efa_enabled(self, instance_type: str):
-        """Set EFA if by default if the instance type support it."""
-        self.enabled = Resource.init_param(
-            self.enabled, default=AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
-        )
-
 
 # ---------------------- Monitoring ---------------------- #
 
@@ -1141,9 +1135,9 @@ class SlurmComputeResource(BaseComputeResource):
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
-        self.efa = efa or Efa(implied=True)
-        self.efa.init_default_efa_enabled(self.instance_type)
         self.__instance_type_info = None
+        efa_supported = self.instance_type_info.is_efa_supported()
+        self.efa = efa or Efa(enabled=efa_supported, implied=True)
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:

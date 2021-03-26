@@ -13,7 +13,7 @@ import pytest
 
 from common.boto3.common import AWSClientError
 from pcluster.validators.kms_validators import KmsKeyValidator
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -28,7 +28,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
     ],
 )
 def test_kms_key_validator(mocker, kms_key_id, expected_message):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.kms.KmsClient.describe_key",
         side_effect=AWSClientError(function_name="describe_key", message=expected_message)

@@ -19,7 +19,7 @@ from common.boto3.s3 import S3Client
 from pcluster.utils import InstanceTypeInfo
 
 
-class DummyInstanceTypeInfo(InstanceTypeInfo):
+class _DummyInstanceTypeInfo(InstanceTypeInfo):
     def __init__(
         self,
         instance_type,
@@ -65,31 +65,28 @@ class DummyInstanceTypeInfo(InstanceTypeInfo):
         return self._ebs_optimized
 
 
-class DummyAWSApi(AWSApi):
+class _DummyAWSApi(AWSApi):
     def __init__(self):
         os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-        self.ec2 = dummy_ec2_client()
-        self.efs = dummy_efs_client()
-        self.cfn = dummy_cfn_client()
-        self.s3 = dummy_s3_client()
-        self.imagebuilder = dummy_imagebuilder_client()
-        self.kms = dummy_kms_client()
+        self.ec2 = _DummyEc2Client()
+        self.efs = _DummyEfsClient()
+        self.cfn = _DummyCfnClient()
+        self.s3 = _DummyS3Client()
+        self.imagebuilder = _DummyImageBuilderClient()
+        self.kms = _DummyKmsClient()
         # TODO: mock all clients
 
 
-class DummyCfnClient(CfnClient):
+class _DummyCfnClient(CfnClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
 
-class DummyEc2Client(Ec2Client):
+class _DummyEc2Client(Ec2Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
-
-    def get_instance_type_info(self, instance_type):
-        return DummyInstanceTypeInfo(instance_type)
 
     def get_official_image_id(self, os, architecture):
         return "dummy-ami-id"
@@ -108,7 +105,7 @@ class DummyEc2Client(Ec2Client):
         return "vpc-123"
 
 
-class DummyEfsClient(Ec2Client):
+class _DummyEfsClient(Ec2Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
@@ -129,47 +126,25 @@ class DummyEfsClient(Ec2Client):
         return mt_id
 
 
-class DummyS3Client(S3Client):
+class _DummyS3Client(S3Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
 
-class DummyImageBuilderClient(ImageBuilderClient):
+class _DummyImageBuilderClient(ImageBuilderClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
 
-class DummyKmsClient(KmsClient):
+class _DummyKmsClient(KmsClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
 
-def dummy_ec2_client():
-    return DummyEc2Client()
-
-
-def dummy_efs_client():
-    return DummyEfsClient()
-
-
-def dummy_cfn_client():
-    return DummyCfnClient()
-
-
-def dummy_s3_client():
-    return DummyS3Client()
-
-
-def dummy_imagebuilder_client():
-    return DummyImageBuilderClient()
-
-
-def dummy_kms_client():
-    return DummyKmsClient()
-
-
-def mock_aws_api():
-    AWSApi._instance = DummyAWSApi()
+def mock_aws_api(mocker):
+    """Mock AWS Api."""
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
+    mocker.patch("common.boto3.ec2.Ec2Client.get_instance_type_info", return_value=_DummyInstanceTypeInfo("t2.micro"))

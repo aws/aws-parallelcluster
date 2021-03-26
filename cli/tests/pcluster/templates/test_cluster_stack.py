@@ -18,7 +18,7 @@ from ..models.cluster_dummy_model import dummy_awsbatch_cluster_config, dummy_bu
 
 
 def test_slurm_cluster_builder(mocker):
-    mock_aws_api()
+    mock_aws_api(mocker)
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=dummy_slurm_cluster_config(mocker),
         bucket=dummy_bucket(),
@@ -29,7 +29,7 @@ def test_slurm_cluster_builder(mocker):
 
 
 def test_awsbatch_cluster_builder(mocker):
-    mock_aws_api()
+    mock_aws_api(mocker)
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=dummy_awsbatch_cluster_config(mocker),
         bucket=dummy_bucket(),

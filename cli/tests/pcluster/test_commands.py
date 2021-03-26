@@ -17,7 +17,7 @@ from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
 from pcluster.models.cluster import ClusterActionError
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.cluster_dummy_model import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
 from tests.pcluster.test_utils import dummy_cluster
 
@@ -86,7 +86,7 @@ def test_setup_bucket_with_resources_success(
 
     # mock calls from _upload_artifacts
     upload_resources_artifacts_mock = mocker.patch("pcluster.models.cluster.upload_resources_artifacts")
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.boto3.s3.S3Client.put_object")
 
     cluster = _mock_cluster(mocker, scheduler, bucket_name=provided_bucket_name)
@@ -122,7 +122,7 @@ def test_setup_bucket_with_resources_creation_failure(mocker, caplog):
     )
     mocker.patch("pcluster.models.cluster.create_s3_bucket", side_effect=client_error)
     mocker.patch("pcluster.models.cluster.check_s3_bucket_exists")
-    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
+    mock_aws_api(mocker)
 
     cluster = _mock_cluster(mocker, "slurm")
     with pytest.raises(ClientError, match=error):
@@ -157,7 +157,7 @@ def test_setup_bucket_with_resources_upload_failure(
     # mock calls from _upload_artifacts
     client_error = ClientError({"Error": {"Code": error}}, "upload_fileobj")
     mocker.patch("pcluster.models.cluster.upload_resources_artifacts", side_effect=client_error)
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.boto3.s3.S3Client.put_object")
 
     cluster = _mock_cluster(mocker, "slurm", bucket_name=provided_bucket_name)
