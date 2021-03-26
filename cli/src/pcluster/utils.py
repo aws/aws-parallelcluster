@@ -554,23 +554,6 @@ def policy_name_to_arn(policy_name):
     return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
 
 
-def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
-    """Return a boolean describing whether hyperthreading should be disabled via CPU options for instance_type."""
-    if default_threads_per_core is None:
-        default_threads_per_core = InstanceTypeInfo.init_from_instance_type(instance_type).default_threads_per_core()
-    res = all(
-        [
-            # If default threads per core is 1, HT doesn't need to be disabled
-            default_threads_per_core > 1,
-            # Currently, hyperthreading must be disabled manually on *.metal instances
-            not (
-                instance_type.endswith(".metal") or instance_type.startswith("m4.") or instance_type in ["cc2.8xlarge"]
-            ),
-        ]
-    )
-    return res
-
-
 def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
     """
     Return a dict described the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
