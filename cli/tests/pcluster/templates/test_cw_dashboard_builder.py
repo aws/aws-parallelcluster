@@ -34,7 +34,7 @@ from ..models.cluster_dummy_model import dummy_bucket
     ],
 )
 def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
-    mock_aws_api()
+    mock_aws_api(mocker)
     mocker.patch(
         "pcluster.models.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),

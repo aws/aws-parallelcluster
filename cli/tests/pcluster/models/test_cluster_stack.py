@@ -20,7 +20,7 @@ from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError, ClusterStack
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.test_utils import FAKE_STACK_NAME
 
 
@@ -35,7 +35,7 @@ from tests.pcluster.test_utils import FAKE_STACK_NAME
 def test_get_stack_template(mocker, template_body, error_message):
     """Verify that ClusterStack template property behaves as expected."""
     response = json.dumps(template_body) if template_body is not None else error_message
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.cfn.CfnClient.get_stack_template",
         return_value=response,
@@ -113,7 +113,7 @@ def test_update_stack_template(mocker, error_message):
     cfn_params = [{"ParameterKey": "Key", "ParameterValue": "Value"}]
     response = error_message or {"StackId": "stack ID"}
 
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.boto3.cfn.CfnClient.get_stack_template", return_value=template_body)
     mocker.patch(
         "common.boto3.cfn.CfnClient.update_stack",

@@ -8,18 +8,16 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 from typing import List
 
 import pytest
 from assertpy import assert_that
 
 from common.aws.aws_resources import InstanceInfo
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.models.cluster import ClusterActionError, NodeType
 from pcluster.models.cluster_config import Resource, Tag
 from pcluster.validators.common import FailureLevel, Validator
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.cluster_dummy_model import dummy_slurm_cluster_config
 from tests.pcluster.test_utils import dummy_cluster
 
@@ -168,7 +166,7 @@ def test_nested_resource_validate():
 )
 def test_describe_instances(mocker, node_type, expected_response, expected_instances):
     instance_state_list = ["pending", "running", "stopping", "stopped"]
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_instances",
         return_value=[InstanceInfo(instance) for instance in expected_response],
@@ -228,7 +226,7 @@ def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
 @pytest.mark.parametrize("existing_tags", [({}), ({"test": "testvalue"}), ({"Version": "OldVersionToBeOverridden"})])
 def test_tags(mocker, existing_tags):
     """Verify that the function to get the tags list behaves as expected."""
-    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
+    mock_aws_api(mocker)
     cluster = dummy_cluster()
     cluster.config = dummy_slurm_cluster_config(mocker)
 

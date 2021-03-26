@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that
 
 from common import imagebuilder_utils
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 
 
 @pytest.mark.parametrize(
@@ -27,7 +27,7 @@ from tests.common.dummy_aws_api import DummyAWSApi
     ],
 )
 def test_evaluate_ami_id(mocker, parent_image, response, ami_id):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.boto3.imagebuilder.ImageBuilderClient.get_image_id", return_value=response)
     assert_that(imagebuilder_utils.get_ami_id(parent_image)).is_equal_to(ami_id)
 
@@ -47,6 +47,6 @@ def test_evaluate_ami_id(mocker, parent_image, response, ami_id):
 )
 def test_get_info_for_ami_from_arn(mocker, image_arn, response):
     """Verify get_info_for_ami_from_arn returns the expected response, and that errors cause nonzero exit."""
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.boto3.imagebuilder.ImageBuilderClient.get_image_resources", return_value=response)
     assert_that(imagebuilder_utils.get_info_for_ami_from_arn(image_arn)).is_equal_to(response)
