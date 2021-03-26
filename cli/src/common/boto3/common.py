@@ -19,8 +19,10 @@ from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 class AWSClientError(Exception):
     """Error during execution of some AWS calls."""
 
-    def __init__(self, function_name: str, message: str):
-        message = f"Error during execution of {function_name}. {message}"
+    def __init__(self, function_name: str, message: str, error_code: str = None):
+        message = f"Error during execution of {function_name}. {message}."
+        if error_code:
+            message += f" Error code: {error_code}"
         super().__init__(message)
 
 
@@ -44,7 +46,7 @@ class AWSExceptionHandler:
                 raise AWSClientError(func.__name__, str(e))
             except ClientError as e:
                 # add request id
-                raise AWSClientError(func.__name__, e.response["Error"]["Message"])
+                raise AWSClientError(func.__name__, e.response["Error"]["Message"], e.response["Error"]["Code"])
 
         return wrapper
 
