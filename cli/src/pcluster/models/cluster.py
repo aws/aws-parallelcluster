@@ -28,7 +28,13 @@ from common.aws.aws_resources import InstanceInfo, StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.config_patch import ConfigPatch
-from pcluster.constants import OS_MAPPING, PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PCLUSTER_STACK_PREFIX
+from pcluster.constants import (
+    OS_MAPPING,
+    PCLUSTER_NAME_MAX_LENGTH,
+    PCLUSTER_NAME_REGEX,
+    PCLUSTER_STACK_PREFIX,
+    SUPPORTED_REGIONS,
+)
 from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket, SlurmScheduling, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -37,6 +43,7 @@ from pcluster.utils import (
     create_s3_bucket,
     generate_random_name_with_prefix,
     get_installed_version,
+    get_region,
     grouper,
     upload_resources_artifacts,
 )
@@ -331,6 +338,7 @@ class Cluster:
             # semantic validation
             if not suppress_validators:
                 validation_failures = self._validate_cluster_name()
+                validation_failures += self._validate_region()
 
                 validation_failures += config.validate()
                 for failure in validation_failures:
@@ -347,7 +355,7 @@ class Cluster:
         return config
 
     def _validate_cluster_name(self):
-        validation_failures = []
+        failures = []
         if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), self.name):
             message = (
                 "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
@@ -355,8 +363,21 @@ class Cluster:
                 f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
             )
             LOGGER.error(message)
-            validation_failures.append(ValidationResult(str(message), FailureLevel.ERROR))
-        return validation_failures
+            failures.append(ValidationResult(str(message), FailureLevel.ERROR))
+        return failures
+
+    @staticmethod
+    def _validate_region():
+        failures = []
+        region = get_region()
+        if region not in SUPPORTED_REGIONS:
+            failures.append(
+                ValidationResult(
+                    f"Region '{region}' is not yet officially supported by ParallelCluster",
+                    FailureLevel.ERROR,
+                )
+            )
+        return failures
 
     def _setup_cluster_bucket(self) -> ClusterBucket:
         """
