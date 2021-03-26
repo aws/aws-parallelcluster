@@ -40,7 +40,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     volume_id = get_ebs_volume_ids(cluster, region)
 
-    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
+    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
     _test_ebs_encrypted_with_kms(volume_id, region, kms_key_id)
 
@@ -247,8 +247,7 @@ def _test_ebs_resize(remote_command_executor, mount_dir, volume_size):
 def get_ebs_volume_ids(cluster, region):
     # get the list of configured ebs volume ids
     # example output: ['vol-000', 'vol-001', 'vol-002']
-    ebs_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="EBSCfnStack")[0]
-    return utils.retrieve_cfn_outputs(ebs_stack, region).get("Volumeids").split(",")
+    return utils.retrieve_cfn_outputs(cluster.cfn_name, region).get("EBSIds").split(",")
 
 
 def describe_volume(volume_id, region):
