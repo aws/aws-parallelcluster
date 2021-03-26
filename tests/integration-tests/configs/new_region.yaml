@@ -53,7 +53,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["ubuntu1604"]
+          oss: ["ubuntu1804"]
           schedulers: ["slurm"]
     test_cli_commands.py::test_sit_cli_commands:
       dimensions:
@@ -73,7 +73,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
+          oss: ["alinux2", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
   dashboard:
     test_dashboard.py::test_dashboard:
       dimensions:
@@ -146,7 +146,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux"]
+          oss: ["alinux2"]
           schedulers: ["slurm"]
     test_efs.py::test_efs_compute_az:
       dimensions:

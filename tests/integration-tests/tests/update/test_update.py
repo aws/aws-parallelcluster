@@ -16,11 +16,14 @@ import time
 import boto3
 import configparser
 import pytest
+import utils
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import (
+    get_batch_ce,
     get_batch_ce_max_size,
     get_batch_ce_min_size,
     get_max_asg_capacity,
@@ -87,8 +90,8 @@ def test_update_sit(
     _check_max_queue(region, cluster.cfn_name, updated_config.getint("cluster default", "max_queue_size"))
 
     # Check new S3 resources
-    _check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    _check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
+    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
@@ -136,6 +139,7 @@ def test_update_sit(
         "postinstall",
         updated_config.get("cluster default", "post_install_args"),
     )
+    _check_volume(cluster, updated_config, region)
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
@@ -285,8 +289,8 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     updated_config.read(updated_config_file)
 
     # Check new S3 resources
-    _check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    _check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
+    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
@@ -379,7 +383,10 @@ def _add_compute_nodes(scheduler_commands, slots_per_node, number_of_nodes=1):
 
 
 def _get_instance(region, stack_name, host, none_expected=False):
-    hostname = "{0}.{1}.compute.internal".format(host, region)
+    if region == "us-east-1":
+        hostname = "{0}.ec2.internal".format(host)
+    else:
+        hostname = "{0}.{1}.compute.internal".format(host, region)
     ec2_resource = boto3.resource("ec2", region_name=region)
     instance = next(
         iter(
@@ -459,27 +466,6 @@ def _check_extra_json(command_executor, scheduler_commands, host, expected_value
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
 
-def _check_role_inline_policy(region, cluster, policy_name, policy_statement):
-    iam_client = boto3.client("iam", region_name=region)
-    root_role = cluster.cfn_resources.get("RootRole")
-
-    statement = (
-        iam_client.get_role_policy(RoleName=root_role, PolicyName=policy_name)
-        .get("PolicyDocument")
-        .get("Statement")[0]
-        .get("Resource")[0]
-    )
-    assert_that(statement).is_equal_to(policy_statement)
-
-
-def _check_s3_read_resource(region, cluster, s3_arn):
-    _check_role_inline_policy(region, cluster, "S3Read", s3_arn)
-
-
-def _check_s3_read_write_resource(region, cluster, s3_arn):
-    _check_role_inline_policy(region, cluster, "S3ReadWrite", s3_arn)
-
-
 def _check_role_attached_policy(region, cluster, policy_arn):
     iam_client = boto3.client("iam", region_name=region)
     root_role = cluster.cfn_resources.get("RootRole")
@@ -488,6 +474,40 @@ def _check_role_attached_policy(region, cluster, policy_arn):
 
     policies = [p["PolicyArn"] for p in result["AttachedPolicies"]]
     assert policy_arn in policies
+
+
+def get_cfn_ebs_volume_ids(cluster, region):
+    # get the list of configured ebs volume ids
+    # example output: ['vol-000', 'vol-001', 'vol-002']
+    ebs_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="EBSCfnStack")[0]
+    return utils.retrieve_cfn_outputs(ebs_stack, region).get("Volumeids").split(",")
+
+
+def get_ebs_volume_info(volume_id, region):
+    volume = boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+    volume_type = volume.get("VolumeType")
+    volume_iops = volume.get("Iops")
+    volume_throughput = volume.get("Throughput")
+    return volume_type, volume_iops, volume_throughput
+
+
+def _check_volume(cluster, config, region):
+    logging.info("checking volume throughout and iops change")
+    volume_ids = get_cfn_ebs_volume_ids(cluster, region)
+    volume_type = config.get("ebs custom", "volume_type")
+    actual_volume_type, actual_volume_iops, actual_volume_throughput = get_ebs_volume_info(volume_ids[0], region)
+    if volume_type:
+        assert_that(actual_volume_type).is_equal_to(volume_type)
+    else:
+        # the default volume type is gp2
+        assert_that("gp2").is_equal_to(volume_type)
+    if volume_type in ["io1", "io2", "gp3"]:
+        volume_iops = config.get("ebs custom", "volume_iops")
+        assert_that(actual_volume_iops).is_equal_to(int(volume_iops))
+        if volume_type == "gp3":
+            throughput = config.get("ebs custom", "volume_throughput")
+            volume_throughput = throughput if throughput else 125
+            assert_that(actual_volume_throughput).is_equal_to(int(volume_throughput))
 
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "awsbatch")
@@ -521,6 +541,8 @@ def _verify_initialization(region, cluster, config):
     # Verify initial settings
     _test_max_vcpus(region, cluster.cfn_name, config.getint("cluster default", "max_vcpus"))
     _test_min_vcpus(region, cluster.cfn_name, config.getint("cluster default", "min_vcpus"))
+    spot_bid_percentage = config.getint("cluster default", "spot_bid_percentage")
+    assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
 
 
 def _test_max_vcpus(region, stack_name, vcpus):
@@ -531,6 +553,17 @@ def _test_max_vcpus(region, stack_name, vcpus):
 def _test_min_vcpus(region, stack_name, vcpus):
     asg_min_size = get_batch_ce_min_size(stack_name, region)
     assert_that(asg_min_size).is_equal_to(vcpus)
+
+
+def get_batch_spot_bid_percentage(stack_name, region):
+    client = boto3.client("batch", region_name=region)
+
+    return (
+        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name, region)])
+        .get("computeEnvironments")[0]
+        .get("computeResources")
+        .get("bidPercentage")
+    )
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
@@ -597,6 +630,9 @@ def _check_update_compute(
     updated_config_file = pcluster_config_reader(update_config_name)
     cluster.config_file = str(updated_config_file)
     cluster.update()
+
+    logging.info("Sleeping for 180 seconds in case instance type properties cache is not updated yet in jobwatcher")
+    time.sleep(180)
 
     # Check cfn_scheduler_slots changed by changing compute instance type
     _check_compute_node_slots(

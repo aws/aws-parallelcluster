@@ -26,11 +26,22 @@ from pcluster.validators import (
 from pcluster.validators.common import Validator
 
 
-def _mock_all_validators_in_a_module(mocker, module, mockers=()):
-    module_name = module.__name__
-    for name, cls in module.__dict__.items():
-        if isinstance(cls, type) and issubclass(cls, Validator) and name != "Validator":
-            mockers.append({"name": name, "mocker": mocker.patch(f"{module_name}.{name}._validate", return_value=[])})
+def _mock_all_validators(mocker, mockers):
+    for module in [
+        cluster_validators,
+        ebs_validators,
+        ec2_validators,
+        fsx_validators,
+        kms_validators,
+        networking_validators,
+        s3_validators,
+    ]:
+        module_name = module.__name__
+        for name, cls in module.__dict__.items():
+            if isinstance(cls, type) and issubclass(cls, Validator) and name != "Validator":
+                mockers.append(
+                    {"name": name, "mocker": mocker.patch(f"{module_name}.{name}._validate", return_value=[])}
+                )
 
 
 def _load_and_validate(config_path):
@@ -43,13 +54,7 @@ def _load_and_validate(config_path):
 def test_all_validators_are_called(test_datadir, mocker):
     """Verify that all validators are called during validation."""
     mockers = []
-    _mock_all_validators_in_a_module(mocker, cluster_validators, mockers)
-    _mock_all_validators_in_a_module(mocker, ebs_validators, mockers)
-    _mock_all_validators_in_a_module(mocker, ec2_validators, mockers)
-    _mock_all_validators_in_a_module(mocker, fsx_validators, mockers)
-    _mock_all_validators_in_a_module(mocker, kms_validators, mockers)
-    _mock_all_validators_in_a_module(mocker, networking_validators, mockers)
-    _mock_all_validators_in_a_module(mocker, s3_validators, mockers)
+    _mock_all_validators(mocker, mockers)
 
     # mock properties that use boto3 calls
     mocker.patch(
@@ -83,6 +88,8 @@ def test_all_validators_are_called(test_datadir, mocker):
 
 def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     """Verify that validators are called with proper argument during validation."""
+    _mock_all_validators(mocker, [])  # To avoid failure of the test as soon as a new validator is added.
+
     validators_path = "pcluster.validators"
 
     cluster_validators = validators_path + ".cluster_validators"
@@ -192,16 +199,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         any_order=True,
     )
     key_pair_validator.assert_has_calls([call(key_name="ec2-key-name")])
-    instance_type_validator.assert_has_calls(
-        [
-            call(instance_type="t2.micro"),
-            call(instance_type="c5.2xlarge"),
-            call(instance_type="c4.2xlarge"),
-            call(instance_type="c5.4xlarge"),
-            call(instance_type="c4.4xlarge"),
-        ],
-        any_order=True,
-    )
+    instance_type_validator.assert_has_calls([call(instance_type="t2.micro")])
     instance_type_base_ami_compatible_validator.assert_has_calls(
         [
             call(instance_type="t2.micro", image="ami-12345678"),

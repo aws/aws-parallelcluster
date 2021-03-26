@@ -11,6 +11,7 @@
 from common.aws.aws_resources import InstanceInfo
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 from pcluster import utils
+from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG
 from pcluster.utils import Cache, InstanceTypeInfo
 
 
@@ -26,17 +27,44 @@ class Ec2Client(Boto3Client):
         return self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_instance_type_offerings(self):
+    @Cache.cached
+    def describe_instance_type_offerings(self, filters=None):
         """Return a list of instance types."""
+        kwargs = {"Filters": filters} if filters else {}
         return [
             response.get("InstanceType")
-            for response in self._paginate_results(self._client.describe_instance_type_offerings)
+            for response in self._paginate_results(self._client.describe_instance_type_offerings, **kwargs)
         ]
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_default_instance_type(self):
+        """If current region support free tier, return the free tier instance type. Otherwise, return t3.micro."""
+        free_tier_instance_type = self._client.describe_instance_types(
+            Filters=[
+                {"Name": "free-tier-eligible", "Values": ["true"]},
+                {"Name": "current-generation", "Values": ["true"]},
+            ]
+        )
+        return (
+            free_tier_instance_type["InstanceTypes"][0]["InstanceType"]
+            if free_tier_instance_type["InstanceTypes"]
+            else "t3.micro"
+        )
 
     @AWSExceptionHandler.handle_client_exception
     def describe_subnets(self, subnet_ids):
         """Return a list of subnets."""
         return list(self._paginate_results(self._client.describe_subnets, SubnetIds=subnet_ids))
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_subnet_avail_zone(self, subnet_id):
+        """Return the availability zone associated to the given subnet."""
+        subnets = self.describe_subnets([subnet_id])
+        if subnets:
+            return subnets[0].get("AvailabilityZone")
+        raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
@@ -54,6 +82,26 @@ class Ec2Client(Boto3Client):
         if result.get("Images"):
             return result.get("Images")[0]
         raise AWSClientError(function_name="describe_image", message=f"Image {ami_id} not found")
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_images(self, ami_ids, filters, owners):
+        """Return a list of dict of ami info."""
+        result = self._client.describe_images(ImageIds=ami_ids, Filters=filters, Owners=owners)
+        if result.get("Images"):
+            return result.get("Images")
+        raise AWSClientError(function_name="describe_images", message="No image matching the search criteria found")
+
+    def image_exists(self, image_name):
+        """Return a boolean describing whether or not an image with the given search criteria exists."""
+        filters = [{"Name": "tag:" + PCLUSTER_IMAGE_NAME_TAG, "Values": [image_name]}]
+        owners = ["self"]
+        try:
+            self.describe_images(ami_ids=[], filters=filters, owners=owners)
+            return True
+        except AWSClientError as e:
+            if "No image matching the search criteria found" in str(e):
+                return False
+            raise e
 
     @AWSExceptionHandler.handle_client_exception
     def describe_key_pair(self, key_name):
@@ -109,11 +157,9 @@ class Ec2Client(Boto3Client):
     def get_official_image_name_prefix(self, os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
         suffixes = {
-            "alinux": "amzn-hvm",
             "alinux2": "amzn2-hvm",
             "centos7": "centos7-hvm",
             "centos8": "centos8-hvm",
-            "ubuntu1604": "ubuntu-1604-lts-hvm",
             "ubuntu1804": "ubuntu-1804-lts-hvm",
         }
         return "aws-parallelcluster-{version}-{suffix}-{arch}".format(

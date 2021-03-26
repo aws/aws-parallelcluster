@@ -68,6 +68,7 @@ write_files:
           "cfn_shared_dir": "${EbsSharedDirs}",
           "cfn_proxy": "${ProxyServer}",
           "cfn_ddb_table": "${DynamoDBTable}",
+          "cfn_log_group_name": "${LogGroupName}",
           "cfn_dns_domain": "${ClusterDNSDomain}",
           "cfn_hosted_zone": "${ClusterHostedZone}",
           "cfn_node_type": "ComputeFleet",
@@ -134,7 +135,7 @@ function bootstrap_instance
     yum -y groupinstall development && yum -y install curl wget jq awscli python3-pip
   fi
   if [ "${!apt}" == "0" ]; then
-    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli python3-pip
+    apt-cache search build-essential; apt-get clean; apt update -y; apt-get -y install build-essential curl wget jq python-setuptools awscli python3-pip
   fi
   [[ ${!_region} =~ ^cn- ]] && s3_url="cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
   which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-py3-latest.tar.gz https://s3.${!s3_url}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz; pip3 install -U /tmp/aws-cfn-bootstrap-py3-latest.tar.gz)

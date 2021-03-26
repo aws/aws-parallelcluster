@@ -1,0 +1,27 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Dcv:
+    Enabled: true
+    Port: {{ dcv_port }}
+    AllowedIps: {{ access_from }}
+Scheduling:
+  Slurm:
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            InstanceType: {{ instance }}
+            MinCount: 1
+        Networking:
+          SubnetIds:
+            - {{ public_subnet_id }}
+SharedStorage:
+  - MountDir: {{ shared_dir }}
+    Name: ebs1
+    StorageType: Ebs

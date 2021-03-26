@@ -15,6 +15,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
+from tests.common.scaling_common import get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import AWSBatchCommands
 
 
@@ -23,7 +24,6 @@ from tests.common.schedulers_common import AWSBatchCommands
 @pytest.mark.instances(["c5.xlarge", "c4.xlarge", "m6g.xlarge"])
 @pytest.mark.dimensions("*", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.dimensions("cn-north-1", "c4.xlarge", "alinux2", "awsbatch")
-@pytest.mark.dimensions("ap-southeast-1", "c5.xlarge", "alinux", "awsbatch")
 @pytest.mark.dimensions("ap-northeast-1", "m6g.xlarge", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog, region):
@@ -37,6 +37,11 @@ def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog
     cluster = clusters_factory(cluster_config)
     _assert_compute_instance_type_validation_successful(caplog)
     remote_command_executor = RemoteCommandExecutor(cluster)
+
+    min_vcpus = cluster.config.get("cluster awsbatch", "min_vcpus")
+    max_vcpus = cluster.config.get("cluster awsbatch", "max_vcpus")
+    assert_that(get_batch_ce_min_size(cluster.cfn_name, region)).is_equal_to(int(min_vcpus))
+    assert_that(get_batch_ce_max_size(cluster.cfn_name, region)).is_equal_to(int(max_vcpus))
 
     timeout = 120 if region.startswith("cn-") else 60  # Longer timeout in china regions due to less reliable networking
     _test_simple_job_submission(remote_command_executor, test_datadir, timeout)

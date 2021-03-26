@@ -22,32 +22,40 @@ from tests.common.utils import fetch_instance_slots
 
 
 # Manually disabled HT
-@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "alinux", "sge")
-@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1604", "torque")
+@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "centos8", "sge")
 @pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1804", "sge")
 # HT disabled via CpuOptions
 @pytest.mark.dimensions("sa-east-1", "c5.xlarge", "alinux2", "sge")
 @pytest.mark.dimensions("sa-east-1", "c5.xlarge", "centos7", "torque")
-def test_sit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
+def test_sit_disable_hyperthreading(
+    region, scheduler, instance, os, pcluster_config_reader, clusters_factory, default_threads_per_core
+):
     """Test Disable Hyperthreading for SIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_disable_hyperthreading_settings(remote_command_executor, scheduler_commands, slots_per_instance, scheduler)
+    _test_disable_hyperthreading_settings(
+        remote_command_executor,
+        scheduler_commands,
+        slots_per_instance,
+        scheduler,
+        default_threads_per_core=default_threads_per_core,
+    )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 # Manually disabled HT
 @pytest.mark.dimensions("us-west-1", "m4.xlarge", "alinux2", "slurm")
-@pytest.mark.dimensions("us-west-1", "m4.xlarge", "ubuntu1604", "slurm")
 @pytest.mark.dimensions("us-west-1", "m4.xlarge", "centos7", "slurm")
 @pytest.mark.dimensions("us-west-2", "m4.xlarge", "centos8", "slurm")
 # HT disabled via CpuOptions
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "ubuntu1804", "slurm")
-def test_hit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
+def test_hit_disable_hyperthreading(
+    region, scheduler, instance, os, pcluster_config_reader, clusters_factory, default_threads_per_core
+):
     """Test Disable Hyperthreading for HIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader()
@@ -61,6 +69,7 @@ def test_hit_disable_hyperthreading(region, scheduler, instance, os, pcluster_co
         scheduler,
         hyperthreading_disabled=False,
         partition="ht-enabled",
+        default_threads_per_core=default_threads_per_core,
     )
     _test_disable_hyperthreading_settings(
         remote_command_executor,
@@ -69,6 +78,7 @@ def test_hit_disable_hyperthreading(region, scheduler, instance, os, pcluster_co
         scheduler,
         hyperthreading_disabled=True,
         partition="ht-disabled",
+        default_threads_per_core=default_threads_per_core,
     )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
@@ -81,9 +91,12 @@ def _test_disable_hyperthreading_settings(
     scheduler,
     hyperthreading_disabled=True,
     partition=None,
+    default_threads_per_core=2,
 ):
-    expected_cpus_per_instance = slots_per_instance // 2 if hyperthreading_disabled else slots_per_instance
-    expected_threads_per_core = 1 if hyperthreading_disabled else 2
+    expected_cpus_per_instance = (
+        slots_per_instance // default_threads_per_core if hyperthreading_disabled else slots_per_instance
+    )
+    expected_threads_per_core = 1 if hyperthreading_disabled else default_threads_per_core
 
     # Test disable hyperthreading on head node
     logging.info("Test Disable Hyperthreading on head node")
@@ -91,7 +104,7 @@ def _test_disable_hyperthreading_settings(
     if partition:
         # If partition is supplied, assume this is HIT setting where ht settings are at the queue level
         # In this case, ht is not disabled on head node
-        assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(2))
+        assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(default_threads_per_core))
         _assert_active_cpus(result.stdout, slots_per_instance)
     else:
         assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(expected_threads_per_core))
@@ -128,10 +141,12 @@ def _test_disable_hyperthreading_settings(
         # check scale up to 2 nodes
         if partition:
             result = scheduler_commands.submit_command(
-                "hostname > /shared/hostname.out", slots=slots_per_instance, partition=partition
+                "hostname > /shared/hostname.out", slots=2 * expected_cpus_per_instance, partition=partition
             )
         else:
-            result = scheduler_commands.submit_command("hostname > /shared/hostname.out", slots=slots_per_instance)
+            result = scheduler_commands.submit_command(
+                "hostname > /shared/hostname.out", slots=2 * expected_cpus_per_instance
+            )
         job_id = scheduler_commands.assert_job_submitted(result.stdout)
         scheduler_commands.wait_job_completed(job_id)
         scheduler_commands.assert_job_succeeded(job_id)

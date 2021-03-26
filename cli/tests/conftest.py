@@ -3,7 +3,6 @@ This module loads pytest fixtures and plugins needed by all tests.
 
 It's very useful for fixtures that need to be shared among all tests.
 """
-from __future__ import print_function
 
 import os
 
@@ -17,20 +16,6 @@ from jinja2 import Environment, FileSystemLoader
 def clear_env():
     if "AWS_DEFAULT_REGION" in os.environ:
         del os.environ["AWS_DEFAULT_REGION"]
-
-
-@pytest.fixture(autouse=True)
-def mock_default_instance(mocker, request):
-    """
-    Mock get_default_instance_type for all tests.
-
-    To disable the mock for certain tests, add annotation `@pytest.mark.nomockdefaultinstance` to the tests.
-    To disable the mock for an entire file, declare global var `pytestmark = pytest.mark.noassertnopendingresponses`
-    """
-    if "nomockdefaultinstance" in request.keywords:
-        # skip mocking
-        return
-    mocker.patch("pcluster.config.cfn_param_types.get_default_instance_type", return_value="t2.micro")
 
 
 @pytest.fixture
@@ -176,7 +161,7 @@ def pcluster_config_reader(test_datadir):
     The config for a given test is a pcluster.config.ini file stored in the configs_datadir folder.
     The config can be written by using Jinja2 template engine.
     The current renderer already replaces placeholders for current keys:
-        {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
+        {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
         {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
@@ -184,9 +169,8 @@ def pcluster_config_reader(test_datadir):
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(config_file="pcluster.config.ini", **kwargs):
+    def _config_renderer(config_file="pcluster.config.yaml", **kwargs):
         config_file_path = os.path.join(str(test_datadir), config_file)
-        # default_values = _get_default_template_values(vpc_stacks, region, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**kwargs)

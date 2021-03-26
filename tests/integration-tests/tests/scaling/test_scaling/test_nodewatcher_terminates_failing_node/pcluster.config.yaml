@@ -1,0 +1,22 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            InstanceType: {{ instance }}
+            {% if maintain_initial_size %}
+            MinCount: {{ initial_queue_size }}
+            {% endif %}
+            MaxCount: {{ initial_queue_size }}
+        Networking:
+          SubnetIds:
+            - {{ public_subnet_id }}

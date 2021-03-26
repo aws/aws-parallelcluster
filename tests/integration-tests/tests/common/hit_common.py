@@ -40,6 +40,9 @@ def assert_initial_conditions(scheduler_commands, num_static_nodes, num_dynamic_
     if cancel_job_id:
         # Cancel warm up job so no extra scaling behavior should be happening
         scheduler_commands.cancel_job(cancel_job_id)
+        retry(wait_fixed=seconds(20), stop_max_delay=minutes(2))(assert_compute_node_states)(
+            scheduler_commands, nodes_in_scheduler, expected_states=["idle"]
+        )
 
     return static_nodes, dynamic_nodes
 

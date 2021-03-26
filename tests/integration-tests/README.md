@@ -227,10 +227,8 @@ of the selected test function which consist in the combination of all defined di
 cloudwatch_logging suite defined above will produce the following parametrization:
 
 ```
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux2-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1604-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-awsbatch]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-sge]
@@ -293,7 +291,7 @@ tests_outputs
 └── $timestamp.out: directory containing tests reports
     ├── $region_i: directory containing tests reports for a single region
     │         ├── clusters_configs: directory storing all cluster configs used by test
-    │         │         ├── test_awsbatch.py::test_job_submission[c5.xlarge-eu-west-1-alinux-awsbatch].config
+    │         │         ├── test_awsbatch.py::test_job_submission[c5.xlarge-eu-west-1-alinux2-awsbatch].config
     │         │         └── ...
     │         ├── pytest.out: stdout of pytest for the given region
     │         ├── results.html: html report for the given region
@@ -459,13 +457,13 @@ Here is how to define a simple parametrized test case:
 def test_case_1(region, instance, os, scheduler):
 ```
 This test case will be automatically parametrized and executed for all combination of input dimensions.
-For example, given as input dimensions `--regions "eu-west-1" --instances "c4.xlarge" --oss "alinux"
-"ubuntu1604" --scheduler "sge" "slurm"`, the following tests will run:
+For example, given as input dimensions `--regions "eu-west-1" --instances "c4.xlarge" --oss "alinux2"
+"ubuntu1804" --scheduler "sge" "slurm"`, the following tests will run:
 ```
-test_case_1[eu-west-1-c4.xlarge-alinux-sge]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1604-sge]
-test_case_1[eu-west-1-c4.xlarge-alinux-slurm]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1604-slurm]
+test_case_1[eu-west-1-c4.xlarge-alinux2-sge]
+test_case_1[eu-west-1-c4.xlarge-ubuntu1804-sge]
+test_case_1[eu-west-1-c4.xlarge-alinux2-slurm]
+test_case_1[eu-west-1-c4.xlarge-ubuntu1804-slurm]
 ```
 
 If you don't need to reference the parametrized arguments in your test case you can simply replace the
@@ -474,7 +472,7 @@ function arguments with this annotation: `@pytest.mark.usefixtures("region", "os
 ```python
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge", "t2.large"])
-@pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
+@pytest.mark.dimensions("*", "*", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_case_2():
 ```
@@ -511,25 +509,25 @@ For example, given the following test definition:
 ```python
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge", "t2.large"])
-@pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
+@pytest.mark.dimensions("*", "*", "alinux2", "awsbatch")
 def test_case_1(region, instance, os, scheduler):
 ```
 The test is allowed to run against the following subset of dimensions:
 * region has to be one of `["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"]`
 * instance has to be one of `"c5.xlarge", "t2.large"`
-* os has to be `alinux`
+* os has to be `alinux2`
 * scheduler has to be `awsbatch`
 
 While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
-@pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux", "awsbatch")
+@pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "sge")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
-* the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux", "awsbatch")` or
+* the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2", "awsbatch")` or
 `("c4.xlarge", "centos7", "sge")`
 
 #### Default Invalid Dimensions
@@ -549,7 +547,7 @@ integration-tests
          ├── $test_file_i.py: contains resources for test cases defined in file $test_file_i.py
          │         └── $test_case_i: contains resources for test case $test_case_i
          │             ├── data_file
-         │             ├── pcluster.config.ini
+         │             ├── pcluster.config.yaml
          │             └── test_script.sh
          └── data: contains common resources to share across all tests
                 └── shared_dir_1
@@ -579,7 +577,7 @@ Similarly to parametrized test cases, also cluster configurations can be paramet
 [Jinja2](http://jinja.pocoo.org/docs/2.10/) templating syntax.
 
 The cluster configuration needed for a given test case needs to reside in the test specific `test_datadir`
-and it needs to be in a file named pcluster.config.ini.
+and it needs to be in a file named pcluster.config.yaml.
 
 Test cases can then inject a fixture called `pcluster_config_reader` which allows to automatically read and render
 the configuration defined for a specific test case and have it automatically parametrized with the default
@@ -591,7 +589,7 @@ def test_case_1(region, instance, os, scheduler, pcluster_config_reader):
     cluster_config = pcluster_config_reader(vpc_id="id-xxx", master_subnet_id="id-xxx", compute_subnet_id="id-xxx")
 ```
 you can simply render the parametrized cluster config which is defined in the file
-`integration-tests/tests/test_feature/test_case_1/pcluster.config.ini`
+`integration-tests/tests/test_feature/test_case_1/pcluster.config.yaml`
 
 Here is an example of the parametrized pcluster config:
 ```INI
@@ -618,7 +616,7 @@ compute_subnet_id = {{ private_subnet_id }}
 ```
 
 The following placeholders are automatically injected by the `pcluster_config_reader` fixture and are
-available in the `pcluster.config.ini` files:
+available in the `pcluster.config.yaml` files:
 * Test dimensions for the specific parametrized test case: `{{ region }}`, `{{ instance }}`, `{{ os }}`,
 `{{ scheduler }}`
 * EC2 key name specified at tests submission time by the user: `{{ key_name }}`
@@ -734,7 +732,7 @@ integration-tests
           └──  test_feature
                     └── test_case_1
                         ├── data_file
-                        ├── pcluster.config.ini
+                        ├── pcluster.config.yaml
                         └── test_script.sh
 
 ```

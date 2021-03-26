@@ -8,19 +8,9 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
-from __future__ import absolute_import, print_function  # isort:skip
 
 import functools
 import itertools
-
-from future import standard_library  # isort:skip
-
-
-standard_library.install_aliases()
-# fmt: on
-
-import hashlib
 import json
 import logging
 import os
@@ -32,15 +22,12 @@ import time
 import urllib.request
 import zipfile
 from io import BytesIO
-from urllib.parse import urlparse
 
 import boto3
 import pkg_resources
-from botocore.exceptions import ClientError, EndpointConnectionError
-from jinja2 import BaseLoader, Environment
+from botocore.exceptions import ClientError
 from pkg_resources import packaging
 
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import (
     PCLUSTER_STACK_PREFIX,
     SUPPORTED_ARCHITECTURES,
@@ -50,23 +37,6 @@ from pcluster.constants import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-
-def get_stack_name(cluster_name):
-    return PCLUSTER_STACK_PREFIX + cluster_name
-
-
-def get_cluster_name(stack_name):
-    prefix = PCLUSTER_STACK_PREFIX
-    if stack_name.startswith(prefix):
-        return stack_name[len(prefix) :]  # noqa: E203
-    else:
-        raise Exception("Invalid stack name: {}".format(stack_name))
-
-
-# TODO Moved
-def get_stack_version(stack):
-    return next(iter([tag["Value"] for tag in stack.get("Tags") if tag["Key"] == "Version"]), None)
 
 
 def default_config_file_path():
@@ -88,21 +58,6 @@ def get_partition():
     return next(("aws-" + partition for partition in ["us-gov", "cn"] if get_region().startswith(partition)), "aws")
 
 
-def paginate_boto3(method, **kwargs):
-    """
-    Return a generator for a boto3 call, this allows pagination over an arbitrary number of responses.
-
-    :param method: boto3 method
-    :param kwargs: arguments to method
-    :return: generator with boto3 results
-    """
-    client = method.__self__
-    paginator = client.get_paginator(method.__name__)
-    for page in paginator.paginate(**kwargs).result_key_iters():
-        for result in page:
-            yield result
-
-
 def generate_random_name_with_prefix(name_prefix):
     """
     Generate a random name that is no more than 63 characters long, with the given prefix.
@@ -121,12 +76,6 @@ def generate_random_prefix():
     Example: 4htvo26lchkqeho1
     """
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
-
-
-def get_cloudformation_directory():
-    """Get cloudforamtion directory."""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(current_dir, "..", "..", "..", "cloudformation")
 
 
 def create_s3_bucket(bucket_name):
@@ -230,22 +179,6 @@ def delete_s3_artifacts(bucket_name, artifact_directory):
         )
 
 
-# TODO moved
-def cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket=True):
-    """Cleanup S3 bucket and/or artifact directory."""
-    LOGGER.debug(
-        "Cleaning up S3 resources bucket_name=%s, artifact_directory=%s, remove_bucket=%s",
-        bucket_name,
-        artifact_directory,
-        cleanup_bucket,
-    )
-    if bucket_name:
-        if artifact_directory:
-            delete_s3_artifacts(bucket_name, artifact_directory)
-        if cleanup_bucket:
-            delete_s3_bucket(bucket_name)
-
-
 def _add_file_to_zip(zip_file, path, arcname):
     """
     Add the file at path under the name arcname to the archive represented by zip_file.
@@ -260,7 +193,7 @@ def _add_file_to_zip(zip_file, path, arcname):
         zip_file.writestr(zinfo, input_file.read())
 
 
-def zip_dir(path):
+def _zip_dir(path):
     """
     Create a zip archive containing all files and dirs rooted in path.
 
@@ -294,158 +227,9 @@ def upload_resources_artifacts(bucket_name, artifact_directory, root):
     bucket = boto3.resource("s3").Bucket(bucket_name)
     for res in os.listdir(root):
         if os.path.isdir(os.path.join(root, res)):
-            bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/%s/artifacts.zip" % (artifact_directory, res))
+            bucket.upload_fileobj(_zip_dir(os.path.join(root, res)), "%s/%s/artifacts.zip" % (artifact_directory, res))
         elif os.path.isfile(os.path.join(root, res)):
             bucket.upload_file(os.path.join(root, res), "%s/%s" % (artifact_directory, res))
-
-
-# FIXME MOVED into common/boto3/ec2
-def get_supported_instance_types():
-    """Return the list of instance types available in the given region."""
-    ec2_client = boto3.client("ec2")
-    try:
-        return [
-            offering.get("InstanceType") for offering in paginate_boto3(ec2_client.describe_instance_type_offerings)
-        ]
-    except ClientError as client_err:
-        error(
-            "Error when getting supported instance types via DescribeInstanceTypeOfferings: {0}".format(
-                client_err.response.get("Error").get("Message")
-            )
-        )
-
-
-class BatchErrorMessageParsingException(Exception):
-    """Exception for errors getting supported Batch instance types from CreateComputeEnvironment."""
-
-    pass
-
-
-def _call_create_compute_environment_with_bad_instance_type():
-    """
-    Call CreateComputeEnvironment with a nonexistent instance type.
-
-    For more information on why this would be done, see the docstring for
-    _get_supported_instance_types_create_compute_environment_error_message.
-    """
-    batch_client = boto3.client("batch")
-    nonexistent_instance_type = "p8.84xlarge"
-    batch_client.create_compute_environment(
-        computeEnvironmentName="dummy",
-        type="MANAGED",
-        computeResources={
-            "type": "EC2",
-            "minvCpus": 0,
-            "maxvCpus": 0,
-            "instanceTypes": [nonexistent_instance_type],
-            "subnets": ["subnet-12345"],  # security group, subnet and role aren't checked
-            "securityGroupIds": ["sg-12345"],
-            "instanceRole": "ecsInstanceRole",
-        },
-        serviceRole="AWSBatchServiceRole",
-    )
-
-
-def _get_cce_emsg_containing_supported_instance_types():
-    """
-    Call CreateComputeEnvironment with nonexistent instance type and return error message.
-
-    The returned error message is expected to have a list of supported instance types.
-    """
-    try:
-        _call_create_compute_environment_with_bad_instance_type()
-    except ClientError as e:
-        # This is the expected behavior
-        return e.response.get("Error").get("Message")
-    except EndpointConnectionError:
-        raise BatchErrorMessageParsingException(
-            "Could not connect to the batch endpoint for region %s. Probably Batch is not available.", get_region()
-        )
-    else:
-        # TODO: need to delete the compute environment?
-        raise BatchErrorMessageParsingException(
-            "Attempting to create a Batch ComputeEnvironment using a nonexistent instance type did not result "
-            "in an error as expected."
-        )
-
-
-def _parse_supported_instance_types_and_families_from_cce_emsg(emsg):
-    """
-    Parse the supported instance types emsg, obtained by calling CreateComputeEnvironment.
-
-    The string is expected to have the following format:
-    Instance type can only be one of [r3, r4, m6g.xlarge, r5, optimal, ...]
-    """
-    match = re.search(r"be\s+one\s+of\s*\[(.*[0-9a-z.\-]+.*,.*)\]", emsg)
-    if match:
-        parsed_values = [instance_type_token.strip() for instance_type_token in match.group(1).split(",")]
-        LOGGER.debug(
-            "Parsed the following instance types and families from Batch CCE error message: {0}".format(
-                " ".join(parsed_values)
-            )
-        )
-        return parsed_values
-    else:
-        raise BatchErrorMessageParsingException(
-            "Could not parse supported instance types from the following: {0}".format(emsg)
-        )
-
-
-def is_instance_type_format(candidate):
-    """Return a boolean describing whether or not candidate is of the format of an instance type."""
-    return re.search(r"^([a-z0-9\-]+)\.", candidate) is not None
-
-
-def _get_instance_families_from_types(instance_types):
-    """Return a list of instance families represented by the given list of instance types."""
-    families = set()
-    for instance_type in instance_types:
-        match = re.search(r"^([a-z0-9\-]+)\.", instance_type)
-        if match:
-            families.add(match.group(1))
-        else:
-            LOGGER.debug("Unable to parse instance family for instance type {0}".format(instance_type))
-    return list(families)
-
-
-def _batch_instance_types_and_families_are_supported(candidate_types_and_families, known_types_and_families):
-    """Return a boolean describing whether the instance types and families parsed from Batch API are known."""
-    unknowns = [candidate for candidate in candidate_types_and_families if candidate not in known_types_and_families]
-    if unknowns:
-        LOGGER.debug("Found the following unknown instance types/families: {0}".format(" ".join(unknowns)))
-    return not unknowns
-
-
-def get_supported_batch_instance_types():
-    """
-    Get the instance types supported by Batch in the desired region.
-
-    This is done by calling Batch's CreateComputeEnvironment with a bad
-    instance type and parsing the error message.
-    """
-    supported_instance_types = get_supported_instance_types()
-    supported_instance_families = _get_instance_families_from_types(supported_instance_types)
-    known_exceptions = ["optimal"]
-    supported_instance_types_and_families = supported_instance_types + supported_instance_families + known_exceptions
-    try:
-        emsg = _get_cce_emsg_containing_supported_instance_types()
-        parsed_instance_types_and_families = _parse_supported_instance_types_and_families_from_cce_emsg(emsg)
-        if _batch_instance_types_and_families_are_supported(
-            parsed_instance_types_and_families, supported_instance_types_and_families
-        ):
-            supported_batch_types = parsed_instance_types_and_families
-        else:
-            supported_batch_types = supported_instance_types_and_families
-    except Exception as exception:
-        # When the instance types supported by Batch can't be parsed from an error message,
-        # log the reason for the failure and return instead a list of all instance types
-        # supported in the region.
-        LOGGER.debug(
-            "Failed to parse supported Batch instance types from a CreateComputeEnvironment "
-            "error message: {0}".format(exception)
-        )
-        supported_batch_types = supported_instance_types_and_families
-    return supported_batch_types
 
 
 def get_supported_az_for_one_instance_type(instance_type):
@@ -514,30 +298,6 @@ def get_common_supported_az_for_multi_instance_types(instance_types):
         else:
             common_az = common_az & set(az_list)
     return common_az
-
-
-def get_availability_zone_of_subnet(subnet_id):
-    """
-    Return the availability zone of the subnet.
-
-    :param subnet_id: the id of the subnet.
-    :return: a strings of availability zone name
-    """
-    if not hasattr(get_availability_zone_of_subnet, "cache"):
-        get_availability_zone_of_subnet.cache = {}
-    cache = get_availability_zone_of_subnet.cache
-    if subnet_id not in cache:
-        try:
-            cache[subnet_id] = (
-                boto3.client("ec2").describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("AvailabilityZone")
-            )
-        except ClientError as e:
-            LOGGER.debug(
-                "Unable to detect availability zone for subnet {0}.\n{1}".format(
-                    subnet_id, e.response.get("Error").get("Message")
-                )
-            )
-    return cache.get(subnet_id)
 
 
 def get_supported_os_for_scheduler(scheduler):
@@ -632,7 +392,7 @@ def get_stack_events(stack_name, raise_on_error=False):
         )
 
 
-def verify_stack_creation(stack_name, cfn_client=None):
+def verify_stack_status(stack_name, waiting_states, successful_state, cfn_client=None):
     """
     Wait for the stack creation to be completed and notify if the stack creation fails.
 
@@ -644,7 +404,7 @@ def verify_stack_creation(stack_name, cfn_client=None):
         cfn_client = boto3.client("cloudformation")
     status = get_stack(stack_name, cfn_client).get("StackStatus")
     resource_status = ""
-    while status == "CREATE_IN_PROGRESS":
+    while status in waiting_states:
         status = get_stack(stack_name, cfn_client).get("StackStatus")
         events = get_stack_events(stack_name, raise_on_error=True)[0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
@@ -656,14 +416,12 @@ def verify_stack_creation(stack_name, cfn_client=None):
     # print the last status update in the logs
     if resource_status != "":
         LOGGER.debug(resource_status)
-    if status != "CREATE_COMPLETE":
-        LOGGER.critical("\nCluster creation failed.  Failed events:")
-        _log_stack_failure_recursive(stack_name)
+    if status != successful_state:
         return False
     return True
 
 
-def _log_stack_failure_recursive(stack_name, indent=2):
+def log_stack_failure_recursive(stack_name, indent=2):
     """Log stack failures in recursive manner, until there is no substack layer."""
     events = get_stack_events(stack_name, raise_on_error=True)
     for event in events:
@@ -680,7 +438,7 @@ def _log_stack_failure_recursive(stack_name, indent=2):
                 )
                 substack_name = substack_error.group(1) if substack_error else None
                 if substack_name:
-                    _log_stack_failure_recursive(substack_name, indent=indent + 2)
+                    log_stack_failure_recursive(substack_name, indent=indent + 2)
 
 
 def _log_failed_cfn_event(event, indent):
@@ -733,40 +491,6 @@ def error(message, fail_on_error=True):
         print("ERROR: {0}".format(message))
 
 
-# TODO moved
-def get_cfn_param(params, key_name):
-    """
-    Get parameter value from Cloudformation Stack Parameters.
-
-    :param params: Cloudformation Stack Parameters
-    :param key_name: Parameter Key
-    :return: ParameterValue if that parameter exists, otherwise None
-    """
-    param_value = next((i.get("ParameterValue") for i in params if i.get("ParameterKey") == key_name), "NONE")
-    return param_value.strip()
-
-
-def get_efs_mount_target_id(efs_fs_id, avail_zone):
-    """
-    Search for a Mount Target Id in given availability zone for the given EFS file system id.
-
-    :param efs_fs_id: EFS file system Id
-    :param avail_zone: Availability zone to verify
-    :return: the mount_target_id or None
-    """
-    mount_target_id = None
-    if efs_fs_id:
-        mount_targets = boto3.client("efs").describe_mount_targets(FileSystemId=efs_fs_id)
-
-        for mount_target in mount_targets.get("MountTargets"):
-            # Check to see if there is an existing mt in the az of the stack
-            mount_target_subnet = mount_target.get("SubnetId")
-            if avail_zone == get_availability_zone_of_subnet(mount_target_subnet):
-                mount_target_id = mount_target.get("MountTargetId")
-
-    return mount_target_id
-
-
 def get_info_for_amis(ami_ids):
     """Get information returned by EC2's describe-images API for the given list of AMIs."""
     try:
@@ -808,47 +532,6 @@ def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
 
 
-# TODO to be deleted
-def get_asg_name(stack_name):
-    outputs = get_stack(stack_name).get("Outputs", [])
-    asg_name = get_stack_output_value(outputs, "ASGName")
-    if not asg_name:
-        # Fallback to old behaviour to preserve backward compatibility
-        resources = get_stack_resources(stack_name)
-        asg_name = next(
-            (r.get("PhysicalResourceId") for r in resources if r.get("LogicalResourceId") == "ComputeFleet"), None
-        )
-        if not asg_name:
-            LOGGER.error("Could not retrieve AutoScaling group name. Please check cluster status.")
-            sys.exit(1)
-    return asg_name
-
-
-# TODO to be deleted
-def get_batch_ce(stack_name):
-    """
-    Get name of the AWS Batch Compute Environment.
-
-    :param stack_name: name of the head node stack
-    :param config: config
-    :return: ce_name or exit if not found
-    """
-    outputs = get_stack(stack_name).get("Outputs")
-    return get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
-
-
-# TODO to be deleted
-def get_batch_ce_capacity(stack_name):
-    client = boto3.client("batch")
-
-    return (
-        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name)])
-        .get("computeEnvironments")[0]
-        .get("computeResources")
-        .get("desiredvCpus")
-    )
-
-
 def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
     while True:
         try:
@@ -860,17 +543,6 @@ def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
             time.sleep(wait)
 
 
-# TODO to be deleted
-def get_asg_settings(stack_name):
-    try:
-        asg_name = get_asg_name(stack_name)
-        asg_client = boto3.client("autoscaling")
-        return asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")[0]
-    except Exception as e:
-        LOGGER.error("Failed when retrieving data for ASG %s with exception %s", asg_name, e)
-        raise
-
-
 def ellipsize(text, max_length):
     """Truncate the provided text to max length, adding ellipsis."""
     # Convert input text to string, just in case
@@ -880,24 +552,6 @@ def ellipsize(text, max_length):
 
 def policy_name_to_arn(policy_name):
     return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
-
-
-def cluster_has_running_capacity(stack_name):
-    if not hasattr(cluster_has_running_capacity, "cached_result"):
-        stack = get_stack(stack_name)
-        scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
-        if is_hit_enabled_cluster(stack):
-            cluster_has_running_capacity.cached_result = (
-                ComputeFleetStatusManager(get_cluster_name(stack_name)).get_status() != ComputeFleetStatus.STOPPED
-            )
-        else:
-            cluster_has_running_capacity.cached_result = (
-                get_batch_ce_capacity(stack_name) > 0
-                if scheduler == "awsbatch"
-                else get_asg_settings(stack_name).get("DesiredCapacity") > 0
-            )
-
-    return cluster_has_running_capacity.cached_result
 
 
 def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
@@ -915,66 +569,6 @@ def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
         ]
     )
     return res
-
-
-def is_hit_enabled_scheduler(scheduler):
-    return scheduler in ["slurm"]
-
-
-def is_hit_enabled_cluster(cfn_stack):
-    scheduler = get_cfn_param(cfn_stack.get("Parameters"), "Scheduler")
-    stack_version = get_stack_version(cfn_stack)
-    return is_hit_enabled_scheduler(scheduler) and packaging.version.parse(stack_version) >= packaging.version.parse(
-        "2.9.0"
-    )
-
-
-def read_remote_file(url):
-    """Read a remote file from an HTTP or S3 url."""
-    try:
-        if urlparse(url).scheme == "s3":
-            match = re.match(r"s3://(.*?)/(.*)", url)
-            bucket, key = match.group(1), match.group(2)
-            file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
-        else:
-            with urllib.request.urlopen(url) as f:
-                file_contents = f.read().decode("utf-8")
-        return file_contents
-    except Exception as e:
-        LOGGER.error("Failed when reading remote file from url %s: %s", url, e)
-        raise e
-
-
-def render_template(template_str, params_dict, tags, config_version=None):
-    """
-    Render a Jinja template and return the rendered output.
-
-    :param template_str: Template file contents as a string
-    :param params_dict: Template parameters dict
-    """
-    try:
-        environment = Environment(loader=BaseLoader)
-        environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
-        environment.filters["bool"] = lambda value: value.lower() == "true"
-        template = environment.from_string(template_str)
-        output_from_parsed_template = template.render(config=params_dict, config_version=config_version, tags=tags)
-        return output_from_parsed_template
-    except Exception as e:
-        LOGGER.error("Error when rendering template: %s", e)
-        raise e
-
-
-def get_bucket_url(region):
-    """Return the ParallelCluster's bucket url for the provided region."""
-    s3_suffix = ".cn" if region.startswith("cn") else ""
-    return ("https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{suffix}").format(
-        region=region, suffix=s3_suffix
-    )
-
-
-def get_file_section_name(section_key, section_label=None):
-    """Build a section name as in the config file, given section key and label."""
-    return section_key + (" {0}".format(section_label) if section_label else "")
 
 
 def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
@@ -1004,26 +598,6 @@ def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
                 ebs_snapshot_id, e.response.get("Error").get("Message")
             )
         )
-
-
-def get_default_instance_type():
-    """If current region support free tier, return the free tier instance type. Otherwise, return t3.micro ."""
-    if not hasattr(get_default_instance_type, "cache"):
-        get_default_instance_type.cache = {}
-    cache = get_default_instance_type.cache
-    region = os.environ.get("AWS_DEFAULT_REGION")
-    if region not in cache:
-        free_tier_instance_type = []
-        for page in paginate_boto3(
-            boto3.client("ec2").describe_instance_types,
-            Filters=[
-                {"Name": "free-tier-eligible", "Values": ["true"]},
-                {"Name": "current-generation", "Values": ["true"]},
-            ],
-        ):
-            free_tier_instance_type.append(page)
-        cache[region] = free_tier_instance_type[0]["InstanceType"] if free_tier_instance_type else "t3.micro"
-    return cache[region]
 
 
 class Cache:

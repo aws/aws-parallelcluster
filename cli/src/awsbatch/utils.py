@@ -11,7 +11,6 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-from __future__ import print_function
 
 import pipes
 import re
@@ -115,9 +114,6 @@ def is_mnp_job(job):
 def get_job_type(job):
     """
     Get the type of the job.
-
-    Job type is of type string and not enum since enums have been introduced
-    since Python 3.4.
 
     :param job: the job dictionary returned by AWS Batch api
     :return: one of ["SIMPLE", "ARRAY", "MNP"]

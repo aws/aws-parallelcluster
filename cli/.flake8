@@ -7,6 +7,7 @@ ignore =
     D103, # Missing docstring in public function
     W503, # line break before binary operator => Conflicts with black style.
     D413, # Missing blank line after last section
+    F821, # undefined name
 # E402 module level import not at top of file
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method

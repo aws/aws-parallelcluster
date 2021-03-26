@@ -23,9 +23,9 @@ from shutil import copyfile
 from traceback import format_tb
 
 import boto3
-import configparser
 import pkg_resources
 import pytest
+import yaml
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -47,6 +47,7 @@ from utils import (
     delete_s3_bucket,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
+    get_instance_info,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
@@ -55,7 +56,7 @@ from utils import (
     unset_credentials,
 )
 
-from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import get_sts_endpoint, retrieve_latest_ami, retrieve_pcluster_ami_without_standard_naming
 
 
 def pytest_addoption(parser):
@@ -74,6 +75,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
     )
+    parser.addoption("--cookbook-git-ref", help="Git ref of the cookbook used to bake the AMI")
     parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--template-url", help="url to a custom cfn template")
@@ -264,7 +266,7 @@ def _add_properties_to_report(item):
 
 @pytest.fixture(scope="class")
 @pytest.mark.usefixtures("setup_sts_credentials")
-def clusters_factory(request):
+def clusters_factory(request, region):
     """
     Define a fixture to manage the creation and destruction of clusters.
 
@@ -284,6 +286,7 @@ def clusters_factory(request):
             ),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
+            region=region,
         )
         if not request.config.getoption("cluster"):
             factory.create_cluster(cluster, extra_args=extra_args, raise_on_error=raise_on_error)
@@ -342,7 +345,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, region, request):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
-    The config for a given test is a pcluster.config.ini file stored in the configs_datadir folder.
+    The config for a given test is a pcluster.config.yaml file stored in the configs_datadir folder.
     The config can be written by using Jinja2 template engine.
     The current renderer already replaces placeholders for current keys:
         {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
@@ -354,7 +357,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, region, request):
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(config_file="pcluster.config.ini", **kwargs):
+    def _config_renderer(config_file="pcluster.config.yaml", **kwargs):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
@@ -364,23 +367,49 @@ def pcluster_config_reader(test_datadir, vpc_stack, region, request):
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
         add_custom_packages_configs(config_file_path, request, region)
-        _enable_sanity_check_if_unset(config_file_path)
         return config_file_path
 
     return _config_renderer
 
 
 def add_custom_packages_configs(cluster_config, request, region):
-    config = configparser.ConfigParser()
-    config.read(cluster_config)
-    cluster_template = "cluster {0}".format(config.get("global", "cluster_template", fallback="default"))
+    with open(cluster_config) as conf_file:
+        config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
+    if request.config.getoption("custom_chef_cookbook"):
+        if config_content.get("DevSettings") is None:
+            config_content["DevSettings"] = {}
+        if config_content["DevSettings"].get("Cookbook") is None:
+            config_content["DevSettings"]["Cookbook"] = {}
+        if config_content["DevSettings"]["Cookbook"].get("ChefCookbook") is None:
+            config_content["DevSettings"]["Cookbook"]["ChefCookbook"] = request.config.getoption("custom_chef_cookbook")
 
+    if config_content["Image"].get("CustomAmi") is None:
+        additional_filters = []
+        if request.config.getoption("cookbook_git_ref"):
+            additional_filters.append(
+                {
+                    "Name": "tag:parallelcluster_cookbook_ref",
+                    "Values": [request.config.getoption("cookbook_git_ref")],
+                }
+            )
+        # FixMe: the code below is a temporary solution to pass AMIs from build process.
+        #  However, this is done at the price of only testing custom AMI path.
+        #  We need a solution to pass the AMI without specifying CustomAMI
+        config_content["Image"]["CustomAmi"] = retrieve_latest_ami(
+            region,
+            config_content["Image"].get("Os"),
+            ami_type="pcluster",
+            architecture=get_architecture_supported_by_instance_type(config_content["HeadNode"]["InstanceType"]),
+            additional_filters=additional_filters,
+        )
+
+    with open(cluster_config, "w") as conf_file:
+        yaml.dump(config_content, conf_file)
+
+
+# ToDo uncomment and adapt the change below
+"""
     for custom_option in [
-        "template_url",
-        "hit_template_url",
-        "cw_dashboard_template_url",
-        "custom_chef_cookbook",
-        "custom_ami",
         "pre_install",
         "post_install",
     ]:
@@ -404,9 +433,7 @@ def add_custom_packages_configs(cluster_config, request, region):
                 extra_json["cluster"] = cluster
     if extra_json:
         config[cluster_template]["extra_json"] = json.dumps(extra_json)
-
-    with cluster_config.open(mode="w") as f:
-        config.write(f)
+"""
 
 
 def _add_policy_for_pre_post_install(cluster_template, config, custom_option, request, region):
@@ -436,24 +463,13 @@ def _get_arn_partition(region):
         return "aws"
 
 
-def _enable_sanity_check_if_unset(cluster_config):
-    config = configparser.ConfigParser()
-    config.read(cluster_config)
-
-    if "global" not in config:
-        config.add_section("global")
-
-    if "sanity_check" not in config["global"]:
-        config["global"]["sanity_check"] = "true"
-
-    with cluster_config.open(mode="w") as f:
-        config.write(f)
-
-
 def _get_default_template_values(vpc_stack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = get_vpc_snakecase_value(vpc_stack)
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
+    scheduler = default_values.get("scheduler")
+    if scheduler is not None:
+        default_values["scheduler"] = scheduler.title()
     default_values["key_name"] = request.config.getoption("key_name")
 
     return default_values
@@ -493,6 +509,10 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "sa-east-1": ["sae1-az1", "sae1-az3"],
     # m6g.xlarge instances not available in euw1-az3
     "eu-west-1": ["euw1-az1", "euw1-az2"],
+    # io2 EBS volumes not available in cac1-az4
+    "ca-central-1": ["cac1-az1", "cac1-az2"],
+    # instance can only be launch in placement group in eun1-az2
+    "eu-north-1": ["eun1-az2"],
 }
 
 
@@ -519,6 +539,16 @@ def setup_sts_credentials(region, request):
     set_credentials(region, request.config.getoption("credential"))
     yield
     unset_credentials()
+
+
+# FixMe: double check if this fixture introduce unnecessary implication.
+#  The alternative way is to use --region for all cluster operations.
+@pytest.fixture(scope="class", autouse=True)
+def setup_env_variable(region):
+    """Setup environment for the integ tests"""
+    os.environ["AWS_DEFAULT_REGION"] = region
+    yield
+    del os.environ["AWS_DEFAULT_REGION"]
 
 
 def get_az_id_to_az_name_map(region, credential):
@@ -816,6 +846,24 @@ def network_interfaces_count(request, instance, region):
         network_interfaces_count = get_network_interfaces_count(instance, region)
         request.config.cache.set(f"{instance}/network_interfaces_count", network_interfaces_count)
     return network_interfaces_count
+
+
+@pytest.fixture()
+def default_threads_per_core(request, instance, region):
+    """Return the default threads per core for the given instance type."""
+    # NOTE: currently, .metal instances do not contain the DefaultThreadsPerCore
+    #       attribute in their VCpuInfo section. This is a known limitation with the
+    #       ec2 DescribeInstanceTypes API. For these instance types an assumption
+    #       is made that if the instance's supported architectures list includes
+    #       x86_64 then the default is 2, otherwise it's 1.
+    logging.info(f"Getting defaul threads per core for instance type {instance}")
+    instance_type_data = get_instance_info(instance, region)
+    threads_per_core = instance_type_data.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
+    if threads_per_core is None:
+        supported_architectures = instance_type_data.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
+        threads_per_core = 2 if "x86_64" in supported_architectures else 1
+    logging.info(f"Defaul threads per core for instance type {instance} : {threads_per_core}")
+    return threads_per_core
 
 
 @pytest.fixture(scope="session")

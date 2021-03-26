@@ -13,11 +13,11 @@ import re
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.constants import CIDR_ALL_IPS
+from common.aws.aws_api import AWSApi
+from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_OSES
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     InstanceTypeInfo,
-    get_efs_mount_target_id,
     get_supported_architectures_for_instance_type,
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
@@ -33,7 +33,7 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": ["centos7", "centos8", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "x86_64": SUPPORTED_OSES,
     "arm64": ["ubuntu1804", "alinux2", "centos8"],
 }
 
@@ -482,28 +482,21 @@ class EfsIdValidator(Validator):  # TODO add tests
     """
 
     def _validate(self, efs_id, head_node_avail_zone: str):
-        try:
-            # Get head node availability zone
-            head_node_target_id = get_efs_mount_target_id(efs_fs_id=efs_id, avail_zone=head_node_avail_zone)
-            # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-            if head_node_target_id:
-                # Get list of security group IDs of the mount target
-                sg_ids = (
-                    boto3.client("efs")
-                    .describe_mount_target_security_groups(MountTargetId=head_node_target_id)
-                    .get("SecurityGroups")
+        # Get head node availability zone
+        head_node_target_id = AWSApi.instance().efs.get_efs_mount_target_id(efs_id, head_node_avail_zone)
+        # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
+        if head_node_target_id:
+            # Get list of security group IDs of the mount target
+            sg_ids = AWSApi.instance().efs.get_efs_mount_target_security_groups(head_node_target_id)
+            if not _check_in_out_access(sg_ids, port=2049):
+                self._add_failure(
+                    "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
+                    "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+                    "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
+                        head_node_target_id, head_node_avail_zone, efs_id
+                    ),
+                    FailureLevel.WARNING,
                 )
-                if not _check_in_out_access(sg_ids, port=2049):
-                    self._add_failure(
-                        "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
-                        "but it does not have a security group that allows inbound and outbound rules to support NFS. "
-                        "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
-                            head_node_target_id, head_node_avail_zone, efs_id
-                        ),
-                        FailureLevel.WARNING,
-                    )
-        except ClientError as e:
-            self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
 
 
 # --------------- Third party software validators --------------- #

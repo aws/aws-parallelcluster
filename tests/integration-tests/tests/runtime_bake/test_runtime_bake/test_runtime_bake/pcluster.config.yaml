@@ -1,0 +1,30 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ custom_ami }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  LocalStorage:
+    RootVolume:
+      Size: 150
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        ComputeSettings:
+          LocalStorage:
+            RootVolume:
+              Size: 150
+        ComputeResources:
+          - Name: compute-resource-0
+            {% if scheduler == "Awsbatch" %}
+            InstanceTypes: {{ instance }}
+            {% else %}
+            InstanceType: {{ instance }}
+            {% endif %}
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}

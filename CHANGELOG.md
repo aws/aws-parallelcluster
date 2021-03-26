@@ -6,21 +6,83 @@ CHANGELOG
 
 **CHANGES**
 
-- Changed format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
+- Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
 - Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
-- Add `--suppress-validators`, `--validation-failure-level` and`--disable-update-check` parameters to `create` command.
+- Deprecate `--cluster-template`, `--extra-parameters`, `--reset-desired` and `--yes` parameters for the `update` command.
 - Deprecate `--config` parameter for `delete`, `status`, `start`, `stop`, `instances` and `list` commands.
+- Add `--suppress-validators`, `--validation-failure-level` and`--disable-update-check` parameters to `create` command.
+- Add `--suppress-validators` and `--validation-failure-level` parameters to `update` command.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
 - Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 
   `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
    `--subnet-id`.
-- Add `--image-name`, `--config`, `--region` to `build-image` command.
+- Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
 - Add possibility to configure different security groups for each queue.
 - Add support for multiple subnets when using AWS Batch.
 - Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
-- Added timestamp suffix to CloudWatch Log Group name created for the cluster.
+- Add timestamp suffix to CloudWatch Log Group name created for the cluster.
+- Remove `pcluster-config` CLI utility.
+
+2.x.x
+------
+**ENHANCEMENTS**
+
+- Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+- Add validation for `cluster_type` configuration parameter in `cluster` section
+- Add validation for `compute_type` configuration parameter in `queue` section
+
+**CHANGES**
+
+- Ubuntu 16.04 is no longer supported.
+- Amazon Linux is no longer supported.
+- Upgrade Slurm to version 20.11.4.
+  - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds
+  - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value for all GPU, Type=tesla
+- Make `key_name` parameter optional to support cluster configurations without a key pair. 
+- Remove support for Python versions < 3.6.
+- Remove dependency on `future` package and `__future__` module.
+- Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
+- Add sanity check to prevent cluster creation in non officially supported AWS regions 
+
+2.10.3
+------
+**ENHANCEMENTS**
+
+- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2. 
+
+**CHANGES**
+
+- Upgrade EFA installer to version 1.11.2
+  - EFA configuration: efa-config-1.7 (no change)
+  - EFA profile: efa-profile-1.4 (from efa-profile-1.3)
+  - EFA kernel module: efa-1.10.2 (no change)
+  - RDMA core: rdma-core-31.2amzn (no change)
+  - Libfabric: libfabric-1.11.1amzn1.0 (no change)
+  - Open MPI: openmpi40-aws-4.1.0 (no change)
+
+**BUG FIXES**
+
+- Fix issue with ``awsbsub`` command when setting environment variables for the job submission 
+
+2.10.2
+------
+**ENHANCEMENTS**
+
+- Improve cluster config validation by using cluster target AMI when invoking RunInstances in dryrun mode
+- Improve configuration procedure for the Munge service.
+
+**CHANGES**
+
+- Update Python version used in ParallelCluster virtualenvs from version 3.6.9 to version 3.6.13.
+
+**BUG FIXES**
+
+- Fix sanity checks with ARM instance types by using cluster AMI when performing validation  
+- Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
+- Use non interactive `apt update` command when building custom Ubuntu AMIs.
+- Fix `encrypted_ephemeral = true` when using Alinux2 or CentOS8
 
 2.10.1
 ------
@@ -194,6 +256,12 @@ CHANGELOG
   - Libfabric: ``libfabric-1.10.1amzn1.1`` (no change)
   - Open MPI: ``openmpi40-aws-4.0.3`` (no change)
 - Upgrade Slurm to version 20.02.4.
+- Apply the following changes to Slurm configuration:
+  - Assign a range of 10 ports to Slurmctld in order to better perform with large cluster settings
+  - Configure cloud scheduling logic
+  - Set `ReconfigFlags=KeepPartState`
+  - Set `MessageTimeout=60`
+  - Set `TaskPlugin=task/affinity,task/cgroup` together with `TaskAffinity=no` and `ConstrainCores=yes` in cgroup.conf
 - Upgrade NICE DCV to version 2020.1-9012.
 - Use private IP instead of master node hostname when mounting shared NFS drives.
 - Add new log streams to CloudWatch: chef-client, clustermgtd, computemgtd, slurm_resume, slurm_suspend.

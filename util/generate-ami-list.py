@@ -30,11 +30,9 @@ from common import PARTITION_TO_MAIN_REGION, PARTITIONS
 
 DISTROS = OrderedDict(
     [
-        ("alinux", "amzn"),
         ("alinux2", "amzn2"),
         ("centos7", "centos7"),
         ("centos8", "centos8"),
-        ("ubuntu1604", "ubuntu-1604"),
         ("ubuntu1804", "ubuntu-1804"),
     ]
 )
@@ -323,7 +321,7 @@ def parse_args():
     parser.add_argument(
         "--partition", type=str, help="commercial | china | govcloud", required=True, choices=PARTITIONS
     )
-    parser.add_argument("--account-id", type=str, help="AWS account id owning the AMIs", required=True)
+    parser.add_argument("--account-id", type=str, help="AWS account id owning the AMIs", required=False)
     parser.add_argument(
         "--cloudformation-template",
         type=str,
@@ -331,7 +329,10 @@ def parse_args():
         required=False,
         default="cloudformation/aws-parallelcluster.cfn.json",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.cookbook_git_ref and args.node_git_ref and not args.account_id:
+        raise Exception("Must specify value for --account-id when using --cookbook-git-ref and --node-git-ref.")
+    return args
 
 
 def main():

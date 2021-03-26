@@ -1,0 +1,34 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: queue-0
+        ComputeResources:
+          - Name: compute-resource-0
+            {% if scheduler == "Awsbatch" %}
+            InstanceTypes: {{ instance }}
+            MinvCpus: 4
+            DesiredVcpus: 4
+            {% else %}
+            InstanceType: {{ instance }}
+            MinCount: 1
+            {% endif %}
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: raid_dir
+    StorageType: Ebs
+    Name: raid-type1
+    Settings:
+      VolumeType: gp2
+      Raid:
+        Type: 1
+        NumberOfVolumes: 2

@@ -29,3 +29,12 @@ SharedStorage:
       KmsKeyId: String
       SnapshotId: snap-12345678
       VolumeId: vol-12345678
+  - MountDir: /shared2
+    Name: ebs1
+    StorageType: Ebs
+  - MountDir: /shared3
+    Name: efs
+    StorageType: Efs
+  - MountDir: /shared4
+    Name: efs
+    StorageType: FsxLustre

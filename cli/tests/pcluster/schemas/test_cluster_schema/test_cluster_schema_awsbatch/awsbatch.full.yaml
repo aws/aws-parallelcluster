@@ -64,7 +64,6 @@ Scheduling:
             MaxvCpus: 20
             SpotBidPercentage: 0.5
             DisableSimultaneousMultithreading: false
-            #AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point
     StorageType: Ebs

@@ -8,10 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import
 
 import errno
-import json
 import logging
 import os
 import sys
@@ -212,28 +210,8 @@ Examples::
         help="Disable CloudFormation stack rollback on error.",
     )
     pupdate.add_argument(
-        "-t",
-        "--cluster-template",
-        help="Indicates the 'cluster' section of the configuration file to use for cluster update.",
-    )
-    pupdate.add_argument(
-        "-p",
-        "--extra-parameters",
-        type=json.loads,
-        help="Adds extra parameters to pass as input to the CloudFormation template.\n"
-        'They must be in the form: {"ParameterKey1": "ParameterValue1", "ParameterKey2": "ParameterValue2"}',
-    )
-    pupdate.add_argument(
-        "-rd",
-        "--reset-desired",
-        action="store_true",
-        default=False,
-        help="Resets the current ASG desired capacity to the initial config values.",
-    )
-    pupdate.add_argument(
         "-f", "--force", action="store_true", help="Forces the update skipping security checks. Not recommended."
     )
-    pupdate.add_argument("-y", "--yes", action="store_true", help="Assumes 'yes' as answer to confirmation prompt.")
     pupdate.set_defaults(func=update)
 
     # delete command subparser

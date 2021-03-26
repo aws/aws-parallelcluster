@@ -39,7 +39,7 @@ from pcluster.models.cluster_config import (
 from pcluster.models.common import Resource
 
 
-class DummySlurmCluster(SlurmClusterConfig):
+class _DummySlurmClusterConfig(SlurmClusterConfig):
     """Generate dummy Slurm cluster config."""
 
     def __init__(self, scheduling: SlurmScheduling, **kwargs):
@@ -58,7 +58,7 @@ class DummySlurmCluster(SlurmClusterConfig):
         return "dummy_vpc_id"
 
 
-class DummyAwsbatchCluster(AwsbatchClusterConfig):
+class _DummyAwsbatchClusterConfig(AwsbatchClusterConfig):
     """Generate dummy Slurm cluster config."""
 
     def __init__(self, scheduling: AwsbatchScheduling, **kwargs):
@@ -133,7 +133,9 @@ def dummy_slurm_cluster_config(mocker):
     shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
     shared_storage.append(dummy_raid("/raid1"))
 
-    cluster = DummySlurmCluster(image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage)
+    cluster = _DummySlurmClusterConfig(
+        image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
+    )
     cluster.cluster_s3_bucket = "s3://dummy-s3-bucket"
     cluster.additional_resources = "https://additional.template.url"
     cluster.config_version = "1.0"
@@ -162,7 +164,7 @@ def dummy_awsbatch_cluster_config(mocker):
     shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
     shared_storage.append(dummy_raid("/raid1"))
 
-    cluster = DummyAwsbatchCluster(
+    cluster = _DummyAwsbatchClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
     cluster.cluster_s3_bucket = "s3://dummy-s3-bucket"
@@ -194,7 +196,7 @@ def dummy_fsx(file_system_id=None, mount_dir="/shared", name="name"):
         kms_key_id="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         auto_import_policy="NEW",
         drive_cache_type="READ",
-        storage_type="HDD",
+        fsx_storage_type="HDD",
     )
 
 

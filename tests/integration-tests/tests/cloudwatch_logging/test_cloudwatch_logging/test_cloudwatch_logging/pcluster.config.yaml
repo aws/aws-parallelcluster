@@ -1,0 +1,24 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: compute
+        ComputeResources:
+          - Name: compute-i1
+            {% if scheduler == "Awsbatch" %}InstanceTypes:{% else %}InstanceType:{% endif %} {{ instance }}
+            {% if scheduler == "Awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: {{ enable }}
+      RetentionInDays: {{ retention_days }}

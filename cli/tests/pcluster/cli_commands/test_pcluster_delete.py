@@ -5,13 +5,11 @@ from collections import namedtuple
 import pytest
 from assertpy import assert_that
 
-import pcluster.utils as utils
 from common.boto3.common import AWSClientError
-from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
+from pcluster.models.cluster import ClusterActionError
+from tests.pcluster.test_utils import dummy_cluster, dummy_cluster_stack
 
 FakePdeleteArgs = namedtuple("FakePdeleteArgs", "cluster_name config_file nowait keep_logs region")
-FAKE_CLUSTER_NAME = "cluster-name"
-FAKE_STACK_NAME = utils.get_stack_name(FAKE_CLUSTER_NAME)
 LOG_GROUP_TYPE = "AWS::Logs::LogGroup"
 
 
@@ -33,11 +31,10 @@ def get_fake_pdelete_args(cluster_name="cluster_name", config_file=None, nowait=
 def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
     """Verify that Cluster.delete behaves as expected."""
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    mocker.patch("common.boto3.cfn.CfnClient.describe_stack")
     mocker.patch("common.boto3.cfn.CfnClient.delete_stack")
-    cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
-    persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster_stack, "_persist_cloudwatch_log_groups")
-
-    cluster = Cluster(FAKE_CLUSTER_NAME, stack=cluster_stack)
+    cluster = dummy_cluster()
+    persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster.stack, "_persist_cloudwatch_log_groups")
     terminate_nodes_mock = mocker.patch.object(cluster, "_terminate_nodes")
 
     cluster.delete(keep_logs)
@@ -74,7 +71,7 @@ def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
 )
 def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain, fail_on_persist):
     """Verify that commands._persist_cloudwatch_log_groups behaves as expected."""
-    cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
+    cluster_stack = dummy_cluster_stack()
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
 
@@ -115,7 +112,7 @@ def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain
 )
 def test_persist_stack_resources(mocker, template):
     """Verify that commands._persist_stack_resources behaves as expected."""
-    cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
+    cluster_stack = dummy_cluster_stack()
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
     update_stack_template_mock = mocker.patch.object(cluster_stack, "_update_template")
@@ -149,7 +146,7 @@ def test_persist_stack_resources(mocker, template):
 )
 def test_get_unretained_cw_log_group_resource_keys(mocker, template, expected_return):
     """Verify that commands._get_unretained_cw_log_group_resource_keys behaves as expected."""
-    cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
+    cluster_stack = dummy_cluster_stack()
 
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)

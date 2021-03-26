@@ -64,7 +64,9 @@ def test_imagebuilder_schema(mocker, test_datadir, config_file_name, response):
     print(imagebuilder_config)
 
     # Re-create Yaml file from model and compare content
-    output_json = ImageBuilderSchema().dump(imagebuilder_config)
+    image_builder_schema = ImageBuilderSchema()
+    image_builder_schema.context = {"delete_defaults_when_dump": True}
+    output_json = image_builder_schema.dump(imagebuilder_config)
 
     # Assert imagebuilder config file can be convert to imagebuilder config
     assert_that(json.dumps(input_yaml, sort_keys=True)).is_equal_to(json.dumps(output_json, sort_keys=True))

@@ -1,0 +1,20 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  {{ scheduler }}:
+    Queues:
+      - Name: compute
+        ComputeType: SPOT
+        ComputeResources:
+          - Name: compute-i1
+            InstanceType: {{ instance }}
+            MinCount: {{ min_count }}
+        Networking:
+          SubnetIds:
+            - {{ private_subnet_id }}

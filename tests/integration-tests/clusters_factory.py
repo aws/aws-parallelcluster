@@ -15,7 +15,7 @@ import subprocess
 import time
 
 import boto3
-import configparser
+import yaml
 from retrying import retry
 from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subprocess_error, run_command
 
@@ -23,12 +23,13 @@ from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subproc
 class Cluster:
     """Contain all static and dynamic data related to a cluster instance."""
 
-    def __init__(self, name, ssh_key, config_file):
+    def __init__(self, name, ssh_key, config_file, region):
         self.name = name
         self.config_file = config_file
         self.ssh_key = ssh_key
-        self.config = configparser.ConfigParser()
-        self.config.read(config_file)
+        self.region = region
+        with open(config_file) as conf_file:
+            self.config = yaml.load(conf_file, Loader=yaml.SafeLoader)
         self.has_been_deleted = False
         self.create_complete = False
         self.__cfn_outputs = None
@@ -73,11 +74,10 @@ class Cluster:
         """Delete this cluster."""
         if self.has_been_deleted:
             return
-        cmd_args = ["pcluster", "delete", "--config", self.config_file]
+        cmd_args = ["pcluster", "delete", self.name]
         if keep_logs:
             logging.warning("CloudWatch logs for cluster %s are preserved due to failure.", self.name)
             cmd_args.append("--keep-logs")
-        cmd_args.append(self.name)
         try:
             result = run_command(cmd_args, log_error=False)
             if "DELETE_FAILED" in result.stdout:
@@ -154,17 +154,12 @@ class Cluster:
         return "parallelcluster-" + self.name
 
     @property
-    def region(self):
-        """Return the aws region the cluster is created in."""
-        return self.config.get("aws", "aws_region_name", fallback="us-east-1")
-
-    @property
     def head_node_ip(self):
         """Return the public ip of the cluster head node."""
         if "MasterPublicIP" in self.cfn_outputs:
             return self.cfn_outputs["MasterPublicIP"]
         else:
-            ec2 = boto3.client("ec2", region_name=self.region)
+            ec2 = boto3.client("ec2")
             filters = [
                 {"Name": "tag:Application", "Values": [self.cfn_name]},
                 {"Name": "instance-state-name", "Values": ["running"]},
@@ -176,8 +171,7 @@ class Cluster:
     @property
     def os(self):
         """Return the os used for the cluster."""
-        cluster_template = self.config.get("global", "cluster_template", fallback="default")
-        return self.config.get("cluster {0}".format(cluster_template), "base_os", fallback="alinux")
+        return self.config["Image"]["Os"]
 
     @property
     def asg(self):

@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import os
 import re
 from abc import ABCMeta, abstractmethod
@@ -135,7 +136,7 @@ class AWSBatchCommands(SchedulerCommands):
 
     def assert_job_submitted(self, awsbsub_output):  # noqa: D102
         __tracebackhide__ = True
-        match = re.match(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
+        match = re.search(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
@@ -215,9 +216,8 @@ class SgeCommands(SchedulerCommands):
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(  # noqa: D102
-        self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None
-    ):
+    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None):
+        """Submit job with script."""
         if not additional_files:
             additional_files = []
         if not script_args:
@@ -307,7 +307,7 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(  # noqa: D102
+    def submit_command(
         self,
         command,
         nodes=0,
@@ -319,6 +319,7 @@ class SlurmCommands(SchedulerCommands):
         other_options=None,
         raise_on_error=True,
     ):
+        """Submit job with command."""
         job_submit_command = "--wrap='{0}'".format(command)
 
         return self._submit_batch_job(
@@ -333,7 +334,7 @@ class SlurmCommands(SchedulerCommands):
             raise_on_error=raise_on_error,
         )
 
-    def submit_script(  # noqa: D102
+    def submit_script(
         self,
         script,
         script_args=None,
@@ -347,6 +348,7 @@ class SlurmCommands(SchedulerCommands):
         additional_files=None,
         raise_on_error=True,
     ):
+        """Submit job with script."""
         if not additional_files:
             additional_files = []
         if not script_args:
@@ -405,9 +407,41 @@ class SlurmCommands(SchedulerCommands):
         else:
             return self._remote_command_executor.run_remote_command(submission_command, raise_on_error=raise_on_error)
 
+    def _dump_job_output(self, job_info):
+        params = re.split(r"\s+", job_info)
+        stderr = None
+        stdout = None
+        for param in params:
+            match_stderr = re.match(r"StdErr=(.*)?", param)
+            match_stdout = re.match(r"StdOut=(.*)?", param)
+            if match_stderr:
+                stderr = match_stderr.group(1)
+                logging.info("stderr:" + stderr)
+            if match_stdout:
+                stdout = match_stdout.group(1)
+                logging.info("stdout:" + stdout)
+        if stderr is not None or stdout is not None:
+            if stderr == stdout:
+                result = self._remote_command_executor.run_remote_command(f'echo "stderr/stdout:" && cat {stderr}')
+                logging.error(result.stdout)
+            else:
+                if stderr is not None:
+                    stderr_result = self._remote_command_executor.run_remote_command(f'echo "stderr" && cat {stderr}')
+                    logging.error(stderr_result.stdout)
+
+                if stdout is not None:
+                    stdout_result = self._remote_command_executor.run_remote_command(f'echo "stdout" && cat {stdout}')
+                    logging.error(stdout_result.stdout)
+        else:
+            logging.error("Unable to retrieve job output.")
+
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        assert_that(result.stdout).contains("JobState=COMPLETED")
+        try:
+            assert_that(result.stdout).contains("JobState=COMPLETED")
+        except AssertionError:
+            self._dump_job_output(result.stdout)
+            raise
 
     def compute_nodes_count(self, filter_by_partition=None):  # noqa: D102
         return len(self.get_compute_nodes(filter_by_partition))

@@ -25,6 +25,7 @@ from pcluster.models.common import BaseTag
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import get_installed_version
+from pcluster.validators.common import FailureLevel
 
 ImageBuilderStatusMapping = {
     "BUILD_IN_PROGRESS": [
@@ -110,6 +111,7 @@ class ImageBuilder:
         self.__config = None
         self.template_body = None
         self.config_version = None
+        self.bucket = None
 
     @property
     def stack(self):
@@ -144,39 +146,62 @@ class ImageBuilder:
             self.__config = ImageBuilderSchema().load(self.source_config)
         return self.__config
 
-    def create(self, disable_rollback: bool = False):
+    def create(
+        self,
+        disable_rollback: bool = True,
+        suppress_validators: bool = False,
+        validation_failure_level: FailureLevel = FailureLevel.ERROR,
+    ):
         """Create the CFN Stack and associate resources."""
         # validate image name
         self._validate_image_name()
 
-        # check imagebuilder stack existence
-        if AWSApi.instance().cfn.stack_exists(self.image_name):
-            raise ImageBuilderActionError(f"ImageBuilder stack {self.image_name} already exists")
+        # check image existence
+        if AWSApi.instance().ec2.image_exists(self.image_name):
+            raise ImageBuilderActionError(f"ParallelCluster image {self.image_name} already exists")
 
-        validation_failures = self.config.validate()
-        if validation_failures:
-            # TODO skip validation errors
-            raise ImageBuilderActionError("Configuration is invalid", validation_failures=validation_failures)
+        # check stack existence
+        if AWSApi.instance().cfn.stack_exists(self.image_name):
+            raise ImageBuilderActionError(
+                f"ParallelCluster build infrastructure for image {self.image_name} already exists"
+            )
+
+        if not suppress_validators:
+            validation_failures = self.config.validate()
+            for failure in validation_failures:
+                if failure.level.value >= FailureLevel(validation_failure_level).value:
+                    # Raise the exception if there is a failure with a level equals to or greater than the specified one
+                    raise ImageBuilderActionError("Configuration is invalid", validation_failures=validation_failures)
 
         # Add tags information to the stack
-        tags = copy.deepcopy(self.config.build.tags) or []
-        tags.append(BaseTag(key="pcluster_build_image", value=get_installed_version()))
-        tags = [{"Key": tag.key, "Value": tag.value} for tag in tags]
+        cfn_tags = copy.deepcopy(self.config.build.tags) or []
+        cfn_tags.append(BaseTag(key="pcluster_build_image", value=get_installed_version()))
+        cfn_tags = [{"Key": tag.key, "Value": tag.value} for tag in cfn_tags]
+        # TODO add tags for build config and build log
+
+        self._setup_cluster_bucket()
 
         try:
-            LOGGER.info("Creating stack named: %s", self.image_name)
+            self._upload_config()
+
+            LOGGER.info("Building ParallelCluster image named: %s", self.image_name)
 
             # Generate cdk cfn template
             self.template_body = CDKTemplateBuilder().build_imagebuilder_template(
                 imagebuild=self.config, image_name=self.image_name
             )
 
+            # upload generated template
+            self._upload_artifacts()
+
             # Stack creation
             AWSApi.instance().cfn.create_stack(
                 stack_name=self.image_name,
                 template_body=json.dumps(self.template_body),
+                # TODO template_url instead template_body
+                # template_url=
                 disable_rollback=disable_rollback,
-                tags=tags,
+                tags=cfn_tags,
             )
 
             self.__stack = ImageBuilderStack(AWSApi().instance().cfn.describe_stack(self.image_name))
@@ -185,7 +210,7 @@ class ImageBuilder:
 
         except Exception as e:
             LOGGER.critical(e)
-            raise ImageBuilderActionError(f"ImageBuilder stack creation failed.\n{e}")
+            raise ImageBuilderActionError(f"ParallelCluster image build infrastructure creation failed.\n{e}")
 
     def _validate_image_name(self):
         match = re.match(r"^[-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]$", self.image_name)
@@ -200,3 +225,15 @@ class ImageBuilder:
                     str(1024 - len(AMI_NAME_REQUIRED_SUBSTRING))
                 )
             )
+
+    def _setup_cluster_bucket(self):
+        # TODO
+        pass
+
+    def _upload_config(self):
+        # TODO
+        pass
+
+    def _upload_artifacts(self):
+        # TODO
+        pass
