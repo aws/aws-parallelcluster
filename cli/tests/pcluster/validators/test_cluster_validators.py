@@ -10,11 +10,13 @@
 # limitations under the License.
 import pytest
 
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.utils import InstanceTypeInfo
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     ArchitectureOsValidator,
+    ClusterNameValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
@@ -31,6 +33,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
+    RegionValidator,
     SchedulerOsValidator,
     TagKeyValidator,
 )
@@ -41,6 +44,41 @@ from tests.utils import MockedBoto3Request
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.validators.cluster_validators.boto3"
+
+
+@pytest.mark.parametrize(
+    "cluster_name, should_trigger_error",
+    [
+        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),
+        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", True),
+        ("2AClusterCanNotBeginByANumber", True),
+        ("ClusterCanNotContainUnderscores_LikeThis", True),
+        ("ClusterCanNotContainSpaces LikeThis", True),
+    ],
+)
+def test_cluster_name_valiadtor(cluster_name, should_trigger_error):
+    expected_message = (
+        (
+            "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
+            f"It must start with an alphabetic character and can't be longer than {PCLUSTER_NAME_MAX_LENGTH} characters."
+        )
+        if should_trigger_error
+        else None
+    )
+    actual_failures = ClusterNameValidator().execute(cluster_name)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "region, expected_message",
+    [
+        ("invalid-region", "Region 'invalid-region' is not yet officially supported "),
+        ("us-east-1", None),
+    ],
+)
+def test_region_validator(region, expected_message):
+    actual_failures = RegionValidator().execute(region)
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

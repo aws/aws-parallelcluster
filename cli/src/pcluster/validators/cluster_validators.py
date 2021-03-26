@@ -14,7 +14,13 @@ import boto3
 from botocore.exceptions import ClientError
 
 from common.aws.aws_api import AWSApi
-from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_OSES
+from pcluster.constants import (
+    CIDR_ALL_IPS,
+    PCLUSTER_NAME_MAX_LENGTH,
+    PCLUSTER_NAME_REGEX,
+    SUPPORTED_OSES,
+    SUPPORTED_REGIONS,
+)
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     InstanceTypeInfo,
@@ -49,6 +55,32 @@ FSX_MESSAGES = {
         "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when an existing Lustre file system is specified.",
     }
 }
+
+
+class ClusterNameValidator(Validator):
+    """Cluster name validator."""
+
+    def _validate(self, name):
+        if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
+            self._add_failure(
+                (
+                    "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
+                    "It must start with an alphabetic character and can't be longer "
+                    f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
+                ),
+                FailureLevel.ERROR,
+            )
+
+
+class RegionValidator(Validator):
+    """Region validator."""
+
+    def _validate(self, region):
+        if region not in SUPPORTED_REGIONS:
+            self._add_failure(
+                f"Region '{region}' is not yet officially supported by ParallelCluster",
+                FailureLevel.ERROR,
+            )
 
 
 class SchedulerOsValidator(Validator):
