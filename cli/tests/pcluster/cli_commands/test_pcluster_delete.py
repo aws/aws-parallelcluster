@@ -6,7 +6,8 @@ import pytest
 from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
-from pcluster.models.cluster import ClusterActionError
+from pcluster.models.cluster import ClusterActionError, ClusterStack
+from tests.pcluster.models.cluster_dummy_model import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
 from tests.pcluster.test_utils import dummy_cluster
 
 FakePdeleteArgs = namedtuple("FakePdeleteArgs", "cluster_name config_file nowait keep_logs region")
@@ -71,7 +72,8 @@ def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
 )
 def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain, fail_on_persist):
     """Verify that commands._persist_cloudwatch_log_groups behaves as expected."""
-    cluster = dummy_cluster()
+    stack = _mock_bucket_property(mocker)
+    cluster = dummy_cluster(stack=stack)
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
 
@@ -79,6 +81,10 @@ def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain
     update_template_mock = mocker.patch.object(
         cluster.stack, "update_template", side_effect=client_error if fail_on_persist else None
     )
+    mocker.patch("common.boto3.cfn.CfnClient.update_stack_from_url")
+    mock_bucket(mocker)
+    mock_bucket_utils(mocker)
+    mock_bucket_object_utils(mocker)
 
     if expected_retain:
         keys = ["key"]
@@ -112,10 +118,15 @@ def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain
 )
 def test_persist_stack_resources(mocker, template):
     """Verify that commands._persist_stack_resources behaves as expected."""
-    cluster = dummy_cluster()
+    stack = _mock_bucket_property(mocker)
+    cluster = dummy_cluster(stack=stack)
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
     update_stack_template_mock = mocker.patch.object(cluster.stack, "update_template")
+    mocker.patch("common.boto3.cfn.CfnClient.update_stack_from_url")
+    mock_bucket(mocker)
+    mock_bucket_utils(mocker)
+    mock_bucket_object_utils(mocker)
 
     if "Resources" not in template:
         expected_error_message = "Resources"
@@ -153,3 +164,18 @@ def test_get_unretained_cw_log_group_resource_keys(mocker, template, expected_re
 
     observed_return = cluster._get_unretained_cw_log_group_resource_keys()
     assert_that(observed_return).is_equal_to(expected_return)
+
+
+def _mock_bucket_property(
+    mocker,
+    bucket_name="parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+    artifact_directory="parallelcluster/clusters/dummy-cluster-randomstring123",
+):
+    stack_output = {
+        "Outputs": [
+            {"OutputKey": "ArtifactS3RootDirectory", "OutputValue": artifact_directory},
+            {"OutputKey": "ResourcesS3Bucket", "OutputValue": bucket_name},
+        ]
+    }
+    mocker.patch("common.boto3.cfn.CfnClient.describe_stack", return_value=stack_output)
+    return ClusterStack(stack_output)

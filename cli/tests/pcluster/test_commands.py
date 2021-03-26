@@ -10,161 +10,322 @@
 # limitations under the License.
 
 """This module provides unit tests for the functions in the pcluster.commands module."""
-import pkg_resources
 import pytest
 from assertpy import assert_that
-from botocore.exceptions import ClientError
 
-import pcluster.utils as utils
-from pcluster.models.cluster import ClusterActionError
+from common.boto3.common import AWSClientError
+from pcluster.models.cluster import ClusterActionError, ClusterStack
 from tests.common.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.cluster_dummy_model import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
+from tests.pcluster.models.cluster_dummy_model import (
+    dummy_awsbatch_cluster_config,
+    dummy_slurm_cluster_config,
+    mock_bucket,
+    mock_bucket_object_utils,
+    mock_bucket_utils,
+)
 from tests.pcluster.test_utils import dummy_cluster
 
 
-def _mock_cluster(mocker, scheduler, bucket_name=None):
-    cluster = dummy_cluster()
+def _mock_cluster(
+    mocker,
+    scheduler,
+    bucket_name="parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+    artifact_directory="parallelcluster/clusters/dummy-cluster-randomstring123",
+    describe_stack_side_effect=None,
+):
+    if bucket_name:
+        stack_output = {
+            "Outputs": [
+                {"OutputKey": "ArtifactS3RootDirectory", "OutputValue": artifact_directory},
+                {"OutputKey": "ResourcesS3Bucket", "OutputValue": bucket_name},
+            ]
+        }
+        mocker.patch("common.boto3.cfn.CfnClient.describe_stack", return_value=stack_output)
+        cluster = dummy_cluster(stack=ClusterStack(stack_output))
+    else:
+        mocker.patch("common.boto3.cfn.CfnClient.describe_stack", side_effect=describe_stack_side_effect)
+        cluster = dummy_cluster()
+
     if scheduler == "slurm":
         cluster.config = dummy_slurm_cluster_config(mocker)
         mocker.patch.object(cluster.config, "get_instance_types_data", return_value={})
     else:
         cluster.config = dummy_awsbatch_cluster_config(mocker)
 
-    cluster.config.custom_s3_bucket = bucket_name
     return cluster
 
 
 @pytest.mark.parametrize(
     (
         "scheduler",
+        "cluster_name",
+        "expected_config",
+        "expected_template",
         "expected_dirs",
         "mock_generated_bucket_name",
         "expected_bucket_name",
         "provided_bucket_name",
-        "expected_remove_bucket",
     ),
     [
-        ("slurm", ["models/../resources/custom_resources"], "bucket", "bucket", None, True),
-        (
-            "awsbatch",
-            ["models/../resources/custom_resources", "models/../resources/batch"],
-            "bucket",
-            "bucket",
-            None,
-            True,
-        ),
-        ("slurm", [], "bucket", "bucket", None, True),
         (
             "slurm",
+            "cluster1",
+            "dummy_config1",
+            "dummy_template1",
+            ["models/../resources/custom_resources"],
+            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+            None,
+        ),
+        (
+            "awsbatch",
+            "cluster2",
+            "dummy_config2",
+            "dummy_template2",
+            ["models/../resources/custom_resources", "models/../resources/batch"],
+            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+            None,
+        ),
+        (
+            "slurm",
+            "cluster3",
+            "dummy_config3",
+            "dummy_template3",
+            [],
+            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+            "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+            None,
+        ),
+        (
+            "slurm",
+            "cluster4",
+            "dummy_config4",
+            "dummy_template4",
             ["models/../resources/custom_resources"],
             None,
             "user_provided_bucket",
             "user_provided_bucket",
-            False,
         ),
     ],
 )
 def test_setup_bucket_with_resources_success(
     mocker,
     scheduler,
+    cluster_name,
+    expected_config,
+    expected_template,
     expected_dirs,
     mock_generated_bucket_name,
     expected_bucket_name,
     provided_bucket_name,
-    expected_remove_bucket,
-    aws_api_mock,
 ):
     """Verify that create_bucket_with_batch_resources behaves as expected."""
-    # mock calls for _setup_cluster_bucket
-    mock_artifact_dir = "artifact_dir"
-    if mock_generated_bucket_name:
-        random_name_side_effect = [mock_generated_bucket_name, mock_artifact_dir]
-    else:
-        random_name_side_effect = [mock_artifact_dir]
-    mocker.patch("pcluster.models.cluster.generate_random_name_with_prefix", side_effect=random_name_side_effect)
-    mocker.patch("pcluster.models.cluster.create_s3_bucket")
-    check_bucket_mock = mocker.patch("pcluster.models.cluster.check_s3_bucket_exists")
+    # mock calls for bucket property in cluster object
+    artifact_dir = f"parallelcluster/clusters/{cluster_name}-abc123"
 
-    # mock calls from _upload_artifacts
-    upload_resources_artifacts_mock = mocker.patch("pcluster.models.cluster.upload_resources_artifacts")
+    mock_aws_api(mocker)
 
-    cluster = _mock_cluster(mocker, scheduler, bucket_name=provided_bucket_name)
-    cluster.bucket = cluster._setup_cluster_bucket()
-    cluster._upload_artifacts()
+    # mock bucket initialization
+    mock_bucket(mocker)
+
+    # mock bucket object utils
+    mock_dict = mock_bucket_object_utils(mocker)
+    upload_config_mock = mock_dict.get("upload_config")
+    upload_template_mock = mock_dict.get("upload_cfn_template")
+    upload_custom_resources_mock = mock_dict.get("upload_resources")
+    # mock bucket utils
+    check_bucket_mock = mock_bucket_utils(mocker, root_service_dir=f"{cluster_name}-abc123")["check_bucket_exists"]
 
     if provided_bucket_name:
-        check_bucket_mock.assert_called_with(provided_bucket_name)
+        cluster = _mock_cluster(mocker, scheduler, bucket_name=provided_bucket_name, artifact_directory=artifact_dir)
+        cluster.config.custom_s3_bucket = provided_bucket_name
     else:
-        check_bucket_mock.assert_not_called()
-    upload_resources_artifacts_mock.assert_has_calls(
-        [
-            mocker.call(
-                cluster.bucket.name, mock_artifact_dir, root=pkg_resources.resource_filename(utils.__name__, dir)
-            )
-            for dir in expected_dirs
-        ]
-    )
+        cluster = _mock_cluster(
+            mocker, scheduler, bucket_name=mock_generated_bucket_name, artifact_directory=artifact_dir
+        )
+
+    cluster.bucket.upload_config(expected_config, cluster._s3_artifacts_dict.get("config_name"))
+    cluster.bucket.upload_cfn_template(expected_template, cluster._s3_artifacts_dict.get("template_name"))
+    for dir in expected_dirs:
+        cluster.bucket.upload_resources(dir)
+
+    check_bucket_mock.assert_called_with()
+
+    # assert upload has been called
+    upload_config_mock.assert_called_with(expected_config, cluster._s3_artifacts_dict.get("config_name"))
+    upload_template_mock.assert_called_with(expected_template, cluster._s3_artifacts_dict.get("template_name"))
+    upload_custom_resources_mock.assert_has_calls([mocker.call(dir) for dir in expected_dirs])
+
+    # assert bucket properties
     assert_that(cluster.bucket.name).is_equal_to(expected_bucket_name)
-    assert_that(cluster.bucket.artifact_directory).is_equal_to(mock_artifact_dir)
-    assert_that(cluster.bucket.remove_on_deletion).is_equal_to(expected_remove_bucket)
-
-
-def test_setup_bucket_with_resources_creation_failure(mocker, caplog, aws_api_mock):
-    """Verify that create_bucket_with_batch_resources behaves as expected in case of bucket creation failure."""
-    bucket_name = "parallelcluster-123"
-    mock_artifact_dir = "artifact_dir"
-    error = "BucketAlreadyExists"
-    client_error = ClientError({"Error": {"Code": error}}, "create_bucket")
-
-    mocker.patch(
-        "pcluster.models.cluster.generate_random_name_with_prefix", side_effect=[bucket_name, mock_artifact_dir]
-    )
-    mocker.patch("pcluster.models.cluster.create_s3_bucket", side_effect=client_error)
-    mocker.patch("pcluster.models.cluster.check_s3_bucket_exists")
-
-    cluster = _mock_cluster(mocker, "slurm")
-    with pytest.raises(ClientError, match=error):
-        cluster.bucket = cluster._setup_cluster_bucket()
-    assert_that(caplog.text).contains("Unable to create S3 bucket")
+    assert_that(cluster.bucket.artifact_directory).is_equal_to(artifact_dir)
+    assert_that(cluster._s3_artifacts_dict.get("template_name")).is_equal_to("aws-parallelcluster.cfn.yaml")
+    assert_that(cluster._s3_artifacts_dict.get("config_name")).is_equal_to("cluster-config.yaml")
+    assert_that(cluster.bucket._root_directory).is_equal_to("parallelcluster")
+    assert_that(cluster._s3_artifacts_dict.get("root_cluster_directory")).is_equal_to("clusters")
 
 
 @pytest.mark.parametrize(
-    ("mock_generated_bucket_name", "expected_bucket_name", "provided_bucket_name", "expected_remove_bucket"),
+    ("provided_bucket_name", "check_bucket_exists_error", "create_bucket_error", "cluster_action_error"),
     [
-        ("parallelcluster-123", "parallelcluster-123", None, True),
-        (None, "user-provided-bucket", "user-provided-bucket", False),
+        (
+            "parallelcluster-123",
+            AWSClientError(function_name="head_bucket", message="Not Found", error_code="404"),
+            None,
+            "Unable to access config-specified S3 bucket parallelcluster-123.",
+        ),
+        (
+            None,
+            AWSClientError(function_name="head_bucket", message="Not Found", error_code="404"),
+            AWSClientError(function_name="create_bucket", message="BucketReachLimit"),
+            "BucketReachLimit",
+        ),
+    ],
+)
+def test_setup_bucket_with_resources_creation_failure(
+    mocker, provided_bucket_name, check_bucket_exists_error, create_bucket_error, cluster_action_error
+):
+    """Verify that create_bucket_with_batch_resources behaves as expected in case of bucket initialization failure."""
+    mock_aws_api(mocker)
+
+    # mock bucket initialization
+    mock_bucket(mocker)
+
+    if provided_bucket_name:
+        # mock bucket utils
+        mock_bucket_utils(mocker, check_bucket_exists_side_effect=check_bucket_exists_error)
+        cluster = _mock_cluster(mocker, "slurm", bucket_name=provided_bucket_name)
+        cluster.config.custom_s3_bucket = provided_bucket_name
+    else:
+        # mock bucket utils
+        mock_bucket_utils(
+            mocker,
+            create_bucket_side_effect=create_bucket_error,
+            check_bucket_exists_side_effect=check_bucket_exists_error,
+        )
+        cluster = _mock_cluster(mocker, "slurm")
+
+    # mock bucket object utils
+    mocker.patch("pcluster.models.common.S3Bucket.check_bucket_is_bootstrapped")
+
+    # assert failures
+    if provided_bucket_name:
+        with pytest.raises(ClusterActionError, match=cluster_action_error):
+            bucket_name = cluster.bucket.name
+            assert_that(bucket_name).is_equal_to(provided_bucket_name)
+    else:
+        with pytest.raises(ClusterActionError, match=cluster_action_error):
+            bucket_name = cluster.bucket.name
+            assert_that(bucket_name).is_equal_to("parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete")
+
+
+@pytest.mark.parametrize(
+    (
+        "check_bucket_is_bootstrapped_error",
+        "bucket_configure_error",
+        "upload_bootstrapped_file_error",
+        "cluster_action_error",
+    ),
+    [
+        (
+            AWSClientError(function_name="head_object", message="No object", error_code="404"),
+            AWSClientError(function_name="put_bucket_versioning", message="No put bucket versioning policy"),
+            None,
+            "Unable to initialize s3 bucket. Error during execution of put_bucket_versioning. "
+            "No put bucket versioning policy.",
+        ),
+        (
+            AWSClientError(function_name="head_object", message="NoSuchBucket", error_code="403"),
+            None,
+            None,
+            "NoSuchBucket",
+        ),
+        (
+            AWSClientError(function_name="head_object", message="No object", error_code="404"),
+            None,
+            AWSClientError(function_name="put_object", message="No put object policy"),
+            "No put object policy",
+        ),
+    ],
+)
+def test_setup_bucket_with_bucket_configuration_failure(
+    mocker,
+    check_bucket_is_bootstrapped_error,
+    bucket_configure_error,
+    upload_bootstrapped_file_error,
+    cluster_action_error,
+):
+    """Verify that create_bucket_with_batch_resources behaves as expected in case of bucket configuration failure."""
+    mock_aws_api(mocker)
+
+    # mock bucket initialization
+    mock_bucket(mocker)
+
+    # mock bucket utils
+    mock_bucket_utils(mocker, configure_bucket_side_effect=bucket_configure_error)
+    cluster = _mock_cluster(mocker, "slurm")
+
+    # mock bucket object utils
+    mock_bucket_object_utils(
+        mocker,
+        check_bucket_is_bootstrapped_side_effect=check_bucket_is_bootstrapped_error,
+        upload_bootstrapped_file_side_effect=upload_bootstrapped_file_error,
+    )
+
+    with pytest.raises(ClusterActionError, match=cluster_action_error):
+        bucket_name = cluster.bucket.name
+        assert_that(bucket_name).is_equal_to("parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete")
+
+
+@pytest.mark.parametrize(
+    ("cluster_name", "scheduler", "mock_generated_bucket_name", "expected_bucket_name", "provided_bucket_name"),
+    [
+        ("cluster1", "slurm", "parallelcluster-123", "parallelcluster-123", None),
+        ("cluster2", "aws_batch", None, "user-provided-bucket", "user-provided-bucket"),
     ],
 )
 def test_setup_bucket_with_resources_upload_failure(
-    mocker, caplog, mock_generated_bucket_name, expected_bucket_name, provided_bucket_name, expected_remove_bucket
+    mocker, cluster_name, scheduler, mock_generated_bucket_name, expected_bucket_name, provided_bucket_name
 ):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of upload failure."""
-    error = "ExpiredToken"
-    cluster_action_error = "Unable to upload cluster resources to the S3 bucket"
+    upload_config_cluster_action_error = "Unable to upload cluster config to the S3 bucket"
+    upload_resource_cluster_action_error = "Unable to upload cluster resources to the S3 bucket"
+    upload_awsclient_error = AWSClientError(function_name="put_object", message="Unable to put file to the S3 bucket")
+    upload_fileobj_awsclient_error = AWSClientError(
+        function_name="upload_fileobj", message="Unable to upload file to the S3 bucket"
+    )
 
-    # mock calls for _setup_cluster_bucket
-    mock_artifact_dir = "artifact_dir"
-    if mock_generated_bucket_name:
-        random_name_side_effect = [mock_generated_bucket_name, mock_artifact_dir]
-    else:
-        random_name_side_effect = [mock_artifact_dir]
-    mocker.patch("pcluster.models.cluster.generate_random_name_with_prefix", side_effect=random_name_side_effect)
-    mocker.patch("pcluster.models.cluster.create_s3_bucket")
-    check_bucket_mock = mocker.patch("pcluster.models.cluster.check_s3_bucket_exists")
-
-    # mock calls from _upload_artifacts
-    client_error = ClientError({"Error": {"Code": error}}, "upload_fileobj")
-    mocker.patch("pcluster.models.cluster.upload_resources_artifacts", side_effect=client_error)
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.s3.S3Client.put_object")
 
-    cluster = _mock_cluster(mocker, "slurm", bucket_name=provided_bucket_name)
-    cluster.bucket = cluster._setup_cluster_bucket()
+    # mock bucket initialization
+    mock_bucket(mocker)
 
-    with pytest.raises(ClusterActionError, match=cluster_action_error):
-        cluster._upload_artifacts()
+    # mock bucket utils
+    check_bucket_mock = mock_bucket_utils(
+        mocker,
+        bucket_name=provided_bucket_name,
+        root_service_dir=f"{cluster_name}-abc123",
+    )["check_bucket_exists"]
+
+    # mock bucket object utils
+    mock_bucket_object_utils(
+        mocker,
+        upload_config_side_effect=upload_awsclient_error,
+        upload_template_side_effect=upload_awsclient_error,
+        upload_resources_side_effect=upload_fileobj_awsclient_error,
+    )
+
     if provided_bucket_name:
-        check_bucket_mock.assert_called_with(provided_bucket_name)
+        cluster = _mock_cluster(mocker, scheduler, provided_bucket_name)
+        cluster.config.cluster_s3_bucket = provided_bucket_name
     else:
-        check_bucket_mock.assert_not_called()
-    assert_that(caplog.text).contains(cluster_action_error)
+        cluster = _mock_cluster(mocker, scheduler)
+
+    with pytest.raises(ClusterActionError, match=upload_config_cluster_action_error):
+        cluster._upload_config()
+
+    with pytest.raises(ClusterActionError, match=upload_resource_cluster_action_error):
+        cluster._upload_artifacts()
+
+    check_bucket_mock.assert_called_with()

@@ -16,7 +16,8 @@ import pcluster.utils as utils
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from tests.common.dummy_aws_api import mock_aws_api
 
-from ..models.imagebuilder_dummy_model import imagebuilder_factory
+from ..models.cluster_dummy_model import mock_bucket
+from ..models.imagebuilder_dummy_model import dummy_imagebuilder_bucket, imagebuilder_factory
 
 
 @pytest.mark.parametrize(
@@ -272,8 +273,13 @@ def test_imagebuilder(mocker, resource, response, expected_template):
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        dummy_imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
     # TODO assert content of the template by matching expected template, re-enable it after refactoring
     _test_parameters(generated_template.get("Parameters"), expected_template.get("Parameters"))
     _test_resources(generated_template.get("Resources"), expected_template.get("Resources"))
@@ -436,8 +442,13 @@ def test_imagebuilder_instance_role(
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
     assert_that(generated_template.get("Resources").get("InstanceRole")).is_equal_to(expected_instance_role)
     assert_that(generated_template.get("Resources").get("InstanceProfile")).is_equal_to(expected_instance_profile)
     assert_that(
@@ -589,8 +600,13 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
     assert_that(
         generated_template.get("Resources").get("ParallelClusterImageRecipe").get("Properties").get("Components")
     ).is_equal_to(expected_components)
@@ -639,6 +655,8 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                             "keyTag1": "valueTag1",
                             "keyTag2": "valueTag2",
                             "pcluster_version": utils.get_installed_version(),
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
                         },
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
@@ -669,7 +687,11 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": utils.get_installed_version()},
+                        "AmiTags": {
+                            "pcluster_version": utils.get_installed_version(),
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
                 },
@@ -702,7 +724,11 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": utils.get_installed_version()},
+                        "AmiTags": {
+                            "pcluster_version": utils.get_installed_version(),
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
                 },
@@ -717,8 +743,13 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
     assert_that(
         generated_template.get("Resources")
         .get("ParallelClusterDistributionConfiguration")
@@ -832,8 +863,13 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
     for resource_name, resource in generated_template.get("Resources").items():
         if resource_name == "InstanceProfile":
             # InstanceProfile has no tags
@@ -901,8 +937,13 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
 
     assert_that(
         generated_template.get("Resources")
@@ -969,8 +1010,13 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
 
     assert_that(
         generated_template.get("Resources")
@@ -1008,7 +1054,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
                 },
@@ -1043,7 +1093,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
                 },
@@ -1078,7 +1132,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                     },
                     "Region": "eu-south-1",
                 },
@@ -1113,7 +1171,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                         "LaunchPermissionConfiguration": "",
                     },
                     "Region": "eu-south-1",
@@ -1154,7 +1216,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                         "LaunchPermissionConfiguration": {"UserIds": ["123456789012", "345678901234"]},
                     },
                     "Region": "eu-south-1",
@@ -1195,7 +1261,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                         "LaunchPermissionConfiguration": {"UserIds": []},
                     },
                     "Region": "eu-south-1",
@@ -1236,7 +1306,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                         "LaunchPermissionConfiguration": {"UserGroups": ["all"]},
                     },
                     "Region": "eu-south-1",
@@ -1244,7 +1318,11 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
-                        "AmiTags": {"pcluster_version": "2.10.1"},
+                        "AmiTags": {
+                            "pcluster_version": "2.10.1",
+                            "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+                            "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                        },
                         "LaunchPermissionConfiguration": {"UserGroups": ["all"]},
                     },
                     "Region": "us-west-1",
@@ -1264,8 +1342,13 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
         "pcluster.utils.get_installed_version",
         return_value="2.10.1",
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        dummy_imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
 
     assert_that(
         generated_template.get("Resources")
