@@ -41,6 +41,7 @@ from pcluster.validators.awsbatch_validators import (
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
+    ClusterNameValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
@@ -58,6 +59,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
+    RegionValidator,
     SchedulerOsValidator,
     TagKeyValidator,
 )
@@ -830,11 +832,9 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
 
     def _validate(self):
-        self._execute_validator(
-            ArchitectureOsValidator,
-            os=self.image.os,
-            architecture=self.head_node.architecture,
-        )
+        self._execute_validator(ClusterNameValidator, name=self.name)
+        self._execute_validator(RegionValidator, region=self.region)
+        self._execute_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
         if self.ami_id:
             self._execute_validator(
                 InstanceTypeBaseAMICompatibleValidator,
