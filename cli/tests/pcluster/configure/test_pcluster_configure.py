@@ -69,8 +69,8 @@ def _mock_aws_region(mocker, partition="commercial"):
 
 def _mock_availability_zone(mocker, availability_zones=("eu-west-1a", "eu-west-1b", "eu-west-1c")):
     # To Do: return different list for different region or instance type
-    mocker.patch(EASYCONFIG + "get_supported_az_for_one_instance_type", return_value=availability_zones)
-    mocker.patch(EASYCONFIG + "get_common_supported_az_for_multi_instance_types", return_value=availability_zones)
+    mocker.patch(EASYCONFIG + "_get_supported_az_for_one_instance_type", return_value=availability_zones)
+    mocker.patch(EASYCONFIG + "_get_common_supported_az_for_multi_instance_types", return_value=availability_zones)
 
 
 def _mock_list_keys(mocker, partition="commercial"):
@@ -696,11 +696,11 @@ def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir
 
     mock_handler = MockHandler(mocker, mock_availability_zone=False)
     mocker.patch(
-        EASYCONFIG + "get_supported_az_for_one_instance_type",
+        EASYCONFIG + "_get_supported_az_for_one_instance_type",
         new=lambda x: ["eu-west-1a"] if x == "t2.nano" else ["eu-west-1b"],
     )
     mocker.patch(
-        EASYCONFIG + "get_common_supported_az_for_multi_instance_types",
+        EASYCONFIG + "_get_common_supported_az_for_multi_instance_types",
         new=lambda x: ["eu-west-1a"] if "t2.nano" in x else ["eu-west-1b"],
     )
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")

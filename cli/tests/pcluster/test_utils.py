@@ -332,29 +332,6 @@ def test_get_supported_os_for_scheduler(scheduler, supported_oses):
 
 
 @pytest.mark.parametrize(
-    "image_ids, response, error_message",
-    [(["ami-1"], [{"ImageId": "ami-1"}], None), (["ami-1"], [{"ImageId": "ami-1"}], "Some error message")],
-)
-def test_get_info_for_amis(boto3_stubber, image_ids, response, error_message):
-    """Verify get_info_for_amis returns the expected portion of the response, and that errors cause nonzero exit."""
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_images",
-            response=error_message or {"Images": response},
-            expected_params={"ImageIds": image_ids},
-            generate_error=error_message is not None,
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-    if error_message is None:
-        assert_that(utils.get_info_for_amis(image_ids)).is_equal_to(response)
-    else:
-        with pytest.raises(SystemExit, match=error_message) as sysexit:
-            utils.get_info_for_amis(image_ids)
-        assert_that(sysexit.value.code).is_not_equal_to(0)
-
-
-@pytest.mark.parametrize(
     "instance_type, supported_architectures, error_message",
     [
         ("optimal", ["x86_64"], None),
@@ -377,32 +354,6 @@ def test_get_supported_architectures_for_instance_type(mocker, instance_type, su
         get_instance_types_info_patch.assert_not_called()
     else:
         get_instance_types_info_patch.assert_called_with(instance_type)
-
-
-@pytest.mark.parametrize(
-    "ami_name, error_expected, expected_message",
-    [
-        # Compatible ami name
-        ("ami-xxxaws-parallelcluster-2.9.0xxx", False, ""),
-        ("ami-aws-parallelcluster-2.9.0", False, ""),
-        ("ami-name-one", False, ""),
-        ("aws-parallelcluster-2.9.0-ubuntu-1804-lts-hvm-x86_64-202009142226", False, ""),
-        # Incompatible ami name
-        (
-            "ami-aws-parallelcluster-0.0.0",
-            True,
-            "This AMI was created with version 0.0.0 of ParallelCluster, but is trying to be used with version 2.9.0."
-            " Please either use an AMI created with version 2.9.0 or change your ParallelCluster to version 0.0.0",
-        ),
-    ],
-)
-def test_validate_pcluster_version_based_on_ami_name(mocker, ami_name, error_expected, expected_message):
-    mocker.patch("pcluster.utils.get_installed_version", return_value="2.9.0")
-    if error_expected:
-        with pytest.raises(SystemExit, match=expected_message):
-            utils.validate_pcluster_version_based_on_ami_name(ami_name)
-    else:
-        utils.validate_pcluster_version_based_on_ami_name(ami_name)
 
 
 @pytest.mark.parametrize(

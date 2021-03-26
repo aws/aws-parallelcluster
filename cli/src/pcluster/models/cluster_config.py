@@ -32,13 +32,7 @@ from pcluster.constants import (
     MAX_STORAGE_COUNT,
 )
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
-from pcluster.utils import (
-    InstanceTypeInfo,
-    delete_s3_artifacts,
-    delete_s3_bucket,
-    get_partition,
-    get_region,
-)
+from pcluster.utils import InstanceTypeInfo, delete_s3_artifacts, delete_s3_bucket, get_partition, get_region
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
