@@ -124,11 +124,7 @@ class HeadNodeRootVolumeSchema(BaseSchema):
 class QueueRootVolumeSchema(BaseSchema):
     """Represent the RootVolume schema for the queue."""
 
-    volume_type = fields.Str(validate=get_field_validator("volume_type"), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
-    iops = fields.Int(update_policy=UpdatePolicy.SUPPORTED)
     size = fields.Int(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
-    kms_key_id = fields.Str(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
-    throughput = fields.Int(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
     encrypted = fields.Bool(update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
     @post_load
