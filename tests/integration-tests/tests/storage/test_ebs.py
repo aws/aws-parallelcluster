@@ -120,19 +120,6 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, regio
             assert_that(volume[1]).is_equal_to(int(volume_iops))
 
 
-@pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "slurm")
-@pytest.mark.usefixtures("region", "os", "instance")
-def test_default_ebs(scheduler, pcluster_config_reader, clusters_factory):
-    cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-
-    mount_dir = "/shared"
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
-    _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-
-
 @pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1804", "torque")
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_ebs_single_empty(scheduler, pcluster_config_reader, clusters_factory):
