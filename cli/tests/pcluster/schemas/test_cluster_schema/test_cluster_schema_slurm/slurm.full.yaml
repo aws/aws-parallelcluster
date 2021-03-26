@@ -39,65 +39,66 @@ HeadNode:
       - BucketName: String
         EnableWriteAccess: True
 Scheduling:
-  Slurm:
-    Settings:
-      ScaledownIdletime: 10
-      Dns:
-        DisableManagedDns: true
-    Queues:
-      - Name: queue1
-        ComputeType: ONDEMAND
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.xlarge
-          - Name: compute_resource2
-            InstanceType: c4.xlarge
-        CustomActions:
-          - Script: s3://test/template.tgz  # s3:// | https:// | file://*
-            Args:
-              - String  # arg1
-              - stirng2
-            Event: NODE_START
-        Iam:
-          S3Access:
-            - BucketName: String
-              EnableWriteAccess: False
-          AdditionalIamPolicies:
-            - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
-      - Name: queue2
+  Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: 10
+    Dns:
+      DisableManagedDns: true
+  Queues:
+    - Name: queue1
+      CapacityType: ONDEMAND
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.xlarge
+        - Name: compute_resource2
+          InstanceType: c4.xlarge
+      CustomActions:
+        - Script: s3://test/template.tgz  # s3:// | https:// | file://*
+          Args:
+            - String  # arg1
+            - stirng2
+          Event: NODE_START
+      Iam:
+        S3Access:
+          - BucketName: String
+            EnableWriteAccess: False
+        AdditionalIamPolicies:
+          - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+    - Name: queue2
+      ComputeSettings:
         LocalStorage:
           RootVolume:
-            Size:  35
-            Encrypted:  true
+            Size: 35
+            Encrypted: true
           EphemeralVolume:
             Encrypted: true
             MountDir: /scratch
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-          AssignPublicIp: true
-          SecurityGroups:
-            - sg-12345678
-          PlacementGroup:
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        AssignPublicIp: true
+        SecurityGroups:
+          - sg-12345678
+        PlacementGroup:
+          Enabled: true
+          Id: String
+        Proxy:
+          HttpProxyAddress: String  # https://proxy-address:port
+      ComputeResources:
+        - Name: compute_resource_1
+          InstanceType: c4.2xlarge
+        - Name: compute_resource_2
+          InstanceType: c5.2xlarge
+          MinCount: 1
+          MaxCount: 15
+          SpotPrice: 1.1
+          DisableSimultaneousMultithreading: true
+          Efa:
             Enabled: true
-            Id: String
-          Proxy:
-            HttpProxyAddress: String  # https://proxy-address:port
-        ComputeResources:
-          - Name: compute_resource_1
-            InstanceType: c4.2xlarge
-          - Name: compute_resource_2
-            InstanceType: c5.2xlarge
-            MinCount: 1
-            MaxCount: 15
-            SpotPrice: 1.1
-            DisableSimultaneousMultithreading: true
-            Efa:
-              Enabled: true
-              GdrSupport: false
+            GdrSupport: false
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1

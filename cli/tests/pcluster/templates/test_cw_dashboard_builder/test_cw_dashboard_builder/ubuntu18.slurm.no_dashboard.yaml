@@ -11,27 +11,27 @@ HeadNode:
     Port: 8443
     AllowedIps: 0.0.0.0/0
 Scheduling:
-  Slurm:
-    Queues:
-      - Name: queue1
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.2xlarge
-          - Name: compute_resource2
-            InstanceType: c4.2xlarge
-      - Name: queue2
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.2xlarge
-            MaxCount: 5
-          - Name: compute_resource2
-            InstanceType: c4.2xlarge
+  Scheduler: slurm
+  Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+          MaxCount: 5
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
 SharedStorage:
   - MountDir: /my/mount/ebs1
     Name: name1

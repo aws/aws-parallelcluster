@@ -38,12 +38,14 @@ from pcluster.models.cluster_config import (
     AwsbatchComputeResource,
     AwsbatchQueue,
     AwsbatchScheduling,
+    AwsbatchSettings,
     BaseClusterConfig,
+    CapacityType,
     CloudWatchDashboards,
     CloudWatchLogs,
     ClusterDevSettings,
     ClusterIam,
-    ComputeType,
+    ComputeSettings,
     CustomAction,
     CustomActionEvent,
     Dashboards,
@@ -818,14 +820,25 @@ class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
         return AwsbatchComputeResource(**data)
 
 
+class ComputeSettingsSchema(BaseSchema):
+    """Represent the schema of the compute_settings schedulers queues."""
+
+    local_storage = fields.Nested(QueueStorageSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ComputeSettings(**data)
+
+
 class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
     name = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    compute_settings = fields.Nested(ComputeSettingsSchema, pdate_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
     networking = fields.Nested(QueueNetworkingSchema, required=True, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
-    local_storage = fields.Nested(QueueStorageSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
-    compute_type = fields.Str(
-        validate=validate.OneOf([event.value for event in ComputeType]), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP
+    capacity_type = fields.Str(
+        validate=validate.OneOf([event.value for event in CapacityType]), update_policy=UpdatePolicy.COMPUTE_FLEET_STOP
     )
     iam = fields.Nested(IamSchema, update_policy=UpdatePolicy.SUPPORTED)
 
@@ -895,6 +908,15 @@ class SlurmSchema(BaseSchema):
     )
 
 
+class AwsbatchSettingsSchema(BaseSchema):
+    """Represent the schema of the Awsbatch Scheduling Settings."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AwsbatchSettings(**data)
+
+
 class AwsbatchSchema(BaseSchema):
     """Represent the schema of the Awsbatch section."""
 
@@ -906,6 +928,7 @@ class AwsbatchSchema(BaseSchema):
         update_policy=UpdatePolicy.COMPUTE_FLEET_STOP,
         update_key="Name",
     )
+    settings = fields.Nested(AwsbatchSettingsSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)
 
 
 class SchedulingSchema(BaseSchema):
@@ -913,13 +936,31 @@ class SchedulingSchema(BaseSchema):
 
     slurm = fields.Nested(SlurmSchema, update_policy=UpdatePolicy.SUPPORTED)
     awsbatch = fields.Nested(AwsbatchSchema, update_policy=UpdatePolicy.SUPPORTED)
+    scheduler = fields.Str(
+        required=True, validate=validate.OneOf(["slurm", "awsbatch", "custom"]), update_policy=UpdatePolicy.UNSUPPORTED
+    )
     # custom = fields.Str(CustomSchema)
 
-    @validates_schema
-    def only_one_scheduling_type(self, data, **kwargs):
-        """Validate that there is one and only one type of scheduling."""
-        if self.fields_coexist(data=data, field_list=["slurm", "awsbatch", "custom"], one_required=True, **kwargs):
+    @pre_load
+    def preprocess(self, data, **kwargs):
+        """Before load the data into schema, change the settings to adapt different storage types."""
+        if data.get("Scheduler") == "slurm":
+            scheduler, scheduler_settings = "Slurm", "SlurmSettings"
+        elif data.get("Scheduler") == "awsbatch":
+            scheduler, scheduler_settings = "Awsbatch", "AwsbatchSettings"
+        # elif data.get("Scheduler") == "custom":
+        #     scheduler, scheduler_settings = "Custom", "CustomSettings"
+        else:
             raise ValidationError("You must provide scheduler configuration")
+
+        data[scheduler] = {}
+        data[scheduler]["Settings"] = data.pop(scheduler_settings, {})
+        if data.get("Queues"):
+            data[scheduler]["Queues"] = data.pop("Queues")
+        else:
+            raise ValidationError("Queues must be configured in scheduler configuration")
+
+        return data
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -936,6 +977,26 @@ class SchedulingSchema(BaseSchema):
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema."""
         setattr(data, data.scheduler, data)
+        return data
+
+    @post_dump
+    def post_processed(self, data, **kwargs):
+        """Restore the SharedStorage Schema back to its origin."""
+        if data.get("Slurm"):
+            scheduler, schedulersettings = "Slurm", "SlurmSettings"
+        elif data.get("Awsbatch"):
+            scheduler, schedulersettings = "Awsbatch", "AwsbatchSettings"
+        # elif data.get("Scheduler") == "custom":
+        #     scheduler, scheduler_settings = "Custom", "CustomSettings"
+
+        if data.get(scheduler).get("Settings"):
+            data[schedulersettings] = data[scheduler].pop("Settings")
+        else:
+            data[scheduler].pop("Settings")
+
+        data["Queues"] = data[scheduler].pop("Queues")
+        data.pop(scheduler)
+
         return data
 
 

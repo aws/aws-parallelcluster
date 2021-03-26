@@ -8,16 +8,16 @@ HeadNode:
     KeyName: ec2-key-name
     AllowedIps: 1.2.3.4/32
 Scheduling:
-  Slurm:
-    Queues:
-      - Name: queue1
-        ComputeType: ONDEMAND
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.xlarge
+  Scheduler: slurm
+  Queues:
+    - Name: queue1
+      CapacityType: ONDEMAND
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.xlarge
 SharedStorage:
   - MountDir: /my/mount/point2
     Name: name1

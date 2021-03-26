@@ -19,8 +19,8 @@ from aws_cdk import core
 
 from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
+    CapacityType,
     ClusterBucket,
-    ComputeType,
     CustomActionEvent,
     SharedStorageType,
     SlurmClusterConfig,
@@ -424,7 +424,7 @@ class SlurmConstruct(core.Construct):
             )
 
         instance_market_options = None
-        if queue.compute_type == ComputeType.SPOT:
+        if queue.capacity_type == CapacityType.SPOT:
             instance_market_options = ec2.CfnLaunchTemplate.InstanceMarketOptionsProperty(
                 market_type="spot",
                 spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
@@ -495,12 +495,15 @@ class SlurmConstruct(core.Construct):
                                 ),
                                 "Scheduler": self.config.scheduling.scheduler,
                                 "EncryptedEphemeral": "true"
-                                if queue.local_storage
-                                and queue.local_storage.ephemeral_volume
-                                and queue.local_storage.ephemeral_volume.encrypted
+                                if queue.compute_settings
+                                and queue.compute_settings.local_storage
+                                and queue.compute_settings.local_storage.ephemeral_volume
+                                and queue.compute_settings.local_storage.ephemeral_volume.encrypted
                                 else "NONE",
-                                "EphemeralDir": queue.local_storage.ephemeral_volume.mount_dir
-                                if queue.local_storage and queue.local_storage.ephemeral_volume
+                                "EphemeralDir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
+                                if queue.compute_settings
+                                and queue.compute_settings.local_storage
+                                and queue.compute_settings.local_storage.ephemeral_volume
                                 else "/scratch",
                                 "EbsSharedDirs": get_shared_storage_options_by_type(
                                     self.shared_storage_options, SharedStorageType.EBS

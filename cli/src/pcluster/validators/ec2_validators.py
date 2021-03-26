@@ -115,11 +115,11 @@ class PlacementGroupIdValidator(Validator):  # TODO: add tests
                 self._add_failure(str(e), FailureLevel.ERROR)
 
 
-class ComputeTypeValidator(Validator):
+class CapacityTypeValidator(Validator):
     """Compute type validator. Verify that specified compute type is compatible with specified instance type."""
 
-    def _validate(self, compute_type, instance_type):
-        compute_type_value = compute_type.value.lower()
+    def _validate(self, capacity_type, instance_type):
+        compute_type_value = capacity_type.value.lower()
         supported_usage_classes = AWSApi.instance().ec2.get_instance_type_info(instance_type).supported_usage_classes()
 
         if not supported_usage_classes:

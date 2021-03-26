@@ -26,7 +26,7 @@ from pcluster.configure.networking import (
 )
 from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
 from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
-from pcluster.utils import camelcase, default_config_file_path, error, get_region, get_supported_os_for_scheduler
+from pcluster.utils import default_config_file_path, error, get_region, get_supported_os_for_scheduler
 
 LOGGER = logging.getLogger(__name__)
 
@@ -212,7 +212,7 @@ def configure(args):  # noqa: C901
             "Networking": {"SubnetId": vpc_parameters["head_node_subnet_id"]},
             "Ssh": {"KeyName": key_name},
         },
-        "Scheduling": {camelcase(scheduler): {"Queues": queues}},
+        "Scheduling": {"Scheduler": scheduler, "Queues": queues},
     }
 
     with open(config_file_path, "w") as config_file:
