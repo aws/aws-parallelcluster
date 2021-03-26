@@ -33,7 +33,6 @@ from pcluster.constants import (
     SUPPORTED_ARCHITECTURES,
     SUPPORTED_OSES_FOR_ARCHITECTURE,
     SUPPORTED_OSES_FOR_SCHEDULER,
-    SUPPORTED_SCHEDULERS,
 )
 
 LOGGER = logging.getLogger(__name__)
