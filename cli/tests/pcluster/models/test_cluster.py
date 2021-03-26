@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from typing import List
 
 import pytest
@@ -290,3 +291,21 @@ def test_validate_cluster_name(cluster_name, should_trigger_error, caplog):
     assert_that(failures).is_length(1 if should_trigger_error else 0)
     if should_trigger_error:
         assert_that(failures[0].message).is_equal_to(error_msg)
+
+
+@pytest.mark.parametrize(
+    "region, expected_message",
+    [
+        ("invalid-region", "Region 'invalid-region' is not yet officially supported "),
+        ("us-east-1", None),
+    ],
+)
+def test_region_validator(region, expected_message):
+    os.environ["AWS_DEFAULT_REGION"] = region
+
+    failures = dummy_cluster()._validate_region()
+    if expected_message:
+        assert_that(failures).is_length(1)
+        assert_that(failures[0].message).matches(expected_message)
+    else:
+        assert_that(failures).is_empty()
