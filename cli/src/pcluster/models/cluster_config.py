@@ -73,6 +73,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import (
     AdditionalIamPolicyValidator,
+    ComputeTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -1228,11 +1229,12 @@ class SlurmQueue(BaseQueue):
         self.custom_actions = custom_actions
 
     def _validate(self):
-        self._execute_validator(
-            DuplicateInstanceTypeValidator,
-            instance_type_list=self.instance_type_list,
-        )
+        super()._validate()
+        self._execute_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
         for compute_resource in self.compute_resources:
+            self._execute_validator(
+                ComputeTypeValidator, compute_type=self.compute_type, instance_type=compute_resource.instance_type
+            )
             self._execute_validator(
                 EfaSecurityGroupValidator,
                 efa_enabled=compute_resource.efa,

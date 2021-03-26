@@ -117,3 +117,21 @@ class PlacementGroupIdValidator(Validator):  # TODO: add tests
                 AWSApi.instance().ec2.describe_placement_group(placement_group_id)
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class ComputeTypeValidator(Validator):
+    """Compute type validator. Verify that specified compute type is compatible with specified instance type."""
+
+    def _validate(self, compute_type: str, instance_type: str):
+        supported_usage_classes = AWSApi.instance().ec2.get_instance_type_info(instance_type).supported_usage_classes()
+
+        if not supported_usage_classes:
+            self._add_failure(
+                f"Could not check support for usage class '{compute_type}' with instance type '{instance_type}'",
+                FailureLevel.WARNING,
+            )
+        elif compute_type.lower() not in supported_usage_classes:
+            self._add_failure(
+                f"Usage type '{compute_type}' not supported with instance type '{instance_type}'",
+                FailureLevel.ERROR,
+            )

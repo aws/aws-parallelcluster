@@ -12,7 +12,9 @@
 import pytest
 
 from common.boto3.common import AWSClientError
+from pcluster.utils import InstanceTypeInfo
 from pcluster.validators.ec2_validators import (
+    ComputeTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -173,4 +175,29 @@ def test_key_pair_validator(mocker, key_pair, side_effect, expected_message):
     mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch("common.boto3.ec2.Ec2Client.describe_key_pair", return_value=key_pair, side_effect=side_effect)
     actual_failures = KeyPairValidator().execute(key_name=key_pair)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_type, supported_usage_classes, expected_message",
+    [
+        ("ondemand", ["ondemand", "spot"], None),
+        ("spot", ["ondemand", "spot"], None),
+        ("ondemand", ["ondemand"], None),
+        ("spot", ["spot"], None),
+        ("spot", [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
+        ("ondemand", [], "Could not check support for usage class 'ondemand' with instance type 'instance-type'"),
+        ("spot", ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
+        ("ondemand", ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
+    ],
+)
+def test_compute_type_validator(mocker, compute_type, supported_usage_classes, expected_message):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {"InstanceType": "instance-type", "SupportedUsageClasses": supported_usage_classes}
+        ),
+    )
+    actual_failures = ComputeTypeValidator().execute(compute_type=compute_type, instance_type="instance-type")
     assert_failure_messages(actual_failures, expected_message)
