@@ -66,21 +66,6 @@ def convert_to_date(timestamp, timezone=None):
     return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
 
 
-def hide_keys(dictionary, keys_to_hide, new_value="xxx"):
-    """
-    Return a copy of the given dictionary on which specified keys will be replaced by the new_value word (or 'xxx').
-
-    :param dictionary: a dictionary
-    :param keys_to_hide: keys to hide in the output dictionary
-    :param new_value: replacement string for keys to hide
-    :return: the new dictionary with hidden items
-    """
-    _new_dict = {}
-    for key, value in dictionary.items():
-        _new_dict[key] = new_value if key in keys_to_hide else value
-    return _new_dict
-
-
 def shell_join(array):
     """
     Return a shell-quoted version of the input array.

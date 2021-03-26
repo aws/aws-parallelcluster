@@ -23,8 +23,7 @@ from botocore.exceptions import ClientError, ParamValidationError
 from configparser import ConfigParser, NoOptionError, NoSectionError
 from tabulate import tabulate
 
-from awsbatch.utils import fail, get_region_by_stack_id, hide_keys
-from pcluster.utils import default_config_file_path
+from awsbatch.utils import fail, get_region_by_stack_id
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
 
@@ -102,11 +101,9 @@ class Output(object):
 class Boto3ClientFactory(object):
     """Boto3 configuration object."""
 
-    def __init__(self, region, aws_access_key_id, aws_secret_access_key, proxy="NONE"):
+    def __init__(self, region, proxy="NONE"):
         """Initialize the object."""
         self.region = region
-        self.aws_access_key_id = aws_access_key_id
-        self.aws_secret_access_key = aws_secret_access_key
         self.proxy_config = Config()
         if not proxy == "NONE":
             self.proxy_config = Config(proxies={"https": proxy})
@@ -119,13 +116,7 @@ class Boto3ClientFactory(object):
         :return: the boto3 client
         """
         try:
-            return boto3.client(
-                service,
-                region_name=self.region,
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                config=self.proxy_config,
-            )
+            return boto3.client(service, region_name=self.region, config=self.proxy_config)
         except ClientError as e:
             fail("AWS %s service failed with exception: %s" % (service, e))
 
@@ -143,14 +134,8 @@ class AWSBatchCliConfig(object):
         :param log: log
         :param cluster: cluster name
         """
-        # Check if credentials and region have been provided in parallelcluster config
-        self.aws_access_key_id = None
-        self.aws_secret_access_key = None
         self.region = None
         self.env_blacklist = None
-        parallelcluster_config_file = default_config_file_path()
-        if os.path.isfile(parallelcluster_config_file):
-            self.__init_from_parallelcluster_config(parallelcluster_config_file, log)
 
         # search for awsbatch-cli config
         cli_config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "awsbatch-cli.cfg"))
@@ -165,9 +150,7 @@ class AWSBatchCliConfig(object):
         self.__verify_initialization(log)
 
     def __str__(self):
-        return "{0}({1})".format(
-            self.__class__.__name__, hide_keys(self.__dict__, ["aws_access_key_id", "aws_secret_access_key"])
-        )
+        return "{0}({1})".format(self.__class__.__name__, self.__dict__)
 
     def __verify_initialization(self, log):
         try:
@@ -184,33 +167,6 @@ class AWSBatchCliConfig(object):
                 "Error getting cluster information from AWS CloudFormation."
                 "Missing attribute (%s) from the output CloudFormation stack." % e
             )
-
-    def __init_from_parallelcluster_config(self, parallelcluster_config_file, log):
-        """
-        Init credentials object attributes from aws-parallelcluster configuration file.
-
-        :param parallelcluster_config_file: aws-parallelcluster config
-        :param log: log
-        """
-        with open(parallelcluster_config_file) as config_file:
-            parallelcluster_config = ConfigParser()
-            parallelcluster_config.read_file(config_file)
-            log.info(
-                "Looking for AWS credentials and region in the AWS ParallelCluster configuration file %s"
-                % parallelcluster_config_file
-            )
-            try:
-                self.aws_access_key_id = parallelcluster_config.get("aws", "aws_access_key_id")
-            except (NoOptionError, NoSectionError):
-                pass
-            try:
-                self.aws_secret_access_key = parallelcluster_config.get("aws", "aws_secret_access_key")
-            except (NoOptionError, NoSectionError):
-                pass
-            try:
-                self.region = parallelcluster_config.get("aws", "aws_region_name")
-            except (NoOptionError, NoSectionError):
-                pass
 
     def __init_from_config(self, cli_config_file, cluster, log):  # noqa: C901 FIXME
         """
@@ -287,11 +243,7 @@ class AWSBatchCliConfig(object):
             log.info("Describing stack (%s)" % self.stack_name)
             # get required values from the output of the describe-stack command
             # don't use proxy because we are in the client and use default region
-            boto3_factory = Boto3ClientFactory(
-                region=self.region,
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-            )
+            boto3_factory = Boto3ClientFactory(region=self.region)
             cfn_client = boto3_factory.get_client("cloudformation")
             stack = cfn_client.describe_stacks(StackName=self.stack_name).get("Stacks")[0]
             log.debug(stack)
