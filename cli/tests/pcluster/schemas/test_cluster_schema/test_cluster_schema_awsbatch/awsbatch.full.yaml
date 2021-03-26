@@ -69,7 +69,7 @@ SharedStorage:
   - MountDir: /my/mount/point
     StorageType: Ebs
     Name: name1
-    Settings:
+    EbsSettings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 10
       Size: 20
@@ -83,7 +83,7 @@ SharedStorage:
   - MountDir: /my/mount/point2
     StorageType: Efs
     Name: name2
-    Settings:
+    EfsSettings:
       Encrypted: true  # true
       KmsKeyId: String  # id-xxx
       PerformanceMode: maxIO  # generalPurpose | maxIO
@@ -93,7 +93,7 @@ SharedStorage:
   - MountDir: /my/mount/point3
     StorageType: FsxLustre
     Name: name3
-    Settings:
+    FsxLustreSettings:
       StorageCapacity: 3600  # 3600
       DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 10  # 1024
