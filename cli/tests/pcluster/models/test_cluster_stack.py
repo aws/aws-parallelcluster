@@ -21,6 +21,7 @@ from assertpy import assert_that
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError, ClusterStack
 from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.models.cluster_dummy_model import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
 from tests.pcluster.test_utils import FAKE_STACK_NAME
 
 
@@ -110,23 +111,31 @@ def test_wait_for_stack_update(mocker, stack_statuses):
 def test_update_stack_template(mocker, error_message):
     """Verify that utils.update_stack_template behaves as expected."""
     template_body = {"TemplateKey": "TemplateValue"}
-    cfn_params = [{"ParameterKey": "Key", "ParameterValue": "Value"}]
+    template_url = "https://{bucket_name}.s3.{region}.amazonaws.com{partition_suffix}/{template_key}"
     response = error_message or {"StackId": "stack ID"}
 
     mock_aws_api(mocker)
     mocker.patch("common.boto3.cfn.CfnClient.get_stack_template", return_value=template_body)
     mocker.patch(
-        "common.boto3.cfn.CfnClient.update_stack",
+        "common.boto3.cfn.CfnClient.update_stack_from_url",
         return_value=response,
         expected_params={
             "stack_name": FAKE_STACK_NAME,
-            "updated_template": json.dumps(template_body, indent=2),
-            "params": cfn_params,
+            "template_url": template_url,
         },
-        side_effect=AWSClientError(function_name="update_stack", message=error_message)
+        side_effect=AWSClientError(function_name="update_stack_from_url", message=error_message)
         if error_message is not None
         else None,
     )
+
+    # mock bucket initialize
+    mock_bucket(mocker)
+
+    # mock bucket utils
+    mock_bucket_utils(mocker)
+
+    # mock bucket object utils
+    mock_bucket_object_utils(mocker)
 
     cluster_stack = ClusterStack({"StackName": FAKE_STACK_NAME})
     wait_for_update_mock = mocker.patch.object(cluster_stack, "_wait_for_update")
@@ -142,5 +151,5 @@ def test_update_stack_template(mocker, error_message):
             stack_name=FAKE_STACK_NAME, emsg=error_message
         )
         with pytest.raises(AWSClientError, match=full_error_message) as sysexit:
-            cluster_stack.update_template()
+            cluster_stack.update_template(template_url)
         assert_that(sysexit.value.code).is_not_equal_to(0)

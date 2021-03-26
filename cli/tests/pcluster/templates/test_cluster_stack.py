@@ -14,14 +14,22 @@ import yaml
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from tests.common.dummy_aws_api import mock_aws_api
 
-from ..models.cluster_dummy_model import dummy_awsbatch_cluster_config, dummy_bucket, dummy_slurm_cluster_config
+from ..models.cluster_dummy_model import (
+    dummy_awsbatch_cluster_config,
+    dummy_cluster_bucket,
+    dummy_slurm_cluster_config,
+    mock_bucket,
+)
 
 
 def test_slurm_cluster_builder(mocker):
     mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=dummy_slurm_cluster_config(mocker),
-        bucket=dummy_bucket(),
+        bucket=dummy_cluster_bucket(),
         stack_name="parallelcluster-dummyname",
     )
     print(yaml.dump(generated_template))
@@ -30,9 +38,12 @@ def test_slurm_cluster_builder(mocker):
 
 def test_awsbatch_cluster_builder(mocker):
     mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=dummy_awsbatch_cluster_config(mocker),
-        bucket=dummy_bucket(),
+        bucket=dummy_cluster_bucket(),
         stack_name="parallelcluster-dummyname",
     )
     print(yaml.dump(generated_template))

@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.models.common import BaseTag, Cookbook
+from pcluster.models.common import BaseTag, Cookbook, S3Bucket
 from pcluster.models.imagebuilder_config import (
     Build,
     Component,
@@ -53,3 +53,17 @@ def imagebuilder_factory(resource):
         else:
             object_dict[r] = value
     return object_dict
+
+
+def dummy_imagebuilder_bucket(
+    bucket_name="parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
+    artifact_directory="parallelcluster/imagebuilders/dummy-image-randomstring123",
+    service_name="dummy-image",
+):
+    """Generate dummy imagebuilder bucket."""
+    return S3Bucket(
+        name=bucket_name,
+        stack_name=service_name,
+        service_name=service_name,
+        artifact_directory=artifact_directory,
+    )

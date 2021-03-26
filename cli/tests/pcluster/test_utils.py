@@ -34,9 +34,11 @@ def dummy_cluster_stack():
     return ClusterStack({"StackName": FAKE_STACK_NAME})
 
 
-def dummy_cluster(name=FAKE_CLUSTER_NAME):
+def dummy_cluster(name=FAKE_CLUSTER_NAME, stack=None):
     """Return dummy cluster object."""
-    return Cluster(name, stack=dummy_cluster_stack())
+    if stack is None:
+        stack = dummy_cluster_stack()
+    return Cluster(name, stack=stack)
 
 
 @pytest.mark.parametrize(
@@ -229,81 +231,6 @@ def test_generate_random_name_with_prefix(bucket_prefix):
 def test_generate_random_prefix():
     prefix = utils.generate_random_prefix()
     assert_that(len(prefix)).is_equal_to(16)
-
-
-@pytest.mark.parametrize(
-    "region,create_error_message,configure_error_message",
-    [
-        ("eu-west-1", None, None),
-        ("us-east-1", None, None),
-        ("eu-west-1", "An error occurred", None),
-        ("eu-west-1", None, "An error occurred"),
-    ],
-)
-def test_create_s3_bucket(region, create_error_message, configure_error_message, boto3_stubber, mocker):
-    bucket_name = "test"
-    expected_params = {"Bucket": bucket_name}
-    os.environ["AWS_DEFAULT_REGION"] = region
-    if region != "us-east-1":
-        # LocationConstraint specifies the region where the bucket will be created.
-        # When the region is us-east-1 we are not specifying this parameter because it's the default region.
-        expected_params["CreateBucketConfiguration"] = {"LocationConstraint": region}
-
-    delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket", auto_spec=True)
-
-    mocked_requests = [
-        MockedBoto3Request(
-            method="create_bucket",
-            expected_params=expected_params,
-            response={"Location": bucket_name},
-            generate_error=create_error_message is not None,
-        )
-    ]
-    if not create_error_message:
-        mocked_requests += [
-            MockedBoto3Request(
-                method="put_bucket_versioning",
-                expected_params={"Bucket": bucket_name, "VersioningConfiguration": {"Status": "Enabled"}},
-                response={},
-                generate_error=configure_error_message is not None,
-            )
-        ]
-        if not configure_error_message:
-            mocked_requests += [
-                MockedBoto3Request(
-                    method="put_bucket_encryption",
-                    expected_params={
-                        "Bucket": bucket_name,
-                        "ServerSideEncryptionConfiguration": {
-                            "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
-                        },
-                    },
-                    response={},
-                ),
-                MockedBoto3Request(
-                    method="put_bucket_policy",
-                    expected_params={
-                        "Bucket": bucket_name,
-                        "Policy": (
-                            '{{"Id":"DenyHTTP","Version":"2012-10-17","Statement":[{{"Sid":"AllowSSLRequestsOnly",'
-                            '"Action":"s3:*","Effect":"Deny","Resource":["arn:aws:s3:::{bucket_name}","arn:aws:s3:::'
-                            '{bucket_name}/*"],"Condition":{{"Bool":{{"aws:SecureTransport":"false"}}}},'
-                            '"Principal":"*"}}]}}'
-                        ).format(bucket_name=bucket_name),
-                    },
-                    response={},
-                ),
-            ]
-
-    boto3_stubber("s3", mocked_requests)
-    if create_error_message or configure_error_message:
-        with pytest.raises(ClientError, match=create_error_message or configure_error_message):
-            utils.create_s3_bucket(bucket_name)
-        if configure_error_message:
-            assert_that(delete_s3_bucket_mock.call_count).is_equal_to(1)
-    else:
-        utils.create_s3_bucket(bucket_name)
-        delete_s3_bucket_mock.assert_not_called()
 
 
 @pytest.mark.parametrize(

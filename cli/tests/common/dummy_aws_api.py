@@ -17,6 +17,8 @@ from common.boto3.ec2 import Ec2Client
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
 from common.boto3.s3 import S3Client
+from common.boto3.s3_resource import S3Resource
+from common.boto3.sts import StsClient
 
 
 class _DummyInstanceTypeInfo(InstanceTypeInfo):
@@ -74,6 +76,8 @@ class _DummyAWSApi(AWSApi):
         self.s3 = _DummyS3Client()
         self.imagebuilder = _DummyImageBuilderClient()
         self.kms = _DummyKmsClient()
+        self.sts = _DummyStsClient()
+        self.s3_resource = _DummyS3Resource()
         # TODO: mock all clients
 
 
@@ -139,6 +143,18 @@ class _DummyImageBuilderClient(ImageBuilderClient):
 
 
 class _DummyKmsClient(KmsClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+
+class _DummyStsClient(StsClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+
+class _DummyS3Resource(S3Resource):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass

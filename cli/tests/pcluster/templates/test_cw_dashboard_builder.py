@@ -20,7 +20,7 @@ from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from tests.common.dummy_aws_api import mock_aws_api
 
-from ..models.cluster_dummy_model import dummy_bucket
+from ..models.cluster_dummy_model import dummy_cluster_bucket, mock_bucket
 
 
 @pytest.mark.parametrize(
@@ -39,11 +39,14 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
         "pcluster.models.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     cluster_config = ClusterSchema().load(input_yaml)
     print(cluster_config)
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster_config, bucket=dummy_bucket(), stack_name="parallelcluster-dummyname"
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="parallelcluster-dummyname"
     )
     output_yaml = yaml.dump(generated_template, width=float("inf"))
     print(output_yaml)
