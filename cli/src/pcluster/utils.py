@@ -647,6 +647,15 @@ class InstanceTypeInfo:
             ebs_optimized = ebs_info.get("EbsOptimizedSupport") != "unsupported"
         return ebs_optimized
 
+    def supported_usage_classes(self):
+        """Return the list supported usage classes."""
+        supported_classes = self.instance_type_data.get("SupportedUsageClasses", [])
+        if "on-demand" in supported_classes:
+            # Replace official AWS with internal naming convention
+            supported_classes.remove("on-demand")
+            supported_classes.append("ondemand")
+        return supported_classes
+
 
 def grouper(iterable, n):
     """Slice iterable into chunks of size n."""

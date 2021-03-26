@@ -56,7 +56,7 @@ def boto3_stubber_path():
         ("ClusterCanNotContainSpaces LikeThis", True),
     ],
 )
-def test_cluster_name_valiadtor(cluster_name, should_trigger_error):
+def test_cluster_name_validator(cluster_name, should_trigger_error):
     expected_message = (
         (
             "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "

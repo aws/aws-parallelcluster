@@ -32,7 +32,7 @@ def test_url_validator(mocker, url, response, expected_message):
     "url, expected_message",
     [
         ("s3://test/test1/test2", None),
-        ("http://test/test.json","is not a valid S3 URI"),
+        ("http://test/test.json", "is not a valid S3 URI"),
     ],
 )
 def test_s3_bucket_uri_validator(mocker, url, expected_message):
