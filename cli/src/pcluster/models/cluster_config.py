@@ -89,7 +89,12 @@ from pcluster.validators.fsx_validators import (
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
-from pcluster.validators.s3_validators import S3BucketUriValidator, S3BucketValidator, UrlValidator
+from pcluster.validators.s3_validators import (
+    S3BucketRegionValidator,
+    S3BucketUriValidator,
+    S3BucketValidator,
+    UrlValidator,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -868,6 +873,7 @@ class BaseClusterConfig(Resource):
             )
         if self.cluster_s3_bucket:
             self._execute_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
+            self._execute_validator(S3BucketRegionValidator, bucket=self.cluster_s3_bucket, region=self.region)
 
     def _register_storage_validators(self):
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}

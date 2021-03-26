@@ -79,7 +79,6 @@ class S3BucketValidator(Validator):
     """S3 Bucket Validator."""
 
     def _validate(self, bucket):
-
         try:
             AWSApi.instance().s3.head_bucket(bucket_name=bucket)
             # Check versioning is enabled on the bucket
@@ -90,6 +89,21 @@ class S3BucketValidator(Validator):
                     "because versioning setting is: {1}, not 'Enabled'. Please enable bucket versioning.".format(
                         bucket, bucket_versioning_status
                     ),
+                    FailureLevel.ERROR,
+                )
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class S3BucketRegionValidator(Validator):
+    """Validate S3 bucket is in the same region with the cloudformation stack."""
+
+    def _validate(self, bucket, region):
+        try:
+            bucket_region = AWSApi.instance().s3.get_bucket_region(bucket)
+            if bucket_region != region:
+                self._add_failure(
+                    "The S3 bucket {0} specified cannot be used because it is not in the same region of the cluster.",
                     FailureLevel.ERROR,
                 )
         except AWSClientError as e:

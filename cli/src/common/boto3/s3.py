@@ -61,6 +61,17 @@ class S3Client(Boto3Client):
         """Return true if bucket versioning is enabled."""
         return self._client.get_bucket_versioning(Bucket=bucket_name).get("Status")
 
+    @AWSExceptionHandler.handle_client_exception
+    def get_bucket_region(self, bucket_name):
+        """Return bucket region."""
+        bucket_region = self._client.get_bucket_location(Bucket=bucket_name).get("LocationConstraint")
+        # Buckets in Region us-east-1 have a LocationConstraint of null
+        # Example output from get_bucket_location for us-east-1:
+        #   {'ResponseMetadata': {...}, 'LocationConstraint': None}
+        if bucket_region is None:
+            bucket_region = "us-east-1"
+        return bucket_region
+
 
 def _process_generic_s3_bucket_error(client_error, bucket_name):
     if client_error.response.get("Error").get("Code") == "NoSuchBucket":
