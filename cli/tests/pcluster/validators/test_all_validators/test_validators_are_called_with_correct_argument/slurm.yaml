@@ -33,16 +33,16 @@ SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeId: vol-12345678
   - MountDir: /my/mount/point2
     Name: name2
     StorageType: Efs
-    Settings:
+    EfsSettings:
       Encrypted: True
       KmsKeyId: 1234abcd-12ab-34cd-56ef-1234567890ab
   - MountDir: /my/mount/point3
     Name: name3
     StorageType: FsxLustre
-    Settings:
+    FsxLustreSettings:
       StorageCapacity: 3600

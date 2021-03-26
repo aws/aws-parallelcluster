@@ -22,10 +22,10 @@ SharedStorage:
   - MountDir: /my/mount/point2
     Name: name1
     StorageType: Efs
-    Settings:
+    EfsSettings:
       FileSystemId: fs-12345678123456789
   - MountDir: /my/mount/point3
     Name: name2
     StorageType: FsxLustre
-    Settings:
+    FsxLustreSettings:
       FileSystemId: fs-12345678123456789

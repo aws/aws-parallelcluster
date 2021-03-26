@@ -81,6 +81,8 @@ from pcluster.models.cluster_config import (
 from pcluster.schemas.common_schema import BaseDevSettingsSchema, BaseSchema, TagSchema, get_field_validator
 from pcluster.validators.cluster_validators import FSX_MESSAGES
 
+# pylint: disable=C0302
+
 # ---------------------- Storage ---------------------- #
 
 
@@ -361,11 +363,11 @@ class SharedStorageSchema(BaseSchema):
     def preprocess(self, data, **kwargs):
         """Before load the data into schema, change the settings to adapt different storage types."""
         if data.get("StorageType") == "Efs":
-            data["Efs"] = data.pop("Settings", {})
+            data["Efs"] = data.pop("EfsSettings", {})
         elif data.get("StorageType") == "Ebs":
-            data["Ebs"] = data.pop("Settings", {})
+            data["Ebs"] = data.pop("EbsSettings", {})
         elif data.get("StorageType") == "FsxLustre":
-            data["Fsx"] = data.pop("Settings", {})
+            data["Fsx"] = data.pop("FsxLustreSettings", {})
         return data
 
     @post_load
@@ -394,13 +396,13 @@ class SharedStorageSchema(BaseSchema):
     def post_processed(self, data, **kwargs):
         """Restore the SharedStorage Schema back to its origin."""
         if data.get("Efs") is not None:
-            storage_type = "Efs"
+            storage_type, storage_settings = "Efs", "EfsSettings"
         elif data.get("Ebs") is not None:
-            storage_type = "Ebs"
+            storage_type, storage_settings = "Ebs", "EbsSettings"
         elif data.get("Fsx") is not None:
-            storage_type = "Fsx"
+            storage_type, storage_settings = "Fsx", "FsxLustreSettings"
         if data.get(storage_type):
-            data["Settings"] = data.pop(storage_type)
+            data[storage_settings] = data.pop(storage_type)
         else:
             data.pop(storage_type)
 

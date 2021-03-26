@@ -103,7 +103,7 @@ SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 100
       Size: 150
@@ -114,13 +114,13 @@ SharedStorage:
   - MountDir: /my/mount/point2
     Name: name2
     StorageType: Efs
-    Settings:
+    EfsSettings:
       ThroughputMode: provisioned  # bursting | provisioned
       ProvisionedThroughput: 1024
   - MountDir: /my/mount/point3
     Name: name3
     StorageType: FsxLustre
-    Settings:
+    FsxLustreSettings:
       StorageCapacity: 3600
       DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 1024
