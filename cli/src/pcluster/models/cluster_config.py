@@ -75,7 +75,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import (
     AdditionalIamPolicyValidator,
-    ComputeTypeValidator,
+    CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -766,11 +766,22 @@ class BaseComputeResource(Resource):
         self._execute_validator(NameValidator, name=self.name)
 
 
-class ComputeType(Enum):
+class CapacityType(Enum):
     """Enum to identify the type compute supported by the queues."""
 
     ONDEMAND = "ONDEMAND"
     SPOT = "SPOT"
+
+
+class ComputeSettings(Resource):
+    """Represent the ComputeSettings resource."""
+
+    def __init__(
+        self,
+        local_storage: LocalStorage = None,
+    ):
+        super().__init__()
+        self.local_storage = local_storage
 
 
 class BaseQueue(Resource):
@@ -780,16 +791,16 @@ class BaseQueue(Resource):
         self,
         name: str,
         networking: QueueNetworking,
-        local_storage: LocalStorage = None,
-        compute_type: str = None,
+        compute_settings: ComputeSettings = None,
+        capacity_type: str = None,
         iam: Iam = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
         self.networking = networking
-        self.local_storage = local_storage
-        _compute_type = ComputeType[compute_type.upper()] if compute_type else None
-        self.compute_type = Resource.init_param(_compute_type, default=ComputeType.ONDEMAND)
+        _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
+        self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
+        self.compute_settings = compute_settings
         self.iam = iam or Iam(implied=True)
 
     def _validate(self):
@@ -1078,20 +1089,27 @@ class AwsbatchQueue(BaseQueue):
         name: str,
         networking: QueueNetworking,
         compute_resources: List[AwsbatchComputeResource],
-        local_storage: LocalStorage = None,
-        compute_type: str = None,
+        compute_settings: ComputeSettings = None,
+        capacity_type: str = None,
     ):
-        super().__init__(name, networking, local_storage, compute_type)
+        super().__init__(name, networking, compute_settings, capacity_type)
         self.compute_resources = compute_resources
+
+
+class AwsbatchSettings(Resource):
+    """Represent the AwsbatchSettings resource."""
+
+    pass
 
 
 class AwsbatchScheduling(Resource):
     """Represent a Awsbatch Scheduling resource."""
 
-    def __init__(self, queues: List[AwsbatchQueue]):
+    def __init__(self, queues: List[AwsbatchQueue], settings: AwsbatchSettings = None):
         super().__init__()
         self.scheduler = "awsbatch"
         self.queues = queues
+        self.settings = settings
 
 
 class AwsbatchClusterConfig(BaseClusterConfig):
@@ -1230,7 +1248,7 @@ class SlurmQueue(BaseQueue):
         self._execute_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
         for compute_resource in self.compute_resources:
             self._execute_validator(
-                ComputeTypeValidator, compute_type=self.compute_type, instance_type=compute_resource.instance_type
+                CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
             )
             self._execute_validator(
                 EfaSecurityGroupValidator,

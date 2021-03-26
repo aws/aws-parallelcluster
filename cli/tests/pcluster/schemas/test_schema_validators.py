@@ -29,24 +29,11 @@ from pcluster.schemas.cluster_schema import (
     QueueNetworkingSchema,
     QueueRootVolumeSchema,
     RaidSchema,
-    SchedulingSchema,
     SharedStorageSchema,
     SlurmComputeResourceSchema,
     SlurmQueueSchema,
     SshSchema,
 )
-
-
-@pytest.mark.parametrize(
-    "scheduler, expected_message",
-    [
-        ("Awsbatch", None),
-        ("Slurm", None),
-        ("wrong_value", "Unknown field"),
-    ],
-)
-def test_scheduler_validator(scheduler, expected_message):
-    _validate_and_assert_error(SchedulingSchema(), {scheduler: {}}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -91,7 +78,7 @@ def test_root_volume_size_validator(size, expected_message):
 
 
 @pytest.mark.parametrize(
-    "compute_type, expected_message",
+    "capacity_type, expected_message",
     [
         ("ONDEMAND", None),
         ("", "Must be one of: ONDEMAND, SPOT"),
@@ -100,9 +87,9 @@ def test_root_volume_size_validator(size, expected_message):
         ("SPOT", None),
     ],
 )
-def test_compute_type_validator(compute_type, expected_message):
-    _validate_and_assert_error(SlurmQueueSchema(), {"ComputeType": compute_type}, expected_message)
-    _validate_and_assert_error(AwsbatchQueueSchema(), {"ComputeType": compute_type}, expected_message)
+def test_compute_type_validator(capacity_type, expected_message):
+    _validate_and_assert_error(SlurmQueueSchema(), {"CapacityType": capacity_type}, expected_message)
+    _validate_and_assert_error(AwsbatchQueueSchema(), {"CapacityType": capacity_type}, expected_message)
 
 
 @pytest.mark.parametrize(

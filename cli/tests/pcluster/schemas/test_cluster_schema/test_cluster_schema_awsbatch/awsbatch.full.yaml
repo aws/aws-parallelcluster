@@ -34,9 +34,10 @@ HeadNode:
     Port: 8443  # 8443
     AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
 Scheduling:
-  Awsbatch:
-    Queues:
-      - Name: String  # queue
+  Scheduler: awsbatch
+  Queues:
+    - Name: String  # queue
+      ComputeSettings:
         LocalStorage:
           RootVolume:
             Size: 38  # 35
@@ -44,26 +45,26 @@ Scheduling:
           EphemeralVolume:
             Encrypted: true  # true
             MountDir: String  # /scratch
-        ComputeType: ONDEMAND  # ONDEMAND | SPOT
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-          AssignPublicIp: true  # true|false
-          SecurityGroups:
-            - sg-12345678  # sg-xxxx
-          PlacementGroup:
-            Enabled: true  # true
-            Id: String
-          Proxy:
-            HttpProxyAddress: String  # https://proxy-address:port
-        ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
-          - Name: compute_resource
-            InstanceTypes: optimal,c4.xlarge,c5.large
-            MinvCpus: 0  # 0
-            DesiredvCpus: 10
-            MaxvCpus: 20
-            SpotBidPercentage: 0.5
-            DisableSimultaneousMultithreading: false
+      CapacityType: ONDEMAND  # ONDEMAND | SPOT
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        AssignPublicIp: true  # true|false
+        SecurityGroups:
+          - sg-12345678  # sg-xxxx
+        PlacementGroup:
+          Enabled: true  # true
+          Id: String
+        Proxy:
+          HttpProxyAddress: String  # https://proxy-address:port
+      ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
+        - Name: compute_resource
+          InstanceTypes: optimal,c4.xlarge,c5.large
+          MinvCpus: 0  # 0
+          DesiredvCpus: 10
+          MaxvCpus: 20
+          SpotBidPercentage: 0.5
+          DisableSimultaneousMultithreading: false
 SharedStorage:
   - MountDir: /my/mount/point
     StorageType: Ebs

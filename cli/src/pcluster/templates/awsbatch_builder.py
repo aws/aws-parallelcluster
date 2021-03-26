@@ -20,7 +20,7 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import core
 
-from pcluster.models.cluster_config import AwsbatchClusterConfig, ClusterBucket, ComputeType, SharedStorageType
+from pcluster.models.cluster_config import AwsbatchClusterConfig, CapacityType, ClusterBucket, SharedStorageType
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
@@ -103,7 +103,7 @@ class AwsbatchConstruct(core.Construct):
 
         # Spot Iam Role
         self._spot_iam_fleet_role = None
-        if self.queue.compute_type == ComputeType.SPOT:
+        if self.queue.capacity_type == CapacityType.SPOT:
             self._spot_iam_fleet_role = self._add_spot_fleet_iam_role()
 
         # Batch resources
@@ -141,7 +141,7 @@ class AwsbatchConstruct(core.Construct):
             service_role=self._batch_service_role.ref,
             state="ENABLED",
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
-                type="SPOT" if self.queue.compute_type == ComputeType.SPOT else "EC2",
+                type="SPOT" if self.queue.capacity_type == CapacityType.SPOT else "EC2",
                 minv_cpus=self.compute_resource.min_vcpus,
                 desiredv_cpus=self.compute_resource.desired_vcpus,
                 maxv_cpus=self.compute_resource.max_vcpus,

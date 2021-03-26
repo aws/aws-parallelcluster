@@ -1,6 +1,7 @@
 import os
 import tempfile
 from collections import OrderedDict
+from copy import deepcopy
 
 import pytest
 import yaml
@@ -331,7 +332,10 @@ def _assert_configurations_are_equal(path_config_expected, path_config_after_inp
     assert_that(path_config_after_input).exists().is_file()
     with open(path_config_after_input) as after_input_conf_file:
         after_input_content = yaml.load(after_input_conf_file, Loader=yaml.SafeLoader)
-        ClusterSchema().load(after_input_content)  # Test if the generated yaml can be corrected loaded by Marshmallow.
+        copy_after_input_content = deepcopy(after_input_content)
+        ClusterSchema().load(
+            copy_after_input_content
+        )  # Test if the generated yaml can be corrected loaded by Marshmallow.
     with open(path_config_expected) as expected_conf_file:
         expected_content = yaml.load(expected_conf_file, Loader=yaml.SafeLoader)
 

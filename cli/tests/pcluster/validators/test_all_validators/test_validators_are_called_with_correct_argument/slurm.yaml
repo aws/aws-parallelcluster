@@ -8,27 +8,27 @@ HeadNode:
   Ssh:
     KeyName: ec2-key-name
 Scheduling:
-  Slurm:
-    Queues:
-      - Name: queue1
-        Networking:
-          SubnetIds:
-            - subnet-23456789
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.2xlarge
-          - Name: compute_resource2
-            InstanceType: c4.2xlarge
-      - Name: queue2
-        Networking:
-          SubnetIds:
-            - subnet-23456789
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.4xlarge
-            MaxCount: 5
-          - Name: compute_resource2
-            InstanceType: c4.4xlarge
+  Scheduler: slurm
+  Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-23456789
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-23456789
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.4xlarge
+          MaxCount: 5
+        - Name: compute_resource2
+          InstanceType: c4.4xlarge
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1
