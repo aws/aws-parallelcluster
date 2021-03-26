@@ -34,7 +34,7 @@ Scheduling:
             Event: NODE_CONFIGURED
         ComputeResources:
           - Name: compute-resource-0
-            {% if {{ scheduler }} == "Awsbatch" %}
+            {% if scheduler == "Awsbatch" %}
             InstanceTypes: {{ instance }}
             {% else %}
             InstanceType: {{ instance }}

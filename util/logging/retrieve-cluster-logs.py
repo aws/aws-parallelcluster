@@ -32,6 +32,7 @@ LOGGER = logging.getLogger(__file__)
 
 DEFAULT_BUCKET_PREFIX_FORMAT = "{{cluster_name}}-logs-{timestamp}".format(timestamp=datetime.now().timestamp())
 DEFAULT_TARBALL_PATH_FORMAT = "{bucket_prefix_format}.tar.gz".format(bucket_prefix_format=DEFAULT_BUCKET_PREFIX_FORMAT)
+PCLUSTER_STACK_PREFIX = "parallelcluster-"
 
 
 def err_and_exit(message):
@@ -40,20 +41,34 @@ def err_and_exit(message):
     sys.exit(1)
 
 
+def get_cloudwatch_log_group_name(stack_name, region):
+    """
+    Get name of the Cluster CloudWatch log group.
+
+    :return: log group name or None if not found
+    """
+    stack = boto3.client("cloudformation", region_name=region).describe_stacks(StackName=stack_name).get("Stacks")[0]
+    outputs = stack.get("Outputs")
+    return next((o.get("OutputValue") for o in outputs if o.get("OutputKey") == "ClusterCWLogGroup"), None)
+
+
 def get_log_group(args):
     """Get log group for args.cluster."""
-    # ToDo change log group name to include timestamp
-    log_group_name = "/aws/parallelcluster/{}".format(args.cluster)
-    logs = boto3.client("logs", region_name=args.region)
-    paginator = logs.get_paginator("describe_log_groups")
-    for result in paginator.paginate(logGroupNamePrefix=log_group_name):
+    log_group_name = get_cloudwatch_log_group_name(PCLUSTER_STACK_PREFIX + args.cluster, args.region)
+    if log_group_name is None:
+        # ClusterCWLogGroup is not present as output in pre 3.0 version.
+        log_group_name = args.cluster
+    log_group_name_prefix = "/aws/parallelcluster/{}".format(log_group_name)
+
+    paginator = boto3.client("logs", region_name=args.region).get_paginator("describe_log_groups")
+    for result in paginator.paginate(logGroupNamePrefix=log_group_name_prefix):
         for group in result.get("logGroups"):
-            if group.get("logGroupName") == log_group_name:
+            if group.get("logGroupName") == log_group_name_prefix:
                 return group
     err_and_exit(
         "Unable to find log group in region {region} for cluster {cluster}. "
         "Expected to find one named {log_group_name}".format(
-            region=args.region, cluster=args.cluster, log_group_name=log_group_name
+            region=args.region, cluster=args.cluster, log_group_name=log_group_name_prefix
         )
     )
 

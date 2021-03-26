@@ -119,6 +119,7 @@ class ClusterCdkStack(core.Stack):
 
     def _add_resources(self):
         # Cloud Watch Logs
+        self.log_group = None
         if self.config.is_cw_logging_enabled:
             self.log_group = self._add_cluster_log_group()
 
@@ -1178,9 +1179,14 @@ class ClusterCdkStack(core.Stack):
 
     def _add_outputs(self):
         # Storage filesystem Ids
-        self._add_shared_storage_outputs()
+        for storage_type, storage_list in self.shared_storage_mappings.items():
+            core.CfnOutput(
+                scope=self,
+                id="{0}Ids".format(storage_type.name),
+                description="{0} Filesystem IDs".format(storage_type.name),
+                value=",".join(storage.id for storage in storage_list),
+            )
 
-        # ClusterUser
         core.CfnOutput(
             scope=self,
             id="ClusterUser",
@@ -1188,7 +1194,6 @@ class ClusterCdkStack(core.Stack):
             value=OS_MAPPING[self.config.image.os]["user"],
         )
 
-        # Head Node Instance ID
         core.CfnOutput(
             scope=self,
             id="MasterInstanceID",  # FIXME
@@ -1196,7 +1201,6 @@ class ClusterCdkStack(core.Stack):
             value=self.head_node_instance.ref,
         )
 
-        # Head Node Private IP
         core.CfnOutput(
             scope=self,
             id="MasterPrivateIP",  # FIXME
@@ -1211,7 +1215,6 @@ class ClusterCdkStack(core.Stack):
             value=self.head_node_instance.attr_private_dns_name,
         )
 
-        # Head Node Public IP
         head_public_ip = self.head_node_instance.attr_public_ip
         if head_public_ip:
             core.CfnOutput(
@@ -1221,7 +1224,6 @@ class ClusterCdkStack(core.Stack):
                 value=head_public_ip,
             )
 
-        # ResourcesS3Bucket
         core.CfnOutput(
             scope=self,
             id="ResourcesS3Bucket",
@@ -1229,7 +1231,6 @@ class ClusterCdkStack(core.Stack):
             value=self.bucket.name,
         )
 
-        # ArtifactS3RootDirectory
         core.CfnOutput(
             scope=self,
             id="ArtifactS3RootDirectory",
@@ -1237,21 +1238,12 @@ class ClusterCdkStack(core.Stack):
             value=self.bucket.artifact_directory,
         )
 
-        # BatchComputeEnvironmentArn
-        # BatchJobQueueArn
-        # BatchJobDefinitionArn
-        # BatchJobDefinitionMnpArn
-        # BatchUserRole
-        # TODO: take values from Batch resources
-
         core.CfnOutput(id="Scheduler", scope=self, value=self.config.scheduling.scheduler)
 
-    def _add_shared_storage_outputs(self):
-        """Add the ids of the managed filesystem to the Stack Outputs."""
-        for storage_type, storage_list in self.shared_storage_mappings.items():
+        if self.log_group:
             core.CfnOutput(
                 scope=self,
-                id="{0}Ids".format(storage_type.name),
-                description="{0} Filesystem IDs".format(storage_type.name),
-                value=",".join(storage.id for storage in storage_list),
+                id="ClusterCWLogGroup",
+                description="CloudWatch Log Group associated to the cluster",
+                value=self.log_group.log_group_name,
             )

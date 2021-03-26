@@ -33,7 +33,6 @@ from pcluster.constants import (
     SUPPORTED_ARCHITECTURES,
     SUPPORTED_OSES_FOR_ARCHITECTURE,
     SUPPORTED_OSES_FOR_SCHEDULER,
-    SUPPORTED_SCHEDULERS,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -232,74 +231,6 @@ def upload_resources_artifacts(bucket_name, artifact_directory, root):
             bucket.upload_file(os.path.join(root, res), "%s/%s" % (artifact_directory, res))
 
 
-def get_supported_az_for_one_instance_type(instance_type):
-    """
-    Return a tuple of availability zones that have the instance_types.
-
-    This function build above get_supported_az_for_multi_instance_types,
-    but simplify the input to 1 instance type and result to a list
-
-    :param instance_type: the instance type for which the supporting AZs.
-    :return: a tuple of the supporting AZs
-    """
-    return get_supported_az_for_multi_instance_types([instance_type])[instance_type]
-
-
-def get_supported_az_for_multi_instance_types(instance_types):
-    """
-    Return a dict of instance types to list of availability zones that have each of the instance_types.
-
-    :param instance_types: the list of instance types for which the supporting AZs.
-    :return: a dicts. keys are strings of instance type, values are the tuples of the supporting AZs
-
-    Example:
-    If instance_types is:
-    ["t2.micro", "t2.large"]
-    Result can be:
-    {
-        "t2.micro": (us-east-1a, us-east-1b),
-        "t2.large": (us-east-1a, us-east-1b)
-    }
-    """
-    # first looks for info in cache, then using only one API call for all infos that is not inside the cache
-    if not hasattr(get_supported_az_for_multi_instance_types, "cache"):
-        get_supported_az_for_multi_instance_types.cache = {}
-    cache = get_supported_az_for_multi_instance_types.cache
-    missing_instance_types = []
-    result = {}
-    for instance_type in instance_types:
-        if instance_type in cache:
-            result[instance_type] = cache[instance_type]
-        else:
-            missing_instance_types.append(instance_type)
-    if missing_instance_types:
-        ec2_client = boto3.client("ec2")
-        paginator = ec2_client.get_paginator("describe_instance_type_offerings")
-        page_iterator = paginator.paginate(
-            LocationType="availability-zone", Filters=[{"Name": "instance-type", "Values": missing_instance_types}]
-        )
-        offerings = []
-        for page in page_iterator:
-            offerings.extend(page["InstanceTypeOfferings"])
-        for instance_type in missing_instance_types:
-            cache[instance_type] = tuple(
-                offering["Location"] for offering in offerings if offering["InstanceType"] == instance_type
-            )
-            result[instance_type] = cache[instance_type]
-    return result
-
-
-def get_common_supported_az_for_multi_instance_types(instance_types):
-    supported_az = get_supported_az_for_multi_instance_types(instance_types)
-    common_az = None
-    for az_list in supported_az.values():
-        if common_az is None:
-            common_az = set(az_list)
-        else:
-            common_az = common_az & set(az_list)
-    return common_az
-
-
 def get_supported_os_for_scheduler(scheduler):
     """
     Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
@@ -319,15 +250,6 @@ def camelcase(snake_case_word):
     """Convert the given snake case word into a camel case one."""
     parts = iter(snake_case_word.split("_"))
     return "".join(word.title() for word in parts)
-
-
-def get_supported_schedulers():
-    """
-    Return a tuple of the scheduler supported by parallelcluster.
-
-    :return: a tuple of strings of the supported scheduler
-    """
-    return SUPPORTED_SCHEDULERS
 
 
 def get_stack_output_value(stack_outputs, output_key):
@@ -491,27 +413,6 @@ def error(message, fail_on_error=True):
         print("ERROR: {0}".format(message))
 
 
-def get_info_for_amis(ami_ids):
-    """Get information returned by EC2's describe-images API for the given list of AMIs."""
-    try:
-        return boto3.client("ec2").describe_images(ImageIds=ami_ids).get("Images")
-    except ClientError as e:
-        error(e.response.get("Error").get("Message"))
-
-
-def validate_pcluster_version_based_on_ami_name(ami_name):
-    match = re.match(r"(.*)aws-parallelcluster-(\d+\.\d+\.\d+)(.*)", ami_name)
-    if match:
-        if match.group(2) != get_installed_version():
-            error(
-                "This AMI was created with version {0} of ParallelCluster,"
-                " but is trying to be used with version {1}. Please either use an AMI created with "
-                "version {1} or change your ParallelCluster to version {0}".format(
-                    match.group(2), get_installed_version()
-                )
-            )
-
-
 def get_supported_architectures_for_instance_type(instance_type):
     """Get a list of architectures supported for the given instance type."""
     # "optimal" compute instance type (when using batch) implies the use of instances from the
@@ -552,23 +453,6 @@ def ellipsize(text, max_length):
 
 def policy_name_to_arn(policy_name):
     return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
-
-
-def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
-    """Return a boolean describing whether hyperthreading should be disabled via CPU options for instance_type."""
-    if default_threads_per_core is None:
-        default_threads_per_core = InstanceTypeInfo.init_from_instance_type(instance_type).default_threads_per_core()
-    res = all(
-        [
-            # If default threads per core is 1, HT doesn't need to be disabled
-            default_threads_per_core > 1,
-            # Currently, hyperthreading must be disabled manually on *.metal instances
-            not (
-                instance_type.endswith(".metal") or instance_type.startswith("m4.") or instance_type in ["cc2.8xlarge"]
-            ),
-        ]
-    )
-    return res
 
 
 def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
