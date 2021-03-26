@@ -25,17 +25,8 @@ from pcluster.configure.networking import (
     automate_vpc_with_subnet_creation,
 )
 from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
-from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT
-from pcluster.utils import (
-    camelcase,
-    default_config_file_path,
-    error,
-    get_common_supported_az_for_multi_instance_types,
-    get_region,
-    get_supported_az_for_one_instance_type,
-    get_supported_os_for_scheduler,
-    get_supported_schedulers,
-)
+from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
+from pcluster.utils import camelcase, default_config_file_path, error, get_region, get_supported_os_for_scheduler
 
 LOGGER = logging.getLogger(__name__)
 
@@ -130,15 +121,12 @@ def configure(args):  # noqa: C901
     available_keys = _get_keys()
     key_name = prompt_iterable("EC2 Key Pair Name", available_keys)
 
-    scheduler = prompt_iterable("Scheduler", get_supported_schedulers())
+    scheduler = prompt_iterable("Scheduler", SUPPORTED_SCHEDULERS)
 
     if scheduler == "awsbatch":
         base_os = "alinux2"
     else:
-        base_os = prompt_iterable(
-            "Operating System",
-            get_supported_os_for_scheduler(scheduler),
-        )
+        base_os = prompt_iterable("Operating System", get_supported_os_for_scheduler(scheduler))
 
     default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
@@ -149,13 +137,7 @@ def configure(args):  # noqa: C901
     if scheduler == "awsbatch":
         number_of_queues = 1
     else:
-        number_of_queues = int(
-            prompt(
-                "Number of queues",
-                lambda x: str(x).isdigit() and int(x) >= 1,
-                default_value=1,
-            )
-        )
+        number_of_queues = int(prompt("Number of queues", lambda x: str(x).isdigit() and int(x) >= 1, default_value=1))
     size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
     queues = []
     compute_instance_types = []
@@ -288,7 +270,7 @@ def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_
 
 
 def _filter_subnets_offering_instance_types(subnet_list, instance_types):
-    qualified_azs = get_common_supported_az_for_multi_instance_types(instance_types)
+    qualified_azs = _get_common_supported_az_for_multi_instance_types(instance_types)
     return [subnet_entry for subnet_entry in subnet_list if subnet_entry["availability_zone"] in qualified_azs]
 
 
@@ -306,8 +288,8 @@ def _ask_for_subnets(subnet_list, qualified_head_node_subnets, qualified_compute
 def _choose_network_configuration(scheduler, head_node_instance_type, compute_instance_types):
     if scheduler == "awsbatch":
         return PublicPrivateNetworkConfig()
-    azs_for_head_node_type = get_supported_az_for_one_instance_type(head_node_instance_type)
-    azs_for_compute_types = get_common_supported_az_for_multi_instance_types(compute_instance_types)
+    azs_for_head_node_type = _get_supported_az_for_one_instance_type(head_node_instance_type)
+    azs_for_compute_types = _get_common_supported_az_for_multi_instance_types(compute_instance_types)
     common_availability_zones = set(azs_for_head_node_type) & set(azs_for_compute_types)
 
     if not common_availability_zones:
@@ -342,3 +324,74 @@ def _prompt_for_subnet(all_subnets, qualified_subnets, message, default_subnet=N
             "because the instance type is not in their availability zone(s)".format(total_omitted_subnets)
         )
     return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
+
+
+# Availability zone utilities
+
+
+def _get_supported_az_for_one_instance_type(instance_type):
+    """
+    Return a tuple of availability zones that have the instance_types.
+
+    This function build above get_supported_az_for_multi_instance_types,
+    but simplify the input to 1 instance type and result to a list
+
+    :param instance_type: the instance type for which the supporting AZs.
+    :return: a tuple of the supporting AZs
+    """
+    return _get_supported_az_for_multi_instance_types([instance_type])[instance_type]
+
+
+def _get_supported_az_for_multi_instance_types(instance_types):
+    """
+    Return a dict of instance types to list of availability zones that have each of the instance_types.
+
+    :param instance_types: the list of instance types for which the supporting AZs.
+    :return: a dicts. keys are strings of instance type, values are the tuples of the supporting AZs
+
+    Example:
+    If instance_types is:
+    ["t2.micro", "t2.large"]
+    Result can be:
+    {
+        "t2.micro": (us-east-1a, us-east-1b),
+        "t2.large": (us-east-1a, us-east-1b)
+    }
+    """
+    # first looks for info in cache, then using only one API call for all infos that is not inside the cache
+    if not hasattr(_get_supported_az_for_multi_instance_types, "cache"):
+        _get_supported_az_for_multi_instance_types.cache = {}
+    cache = _get_supported_az_for_multi_instance_types.cache
+    missing_instance_types = []
+    result = {}
+    for instance_type in instance_types:
+        if instance_type in cache:
+            result[instance_type] = cache[instance_type]
+        else:
+            missing_instance_types.append(instance_type)
+    if missing_instance_types:
+        ec2_client = boto3.client("ec2")
+        paginator = ec2_client.get_paginator("describe_instance_type_offerings")
+        page_iterator = paginator.paginate(
+            LocationType="availability-zone", Filters=[{"Name": "instance-type", "Values": missing_instance_types}]
+        )
+        offerings = []
+        for page in page_iterator:
+            offerings.extend(page["InstanceTypeOfferings"])
+        for instance_type in missing_instance_types:
+            cache[instance_type] = tuple(
+                offering["Location"] for offering in offerings if offering["InstanceType"] == instance_type
+            )
+            result[instance_type] = cache[instance_type]
+    return result
+
+
+def _get_common_supported_az_for_multi_instance_types(instance_types):
+    supported_az = _get_supported_az_for_multi_instance_types(instance_types)
+    common_az = None
+    for az_list in supported_az.values():
+        if common_az is None:
+            common_az = set(az_list)
+        else:
+            common_az = common_az & set(az_list)
+    return common_az
