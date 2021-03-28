@@ -28,115 +28,122 @@ HeadNode:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
 Scheduling:
-  {{ scheduler }}:
-    Settings:
-      ScaledownIdletime: 30
-    Queues:
-      - Name: queue1
-        ComputeSettings:
-          LocalStorage: 40
-        CustomActions:
-          - Script: s3://{{ bucket }}/scripts/preinstall.sh
-            Args:
-              - ABC
-            Event: NODE_START
-          - Script: s3://{{ bucket }}/scripts/postinstall.sh
-            Args:
-              - DEF
-            Event: NODE_CONFIGURED
-        ComputeType: SPOT
-        ComputeResources:
-          - Name: compute-resource-11
-            InstanceType: c5.xlarge
-            MinCount: 2
-            MaxCount: 4
-          - Name: compute-resource-12
-            InstanceType: c5.2xlarge
-            SpotPrice: 2.1
-          - Name: compute-resource-13
-              InstanceType: t2.micro
-        Iam:
-          S3Access:
-            - BucketName: {{ resource_bucket }}
-              EnableWriteAccess: true
-          AdditionalIamPolicies:
-            - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
-        Networking:
-          SubnetId: {{ private_subnet_id }}
-      - Name: queue2
-        Iam:
-          S3Access:
-            - BucketName: {{ resource_bucket }}
-              EnableWriteAccess: true
-          AdditionalIamPolicies:
-            - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
-        ComputeSettings:
-          LocalStorage: 40
-        CustomActions:
-          - Script: s3://{{ bucket }}/scripts/preinstall.sh
-            Args:
-              - ABC
-            Event: NODE_START
-          - Script: s3://{{ bucket }}/scripts/postinstall.sh
-            Args:
-              - DEF
-            Event: NODE_CONFIGURED
-        ComputeResources:
-          - Name: compute-resource-21
-            InstanceType: c5n.18xlarge
-            MaxCount: 1
-            DisableSimultaneousMultithreading: true
-            Efa:
-              Enabled: true
-        Networking:
-          SubnetId: {{ private_subnet_id }}
-      - Name: queue3
-        Iam:
-          S3Access:
-            - BucketName: {{ resource_bucket }}
-              EnableWriteAccess: true
-          AdditionalIamPolicies:
-            - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
-        ComputeSettings:
-          LocalStorage: 40
-        CustomActions:
-          - Script: s3://{{ bucket }}/scripts/preinstall.sh
-            Args:
-              - ABC
-            Event: NODE_START
-          - Script: s3://{{ bucket }}/scripts/postinstall.sh
-            Args:
-              - DEF
-            Event: NODE_CONFIGURED
-        ComputeResources:
-          - Name: compute-resource-31
-            InstanceType: c5n.18xlarge
-            DisableSimultaneousMultithreading: true
-            Efa:
-              Enabled: true
-          - Name: compute-resource-32
-            InstanceType: t2.xlarge
-            DisableSimultaneousMultithreading: true
-            Efa:
-              Enabled: true
-        Networking:
-          SubnetId: {{ private_subnet_id }}
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    ScaledownIdletime: 30
+  Queues:
+    - Name: queue1
+      ComputeSettings:
+        LocalStorage:
+         RootVolume:
+          size: 40
+      CustomActions:
+        - Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Args:
+            - ABC
+          Event: NODE_START
+        - Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Args:
+            - DEF
+          Event: NODE_CONFIGURED
+      CapacityType: SPOT
+      ComputeResources:
+        - Name: compute-resource-11
+          InstanceType: c5.xlarge
+          MinCount: 2
+          MaxCount: 4
+        - Name: compute-resource-12
+          InstanceType: c5.2xlarge
+          SpotPrice: 2.1
+        - Name: compute-resource-13
+            InstanceType: t2.micro
+      Iam:
+        S3Access:
+          - BucketName: {{ resource_bucket }}
+            EnableWriteAccess: true
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+      Networking:
+        SubnetId: {{ private_subnet_id }}
+    - Name: queue2
+      Iam:
+        S3Access:
+          - BucketName: {{ resource_bucket }}
+            EnableWriteAccess: true
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            size: 40
+      CustomActions:
+        - Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Args:
+            - ABC
+          Event: NODE_START
+        - Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Args:
+            - DEF
+          Event: NODE_CONFIGURED
+      ComputeResources:
+        - Name: compute-resource-21
+          InstanceType: c5n.18xlarge
+          MaxCount: 1
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+      Networking:
+        SubnetId: {{ private_subnet_id }}
+    - Name: queue3
+      Iam:
+        S3Access:
+          - BucketName: {{ resource_bucket }}
+            EnableWriteAccess: true
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+      ComputeSettings:
+        LocalStorage:
+          LocalStorage:
+            RootVolume:
+              size: 40
+      CustomActions:
+        - Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Args:
+            - ABC
+          Event: NODE_START
+        - Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Args:
+            - DEF
+          Event: NODE_CONFIGURED
+      ComputeResources:
+        - Name: compute-resource-31
+          InstanceType: c5n.18xlarge
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+        - Name: compute-resource-32
+          InstanceType: t2.xlarge
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+      Networking:
+        SubnetId: {{ private_subnet_id }}
 SharedStorage:
   - MountDir: shared
     Name: ebs
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       Iops: 140
   - MountDir: efs
     Name: efs
     StorageType: Efs
-    Settings:
+    EfsSettings:
       ThroughputMode: provisioned
       ProvisionedThroughput: 1024
   - MountDir: raid
     StorageType: Ebs
     Name: raid-type1
-    Settings:
+    EbsSettings:
       Iops: 110
       Raid:
         Type: 0
@@ -144,7 +151,7 @@ SharedStorage:
   - MountDir: fsx
       Name: fsx
       StorageType: FsxLustre
-      Settings:
+      FsxLustreSettings:
         StorageCapacity: 3600
         WeeklyMaintenanceStartTime: "3:02:30"
 Monitoring:

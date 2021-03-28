@@ -8,12 +8,12 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: compute
-        ComputeResources:
-          - Name: compute-i1
-            InstanceType: {{ instance }}
-        Networking:
-          SubnetIds:
-            - {{ private_subnet_id }}
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: compute
+      ComputeResources:
+        - Name: compute-i1
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

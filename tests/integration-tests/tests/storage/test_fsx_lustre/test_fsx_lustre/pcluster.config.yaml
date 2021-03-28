@@ -11,31 +11,31 @@ HeadNode:
       - BucketName: {{ bucket_name }}
         EnableWriteAccess: False
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: queue-0
-        Iam:
-          S3Access:
-            - BucketName: {{ bucket_name }}
-              EnableWriteAccess: False
-        ComputeResources:
-          - Name: compute-resource-0
-            {% if scheduler == "Awsbatch" %}
-            InstanceTypes: {{ instance }}
-            MinvCpus: 4
-            DesiredVcpus: 4
-            {% else %}
-            InstanceType: {{ instance }}
-            MinCount: 1
-            {% endif %}
-        Networking:
-          SubnetIds:
-            - {{ private_subnet_id }}
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue-0
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+            EnableWriteAccess: False
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          MinvCpus: 4
+          DesiredVcpus: 4
+          {% else %}
+          InstanceType: {{ instance }}
+          MinCount: 1
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: {{ mount_dir }}
     Name: fsx
     StorageType: FsxLustre
-    Settings:
+    FsxLustreSettings:
       StorageCapacity: {{ storage_capacity }}
       ImportPath: s3://{{ bucket_name }}
       ExportPath: s3://{{ bucket_name }}/export_dir

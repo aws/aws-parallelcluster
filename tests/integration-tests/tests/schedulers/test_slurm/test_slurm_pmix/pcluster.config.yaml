@@ -7,13 +7,13 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Slurm:
-    Queues:
-      - Name: ondemand
-        ComputeType: ONDEMAND
-        Networking:
-          SubnetId: {{ private_subnet_id }}
-        ComputeResources:
-          - Name: ondemand-1
-            InstanceType: {{ instance }}
-            MinCount: {{ queue_size }}
+  Scheduler: slurm
+  Queues:
+    - Name: ondemand
+      CapacityType: ONDEMAND
+      Networking:
+        SubnetId: {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand-1
+          InstanceType: {{ instance }}
+          MinCount: {{ queue_size }}

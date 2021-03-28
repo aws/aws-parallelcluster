@@ -12,17 +12,17 @@ HeadNode:
   Iam:
     InstanceRole: {{ ec2_iam_role }}
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: queue-0
-        Iam:
-          InstanceRole: {{ ec2_iam_role }}
-        ComputeResources:
-          - Name: compute-resource-0
-            InstanceType: {{ instance }}
-            Efa:
-              Enabled: false
-              GdrSupport: false
-        Networking:
-          SubnetIds:
-            - {{ private_subnet_id }}
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue-0
+      Iam:
+        InstanceRole: {{ ec2_iam_role }}
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+          Efa:
+            Enabled: false
+            GdrSupport: false
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
