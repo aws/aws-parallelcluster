@@ -20,29 +20,29 @@ HeadNode:
       - BucketName: {{ bucket_name }}
         EnableWriteAccess: false
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: queue-0
-        CustomActions:
-          - Script: s3://{{ bucket_name }}/scripts/pre_install.sh
-            Args:
-              - 'R curl wget'
-            Event: NODE_START
-          - Script: s3://{{ bucket_name }}/scripts/post_install.sh
-            Args:
-              - 'R curl wget'
-            Event: NODE_CONFIGURED
-        ComputeResources:
-          - Name: compute-resource-0
-            {% if scheduler == "Awsbatch" %}
-            InstanceTypes: {{ instance }}
-            {% else %}
-            InstanceType: {{ instance }}
-            {% endif %}
-        Networking:
-          SubnetIds:
-            - {{ public_subnet_id }}
-        Iam:
-          S3Access:
-            - BucketName: {{ bucket_name }}
-              EnableWriteAccess: false
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue-0
+      CustomActions:
+        - Script: s3://{{ bucket_name }}/scripts/pre_install.sh
+          Args:
+            - 'R curl wget'
+          Event: NODE_START
+        - Script: s3://{{ bucket_name }}/scripts/post_install.sh
+          Args:
+            - 'R curl wget'
+          Event: NODE_CONFIGURED
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+            EnableWriteAccess: false
