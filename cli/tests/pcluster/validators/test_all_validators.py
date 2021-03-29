@@ -39,7 +39,12 @@ def _mock_all_validators(mocker, mockers):
     ]:
         module_name = module.__name__
         for name, cls in module.__dict__.items():
-            if isinstance(cls, type) and issubclass(cls, Validator) and name != "Validator":
+            if (
+                isinstance(cls, type)
+                and issubclass(cls, Validator)
+                and name != "Validator"
+                and not name.startswith("_")
+            ):
                 mockers.append(
                     {"name": name, "mocker": mocker.patch(f"{module_name}.{name}._validate", return_value=[])}
                 )

@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from abc import ABC
 
 import boto3
 from botocore.exceptions import ClientError
@@ -614,3 +615,201 @@ class TagKeyValidator(Validator):
     def _validate(self, key):
         if key == "Version":
             self._add_failure("The tag key 'Version' is a reserved one.", FailureLevel.ERROR)
+
+
+# --------------- Instance settings validators --------------- #
+
+
+class _LaunchTemplateValidator(Validator, ABC):
+    """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
+
+    def _build_launch_network_interfaces(
+        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips
+    ):
+        """Build the needed NetworkInterfaces to launch an instance."""
+        network_interfaces = []
+        for device_index in range(network_interfaces_count):
+            network_interfaces.append(
+                {
+                    "DeviceIndex": device_index,
+                    "NetworkCardIndex": device_index,
+                    "InterfaceType": "efa" if use_efa else "interface",
+                    "Groups": security_group_ids,
+                    "SubnetId": subnet,
+                }
+            )
+
+        # If instance types has multiple Network Interfaces we also check for
+        if network_interfaces_count > 1 and use_public_ips:
+            network_interfaces[0]["AssociatePublicIpAddress"] = True
+        return network_interfaces
+
+    def _ec2_run_instance(self, availability_zone: str, **kwargs):  # noqa: C901 FIXME!!!
+        """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
+        try:
+            boto3.client("ec2").run_instances(**kwargs)
+        except ClientError as e:
+            code = e.response.get("Error").get("Code")
+            message = e.response.get("Error").get("Message")
+            subnet_id = kwargs["NetworkInterfaces"][0]["SubnetId"]
+            if code == "DryRunOperation":
+                pass
+            elif code == "UnsupportedOperation":
+                if "does not support specifying CpuOptions" in message:
+                    message.replace("specifying CpuOptions", "disabling simultaneous multithreading")
+                self._add_failure(message, FailureLevel.ERROR)
+            elif code == "InstanceLimitExceeded":
+                self._add_failure(
+                    "You've reached the limit on the number of instances you can run concurrently "
+                    f"for the configured instance type.\n{message}",
+                    FailureLevel.ERROR,
+                )
+            elif code == "InsufficientInstanceCapacity":
+                self._add_failure(
+                    f"There is not enough capacity to fulfill your request.\n{message}", FailureLevel.ERROR
+                )
+            elif code == "InsufficientFreeAddressesInSubnet":
+                self._add_failure(
+                    "The specified subnet does not contain enough free private IP addresses "
+                    f"to fulfill your request.\n{message}",
+                    FailureLevel.ERROR,
+                )
+            elif code == "InvalidParameterCombination":
+                if "associatePublicIPAddress" in message:
+                    # Instances with multiple Network Interfaces cannot currently take public IPs.
+                    # This check is meant to warn users about this problem until services are fixed.
+                    self._add_failure(
+                        f"The instance type {kwargs['InstanceType']} cannot take public IPs. "
+                        f"Please make sure that the subnet with id '{subnet_id}' has the proper routing configuration "
+                        "to allow private IPs reaching the Internet (e.g. a NAT Gateway and a valid route table).",
+                        FailureLevel.WARNING,
+                    )
+            elif (
+                code == "Unsupported"
+                and availability_zone
+                not in AWSApi.instance().ec2.get_supported_az_for_instance_type(kwargs["InstanceType"])
+            ):
+                # If an availability zone without desired instance type is selected, error code is "Unsupported"
+                # Therefore, we need to write our own code to tell the specific problem
+                qualified_az = AWSApi.instance().ec2.get_supported_az_for_instance_type(kwargs["InstanceType"])
+                self._add_failure(
+                    f"Your requested instance type ({kwargs['InstanceType']}) is not supported in the "
+                    f"Availability Zone ({availability_zone}) of your requested subnet ({subnet_id}). "
+                    f"Please retry your request by choosing a subnet in {qualified_az}. ",
+                    FailureLevel.ERROR,
+                )
+            else:
+                self._add_failure(
+                    f"Unable to validate configuration parameters for instance type {kwargs['InstanceType']}. "
+                    "Please double check your cluster configuration.\n{message}",
+                    FailureLevel.ERROR,
+                )
+
+
+class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
+    """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
+
+    def _validate(self, head_node, ami_id):
+        try:
+            head_node_security_groups = []
+            if head_node.networking.security_groups:
+                head_node_security_groups.extend(head_node.networking.security_groups)
+            if head_node.networking.additional_security_groups:
+                head_node_security_groups.extend(head_node.networking.additional_security_groups)
+
+            # Initialize CpuOptions
+            head_node_cpu_options = (
+                {"CoreCount": head_node.vcpus, "ThreadsPerCore": 1}
+                if head_node.pass_cpu_options_in_launch_template
+                else {}
+            )
+
+            head_node_network_interfaces = self._build_launch_network_interfaces(
+                network_interfaces_count=head_node.max_network_interface_count,
+                use_efa=False,  # EFA is not supported on head node
+                security_group_ids=head_node_security_groups,
+                subnet=head_node.networking.subnet_id,
+                use_public_ips=True if head_node.networking.assign_public_ip else False,
+            )
+
+            # Test Head Node Instance Configuration
+            self._ec2_run_instance(
+                availability_zone=head_node.networking.availability_zone,
+                InstanceType=head_node.instance_type,
+                MinCount=1,
+                MaxCount=1,
+                ImageId=ami_id,
+                CpuOptions=head_node_cpu_options,
+                NetworkInterfaces=head_node_network_interfaces,
+                DryRun=True,
+            )
+        except Exception as e:
+            self._add_failure(
+                f"Unable to validate configuration parameters for the head node.\n{str(e)}", FailureLevel.ERROR
+            )
+
+
+class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
+    """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
+
+    def _validate(self, queue, ami_id):
+        try:
+            # Retrieve network parameters
+            queue_subnet_id = queue.networking.subnet_ids[0]
+            queue_security_groups = []
+            if queue.networking.security_groups:
+                queue_security_groups.extend(queue.networking.security_groups)
+            if queue.networking.additional_security_groups:
+                queue_security_groups.extend(queue.networking.additional_security_groups)
+
+            # Initialize CpuOptions
+            queue_placement_group_id = queue.networking.placement_group.id if queue.networking.placement_group else None
+            queue_placement_group = {"GroupName": queue_placement_group_id} if queue_placement_group_id else {}
+
+            # Select the "best" compute resource to run dryrun tests against.
+            # Resources with multiple NICs are preferred among others.
+            # Temporarily limiting dryrun tests to 1 per queue to save boto3 calls.
+            dry_run_compute_resource = next(
+                (compute_res for compute_res in queue.compute_resources if compute_res.max_network_interface_count > 1),
+                queue.compute_resources[0],
+            )
+            self._test_compute_resource(
+                compute_resource=dry_run_compute_resource,
+                use_public_ips=True if queue.networking.assign_public_ip else False,
+                ami_id=ami_id,
+                subnet_id=queue_subnet_id,
+                security_groups_ids=queue_security_groups,
+                placement_group=queue_placement_group,
+            )
+        except Exception as e:
+            self._add_failure(
+                f"Unable to validate configuration parameters for queue {queue.name}.\n{str(e)}", FailureLevel.ERROR
+            )
+
+    def _test_compute_resource(
+        self, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group
+    ):
+        """Test Compute Resource Instance Configuration."""
+        compute_cpu_options = (
+            {"CoreCount": compute_resource.vcpus, "ThreadsPerCore": 1}
+            if compute_resource.disable_simultaneous_multithreading_via_cpu_options
+            else {}
+        )
+        network_interfaces = self._build_launch_network_interfaces(
+            compute_resource.max_network_interface_count,
+            compute_resource.efa.enabled,
+            security_groups_ids,
+            subnet_id,
+            use_public_ips,
+        )
+        self._ec2_run_instance(
+            availability_zone=AWSApi.instance().ec2.get_subnet_avail_zone(subnet_id),
+            InstanceType=compute_resource.instance_type,
+            MinCount=1,
+            MaxCount=1,
+            ImageId=ami_id,
+            CpuOptions=compute_cpu_options,
+            Placement=placement_group,
+            NetworkInterfaces=network_interfaces,
+            DryRun=True,
+        )

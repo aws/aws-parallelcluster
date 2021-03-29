@@ -116,7 +116,7 @@ def _get_supported_batch_instance_types():
     This is done by calling Batch's CreateComputeEnvironment with a bad
     instance type and parsing the error message.
     """
-    supported_instance_types = AWSApi.instance().ec2.describe_instance_type_offerings()
+    supported_instance_types = AWSApi.instance().ec2.list_instance_types()
     supported_instance_families = _get_instance_families_from_types(supported_instance_types)
     known_exceptions = ["optimal"]
     supported_instance_types_and_families = supported_instance_types + supported_instance_families + known_exceptions

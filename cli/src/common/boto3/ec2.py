@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import List
+
 from common.aws.aws_resources import InstanceInfo
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 from pcluster import utils
@@ -23,13 +25,18 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
-    def describe_instance_type_offerings(self, filters=None):
+    def list_instance_types(self) -> List[str]:
+        """Return a list of instance types."""
+        return [offering.get("InstanceType") for offering in self.describe_instance_type_offerings()]
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def describe_instance_type_offerings(self, filters=None, location_type=None):
         """Return a list of instance types."""
         kwargs = {"Filters": filters} if filters else {}
-        return [
-            response.get("InstanceType")
-            for response in self._paginate_results(self._client.describe_instance_type_offerings, **kwargs)
-        ]
+        if location_type:
+            kwargs["LocationType"] = location_type
+        return list(self._paginate_results(self._client.describe_instance_type_offerings, **kwargs))
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
@@ -183,3 +190,46 @@ class Ec2Client(Boto3Client):
             for result in self._paginate_results(self._client.describe_instances, Filters=filters)
             for instance in result.get("Instances")
         ]
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_supported_az_for_instance_type(self, instance_type: str):
+        """
+        Return a tuple of availability zones that have the instance_type.
+
+        This function build above _get_supported_az_for_instance_types,
+        but simplify the input to 1 instance type and result to a list
+
+        :param instance_type: the instance type for which the supporting AZs.
+        :return: a tuple of the supporting AZs
+        """
+        return self.get_supported_az_for_instance_types([instance_type])[instance_type]
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_supported_az_for_instance_types(self, instance_types: List[str]):
+        """
+        Return a dict of instance types to list of availability zones that have each of the instance_types.
+
+        :param instance_types: the list of instance types for which the supporting AZs.
+        :return: a dicts. keys are strings of instance type, values are the tuples of the supporting AZs
+
+        Example:
+        If instance_types is:
+        ["t2.micro", "t2.large"]
+        Result can be:
+        {
+            "t2.micro": (us-east-1a, us-east-1b),
+            "t2.large": (us-east-1a, us-east-1b)
+        }
+        """
+        # first looks for info in cache, then using only one API call for all infos that is not inside the cache
+        result = {}
+        offerings = self.describe_instance_type_offerings(
+            filters=[{"Name": "instance-type", "Values": instance_types}], location_type="availability-zone"
+        )
+        for instance_type in instance_types:
+            result[instance_type] = tuple(
+                offering["Location"] for offering in offerings if offering["InstanceType"] == instance_type
+            )
+        return result

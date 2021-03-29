@@ -69,7 +69,7 @@ def _mock_aws_region(mocker, partition="commercial"):
 
 def _mock_availability_zone(mocker, availability_zones=("eu-west-1a", "eu-west-1b", "eu-west-1c")):
     # To Do: return different list for different region or instance type
-    mocker.patch(EASYCONFIG + "_get_supported_az_for_one_instance_type", return_value=availability_zones)
+    mocker.patch("common.boto3.ec2.Ec2Client.get_supported_az_for_instance_type", return_value=availability_zones)
     mocker.patch(EASYCONFIG + "_get_common_supported_az_for_multi_instance_types", return_value=availability_zones)
 
 
@@ -288,7 +288,7 @@ def _mock_create_network_configuration(mocker, public_subnet_id, private_subnet_
     mocker.patch(NETWORKING + "_create_network_stack", side_effect=_side_effect_function)
 
 
-def _mock_parallel_cluster_config(mocker):
+def _mock_aws_api_required_calls(mocker):
     supported_instance_types = [
         "t2.nano",
         "t2.micro",
@@ -299,7 +299,8 @@ def _mock_parallel_cluster_config(mocker):
         "p4d.24xlarge",
     ]
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.describe_instance_type_offerings", return_value=supported_instance_types)
+    mocker.patch("common.boto3.ec2.Ec2Client.get_default_instance_type", return_value="t2.micro")
+    mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=supported_instance_types)
     mocker.patch("common.boto3.ec2.Ec2Client.get_subnet_avail_zone", return_value="mocked_avail_zone")
     # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
     #       but it's being included in case that changes in the future.
@@ -388,9 +389,7 @@ class MockHandler:
         _mock_aws_region(self.mocker, partition)
         _mock_list_keys(self.mocker, partition)
         _mock_list_vpcs_and_subnets(self.mocker, empty_region, partition)
-        _mock_parallel_cluster_config(self.mocker)
-        mock_aws_api(mocker)
-        mocker.patch("common.boto3.ec2.Ec2Client.get_default_instance_type", return_value="t2.micro")
+        _mock_aws_api_required_calls(self.mocker)
         if mock_availability_zone:
             _mock_availability_zone(self.mocker)
 
@@ -691,16 +690,14 @@ def general_wrapper_for_prompt_testing(
 
 
 def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir):
-    config, error, output = get_file_path(test_datadir)
-
     mock_handler = MockHandler(mocker, mock_availability_zone=False)
     mocker.patch(
-        EASYCONFIG + "_get_supported_az_for_one_instance_type",
-        new=lambda x: ["eu-west-1a"] if x == "t2.nano" else ["eu-west-1b"],
+        "common.boto3.ec2.Ec2Client.get_supported_az_for_instance_type",
+        side_effect=lambda x: ["eu-west-1a"] if x == "t2.nano" else ["eu-west-1b"],
     )
     mocker.patch(
         EASYCONFIG + "_get_common_supported_az_for_multi_instance_types",
-        new=lambda x: ["eu-west-1a"] if "t2.nano" in x else ["eu-west-1b"],
+        side_effect=lambda x: ["eu-west-1a"] if "t2.nano" in x else ["eu-west-1b"],
     )
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
 
