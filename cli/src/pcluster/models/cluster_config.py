@@ -818,7 +818,6 @@ class BaseClusterConfig(Resource):
     ):
         super().__init__()
         self.__region = None
-        self.name = None
         self.image = image
         self.head_node = head_node
         self.shared_storage = shared_storage
@@ -835,7 +834,6 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
 
     def _validate(self):
-        self._execute_validator(ClusterNameValidator, name=self.name)
         self._execute_validator(RegionValidator, region=self.region)
         self._execute_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
         if self.ami_id:

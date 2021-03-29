@@ -39,6 +39,7 @@ from pcluster.utils import (
     grouper,
     upload_resources_artifacts,
 )
+from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 LOGGER = logging.getLogger(__name__)
@@ -329,7 +330,8 @@ class Cluster:
 
             # semantic validation
             if not suppress_validators:
-                validation_failures = config.validate()
+                validation_failures = ClusterNameValidator().execute(name=self.name)
+                validation_failures += config.validate()
                 for failure in validation_failures:
                     if failure.level.value >= FailureLevel(validation_failure_level).value:
                         # Raise the exception if there is a failure with a level greater than the specified one
