@@ -12,7 +12,6 @@ from common import imagebuilder_utils
 from common.aws.aws_api import AWSApi
 from common.boto3.common import AWSClientError
 from common.boto3.iam import IamClient
-from pcluster import utils
 from pcluster.utils import policy_name_to_arn
 from pcluster.validators.common import FailureLevel, Validator
 

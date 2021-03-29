@@ -112,9 +112,10 @@ class InstanceTypeInfo:
                     gpu_count += gpus.get("Count", 0)
                 else:
                     LOGGER.warning(
-                        "ParallelCluster currently does not offer native support for '{0}' GPUs. "
+                        "ParallelCluster currently does not offer native support for '%s' GPUs. "
                         "Please make sure to use a custom AMI with the appropriate drivers in order to leverage "
-                        "GPUs functionalities".format(gpu_manufacturer)
+                        "GPUs functionalities",
+                        gpu_manufacturer,
                     )
 
         return gpu_count
