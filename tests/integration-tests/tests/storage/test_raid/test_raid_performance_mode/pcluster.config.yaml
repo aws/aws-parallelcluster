@@ -26,7 +26,7 @@ Scheduling:
 SharedStorage:
   - MountDir: /raid_dir
     StorageType: Ebs
-    Name: raid_type1
+    Name: raid-type1
     EbsSettings:
       VolumeType: io1
       Size: 15
