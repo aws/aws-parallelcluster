@@ -141,6 +141,16 @@ dcv:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2", "centos8", "ubuntu1804"]
         schedulers: ["slurm"]
+      # DCV on Batch
+      - regions: ["eu-west-1"]
+        instances: ["g3.8xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+      # DCV on Batch + ARM
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
       # DCV in cn regions and non GPU enabled instance
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
