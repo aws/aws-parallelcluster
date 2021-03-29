@@ -379,13 +379,13 @@ class SharedStorageSchema(BaseSchema):
 
     @pre_dump
     def restore_child(self, data, **kwargs):
-        """Restore back the child in the schema."""
+        """Restore back the child in the schema. Note: Enums are converted back to string from BaseSchema."""
         child = copy.deepcopy(data)
         # Move SharedXxx as a child to be automatically managed by marshmallow
-        storage_type = "ebs" if data.shared_storage_type.value == "raid" else data.shared_storage_type.value
+        storage_type = "ebs" if data.shared_storage_type == "raid" else data.shared_storage_type
         setattr(data, storage_type, child)
         # Restore storage type
-        data.storage_type = "FsxLustre" if data.shared_storage_type.value == "fsx" else storage_type.capitalize()
+        data.storage_type = "FsxLustre" if data.shared_storage_type == "fsx" else storage_type.capitalize()
         return data
 
     @post_dump
