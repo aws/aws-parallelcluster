@@ -462,7 +462,12 @@ class ClusterCdkStack(core.Stack):
             )
             if cloud_watch_policy_arn not in additional_iam_policies:
                 additional_iam_policies.append(cloud_watch_policy_arn)
-        # ToDo check if AWSBatchFullAccess needs to be added
+        if self.config.scheduling.scheduler == "awsbatch":
+            awsbatch_full_access_arn = self.format_arn(
+                service="iam", region="", account="aws", resource="policy/AWSBatchFullAccess"
+            )
+            if awsbatch_full_access_arn not in additional_iam_policies:
+                additional_iam_policies.append(awsbatch_full_access_arn)
         return iam.CfnRole(
             scope=self,
             id=name,
@@ -560,7 +565,7 @@ class ClusterCdkStack(core.Stack):
                         resources=[
                             self.format_arn(
                                 service="s3",
-                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/",
+                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
                                 region="",
                                 account="",
                             )

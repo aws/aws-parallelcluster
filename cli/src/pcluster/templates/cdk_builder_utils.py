@@ -134,6 +134,18 @@ def get_shared_storage_options_by_type(shared_storage_options: dict, storage_typ
     )
 
 
+def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedStorageType):
+    """Return mount dirs retrieved from shared storage, formatted as comma separated list."""
+    storage_options = shared_storage_options.get(storage_type)
+    if not storage_options:
+        return "NONE"
+    if storage_type == SharedStorageType.EBS:
+        # The whole options for EBS represent the mount dirs.
+        return storage_options
+    option_list = storage_options.split(",")
+    return option_list[0]
+
+
 def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     """Return a list of tags set by the user."""
     if raw_dict:

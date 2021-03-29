@@ -29,9 +29,9 @@ from pcluster.templates.cdk_builder_utils import (
     get_cloud_watch_logs_retention_days,
     get_custom_tags,
     get_default_instance_tags,
+    get_mount_dirs_by_type,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
-    get_shared_storage_options_by_type,
 )
 
 
@@ -471,11 +471,11 @@ class AwsbatchConstruct(core.Construct):
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_SHARED_DIRS",
-                    value=get_shared_storage_options_by_type(self.shared_storage_options, SharedStorageType.EBS),
+                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EBS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_EFS_SHARED_DIR",
-                    value=get_shared_storage_options_by_type(self.shared_storage_options, SharedStorageType.EFS),
+                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EFS),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_EFS_FS_ID",
@@ -483,10 +483,10 @@ class AwsbatchConstruct(core.Construct):
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_RAID_SHARED_DIR",
-                    value=get_shared_storage_options_by_type(self.shared_storage_options, SharedStorageType.RAID),
+                    value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.RAID),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_MASTER_IP", value=self.head_node_instance.attr_public_ip
+                    name="PCLUSTER_MASTER_IP", value=self.head_node_instance.attr_private_ip
                 ),
             ],
         )

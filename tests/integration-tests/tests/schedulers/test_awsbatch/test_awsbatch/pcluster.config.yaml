@@ -11,7 +11,8 @@ Scheduling:
   Queues:
     - Name: ondemand1
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds:
+          - {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource-11
           InstanceTypes: {{ instance }}
@@ -25,3 +26,6 @@ SharedStorage:
   - MountDir: efs
     Name: efs
     StorageType: Efs
+  - MountDir: /shared
+    Name: ebs
+    StorageType: Ebs
