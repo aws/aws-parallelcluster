@@ -11,6 +11,7 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from common.aws.aws_api import AWSApi
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.utils import get_region
 from pcluster.validators.common import FailureLevel, Validator
@@ -221,35 +222,7 @@ class FsxAutoImportValidator(Validator):
     """Auto import validator."""
 
     def _validate(self, auto_import_policy, import_path):
-        bucket = get_bucket_name_from_s3_url(import_path)
-
         if auto_import_policy is not None:
-            try:
-                s3_bucket_region = boto3.client("s3").get_bucket_location(Bucket=bucket).get("LocationConstraint")
-                # Buckets in Region us-east-1 have a LocationConstraint of null
-                if s3_bucket_region is None:
-                    s3_bucket_region = "us-east-1"
-                if s3_bucket_region != get_region():
-                    self._add_failure("FSx auto import is not supported for cross-region buckets.", FailureLevel.ERROR)
-            except ClientError as client_error:
-                if client_error.response.get("Error").get("Code") == "NoSuchBucket":
-                    self._add_failure(
-                        "The S3 bucket '{0}' does not appear to exist: '{1}'.".format(
-                            bucket, client_error.response.get("Error").get("Message")
-                        ),
-                        FailureLevel.ERROR,
-                    )
-                elif client_error.response.get("Error").get("Code") == "AccessDenied":
-                    self._add_failure(
-                        "You do not have access to the S3 bucket '{0}': '{1}'.".format(
-                            bucket, client_error.response.get("Error").get("Message")
-                        ),
-                        FailureLevel.ERROR,
-                    )
-                else:
-                    self._add_failure(
-                        "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'.".format(
-                            bucket, client_error.response.get("Error").get("Message")
-                        ),
-                        FailureLevel.ERROR,
-                    )
+            bucket = get_bucket_name_from_s3_url(import_path)
+            if AWSApi.instance().s3.get_bucket_region(bucket) != get_region():
+                self._add_failure("FSx auto import is not supported for cross-region buckets.", FailureLevel.ERROR)
