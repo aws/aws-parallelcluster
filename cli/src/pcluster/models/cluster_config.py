@@ -645,7 +645,8 @@ class CustomAction(Resource):
         super().__init__()
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)
-        self.event = Resource.init_param(event, default=CustomActionEvent.NODE_CONFIGURED)
+        _event = CustomActionEvent[event.upper()] if event else None
+        self.event = Resource.init_param(_event, default=CustomActionEvent.NODE_CONFIGURED)
 
     def _validate(self):
         self._execute_validator(UrlValidator, url=self.script)
@@ -788,7 +789,8 @@ class BaseQueue(Resource):
         self.name = Resource.init_param(name)
         self.networking = networking
         self.local_storage = local_storage
-        self.compute_type = Resource.init_param(compute_type, default=ComputeType.ONDEMAND)
+        _compute_type = ComputeType[compute_type.upper()] if compute_type else None
+        self.compute_type = Resource.init_param(_compute_type, default=ComputeType.ONDEMAND)
         self.iam = iam or Iam(implied=True)
 
     def _validate(self):
