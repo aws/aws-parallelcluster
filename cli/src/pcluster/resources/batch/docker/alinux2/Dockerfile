@@ -1,6 +1,6 @@
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 
-ENV USER root
+ENV USER root  # nosemgrep
 
 RUN yum update -y \
     && yum -y install \

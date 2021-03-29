@@ -17,17 +17,17 @@ def _send_response(response_url, response_body):
     except Exception as e:
         msg = "Failed to convert response to json: {}".format(str(e))
         logger.error(msg, exc_info=True)
-        response_body = {'Status': 'FAILED', 'Data': {}, 'Reason': msg}
+        response_body = {"Status": "FAILED", "Data": {}, "Reason": msg}
         json_response_body = json.dumps(response_body)
     logger.debug("CFN response URL: {}".format(response_url))
     logger.debug(json_response_body)
-    headers = {'content-type': '', 'content-length': str(len(json_response_body))}
+    headers = {"content-type": "", "content-length": str(len(json_response_body))}
     split_url = urlsplit(response_url)
     host = split_url.netloc
     url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
-            connection = HTTPSConnection(host)
+            connection = HTTPSConnection(host)  # nosec nosemgrep
             connection.request(method="PUT", url=url, body=json_response_body, headers=headers)
             response = connection.getresponse()
             logger.info("CloudFormation returned status code: {}".format(response.reason))
