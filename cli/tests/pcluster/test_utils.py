@@ -6,8 +6,11 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
+from common.aws.aws_api import AWSApi
+from common.aws.aws_resources import InstanceTypeInfo
 from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import Cache
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster-name"
@@ -332,31 +335,6 @@ def test_get_supported_os_for_scheduler(scheduler, supported_oses):
 
 
 @pytest.mark.parametrize(
-    "instance_type, supported_architectures, error_message",
-    [
-        ("optimal", ["x86_64"], None),
-        ("t2.micro", ["x86_64", "i386"], None),
-        ("a1.medium", ["arm64"], None),
-        ("valid.exotic.arch.instance", ["exoticArch"], None),
-    ],
-)
-def test_get_supported_architectures_for_instance_type(mocker, instance_type, supported_architectures, error_message):
-    """Verify that get_supported_architectures_for_instance_type behaves as expected for various cases."""
-    get_instance_types_info_patch = mocker.patch(
-        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
-        return_value=utils.InstanceTypeInfo({"ProcessorInfo": {"SupportedArchitectures": supported_architectures}}),
-    )
-    observed_architectures = utils.get_supported_architectures_for_instance_type(instance_type)
-    expected_architectures = list(set(supported_architectures) & set(["x86_64", "arm64"]))
-    assert_that(observed_architectures).is_equal_to(expected_architectures)
-    # optimal case is handled separately; DescribeInstanceTypes shouldn't be called
-    if instance_type == "optimal":
-        get_instance_types_info_patch.assert_not_called()
-    else:
-        get_instance_types_info_patch.assert_called_with(instance_type)
-
-
-@pytest.mark.parametrize(
     "snapshot_id, raise_exceptions, error_message",
     [
         ("snap-1234567890abcdef0", False, None),
@@ -461,104 +439,67 @@ class TestCache:
         assert_that(self.invocations).is_length(4)
 
 
-class TestInstanceTypeInfo:
-    @pytest.fixture(autouse=True)
-    def clear_cache(self):
-        utils.Cache.clear_all()
+def test_init_from_instance_type(mocker, caplog):
+    mock_aws_api(mocker, mock_instance_type_info=False)
 
-    def test_init_from_instance_type(self, boto3_stubber, capsys):
-        mocked_requests = [
-            MockedBoto3Request(
-                method="describe_instance_types",
-                response={
-                    "InstanceTypes": [
-                        {
-                            "InstanceType": "c4.xlarge",
-                            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
-                            "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
-                            "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
-                        }
-                    ]
-                },
-                expected_params={"InstanceTypes": ["c4.xlarge"]},
-            ),
-            MockedBoto3Request(
-                method="describe_instance_types",
-                response={
-                    "InstanceTypes": [
-                        {
-                            "InstanceType": "g4dn.metal",
-                            "VCpuInfo": {"DefaultVCpus": 96},
-                            "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
-                            "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
-                            "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
-                        }
-                    ]
-                },
-                expected_params={"InstanceTypes": ["g4dn.metal"]},
-            ),
-            MockedBoto3Request(
-                method="describe_instance_types",
-                response={
-                    "InstanceTypes": [
-                        {
-                            "InstanceType": "g4ad.16xlarge",
-                            "VCpuInfo": {"DefaultVCpus": 64},
-                            "GpuInfo": {"Gpus": [{"Name": "*", "Manufacturer": "AMD", "Count": 4}]},
-                            "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
-                            "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
-                        }
-                    ]
-                },
-                expected_params={"InstanceTypes": ["g4ad.16xlarge"]},
-            ),
-        ]
-        boto3_stubber("ec2", mocked_requests)
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": "c4.xlarge",
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+            }
+        ),
+    )
+    c4_instance_info = AWSApi.instance().ec2.get_instance_type_info("c4.xlarge")
+    assert_that(c4_instance_info.gpu_count()).is_equal_to(0)
+    assert_that(caplog.text).is_empty()
+    assert_that(c4_instance_info.max_network_interface_count()).is_equal_to(1)
+    assert_that(c4_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(c4_instance_info.vcpus_count()).is_equal_to(4)
+    assert_that(c4_instance_info.supported_architecture()).is_equal_to(["x86_64"])
+    assert_that(c4_instance_info.is_efa_supported()).is_equal_to(False)
 
-        for _ in range(0, 2):
-            c4_instance_info = utils.InstanceTypeInfo.init_from_instance_type("c4.xlarge")
-            g4dn_instance_info = utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal")
-            g4ad_instance_info = utils.InstanceTypeInfo.init_from_instance_type("g4ad.16xlarge")
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": "g4dn.metal",
+                "VCpuInfo": {"DefaultVCpus": 96},
+                "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+            }
+        ),
+    )
+    g4dn_instance_info = AWSApi.instance().ec2.get_instance_type_info("g4dn.metal")
+    assert_that(g4dn_instance_info.gpu_count()).is_equal_to(8)
+    assert_that(caplog.text).is_empty()
+    assert_that(g4dn_instance_info.max_network_interface_count()).is_equal_to(4)
+    assert_that(g4dn_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(g4dn_instance_info.vcpus_count()).is_equal_to(96)
+    assert_that(g4dn_instance_info.supported_architecture()).is_equal_to(["x86_64"])
+    assert_that(g4dn_instance_info.is_efa_supported()).is_equal_to(True)
 
-        assert_that(c4_instance_info.gpu_count()).is_equal_to(0)
-        assert_that(capsys.readouterr().out).is_empty()
-        assert_that(c4_instance_info.max_network_interface_count()).is_equal_to(1)
-        assert_that(c4_instance_info.default_threads_per_core()).is_equal_to(2)
-        assert_that(c4_instance_info.vcpus_count()).is_equal_to(4)
-        assert_that(c4_instance_info.supported_architecture()).is_equal_to(["x86_64"])
-        assert_that(c4_instance_info.is_efa_supported()).is_equal_to(False)
-
-        assert_that(g4dn_instance_info.gpu_count()).is_equal_to(8)
-        assert_that(capsys.readouterr().out).is_empty()
-        assert_that(g4dn_instance_info.max_network_interface_count()).is_equal_to(4)
-        assert_that(g4dn_instance_info.default_threads_per_core()).is_equal_to(2)
-        assert_that(g4dn_instance_info.vcpus_count()).is_equal_to(96)
-        assert_that(g4dn_instance_info.supported_architecture()).is_equal_to(["x86_64"])
-        assert_that(g4dn_instance_info.is_efa_supported()).is_equal_to(True)
-
-        assert_that(g4ad_instance_info.gpu_count()).is_equal_to(0)
-        assert_that(capsys.readouterr().out).matches("not offer native support for 'AMD' GPUs.")
-        assert_that(g4ad_instance_info.max_network_interface_count()).is_equal_to(1)
-        assert_that(g4ad_instance_info.default_threads_per_core()).is_equal_to(2)
-        assert_that(g4ad_instance_info.vcpus_count()).is_equal_to(64)
-        assert_that(g4ad_instance_info.supported_architecture()).is_equal_to(["x86_64"])
-        assert_that(g4ad_instance_info.is_efa_supported()).is_equal_to(False)
-
-    def test_init_from_instance_type_failure(self, boto3_stubber):
-        boto3_stubber(
-            "ec2",
-            2
-            * [
-                MockedBoto3Request(
-                    method="describe_instance_types",
-                    expected_params={"InstanceTypes": ["g4dn.metal"]},
-                    generate_error=True,
-                    response="Error message",
-                )
-            ],
-        )
-        error_message = "Failed when retrieving instance type data for instance g4dn.metal: Error message"
-        with pytest.raises(SystemExit, match=error_message):
-            utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal")
-
-        utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal", exit_on_error=False)
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": "g4ad.16xlarge",
+                "VCpuInfo": {"DefaultVCpus": 64},
+                "GpuInfo": {"Gpus": [{"Name": "*", "Manufacturer": "AMD", "Count": 4}]},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+            }
+        ),
+    )
+    g4ad_instance_info = AWSApi.instance().ec2.get_instance_type_info("g4ad.16xlarge")
+    assert_that(g4ad_instance_info.gpu_count()).is_equal_to(0)
+    assert_that(caplog.text).matches("not offer native support for 'AMD' GPUs.")
+    assert_that(g4ad_instance_info.max_network_interface_count()).is_equal_to(1)
+    assert_that(g4ad_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(g4ad_instance_info.vcpus_count()).is_equal_to(64)
+    assert_that(g4ad_instance_info.supported_architecture()).is_equal_to(["x86_64"])
+    assert_that(g4ad_instance_info.is_efa_supported()).is_equal_to(False)
