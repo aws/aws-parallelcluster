@@ -14,11 +14,10 @@ import pytest
 from assertpy import assert_that
 
 from common.aws.aws_resources import InstanceInfo
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.models.cluster import ClusterActionError, NodeType
 from pcluster.models.cluster_config import Resource, Tag
 from pcluster.validators.common import FailureLevel, Validator
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.cluster_dummy_model import dummy_slurm_cluster_config
 from tests.pcluster.test_utils import dummy_cluster
 
@@ -167,7 +166,7 @@ def test_nested_resource_validate():
 )
 def test_describe_instances(mocker, node_type, expected_response, expected_instances):
     instance_state_list = ["pending", "running", "stopping", "stopped"]
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_instances",
         return_value=[InstanceInfo(instance) for instance in expected_response],
@@ -227,7 +226,7 @@ def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
 @pytest.mark.parametrize("existing_tags", [({}), ({"test": "testvalue"}), ({"Version": "OldVersionToBeOverridden"})])
 def test_tags(mocker, existing_tags):
     """Verify that the function to get the tags list behaves as expected."""
-    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
+    mock_aws_api(mocker)
     cluster = dummy_cluster()
     cluster.config = dummy_slurm_cluster_config(mocker)
 
@@ -268,25 +267,3 @@ def _sort_tags(tags):
 
 def _sort_cfn_tags(tags):
     return sorted(tags, key=lambda tag: tag["Key"])
-
-
-@pytest.mark.parametrize(
-    "cluster_name, should_trigger_error",
-    [
-        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),
-        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", True),
-        ("2AClusterCanNotBeginByANumber", True),
-        ("ClusterCanNotContainUnderscores_LikeThis", True),
-        ("ClusterCanNotContainSpaces LikeThis", True),
-    ],
-)
-def test_validate_cluster_name(cluster_name, should_trigger_error, caplog):
-    error_msg = (
-        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-        f"It must start with an alphabetic character and can't be longer than {PCLUSTER_NAME_MAX_LENGTH} characters."
-    )
-    cluster = dummy_cluster(name=cluster_name)
-    failures = cluster._validate_cluster_name()
-    assert_that(failures).is_length(1 if should_trigger_error else 0)
-    if should_trigger_error:
-        assert_that(failures[0].message).is_equal_to(error_msg)

@@ -22,11 +22,6 @@ class Ec2Client(Boto3Client):
         super().__init__("ec2")
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_instance_type(self, instance_type):
-        """Return instance type info."""
-        return self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
-
-    @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def describe_instance_type_offerings(self, filters=None):
         """Return a list of instance types."""

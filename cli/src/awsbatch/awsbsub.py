@@ -514,12 +514,7 @@ def main():
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
-        boto3_factory = Boto3ClientFactory(
-            region=config.region,
-            proxy=config.proxy,
-            aws_access_key_id=config.aws_access_key_id,
-            aws_secret_access_key=config.aws_secret_access_key,
-        )
+        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy)
 
         # define job name
         if args.job_name:

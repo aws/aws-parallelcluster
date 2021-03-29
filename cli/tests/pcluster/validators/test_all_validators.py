@@ -24,6 +24,7 @@ from pcluster.validators import (
     s3_validators,
 )
 from pcluster.validators.common import Validator
+from tests.common.dummy_aws_api import mock_aws_api
 
 
 def _mock_all_validators(mocker, mockers):
@@ -72,6 +73,7 @@ def test_all_validators_are_called(test_datadir, mocker):
         "pcluster.models.cluster_config.BaseClusterConfig.ami_id",
         new_callable=PropertyMock(return_value="ami-12345678"),
     )
+    mock_aws_api(mocker)
 
     # Need to load two configuration files to execute all validators because there are mutually exclusive parameters.
     _load_and_validate(test_datadir / "slurm_1.yaml")
@@ -179,6 +181,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         "pcluster.models.cluster_config.SlurmComputeResource.architecture",
         new_callable=PropertyMock(return_value="x86_64"),
     )
+    mock_aws_api(mocker)
 
     _load_and_validate(test_datadir / "slurm.yaml")
 

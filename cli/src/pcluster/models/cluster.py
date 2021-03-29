@@ -14,7 +14,6 @@
 #
 import json
 import logging
-import re
 import time
 from enum import Enum
 from typing import List
@@ -28,7 +27,7 @@ from common.aws.aws_resources import InstanceInfo, StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.config_patch import ConfigPatch
-from pcluster.constants import OS_MAPPING, PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PCLUSTER_STACK_PREFIX
+from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket, SlurmScheduling, Tag
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -330,9 +329,7 @@ class Cluster:
 
             # semantic validation
             if not suppress_validators:
-                validation_failures = self._validate_cluster_name()
-
-                validation_failures += config.validate()
+                validation_failures = config.validate()
                 for failure in validation_failures:
                     if failure.level.value >= FailureLevel(validation_failure_level).value:
                         # Raise the exception if there is a failure with a level greater than the specified one
@@ -345,18 +342,6 @@ class Cluster:
             raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
 
         return config
-
-    def _validate_cluster_name(self):
-        validation_failures = []
-        if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), self.name):
-            message = (
-                "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
-                "It must start with an alphabetic character and can't be longer "
-                f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
-            )
-            LOGGER.error(message)
-            validation_failures.append(ValidationResult(str(message), FailureLevel.ERROR))
-        return validation_failures
 
     def _setup_cluster_bucket(self) -> ClusterBucket:
         """

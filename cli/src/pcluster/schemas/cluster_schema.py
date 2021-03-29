@@ -949,8 +949,7 @@ class ClusterSchema(BaseSchema):
         SharedStorageSchema,
         many=True,
         update_policy=UpdatePolicy(
-            UpdatePolicy.UNSUPPORTED,
-            fail_reason=UpdatePolicy.FAIL_REASONS["shared_storage_change"],
+            UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["shared_storage_change"]
         ),
         update_key="Name",
     )

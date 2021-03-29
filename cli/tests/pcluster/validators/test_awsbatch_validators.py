@@ -25,7 +25,7 @@ from pcluster.validators.awsbatch_validators import (
     AwsbatchRegionValidator,
     BatchErrorMessageParsingException,
 )
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
 from .utils import assert_failure_messages
@@ -61,7 +61,7 @@ def test_awsbatch_region_validator(region, expected_message):
     ],
 )
 def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expected_message):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
         return_value=["t2.micro", "p4d.24xlarge"],
@@ -169,7 +169,7 @@ def test_get_supported_batch_instance_types(
         if raise_error_parsing_function
         else lambda emsg: dummy_batch_instance_types + dummy_batch_instance_families,
     )
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     supported_instance_types_patch = mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
         return_value=dummy_all_instance_types,

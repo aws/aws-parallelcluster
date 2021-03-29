@@ -12,12 +12,14 @@
 import pytest
 
 from common.boto3.common import AWSClientError
+from pcluster.utils import InstanceTypeInfo
 from pcluster.validators.ec2_validators import (
+    ComputeTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
 )
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -25,7 +27,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
     "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
 )
 def test_instance_type_validator(mocker, instance_type, expected_message):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
         return_value=["t2.micro", "c4.xlarge"],
@@ -146,7 +148,7 @@ def test_instance_type_base_ami_compatible_validator(
     instance_architectures,
 ):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=ami_response,
@@ -170,7 +172,32 @@ def test_instance_type_base_ami_compatible_validator(
     ],
 )
 def test_key_pair_validator(mocker, key_pair, side_effect, expected_message):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.boto3.ec2.Ec2Client.describe_key_pair", return_value=key_pair, side_effect=side_effect)
     actual_failures = KeyPairValidator().execute(key_name=key_pair)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "compute_type, supported_usage_classes, expected_message",
+    [
+        ("ondemand", ["ondemand", "spot"], None),
+        ("spot", ["ondemand", "spot"], None),
+        ("ondemand", ["ondemand"], None),
+        ("spot", ["spot"], None),
+        ("spot", [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
+        ("ondemand", [], "Could not check support for usage class 'ondemand' with instance type 'instance-type'"),
+        ("spot", ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
+        ("ondemand", ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
+    ],
+)
+def test_compute_type_validator(mocker, compute_type, supported_usage_classes, expected_message):
+    mock_aws_api(mocker)
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {"InstanceType": "instance-type", "SupportedUsageClasses": supported_usage_classes}
+        ),
+    )
+    actual_failures = ComputeTypeValidator().execute(compute_type=compute_type, instance_type="instance-type")
     assert_failure_messages(actual_failures, expected_message)

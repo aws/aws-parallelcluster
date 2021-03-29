@@ -19,6 +19,7 @@ from marshmallow.validate import ValidationError
 
 from common.utils import load_yaml_dict
 from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SlurmSchema
+from tests.common.dummy_aws_api import mock_aws_api
 
 
 def _check_cluster_schema(test_datadir, config_file_name):
@@ -45,7 +46,7 @@ def _check_cluster_schema(test_datadir, config_file_name):
 
 @pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.full.yaml"])
 def test_cluster_schema_slurm(mocker, test_datadir, config_file_name):
-    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
+    mock_aws_api(mocker)
     _check_cluster_schema(test_datadir, config_file_name)
 
 
@@ -108,7 +109,7 @@ FAKE_QUEUE_LIST = [
     ],
 )
 def test_slurm_scheduling_schema(mocker, queues, failure_message):
-    mocker.patch("pcluster.models.cluster_config.Efa.init_default_efa_enabled")
+    mock_aws_api(mocker)
     scheduling_schema = {}
     if queues:
         scheduling_schema["Queues"] = queues

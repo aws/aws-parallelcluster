@@ -14,7 +14,7 @@ from assertpy import assert_that
 
 import pcluster.utils as utils
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from tests.common.dummy_aws_api import DummyAWSApi
+from tests.common.dummy_aws_api import mock_aws_api
 
 from ..models.imagebuilder_dummy_model import imagebuilder_factory
 
@@ -266,7 +266,7 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
     ],
 )
 def test_imagebuilder(mocker, resource, response, expected_template):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
@@ -430,7 +430,7 @@ def test_imagebuilder_instance_role(
     expected_instance_profile,
     expected_instance_profile_in_configuration,
 ):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
@@ -583,7 +583,7 @@ def test_imagebuilder_instance_role(
     ],
 )
 def test_imagebuilder_components(mocker, resource, response, expected_components):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
@@ -711,7 +711,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
     ],
 )
 def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribution_configuration):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
@@ -826,7 +826,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
     ],
 )
 def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuilder_resource_tags, expected_role_tags):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
@@ -895,7 +895,7 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
     ],
 )
 def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilder_subnet_id):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
@@ -963,7 +963,7 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
     ],
 )
 def test_imagebuilder_security_group_ids(mocker, resource, response, expected_imagebuilder_security_group_ids):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
@@ -1254,7 +1254,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
     ],
 )
 def test_imagebuilder_distribution_configuraton(mocker, resource, response, expected_distributions):
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mock_aws_api(mocker)
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",

@@ -32,14 +32,7 @@ from pcluster.constants import (
     MAX_STORAGE_COUNT,
 )
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
-from pcluster.utils import (
-    InstanceTypeInfo,
-    delete_s3_artifacts,
-    delete_s3_bucket,
-    disable_ht_via_cpu_options,
-    get_partition,
-    get_region,
-)
+from pcluster.utils import InstanceTypeInfo, delete_s3_artifacts, delete_s3_bucket, get_partition, get_region
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
@@ -48,6 +41,7 @@ from pcluster.validators.awsbatch_validators import (
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
+    ClusterNameValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
@@ -65,6 +59,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
+    RegionValidator,
     SchedulerOsValidator,
     TagKeyValidator,
 )
@@ -78,6 +73,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import (
     AdditionalIamPolicyValidator,
+    ComputeTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -94,7 +90,12 @@ from pcluster.validators.fsx_validators import (
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
-from pcluster.validators.s3_validators import S3BucketUriValidator, S3BucketValidator, UrlValidator
+from pcluster.validators.s3_validators import (
+    S3BucketRegionValidator,
+    S3BucketUriValidator,
+    S3BucketValidator,
+    UrlValidator,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -440,12 +441,6 @@ class Efa(Resource):
         self.enabled = enabled
         self.gdr_support = Resource.init_param(gdr_support, default=False)
 
-    def init_default_efa_enabled(self, instance_type: str):
-        """Set EFA if by default if the instance type support it."""
-        self.enabled = Resource.init_param(
-            self.enabled, default=AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
-        )
-
 
 # ---------------------- Monitoring ---------------------- #
 
@@ -729,12 +724,12 @@ class HeadNode(Resource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
+        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.disable_simultaneous_multithreading_via_cpu_options
+        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt
 
     @property
     def instance_role(self):
@@ -837,11 +832,9 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
 
     def _validate(self):
-        self._execute_validator(
-            ArchitectureOsValidator,
-            os=self.image.os,
-            architecture=self.head_node.architecture,
-        )
+        self._execute_validator(ClusterNameValidator, name=self.name)
+        self._execute_validator(RegionValidator, region=self.region)
+        self._execute_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
         if self.ami_id:
             self._execute_validator(
                 InstanceTypeBaseAMICompatibleValidator,
@@ -875,6 +868,7 @@ class BaseClusterConfig(Resource):
             )
         if self.cluster_s3_bucket:
             self._execute_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
+            self._execute_validator(S3BucketRegionValidator, bucket=self.cluster_s3_bucket, region=self.region)
 
     def _register_storage_validators(self):
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}
@@ -1141,9 +1135,9 @@ class SlurmComputeResource(BaseComputeResource):
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
-        self.efa = efa or Efa(implied=True)
-        self.efa.init_default_efa_enabled(self.instance_type)
         self.__instance_type_info = None
+        efa_supported = self.instance_type_info.is_efa_supported()
+        self.efa = efa or Efa(enabled=efa_supported, implied=True)
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
@@ -1210,12 +1204,12 @@ class SlurmComputeResource(BaseComputeResource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and disable_ht_via_cpu_options(self.instance_type)
+        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.disable_simultaneous_multithreading_via_cpu_options
+        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt
 
 
 class SlurmQueue(BaseQueue):
@@ -1229,11 +1223,12 @@ class SlurmQueue(BaseQueue):
         self.custom_actions = custom_actions
 
     def _validate(self):
-        self._execute_validator(
-            DuplicateInstanceTypeValidator,
-            instance_type_list=self.instance_type_list,
-        )
+        super()._validate()
+        self._execute_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
         for compute_resource in self.compute_resources:
+            self._execute_validator(
+                ComputeTypeValidator, compute_type=self.compute_type, instance_type=compute_resource.instance_type
+            )
             self._execute_validator(
                 EfaSecurityGroupValidator,
                 efa_enabled=compute_resource.efa,
