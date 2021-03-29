@@ -86,7 +86,7 @@ def test_all_validators_are_called(test_datadir, mocker):
 
     # Assert validators are called
     for m in mockers:
-        if m["name"] == "TagKeyValidator":
+        if m["name"] in ["TagKeyValidator", "ClusterNameValidator"]:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue
         print("Checking " + m["name"] + " is called")
