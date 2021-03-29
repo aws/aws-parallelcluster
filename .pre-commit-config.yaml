@@ -42,4 +42,4 @@ repos:
     rev: 1.7.0
     hooks:
       - id: bandit
-        args: ['-r', '--skip', 'B105,B404', '--exclude', 'tests,cli/tests']
+        args: ['-r', '--exclude', 'tests,cli/tests', '--config', 'cli/.bandit.ini']
