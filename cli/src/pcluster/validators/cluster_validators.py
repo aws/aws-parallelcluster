@@ -724,7 +724,7 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 use_efa=False,  # EFA is not supported on head node
                 security_group_ids=head_node_security_groups,
                 subnet=head_node.networking.subnet_id,
-                use_public_ips=True if head_node.networking.assign_public_ip else False,
+                use_public_ips=bool(head_node.networking.assign_public_ip),
             )
 
             # Test Head Node Instance Configuration
@@ -770,7 +770,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
             self._test_compute_resource(
                 compute_resource=dry_run_compute_resource,
-                use_public_ips=True if queue.networking.assign_public_ip else False,
+                use_public_ips=bool(queue.networking.assign_public_ip),
                 ami_id=ami_id,
                 subnet_id=queue_subnet_id,
                 security_groups_ids=queue_security_groups,

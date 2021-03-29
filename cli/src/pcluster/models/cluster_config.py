@@ -42,7 +42,6 @@ from pcluster.validators.awsbatch_validators import (
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
-    ClusterNameValidator,
     ComputeResourceLaunchTemplateValidator,
     ComputeResourceSizeValidator,
     DcvValidator,

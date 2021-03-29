@@ -28,12 +28,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 from pkg_resources import packaging
 
-from pcluster.constants import (
-    PCLUSTER_STACK_PREFIX,
-    SUPPORTED_ARCHITECTURES,
-    SUPPORTED_OSES_FOR_ARCHITECTURE,
-    SUPPORTED_OSES_FOR_SCHEDULER,
-)
+from pcluster.constants import PCLUSTER_STACK_PREFIX, SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
 
 LOGGER = logging.getLogger(__name__)
 
