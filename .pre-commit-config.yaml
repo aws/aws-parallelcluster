@@ -24,6 +24,8 @@ repos:
     hooks:
       - id: flake8
         additional_dependencies: [flake8-docstrings, flake8-bugbear, flake8-mypy, flake8-colors, pep8-naming]
+        # If flake8 isn't run from the CLI directory it doesn't read in its configuration in the same way.
+        # Paths are relative to the top-level of the repo so the nested shell handles that.
         entry: bash -c 'cd cli && flake8 $(for arg in $@; do echo -n "../$arg " ; done)'
 
 
