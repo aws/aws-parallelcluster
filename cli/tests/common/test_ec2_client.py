@@ -57,8 +57,8 @@ def test_get_default_instance(boto3_stubber, region, free_tier_instance_type, de
 
 
 @pytest.mark.parametrize("generate_error", [True, False])
-def test_describe_instance_type_offerings(boto3_stubber, generate_error):
-    """Verify that describe_instance_type_offerings behaves as expected."""
+def test_list_instance_types(boto3_stubber, generate_error):
+    """Verify that list_instance_types behaves as expected."""
     dummy_message = "dummy error message"
     dummy_instance_types = ["c5.xlarge", "m6g.xlarge"]
     mocked_requests = [
@@ -75,7 +75,7 @@ def test_describe_instance_type_offerings(boto3_stubber, generate_error):
     if generate_error:
         error_message = "Error during execution of describe_instance_type_offerings. {0}".format(dummy_message)
         with pytest.raises(AWSClientError, match=error_message):
-            Ec2Client().describe_instance_type_offerings()
+            Ec2Client().list_instance_types()
     else:
-        return_value = Ec2Client().describe_instance_type_offerings()
+        return_value = Ec2Client().list_instance_types()
         assert_that(return_value).is_equal_to(dummy_instance_types)

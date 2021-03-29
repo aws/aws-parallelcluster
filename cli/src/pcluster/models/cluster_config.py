@@ -42,6 +42,7 @@ from pcluster.validators.awsbatch_validators import (
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ClusterNameValidator,
+    ComputeResourceLaunchTemplateValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
@@ -54,6 +55,7 @@ from pcluster.validators.cluster_validators import (
     EfsIdValidator,
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
+    HeadNodeLaunchTemplateValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
@@ -407,7 +409,7 @@ class QueueNetworking(_BaseNetworking):
 
     def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
         super().__init__(**kwargs)
-        self.subnet_ids = Resource.init_param(subnet_ids)  # FIXME slurm support a single subnet id
+        self.subnet_ids = Resource.init_param(subnet_ids)
         self.placement_group = placement_group
 
 
@@ -845,6 +847,7 @@ class BaseClusterConfig(Resource):
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         self._register_storage_validators()
+        self._execute_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.ami_id)
 
         if self.head_node.dcv:
             self._execute_validator(
@@ -1307,6 +1310,7 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._execute_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
 
         for queue in self.scheduling.queues:
+            self._execute_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)
             for compute_resource in queue.compute_resources:
                 if self.ami_id:
                     self._execute_validator(

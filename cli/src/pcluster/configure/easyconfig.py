@@ -131,7 +131,7 @@ def configure(args):  # noqa: C901
     default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
         "Head node instance type",
-        lambda x: x in AWSApi.instance().ec2.describe_instance_type_offerings(),
+        lambda x: x in AWSApi.instance().ec2.list_instance_types(),
         default_value=default_instance_type,
     )
     if scheduler == "awsbatch":
@@ -160,7 +160,7 @@ def configure(args):  # noqa: C901
             if scheduler != "awsbatch":
                 compute_instance_type = prompt(
                     f"Compute instance type for {compute_resource_name} in {queue_name}",
-                    lambda x: x in AWSApi.instance().ec2.describe_instance_type_offerings(),
+                    lambda x: x in AWSApi.instance().ec2.list_instance_types(),
                     default_value=default_instance_type,
                 )
             min_cluster_size = int(
@@ -288,7 +288,7 @@ def _ask_for_subnets(subnet_list, qualified_head_node_subnets, qualified_compute
 def _choose_network_configuration(scheduler, head_node_instance_type, compute_instance_types):
     if scheduler == "awsbatch":
         return PublicPrivateNetworkConfig()
-    azs_for_head_node_type = _get_supported_az_for_one_instance_type(head_node_instance_type)
+    azs_for_head_node_type = AWSApi.instance().ec2.get_supported_az_for_instance_type(head_node_instance_type)
     azs_for_compute_types = _get_common_supported_az_for_multi_instance_types(compute_instance_types)
     common_availability_zones = set(azs_for_head_node_type) & set(azs_for_compute_types)
 
@@ -329,65 +329,8 @@ def _prompt_for_subnet(all_subnets, qualified_subnets, message, default_subnet=N
 # Availability zone utilities
 
 
-def _get_supported_az_for_one_instance_type(instance_type):
-    """
-    Return a tuple of availability zones that have the instance_types.
-
-    This function build above get_supported_az_for_multi_instance_types,
-    but simplify the input to 1 instance type and result to a list
-
-    :param instance_type: the instance type for which the supporting AZs.
-    :return: a tuple of the supporting AZs
-    """
-    return _get_supported_az_for_multi_instance_types([instance_type])[instance_type]
-
-
-def _get_supported_az_for_multi_instance_types(instance_types):
-    """
-    Return a dict of instance types to list of availability zones that have each of the instance_types.
-
-    :param instance_types: the list of instance types for which the supporting AZs.
-    :return: a dicts. keys are strings of instance type, values are the tuples of the supporting AZs
-
-    Example:
-    If instance_types is:
-    ["t2.micro", "t2.large"]
-    Result can be:
-    {
-        "t2.micro": (us-east-1a, us-east-1b),
-        "t2.large": (us-east-1a, us-east-1b)
-    }
-    """
-    # first looks for info in cache, then using only one API call for all infos that is not inside the cache
-    if not hasattr(_get_supported_az_for_multi_instance_types, "cache"):
-        _get_supported_az_for_multi_instance_types.cache = {}
-    cache = _get_supported_az_for_multi_instance_types.cache
-    missing_instance_types = []
-    result = {}
-    for instance_type in instance_types:
-        if instance_type in cache:
-            result[instance_type] = cache[instance_type]
-        else:
-            missing_instance_types.append(instance_type)
-    if missing_instance_types:
-        ec2_client = boto3.client("ec2")
-        paginator = ec2_client.get_paginator("describe_instance_type_offerings")
-        page_iterator = paginator.paginate(
-            LocationType="availability-zone", Filters=[{"Name": "instance-type", "Values": missing_instance_types}]
-        )
-        offerings = []
-        for page in page_iterator:
-            offerings.extend(page["InstanceTypeOfferings"])
-        for instance_type in missing_instance_types:
-            cache[instance_type] = tuple(
-                offering["Location"] for offering in offerings if offering["InstanceType"] == instance_type
-            )
-            result[instance_type] = cache[instance_type]
-    return result
-
-
 def _get_common_supported_az_for_multi_instance_types(instance_types):
-    supported_az = _get_supported_az_for_multi_instance_types(instance_types)
+    supported_az = AWSApi.instance().ec2.get_supported_az_for_instance_types(instance_types)
     common_az = None
     for az_list in supported_az.values():
         if common_az is None:

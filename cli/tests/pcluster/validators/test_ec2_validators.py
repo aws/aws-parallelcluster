@@ -28,10 +28,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
 )
 def test_instance_type_validator(mocker, instance_type, expected_message):
     mock_aws_api(mocker)
-    mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
-        return_value=["t2.micro", "c4.xlarge"],
-    )
+    mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=["t2.micro", "c4.xlarge"])
 
     actual_failures = InstanceTypeValidator().execute(instance_type)
     assert_failure_messages(actual_failures, expected_message)
@@ -149,15 +146,8 @@ def test_instance_type_base_ami_compatible_validator(
 ):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mock_aws_api(mocker)
-    mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=ami_response,
-        side_effect=ami_side_effect,
-    )
-    mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
-        return_value=instance_response,
-    )
+    mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=ami_response, side_effect=ami_side_effect)
+    mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=instance_response)
     mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=instance_architectures)
     actual_failures = InstanceTypeBaseAMICompatibleValidator().execute(instance_type=instance_type, image=parent_image)
     assert_failure_messages(actual_failures, expected_message)

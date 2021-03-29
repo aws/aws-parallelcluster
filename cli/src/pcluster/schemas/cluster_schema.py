@@ -491,7 +491,7 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
     subnet_ids = fields.List(
         fields.Str(validate=get_field_validator("subnet_id")),
         required=True,
-        validate=validate.Length(equal=1),
+        validate=validate.Length(equal=1),  # FIXME Add multi-subnet support for Awsbatch
         update_policy=UpdatePolicy.COMPUTE_FLEET_STOP,
     )
     placement_group = fields.Nested(PlacementGroupSchema, update_policy=UpdatePolicy.COMPUTE_FLEET_STOP)

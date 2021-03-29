@@ -25,7 +25,7 @@ class InstanceTypeValidator(Validator):
     """
 
     def _validate(self, instance_type: str):
-        if instance_type not in AWSApi.instance().ec2.describe_instance_type_offerings():
+        if instance_type not in AWSApi.instance().ec2.list_instance_types():
             self._add_failure(
                 f"The instance type '{instance_type}' is not supported.",
                 FailureLevel.ERROR,
@@ -59,7 +59,7 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
             return None, None
 
     def _validate_instance_type(self, instance_type: str):
-        if instance_type not in AWSApi.instance().ec2.describe_instance_type_offerings():
+        if instance_type not in AWSApi.instance().ec2.list_instance_types():
             self._add_failure(
                 f"The instance type '{instance_type}' is not supported.",
                 FailureLevel.ERROR,
