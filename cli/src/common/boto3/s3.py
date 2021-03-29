@@ -24,24 +24,26 @@ class S3Client(Boto3Client):
         """Download generic file from S3."""
         self._client.download_file(bucket_name, object_name, file_name)
 
-    @AWSExceptionHandler.handle_client_exception
     def head_object(self, bucket_name, object_name):
         """Retrieve metadata from an object without returning the object itself."""
         try:
             return self._client.head_object(Bucket=bucket_name, Key=object_name)
         except ClientError as client_error:
             raise AWSClientError(
-                function_name="head_object", message=_process_generic_s3_bucket_error(client_error, bucket_name)
+                function_name="head_object",
+                message=_process_s3_bucket_error(client_error, bucket_name),
+                error_code=client_error.response["Error"]["Code"],
             )
 
-    @AWSExceptionHandler.handle_client_exception
     def head_bucket(self, bucket_name):
         """Retrieve metadata for a bucket without returning the object itself."""
         try:
             return self._client.head_bucket(Bucket=bucket_name)
         except ClientError as client_error:
             raise AWSClientError(
-                function_name="head_bucket", message=_process_generic_s3_bucket_error(client_error, bucket_name)
+                function_name="head_bucket",
+                message=_process_s3_bucket_error(client_error, bucket_name),
+                error_code=client_error.response["Error"]["Code"],
             )
 
     @AWSExceptionHandler.handle_client_exception
@@ -61,27 +63,32 @@ class S3Client(Boto3Client):
         """Return true if bucket versioning is enabled."""
         return self._client.get_bucket_versioning(Bucket=bucket_name).get("Status")
 
-    @AWSExceptionHandler.handle_client_exception
     def get_bucket_region(self, bucket_name):
         """Return bucket region."""
-        bucket_region = self._client.get_bucket_location(Bucket=bucket_name).get("LocationConstraint")
-        # Buckets in Region us-east-1 have a LocationConstraint of null
-        # Example output from get_bucket_location for us-east-1:
-        #   {'ResponseMetadata': {...}, 'LocationConstraint': None}
-        if bucket_region is None:
-            bucket_region = "us-east-1"
-        return bucket_region
+        try:
+            bucket_region = self._client.get_bucket_location(Bucket=bucket_name).get("LocationConstraint")
+            # Buckets in Region us-east-1 have a LocationConstraint of null
+            # Example output from get_bucket_location for us-east-1:
+            #   {'ResponseMetadata': {...}, 'LocationConstraint': None}
+            if bucket_region is None:
+                bucket_region = "us-east-1"
+            return bucket_region
+        except ClientError as client_error:
+            raise AWSClientError(
+                function_name="get_bucket_location",
+                message=_process_s3_bucket_error(client_error, bucket_name),
+                error_code=client_error.response["Error"]["Code"],
+            )
 
 
-def _process_generic_s3_bucket_error(client_error, bucket_name):
-    if client_error.response.get("Error").get("Code") == "NoSuchBucket":
-        return "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
-            bucket_name, client_error.response.get("Error").get("Message")
-        )
-    if client_error.response.get("Error").get("Code") == "AccessDenied":
-        return "You do not have access to the S3 bucket '{0}': '{1}'".format(
-            bucket_name, client_error.response.get("Error").get("Message")
-        )
-    return "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
-        bucket_name, client_error.response.get("Error").get("Message")
-    )
+def _process_s3_bucket_error(client_error, bucket_name):
+    error_message = client_error.response.get("Error").get("Message")
+    error_code = client_error.response["Error"]["Code"]
+
+    if error_code == "NoSuchBucket":
+        message = f"The S3 bucket '{bucket_name}' does not appear to exist: '{error_message}'"
+    elif error_code == "AccessDenied":
+        return f"You do not have access to the S3 bucket '{bucket_name}': '{error_message}'"
+    else:
+        message = f"Unexpected error when calling get_bucket_location on S3 bucket '{bucket_name}': '{error_message}'"
+    return message

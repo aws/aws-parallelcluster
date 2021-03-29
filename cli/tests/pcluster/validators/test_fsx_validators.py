@@ -21,6 +21,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 from tests.utils import MockedBoto3Request
 
@@ -424,59 +425,17 @@ def test_fsx_backup_id_validator(boto3_stubber, backup_id, expected_message):
 
 
 @pytest.mark.parametrize(
-    "import_path, auto_import_policy, error_code, bucket, expected_message",
+    "auto_import_policy, cluster_region, bucket_region, expected_message",
     [
-        (
-            "s3://test/test1/test2",
-            "NEW",
-            None,
-            {"Bucket": "test"},
-            "auto import is not supported for cross-region buckets.",
-        ),
-        (
-            "s3://test/test1/test2",
-            "NEW",
-            "NoSuchBucket",
-            {"Bucket": "test"},
-            "The S3 bucket 'test' does not appear to exist.",
-        ),
-        (
-            "s3://test/test1/test2",
-            "NEW",
-            "AccessDenied",
-            {"Bucket": "test"},
-            "You do not have access to the S3 bucket",
-        ),
+        ("NEW", "eu-west-1", "af-south-1", "auto import is not supported for cross-region buckets."),
+        (None, "eu-west-1", "af-south-1", None),
+        ("NEW", "eu-west-1", "eu-west-1", None),
     ],
 )
-def test_auto_import_policy_validator(
-    boto3_stubber, import_path, auto_import_policy, error_code, bucket, expected_message
-):
-    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
-    get_bucket_location_response = {
-        "ResponseMetadata": {
-            "LocationConstraint": "af-south1",
-        }
-    }
-    mocked_requests = []
-    if error_code is None:
-        mocked_requests.append(
-            MockedBoto3Request(
-                method="get_bucket_location", response=get_bucket_location_response, expected_params=bucket
-            )
-        )
-    else:
-        mocked_requests.append(
-            MockedBoto3Request(
-                method="get_bucket_location",
-                response=get_bucket_location_response,
-                expected_params=bucket,
-                generate_error=error_code is not None,
-                error_code=error_code,
-            )
-        )
+def test_auto_import_policy_validator(mocker, auto_import_policy, cluster_region, bucket_region, expected_message):
+    mock_aws_api(mocker)
+    mocker.patch("common.boto3.s3.S3Client.get_bucket_region", return_value=bucket_region)
+    os.environ["AWS_DEFAULT_REGION"] = cluster_region
 
-    boto3_stubber("s3", mocked_requests)
-
-    actual_failures = FsxAutoImportValidator().execute(auto_import_policy, import_path)
+    actual_failures = FsxAutoImportValidator().execute(auto_import_policy, "s3://test/test1/test2")
     assert_failure_messages(actual_failures, expected_message)
