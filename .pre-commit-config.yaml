@@ -44,4 +44,4 @@ repos:
     rev: 1.7.0
     hooks:
       - id: bandit
-        args: ['-r', '--exclude', 'tests,cli/tests', '--config', 'cli/.bandit.ini']
+        args: ['-r', '-c', 'cli/.bandit.ini', '--exclude', 'tests,cli/tests,cloudformation/tests']
