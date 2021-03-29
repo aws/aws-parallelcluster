@@ -242,8 +242,8 @@ def _test_imagebuilder(
     expected_failure_levels,
 ):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=supported_architecture)
     mock_aws_api(mocker)
+    mocker.patch("common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=supported_architecture)
     mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=ami_response, side_effect=ami_side_effect)
     mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=instance_response)
     mocker.patch("common.boto3.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)

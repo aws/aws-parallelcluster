@@ -26,10 +26,7 @@ class InstanceTypeValidator(Validator):
 
     def _validate(self, instance_type: str):
         if instance_type not in AWSApi.instance().ec2.list_instance_types():
-            self._add_failure(
-                f"The instance type '{instance_type}' is not supported.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure(f"The instance type '{instance_type}' is not supported.", FailureLevel.ERROR)
 
 
 class InstanceTypeBaseAMICompatibleValidator(Validator):
@@ -65,7 +62,7 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
                 FailureLevel.ERROR,
             )
             return []
-        return utils.get_supported_architectures_for_instance_type(instance_type)
+        return AWSApi.instance().ec2.get_supported_architectures(instance_type)
 
 
 class AdditionalIamPolicyValidator(Validator):  # TODO add test
@@ -122,16 +119,17 @@ class PlacementGroupIdValidator(Validator):  # TODO: add tests
 class ComputeTypeValidator(Validator):
     """Compute type validator. Verify that specified compute type is compatible with specified instance type."""
 
-    def _validate(self, compute_type: str, instance_type: str):
+    def _validate(self, compute_type, instance_type):
+        compute_type_value = compute_type.value.lower()
         supported_usage_classes = AWSApi.instance().ec2.get_instance_type_info(instance_type).supported_usage_classes()
 
         if not supported_usage_classes:
             self._add_failure(
-                f"Could not check support for usage class '{compute_type}' with instance type '{instance_type}'",
+                f"Could not check support for usage class '{compute_type_value}' with instance type '{instance_type}'",
                 FailureLevel.WARNING,
             )
-        elif compute_type.lower() not in supported_usage_classes:
+        elif compute_type_value not in supported_usage_classes:
             self._add_failure(
-                f"Usage type '{compute_type}' not supported with instance type '{instance_type}'",
+                f"Usage type '{compute_type_value}' not supported with instance type '{instance_type}'",
                 FailureLevel.ERROR,
             )

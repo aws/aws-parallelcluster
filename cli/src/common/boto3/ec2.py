@@ -10,11 +10,11 @@
 # limitations under the License.
 from typing import List
 
-from common.aws.aws_resources import InstanceInfo
+from common.aws.aws_resources import InstanceInfo, InstanceTypeInfo
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 from pcluster import utils
-from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG
-from pcluster.utils import Cache, InstanceTypeInfo
+from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, SUPPORTED_ARCHITECTURES
+from pcluster.utils import Cache
 
 
 class Ec2Client(Boto3Client):
@@ -143,6 +143,16 @@ class Ec2Client(Boto3Client):
         return InstanceTypeInfo(
             self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
         )
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_supported_architectures(self, instance_type):
+        """Return a list of architectures supported for the given instance type."""
+        instance_info = self.get_instance_type_info(instance_type)
+        supported_architectures = instance_info.supported_architecture()
+
+        # Some instance types support multiple architectures (x86_64 and i386). Filter unsupported ones.
+        return list(set(supported_architectures) & set(SUPPORTED_ARCHITECTURES))
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached

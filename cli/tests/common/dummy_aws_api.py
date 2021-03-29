@@ -11,12 +11,12 @@
 import os
 
 from common.aws.aws_api import AWSApi
+from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.cfn import CfnClient
 from common.boto3.ec2 import Ec2Client
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
 from common.boto3.s3 import S3Client
-from pcluster.utils import InstanceTypeInfo
 
 
 class _DummyInstanceTypeInfo(InstanceTypeInfo):
@@ -144,7 +144,10 @@ class _DummyKmsClient(KmsClient):
         pass
 
 
-def mock_aws_api(mocker):
+def mock_aws_api(mocker, mock_instance_type_info=True):
     """Mock AWS Api."""
     mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
-    mocker.patch("common.boto3.ec2.Ec2Client.get_instance_type_info", return_value=_DummyInstanceTypeInfo("t2.micro"))
+    if mock_instance_type_info:
+        mocker.patch(
+            "common.boto3.ec2.Ec2Client.get_instance_type_info", return_value=_DummyInstanceTypeInfo("t2.micro")
+        )

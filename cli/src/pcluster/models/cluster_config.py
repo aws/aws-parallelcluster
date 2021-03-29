@@ -19,6 +19,7 @@ from typing import List
 import pkg_resources
 
 from common.aws.aws_api import AWSApi
+from common.aws.aws_resources import InstanceTypeInfo
 from pcluster.constants import (
     CIDR_ALL_IPS,
     CW_DASHBOARD_ENABLED_DEFAULT,
@@ -32,7 +33,7 @@ from pcluster.constants import (
     MAX_STORAGE_COUNT,
 )
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
-from pcluster.utils import InstanceTypeInfo, delete_s3_artifacts, delete_s3_bucket, get_partition, get_region
+from pcluster.utils import delete_s3_artifacts, delete_s3_bucket, get_partition, get_region
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,

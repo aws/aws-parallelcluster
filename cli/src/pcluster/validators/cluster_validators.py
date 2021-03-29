@@ -23,12 +23,7 @@ from pcluster.constants import (
     SUPPORTED_REGIONS,
 )
 from pcluster.dcv.utils import get_supported_dcv_os
-from pcluster.utils import (
-    InstanceTypeInfo,
-    get_supported_architectures_for_instance_type,
-    get_supported_os_for_architecture,
-    get_supported_os_for_scheduler,
-)
+from pcluster.utils import get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
 
 NAME_MAX_LENGTH = 30
@@ -169,7 +164,7 @@ class InstanceArchitectureCompatibilityValidator(Validator):
 
     def _validate(self, instance_type, architecture: str):
         head_node_architecture = architecture
-        compute_architectures = get_supported_architectures_for_instance_type(instance_type)
+        compute_architectures = AWSApi.instance().ec2.get_supported_architectures(instance_type)
         if head_node_architecture not in compute_architectures:
             self._add_failure(
                 "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
@@ -235,7 +230,7 @@ class EfaValidator(Validator):
     def _validate(self, instance_type, efa_enabled, gdr_support):
 
         if efa_enabled:
-            if not InstanceTypeInfo.init_from_instance_type(instance_type).is_efa_supported():
+            if not AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported():
                 self._add_failure(
                     f"Instance type '{instance_type}' does not support EFA.",
                     FailureLevel.WARNING,

@@ -13,8 +13,10 @@ import os
 import pytest
 from assertpy import assert_that
 
+from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
+from tests.common.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
 
@@ -79,3 +81,25 @@ def test_list_instance_types(boto3_stubber, generate_error):
     else:
         return_value = Ec2Client().list_instance_types()
         assert_that(return_value).is_equal_to(dummy_instance_types)
+
+
+@pytest.mark.parametrize(
+    "instance_type, supported_architectures, error_message",
+    [
+        ("t2.micro", ["x86_64", "i386"], None),
+        ("a1.medium", ["arm64"], None),
+        ("valid.exotic.arch.instance", ["exoticArch"], None),
+    ],
+)
+def test_get_supported_architectures(mocker, instance_type, supported_architectures, error_message):
+    """Verify that get_supported_architectures_for_instance_type behaves as expected for various cases."""
+    mock_aws_api(mocker)
+    get_instance_types_info_patch = mocker.patch(
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo({"ProcessorInfo": {"SupportedArchitectures": supported_architectures}}),
+    )
+    observed_architectures = Ec2Client().get_supported_architectures(instance_type)
+    expected_architectures = list(set(supported_architectures) & set(["x86_64", "arm64"]))
+    assert_that(observed_architectures).is_equal_to(expected_architectures)
+
+    get_instance_types_info_patch.assert_called_with(instance_type)

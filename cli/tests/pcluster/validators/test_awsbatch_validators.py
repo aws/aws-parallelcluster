@@ -17,7 +17,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 import pcluster.validators.awsbatch_validators as awsbatch_validators
-from pcluster.utils import InstanceTypeInfo
+from common.aws.aws_resources import InstanceTypeInfo
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
@@ -64,7 +64,7 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
     mock_aws_api(mocker)
     mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=["t2.micro", "p4d.24xlarge"])
     mocker.patch(
-        "pcluster.validators.awsbatch_validators.InstanceTypeInfo.init_from_instance_type",
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": instance_type,
@@ -113,11 +113,11 @@ def test_awsbatch_instances_architecture_compatibility_validator(
     mocker, head_node_architecture, compute_architecture, compute_instance_types, expected_message
 ):
     def _internal_is_instance_type(itype):
-        return "." in itype or itype == "optimal"
+        return "." in itype
 
+    mock_aws_api(mocker)
     supported_architectures_patch = mocker.patch(
-        "pcluster.validators.awsbatch_validators.get_supported_architectures_for_instance_type",
-        return_value=[compute_architecture],
+        "common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=[compute_architecture]
     )
     is_instance_type_patch = mocker.patch(
         "pcluster.validators.awsbatch_validators.AwsbatchInstancesArchitectureCompatibilityValidator."

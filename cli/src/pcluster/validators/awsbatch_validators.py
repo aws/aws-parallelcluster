@@ -15,7 +15,7 @@ import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 from common.aws.aws_api import AWSApi
-from pcluster.utils import InstanceTypeInfo, get_region, get_supported_architectures_for_instance_type
+from pcluster.utils import get_region
 from pcluster.validators.common import FailureLevel, Validator
 
 LOGGER = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ class AwsbatchComputeInstanceTypeValidator(Validator):
         if "," not in instance_types and "." in instance_types:
             # if the type is not a list, and contains dot (nor optimal, nor a family)
             # validate instance type against max vcpus limit
-            vcpus = InstanceTypeInfo.init_from_instance_type(instance_types).vcpus_count()
+            vcpus = AWSApi.instance().ec2.get_instance_type_info(instance_types).vcpus_count()
             if vcpus <= 0:
                 self._add_failure(
                     f"Unable to get the number of vCPUs for the compute instance type '{instance_types}'. "
@@ -246,7 +246,7 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
                         FailureLevel.INFO,
                     )
                     continue
-                compute_architectures = get_supported_architectures_for_instance_type(instance_type)
+                compute_architectures = self._get_supported_architectures_for_instance_type(instance_type)
                 if architecture not in compute_architectures:
                     self._add_failure(
                         f"The specified compute instance type ({instance_type}) supports"
@@ -254,6 +254,17 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
                         f"compatible with the architecture ({architecture}) supported by the head node instance type.",
                         FailureLevel.ERROR,
                     )
+
+    @staticmethod
+    def _get_supported_architectures_for_instance_type(instance_type):
+        """Get a list of architectures supported for the given instance type."""
+        # "optimal" compute instance type (when using batch) implies the use of instances from the
+        # C, M, and R instance families, and thus an x86_64 architecture.
+        # see https://docs.aws.amazon.com/batch/latest/userguide/compute_environment_parameters.html
+        if instance_type == "optimal":
+            return ["x86_64"]
+
+        return AWSApi.instance().ec2.get_supported_architectures(instance_type)
 
     @staticmethod
     def _is_instance_type_format(candidate):

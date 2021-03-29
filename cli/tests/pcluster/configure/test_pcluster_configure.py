@@ -6,10 +6,10 @@ import pytest
 import yaml
 from assertpy import assert_that
 
+from common.aws.aws_resources import InstanceTypeInfo
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
 from pcluster.schemas.cluster_schema import ClusterSchema
-from pcluster.utils import InstanceTypeInfo
 from tests.common.dummy_aws_api import mock_aws_api
 
 EASYCONFIG = "pcluster.configure.easyconfig."
@@ -23,8 +23,8 @@ PUBLIC_CONFIGURATION = NetworkConfiguration.PUBLIC.value.config_type
 
 def _mock_instance_type_info(mocker, instance_type="t2.micro"):
     mocker.patch(
-        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
-        return_value=InstanceTypeInfo(
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        InstanceTypeInfo(
             {
                 "InstanceType": instance_type,
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
@@ -298,19 +298,23 @@ def _mock_aws_api_required_calls(mocker):
         "m6g.xlarge",
         "p4d.24xlarge",
     ]
-    mock_aws_api(mocker)
+    mock_aws_api(mocker, mock_instance_type_info=False)
     mocker.patch("common.boto3.ec2.Ec2Client.get_default_instance_type", return_value="t2.micro")
     mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=supported_instance_types)
     mocker.patch("common.boto3.ec2.Ec2Client.get_subnet_avail_zone", return_value="mocked_avail_zone")
-    # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
-    #       but it's being included in case that changes in the future.
     mocker.patch(
-        "pcluster.utils.get_supported_architectures_for_instance_type",
-        side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
+        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        side_effect=[
+            InstanceTypeInfo(
+                {
+                    "InstanceType": instance_type,
+                    "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                    "NetworkInfo": {"EfaSupported": False},
+                }
+            )
+            for instance_type in supported_instance_types
+        ],
     )
-
-    for instance_type in supported_instance_types:
-        _mock_instance_type_info(mocker, instance_type)
 
 
 def _run_configuration(mocker, path, with_config=False, region=None):

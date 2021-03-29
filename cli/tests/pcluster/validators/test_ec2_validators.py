@@ -11,8 +11,9 @@
 
 import pytest
 
+from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.common import AWSClientError
-from pcluster.utils import InstanceTypeInfo
+from pcluster.models.cluster_config import ComputeType
 from pcluster.validators.ec2_validators import (
     ComputeTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
@@ -148,7 +149,7 @@ def test_instance_type_base_ami_compatible_validator(
     mock_aws_api(mocker)
     mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=ami_response, side_effect=ami_side_effect)
     mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=instance_response)
-    mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=instance_architectures)
+    mocker.patch("common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=instance_architectures)
     actual_failures = InstanceTypeBaseAMICompatibleValidator().execute(instance_type=instance_type, image=parent_image)
     assert_failure_messages(actual_failures, expected_message)
 
@@ -171,14 +172,18 @@ def test_key_pair_validator(mocker, key_pair, side_effect, expected_message):
 @pytest.mark.parametrize(
     "compute_type, supported_usage_classes, expected_message",
     [
-        ("ondemand", ["ondemand", "spot"], None),
-        ("spot", ["ondemand", "spot"], None),
-        ("ondemand", ["ondemand"], None),
-        ("spot", ["spot"], None),
-        ("spot", [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
-        ("ondemand", [], "Could not check support for usage class 'ondemand' with instance type 'instance-type'"),
-        ("spot", ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
-        ("ondemand", ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
+        (ComputeType.ONDEMAND, ["ondemand", "spot"], None),
+        (ComputeType.SPOT, ["ondemand", "spot"], None),
+        (ComputeType.ONDEMAND, ["ondemand"], None),
+        (ComputeType.SPOT, ["spot"], None),
+        (ComputeType.SPOT, [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
+        (
+            ComputeType.ONDEMAND,
+            [],
+            "Could not check support for usage class 'ondemand' with instance type 'instance-type'",
+        ),
+        (ComputeType.SPOT, ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
+        (ComputeType.ONDEMAND, ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
     ],
 )
 def test_compute_type_validator(mocker, compute_type, supported_usage_classes, expected_message):
