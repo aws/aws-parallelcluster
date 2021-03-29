@@ -18,19 +18,6 @@ jobs:
         with:
           name: Depcheck report
           path: ${{github.workspace}}/reports
-  semgrep:
-    runs-on: ubuntu-latest
-    name: Check
-    steps:
-      - uses: actions/checkout@v2
-      - name: Semgrep Security Audit
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: p/r2c-security-audit
-      - name: Semgrep Secrets
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: p/secrets
   build:
     runs-on: ${{ matrix.os }}
     strategy:
