@@ -11,16 +11,16 @@ HeadNode:
     Port: {{ dcv_port }}
     AllowedIps: {{ access_from }}
 Scheduling:
-  Slurm:
-    Queues:
-      - Name: queue-0
-        ComputeResources:
-          - Name: compute-resource-0
-            InstanceType: {{ instance }}
-            MinCount: 1
-        Networking:
-          SubnetIds:
-            - {{ public_subnet_id }}
+  Scheduler: slurm
+  Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+          MinCount: 1
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
 SharedStorage:
   - MountDir: {{ shared_dir }}
     Name: ebs1

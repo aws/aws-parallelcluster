@@ -7,27 +7,27 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: queue-0
-        ComputeResources:
-          - Name: compute-resource-0
-            {% if scheduler == "Awsbatch" %}
-            InstanceTypes: {{ instance }}
-            MinvCpus: 4
-            DesiredvCpus: 4
-            {% else %}
-            InstanceType: {{ instance }}
-            MinCount: 1
-            {% endif %}
-        Networking:
-          SubnetIds:
-            - {{ private_subnet_id }}
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          MinvCpus: 4
+          DesiredvCpus: 4
+          {% else %}
+          InstanceType: {{ instance }}
+          MinCount: 1
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: {{ mount_dirs[0] }}
     Name: ebs1
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       Iops: 3200
       Size: {{ volume_sizes[0] }}
       VolumeType: gp3
@@ -36,27 +36,27 @@ SharedStorage:
   - MountDir: {{ mount_dirs[1] }}
     Name: ebs2
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       Size: {{ volume_sizes[1] }}
       VolumeType: gp2
       Encrypted: false
   - MountDir: {{ mount_dirs[2] }}
     Name: ebs3
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       Iops: 150
       Size: {{ volume_sizes[2] }}
       VolumeType: io2
   - MountDir: {{ mount_dirs[3] }}
     Name: ebs4
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       Size: {{ volume_sizes[3] }}
       VolumeType: sc1
   - MountDir: {{ mount_dirs[4] }}
     Name: ebs5
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       Size: {{ volume_sizes[4] }}
       VolumeType: st1
       Encrypted: false

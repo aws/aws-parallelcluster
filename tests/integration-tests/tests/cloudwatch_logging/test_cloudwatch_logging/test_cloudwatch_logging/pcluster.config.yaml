@@ -7,16 +7,16 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: compute
-        ComputeResources:
-          - Name: compute-i1
-            {% if scheduler == "Awsbatch" %}InstanceTypes:{% else %}InstanceType:{% endif %} {{ instance }}
-            {% if scheduler == "Awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
-        Networking:
-          SubnetIds:
-            - {{ private_subnet_id }}
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: compute
+      ComputeResources:
+        - Name: compute-i1
+          {% if scheduler == "awsbatch" %}InstanceTypes:{% else %}InstanceType:{% endif %} {{ instance }}
+          {% if scheduler == "awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
 Monitoring:
   Logs:
     CloudWatch:

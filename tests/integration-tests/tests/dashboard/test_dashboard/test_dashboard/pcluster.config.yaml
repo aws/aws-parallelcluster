@@ -7,19 +7,19 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: queue1
-        Networking:
-          SubnetIds:
-            - {{ public_subnet_id }}
-        ComputeResources:
-          - Name: compute-resource1
-            {% if scheduler == "Awsbatch" %}
-            InstanceTypes: {{ instance }}
-            {% else %}
-            InstanceType: {{ instance }}
-            {% endif %}
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      ComputeResources:
+        - Name: compute-resource1
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          {% endif %}
 Monitoring:
   DetailedMonitoring: true
   Logs:

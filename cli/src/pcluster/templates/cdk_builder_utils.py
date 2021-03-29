@@ -49,10 +49,20 @@ def get_block_device_mappings(node_config: Union[HeadNode, BaseQueue], os: str):
         )
 
     # Root volume
-    if node_config.local_storage and node_config.local_storage.root_volume:
-        root_volume = copy.deepcopy(node_config.storage.root_volume)
-    else:
-        root_volume = Ebs()
+    if isinstance(node_config, BaseQueue):  # Queue
+        if (
+            node_config.compute_settings
+            and node_config.compute_settings.local_storage
+            and node_config.compute_settings.local_storage.root_volume
+        ):
+            root_volume = copy.deepcopy(node_config.compute_settings.local_storage.root_volume)
+        else:
+            root_volume = Ebs()
+    elif isinstance(node_config, HeadNode):  # HeadNode
+        if node_config.local_storage and node_config.local_storage.root_volume:
+            root_volume = copy.deepcopy(node_config.local_storage.root_volume)
+        else:
+            root_volume = Ebs()
 
     block_device_mappings.append(
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(

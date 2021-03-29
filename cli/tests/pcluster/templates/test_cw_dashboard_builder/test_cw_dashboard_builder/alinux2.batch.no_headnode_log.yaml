@@ -7,41 +7,49 @@ HeadNode:
   Networking:
     SubnetId: subnet-12345678
 Scheduling:
-  Awsbatch:
-    Queues:
-      - Name: queue1
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceTypes: c4.xlarge
-            MaxvCpus: 10
+  Scheduler: awsbatch
+  Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceTypes: c4.xlarge
+          MaxvCpus: 10
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 35
+            Encrypted: true
+          EphemeralVolume:
+            Encrypted: true
+            MountDir: /scratch
 SharedStorage:
   - MountDir: /my/mount/ebs1
     Name: name1
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: sc1
   - MountDir: /my/mount/ebs2
     Name: name2
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: st1
   - MountDir: /my/mount/ebs3
     Name: name3
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: gp2
   - MountDir: /my/mount/ebs4
     Name: name4
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: sc1
   - MountDir: /my/mount/ebs5
     Name: name5
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: st1
 Monitoring:
   DetailedMonitoring: true

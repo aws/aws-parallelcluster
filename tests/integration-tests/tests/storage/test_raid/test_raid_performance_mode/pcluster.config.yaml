@@ -7,27 +7,27 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: queue-0
-        ComputeResources:
-          - Name: compute-resource-0
-            {% if scheduler == "Awsbatch" %}
-            InstanceTypes: {{ instance }}
-            MinvCpus: 4
-            DesiredVcpus: 4
-            {% else %}
-            InstanceType: {{ instance }}
-            MinCount: 1
-            {% endif %}
-        Networking:
-          SubnetIds:
-            - {{ private_subnet_id }}
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          MinvCpus: 4
+          DesiredVcpus: 4
+          {% else %}
+          InstanceType: {{ instance }}
+          MinCount: 1
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: /raid_dir
     StorageType: Ebs
     Name: raid_type1
-    Settings:
+    EbsSettings:
       VolumeType: io1
       Size: 15
       Iops: 750

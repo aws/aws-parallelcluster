@@ -15,16 +15,16 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
-    Queues:
-      - Name: queue-0
-        ComputeType: SPOT
-        Networking:
-          SubnetId: {{ public_subnet_id }}
-        ComputeResources:
-          - Name: compute-resource-0
-            InstanceTypes: {{ instance }}
-            MinvCpus: 1
-            MaxvCpus: 3
-            DesiredVcpus: 2
-            SpotBidPercentage: 35
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue-0
+      CapacityType: SPOT
+      Networking:
+        SubnetId: {{ public_subnet_id }}
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceTypes: {{ instance }}
+          MinvCpus: 1
+          MaxvCpus: 3
+          DesiredVcpus: 2
+          SpotBidPercentage: 35

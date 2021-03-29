@@ -11,65 +11,65 @@ HeadNode:
     Port: 8443
     AllowedIps: 0.0.0.0/0
 Scheduling:
-  Slurm:
-    Queues:
-      - Name: queue1
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.2xlarge
-          - Name: compute_resource2
-            InstanceType: c4.2xlarge
-      - Name: queue2
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - Name: compute_resource1
-            InstanceType: c5.2xlarge
-            MaxCount: 5
-          - Name: compute_resource2
-            InstanceType: c4.2xlarge
+  Scheduler: slurm
+  Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.2xlarge
+          MaxCount: 5
+        - Name: compute_resource2
+          InstanceType: c4.2xlarge
 SharedStorage:
   - MountDir: /my/mount/ebs1
     Name: name1
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: gp2
       Size: 150
       Encrypted: True
   - MountDir: /my/mount/ebs2
     Name: name2
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: io1
       Size: 150
       Encrypted: True
   - MountDir: /my/mount/ebs3
     Name: name3
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: sc1
       Size: 150
       Encrypted: True
   - MountDir: /my/mount/ebs4
     Name: name4
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: st1
       Encrypted: True
   - MountDir: /my/mount/ebs5
     Name: name5
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: gp2
       Encrypted: True
   - MountDir: /my/mount/raid1
     Name: name6
     StorageType: Ebs
-    Settings:
+    EbsSettings:
       VolumeType: gp2
       Size: 20
       Iops: 100
@@ -80,14 +80,14 @@ SharedStorage:
   - MountDir: /my/mount/efs1
     Name: name7
     StorageType: Efs
-    Settings:
+    EfsSettings:
       ThroughputMode: bursting
       PerformanceMode: generalPurpose
       Encrypted: False
   - MountDir: /my/mount/fsx1
     Name: name8
     StorageType: FsxLustre
-    Settings:
+    FsxLustreSettings:
       StorageCapacity: 1200
       WeeklyMaintenanceStartTime: "1:00:00"
 Monitoring:

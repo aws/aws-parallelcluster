@@ -7,15 +7,15 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
-    Settings:
-      ScaledownIdletime: {{ scaledown_idletime }}
-    Queues:
-      - Name: queue-0
-        ComputeResources:
-          - Name: compute-resource-0
-            InstanceType: {{ instance }}
-            MaxCount: {{ max_queue_size }}
-        Networking:
-          SubnetIds:
-            - {{ public_subnet_id }}
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
+  Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+          MaxCount: {{ max_queue_size }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}

@@ -13,9 +13,9 @@ import pytest
 
 from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.common import AWSClientError
-from pcluster.models.cluster_config import ComputeType
+from pcluster.models.cluster_config import CapacityType
 from pcluster.validators.ec2_validators import (
-    ComputeTypeValidator,
+    CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -170,23 +170,23 @@ def test_key_pair_validator(mocker, key_pair, side_effect, expected_message):
 
 
 @pytest.mark.parametrize(
-    "compute_type, supported_usage_classes, expected_message",
+    "capacity_type, supported_usage_classes, expected_message",
     [
-        (ComputeType.ONDEMAND, ["ondemand", "spot"], None),
-        (ComputeType.SPOT, ["ondemand", "spot"], None),
-        (ComputeType.ONDEMAND, ["ondemand"], None),
-        (ComputeType.SPOT, ["spot"], None),
-        (ComputeType.SPOT, [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
+        (CapacityType.ONDEMAND, ["ondemand", "spot"], None),
+        (CapacityType.SPOT, ["ondemand", "spot"], None),
+        (CapacityType.ONDEMAND, ["ondemand"], None),
+        (CapacityType.SPOT, ["spot"], None),
+        (CapacityType.SPOT, [], "Could not check support for usage class 'spot' with instance type 'instance-type'"),
         (
-            ComputeType.ONDEMAND,
+            CapacityType.ONDEMAND,
             [],
             "Could not check support for usage class 'ondemand' with instance type 'instance-type'",
         ),
-        (ComputeType.SPOT, ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
-        (ComputeType.ONDEMAND, ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
+        (CapacityType.SPOT, ["ondemand"], "Usage type 'spot' not supported with instance type 'instance-type'"),
+        (CapacityType.ONDEMAND, ["spot"], "Usage type 'ondemand' not supported with instance type 'instance-type'"),
     ],
 )
-def test_compute_type_validator(mocker, compute_type, supported_usage_classes, expected_message):
+def test_capacity_type_validator(mocker, capacity_type, supported_usage_classes, expected_message):
     mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.get_instance_type_info",
@@ -194,5 +194,5 @@ def test_compute_type_validator(mocker, compute_type, supported_usage_classes, e
             {"InstanceType": "instance-type", "SupportedUsageClasses": supported_usage_classes}
         ),
     )
-    actual_failures = ComputeTypeValidator().execute(compute_type=compute_type, instance_type="instance-type")
+    actual_failures = CapacityTypeValidator().execute(capacity_type=capacity_type, instance_type="instance-type")
     assert_failure_messages(actual_failures, expected_message)

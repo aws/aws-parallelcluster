@@ -10,7 +10,7 @@ HeadNode:
     AdditionalIamPolicies:
       - Policy: {{ iam_policies }} # Todo: change it to arn instead of name
 Scheduling:
-  {{ scheduler }}:
+  Scheduler: {{ scheduler }}
     Queues:
       - Name: queue-0
         Iam:
@@ -18,7 +18,7 @@ Scheduling:
             - Policy: {{ iam_policies }}
         ComputeResources:
           - Name: compute-resource-0
-            {% if scheduler == "Awsbatch" %}
+            {% if scheduler == "awsbatch" %}
             InstanceTypes: {{ instance }}
             {% else %}
             InstanceType: {{ instance }}

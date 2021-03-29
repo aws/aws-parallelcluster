@@ -34,9 +34,10 @@ HeadNode:
     Port: 8443  # 8443
     AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
 Scheduling:
-  Awsbatch:
-    Queues:
-      - Name: String  # queue
+  Scheduler: awsbatch
+  Queues:
+    - Name: String  # queue
+      ComputeSettings:
         LocalStorage:
           RootVolume:
             Size: 38  # 35
@@ -44,31 +45,31 @@ Scheduling:
           EphemeralVolume:
             Encrypted: true  # true
             MountDir: String  # /scratch
-        ComputeType: ONDEMAND  # ONDEMAND | SPOT
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-          AssignPublicIp: true  # true|false
-          SecurityGroups:
-            - sg-12345678  # sg-xxxx
-          PlacementGroup:
-            Enabled: true  # true
-            Id: String
-          Proxy:
-            HttpProxyAddress: String  # https://proxy-address:port
-        ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
-          - Name: compute_resource
-            InstanceTypes: optimal,c4.xlarge,c5.large
-            MinvCpus: 0  # 0
-            DesiredvCpus: 10
-            MaxvCpus: 20
-            SpotBidPercentage: 0.5
-            DisableSimultaneousMultithreading: false
+      CapacityType: ONDEMAND  # ONDEMAND | SPOT
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        AssignPublicIp: true  # true|false
+        SecurityGroups:
+          - sg-12345678  # sg-xxxx
+        PlacementGroup:
+          Enabled: true  # true
+          Id: String
+        Proxy:
+          HttpProxyAddress: String  # https://proxy-address:port
+      ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
+        - Name: compute_resource
+          InstanceTypes: optimal,c4.xlarge,c5.large
+          MinvCpus: 0  # 0
+          DesiredvCpus: 10
+          MaxvCpus: 20
+          SpotBidPercentage: 0.5
+          DisableSimultaneousMultithreading: false
 SharedStorage:
   - MountDir: /my/mount/point
     StorageType: Ebs
     Name: name1
-    Settings:
+    EbsSettings:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 10
       Size: 20
@@ -82,7 +83,7 @@ SharedStorage:
   - MountDir: /my/mount/point2
     StorageType: Efs
     Name: name2
-    Settings:
+    EfsSettings:
       Encrypted: true  # true
       KmsKeyId: String  # id-xxx
       PerformanceMode: maxIO  # generalPurpose | maxIO
@@ -92,7 +93,7 @@ SharedStorage:
   - MountDir: /my/mount/point3
     StorageType: FsxLustre
     Name: name3
-    Settings:
+    FsxLustreSettings:
       StorageCapacity: 3600  # 3600
       DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 10  # 1024
