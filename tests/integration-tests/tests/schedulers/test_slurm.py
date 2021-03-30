@@ -129,7 +129,7 @@ def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clus
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4, 1)
+    _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4)
     _test_partition_states(
         scheduler_commands,
         cluster.cfn_name,
@@ -181,7 +181,7 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1, 1)
+    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1)
     _test_status_check_replacement(
         remote_command_executor,
         scheduler_commands,
@@ -213,11 +213,10 @@ def _assert_cluster_initial_conditions(
     expected_num_dummy,
     expected_num_instance_node,
     expected_num_static,
-    expected_num_dynamic,
 ):
     """Assert that expected nodes are in cluster."""
     cluster_node_states = scheduler_commands.get_nodes_status()
-    c5l_nodes, instance_nodes, static_nodes, dynamic_nodes = [], [], [], []
+    c5l_nodes, instance_nodes, static_nodes = [], [], []
     logging.info(cluster_node_states)
     for nodename, node_states in cluster_node_states.items():
         if "c5l" in nodename:
@@ -228,12 +227,9 @@ def _assert_cluster_initial_conditions(
         if node_states == "idle":
             if "-st-" in nodename:
                 static_nodes.append(nodename)
-            if "-dy-" in nodename:
-                dynamic_nodes.append(nodename)
     assert_that(len(c5l_nodes)).is_equal_to(expected_num_dummy)
     assert_that(len(instance_nodes)).is_equal_to(expected_num_instance_node)
     assert_that(len(static_nodes)).is_equal_to(expected_num_static)
-    assert_that(len(dynamic_nodes)).is_equal_to(expected_num_dynamic)
 
 
 def _test_partition_states(
