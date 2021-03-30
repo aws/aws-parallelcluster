@@ -28,6 +28,8 @@ CHANGELOG
 - Remove `amis.txt` file.
 - Remove additional EBS volume attached to the head node by default. 
 - Change NICE DCV session storage path to `/home/{UserName}`.
+- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket 
+per cluster. 
 
 2.x.x
 ------
