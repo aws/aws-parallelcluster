@@ -152,7 +152,8 @@ def test_duplicate_instance_type_validator(instance_type_list, expected_message)
 )
 def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
     if efa_enabled:
-        mocker.patch(
+        mock_aws_api(mocker)
+        get_instance_type_info_mock = mocker.patch(
             "common.boto3.ec2.Ec2Client.get_instance_type_info",
             return_value=InstanceTypeInfo(
                 {
@@ -165,6 +166,8 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
 
     actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support)
     assert_failure_messages(actual_failures, expected_message)
+    if efa_enabled:
+        get_instance_type_info_mock.assert_called_with(instance_type)
 
 
 @pytest.mark.parametrize(
