@@ -23,5 +23,5 @@ Scheduling:
           InstanceType: {{ instance }}
           MinvCpus: 2
           MaxvCpus: 4
-          DesiredVcpus: 3
+          DesiredvCpus: 3
           SpotBidPercentage: 70
