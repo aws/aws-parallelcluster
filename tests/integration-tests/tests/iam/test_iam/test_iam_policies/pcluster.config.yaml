@@ -8,21 +8,25 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     AdditionalIamPolicies:
-      - Policy: {{ iam_policies }} # Todo: change it to arn instead of name
+      {% for policy in iam_policies %}
+      - Policy: {{ policy }} # Todo: change it to arn instead of name
+      {% endfor %}
 Scheduling:
   Scheduler: {{ scheduler }}
-    Queues:
-      - Name: queue-0
-        Iam:
-          AdditionalIamPolicies:
-            - Policy: {{ iam_policies }}
-        ComputeResources:
-          - Name: compute-resource-0
-            {% if scheduler == "awsbatch" %}
-            InstanceTypes: {{ instance }}
-            {% else %}
-            InstanceType: {{ instance }}
-            {% endif %}
-        Networking:
-          SubnetIds:
-            - {{ private_subnet_id }}
+  Queues:
+    - Name: queue-0
+      Iam:
+        AdditionalIamPolicies:
+          {% for policy in iam_policies %}
+          - Policy: {{ policy }} # Todo: change it to arn instead of name
+          {% endfor %}
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
