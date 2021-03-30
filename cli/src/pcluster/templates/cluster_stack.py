@@ -730,7 +730,6 @@ class ClusterCdkStack(core.Stack):
             )
 
         # Mount Target for Head Node
-        head_node_sgs = self._get_head_node_security_groups()
         self._add_efs_mount_target(
             id,
             efs_id,

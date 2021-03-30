@@ -392,8 +392,7 @@ def get_mount_name(fsx_fs_id, region):
 
 
 def get_fsx_fs_id(cluster, region):
-    fsx_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="FSXSubstack")[0]
-    return utils.retrieve_cfn_outputs(fsx_stack, region).get("FileSystemId")
+    return utils.retrieve_cfn_outputs(cluster.cfn_name, region).get("FSXIds")
 
 
 def _get_storage_type(fsx):
