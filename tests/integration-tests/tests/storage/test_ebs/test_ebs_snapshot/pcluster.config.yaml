@@ -15,7 +15,7 @@ Scheduling:
           {% if scheduler == "awsbatch" %}
           InstanceTypes: {{ instance }}
           MinvCpus: 1
-          DesiredVcpus: 1
+          DesiredvCpus: 1
           {% else %}
           InstanceType: {{ instance }}
           MinCount: 1
