@@ -365,7 +365,7 @@ def _is_ganglia_enabled(parameters):
     try:
         cfn_extra_json = utils.get_cfn_param(parameters, "ExtraJson")
         is_ganglia_enabled = json.loads(cfn_extra_json).get("cfncluster").get("ganglia_enabled") == "yes"
-    except Exception:
+    except Exception:  # nosec
         pass
     return is_ganglia_enabled
 
@@ -517,7 +517,12 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
         log_message = "SSH command: {0}".format(cmd)
         if not args.dryrun:
             LOGGER.debug(log_message)
-            os.system(cmd)
+            # A nosec comment is appended to the following line in order to disable the B605 check.
+            # This check is disabled for the following reasons:
+            # - The args passed to the remote command are sanitized.
+            # - The default command to which these args is known.
+            # - Users have full control over any customization of the command to which args are passed.
+            os.system(cmd)  # nosec nosemgrep
         else:
             LOGGER.info(log_message)
     except KeyboardInterrupt:

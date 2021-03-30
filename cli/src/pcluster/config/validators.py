@@ -698,7 +698,7 @@ def url_validator(param_key, param_value, pcluster_config):
 
     else:
         try:
-            urllib.request.urlopen(param_value)
+            urllib.request.urlopen(param_value)  # nosec nosemgrep
         except urllib.error.HTTPError as e:
             warnings.append("{0} {1} {2}".format(param_value, e.code, e.reason))
         except urllib.error.URLError as e:

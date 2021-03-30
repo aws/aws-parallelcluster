@@ -463,7 +463,7 @@ class AWSBstatCommand(object):
             single_jobs = []
             jobs_with_children = []
             for status in job_status:
-                next_token = ""
+                next_token = ""  # nosec
                 while next_token is not None:
                     response = self.batch_client.list_jobs(jobStatus=status, jobQueue=job_queue, nextToken=next_token)
 
