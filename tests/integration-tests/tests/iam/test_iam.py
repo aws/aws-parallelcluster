@@ -106,7 +106,7 @@ def _check_lambda_role(cfn_client, lambda_client, stack_name, lambda_role_name, 
 def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factory):
     """Test IAM Policies"""
     cluster_config = pcluster_config_reader(
-        iam_policies="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess, arn:aws:iam::aws:policy/AWSBatchFullAccess"
+        iam_policies=["arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess", "arn:aws:iam::aws:policy/AWSBatchFullAccess"]
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
