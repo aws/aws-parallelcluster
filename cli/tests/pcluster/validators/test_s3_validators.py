@@ -51,6 +51,8 @@ def test_s3_bucket_uri_validator(mocker, url, expected_message):
     ],
 )
 def test_s3_bucket_region_validator(mocker, bucket, bucket_region, cluster_region, expected_message):
-    mocker.patch("common.boto3.s3.S3Client.get_bucket_region", return_value=bucket_region)
+    mock_aws_api(mocker)
+    get_bucket_region_mock = mocker.patch("common.boto3.s3.S3Client.get_bucket_region", return_value=bucket_region)
     actual_failures = S3BucketRegionValidator().execute(bucket=bucket, region=cluster_region)
     assert_failure_messages(actual_failures, expected_message)
+    get_bucket_region_mock.assert_called_with(bucket)
