@@ -734,7 +734,7 @@ class ClusterCdkStack(core.Stack):
         self._add_efs_mount_target(
             id,
             efs_id,
-            head_node_sgs,
+            compute_node_sgs,
             self.config.head_node.networking.subnet_id,
             checked_availability_zones,
             new_file_system,
