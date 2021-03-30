@@ -122,8 +122,8 @@ def test_createami_wrong_os(region, instance, os, request, pcluster_config_reade
     """Test error message when os provide is different from the os of custom AMI"""
     cluster_config = pcluster_config_reader()
 
-    # ubuntu1804 is specified in the config file but an AMI of alinux2 is provided
-    wrong_os = "alinux2"
+    # ubuntu1804 is specified in the config file but an AMI of centos8 is provided
+    wrong_os = "centos8"
     logging.info("Asserting os fixture is different from wrong_os variable")
     assert_that(os != wrong_os).is_true()
     base_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture)
