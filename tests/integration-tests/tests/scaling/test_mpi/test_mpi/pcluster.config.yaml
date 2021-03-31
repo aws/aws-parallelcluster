@@ -19,3 +19,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
