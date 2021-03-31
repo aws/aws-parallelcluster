@@ -14,13 +14,6 @@ from pcluster.models.cluster_config import (
 
 
 @pytest.fixture
-def aws_api_mock(mocker):
-    mocked_aws_api = mocker.MagicMock(autospec=True)
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=mocked_aws_api)
-    return mocked_aws_api
-
-
-@pytest.fixture
 def instance_type_info_mock(aws_api_mock):
     aws_api_mock.ec2.get_instance_type_info.return_value = InstanceTypeInfo(
         {
