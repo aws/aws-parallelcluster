@@ -4,7 +4,8 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-    AdditionalSecurityGroups: {{ additional_sg }}
+    AdditionalSecurityGroups:
+      - {{ additional_sg }}
   Ssh:
     KeyName: {{ key_name }}
     AllowedIps: {{ ssh_from }}
@@ -26,4 +27,5 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_additional_cidr_subnet_id }}
-        AdditionalSecurityGroups: {{ additional_sg }}
+        AdditionalSecurityGroups:
+          - {{ additional_sg }}
