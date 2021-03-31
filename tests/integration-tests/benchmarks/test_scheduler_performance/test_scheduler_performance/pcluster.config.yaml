@@ -15,6 +15,7 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           InstanceType: {{ instance }}
+          MaxCount: {{ scaling_target + 10 }}
       Networking:
         SubnetIds:
-          - {{ public_subnet_id }}
+          - {{ private_subnet_id }}

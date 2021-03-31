@@ -251,7 +251,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
 
     # Restore backup into a new cluster
     cluster_config_restore = pcluster_config_reader(
-        config_file="pcluster_restore_fsx.config.ini", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId")
+        config_file="pcluster_restore_fsx.config.yaml", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId")
     )
 
     cluster_restore = clusters_factory(cluster_config_restore)

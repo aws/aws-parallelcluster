@@ -299,11 +299,6 @@ def clusters_factory(request, region):
         )
 
 
-@pytest.fixture(scope="class")
-def cluster_model(scheduler):
-    return "HIT" if scheduler == "slurm" else "SIT"
-
-
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
 
