@@ -16,8 +16,6 @@ import pytest
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
-
-from tests.schedulers.test_slurm import _assert_job_state
 from time_utils import minutes, seconds
 from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
 
@@ -29,6 +27,7 @@ from tests.common.scaling_common import (
     test_maintain_initial_size,
 )
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.schedulers.test_slurm import _assert_job_state
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
