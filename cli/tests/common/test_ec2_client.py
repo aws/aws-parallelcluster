@@ -110,19 +110,44 @@ def test_get_supported_architectures(mocker, instance_type, supported_architectu
 @pytest.mark.parametrize(
     "os, architecture, filters, boto3_response, error_message",
     [
-        ("alinux2", "arm64", None, {"Images": [{"ImageId": "ami-00e87074e52e6"}]}, None),
-        ("alinux2", "x86_64", AmiSearchFilters(owner="self"), {"Images": [{"ImageId": "ami-00e87074e52e6"}]}, None),
+        (
+            "alinux2",
+            "arm64",
+            None,
+            {"Images": [{"ImageId": "ami-00e87074e52e6", "CreationDate": "2018-11-09T01:21:00.000Z"}]},
+            None,
+        ),
+        (
+            "alinux2",
+            "x86_64",
+            AmiSearchFilters(owner="self"),
+            {"Images": [{"ImageId": "ami-00e87074e52e6", "CreationDate": "2018-11-09T01:21:00.000Z"}]},
+            None,
+        ),
         (
             "alinux2",
             "x86_64",
             AmiSearchFilters(owner="self", tags=[Tag("key1", "value1"), Tag("key2", "value2")]),
-            {"Images": [{"ImageId": "ami-00e87074e52e6"}]},
+            {"Images": [{"ImageId": "ami-00e87074e52e6", "CreationDate": "2018-11-09T01:21:00.000Z"}]},
             None,
         ),
         ("alinux2", "arm64", None, Exception("error message"), "error message"),
         ("alinux2", "arm64", None, {"Images": []}, "Cannot find official ParallelCluster AMI"),
+        (
+            "alinux2",
+            "arm64",
+            None,
+            {
+                "Images": [
+                    {"ImageId": "ami-older-1", "CreationDate": "2018-11-09T01:21:00.000Z"},
+                    {"ImageId": "ami-00e87074e52e6", "CreationDate": "2018-11-09T01:22:00.000Z"},
+                    {"ImageId": "ami-older-2", "CreationDate": "2017-11-09T01:21:00.000Z"},
+                ]
+            },
+            None,
+        ),
     ],
-    ids=["no filtering", "filtering owner", "filtering full", "error from boto3", "empty ami list"],
+    ids=["no filtering", "filtering owner", "filtering full", "error from boto3", "empty ami list", "multiple results"],
 )
 def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_response, error_message):
     expected_ami_id = "ami-00e87074e52e6"
