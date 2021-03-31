@@ -83,7 +83,7 @@ class Ec2Client(Boto3Client):
         result = self._client.describe_images(ImageIds=[ami_id])
         if result.get("Images"):
             return result.get("Images")[0]
-        raise AWSClientError(function_name="describe_image", message=f"Image {ami_id} not found")
+        raise AWSClientError(function_name="describe_images", message=f"Image {ami_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
     def describe_images(self, ami_ids, filters, owners):
@@ -170,10 +170,11 @@ class Ec2Client(Boto3Client):
             Filters=filters,
         ).get("Images")
         if not images:
-            raise AWSClientError(function_name="describe_images", message=f"Cannot find official ParallelCluster AMI")
+            raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
         return images[0].get("ImageId")
 
-    def get_official_image_name_prefix(self, os, architecture):
+    @staticmethod
+    def _get_official_image_name_prefix(os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
         suffixes = {
             "alinux2": "amzn2-hvm",

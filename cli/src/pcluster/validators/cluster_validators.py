@@ -696,7 +696,7 @@ class _LaunchTemplateValidator(Validator, ABC):
             else:
                 self._add_failure(
                     f"Unable to validate configuration parameters for instance type {kwargs['InstanceType']}. "
-                    "Please double check your cluster configuration.\n{message}",
+                    f"Please double check your cluster configuration.\n{message}",
                     FailureLevel.ERROR,
                 )
 

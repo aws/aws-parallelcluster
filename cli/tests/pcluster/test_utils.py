@@ -379,7 +379,6 @@ def test_get_ebs_snapshot_info(boto3_stubber, snapshot_id, raise_exceptions, err
             assert_that(sysexit.value.code).is_not_equal_to(0)
 
 
-@pytest.mark.cache
 class TestCache:
     invocations = []
 

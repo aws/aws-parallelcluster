@@ -72,6 +72,7 @@ def test_setup_bucket_with_resources_success(
     expected_bucket_name,
     provided_bucket_name,
     expected_remove_bucket,
+    aws_api_mock,
 ):
     """Verify that create_bucket_with_batch_resources behaves as expected."""
     # mock calls for _setup_cluster_bucket
@@ -86,8 +87,6 @@ def test_setup_bucket_with_resources_success(
 
     # mock calls from _upload_artifacts
     upload_resources_artifacts_mock = mocker.patch("pcluster.models.cluster.upload_resources_artifacts")
-    mock_aws_api(mocker)
-    mocker.patch("common.boto3.s3.S3Client.put_object")
 
     cluster = _mock_cluster(mocker, scheduler, bucket_name=provided_bucket_name)
     cluster.bucket = cluster._setup_cluster_bucket()
@@ -110,7 +109,7 @@ def test_setup_bucket_with_resources_success(
     assert_that(cluster.bucket.remove_on_deletion).is_equal_to(expected_remove_bucket)
 
 
-def test_setup_bucket_with_resources_creation_failure(mocker, caplog):
+def test_setup_bucket_with_resources_creation_failure(mocker, caplog, aws_api_mock):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of bucket creation failure."""
     bucket_name = "parallelcluster-123"
     mock_artifact_dir = "artifact_dir"
@@ -122,7 +121,6 @@ def test_setup_bucket_with_resources_creation_failure(mocker, caplog):
     )
     mocker.patch("pcluster.models.cluster.create_s3_bucket", side_effect=client_error)
     mocker.patch("pcluster.models.cluster.check_s3_bucket_exists")
-    mock_aws_api(mocker)
 
     cluster = _mock_cluster(mocker, "slurm")
     with pytest.raises(ClientError, match=error):
