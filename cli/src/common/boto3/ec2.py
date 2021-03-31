@@ -171,7 +171,7 @@ class Ec2Client(Boto3Client):
         ).get("Images")
         if not images:
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
-        return images[0].get("ImageId")
+        return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
 
     @staticmethod
     def _get_official_image_name_prefix(os, architecture):
