@@ -279,12 +279,12 @@ class Cluster:
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
 
-        except ClusterActionError as e:
-            raise e
         except Exception as e:
             if not creation_result and self.bucket:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete()
+            if isinstance(e, ClusterActionError):
+                raise e
             raise ClusterActionError(str(e))
 
     def _validate_and_parse_config(self, suppress_validators, validation_failure_level, config_dict=None):
