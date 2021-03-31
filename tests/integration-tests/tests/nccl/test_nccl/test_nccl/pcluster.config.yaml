@@ -11,10 +11,15 @@ Scheduling:
   SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
   Queues:
-    - Name: queue-0
+    - Name: ondemand1
       ComputeResources:
-        - Name: compute-resource-0
+        - Name: ondemand-i1
+          InstanceType: c5.large
+        - Name: ondemand-i1
           InstanceType: {{ instance }}
+          MinCount: 2
       Networking:
+        PlacementGroup:
+          Enabled: true
         SubnetIds:
-          - {{ public_subnet_id }}
+          - {{ private_subnet_id }}

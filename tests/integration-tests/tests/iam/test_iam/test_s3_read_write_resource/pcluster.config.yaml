@@ -1,20 +1,28 @@
 Image:
   Os: {{ os }}
+Iam:
+  Roles:
+    CustomLambdaResources: {{ iam_lambda_role }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  Iam:
+    InstanceRole: {{ ec2_iam_role }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  SlurmSettings:
-    ScaledownIdletime: {{ scaledown_idletime }}
   Queues:
     - Name: queue-0
+      Iam:
+        InstanceRole: {{ ec2_iam_role }}
       ComputeResources:
         - Name: compute-resource-0
           InstanceType: {{ instance }}
+          Efa:
+            Enabled: false
+            GdrSupport: false
       Networking:
         SubnetIds:
-          - {{ public_subnet_id }}
+          - {{ private_subnet_id }}

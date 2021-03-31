@@ -17,7 +17,7 @@ def test_resource_bucket(region, scheduler, pcluster_config_reader, clusters_fac
     boto3.resource("s3").Bucket(bucket_name).upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
 
     cluster_config = pcluster_config_reader(
-        config_file="pcluster.config_{0}.ini".format(scheduler), resource_bucket=bucket_name
+        config_file="pcluster.config_{0}.yaml".format(scheduler), resource_bucket=bucket_name
     )
     cluster = clusters_factory(cluster_config)
     assert_that(cluster.cfn_outputs.get("ResourcesS3Bucket")).is_equal_to(bucket_name)
@@ -27,7 +27,7 @@ def test_resource_bucket(region, scheduler, pcluster_config_reader, clusters_fac
     # We need to make sure the bucket name in cfn NEVER gets updated
     update_bucket_name = s3_bucket_factory()
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config_{0}.ini".format(scheduler), resource_bucket=update_bucket_name
+        config_file="pcluster.config_{0}.yaml".format(scheduler), resource_bucket=update_bucket_name
     )
     cluster.config_file = str(updated_config_file)
     cluster.update()

@@ -25,14 +25,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 
 @pytest.mark.usefixtures("os", "instance")
 def test_iam_roles(
-    region,
-    scheduler,
-    common_pcluster_policies,
-    role_factory,
-    pcluster_config_reader,
-    clusters_factory,
-    cluster_model,
-    test_datadir,
+    region, scheduler, common_pcluster_policies, role_factory, pcluster_config_reader, clusters_factory, test_datadir
 ):
     is_awsbatch = scheduler == "awsbatch"
     if is_awsbatch:
@@ -45,9 +38,9 @@ def test_iam_roles(
     lambda_role_name = role_factory("lambda", [lambda_policies])
 
     # Copy the config file template for reuse in update.
-    config_file_name = cluster_model + ".ini"
+    config_file_name = "pcluster.config.yaml"
     config_file_path = os.path.join(str(test_datadir), config_file_name)
-    updated_config_file_name = cluster_model + ".update.ini"
+    updated_config_file_name = "pcluster.config.update.yaml"
     updated_config_file_path = os.path.join(str(test_datadir), updated_config_file_name)
     copyfile(config_file_path, updated_config_file_path)
 
