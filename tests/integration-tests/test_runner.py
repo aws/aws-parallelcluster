@@ -54,11 +54,10 @@ TEST_DEFAULTS = {
     "custom_cookbook_url": None,
     "createami_custom_cookbook_url": None,
     "cookbook_git_ref": None,
+    "node_git_ref": None,
+    "ami_owner": None,
     "createami_custom_node_url": None,
-    "custom_template_url": None,
     "custom_awsbatchcli_url": None,
-    "custom_hit_template_url": None,
-    "custom_cw_dashboard_template_url": None,
     "custom_ami": None,
     "pre_install": None,
     "post_install": None,
@@ -215,32 +214,10 @@ def _init_argparser():
         type=_is_url,
     )
     custom_group.add_argument(
-        "--cookbook-git-ref",
-        help="Git ref of the custom cookbook used for the createami command.",
-        default=TEST_DEFAULTS.get("--cookbook-git-ref"),
-    )
-    custom_group.add_argument(
         "--createami-custom-node-url",
         help="URL to a custom node package for the createami command.",
         default=TEST_DEFAULTS.get("createami_custom_node_url"),
         type=_is_url,
-    )
-    custom_group.add_argument(
-        "--custom-template-url",
-        help="URL to a custom cfn template.",
-        default=TEST_DEFAULTS.get("custom_template_url"),
-        type=_is_url,
-    )
-    custom_group.add_argument(
-        "--custom-hit-template-url",
-        help="URL to a custom hit cfn template.",
-        default=TEST_DEFAULTS.get("custom_hit_template_url"),
-        type=_is_url,
-    )
-    custom_group.add_argument(
-        "--custom-cw-dashboard-template-url",
-        help="URL to a custom dashboard cfn template.",
-        default=TEST_DEFAULTS.get("custom_cw_dashboard_template_url"),
     )
     custom_group.add_argument(
         "--custom-awsbatchcli-url",
@@ -249,13 +226,30 @@ def _init_argparser():
         type=_is_url,
     )
     custom_group.add_argument(
-        "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
-    )
-    custom_group.add_argument(
         "--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install")
     )
     custom_group.add_argument(
         "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install")
+    )
+
+    ami_group = parser.add_argument_group("AMI selection parameters")
+    ami_group.add_argument(
+        "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
+    )
+    ami_group.add_argument(
+        "--cookbook-git-ref",
+        help="Git ref of the custom cookbook package used to build the AMI.",
+        default=TEST_DEFAULTS.get("cookbook_git_ref"),
+    )
+    ami_group.add_argument(
+        "--node-git-ref",
+        help="Git ref of the custom node package used to build the AMI.",
+        default=TEST_DEFAULTS.get("node_git_ref"),
+    )
+    ami_group.add_argument(
+        "--ami-owner",
+        help="Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon.",
+        default=TEST_DEFAULTS.get("ami_owner"),
     )
 
     banchmarks_group = parser.add_argument_group("Benchmarks")
@@ -425,6 +419,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
 
     _set_custom_packages_args(args, pytest_args)
+    _set_ami_args(args, pytest_args)
     _set_custom_stack_args(args, pytest_args)
     return pytest_args
 
@@ -439,32 +434,31 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.createami_custom_cookbook_url:
         pytest_args.extend(["--createami-custom-chef-cookbook", args.createami_custom_cookbook_url])
 
-    if args.cookbook_git_ref:
-        pytest_args.extend(["--cookbook-git-ref", args.cookbook_git_ref])
-
     if args.createami_custom_node_url:
         pytest_args.extend(["--createami-custom-node-package", args.createami_custom_node_url])
 
-    if args.custom_template_url:
-        pytest_args.extend(["--template-url", args.custom_template_url])
-
-    if args.custom_hit_template_url:
-        pytest_args.extend(["--hit-template-url", args.custom_hit_template_url])
-
-    if args.custom_cw_dashboard_template_url:
-        pytest_args.extend(["--cw-dashboard-template-url", args.custom_cw_dashboard_template_url])
-
     if args.custom_awsbatchcli_url:
         pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
-
-    if args.custom_ami:
-        pytest_args.extend(["--custom-ami", args.custom_ami])
 
     if args.pre_install:
         pytest_args.extend(["--pre-install", args.pre_install])
 
     if args.post_install:
         pytest_args.extend(["--post-install", args.post_install])
+
+
+def _set_ami_args(args, pytest_args):
+    if args.custom_ami:
+        pytest_args.extend(["--custom-ami", args.custom_ami])
+
+    if args.cookbook_git_ref:
+        pytest_args.extend(["--cookbook-git-ref", args.cookbook_git_ref])
+
+    if args.node_git_ref:
+        pytest_args.extend(["--node-git-ref", args.node_git_ref])
+
+    if args.ami_owner:
+        pytest_args.extend(["--ami-owner", args.ami_owner])
 
 
 def _set_custom_stack_args(args, pytest_args):
