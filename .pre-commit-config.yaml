@@ -1,0 +1,48 @@
+repos:
+  - repo: git://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-xml
+      - id: check-yaml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: check-symlinks
+      - id: end-of-file-fixer
+      - id: pretty-format-json
+      - id: requirements-txt-fixer
+      - id: mixed-line-ending
+        args: ['--fix=no']
+
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.9.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-docstrings, flake8-bugbear, flake8-mypy, flake8-colors, pep8-naming]
+        # If flake8 isn't run from the CLI directory it doesn't read in its configuration in the same way.
+        # Paths are relative to the top-level of the repo so the nested shell handles that.
+        entry: bash -c 'cd cli && flake8 $(for arg in $@; do echo -n "../$arg " ; done)'
+
+
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.8.0
+    hooks:
+      - id: isort
+        args: ['-rc', '-w 120', '--settings-path=cli/.isort.cfg']
+
+  - repo: https://github.com/ambv/black
+    rev: 20.8b1
+    hooks:
+      - id: black
+        args: ['-l 120']
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.0
+    hooks:
+      - id: bandit
+        args: ['-r', '-c', 'cli/.bandit.ini', '--exclude', 'tests,cli/tests,cloudformation/tests']

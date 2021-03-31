@@ -17,9 +17,14 @@ EASYCONFIG = "pcluster.configure.easyconfig."
 NETWORKING = "pcluster.configure.networking."
 UTILS = "pcluster.configure.utils."
 
-TEMP_PATH_FOR_CONFIG = os.path.join(tempfile.gettempdir(), "test_pcluster_configure")
 PUBLIC_PRIVATE_CONFIGURATION = NetworkConfiguration.PUBLIC_PRIVATE.value.config_type
 PUBLIC_CONFIGURATION = NetworkConfiguration.PUBLIC.value.config_type
+
+
+@pytest.fixture()
+def temp_path_for_config():
+    with tempfile.TemporaryDirectory() as tmp_dir_name:
+        yield os.path.join(tmp_dir_name, "test_pcluster_configure")
 
 
 def _mock_instance_type_info(mocker, instance_type="t2.micro"):
@@ -429,6 +434,7 @@ def _run_input_test(
     error,
     output,
     capsys,
+    temp_path_for_config,
     with_input=False,
     head_node_instance="c5.xlarge",
     compute_instance="g3.8xlarge",
@@ -452,10 +458,10 @@ def _run_input_test(
 
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
+def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker)
@@ -468,19 +474,19 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     )
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_no_input_no_automation_no_errors(mocker, capsys, test_datadir):
+def test_no_input_no_automation_no_errors(mocker, capsys, test_datadir, temp_path_for_config):
     """Testing easy config with user hitting return on all prompts."""
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker)
 
-    _run_input_test(mocker, config, error, output, capsys, with_input=False)
+    _run_input_test(mocker, config, error, output, capsys, temp_path_for_config, with_input=False)
 
 
-def test_with_region_arg(mocker, capsys, test_datadir):
+def test_with_region_arg(mocker, capsys, test_datadir, temp_path_for_config):
     """
     Testing easy config with -r/-region provided.
 
@@ -499,10 +505,10 @@ def test_with_region_arg(mocker, capsys, test_datadir):
     )
     input_composer.mock_input(mocker)
     os.environ["AWS_DEFAULT_REGION"] = "env_region_name_to_be_overwritten"
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG, region="eu-west-1")
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config, region="eu-west-1")
 
 
-def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
+def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker)
@@ -516,10 +522,10 @@ def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
     )
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_datadir):
+def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker)
@@ -534,10 +540,10 @@ def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_
     )
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
+def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker)
@@ -552,10 +558,10 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     )
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
+def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker)
@@ -568,10 +574,10 @@ def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_vpc_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
+def test_vpc_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker)
@@ -584,10 +590,10 @@ def test_vpc_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir):
+def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir, temp_path_for_config):
     with pytest.raises(SystemExit):
         config, error, output = get_file_path(test_datadir)
 
@@ -602,10 +608,10 @@ def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir):
         )
         input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
         input_composer.mock_input(mocker)
-        _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+        _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir, caplog):
+def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir, caplog, temp_path_for_config):
     """Testing warning message if the input the VPC does not have corresct parameters (DNS settings)."""
     config, error, output = get_file_path(test_datadir)
 
@@ -620,11 +626,11 @@ def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir
     )
     input_composer.add_sub_automation(vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
     assert_that("WARNING: The VPC does not have the correct parameters set." in caplog.text).is_true()
 
 
-def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir):
+def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     mock_handler = MockHandler(mocker, empty_region=True)
@@ -637,10 +643,10 @@ def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir):
     input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
+def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir, temp_path_for_config):
     """Testing automated VPC creation to create a single public Subnet."""
     config, error, output = get_file_path(test_datadir)
 
@@ -654,10 +660,10 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
     input_composer.add_vpc_sub_automation_empty_region(network_configuration="2")
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
-def test_filtered_subnets_by_az(mocker, capsys, test_datadir):
+def test_filtered_subnets_by_az(mocker, capsys, test_datadir, temp_path_for_config):
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker, mock_availability_zone=False)
@@ -669,7 +675,7 @@ def test_filtered_subnets_by_az(mocker, capsys, test_datadir):
 
     input_composer.mock_input(mocker)
 
-    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
 
 def general_wrapper_for_prompt_testing(

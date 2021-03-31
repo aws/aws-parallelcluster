@@ -1009,7 +1009,7 @@ class ClusterCdkStack(core.Stack):
             },
             "deployConfigFiles": {
                 "files": {
-                    "/tmp/dna.json": {
+                    "/tmp/dna.json": {  # nosec
                         "content": dna_json,
                         "mode": "000644",
                         "owner": "root",
@@ -1022,7 +1022,7 @@ class ClusterCdkStack(core.Stack):
                         "group": "root",
                         "content": "cookbook_path ['/etc/chef/cookbooks']",
                     },
-                    "/tmp/extra.json": {
+                    "/tmp/extra.json": {  # nosec
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
