@@ -39,10 +39,10 @@ python -m test_runner --help
 usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
                       [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
                       [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
-                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] 
-                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-template-url CUSTOM_TEMPLATE_URL]
-                      [--custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--custom-ami CUSTOM_AMI] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
-                      [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
+                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL]
+                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
+                      [--custom-ami CUSTOM_AMI] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks]
+                      [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
                       [--keep-logs-on-cluster-failure] [--keep-logs-on-test-failure] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
 
 Run integration tests suite.
@@ -57,8 +57,8 @@ optional arguments:
   --credential CREDENTIAL
                         STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times.
                         <region> represents the region credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role
-                        to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId)
-                        (default: None)
+                        to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-
+                        assume,externalId) (default: None)
   --retry-on-failures   Retry once more the failed tests after a delay of 60 seconds. (default: False)
   --tests-root-dir TESTS_ROOT_DIR
                         Root dir where integration tests are defined (default: ./tests)
@@ -66,7 +66,7 @@ optional arguments:
 Test dimensions:
   -c TESTS_CONFIG, --tests-config TESTS_CONFIG
                         Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss,
-                        schedulers. Refer to the docs for further details on the config format. (default: None)
+                        schedulers. Refer to the docs for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
   -i [INSTANCES [INSTANCES ...]], --instances [INSTANCES [INSTANCES ...]]
                         AWS instances under test. Ignored when tests-config is used. (default: [])
   -o [OSS [OSS ...]], --oss [OSS [OSS ...]]
@@ -101,20 +101,22 @@ Custom packages and templates:
                         URL to a custom cookbook package for the createami command. (default: None)
   --createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL
                         URL to a custom node package for the createami command. (default: None)
-  --custom-template-url CUSTOM_TEMPLATE_URL
-                        URL to a custom cfn template. (default: None)
-  --custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL
-                        URL to a custom hit cfn template. (default: None)
   --custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL
                         URL to a custom awsbatch cli package. (default: None)
-  --custom-cw-dashboard-template-url CUSTOM_CW_DASHBOARD_TEMPLATE_URL
-                        URL to a custom cw dashboard template. (default: None)
-  --custom-ami CUSTOM_AMI
-                        custom AMI to use for all tests. (default: None)
   --pre-install PRE_INSTALL
                         URL to a pre install script (default: None)
   --post-install POST_INSTALL
                         URL to a post install script (default: None)
+
+AMI selection parameters:
+  --custom-ami CUSTOM_AMI
+                        custom AMI to use for all tests. (default: None)
+  --cookbook-git-ref COOKBOOK_GIT_REF
+                        Git ref of the custom cookbook package used to build the AMI. (default: None)
+  --node-git-ref NODE_GIT_REF
+                        Git ref of the custom node package used to build the AMI. (default: None)
+  --ami-owner AMI_OWNER
+                        Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon. (default: None)
 
 Benchmarks:
   --benchmarks          run benchmarks tests. This disables the execution of all tests defined under the tests directory. (default: False)
