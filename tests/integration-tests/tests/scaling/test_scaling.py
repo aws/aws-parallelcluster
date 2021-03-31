@@ -16,6 +16,8 @@ import pytest
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
+
+from tests.schedulers.test_slurm import _assert_job_state
 from time_utils import minutes, seconds
 from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
 
@@ -42,6 +44,13 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+
+    logging.info("Executing sleep job to start a dynamic node")
+    result = scheduler_commands.submit_command("sleep 1")
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
+        scheduler_commands, job_id, job_state="COMPLETED"
+    )
 
     logging.info("Executing test jobs on cluster")
     remote_command_executor.run_remote_script(test_datadir / "cluster-check.sh", args=["submit", scheduler])
