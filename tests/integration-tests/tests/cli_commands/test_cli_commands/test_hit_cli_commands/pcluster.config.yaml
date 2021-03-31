@@ -14,7 +14,7 @@ Scheduling:
   Queues:
     - Name: ondemand1
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds: {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource-11
           InstanceType: c5.large
@@ -23,7 +23,7 @@ Scheduling:
           MinCount: 1
     - Name: ondemand2
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds: {{ private_subnet_id }}
         AssignPublicIp: false
       ComputeResources:
         - Name: compute-resource-21
