@@ -16,6 +16,8 @@ from assertpy import assert_that
 from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
+from pcluster.models.cluster_config import AmiSearchFilters, Tag
+from pcluster.utils import get_installed_version
 from tests.common.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
@@ -103,3 +105,48 @@ def test_get_supported_architectures(mocker, instance_type, supported_architectu
     assert_that(observed_architectures).is_equal_to(expected_architectures)
 
     get_instance_types_info_patch.assert_called_with(instance_type)
+
+
+@pytest.mark.parametrize(
+    "os, architecture, filters, boto3_response, error_message",
+    [
+        ("alinux2", "arm64", None, {"Images": [{"ImageId": "ami-00e87074e52e6"}]}, None),
+        ("alinux2", "x86_64", AmiSearchFilters(owner="self"), {"Images": [{"ImageId": "ami-00e87074e52e6"}]}, None),
+        (
+            "alinux2",
+            "x86_64",
+            AmiSearchFilters(owner="self", tags=[Tag("key1", "value1"), Tag("key2", "value2")]),
+            {"Images": [{"ImageId": "ami-00e87074e52e6"}]},
+            None,
+        ),
+        ("alinux2", "arm64", None, Exception("error message"), "error message"),
+        ("alinux2", "arm64", None, {"Images": []}, "Cannot find official ParallelCluster AMI"),
+    ],
+    ids=["no filtering", "filtering owner", "filtering full", "error from boto3", "empty ami list"],
+)
+def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_response, error_message):
+    expected_ami_id = "ami-00e87074e52e6"
+    expected_params = {
+        "Filters": [
+            {"Name": "name", "Values": [f"aws-parallelcluster-{get_installed_version()}-amzn2-hvm-{architecture}*"]},
+            {"Name": "owner-alias", "Values": [filters.owner if filters and filters.owner else "amazon"]},
+        ]
+    }
+    if filters and filters.tags:
+        expected_params["Filters"].extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in filters.tags])
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_images",
+            expected_params=expected_params,
+            response=str(boto3_response) if isinstance(boto3_response, Exception) else boto3_response,
+            generate_error=isinstance(boto3_response, Exception),
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+
+    if error_message:
+        with pytest.raises(AWSClientError, match=error_message):
+            Ec2Client().get_official_image_id(os, architecture, filters)
+    else:
+        ami_id = Ec2Client().get_official_image_id(os, architecture, filters)
+        assert_that(ami_id).is_equal_to(expected_ami_id)

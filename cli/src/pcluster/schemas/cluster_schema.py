@@ -34,6 +34,7 @@ from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_
 from pcluster.models.cluster_config import (
     AdditionalIamPolicy,
     AdditionalPackages,
+    AmiSearchFilters,
     AwsbatchClusterConfig,
     AwsbatchComputeResource,
     AwsbatchQueue,
@@ -696,10 +697,23 @@ class AdditionalPackagesSchema(BaseSchema):
         return AdditionalPackages(**data)
 
 
+class AmiSearchFiltersSchema(BaseSchema):
+    """Represent the schema of the AmiSearchFilters section."""
+
+    tags = fields.Nested(TagSchema, many=True, update_policy=UpdatePolicy.UNSUPPORTED)
+    owner = fields.Str(update_policy=UpdatePolicy(UpdatePolicy.UNSUPPORTED))
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AmiSearchFilters(**data)
+
+
 class ClusterDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of Dev Setting."""
 
     cluster_template = fields.Str(update_policy=UpdatePolicy.SUPPORTED)
+    ami_search_filters = fields.Nested(AmiSearchFiltersSchema, update_policy=UpdatePolicy.UNSUPPORTED)
 
     @post_load
     def make_resource(self, data, **kwargs):

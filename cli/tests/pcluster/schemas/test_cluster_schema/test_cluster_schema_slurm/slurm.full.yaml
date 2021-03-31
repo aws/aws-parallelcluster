@@ -167,3 +167,10 @@ DevSettings:
       {"cluster": {"cfn_scheduler_slots": "cores"}}
   AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
+  AmiSearchFilters:
+    Tags:
+    - Key: tag1
+      Value: value1
+    - Key: tag2
+      Value: value2
+    Owner: self

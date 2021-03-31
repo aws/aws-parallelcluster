@@ -156,15 +156,22 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
-    def get_official_image_id(self, os, architecture):
+    def get_official_image_id(self, os, architecture, filters=None):
         """Return the id of the current official image, for the provided os-architecture combination."""
+        owner = filters.owner if filters and filters.owner else "amazon"
+        tags = filters.tags if filters and filters.tags else []
+
+        filters = [
+            {"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]},
+            {"Name": "owner-alias", "Values": [owner]},
+        ]
+        filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
         images = self._client.describe_images(
-            Filters=[
-                {"Name": "name", "Values": ["{0}*".format(self.get_official_image_name_prefix(os, architecture))]},
-                {"Name": "owner-alias", "Values": ["amazon"]},
-            ],
+            Filters=filters,
         ).get("Images")
-        return images[0].get("ImageId") if images else None
+        if not images:
+            raise AWSClientError(function_name="describe_images", message=f"Cannot find official ParallelCluster AMI")
+        return images[0].get("ImageId")
 
     def get_official_image_name_prefix(self, os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
