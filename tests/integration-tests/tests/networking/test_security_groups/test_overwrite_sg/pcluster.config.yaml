@@ -4,7 +4,8 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-    SecurityGroups: {{ vpc_security_group_id }}
+    SecurityGroups:
+      - {{ vpc_security_group_id }}
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
@@ -23,7 +24,8 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_additional_cidr_subnet_id }}
-        SecurityGroups: {{ vpc_security_group_id }}
+        SecurityGroups:
+          - {{ vpc_security_group_id }}
 SharedStorage:
   - MountDir: efs
     Name: efs
