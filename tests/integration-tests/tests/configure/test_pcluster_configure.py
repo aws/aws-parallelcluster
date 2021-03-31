@@ -31,7 +31,7 @@ def test_pcluster_configure(
 ):
     """Verify that the config file produced by `pcluster configure` can be used to create a cluster."""
     skip_if_unsupported_test_options_were_used(request)
-    config_path = test_datadir / "config.ini"
+    config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
         region,
         key_name,
@@ -120,7 +120,7 @@ def test_region_without_t2micro(
     Verify the default instance type (free tier) is retrieved dynamically according to region.
     In other words, t3.micro is retrieved when the region does not contain t2.micro
     """
-    config_path = test_datadir / "config.ini"
+    config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
         region,
         key_name,

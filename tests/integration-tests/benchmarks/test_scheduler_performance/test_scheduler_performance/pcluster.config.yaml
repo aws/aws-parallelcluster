@@ -1,8 +1,5 @@
 Image:
   Os: {{ os }}
-Tags:
-  Key: ConfigFileTag
-  Value: ConfigFileTagValue
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -11,17 +8,14 @@ HeadNode:
     KeyName: {{ key_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
   Queues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes: {{ instance }}
-          MinvCpus: 4
-          DesiredvCpus: 4
-          {% else %}
           InstanceType: {{ instance }}
-          MinCount: 1
+          MaxCount: {{ scaling_target + 10 }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}

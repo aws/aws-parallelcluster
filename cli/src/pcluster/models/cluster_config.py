@@ -318,7 +318,7 @@ class SharedFsx(Resource):
         )
         self._execute_validator(
             FsxStorageTypeOptionsValidator,
-            storage_type=self.fsx_storage_type,
+            fsx_storage_type=self.fsx_storage_type,
             deployment_type=self.deployment_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             drive_cache_type=self.drive_cache_type,
@@ -327,7 +327,7 @@ class SharedFsx(Resource):
             FsxStorageCapacityValidator,
             storage_capacity=self.storage_capacity,
             deployment_type=self.deployment_type,
-            storage_type=self.fsx_storage_type,
+            fsx_storage_type=self.fsx_storage_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             file_system_id=self.file_system_id,
             backup_id=self.backup_id,

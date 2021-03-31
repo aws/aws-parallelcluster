@@ -15,6 +15,7 @@
 import json
 import logging
 import time
+from copy import deepcopy
 from enum import Enum
 from typing import List
 
@@ -393,9 +394,10 @@ class Cluster:
                 )
             # Upload config with default values and sections
             if self.config:
+                config_copy = deepcopy(self.config)
                 result = AWSApi.instance().s3.put_object(
                     bucket_name=self.bucket.name,
-                    body=yaml.dump(ClusterSchema().dump(self.config)),
+                    body=yaml.dump(ClusterSchema().dump(config_copy)),
                     key=self._get_config_key(),
                 )
                 # config version will be stored in DB by the cookbook at the first update

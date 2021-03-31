@@ -71,10 +71,10 @@ class AdditionalIamPolicyValidator(Validator):  # TODO add test
     Verify the given policy is correct.
     """
 
-    def _validate(self, iam_policy: str):
+    def _validate(self, policy: str):
         try:
-            if iam_policy not in self._get_base_additional_iam_policies():
-                IamClient().get_policy(iam_policy)
+            if policy not in self._get_base_additional_iam_policies():
+                IamClient().get_policy(policy)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 

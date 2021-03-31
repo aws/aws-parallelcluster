@@ -17,7 +17,6 @@ from remote_command_executor import RemoteCommandExecutor
 from utils import get_cluster_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
-from tests.common.schedulers_common import get_scheduler_commands
 
 
 @pytest.mark.regions(["us-east-2"])
@@ -31,27 +30,9 @@ def test_hit_cli_commands(scheduler, region, pcluster_config_reader, clusters_fa
     cluster_config = pcluster_config_reader(scaledown_idletime=60)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="RUNNING")
-    _test_pcluster_stop_and_start(scheduler_commands, cluster, region, expected_num_nodes=2, hit_cluster=True)
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-
-
-@pytest.mark.regions(["us-west-2"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["sge"])
-@pytest.mark.oss(["centos7"])
-@pytest.mark.usefixtures("region", "os", "instance")
-def test_sit_cli_commands(scheduler, region, pcluster_config_reader, clusters_factory):
-    """Test pcluster cli commands are working."""
-    cluster_config = pcluster_config_reader(scaledown_idletime=60)
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-
-    _test_pcluster_instances_and_status(cluster, region)
-    _test_pcluster_stop_and_start(scheduler_commands, cluster, region, expected_num_nodes=1)
+    _test_pcluster_stop_and_start(cluster, region, expected_num_nodes=2)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
@@ -69,24 +50,20 @@ def _test_pcluster_instances_and_status(cluster, region, compute_fleet_status=No
         assert_that(cluster_status).contains(detail)
 
 
-def _test_pcluster_stop_and_start(scheduler_commands, cluster, region, expected_num_nodes, hit_cluster=False):
+def _test_pcluster_stop_and_start(cluster, region, expected_num_nodes):
     """Test pcluster start and stop functionality."""
     logging.info("Testing pcluster stop functionalities")
     cluster_stop_output = cluster.stop()
-    if hit_cluster:
-        # Sample pcluster stop output:
-        # Compute fleet status is: RUNNING. Submitting status change request.
-        # Request submitted successfully. It might take a while for the transition to complete.
-        # Please run 'pcluster status' if you need to check compute fleet status
-        expected_stop_output = (
-            r"Compute fleet status is: RUNNING.*Submitting status change request.*" "\nRequest submitted successfully"
-        )
-        assert_that(cluster_stop_output).matches(expected_stop_output)
+    # Sample pcluster stop output:
+    # Compute fleet status is: RUNNING. Submitting status change request.
+    # Request submitted successfully. It might take a while for the transition to complete.
+    # Please run 'pcluster status' if you need to check compute fleet status
+    expected_stop_output = (
+        r"Compute fleet status is: RUNNING.*Submitting status change request.*" "\nRequest submitted successfully"
+    )
+    assert_that(cluster_stop_output).matches(expected_stop_output)
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, desired=0)
-    if hit_cluster:
-        _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="STOPPED")
-    else:
-        _test_pcluster_instances_and_status(cluster, region)
+    _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="STOPPED")
 
     logging.info("Testing pcluster start functionalities")
     # Do a complicated sequence of start and stop and see if commands will still work
@@ -94,17 +71,13 @@ def _test_pcluster_stop_and_start(scheduler_commands, cluster, region, expected_
     cluster.stop()
     cluster.stop()
     cluster_start_output = cluster.start()
-    if hit_cluster:
-        # Sample pcluster start output:
-        # Compute fleet status is: STOPPED. Submitting status change request.
-        # Request submitted successfully. It might take a while for the transition to complete.
-        # Please run 'pcluster status' if you need to check compute fleet statu
-        expected_start_output = (
-            r"Compute fleet status is: STOP.*Submitting status change request.*" "\nRequest submitted successfully"
-        )
-        assert_that(cluster_start_output).matches(expected_start_output)
+    # Sample pcluster start output:
+    # Compute fleet status is: STOPPED. Submitting status change request.
+    # Request submitted successfully. It might take a while for the transition to complete.
+    # Please run 'pcluster status' if you need to check compute fleet statu
+    expected_start_output = (
+        r"Compute fleet status is: STOP.*Submitting status change request.*" "\nRequest submitted successfully"
+    )
+    assert_that(cluster_start_output).matches(expected_start_output)
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, desired=expected_num_nodes)
-    if hit_cluster:
-        _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="RUNNING")
-    else:
-        _test_pcluster_instances_and_status(cluster, region)
+    _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="RUNNING")
