@@ -30,11 +30,11 @@ from pcluster.models.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
     BaseQueue,
-    ClusterBucket,
     Ebs,
     HeadNode,
     SharedStorageType,
 )
+from pcluster.models.common import S3Bucket
 from pcluster.utils import get_installed_version
 
 
@@ -271,7 +271,7 @@ class PclusterLambdaConstruct(core.Construct):
         scope: core.Construct,
         id: str,
         function_id: str,
-        bucket: ClusterBucket,
+        bucket: S3Bucket,
         config: BaseClusterConfig,
         execution_role: iam.CfnRole,
         handler_func: str,
@@ -294,7 +294,7 @@ class PclusterLambdaConstruct(core.Construct):
             function_name=function_name,
             code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=bucket.name,
-                s3_key=f"{bucket.artifact_directory}/custom_resources_code/artifacts.zip",
+                s3_key=f"{bucket.artifact_directory}/custom_resources/artifacts.zip",
             ),
             handler=f"{handler_func}.handler",
             memory_size=128,

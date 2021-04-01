@@ -12,7 +12,6 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-import json
 import logging
 import time
 from copy import deepcopy
@@ -29,17 +28,11 @@ from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
-from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket, SlurmScheduling, Tag
+from pcluster.models.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
+from pcluster.models.common import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import (
-    check_s3_bucket_exists,
-    create_s3_bucket,
-    generate_random_name_with_prefix,
-    get_installed_version,
-    grouper,
-    upload_resources_artifacts,
-)
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_region, grouper
 from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
@@ -126,10 +119,10 @@ class ClusterStack(StackInfo):
         """Delete stack."""
         AWSApi.instance().cfn.delete_stack(self.name)
 
-    def update_template(self, template):
+    def update_template(self, template_url):
         """Update template of the running stack according to updated template."""
         try:
-            AWSApi.instance().cfn.update_stack(self.name, template, self._params)
+            AWSApi.instance().cfn.update_stack_from_url(self.name, template_url)
             self._wait_for_update()
         except AWSClientError as e:
             if "no updates are to be performed" in str(e).lower():
@@ -160,9 +153,20 @@ class Cluster:
         self.name = name
         self.__source_config = config
         self.__stack = stack
-        self.bucket = None
+        self.__bucket = None
         self.template_body = None
         self.__config = None
+        self._s3_artifacts_dict = {
+            "root_directory": "parallelcluster",
+            "root_cluster_directory": "clusters",
+            "source_config_name": "cluster-config-original.yaml",
+            "config_name": "cluster-config.yaml",
+            "template_name": "aws-parallelcluster.cfn.yaml",
+            "instance_types_data_name": "instance-types-data.json",
+            "custom_artifacts_name": "artifacts.zip",
+            "scheduler_resources_name": "scheduler_resources.zip",
+        }
+        self.__s3_artifact_dir = None
 
         self.__has_running_capacity = None
         self.__running_capacity = None
@@ -186,11 +190,44 @@ class Cluster:
             self.__source_config = self._get_cluster_config_dict()
         return self.__source_config
 
+    @property
+    # pylint: disable=R0801
+    def s3_artifacts_dir(self):
+        """Get s3 artifacts dir."""
+        if self.__s3_artifact_dir is None:
+            self._get_artifact_dir()
+        return self.__s3_artifact_dir
+
+    def _get_artifact_dir(self):
+        """Get artifact directory in S3 bucket by stack output."""
+        try:
+            self.__s3_artifact_dir = self.stack.s3_artifact_directory
+            if self.__s3_artifact_dir is None:
+                raise AWSClientError(
+                    function_name="_get_artifact_dir", message="No artifact dir found in cluster stack output."
+                )
+        except AWSClientError as e:
+            LOGGER.error("No artifact dir found in cluster stack output.")
+            raise ClusterActionError(f"Unable to find artifact dir in cluster stack {self.stack_name} output. {e}")
+
+    def _generate_artifact_dir(self):
+        """
+        Generate artifact directory in S3 bucket.
+
+        cluster artifact dir is generated before cfn stack creation and only generate once.
+        artifact_directory: e.g. parallelcluster/clusters/{cluster_name}-jfr4odbeonwb1w5k
+        """
+        service_directory = generate_random_name_with_prefix(self.name)
+        self.__s3_artifact_dir = "/".join(
+            [
+                self._s3_artifacts_dict.get("root_directory"),
+                self._s3_artifacts_dict.get("root_cluster_directory"),
+                service_directory,
+            ]
+        )
+
     def _get_cluster_config_dict(self):
         """Retrieve cluster config content."""
-        if not self.bucket:
-            raise ClusterActionError("Unable to retrieve S3 Bucket name")
-
         table_name = self.stack.name
         config_version = None
         try:
@@ -202,16 +239,12 @@ class Cluster:
             pass
 
         try:
-            s3_object = AWSApi.instance().s3.get_object(
-                bucket_name=self.bucket.name,
-                key=f"{self.bucket.artifact_directory}/configs/cluster-config.yaml",
-                version_id=config_version,
+            return self.bucket.get_config(
+                version_id=config_version, config_name=self._s3_artifacts_dict.get("config_name")
             )
-            config_content = s3_object["Body"].read().decode("utf-8")
-            return yaml.safe_load(config_content)
         except Exception as e:
             raise ClusterActionError(
-                f"Unable to load configuration from bucket '{self.bucket.name}/{self.bucket.artifact_directory}'.\n{e}"
+                f"Unable to load configuration from bucket '{self.bucket.name}/{self.s3_artifacts_dir}'.\n{e}"
             )
 
     @property
@@ -238,6 +271,34 @@ class Cluster:
         """Return the cluster status."""
         return self.stack.status
 
+    @property
+    # pylint: disable=R0801
+    def bucket(self):
+        """Return a bucket configuration."""
+        if self.__bucket:
+            return self.__bucket
+
+        if self.__source_config:
+            # get custom_s3_bucket in create command
+            custom_bucket_name = self.config.custom_s3_bucket
+        else:
+            # get custom_s3_bucket in delete, update commands
+            custom_bucket_name = self.stack.s3_bucket_name
+            if custom_bucket_name == S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), get_region()):
+                custom_bucket_name = None
+
+        try:
+            self.__bucket = S3BucketFactory.init_s3_bucket(
+                service_name=self.name,
+                stack_name=self.stack_name,
+                custom_s3_bucket=custom_bucket_name,
+                artifact_directory=self.s3_artifacts_dir,
+            )
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unable to initialize s3 bucket. {e}")
+
+        return self.__bucket
+
     def create(
         self,
         disable_rollback: bool = False,
@@ -252,9 +313,7 @@ class Cluster:
                 raise ClusterActionError(f"Cluster {self.name} already exists")
             self.config = self._validate_and_parse_config(suppress_validators, validation_failure_level)
 
-            # Create bucket if needed
-            self.bucket = self._setup_cluster_bucket()
-
+            self._generate_artifact_dir()
             self._add_version_tag()
             self._upload_config()
 
@@ -270,7 +329,9 @@ class Cluster:
             LOGGER.info("Creating stack named: %s", self.stack_name)
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
                 stack_name=self.stack_name,
-                template_url=self.template_url,
+                template_url=self.bucket.get_cfn_template_url(
+                    template_name=self._s3_artifacts_dict.get("template_name")
+                ),
                 disable_rollback=disable_rollback,
                 tags=self._get_cfn_tags(),
             )
@@ -280,12 +341,10 @@ class Cluster:
             LOGGER.info("Status: %s", self.stack.status)
 
         except Exception as e:
-            if not creation_result and self.bucket:
+            if not creation_result:
                 # Cleanup S3 artifacts if stack is not created yet
-                self.bucket.delete()
-            if isinstance(e, ClusterActionError):
-                raise e
-            raise ClusterActionError(str(e))
+                self.bucket.delete_s3_artifacts()
+            raise ClusterActionError(f"Cluster creation failed.\n{e}")
 
     def _validate_and_parse_config(self, suppress_validators, validation_failure_level, config_dict=None):
         """
@@ -316,63 +375,23 @@ class Cluster:
 
         return config
 
-    def _setup_cluster_bucket(self) -> ClusterBucket:
-        """
-        Create pcluster bucket, if needed.
-
-        If no bucket specified, create a bucket associated to the given stack.
-        Created bucket needs to be removed on cluster deletion.
-        """
-        if self.config.custom_s3_bucket:
-            # Use user-provided bucket
-            # Do not remove this bucket on deletion, but cleanup artifact directory
-            name = self.config.custom_s3_bucket
-            remove_on_deletion = False
-            try:
-                check_s3_bucket_exists(name)
-            except Exception as e:
-                LOGGER.error("Unable to access config-specified S3 bucket %s: %s", name, e)
-                raise e
-        else:
-            # Create 1 bucket per cluster named "parallelcluster-{random_string}" if bucket is not provided
-            # This bucket needs to be removed on cluster deletion
-            name = generate_random_name_with_prefix("parallelcluster")
-            # self.custom_s3_bucket = name
-            remove_on_deletion = True
-            LOGGER.debug("Creating S3 bucket for cluster resources, named %s", name)
-            try:
-                create_s3_bucket(name)
-            except Exception as e:
-                LOGGER.error("Unable to create S3 bucket %s.", name)
-                raise e
-
-        # Use "{stack_name}-{random_string}" as directory in bucket
-        artifact_directory = generate_random_name_with_prefix(self.stack_name)
-        return ClusterBucket(name, artifact_directory, remove_on_deletion)
-
     def _upload_config(self):
         """Upload source config and save config version."""
-        if not self.bucket:
-            ClusterActionError("S3 bucket must be created before uploading artifacts.")
-
         try:
-            # Upload original config
-            if self.config.source_config:
-                AWSApi.instance().s3.put_object(
-                    bucket_name=self.bucket.name,
-                    body=yaml.dump(self.config.source_config),
-                    key=self._get_original_config_key(),
-                )
             # Upload config with default values and sections
             if self.config:
-                config_copy = deepcopy(self.config)
-                result = AWSApi.instance().s3.put_object(
-                    bucket_name=self.bucket.name,
-                    body=yaml.dump(ClusterSchema().dump(config_copy)),
-                    key=self._get_config_key(),
+                result = self.bucket.upload_config(
+                    config=ClusterSchema().dump(deepcopy(self.config)),
+                    config_name=self._s3_artifacts_dict.get("config_name"),
                 )
+
                 # config version will be stored in DB by the cookbook at the first update
                 self.config.config_version = result.get("VersionId")
+
+                # Upload original config
+                self.bucket.upload_config(
+                    config=self.config.source_config, config_name=self._s3_artifacts_dict.get("source_config_name")
+                )
 
         except Exception as e:
             raise ClusterActionError(
@@ -383,67 +402,38 @@ class Cluster:
         """
         Upload cluster specific resources and cluster template.
 
-        Artifacts are uploaded to {bucket_name}/{artifact_directory}/.
-        {artifact_directory}/ will be always be cleaned up on cluster deletion or in case of failure.
+        All dirs contained in resource dir will be uploaded as zip files to
+        {bucket_name}/parallelcluster/clusters/{cluster_name}/{resource_dir}/artifacts.zip.
+        All files contained in root dir will be uploaded to
+        {bucket_name}/parallelcluster/clusters/{cluster_name}/{resource_dir}/artifact.
         """
-        if not self.bucket:
-            ClusterActionError("S3 bucket must be created before uploading artifacts.")
-
         try:
             resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
-            upload_resources_artifacts(self.bucket.name, self.bucket.artifact_directory, root=resources)
+            self.bucket.upload_resources(
+                resource_dir=resources, custom_artifacts_name=self._s3_artifacts_dict.get("custom_artifacts_name")
+            )
             if self.config.scheduler_resources:
-                upload_resources_artifacts(
-                    self.bucket.name, self.bucket.artifact_directory, root=self.config.scheduler_resources
+                self.bucket.upload_resources(
+                    resource_dir=self.config.scheduler_resources,
+                    custom_artifacts_name=self._s3_artifacts_dict.get("scheduler_resources_name"),
                 )
 
             # Upload template
             if self.template_body:
-                AWSApi.instance().s3.put_object(
-                    bucket_name=self.bucket.name,
-                    body=yaml.dump(self.template_body),
-                    key=self._get_default_template_key(),
-                )
+                self.bucket.upload_cfn_template(self.template_body, self._s3_artifacts_dict.get("template_name"))
 
             # Fixme: the code doesn't work for awsbatch
             if isinstance(self.config.scheduling, SlurmScheduling):
-                AWSApi.instance().s3.put_object(
-                    bucket_name=self.bucket.name,
-                    body=json.dumps(self.config.get_instance_types_data()),
-                    key=self._get_instance_types_data_key(),
+                # upload instance types data
+                self.bucket.upload_config(
+                    self.config.get_instance_types_data(),
+                    self._s3_artifacts_dict.get("instance_types_data_name"),
+                    format=S3FileFormat.JSON,
                 )
         except Exception as e:
             message = f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
             LOGGER.error(message)
             raise ClusterActionError(message)
-
-    @property
-    def template_url(self):
-        """Return template url."""
-        if self.config.dev_settings and self.config.dev_settings.cluster_template:
-            # template provided by the user
-            template_url = self.config.dev_settings.cluster_template
-        else:
-            # default template
-            template_url = "https://{bucket_name}.s3.{region}.amazonaws.com{partition_suffix}/{template_key}".format(
-                bucket_name=self.bucket.name,
-                region=self.config.region,
-                partition_suffix=".cn" if self.config.region.startswith("cn") else "",
-                template_key=self._get_default_template_key(),
-            )
-        return template_url
-
-    def _get_default_template_key(self):
-        return f"{self.bucket.artifact_directory}/templates/aws-parallelcluster.cfn.yaml"
-
-    def _get_original_config_key(self):
-        return f"{self.bucket.artifact_directory}/configs/cluster-config-original.yaml"
-
-    def _get_config_key(self):
-        return f"{self.bucket.artifact_directory}/configs/cluster-config.yaml"
-
-    def _get_instance_types_data_key(self):
-        return f"{self.bucket.artifact_directory}/configs/instance-types-data.json"
 
     def delete(self, keep_logs: bool = True):
         """Delete cluster preserving log groups."""
@@ -478,7 +468,8 @@ class Cluster:
         for key in keys:
             template["Resources"][key]["DeletionPolicy"] = "Retain"
         try:
-            self.stack.update_template(template)
+            self.bucket.upload_cfn_template(template, self._s3_artifacts_dict.get("template_name"))
+            self.stack.update_template(self.bucket.get_cfn_template_url(self._s3_artifacts_dict.get("template_name")))
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
 
@@ -672,12 +663,6 @@ class Cluster:
             if not (patch_allowed or force):
                 raise ClusterActionError("Update failure", update_changes=update_changes)
 
-            # Retrieve bucket information
-            self.bucket = ClusterBucket(
-                name=self.stack.s3_bucket_name,
-                artifact_directory=self.stack.s3_artifact_directory,
-                remove_on_deletion=True,
-            )
             self._add_version_tag()
             self._upload_config()
 
@@ -693,7 +678,9 @@ class Cluster:
             LOGGER.info("Updating stack named: %s", self.stack_name)
             AWSApi.instance().cfn.update_stack_from_url(
                 stack_name=self.stack_name,
-                template_url=self.template_url,
+                template_url=self.bucket.get_cfn_template_url(
+                    template_name=self._s3_artifacts_dict.get("template_name")
+                ),
                 tags=self._get_cfn_tags(),
             )
 

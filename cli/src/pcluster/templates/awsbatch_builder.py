@@ -20,7 +20,8 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import core
 
-from pcluster.models.cluster_config import AwsbatchClusterConfig, CapacityType, ClusterBucket, SharedStorageType
+from pcluster.models.cluster_config import AwsbatchClusterConfig, CapacityType, SharedStorageType
+from pcluster.models.common import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
@@ -44,7 +45,7 @@ class AwsbatchConstruct(core.Construct):
         id: str,
         cluster_config: AwsbatchClusterConfig,
         stack_name: str,
-        bucket: ClusterBucket,
+        bucket: S3Bucket,
         create_lambda_roles: bool,
         compute_security_groups: dict,
         shared_storage_mappings: dict,

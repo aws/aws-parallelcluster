@@ -18,13 +18,8 @@ from aws_cdk import aws_route53 as route53
 from aws_cdk import core
 
 from pcluster.constants import OS_MAPPING
-from pcluster.models.cluster_config import (
-    CapacityType,
-    ClusterBucket,
-    CustomActionEvent,
-    SharedStorageType,
-    SlurmClusterConfig,
-)
+from pcluster.models.cluster_config import CapacityType, CustomActionEvent, SharedStorageType, SlurmClusterConfig
+from pcluster.models.common import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
@@ -52,7 +47,7 @@ class SlurmConstruct(core.Construct):
         id: str,
         stack_name: str,
         cluster_config: SlurmClusterConfig,
-        bucket: ClusterBucket,
+        bucket: S3Bucket,
         dynamodb_table: dynamodb.CfnTable,
         log_group: logs.CfnLogGroup,
         instance_roles: dict,
@@ -143,9 +138,7 @@ class SlurmConstruct(core.Construct):
                     iam.PolicyStatement(
                         sid="ResourcesS3Bucket",
                         effect=iam.Effect.ALLOW,
-                        actions=["s3:ListBucket", "s3:ListBucketVersions", "s3:GetObject*", "s3:PutObject*"]
-                        if self.bucket.remove_on_deletion
-                        else ["s3:*"],
+                        actions=["s3:*"],
                         resources=[
                             self._format_arn(service="s3", resource=self.bucket.name, region="", account=""),
                             self._format_arn(

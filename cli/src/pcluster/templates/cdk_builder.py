@@ -18,7 +18,7 @@ import tempfile
 from aws_cdk import core
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster_config import BaseClusterConfig, ClusterBucket
+from pcluster.models.cluster_config import BaseClusterConfig
 from pcluster.models.common import S3Bucket
 from pcluster.models.imagebuilder_config import ImageBuilderConfig
 from pcluster.templates.cluster_stack import ClusterCdkStack
@@ -29,7 +29,7 @@ class CDKTemplateBuilder:
     """Create the template, starting from the given resources."""
 
     @staticmethod
-    def build_cluster_template(cluster_config: BaseClusterConfig, bucket: ClusterBucket, stack_name: str):
+    def build_cluster_template(cluster_config: BaseClusterConfig, bucket: S3Bucket, stack_name: str):
         """Build template for the given cluster and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = str(stack_name)
