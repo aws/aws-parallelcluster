@@ -29,7 +29,6 @@ from common.aws.aws_api import AWSApi
 from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
     BaseQueue,
-    ClusterBucket,
     CustomActionEvent,
     HeadNode,
     SharedEbs,
@@ -38,6 +37,7 @@ from pcluster.models.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
+from pcluster.models.common import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsbatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -72,7 +72,7 @@ class ClusterCdkStack(core.Stack):
         construct_id: str,
         stack_name: str,
         cluster_config: SlurmClusterConfig,
-        bucket: ClusterBucket,
+        bucket: S3Bucket,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -238,8 +238,6 @@ class ClusterCdkStack(core.Stack):
         cleanup_resources_lambda_role = None
         if self._condition_create_lambda_iam_role():
             s3_policy_actions = ["s3:DeleteObject", "s3:DeleteObjectVersion", "s3:ListBucket", "s3:ListBucketVersions"]
-            if self.bucket.remove_on_deletion:
-                s3_policy_actions.append("s3:DeleteBucket")
 
             cleanup_resources_lambda_role = add_lambda_cfn_role(
                 scope=self,
@@ -289,7 +287,6 @@ class ClusterCdkStack(core.Stack):
             properties={
                 "ResourcesS3Bucket": self.bucket.name,
                 "ArtifactS3RootDirectory": self.bucket.artifact_directory,
-                "RemoveBucketOnDeletion": "True" if self.bucket.remove_on_deletion else "False",
                 "Action": "DELETE_S3_ARTIFACTS",
             },
         )

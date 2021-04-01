@@ -76,35 +76,23 @@ def _delete_s3_artifacts(event):
     It exits gracefully if directory does not exist.
     :param bucket_name: bucket containing cluster artifacts
     :param artifact_directory: directory containing artifacts to delete
-    :param remove_bucket: whether or not to remove the bucket, remove only if remove_bucket == "True"
     """
     bucket_name = event["ResourceProperties"]["ResourcesS3Bucket"]
     artifact_directory = event["ResourceProperties"]["ArtifactS3RootDirectory"]
-    remove_bucket = event["ResourceProperties"]["RemoveBucketOnDeletion"]
     try:
         if bucket_name != "NONE":
             bucket = boto3.resource("s3", config=boto3_config).Bucket(bucket_name)
-            if remove_bucket == "True":
-                logger.info("S3 bucket %s deletion: STARTED", bucket_name)
-                bucket.objects.all().delete()
-                bucket.object_versions.delete()
-                bucket.delete()
-                logger.info("S3 bucket %s deletion: COMPLETED", bucket_name)
-            else:
-                logger.info("Cluster S3 artifact under %s/%s deletion: STARTED", bucket_name, artifact_directory)
-                bucket.objects.filter(Prefix="%s/" % artifact_directory).delete()
-                bucket.object_versions.filter(Prefix="%s/" % artifact_directory).delete()
-                logger.info("Cluster S3 artifact under %s/%s deletion: COMPLETED", bucket_name, artifact_directory)
+            logger.info("Cluster S3 artifact under %s/%s deletion: STARTED", bucket_name, artifact_directory)
+            bucket.objects.filter(Prefix=f"{artifact_directory}/").delete()
+            bucket.object_versions.filter(Prefix=f"{artifact_directory}/").delete()
+            logger.info("Cluster S3 artifact under %s/%s deletion: COMPLETED", bucket_name, artifact_directory)
     except boto3.client("s3").exceptions.NoSuchBucket as ex:
         logger.warning("S3 bucket %s not found. Bucket was probably manually deleted.", bucket_name)
         logger.warning(ex, exc_info=True)
     except Exception as e:
-        if remove_bucket == "True":
-            logger.error("Failed when deleting bucket %s with error %s", bucket_name, e)
-        else:
-            logger.error(
-                "Failed when deleting cluster S3 artifact under %s/%s with error %s", bucket_name, artifact_directory, e
-            )
+        logger.error(
+            "Failed when deleting cluster S3 artifact under %s/%s with error %s", bucket_name, artifact_directory, e
+        )
         raise
 
 
