@@ -79,7 +79,7 @@ def pytest_addoption(parser):
     parser.addoption("--node-git-ref", help="Git ref of the custom node package used to build the AMI.")
     parser.addoption(
         "--ami-owner",
-        help="Override the owner value when fetching AMIs to use with cluster." " By default pcluster uses amazon.",
+        help="Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon.",
     )
     parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
