@@ -161,12 +161,10 @@ class Ec2Client(Boto3Client):
         owner = filters.owner if filters and filters.owner else "amazon"
         tags = filters.tags if filters and filters.tags else []
 
-        filters = [
-            {"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]},
-            {"Name": "owner-alias", "Values": [owner]},
-        ]
+        filters = [{"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]}]
         filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
         images = self._client.describe_images(
+            Owners=[owner],
             Filters=filters,
         ).get("Images")
         if not images:
