@@ -12,7 +12,7 @@ import json
 import logging
 import os
 
-from packaging import version
+from pkg_resources import packaging
 
 from common.aws.aws_api import AWSApi
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
@@ -221,7 +221,7 @@ class PclusterApi:
 
     @staticmethod
     def _is_version_2(cluster):
-        return version.parse(cluster.stack.version) < version.parse("3.0.0")
+        return packaging.version.parse(cluster.stack.version) < packaging.version.parse("3.0.0")
 
     @staticmethod
     def build_image(imagebuilder_config: dict, image_name: str, region: str, disable_rollback: bool = True):
