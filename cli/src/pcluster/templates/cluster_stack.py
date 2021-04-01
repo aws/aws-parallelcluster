@@ -289,7 +289,7 @@ class ClusterCdkStack(core.Stack):
             properties={
                 "ResourcesS3Bucket": self.bucket.name,
                 "ArtifactS3RootDirectory": self.bucket.artifact_directory,
-                "RemoveBucketOnDeletion": self.bucket.remove_on_deletion,
+                "RemoveBucketOnDeletion": "True" if self.bucket.remove_on_deletion else "False",
                 "Action": "DELETE_S3_ARTIFACTS",
             },
         )
