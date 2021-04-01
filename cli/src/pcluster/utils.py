@@ -1111,7 +1111,11 @@ def render_template(template_str, params_dict, tags, config_version=None):
     :param params_dict: Template parameters dict
     """
     try:
-        environment = Environment(loader=BaseLoader, autoescape=True)
+        # A nosec comment is appended to the following line in order to disable the B701 check.
+        # This is done because it's needed to enable the desired functionality. The current callers
+        # of this function pass a template_str representing either a custom template specified by
+        # the user or the default template.
+        environment = Environment(loader=BaseLoader)  # nosec nosemgrep
         environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()  # nosec nosemgrep
         environment.filters["bool"] = lambda value: value.lower() == "true"
         template = environment.from_string(template_str)
