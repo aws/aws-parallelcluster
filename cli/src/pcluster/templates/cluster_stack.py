@@ -642,6 +642,13 @@ class ClusterCdkStack(core.Stack):
         fsx_id = shared_fsx.file_system_id
 
         if not fsx_id and shared_fsx.mount_dir:
+            # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
+            drive_cache_type = None
+            if shared_fsx.fsx_storage_type == "HDD":
+                if shared_fsx.drive_cache_type:
+                    drive_cache_type = shared_fsx.drive_cache_type
+                else:
+                    drive_cache_type = "NONE"
             fsx_resource = fsx.CfnFileSystem(
                 scope=self,
                 storage_capacity=shared_fsx.storage_capacity,
@@ -656,13 +663,13 @@ class ClusterCdkStack(core.Stack):
                     daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time,
                     per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput,
                     auto_import_policy=shared_fsx.auto_import_policy,
-                    drive_cache_type=shared_fsx.drive_cache_type,
+                    drive_cache_type=drive_cache_type,
                 ),
                 backup_id=shared_fsx.backup_id,
                 kms_key_id=shared_fsx.kms_key_id,
                 id=id,
                 file_system_type="LUSTRE",
-                storage_type=shared_fsx.drive_cache_type,
+                storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
                 security_group_ids=self._get_compute_security_groups(),
             )
