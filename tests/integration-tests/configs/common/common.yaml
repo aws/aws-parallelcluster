@@ -407,7 +407,7 @@ storage:
       - regions: ["{{ region }}"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ oss }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       {%- endfor %}
   test_ebs.py::test_ebs_snapshot:
     dimensions:
