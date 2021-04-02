@@ -161,6 +161,7 @@ class ClusterModel(ABC):
             "centos7": "centos7-hvm",
             "centos8": "centos8-hvm",
             "ubuntu1804": "ubuntu-1804-lts-hvm",
+            "ubuntu2004": "ubuntu-2004-lts-hvm",
         }
         return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
             version=get_installed_version(), suffix=suffixes[os], arch=architecture

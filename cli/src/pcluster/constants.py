@@ -18,4 +18,4 @@ DEFAULT_ARCHITECTURE = "x86_64"
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 FSX_SSD_THROUGHPUT = [50, 100, 200]
 FSX_HDD_THROUGHPUT = [12, 40]
-SUPPORTED_OSS = ["alinux2", "ubuntu1804", "centos7", "centos8"]
+SUPPORTED_OSS = ["alinux2", "ubuntu1804", "ubuntu2004", "centos7", "centos8"]

@@ -33,6 +33,7 @@ DISTROS = OrderedDict(
         ("centos7", "centos7"),
         ("centos8", "centos8"),
         ("ubuntu1804", "ubuntu-1804"),
+        ("ubuntu2004", "ubuntu-2004"),
     ]
 )
 ARCHITECTURES_TO_MAPPING_NAME = {"x86_64": "AWSRegionOS2AMIx86", "arm64": "AWSRegionOS2AMIarm64"}

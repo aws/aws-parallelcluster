@@ -36,6 +36,7 @@ Allowed values for Operating System:
 2. centos7
 3. centos8
 4. ubuntu1804
+5. ubuntu2004
 There are no VPC for the given region. Starting automatic creation of VPC and subnets...
 Allowed values for Network Configuration:
 1. Head node in a public subnet and compute fleet in a private subnet
