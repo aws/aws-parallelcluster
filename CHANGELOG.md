@@ -24,6 +24,7 @@ CHANGELOG
 - Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
 - Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
+- Remove `amis.txt` file.
 
 2.x.x
 ------
