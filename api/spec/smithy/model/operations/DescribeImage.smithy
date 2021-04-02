@@ -49,7 +49,7 @@ structure DescribeImageResponse {
     creationTime: Timestamp,
     @required
     @documentation("Configuration for the image build process")
-    imageConfiguration: ImageConfigurationData,
+    imageConfiguration: ImageConfigurationStructure,
     @required
     @documentation("Tags of the infrastructure to build the Image")
     tags: Tags,

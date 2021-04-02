@@ -1838,10 +1838,9 @@
             "ClusterConfigurationStructure": {
                 "type": "object",
                 "properties": {
-                    "data": {
+                    "s3Url": {
                         "type": "string",
-                        "description": "Cluster configuration as a YAML document",
-                        "format": "byte"
+                        "description": "S3 Url pointing to the cluster configuration file."
                     }
                 }
             },
@@ -2132,9 +2131,7 @@
                 "type": "object",
                 "properties": {
                     "imageConfiguration": {
-                        "type": "string",
-                        "description": "Configuration for the image build process",
-                        "format": "byte"
+                        "$ref": "#/components/schemas/ImageConfigurationStructure"
                     },
                     "imageName": {
                         "type": "string",
@@ -2314,6 +2311,15 @@
                     "DEPRECATED",
                     "DELETED"
                 ]
+            },
+            "ImageConfigurationStructure": {
+                "type": "object",
+                "properties": {
+                    "s3Url": {
+                        "type": "string",
+                        "description": "S3 Url pointing to the image configuration file."
+                    }
+                }
             },
             "ImageInfoSummary": {
                 "type": "object",
