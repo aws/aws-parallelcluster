@@ -25,6 +25,7 @@ CHANGELOG
 - Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
 - Remove `amis.txt` file.
+- Change the default DCV session storage path to `/home/{UserName}`.
 
 2.x.x
 ------
