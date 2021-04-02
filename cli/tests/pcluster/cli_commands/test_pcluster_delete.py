@@ -7,7 +7,7 @@ from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError
-from tests.pcluster.test_utils import dummy_cluster, dummy_cluster_stack
+from tests.pcluster.test_utils import dummy_cluster
 
 FakePdeleteArgs = namedtuple("FakePdeleteArgs", "cluster_name config_file nowait keep_logs region")
 LOG_GROUP_TYPE = "AWS::Logs::LogGroup"
@@ -34,7 +34,7 @@ def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
     mocker.patch("common.boto3.cfn.CfnClient.describe_stack")
     mocker.patch("common.boto3.cfn.CfnClient.delete_stack")
     cluster = dummy_cluster()
-    persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster.stack, "_persist_cloudwatch_log_groups")
+    persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster, "_persist_cloudwatch_log_groups")
     terminate_nodes_mock = mocker.patch.object(cluster, "_terminate_nodes")
 
     cluster.delete(keep_logs)
@@ -71,13 +71,13 @@ def test_delete(mocker, keep_logs, persist_called, terminate_instances_called):
 )
 def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain, fail_on_persist):
     """Verify that commands._persist_cloudwatch_log_groups behaves as expected."""
-    cluster_stack = dummy_cluster_stack()
+    cluster = dummy_cluster()
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
 
     client_error = AWSClientError("function", "Generic error.")
     update_template_mock = mocker.patch.object(
-        cluster_stack, "_update_template", side_effect=client_error if fail_on_persist else None
+        cluster.stack, "update_template", side_effect=client_error if fail_on_persist else None
     )
 
     if expected_retain:
@@ -85,15 +85,15 @@ def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain
     else:
         keys = []
     get_unretained_cw_log_group_resource_keys_mock = mocker.patch.object(
-        cluster_stack, "_get_unretained_cw_log_group_resource_keys", return_value=keys
+        cluster, "_get_unretained_cw_log_group_resource_keys", return_value=keys
     )
 
     if fail_on_persist:
         with pytest.raises(ClusterActionError) as e:
-            cluster_stack._persist_cloudwatch_log_groups()
+            cluster._persist_cloudwatch_log_groups()
         assert_that(str(e)).contains("Unable to persist logs")
     else:
-        cluster_stack._persist_cloudwatch_log_groups()
+        cluster._persist_cloudwatch_log_groups()
 
     assert_that(get_unretained_cw_log_group_resource_keys_mock.call_count).is_equal_to(1)
     assert_that(update_template_mock.call_count).is_equal_to(1 if expected_retain else 0)
@@ -112,10 +112,10 @@ def test_persist_cloudwatch_log_groups(mocker, caplog, template, expected_retain
 )
 def test_persist_stack_resources(mocker, template):
     """Verify that commands._persist_stack_resources behaves as expected."""
-    cluster_stack = dummy_cluster_stack()
+    cluster = dummy_cluster()
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
-    update_stack_template_mock = mocker.patch.object(cluster_stack, "_update_template")
+    update_stack_template_mock = mocker.patch.object(cluster.stack, "update_template")
 
     if "Resources" not in template:
         expected_error_message = "Resources"
@@ -126,12 +126,12 @@ def test_persist_stack_resources(mocker, template):
 
     if expected_error_message:
         with pytest.raises(KeyError, match=expected_error_message):
-            cluster_stack._persist_stack_resources(["key"])
+            cluster._persist_stack_resources(["key"])
         assert_that(update_stack_template_mock.called).is_false()
     else:
-        cluster_stack._persist_stack_resources(["key"])
+        cluster._persist_stack_resources(["key"])
         assert_that(update_stack_template_mock.called).is_true()
-        assert_that(cluster_stack.template["Resources"]["key"]["DeletionPolicy"]).is_equal_to("Retain")
+        assert_that(cluster.stack.template["Resources"]["key"]["DeletionPolicy"]).is_equal_to("Retain")
 
 
 @pytest.mark.parametrize(
@@ -146,10 +146,10 @@ def test_persist_stack_resources(mocker, template):
 )
 def test_get_unretained_cw_log_group_resource_keys(mocker, template, expected_return):
     """Verify that commands._get_unretained_cw_log_group_resource_keys behaves as expected."""
-    cluster_stack = dummy_cluster_stack()
+    cluster = dummy_cluster()
 
     template_property_mock = mocker.PropertyMock(return_value=template)
     mocker.patch("pcluster.models.cluster.ClusterStack.template", new_callable=template_property_mock)
 
-    observed_return = cluster_stack._get_unretained_cw_log_group_resource_keys()
+    observed_return = cluster._get_unretained_cw_log_group_resource_keys()
     assert_that(observed_return).is_equal_to(expected_return)
