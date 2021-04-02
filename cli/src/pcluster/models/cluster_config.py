@@ -643,7 +643,7 @@ class Image(Resource):
 class CustomAction(Resource):
     """Represent a custom action resource."""
 
-    def __init__(self, script: str, args: List[str] = None, event: str = None):
+    def __init__(self, script: str, args: List[str] = None):
         super().__init__()
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)

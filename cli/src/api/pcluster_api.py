@@ -219,6 +219,8 @@ class PclusterApi:
         except Exception as e:
             return ApiFailure(str(e))
 
+        return None
+
     @staticmethod
     def _is_version_2(cluster):
         return packaging.version.parse(cluster.stack.version) < packaging.version.parse("3.0.0")
