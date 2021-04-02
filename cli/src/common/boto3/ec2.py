@@ -30,7 +30,7 @@ class Ec2Client(Boto3Client):
         return [offering.get("InstanceType") for offering in self.describe_instance_type_offerings()]
 
     @AWSExceptionHandler.handle_client_exception
-    @Cache.cached
+    #    @Cache.cached
     def describe_instance_type_offerings(self, filters=None, location_type=None):
         """Return a list of instance types."""
         kwargs = {"Filters": filters} if filters else {}
@@ -230,7 +230,7 @@ class Ec2Client(Boto3Client):
         return self.get_supported_az_for_instance_types([instance_type])[instance_type]
 
     @AWSExceptionHandler.handle_client_exception
-    @Cache.cached
+    #    @Cache.cached
     def get_supported_az_for_instance_types(self, instance_types: List[str]):
         """
         Return a dict of instance types to list of availability zones that have each of the instance_types.
