@@ -199,7 +199,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
             "vol1,vol2,vol3,vol4,vol5",
             "gp2,io1,sc1,st1,gp2",  # No io1 metrics
             "raid,1,2,gp2,20,100,false,NONE",
-            "/fsx,NONE,1200,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            "/fsx,{}".format(",".join(["NONE"] * 18)),  # Test logic only depends on the first shared_dir param
             "efs,NONE,generalPurpose,NONE,NONE,false,bursting,NONE,Valid",
             "master,8443,0.0.0.0/0",
             "true,14",
@@ -211,7 +211,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
             "vol1,NONE,NONE,NONE,NONE",  # single ebs section
             "io1,io1,io1,io1,io1",  # No gp2,sc1,st1 metrics
             "raid,1,2,io1,20,100,false,NONE",  # No gp2,sc1,st1 metrics
-            "/fsx,NONE,1200,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            "/fsx,{}".format(",".join(["NONE"] * 18)),  # Test logic only depends on the first shared_dir param
             "efs,NONE,maxIO,NONE,NONE,false,bursting,NONE,Valid",  # No conditional EFS metric (maxIO)
             "master,8443,0.0.0.0/0",
             "true,14",
@@ -223,7 +223,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
             "shared",  # No ebs section
             "standard,standard,standard,standard,standard",
             "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",  # No RAID metrics
-            "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",  # No FSx metrics
+            "{}".format(",".join(["NONE"] * 19)),  # No FSx metrics
             "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",  # No EFS metrics
             "NONE,NONE,NONE",  # No DCV logs
             "true,14",
@@ -235,7 +235,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
             "shared",
             "sc1,st1,gp2,sc1,st1",
             "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-            "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            "{}".format(",".join(["NONE"] * 19)),
             "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
             "NONE,NONE,NONE",
             "false,14",  # No Head Node Logs
@@ -247,7 +247,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
             "vol1,vol2,vol3,vol4,vol5",
             "NONE,NONE,NONE,NONE,NONE",
             "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-            "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+            "{}".format(",".join(["NONE"] * 19)),
             "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
             "NONE,NONE,NONE",
             "false,14",

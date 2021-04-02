@@ -171,7 +171,9 @@ class Cluster:
                 {"Name": "tag:Name", "Values": ["Master"]},
             ]
             instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
-            return instance.get("PublicIpAddress")
+            return (
+                instance.get("PublicIpAddress") if instance.get("PublicIpAddress") else instance.get("PrivateIpAddress")
+            )
 
     @property
     def os(self):
