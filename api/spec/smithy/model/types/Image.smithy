@@ -44,6 +44,11 @@ structure ImageInfoSummary {
     cloudformationStackStatus: CloudFormationStatus,
 }
 
+structure ImageConfigurationStructure {
+    @documentation("S3 Url pointing to the image configuration file.")
+    s3Url: String,
+}
+
 @documentation("Image configuration as a YAML document")
 blob ImageConfigurationData
 

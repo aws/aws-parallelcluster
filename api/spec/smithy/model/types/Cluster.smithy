@@ -52,7 +52,8 @@ string ClusterStatus
 string ComputeFleetStatus
 
 structure ClusterConfigurationStructure {
-    data: ClusterConfigurationData,
+    @documentation("S3 Url pointing to the cluster configuration file.")
+    s3Url: String,
 }
 
 @documentation("Cluster configuration as a YAML document")
