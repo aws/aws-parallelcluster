@@ -41,4 +41,23 @@ test-suites:
         - regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1804"]
-          schedulers: [ "slurm" ]
+          schedulers: ["slurm"]
+    test_slurm.py::test_slurm_pmix:
+      dimensions:
+        - regions: ["ap-northeast-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["centos8"]
+          schedulers: ["slurm"]
+  storage:
+    test_efs.py::test_efs_compute_az:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+    test_fsx_lustre.py::test_existing_fsx:
+      dimensions:
+        - regions: ["us-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
