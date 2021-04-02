@@ -140,9 +140,6 @@ class ClusterCdkStack(core.Stack):
         if self.config.additional_resources:
             core.CfnStack(scope=self, id="AdditionalCfnStack", template_url=self.config.additional_resources)
 
-        # AWSBatchStack
-        # TODO: inline resources
-
         # Cleanup Resources Lambda Function
         cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
 
@@ -192,7 +189,7 @@ class ClusterCdkStack(core.Stack):
                 head_node_instance=self.head_node_instance,
             )
 
-        # CloudWatchDashboardSubstack
+        # CloudWatch Dashboard
         if self.config.is_cw_dashboard_enabled:
             self.cloudwatch_dashboard = CWDashboardConstruct(
                 scope=self,
@@ -980,7 +977,7 @@ class ClusterCdkStack(core.Stack):
                     "cfn_log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
-                    "dcv_enabled": head_node.dcv.enabled if head_node.dcv else "false",
+                    "dcv_enabled": "true" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cfn_cluster_cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
