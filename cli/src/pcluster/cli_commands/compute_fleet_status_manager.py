@@ -127,8 +127,7 @@ class ComputeFleetStatusManager:
                     compute_fleet_status
                 )
             )
-        else:
-            LOGGER.info("Compute fleet status updated successfully.")
+        LOGGER.info("Compute fleet status updated successfully.")
 
     def _wait_for_status_transition(self, wait_on_status, timeout=300, retry_every_seconds=15):
         current_status = self.get_status()

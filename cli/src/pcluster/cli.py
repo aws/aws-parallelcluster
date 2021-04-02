@@ -123,7 +123,7 @@ def _failure_level_type(failure_level_string):
     try:
         return FailureLevel[failure_level_string.upper()]
     except KeyError:
-        raise argparse.ArgumentError()
+        raise argparse.ArgumentTypeError(f"invalid value '{failure_level_string}'")
 
 
 def _get_parser():

@@ -63,7 +63,7 @@ def dcv_connect(args):
                 if not webbrowser.open_new(url):
                     raise webbrowser.Error("Unable to open the Web browser.")
             except webbrowser.Error as e:
-                LOGGER.info("{0}\n{1}".format(e, url_message))
+                LOGGER.info("%s\n%s", e, url_message)
 
         except DCVConnectionError as e:
             error(
@@ -78,7 +78,7 @@ def dcv_connect(args):
 def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
     """Connect by ssh to the head node instance, prepare DCV session and return the DCV session URL."""
     try:
-        LOGGER.debug("SSH command: {0}".format(ssh_cmd))
+        LOGGER.debug("SSH command: %s", ssh_cmd)
         output = _check_command_output(ssh_cmd)
         # At first ssh connection, the ssh command alerts it is adding the host to the known hosts list
         if re.search("Permanently added .* to the list of known hosts.", output):
@@ -130,5 +130,5 @@ def _retry(func, func_args, attempts=1, wait=0):
             if not attempts:
                 raise e
 
-            LOGGER.debug("{0}, retrying in {1} seconds..".format(e, wait))
+            LOGGER.debug("%s, retrying in %s seconds..", e, wait)
             time.sleep(wait)

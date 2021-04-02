@@ -9,6 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 #
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
