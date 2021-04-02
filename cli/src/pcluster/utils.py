@@ -1361,3 +1361,15 @@ class InstanceTypeInfo:
             supported_classes.remove("on-demand")
             supported_classes.append("ondemand")
         return supported_classes
+
+
+@Cache.cached
+def get_fsx_info(fs_id):
+    try:
+        return boto3.client("fsx").describe_file_systems(FileSystemIds=[fs_id]).get("FileSystems")[0]
+    except ClientError as e:
+        error(
+            "Failed when retrieving FSx filesystem data for filesystem {0}: {1}".format(
+                fs_id, e.response.get("Error").get("Message")
+            )
+        )

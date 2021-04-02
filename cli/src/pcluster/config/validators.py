@@ -1354,8 +1354,9 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
 
     fsx_section = pcluster_config.get_section(section_key, section_label)
 
-    # If fsx_fs_id is specified, all parameters besides shared_dir are ignored.
-    relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir"]
+    # If fsx_fs_id is specified, all input parameters besides shared_dir are ignored.
+    # Internal parameters are need to pass info about fsx into cookbook
+    relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir", "existing_mount_name", "existing_dns_name"]
     if fsx_section.get_param_value("fsx_fs_id") is not None:
         for fsx_param in fsx_section.params:
             if fsx_param not in relevant_when_using_existing_fsx and FSX_PARAM_WITH_DEFAULT.get(

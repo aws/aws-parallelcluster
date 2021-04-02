@@ -27,6 +27,8 @@ from pcluster.config.cfn_param_types import (
     EFSCfnSection,
     ExtraJsonCfnParam,
     FloatCfnParam,
+    FSxDNSNameParam,
+    FSxMountNameParam,
     HeadNodeAvailabilityZoneCfnParam,
     HeadNodeInstanceTypeCfnParam,
     IntCfnParam,
@@ -575,7 +577,19 @@ FSX = {
                 "default": "NONE",
                 "allowed_values": ALLOWED_VALUES["fsx_drive_cache_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
-            })
+            }),
+            ("existing_mount_name", {
+                "type": FSxMountNameParam,
+                "default": "NONE",
+                "update_policy": UpdatePolicy.IGNORED,
+                "visibility": Visibility.PRIVATE,
+            }),
+            ("existing_dns_name", {
+                "type": FSxDNSNameParam,
+                "default": "NONE",
+                "update_policy": UpdatePolicy.IGNORED,
+                "visibility": Visibility.PRIVATE,
+            }),
         ]
     )
 }

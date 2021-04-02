@@ -60,6 +60,10 @@ Parameters:
     Type: String
   FSXId:
     Type: String
+  FSXMountName:
+    Type: String
+  FSXDNSName:
+    Type: String
   FSXOptions:
     Type: String
   Scheduler:
@@ -586,6 +590,8 @@ Resources:
                       "cfn_efs": "${EFSId}",
                       "cfn_efs_shared_dir": "${EFSOptions}",
                       "cfn_fsx_fs_id": "${FSXId}",
+                      "cfn_fsx_mount_name": "${FSXMountName}",
+                      "cfn_fsx_dns_name": "${FSXDNSName}",
                       "cfn_fsx_options": "${FSXOptions}",
                       "cfn_volume": "${EBSVolIds}",
                       "cfn_scheduler": "${Scheduler}",

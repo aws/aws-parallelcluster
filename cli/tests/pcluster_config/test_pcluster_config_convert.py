@@ -38,10 +38,12 @@ def test_slurm_sit_simple(mocker, test_datadir, tmpdir, capsys):
 
 
 def test_slurm_sit_full(mocker, test_datadir, tmpdir, capsys):
+    _mock_fsx_info(mocker)
     _convert_and_assert_file_content(mocker, test_datadir, tmpdir, capsys, cluster_template="slurm-sit-full")
 
 
 def test_slurm_unrelated_sections(mocker, test_datadir, tmpdir, capsys):
+    _mock_fsx_info(mocker)
     _convert_and_assert_file_content(mocker, test_datadir, tmpdir, capsys, cluster_template="slurm-sit-full")
 
 
@@ -78,3 +80,10 @@ def _assert_files_are_equal(file, expected_file):
     with open(str(file)) as f, open(str(expected_file)) as exp_f:
         expected_file_content = exp_f.read()
         assert_that(f.read()).is_equal_to(expected_file_content)
+
+
+def _mock_fsx_info(mocker):
+    mocker.patch(
+        "pcluster.config.cfn_param_types.get_fsx_info",
+        return_value={"DNSName": "my.fsx.dns.name", "LustreConfiguration": {"MountName": "somemountname"}},
+    )

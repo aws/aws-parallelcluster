@@ -55,28 +55,35 @@ def retry_if_subprocess_error(exception):
     return isinstance(exception, subprocess.CalledProcessError)
 
 
-def run_command(command, capture_output=True, log_error=True, env=None, timeout=None, raise_on_error=True):
+def run_command(command, capture_output=True, log_error=True, env=None, timeout=None, raise_on_error=True, shell=False):
     """Execute shell command."""
-    if isinstance(command, str):
+    if isinstance(command, str) and not shell:
         command = shlex.split(command)
-    logging.info("Executing command: " + " ".join(command))
+    log_command = command if isinstance(command, str) else " ".join(command)
+    logging.info("Executing command: {}".format(log_command))
     try:
         result = subprocess.run(
-            command, capture_output=capture_output, universal_newlines=True, encoding="utf-8", env=env, timeout=timeout
+            command,
+            capture_output=capture_output,
+            universal_newlines=True,
+            encoding="utf-8",
+            env=env,
+            timeout=timeout,
+            shell=shell,
         )
         result.check_returncode()
     except subprocess.CalledProcessError:
         if log_error:
             logging.error(
                 "Command {0} failed with error:\n{1}\nand output:\n{2}".format(
-                    " ".join(command), result.stderr, result.stdout
+                    log_command, result.stderr, result.stdout
                 )
             )
         if raise_on_error:
             raise
     except subprocess.TimeoutExpired:
         if log_error:
-            logging.error("Command {0} timed out after {1} sec".format(" ".join(command), timeout))
+            logging.error("Command {0} timed out after {1} sec".format(log_command, timeout))
         if raise_on_error:
             raise
 
