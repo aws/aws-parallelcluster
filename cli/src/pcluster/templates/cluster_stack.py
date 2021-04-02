@@ -984,7 +984,7 @@ class ClusterCdkStack(core.Stack):
                     "cfn_log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
-                    "dcv_enabled": "true" if self.config.is_dcv_enabled else "false",
+                    "dcv_enabled": "master" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cfn_cluster_cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
