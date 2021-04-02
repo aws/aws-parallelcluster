@@ -143,7 +143,7 @@ def configure(args):  # noqa: C901
     compute_instance_types = []
     cluster_size = 0  # Sum of maximum count through all the compute resources
     for queue_index in range(number_of_queues):
-        queue_name = f"queue_{queue_index}"
+        queue_name = f"queue{queue_index}"
         if scheduler == "awsbatch":
             number_of_compute_resources = 1
         else:
@@ -156,7 +156,7 @@ def configure(args):  # noqa: C901
             )
         compute_resources = []
         for compute_resource_index in range(number_of_compute_resources):
-            compute_resource_name = f"compute_resource_{compute_resource_index}"
+            compute_resource_name = f"{queue_name}-i{compute_resource_index}"
             if scheduler != "awsbatch":
                 compute_instance_type = prompt(
                     f"Compute instance type for {compute_resource_name} in {queue_name}",
