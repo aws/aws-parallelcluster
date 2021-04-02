@@ -31,7 +31,7 @@ SharedStorage:
     Name: efs
     StorageType: Efs
   - MountDir: fsx
-    Name: Fsx
+    Name: fsx
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 1200

@@ -4,9 +4,9 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
+    {% if instance == "p4d.24xlarge" %}ElasticIp: true{% endif %}
   Ssh:
     KeyName: {{ key_name }}
-  {% if instance == "p4d.24xlarge" %}ElasticIp: true{% endif %}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
