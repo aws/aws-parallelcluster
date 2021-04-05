@@ -8,6 +8,7 @@ CHANGELOG
 - Add support for Ubuntu 20.04.
 - Add support for using FSx Lustre in subnet with no internet access.
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+- Transition from IMDSv1 to IMDSv2.
 
 **CHANGES**
 

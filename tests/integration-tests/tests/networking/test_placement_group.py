@@ -141,8 +141,12 @@ def _get_slurm_placement_group_from_stack(cluster, region):
 
 def _check_head_node_placement_group(remote_command_executor, region, expected_placement_group=None):
     logging.info("Checking placement group for head node")
+
+    token = remote_command_executor.run_remote_command(
+        "curl -s -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 300'"
+    ).stdout
     head_node_instance_id = remote_command_executor.run_remote_command(
-        "curl http://169.254.169.254/latest/meta-data/instance-id"
+        f'curl -s -H "X-aws-ec2-metadata-token: {token}" http://169.254.169.254/latest/meta-data/instance-id'
     ).stdout
     head_node_placement_group = boto3.client("ec2", region_name=region).describe_instances(
         InstanceIds=[head_node_instance_id]
