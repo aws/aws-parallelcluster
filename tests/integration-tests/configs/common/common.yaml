@@ -434,18 +434,12 @@ storage:
         oss: {{ oss }}
         schedulers: ["sge"]
       {%- endfor %}
-  test_ebs.py::test_ebs_single_empty:
-    dimensions:
-      - regions: ["us-gov-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
-        schedulers: ["torque"]
   test_ebs.py::test_ebs_snapshot:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
@@ -455,7 +449,7 @@ storage:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
 tags:
   test_tag_propagation.py::test_tag_propagation:
     dimensions:
