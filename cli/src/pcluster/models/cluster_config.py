@@ -14,7 +14,7 @@
 #
 import logging
 from enum import Enum
-from typing import List
+from typing import List, Union
 
 import pkg_resources
 
@@ -381,7 +381,7 @@ class _BaseNetworking(Resource):
 class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
-    def __init__(self, subnet_id: str, elastic_ip: str = None, **kwargs):
+    def __init__(self, subnet_id: str, elastic_ip: Union[str, bool] = None, **kwargs):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
         self.elastic_ip = Resource.init_param(elastic_ip)

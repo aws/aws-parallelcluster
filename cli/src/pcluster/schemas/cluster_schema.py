@@ -504,7 +504,7 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
     subnet_id = fields.Str(
         required=True, validate=get_field_validator("subnet_id"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
-    elastic_ip = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    elastic_ip = fields.Raw(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     proxy = fields.Nested(HeadNodeProxySchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
