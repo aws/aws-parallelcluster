@@ -373,7 +373,8 @@ Resources:
               function error_exit
               {
                 region=${AWS::Region}
-                instance_id=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/instance-id)
+                token=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+                instance_id=$(curl --retry 3 --retry-delay 0 --silent --fail -H "X-aws-ec2-metadata-token: ${!token}" http://169.254.169.254/latest/meta-data/instance-id)
                 log_dir=/home/logs/compute
                 mkdir -p ${!log_dir}
                 echo "Reporting instance as unhealthy and dumping logs to ${!log_dir}/${!instance_id}.tar.gz"
