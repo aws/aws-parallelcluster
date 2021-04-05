@@ -872,7 +872,7 @@ class ClusterCdkStack(core.Stack):
                 associate_public_ip_address=head_node.networking.assign_public_ip,
             )
         ]
-        for device_index in range(1, head_node.max_network_interface_count - 1):
+        for device_index in range(1, head_node.max_network_interface_count):
             head_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=device_index,

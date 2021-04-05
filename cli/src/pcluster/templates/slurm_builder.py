@@ -412,7 +412,7 @@ class SlurmConstruct(core.Construct):
                 subnet_id=queue.networking.subnet_ids[0],  # FIXME slurm supports a single subnet
             )
         ]
-        for device_index in range(1, compute_resource.max_network_interface_count - 1):
+        for device_index in range(1, compute_resource.max_network_interface_count):
             compute_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=device_index,
