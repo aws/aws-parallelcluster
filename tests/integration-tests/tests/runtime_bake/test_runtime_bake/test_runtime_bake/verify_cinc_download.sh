@@ -19,7 +19,7 @@ if [ $? -eq 0 ]; then
 fi
 
 # Verify cinc client is installed from S3
-sudo grep -ir "archives/cinc/cinc-install.sh" /var/log/cloud-init-output.log
+sudo grep -ir "archives/cinc/cinc-install-1.1.0.sh" /var/log/cloud-init-output.log
 if [ $? -ne 0 ]; then
     echo "Cinc installer not downloaded from S3"
     exit 1
