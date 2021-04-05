@@ -4,6 +4,7 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
+    ElasticIp: true
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
