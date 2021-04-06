@@ -15,11 +15,13 @@ Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
     - Name: queue-0
+      {% if scheduler != "awsbatch" %}
       Iam:
         AdditionalIamPolicies:
           {% for policy in iam_policies %}
           - Policy: {{ policy }} # Todo: change it to arn instead of name
           {% endfor %}
+      {% endif %}
       ComputeResources:
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}
