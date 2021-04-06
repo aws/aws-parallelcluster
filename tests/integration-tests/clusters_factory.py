@@ -132,7 +132,8 @@ class Cluster:
             logging.info("Get cluster {0} instances successfully".format(self.name))
             cluster_instances = []
             for entry in result.stdout.splitlines():
-                instance_role, instance_id = entry.split()
+                instance_role, instance_id = re.split("\t", entry)
+                instance_id = instance_id.strip()
                 if not desired_instance_role or desired_instance_role == instance_role:
                     cluster_instances.append(instance_id)
             return cluster_instances
