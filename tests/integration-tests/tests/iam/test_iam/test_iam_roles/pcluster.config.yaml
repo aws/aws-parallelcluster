@@ -15,14 +15,20 @@ Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
     - Name: queue-0
+      {% if scheduler != "awsbatch" %}
       Iam:
         InstanceRole: {{ ec2_iam_role }}
+      {% endif %}
       ComputeResources:
         - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          {% else %}
           InstanceType: {{ instance }}
           Efa:
             Enabled: false
             GdrSupport: false
+          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
