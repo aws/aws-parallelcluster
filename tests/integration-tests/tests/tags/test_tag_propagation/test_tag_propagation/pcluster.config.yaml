@@ -1,8 +1,8 @@
 Image:
   Os: {{ os }}
 Tags:
-  Key: ConfigFileTag
-  Value: ConfigFileTagValue
+  - Key: ConfigFileTag
+    Value: ConfigFileTagValue
 HeadNode:
   InstanceType: {{ instance }}
   Networking:

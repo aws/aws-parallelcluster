@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 # import logging
 
-import json
 import logging
 import subprocess as sp
 
@@ -38,17 +37,16 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     - shared EBS volume
     """
     config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
-    command_line_tags = {"CommandLineTag": "CommandLineTagValue"}
     version_tags = {"Version": get_pcluster_version()}
     cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config, extra_args=["--tags", json.dumps(command_line_tags)])
+    cluster = clusters_factory(cluster_config)
     cluster_name_tags = {"ClusterName": cluster.name}
 
     test_cases = [
         {
             "resource": "Main CloudFormation Stack",
             "tag_getter": get_main_stack_tags,
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
+            "expected_tags": (version_tags, config_file_tags),
         },
         {
             "resource": "Head Node",
@@ -68,7 +66,6 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
                 cluster_name_tags,
                 {"Name": "Compute", "aws-parallelcluster-node-type": "Compute"},
                 config_file_tags,
-                command_line_tags,
             ),
             "skip": scheduler == "awsbatch",
         },
@@ -79,7 +76,6 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
                 cluster_name_tags,
                 {"aws-parallelcluster-node-type": "Compute"},
                 config_file_tags if scheduler == "slurm" else {},
-                command_line_tags if scheduler == "slurm" else {},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
             "skip": scheduler == "awsbatch",
@@ -87,7 +83,7 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
         {
             "resource": "Shared EBS Volume",
             "tag_getter": get_shared_volume_tags,
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
+            "expected_tags": (version_tags, config_file_tags),
         },
     ]
     for test_case in test_cases:
