@@ -26,12 +26,6 @@ test-suites:
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
   scaling:
-    test_scaling.py::test_nodewatcher_terminates_failing_node:
-      dimensions:
-        - regions: ["sa-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_ONE_PER_DISTRO }}
-          schedulers: ["sge", "torque"]
     test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
       dimensions:
         - regions: ["ap-east-1"]

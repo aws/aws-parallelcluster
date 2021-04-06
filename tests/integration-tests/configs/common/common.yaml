@@ -104,7 +104,7 @@ dcv:
         oss: ["alinux2", "centos7", "centos8", "ubuntu1804"]
         schedulers: ["slurm"]
       # DCV on ARM
-      - regions: ["eu-west-1"]
+      - regions: ["sa-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2", "centos8", "ubuntu1804"]
         schedulers: ["slurm"]
@@ -168,7 +168,7 @@ iam:
         schedulers: ["slurm", "awsbatch"]
   test_iam.py::test_iam_roles:
     dimensions:
-      - regions: ["us-east-2"]
+      - regions: ["eu-west-3"]
         schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -231,12 +231,6 @@ networking:
         oss: ["alinux2"]
         schedulers: ["slurm"]
 scaling:
-  test_scaling.py::test_nodewatcher_terminates_failing_node:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["sge", "torque"]
   test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
     dimensions:
       - regions: ["ap-east-1"]
@@ -254,26 +248,6 @@ scaling:
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
 schedulers:
-  test_sge.py::test_sge:
-    dimensions:
-      - regions: ["eu-south-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["sge"]
-      - regions: ["eu-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["sge"]
-  test_torque.py::test_torque:
-    dimensions:
-      - regions: ["ca-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["torque"]
-      - regions: ["ap-northeast-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["torque"]
   test_awsbatch.py::test_awsbatch:
     dimensions:
       - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
@@ -290,7 +264,7 @@ schedulers:
         schedulers: ["awsbatch"]
   test_slurm.py::test_slurm:
     dimensions:
-      - regions: ["us-east-2"]
+      - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
@@ -324,6 +298,7 @@ spot:
         oss: ["centos7"]
         schedulers: ["slurm"]
 storage:
+  # Regions were carefully picked for FSx test to ensure they have the deployment type required
   test_fsx_lustre.py::test_fsx_lustre:
     dimensions:
       - regions: ["us-east-2"]
@@ -351,7 +326,7 @@ storage:
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_fsx_lustre_backup:
     dimensions:
-      - regions: ["us-west-2"]
+      - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]

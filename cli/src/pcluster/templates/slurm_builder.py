@@ -409,7 +409,7 @@ class SlurmConstruct(core.Construct):
                 else None,  # parameter not supported for instance types with multiple network interfaces
                 interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                 groups=queue_lt_security_groups,
-                subnet_id=queue.networking.subnet_ids[0],  # FIXME slurm supports a single subnet
+                subnet_id=queue.networking.subnet_ids[0],
             )
         ]
         for device_index in range(1, compute_resource.max_network_interface_count):
@@ -419,7 +419,7 @@ class SlurmConstruct(core.Construct):
                     network_card_index=device_index,
                     interface_type="efa" if compute_resource.efa and compute_resource.efa.enabled else None,
                     groups=queue_lt_security_groups,
-                    subnet_id=queue.networking.subnet_ids[0],  # FIXME slurm supports a single subnet
+                    subnet_id=queue.networking.subnet_ids[0],
                 )
             )
 
