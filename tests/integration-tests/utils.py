@@ -382,7 +382,7 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
 
 def check_headnode_security_group(region, cluster, port, expected_cidr):
     """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
-    security_group_id = cluster.cfn_resources.get("MasterSecurityGroup")
+    security_group_id = cluster.cfn_resources.get("HeadNodeSecurityGroup")
     response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
 
     ips = response["SecurityGroups"][0]["IpPermissions"]

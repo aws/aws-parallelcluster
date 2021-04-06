@@ -83,7 +83,7 @@ class Ec2Client(Boto3Client):
         result = self._client.describe_images(ImageIds=[ami_id])
         if result.get("Images"):
             return result.get("Images")[0]
-        raise AWSClientError(function_name="describe_image", message=f"Image {ami_id} not found")
+        raise AWSClientError(function_name="describe_images", message=f"Image {ami_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
     def describe_images(self, ami_ids, filters, owners):
@@ -156,17 +156,23 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
-    def get_official_image_id(self, os, architecture):
+    def get_official_image_id(self, os, architecture, filters=None):
         """Return the id of the current official image, for the provided os-architecture combination."""
-        images = self._client.describe_images(
-            Filters=[
-                {"Name": "name", "Values": ["{0}*".format(self.get_official_image_name_prefix(os, architecture))]},
-                {"Name": "owner-alias", "Values": ["amazon"]},
-            ],
-        ).get("Images")
-        return images[0].get("ImageId") if images else None
+        owner = filters.owner if filters and filters.owner else "amazon"
+        tags = filters.tags if filters and filters.tags else []
 
-    def get_official_image_name_prefix(self, os, architecture):
+        filters = [{"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]}]
+        filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
+        images = self._client.describe_images(
+            Owners=[owner],
+            Filters=filters,
+        ).get("Images")
+        if not images:
+            raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
+        return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
+
+    @staticmethod
+    def _get_official_image_name_prefix(os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
         suffixes = {
             "alinux2": "amzn2-hvm",

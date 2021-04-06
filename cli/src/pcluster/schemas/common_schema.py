@@ -120,8 +120,8 @@ def _is_implied(resource, attr, value):
 class TagSchema(BaseSchema):
     """Represent the schema of Tag section."""
 
-    key = fields.Str(validate=validate.Length(max=128), update_policy=UpdatePolicy.UNSUPPORTED)
-    value = fields.Str(validate=validate.Length(max=256), update_policy=UpdatePolicy.SUPPORTED)
+    key = fields.Str(validate=validate.Length(max=128), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    value = fields.Str(validate=validate.Length(max=256), metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -133,10 +133,18 @@ class CookbookSchema(BaseSchema):
     """Represent the schema of cookbook."""
 
     chef_cookbook = fields.Str(
-        update_policy=UpdatePolicy(UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["cookbook_update"])
+        metadata={
+            "update_policy": UpdatePolicy(
+                UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["cookbook_update"]
+            )
+        }
     )
     extra_chef_attributes = fields.Str(
-        update_policy=UpdatePolicy(UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["cookbook_update"])
+        metadata={
+            "update_policy": UpdatePolicy(
+                UpdatePolicy.UNSUPPORTED, fail_reason=UpdatePolicy.FAIL_REASONS["cookbook_update"]
+            )
+        }
     )
 
     @post_load()
@@ -155,6 +163,6 @@ class CookbookSchema(BaseSchema):
 class BaseDevSettingsSchema(BaseSchema):
     """Represent the common schema of Dev Setting for ImageBuilder and Cluster."""
 
-    cookbook = fields.Nested(CookbookSchema, update_policy=UpdatePolicy.UNSUPPORTED)
-    node_package = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
-    aws_batch_cli_package = fields.Str(update_policy=UpdatePolicy.UNSUPPORTED)
+    cookbook = fields.Nested(CookbookSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    node_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    aws_batch_cli_package = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})

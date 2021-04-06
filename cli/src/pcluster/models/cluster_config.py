@@ -318,7 +318,7 @@ class SharedFsx(Resource):
         )
         self._execute_validator(
             FsxStorageTypeOptionsValidator,
-            storage_type=self.fsx_storage_type,
+            fsx_storage_type=self.fsx_storage_type,
             deployment_type=self.deployment_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             drive_cache_type=self.drive_cache_type,
@@ -327,7 +327,7 @@ class SharedFsx(Resource):
             FsxStorageCapacityValidator,
             storage_capacity=self.storage_capacity,
             deployment_type=self.deployment_type,
-            storage_type=self.fsx_storage_type,
+            fsx_storage_type=self.fsx_storage_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             file_system_id=self.file_system_id,
             backup_id=self.backup_id,
@@ -605,12 +605,22 @@ class AdditionalPackages(Resource):
         self.intel_select_solutions = intel_select_solutions
 
 
+class AmiSearchFilters(Resource):
+    """Represent the configuration for AMI search filters."""
+
+    def __init__(self, tags: List[Tag] = None, owner: str = None):
+        super().__init__()
+        self.tags = tags
+        self.owner = owner
+
+
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
-    def __init__(self, cluster_template: str = None, **kwargs):
+    def __init__(self, cluster_template: str = None, ami_search_filters: AmiSearchFilters = None, **kwargs):
         super().__init__(**kwargs)
         self.cluster_template = Resource.init_param(cluster_template)
+        self.ami_search_filters = Resource.init_param(ami_search_filters)
 
     def _validate(self):
         super()._validate()
@@ -987,10 +997,11 @@ class BaseClusterConfig(Resource):
     @property
     def ami_id(self):
         """Get the image id of the cluster."""
+        ami_filters = self.dev_settings.ami_search_filters if self.dev_settings else None
         return (
             self.image.custom_ami
             if self.image.custom_ami
-            else AWSApi.instance().ec2.get_official_image_id(self.image.os, self.head_node.architecture)
+            else AWSApi.instance().ec2.get_official_image_id(self.image.os, self.head_node.architecture, ami_filters)
         )
 
     @property

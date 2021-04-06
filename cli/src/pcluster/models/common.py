@@ -71,6 +71,9 @@ class Resource(ABC):
             """Return the update policy."""
             return self.__update_policy()
 
+        def __repr__(self):
+            return repr(self.value)
+
     def __init__(self, implied: bool = False):
         # Parameters registry
         self.__params = {}
@@ -155,7 +158,7 @@ class Resource(ABC):
         """Return a human readable representation of the Resource object."""
         return "<{name}({attributes})>".format(
             name=self.__class__.__name__,
-            attributes=",".join(f"{attr}={value}" for attr, value in self.__dict__.items()),
+            attributes=",".join(f"{attr}={repr(value)}" for attr, value in self.__dict__.items()),
         )
 
 

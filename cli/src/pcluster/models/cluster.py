@@ -15,6 +15,7 @@
 import json
 import logging
 import time
+from copy import deepcopy
 from enum import Enum
 from typing import List
 
@@ -114,36 +115,6 @@ class ClusterStack(StackInfo):
         """Return the scheduler used in the cluster."""
         return self._get_output("Scheduler")
 
-    def get_cluster_config_dict(self):
-        """Retrieve cluster config content."""
-        if not self.s3_bucket_name:
-            raise ClusterActionError("Unable to retrieve S3 Bucket name")
-        if not self.s3_artifact_directory:
-            raise ClusterActionError("Unable to retrieve Artifact S3 Root Directory")
-
-        table_name = self.name
-        config_version = None
-        try:
-            config_version_item = AWSApi.instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
-            if config_version_item or "Item" in config_version_item:
-                config_version = config_version_item["Item"].get("Version")
-        except Exception:  # nosec
-            # Use latest if not found
-            pass
-
-        try:
-            s3_object = AWSApi.instance().s3.get_object(
-                bucket_name=self.s3_bucket_name,
-                key=f"{self.s3_artifact_directory}/configs/cluster-config.yaml",
-                version_id=config_version,
-            )
-            config_content = s3_object["Body"].read().decode("utf-8")
-            return yaml.safe_load(config_content)
-        except Exception as e:
-            raise ClusterActionError(
-                f"Unable to load configuration from bucket '{self.s3_bucket_name}/{self.s3_artifact_directory}'.\n{e}"
-            )
-
     def updated_status(self):
         """Return updated status."""
         try:
@@ -151,38 +122,11 @@ class ClusterStack(StackInfo):
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to retrieve status of stack {self.name}. {e}")
 
-    def delete(self, keep_logs: bool = True):
-        """Delete stack by preserving logs."""
-        if keep_logs:
-            self._persist_cloudwatch_log_groups()
+    def delete(self):
+        """Delete stack."""
         AWSApi.instance().cfn.delete_stack(self.name)
 
-    def _persist_cloudwatch_log_groups(self):
-        """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
-        LOGGER.info("Configuring %s's CloudWatch log groups to persist past cluster deletion.", self.name)
-        log_group_keys = self._get_unretained_cw_log_group_resource_keys()
-        if log_group_keys:  # Only persist the CloudWatch group
-            self._persist_stack_resources(log_group_keys)
-
-    def _get_unretained_cw_log_group_resource_keys(self):
-        """Return the keys to all CloudWatch log group resources in template if the resource is not to be retained."""
-        unretained_cw_log_group_keys = []
-        for key, resource in self.template.get("Resources", {}).items():
-            if resource.get("Type") == "AWS::Logs::LogGroup" and resource.get("DeletionPolicy") != "Retain":
-                unretained_cw_log_group_keys.append(key)
-        return unretained_cw_log_group_keys
-
-    def _persist_stack_resources(self, keys):
-        """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
-        template = self.template
-        for key in keys:
-            template["Resources"][key]["DeletionPolicy"] = "Retain"
-        try:
-            self._update_template(template)
-        except AWSClientError as e:
-            raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
-
-    def _update_template(self, template):
+    def update_template(self, template):
         """Update template of the running stack according to updated template."""
         try:
             AWSApi.instance().cfn.update_stack(self.name, template, self._params)
@@ -239,8 +183,36 @@ class Cluster:
     def source_config(self):
         """Return original config used to create the cluster."""
         if not self.__source_config:
-            self.__source_config = self.stack.get_cluster_config_dict()
+            self.__source_config = self._get_cluster_config_dict()
         return self.__source_config
+
+    def _get_cluster_config_dict(self):
+        """Retrieve cluster config content."""
+        if not self.bucket:
+            raise ClusterActionError("Unable to retrieve S3 Bucket name")
+
+        table_name = self.stack.name
+        config_version = None
+        try:
+            config_version_item = AWSApi.instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
+            if config_version_item or "Item" in config_version_item:
+                config_version = config_version_item["Item"].get("Version")
+        except Exception:  # nosec
+            # Use latest if not found
+            pass
+
+        try:
+            s3_object = AWSApi.instance().s3.get_object(
+                bucket_name=self.bucket.name,
+                key=f"{self.bucket.artifact_directory}/configs/cluster-config.yaml",
+                version_id=config_version,
+            )
+            config_content = s3_object["Body"].read().decode("utf-8")
+            return yaml.safe_load(config_content)
+        except Exception as e:
+            raise ClusterActionError(
+                f"Unable to load configuration from bucket '{self.bucket.name}/{self.bucket.artifact_directory}'.\n{e}"
+            )
 
     @property
     def config(self) -> BaseClusterConfig:
@@ -307,14 +279,13 @@ class Cluster:
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
 
-        except ClusterActionError as e:
-            raise e
         except Exception as e:
-            LOGGER.critical(e)
             if not creation_result and self.bucket:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete()
-            raise ClusterActionError(f"Cluster creation failed.\n{e}")
+            if isinstance(e, ClusterActionError):
+                raise e
+            raise ClusterActionError(str(e))
 
     def _validate_and_parse_config(self, suppress_validators, validation_failure_level, config_dict=None):
         """
@@ -394,9 +365,10 @@ class Cluster:
                 )
             # Upload config with default values and sections
             if self.config:
+                config_copy = deepcopy(self.config)
                 result = AWSApi.instance().s3.put_object(
                     bucket_name=self.bucket.name,
-                    body=yaml.dump(ClusterSchema().dump(self.config)),
+                    body=yaml.dump(ClusterSchema().dump(config_copy)),
                     key=self._get_config_key(),
                 )
                 # config version will be stored in DB by the cookbook at the first update
@@ -474,14 +446,41 @@ class Cluster:
         return f"{self.bucket.artifact_directory}/configs/instance-types-data.json"
 
     def delete(self, keep_logs: bool = True):
-        """Delete cluster."""
+        """Delete cluster preserving log groups."""
         try:
-            self.stack.delete(keep_logs)
+            if keep_logs:
+                self._persist_cloudwatch_log_groups()
+            self.stack.delete()
             self._terminate_nodes()
             self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
         except Exception as e:
             self._terminate_nodes()
             raise ClusterActionError(f"Cluster {self.name} did not delete successfully. {e}")
+
+    def _persist_cloudwatch_log_groups(self):
+        """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
+        LOGGER.info("Configuring %s's CloudWatch log groups to persist past cluster deletion.", self.stack.name)
+        log_group_keys = self._get_unretained_cw_log_group_resource_keys()
+        if log_group_keys:  # Only persist the CloudWatch group
+            self._persist_stack_resources(log_group_keys)
+
+    def _get_unretained_cw_log_group_resource_keys(self):
+        """Return the keys to all CloudWatch log group resources in template if the resource is not to be retained."""
+        unretained_cw_log_group_keys = []
+        for key, resource in self.stack.template.get("Resources", {}).items():
+            if resource.get("Type") == "AWS::Logs::LogGroup" and resource.get("DeletionPolicy") != "Retain":
+                unretained_cw_log_group_keys.append(key)
+        return unretained_cw_log_group_keys
+
+    def _persist_stack_resources(self, keys):
+        """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
+        template = self.stack.template
+        for key in keys:
+            template["Resources"][key]["DeletionPolicy"] = "Retain"
+        try:
+            self.stack.update_template(template)
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
 
     def _terminate_nodes(self):
         try:

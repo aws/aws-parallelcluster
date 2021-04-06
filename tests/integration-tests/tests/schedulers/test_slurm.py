@@ -24,6 +24,7 @@ from utils import get_compute_nodes_instance_ids
 from tests.common.assertions import (
     assert_errors_in_logs,
     assert_no_errors_in_logs,
+    assert_no_msg_in_logs,
     assert_no_node_in_ec2,
     assert_num_instances_constant,
     assert_num_instances_in_cluster,
@@ -80,7 +81,12 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
         slurm_commands, partition="ondemand", instance_type="c5.xlarge", max_count=5, cpu_per_instance=4
     )
     _test_cluster_gpu_limits(
-        slurm_commands, partition="gpu", instance_type="g3.8xlarge", max_count=5, gpu_per_instance=2
+        slurm_commands,
+        partition="gpu",
+        instance_type="g3.8xlarge",
+        max_count=5,
+        gpu_per_instance=2,
+        gpu_type="m60",
     )
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
@@ -129,7 +135,7 @@ def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clus
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4, 1)
+    _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4)
     _test_partition_states(
         scheduler_commands,
         cluster.cfn_name,
@@ -181,16 +187,25 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1, 1)
-    _test_status_check_replacement(
+    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1)
+    _test_cloud_node_health_check(
         remote_command_executor,
         scheduler_commands,
         cluster.cfn_name,
         region,
         partition="ondemand1",
         num_static_nodes=1,
+        # Test only works with num_dynamic = 1
         num_dynamic_nodes=1,
         dynamic_instance_type=instance,
+    )
+    _test_ec2_status_check_replacement(
+        remote_command_executor,
+        scheduler_commands,
+        cluster.cfn_name,
+        region,
+        partition="ondemand1",
+        num_static_nodes=1,
     )
     # Next test will introduce error in logs, assert no error now
     assert_no_errors_in_logs(remote_command_executor, scheduler)
@@ -213,11 +228,10 @@ def _assert_cluster_initial_conditions(
     expected_num_dummy,
     expected_num_instance_node,
     expected_num_static,
-    expected_num_dynamic,
 ):
     """Assert that expected nodes are in cluster."""
     cluster_node_states = scheduler_commands.get_nodes_status()
-    c5l_nodes, instance_nodes, static_nodes, dynamic_nodes = [], [], [], []
+    c5l_nodes, instance_nodes, static_nodes = [], [], []
     logging.info(cluster_node_states)
     for nodename, node_states in cluster_node_states.items():
         if "c5l" in nodename:
@@ -228,12 +242,9 @@ def _assert_cluster_initial_conditions(
         if node_states == "idle":
             if "-st-" in nodename:
                 static_nodes.append(nodename)
-            if "-dy-" in nodename:
-                dynamic_nodes.append(nodename)
     assert_that(len(c5l_nodes)).is_equal_to(expected_num_dummy)
     assert_that(len(instance_nodes)).is_equal_to(expected_num_instance_node)
     assert_that(len(static_nodes)).is_equal_to(expected_num_static)
-    assert_that(len(dynamic_nodes)).is_equal_to(expected_num_dynamic)
 
 
 def _test_partition_states(
@@ -370,7 +381,7 @@ def _test_keep_or_replace_suspended_nodes(
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
 
 
-def _test_status_check_replacement(
+def _test_cloud_node_health_check(
     remote_command_executor,
     scheduler_commands,
     cluster_name,
@@ -380,8 +391,12 @@ def _test_status_check_replacement(
     num_dynamic_nodes,
     dynamic_instance_type,
 ):
-    """Test nodes failing static check are correctly replaced."""
-    logging.info("Testing that nodes failing static check are correctly replaced")
+    """
+    Test nodes with networking failure are correctly replaced.
+
+    This will test if slurm is performing health check on CLOUD nodes correctly.
+    """
+    logging.info("Testing that nodes with networking failure fails slurm health check and replaced")
     job_id = submit_initial_job(
         scheduler_commands,
         "sleep 500",
@@ -393,33 +408,66 @@ def _test_status_check_replacement(
     static_nodes, dynamic_nodes = assert_initial_conditions(
         scheduler_commands, num_static_nodes, num_dynamic_nodes, partition, job_id
     )
-    # Get network interface name from Head node, assuming Head node and Compute are of the same instance type
-    interface_name = remote_command_executor.run_remote_command(
-        "nmcli device status | grep ether | awk '{print $1}'"
-    ).stdout
-    logging.info("Detaching network interface {} on Compute nodes".format(interface_name))
-    # Only use dynamic nodes to test status check behavior
-    # Because static nodes will likely be placed in DOWN before status check failure shows in EC2
-    # Submit job that will detach network interface on all dynamic nodes, this will cause EC2 status check to fail
-    kill_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
-        submit_command_args={
-            "command": "sudo ifconfig {} down && sleep 600".format(interface_name),
-            "partition": partition,
-            "constraint": "dynamic",
-            "other_options": "-a 1-{} --exclusive --no-requeue".format(num_dynamic_nodes),
-        }
+    # Assert that the default SlurmdTimeout=180 is in effect
+    _assert_slurmd_timeout(remote_command_executor, timeout=180)
+    # Nodes with networking failures should fail slurm health check before failing ec2_status_check
+    # Test on freshly launched dynamic nodes
+    kill_job_id = _submit_kill_networking_job(
+        remote_command_executor, scheduler_commands, partition, node_type="dynamic", num_nodes=num_dynamic_nodes
     )
-    # Assert that dynamic nodes with failing status check are put into DRAIN
-    # Can take up to 15 mins for status check to show
+    # Sleep for a bit so the command to detach network interface can be run
+    time.sleep(15)
+    # Job will hang, cancel it manually to avoid waiting for job failing
+    scheduler_commands.cancel_job(kill_job_id)
+    # Assert nodes are put into DOWN for not responding
+    # TO-DO: this test only works with num_dynamic = 1 because slurm will record this error in nodelist format
+    # i.e. error: Nodes q2-st-t2large-[1-2] not responding, setting DOWN
+    # To support multiple nodes, need to convert list of node into nodelist format string
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/slurmctld.log"],
+        ["Nodes {} not responding, setting DOWN".format(",".join(dynamic_nodes))],
+    )
+    # Assert dynamic nodes are reset
+    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
+    assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
+    # Assert ec2_status_check code path is not triggered
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Setting nodes failing health check type ec2_health_check to DRAIN"],
+    )
+
+
+def _test_ec2_status_check_replacement(
+    remote_command_executor,
+    scheduler_commands,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+):
+    """Test nodes with failing ec2 status checks are correctly replaced."""
+    logging.info("Testing that nodes with failing ec2 status checks are correctly replaced")
+    static_nodes, _ = assert_initial_conditions(scheduler_commands, num_static_nodes, 0, partition)
+    # Can take up to 15 mins for ec2_status_check to show
+    # Need to increase SlurmdTimeout to avoid slurm health check and trigger ec2_status_check code path
+    _set_slurmd_timeout(remote_command_executor, timeout=10000)
+    kill_job_id = _submit_kill_networking_job(
+        remote_command_executor, scheduler_commands, partition, node_type="static", num_nodes=num_static_nodes
+    )
+    # Assert ec2_status_check code path is triggered
     retry(wait_fixed=seconds(20), stop_max_delay=minutes(15))(assert_errors_in_logs)(
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         ["Setting nodes failing health check type ec2_health_check to DRAIN"],
     )
     scheduler_commands.cancel_job(kill_job_id)
-    # Assert dynamic nodes are reset
-    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
+    # Assert static nodes are reset
+    _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[])
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
+    # Reset SlurmdTimeout to 180s
+    _set_slurmd_timeout(remote_command_executor, timeout=180)
 
 
 def _test_clustermgtd_down_logic(
@@ -500,6 +548,14 @@ def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
     if dynamic_nodes:
         logging.info("Assert dynamic nodes are power saved")
         _wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
+        node_addr_host = scheduler_commands.get_node_addr_host()
+        _assert_node_addr_host_reset(node_addr_host, dynamic_nodes)
+
+
+def _assert_node_addr_host_reset(addr_host_list, nodes):
+    """Assert that NodeAddr and NodeHostname are reset."""
+    for nodename in nodes:
+        assert_that(addr_host_list).contains("{0} {0} {0}".format(nodename))
 
 
 def _assert_nodes_not_terminated(scheduler_commands, nodes, timeout=5):
@@ -589,7 +645,7 @@ def _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, nu
         assert_that(proc_track_result.stdout).contains("IMB-MPI1")
 
 
-def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count, gpu_per_instance):
+def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count, gpu_per_instance, gpu_type):
     """Test edge cases regarding the number of GPUs."""
     logging.info("Testing scheduler does not accept jobs when requesting for more GPUs than available")
     # Expect commands below to fail with exit 1
@@ -642,7 +698,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "partition": partition,
             "constraint": instance_type,
             "slots": gpu_per_instance,
-            "other_options": "-G {0} --gpus-per-task=1".format(gpu_per_instance),
+            "other_options": "-G {0}:{1} --gpus-per-task={0}:1".format(gpu_type, gpu_per_instance),
         }
     )
     slurm_commands.submit_command_and_assert_job_accepted(
@@ -650,7 +706,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": "--gres=gpu:{0}".format(gpu_per_instance),
+            "other_options": "--gres=gpu:{0}:{1}".format(gpu_type, gpu_per_instance),
         }
     )
     # Submit job without '-N' option(nodes=-1)
@@ -729,7 +785,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type):
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 20.11.4")
+    assert_that(version).is_equal_to("slurm 20.11.5")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -813,3 +869,38 @@ def _test_torque_job_submit(remote_command_executor, test_datadir):
     torque_commands = TorqueCommands(remote_command_executor)
     result = torque_commands.submit_script(str(test_datadir / "torque_job.sh"))
     torque_commands.assert_job_submitted(result.stdout)
+
+
+def _submit_kill_networking_job(remote_command_executor, scheduler_commands, partition, node_type, num_nodes):
+    """Submit job that will detach network interface on compute."""
+    # Get network interface name from Head node, assuming Head node and Compute are of the same instance type
+    interface_name = remote_command_executor.run_remote_command(
+        "nmcli device status | grep ether | awk '{print $1}'"
+    ).stdout
+    logging.info("Detaching network interface {} on {} Compute nodes".format(interface_name, node_type))
+    # Submit job that will detach network interface on all dynamic nodes
+    return scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={
+            "command": "sudo ifconfig {} down && sleep 600".format(interface_name),
+            "partition": partition,
+            "constraint": "{}".format(node_type),
+            "other_options": "-a 1-{} --exclusive --no-requeue".format(num_nodes),
+        }
+    )
+
+
+def _set_slurmd_timeout(remote_command_executor, timeout):
+    """Set SlurmdTimeout in slurm.conf."""
+    remote_command_executor.run_remote_command(
+        "sudo sed -i '/SlurmdTimeout/s/=.*/={0}/' /opt/slurm/etc/slurm.conf".format(timeout)
+    )
+    remote_command_executor.run_remote_command("sudo /opt/slurm/bin/scontrol reconfigure")
+    _assert_slurmd_timeout(remote_command_executor, timeout)
+
+
+def _assert_slurmd_timeout(remote_command_executor, timeout):
+    """Assert that SlurmdTimeout is correctly set."""
+    configured_timeout = remote_command_executor.run_remote_command(
+        'scontrol show config | grep -oP "^SlurmdTimeout\\s*\\=\\s*\\K(.+)"'
+    ).stdout
+    assert_that(configured_timeout).is_equal_to("{0} sec".format(timeout))

@@ -12,19 +12,19 @@ HeadNode:
   CustomActions:
     - Script: s3://{{ bucket_name }}/post_install.sh
 Scheduling:
-  {{ scheduler }}:
-    Settings:
-      ScaledownIdletime: 10
-    Queues:
-      - Name: compute
-        CustomActions:
-          - Script: s3://{{ bucket_name }}/post_install.sh
-        ComputeResources:
-          - Name: compute-i1
-            InstanceType: {{ instance }}
-        Networking:
-          SubnetIds:
-            - {{ public_subnet_id }}
-        Iam:
-          S3Access:
-            - BucketName: {{ bucket_name }}
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    ScaledownIdletime: 10
+  Queues:
+    - Name: compute
+      CustomActions:
+        - Script: s3://{{ bucket_name }}/post_install.sh
+      ComputeResources:
+        - Name: compute-i1
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}

@@ -38,8 +38,8 @@ def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog
     _assert_compute_instance_type_validation_successful(caplog)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    min_vcpus = cluster.config.get("cluster awsbatch", "min_vcpus")
-    max_vcpus = cluster.config.get("cluster awsbatch", "max_vcpus")
+    min_vcpus = cluster.config["Scheduling"]["Queues"][0]["ComputeResources"][0]["MinvCpus"]
+    max_vcpus = cluster.config["Scheduling"]["Queues"][0]["ComputeResources"][0]["MaxvCpus"]
     assert_that(get_batch_ce_min_size(cluster.cfn_name, region)).is_equal_to(int(min_vcpus))
     assert_that(get_batch_ce_max_size(cluster.cfn_name, region)).is_equal_to(int(max_vcpus))
 

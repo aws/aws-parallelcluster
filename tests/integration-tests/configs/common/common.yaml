@@ -11,7 +11,7 @@ cfn-init:
       - regions: ["af-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
   test_cfn_init.py::test_install_args_quotes:
     dimensions:
       - regions: ["us-west-1"]
@@ -25,12 +25,6 @@ cli_commands:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
-  test_cli_commands.py::test_sit_cli_commands:
-    dimensions:
-      - regions: ["us-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
 cloudwatch_logging:
   test_cloudwatch_logging.py::test_cloudwatch_logging:
     dimensions:
@@ -59,7 +53,7 @@ configure:
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
@@ -94,33 +88,6 @@ create:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
-createami:
-  test_createami.py::test_createami:
-    dimensions:
-      - regions: ["eu-west-3"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
-      - regions: ["us-gov-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"] # alinux2 temporarily disabled due to incompatible device name
-  test_createami.py::test_createami_post_install:
-    dimensions:
-      - regions: ["ap-southeast-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7", "ubuntu1804"]
-      - regions: ["eu-west-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2"]
-  test_createami.py::test_createami_wrong_os:
-    dimensions:
-      - regions: ["eu-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]  # os must be different from alinux2 to test os validation logic when wrong os is provided
-  test_createami.py::test_createami_wrong_pcluster_version:
-    dimensions:
-      - regions: ["ca-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
 dashboard:
   test_dashboard.py::test_dashboard:
     dimensions:
@@ -166,7 +133,7 @@ dcv:
       - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7", "centos8"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
 disable_hyperthreading:
   test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
     dimensions:
@@ -180,22 +147,6 @@ disable_hyperthreading:
         instances: ["c5.xlarge"]
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
-  test_disable_hyperthreading.py::test_sit_disable_hyperthreading:
-    dimensions:
-      # Manually disabled HT
-      {%- for os, scheduler in [("centos7", "torque"), ("ubuntu1804", "sge")] %}
-      - regions: ["sa-east-1"]
-        instances: ["m4.xlarge"]
-        oss: ["{{ os }}"]
-        schedulers: ["{{ scheduler }}"]
-      {%- endfor %}
-      # HT disabled via CpuOptions
-      {%- for os, scheduler in [("alinux2", "sge"), ("centos7", "torque")] %}
-      - regions: ["sa-east-1"]
-        instances: ["c5.xlarge"]
-        oss: ["{{ os }}"]
-        schedulers: ["{{ scheduler }}"]
-      {%- endfor %}
 dns:
   test_dns.py::test_hit_no_cluster_dns_mpi:
     dimensions:
@@ -218,18 +169,6 @@ efa:
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804"]
         schedulers: ["slurm"]
-  test_efa.py::test_sit_efa:
-    dimensions:
-      - regions: ["us-east-1"]
-        instances: ["c5n.18xlarge"]
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        # Torque is not supported by OpenMPI distributed with EFA
-        # Slurm test is to verify EFA works correctly when using the SIT model in the config file
-        schedulers: ["sge", "slurm"]
-      - regions: ["us-west-2"]
-        instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "centos7"]
-        schedulers: ["sge"]
 iam:
   test_iam.py::test_iam_policies:
     dimensions:
@@ -240,7 +179,7 @@ iam:
   test_iam.py::test_iam_roles:
     dimensions:
       - regions: ["us-east-2"]
-        schedulers: ["awsbatch", "slurm", "sge"]
+        schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
   test_iam.py::test_s3_read_write_resource:
@@ -261,12 +200,8 @@ networking:
     dimensions:
       - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["alinux2", "centos7"]
         schedulers: ["slurm"]
-      - regions: ["eu-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
   test_networking.py::test_public_network_topology:
     dimensions:
       - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
@@ -299,19 +234,7 @@ networking:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-  test_placement_group.py::test_existing_placement_group_in_cluster:
-    dimensions:
-      - regions: ["af-south-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["slurm", "sge"]
-  test_placement_group.py::test_dynamic_placement_group_in_cluster:
-    dimensions:
-      - regions: ["eu-north-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["slurm", "sge"]
-  test_placement_group.py::test_placement_group_in_queue:
+  test_placement_group.py::test_placement_group:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -329,21 +252,17 @@ scaling:
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["slurm", "sge"]
+        schedulers: ["slurm"]
   test_mpi.py::test_mpi_ssh:
     dimensions:
       - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      - regions: ["ca-central-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["sge"]
 schedulers:
   test_sge.py::test_sge:
     dimensions:
@@ -413,7 +332,7 @@ spot:
       - regions: ["me-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
-        schedulers: ["sge", "slurm"]
+        schedulers: ["slurm"]
 storage:
   test_fsx_lustre.py::test_fsx_lustre:
     dimensions:
@@ -445,12 +364,12 @@ storage:
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
         oss: ["alinux2", "ubuntu1804", "centos8"]
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
   test_fsx_lustre.py::test_existing_fsx:
     dimensions:
       - regions: ["us-west-2"]
@@ -498,11 +417,11 @@ storage:
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_GOVCLOUD_X86 }}
-        schedulers: ["sge"]
+        schedulers: ["slurm"]
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_BATCH }}
@@ -553,7 +472,7 @@ tags:
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["slurm", "torque", "awsbatch"]
+        schedulers: ["slurm", "awsbatch"]
 update:
   test_update.py::test_update_awsbatch:
     dimensions:
@@ -561,30 +480,11 @@ update:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-  test_update.py::test_update_hit:
+  test_update.py::test_update_slurm:
     dimensions:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm"]
-  test_update.py::test_update_sit:
-    dimensions:
-      - regions: ["eu-west-2"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
-  test_update.py::test_sit_update_compute_instance_disable_ht:
-    dimensions:
-      - regions: ["us-west-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
-  test_update.py::test_sit_update_compute_instance_extra_json:
-    dimensions:
-      - regions: ["us-west-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7"]
-        schedulers: ["sge"]
 multiple_nics:
   test_multiple_nics.py::test_multiple_nics:
     dimensions:

@@ -251,7 +251,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
 
     # Restore backup into a new cluster
     cluster_config_restore = pcluster_config_reader(
-        config_file="pcluster_restore_fsx.config.ini", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId")
+        config_file="pcluster_restore_fsx.config.yaml", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId")
     )
 
     cluster_restore = clusters_factory(cluster_config_restore)
@@ -392,8 +392,7 @@ def get_mount_name(fsx_fs_id, region):
 
 
 def get_fsx_fs_id(cluster, region):
-    fsx_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="FSXSubstack")[0]
-    return utils.retrieve_cfn_outputs(fsx_stack, region).get("FileSystemId")
+    return utils.retrieve_cfn_outputs(cluster.cfn_name, region).get("FSXIds")
 
 
 def _get_storage_type(fsx):

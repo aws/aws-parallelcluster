@@ -88,7 +88,7 @@ class _DummyEc2Client(Ec2Client):
         """Override Parent constructor. No real boto3 client is created."""
         pass
 
-    def get_official_image_id(self, os, architecture):
+    def get_official_image_id(self, os, architecture, filters=None):
         return "dummy-ami-id"
 
     def describe_subnets(self, subnet_ids):

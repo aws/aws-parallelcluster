@@ -103,7 +103,8 @@ class S3BucketRegionValidator(Validator):
             bucket_region = AWSApi.instance().s3.get_bucket_region(bucket)
             if bucket_region != region:
                 self._add_failure(
-                    "The S3 bucket {0} specified cannot be used because it is not in the same region of the cluster.",
+                    f"The S3 bucket {bucket} specified cannot be used because "
+                    "it is not in the same region of the cluster.",
                     FailureLevel.ERROR,
                 )
         except AWSClientError as e:

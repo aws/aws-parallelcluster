@@ -12,8 +12,13 @@ Scheduling:
     - Name: ondemand
       CapacityType: ONDEMAND
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds:
+          - {{ private_subnet_id }}
       ComputeResources:
         - Name: ondemand-1
           InstanceType: {{ instance }}
           MinCount: {{ queue_size }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

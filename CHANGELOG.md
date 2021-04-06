@@ -24,6 +24,7 @@ CHANGELOG
 - Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
 - Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
+- Remove `amis.txt` file.
 
 2.x.x
 ------
@@ -37,7 +38,7 @@ CHANGELOG
 
 - Ubuntu 16.04 is no longer supported.
 - Amazon Linux is no longer supported.
-- Upgrade Slurm to version 20.11.4.
+- Upgrade Slurm to version 20.11.5.
   - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds
   - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value for all GPU, Type=tesla
 - Make `key_name` parameter optional to support cluster configurations without a key pair. 

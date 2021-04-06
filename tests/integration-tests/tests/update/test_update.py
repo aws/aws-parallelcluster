@@ -33,118 +33,9 @@ from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "sge")
-@pytest.mark.usefixtures("os")
-def test_update_sit(
-    region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
-):
-    # Create S3 bucket for pre/post install scripts
-    bucket_name = s3_bucket_factory()
-    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
-    bucket.upload_file(str(test_datadir / "postinstall.sh"), "scripts/postinstall.sh")
-
-    # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
-    cluster = clusters_factory(init_config_file)
-
-    # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.config_file = str(init_config_file)
-    cluster.update(force=False)
-
-    # Command executors
-    command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
-
-    # Create shared dir for script results
-    command_executor.run_remote_command("mkdir /shared/script_results")
-
-    # Update cluster with new configuration
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini", bucket=bucket_name)
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
-
-    # Get initial, new and old compute instances references, to be able to execute specific tests in different group of
-    # instances
-    # Get initial compute nodes
-    initial_compute_nodes = scheduler_commands.get_compute_nodes()
-
-    # Get new compute nodes
-    slots_per_instance = fetch_instance_slots(region, instance)
-    new_compute_nodes = _add_compute_nodes(scheduler_commands, slots_per_instance, number_of_nodes=1)
-
-    # Old compute node instance refs
-    old_compute_node = initial_compute_nodes[0]
-    old_compute_instance = _get_instance(region, cluster.cfn_name, old_compute_node)
-
-    # New compute node instance refs
-    new_compute_node = new_compute_nodes[0]
-    new_compute_instance = _get_instance(region, cluster.cfn_name, new_compute_node)
-
-    # Read updated configuration
-    updated_config = configparser.ConfigParser()
-    updated_config.read(updated_config_file)
-
-    # Check new ASG settings
-    _check_initial_queue(region, cluster.cfn_name, updated_config.getint("cluster default", "initial_queue_size"))
-    _check_max_queue(region, cluster.cfn_name, updated_config.getint("cluster default", "max_queue_size"))
-
-    # Check new S3 resources
-    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
-
-    # Check new Additional IAM policies
-    _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
-
-    # Check old and new compute instance types
-    _check_compute_instance_type(old_compute_instance, cluster.config.get("cluster default", "compute_instance_type"))
-    _check_compute_instance_type(new_compute_instance, updated_config.get("cluster default", "compute_instance_type"))
-
-    # Check old and new instance life cycle
-    _check_ondemand_instance(old_compute_instance)
-    _check_spot_instance(new_compute_instance)
-
-    # Check old and new compute root volume size
-    _check_compute_root_volume_size(
-        command_executor,
-        scheduler_commands,
-        test_datadir,
-        cluster.config.get("cluster default", "compute_root_volume_size"),
-        old_compute_node,
-    )
-    _check_compute_root_volume_size(
-        command_executor,
-        scheduler_commands,
-        test_datadir,
-        updated_config.get("cluster default", "compute_root_volume_size"),
-        new_compute_node,
-    )
-
-    # Check old and new extra_json
-    _check_extra_json(command_executor, scheduler_commands, old_compute_node, "test_value_1")
-    _check_extra_json(command_executor, scheduler_commands, new_compute_node, "test_value_2")
-
-    # Check pre and post install on new nodes
-    _check_script(
-        command_executor,
-        scheduler_commands,
-        new_compute_node,
-        "preinstall",
-        updated_config.get("cluster default", "pre_install_args"),
-    )
-    _check_script(
-        command_executor,
-        scheduler_commands,
-        new_compute_node,
-        "postinstall",
-        updated_config.get("cluster default", "post_install_args"),
-    )
-    _check_volume(cluster, updated_config, region)
-
-
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("os", "instance")
-def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -209,7 +100,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
 
     # Update cluster with new configuration
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.ini", bucket=bucket_name, resource_bucket=bucket_name
+        config_file="pcluster.config.update.yaml", bucket=bucket_name, resource_bucket=bucket_name
     )
     cluster.config_file = str(updated_config_file)
     cluster.update()
@@ -525,7 +416,7 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     cluster.update(force=False)
 
     # Update cluster with new configuration
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini")
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
     cluster.config_file = str(updated_config_file)
     cluster.update()
 
@@ -563,40 +454,6 @@ def get_batch_spot_bid_percentage(stack_name, region):
         .get("computeEnvironments")[0]
         .get("computeResources")
         .get("bidPercentage")
-    )
-
-
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
-@pytest.mark.usefixtures("os", "instance")
-def test_sit_update_compute_instance_disable_ht(
-    region, scheduler, pcluster_config_reader, clusters_factory, s3_bucket_factory
-):
-    # check case disable_hyperthreading = true, update compute instance
-    _check_update_compute(
-        pcluster_config_reader,
-        clusters_factory,
-        "pcluster.config.disable_ht.ini",
-        "pcluster.config.disable_ht.update.ini",
-        scheduler,
-        region,
-        disable_hyperthreading=True,
-    )
-
-
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
-@pytest.mark.usefixtures("os", "instance")
-def test_sit_update_compute_instance_extra_json(
-    region, scheduler, pcluster_config_reader, clusters_factory, s3_bucket_factory
-):
-    # check case extra_json is {"cfn_scheduler_slots" : "cores"}, update compute instance
-    _check_update_compute(
-        pcluster_config_reader,
-        clusters_factory,
-        "pcluster.config.extra_json.cores.ini",
-        "pcluster.config.extra_json.cores.update.ini",
-        scheduler,
-        region,
-        cfn_scheduler_slots="cores",
     )
 
 

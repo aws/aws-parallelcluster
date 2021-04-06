@@ -140,9 +140,6 @@ class ClusterCdkStack(core.Stack):
         if self.config.additional_resources:
             core.CfnStack(scope=self, id="AdditionalCfnStack", template_url=self.config.additional_resources)
 
-        # AWSBatchStack
-        # TODO: inline resources
-
         # Cleanup Resources Lambda Function
         cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
 
@@ -192,7 +189,7 @@ class ClusterCdkStack(core.Stack):
                 head_node_instance=self.head_node_instance,
             )
 
-        # CloudWatchDashboardSubstack
+        # CloudWatch Dashboard
         if self.config.is_cw_dashboard_enabled:
             self.cloudwatch_dashboard = CWDashboardConstruct(
                 scope=self,
@@ -292,7 +289,7 @@ class ClusterCdkStack(core.Stack):
             properties={
                 "ResourcesS3Bucket": self.bucket.name,
                 "ArtifactS3RootDirectory": self.bucket.artifact_directory,
-                "RemoveBucketOnDeletion": self.bucket.remove_on_deletion,
+                "RemoveBucketOnDeletion": "True" if self.bucket.remove_on_deletion else "False",
                 "Action": "DELETE_S3_ARTIFACTS",
             },
         )
@@ -462,7 +459,12 @@ class ClusterCdkStack(core.Stack):
             )
             if cloud_watch_policy_arn not in additional_iam_policies:
                 additional_iam_policies.append(cloud_watch_policy_arn)
-        # ToDo check if AWSBatchFullAccess needs to be added
+        if self.config.scheduling.scheduler == "awsbatch":
+            awsbatch_full_access_arn = self.format_arn(
+                service="iam", region="", account="aws", resource="policy/AWSBatchFullAccess"
+            )
+            if awsbatch_full_access_arn not in additional_iam_policies:
+                additional_iam_policies.append(awsbatch_full_access_arn)
         return iam.CfnRole(
             scope=self,
             id=name,
@@ -560,7 +562,7 @@ class ClusterCdkStack(core.Stack):
                         resources=[
                             self.format_arn(
                                 service="s3",
-                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/",
+                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
                                 region="",
                                 account="",
                             )
@@ -640,6 +642,13 @@ class ClusterCdkStack(core.Stack):
         fsx_id = shared_fsx.file_system_id
 
         if not fsx_id and shared_fsx.mount_dir:
+            # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
+            drive_cache_type = None
+            if shared_fsx.fsx_storage_type == "HDD":
+                if shared_fsx.drive_cache_type:
+                    drive_cache_type = shared_fsx.drive_cache_type
+                else:
+                    drive_cache_type = "NONE"
             fsx_resource = fsx.CfnFileSystem(
                 scope=self,
                 storage_capacity=shared_fsx.storage_capacity,
@@ -654,13 +663,13 @@ class ClusterCdkStack(core.Stack):
                     daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time,
                     per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput,
                     auto_import_policy=shared_fsx.auto_import_policy,
-                    drive_cache_type=shared_fsx.drive_cache_type,
+                    drive_cache_type=drive_cache_type,
                 ),
                 backup_id=shared_fsx.backup_id,
                 kms_key_id=shared_fsx.kms_key_id,
                 id=id,
                 file_system_type="LUSTRE",
-                storage_type=shared_fsx.drive_cache_type,
+                storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
                 security_group_ids=self._get_compute_security_groups(),
             )
@@ -725,11 +734,10 @@ class ClusterCdkStack(core.Stack):
             )
 
         # Mount Target for Head Node
-        head_node_sgs = self._get_head_node_security_groups()
         self._add_efs_mount_target(
             id,
             efs_id,
-            head_node_sgs,
+            compute_node_sgs,
             self.config.head_node.networking.subnet_id,
             checked_availability_zones,
             new_file_system,
@@ -976,7 +984,7 @@ class ClusterCdkStack(core.Stack):
                     "cfn_log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
-                    "dcv_enabled": head_node.dcv.enabled if head_node.dcv else "false",
+                    "dcv_enabled": "true" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cfn_cluster_cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",

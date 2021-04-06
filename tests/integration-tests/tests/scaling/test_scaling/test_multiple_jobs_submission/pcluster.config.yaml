@@ -7,7 +7,7 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  {{ scheduler }}:
+  Scheduler: {{ scheduler }}
   SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
   Queues:

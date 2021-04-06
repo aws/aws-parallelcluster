@@ -1,6 +1,6 @@
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 
-ENV USER root  # nosemgrep
+ENV USER root
 
 RUN yum update -y \
     && yum -y install \
@@ -13,9 +13,8 @@ RUN yum update -y \
     openssh-clients \
     openmpi \
     openmpi-devel \
-    python2 \
-    python2-setuptools \
-    python2-pip \
+    python3 \
+    python3-pip \
     which  \
     hostname \
     && yum clean all \

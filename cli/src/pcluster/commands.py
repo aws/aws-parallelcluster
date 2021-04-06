@@ -99,7 +99,7 @@ def create(args):
                     result.stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_state="CREATE_COMPLETE"
                 )
                 if not verified:
-                    LOGGER.critical("\nCluster creation failed.  Failed events:")
+                    LOGGER.critical("\nCluster creation failed. Failed events:")
                     utils.log_stack_failure_recursive(result.stack_name)
                     sys.exit(1)
 

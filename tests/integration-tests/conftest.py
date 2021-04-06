@@ -56,7 +56,7 @@ from utils import (
     unset_credentials,
 )
 
-from tests.common.utils import get_sts_endpoint, retrieve_latest_ami, retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
 
 
 def pytest_addoption(parser):
@@ -75,11 +75,14 @@ def pytest_addoption(parser):
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
     )
-    parser.addoption("--cookbook-git-ref", help="Git ref of the cookbook used to bake the AMI")
+    parser.addoption("--cookbook-git-ref", help="Git ref of the custom cookbook package used to build the AMI.")
+    parser.addoption("--node-git-ref", help="Git ref of the custom node package used to build the AMI.")
+    parser.addoption(
+        "--ami-owner",
+        help="Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon.",
+    )
     parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
-    parser.addoption("--template-url", help="url to a custom cfn template")
-    parser.addoption("--hit-template-url", help="url to a custom HIT cfn template")
     parser.addoption("--cw-dashboard-template-url", help="url to a custom Dashboard cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
@@ -299,11 +302,6 @@ def clusters_factory(request, region):
         )
 
 
-@pytest.fixture(scope="class")
-def cluster_model(scheduler):
-    return "HIT" if scheduler == "slurm" else "SIT"
-
-
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
 
@@ -341,7 +339,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, region, request):
+def pcluster_config_reader(test_datadir, vpc_stack, request):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -366,42 +364,62 @@ def pcluster_config_reader(test_datadir, vpc_stack, region, request):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        add_custom_packages_configs(config_file_path, request, region)
+        add_custom_packages_configs(config_file_path, request)
         return config_file_path
 
     return _config_renderer
 
 
-def add_custom_packages_configs(cluster_config, request, region):
+def _dict_has_nested_key(d, keys):
+    """Check if *keys (nested) exists in d (dict)."""
+    _d = d
+    for key in keys:
+        try:
+            _d = _d[key]
+        except KeyError:
+            return False
+    return True
+
+
+def _dict_add_nested_key(d, value, keys):
+    _d = d
+    for key in keys[:-1]:
+        if key not in _d:
+            _d[key] = {}
+        _d = _d[key]
+    _d[keys[-1]] = value
+
+
+def add_custom_packages_configs(cluster_config, request):
     with open(cluster_config) as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
-    if request.config.getoption("custom_chef_cookbook"):
-        if config_content.get("DevSettings") is None:
-            config_content["DevSettings"] = {}
-        if config_content["DevSettings"].get("Cookbook") is None:
-            config_content["DevSettings"]["Cookbook"] = {}
-        if config_content["DevSettings"]["Cookbook"].get("ChefCookbook") is None:
-            config_content["DevSettings"]["Cookbook"]["ChefCookbook"] = request.config.getoption("custom_chef_cookbook")
 
-    if config_content["Image"].get("CustomAmi") is None:
-        additional_filters = []
-        if request.config.getoption("cookbook_git_ref"):
-            additional_filters.append(
-                {
-                    "Name": "tag:parallelcluster_cookbook_ref",
-                    "Values": [request.config.getoption("cookbook_git_ref")],
-                }
-            )
-        # FixMe: the code below is a temporary solution to pass AMIs from build process.
-        #  However, this is done at the price of only testing custom AMI path.
-        #  We need a solution to pass the AMI without specifying CustomAMI
-        config_content["Image"]["CustomAmi"] = retrieve_latest_ami(
-            region,
-            config_content["Image"].get("Os"),
-            ami_type="pcluster",
-            architecture=get_architecture_supported_by_instance_type(config_content["HeadNode"]["InstanceType"]),
-            additional_filters=additional_filters,
+    if request.config.getoption("custom_chef_cookbook") and not _dict_has_nested_key(
+        config_content, ("DevSettings", "Cookbook", "ChefCookbook")
+    ):
+        _dict_add_nested_key(
+            config_content,
+            request.config.getoption("custom_chef_cookbook"),
+            ("DevSettings", "Cookbook", "ChefCookbook"),
         )
+
+    if request.config.getoption("custom_ami") and not _dict_has_nested_key(config_content, ("Image", "CustomAmi")):
+        _dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
+
+    if not _dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
+        if request.config.getoption("cookbook_git_ref") or request.config.getoption("node_git_ref"):
+            tags = []
+            if request.config.getoption("cookbook_git_ref"):
+                tags.append(
+                    {"Key": "parallelcluster_cookbook_ref", "Value": request.config.getoption("cookbook_git_ref")}
+                )
+            if request.config.getoption("node_git_ref"):
+                tags.append({"Key": "parallelcluster_node_ref", "Value": request.config.getoption("node_git_ref")})
+            _dict_add_nested_key(config_content, tags, ("DevSettings", "AmiSearchFilters", "Tags"))
+        if request.config.getoption("ami_owner"):
+            _dict_add_nested_key(
+                config_content, request.config.getoption("ami_owner"), ("DevSettings", "AmiSearchFilters", "Owner")
+            )
 
     with open(cluster_config, "w") as conf_file:
         yaml.dump(config_content, conf_file)

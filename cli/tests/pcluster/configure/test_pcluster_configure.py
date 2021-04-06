@@ -1,5 +1,4 @@
 import os
-import tempfile
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -22,9 +21,8 @@ PUBLIC_CONFIGURATION = NetworkConfiguration.PUBLIC.value.config_type
 
 
 @pytest.fixture()
-def temp_path_for_config():
-    with tempfile.TemporaryDirectory() as tmp_dir_name:
-        yield os.path.join(tmp_dir_name, "test_pcluster_configure")
+def temp_path_for_config(tmp_path):
+    return str(tmp_path / "cluster_config")
 
 
 def _mock_instance_type_info(mocker, instance_type="t2.micro"):
@@ -680,6 +678,7 @@ def test_filtered_subnets_by_az(mocker, capsys, test_datadir, temp_path_for_conf
 
 def general_wrapper_for_prompt_testing(
     mocker,
+    temp_path_for_config,
     region="eu-west-1",
     scheduler="slurm",
     op_sys="centos7",
@@ -692,18 +691,17 @@ def general_wrapper_for_prompt_testing(
     head_node_id="subnet-12345678",
     compute_id="subnet-23456789",
 ):
-    path = os.path.join(tempfile.gettempdir(), "test_pcluster_configure")
     MockHandler(mocker)
     input_composer = ComposeInput(aws_region_name=region, key=key, scheduler=scheduler)
     input_composer.add_first_flow(op_sys, min_size, max_size, head_node_instance, compute_instance)
     input_composer.add_no_automation_no_empty_vpc(vpc_id, head_node_id, compute_id)
     input_composer.mock_input(mocker)
 
-    _run_configuration(mocker, path)
+    _run_configuration(mocker, temp_path_for_config)
     return True
 
 
-def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir):
+def test_vpc_automation_with_no_single_qualified_az(mocker, temp_path_for_config, capsys, test_datadir):
     mock_handler = MockHandler(mocker, mock_availability_zone=False)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.get_supported_az_for_instance_type",
@@ -721,9 +719,8 @@ def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
-    path = os.path.join(tempfile.gettempdir(), "test_pcluster_configure")
     with pytest.raises(SystemExit):
-        _run_configuration(mocker, path)
+        _run_configuration(mocker, temp_path_for_config)
 
 
 @pytest.mark.parametrize(
@@ -739,30 +736,32 @@ def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir
         ("2500", ""),
     ],
 )
-def test_invalid_min_max_exception(mocker, min_size, max_size):
+def test_invalid_min_max_exception(mocker, temp_path_for_config, min_size, max_size):
     with pytest.raises(StopIteration):
-        general_wrapper_for_prompt_testing(mocker, min_size=min_size, max_size=max_size)
+        general_wrapper_for_prompt_testing(mocker, temp_path_for_config, min_size=min_size, max_size=max_size)
 
 
 @pytest.mark.parametrize("min_size, max_size", [("", ""), ("1", "2"), ("", "1"), ("4", "")])
-def test_valid_min_max(mocker, min_size, max_size):
+def test_valid_min_max(mocker, temp_path_for_config, min_size, max_size):
 
-    assert_that(general_wrapper_for_prompt_testing(mocker, min_size=min_size, max_size=max_size)).is_true()
+    assert_that(
+        general_wrapper_for_prompt_testing(mocker, temp_path_for_config, min_size=min_size, max_size=max_size)
+    ).is_true()
 
 
 @pytest.mark.parametrize("key", ["key0", "key7", "0", "-1", "-17", "8", "sopralapancalacapracampa"])
-def test_invalid_key_exception(mocker, key):
+def test_invalid_key_exception(mocker, temp_path_for_config, key):
     # Remember that keys go from key1...key6
     with pytest.raises(StopIteration):
-        general_wrapper_for_prompt_testing(mocker, key=key)
+        general_wrapper_for_prompt_testing(mocker, temp_path_for_config, key=key)
 
 
-def test_valid_key(mocker):
+def test_valid_key(mocker, temp_path_for_config):
     for i in range(1, 7):
 
-        assert_that(general_wrapper_for_prompt_testing(mocker, key="key" + str(i))).is_true()
+        assert_that(general_wrapper_for_prompt_testing(mocker, temp_path_for_config, key="key" + str(i))).is_true()
 
-        assert_that(general_wrapper_for_prompt_testing(mocker, key=str(i))).is_true()
+        assert_that(general_wrapper_for_prompt_testing(mocker, temp_path_for_config, key=str(i))).is_true()
 
 
 @pytest.mark.parametrize(
@@ -779,11 +778,11 @@ def test_valid_key(mocker):
         "sopralapancalacapracampa",
     ],
 )
-def test_invalid_vpc(mocker, vpc_id):
+def test_invalid_vpc(mocker, temp_path_for_config, vpc_id):
     # Look at _mock_list_vpcs and subnets
     with pytest.raises(StopIteration):
 
-        general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id)
+        general_wrapper_for_prompt_testing(mocker, temp_path_for_config, vpc_id=vpc_id)
 
 
 @pytest.mark.parametrize(
@@ -794,11 +793,13 @@ def test_invalid_vpc(mocker, vpc_id):
         ("vpc-34567891", "subnet-12345678", "subnet-23456789"),
     ],
 )
-def test_invalid_subnet(mocker, vpc_id, head_node_id, compute_id):
+def test_invalid_subnet(mocker, temp_path_for_config, vpc_id, head_node_id, compute_id):
     with pytest.raises(StopIteration):
 
         assert_that(
-            general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id)
+            general_wrapper_for_prompt_testing(
+                mocker, temp_path_for_config, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id
+            )
         ).is_true()
 
 
@@ -806,9 +807,11 @@ def test_invalid_subnet(mocker, vpc_id, head_node_id, compute_id):
     "vpc_id, head_node_id, compute_id",
     [("vpc-12345678", "subnet-12345678", "subnet-23456789"), ("vpc-34567891", "subnet-45678912", "subnet-45678912")],
 )
-def test_valid_subnet(mocker, vpc_id, head_node_id, compute_id):
+def test_valid_subnet(mocker, temp_path_for_config, vpc_id, head_node_id, compute_id):
     # valid subnets
 
     assert_that(
-        general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id)
+        general_wrapper_for_prompt_testing(
+            mocker, temp_path_for_config, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id
+        )
     ).is_true()

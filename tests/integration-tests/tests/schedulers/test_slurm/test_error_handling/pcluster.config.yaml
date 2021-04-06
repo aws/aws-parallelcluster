@@ -7,18 +7,20 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: {{ scheduler }}
+  Scheduler: slurm
   SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
   Queues:
-    - Name: queue-0
-      ComputeResources:
-        - Name: compute-resource-0
-          InstanceType: {{ instance }}
-          MaxCount: {{ max_queue_size }}
+    - Name: ondemand1
       Networking:
         SubnetIds:
-          - {{ public_subnet_id }}
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand-i1
+          InstanceType: c5.large
+        - Name: ondemand-i2
+          InstanceType: {{ instance }}
+          MinCount: 1
 SharedStorage:
   - MountDir: /shared
     Name: name1
