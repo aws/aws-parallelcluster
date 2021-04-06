@@ -87,7 +87,7 @@ class Cluster:
 
     def start(self):
         """Run pcluster start and return the result."""
-        cmd_args = ["pcluster", "start", "--config", self.config_file, self.name]
+        cmd_args = ["pcluster", "start", self.name]
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Cluster {0} started successfully".format(self.name))
@@ -98,7 +98,7 @@ class Cluster:
 
     def stop(self):
         """Run pcluster stop and return the result."""
-        cmd_args = ["pcluster", "stop", "--config", self.config_file, self.name]
+        cmd_args = ["pcluster", "stop", self.name]
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Cluster {0} stopped successfully".format(self.name))
@@ -109,7 +109,7 @@ class Cluster:
 
     def status(self):
         """Run pcluster stop and return the result."""
-        cmd_args = ["pcluster", "status", "--config", self.config_file, self.name]
+        cmd_args = ["pcluster", "status", self.name]
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Get cluster {0} status successfully".format(self.name))
@@ -124,7 +124,7 @@ class Cluster:
         """Run pcluster stop and return the result."""
         if desired_instance_role and desired_instance_role not in ("MasterServer", "ComputeFleet"):
             raise ValueError
-        cmd_args = ["pcluster", "instances", "--config", self.config_file, self.name]
+        cmd_args = ["pcluster", "instances", self.name]
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Get cluster {0} instances successfully".format(self.name))
