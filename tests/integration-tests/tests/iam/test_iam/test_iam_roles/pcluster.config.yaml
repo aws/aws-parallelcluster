@@ -19,10 +19,14 @@ Scheduling:
         InstanceRole: {{ ec2_iam_role }}
       ComputeResources:
         - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          {% else %}
           InstanceType: {{ instance }}
           Efa:
             Enabled: false
             GdrSupport: false
+          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
