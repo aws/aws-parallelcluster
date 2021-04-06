@@ -1183,6 +1183,13 @@ class ClusterCdkStack(core.Stack):
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"
 
+    def _condition_head_node_has_public_ip(self):
+        head_node_networking = self.config.head_node.networking
+        assign_public_ip = head_node_networking.assign_public_ip
+        if assign_public_ip is None:
+            assign_public_ip = AWSApi.instance().ec2.get_subnet_auto_assign_public_ip(head_node_networking.subnet_id)
+        return assign_public_ip
+
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
     def _add_outputs(self):
@@ -1223,13 +1230,12 @@ class ClusterCdkStack(core.Stack):
             value=self.head_node_instance.attr_private_dns_name,
         )
 
-        head_public_ip = self.head_node_instance.attr_public_ip
-        if head_public_ip:
+        if self._condition_head_node_has_public_ip():
             core.CfnOutput(
                 scope=self,
                 id="MasterPublicIP",  # FIXME
-                description="Private IP Address of the head node",
-                value=head_public_ip,
+                description="Public IP Address of the head node",
+                value=self.head_node_instance.attr_public_ip,
             )
 
         core.CfnOutput(
