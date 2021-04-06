@@ -3,7 +3,7 @@ arm_pl:
     dimensions:
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2", "centos8", "ubuntu1804"]
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
@@ -134,12 +134,12 @@ dcv:
       # DCV on GPU enabled instance
       - regions: ["eu-west-1"]
         instances: ["g3.8xlarge"]
-        oss: ["alinux2", "centos7", "centos8", "ubuntu1804"]
+        oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
       # DCV on ARM
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2", "centos8", "ubuntu1804"]
+        oss: {{common.OSS_COMMERCIAL_ARM}}
         schedulers: ["slurm"]
       # DCV in cn regions and non GPU enabled instance
       - regions: ["cn-northwest-1"]
@@ -168,12 +168,12 @@ disable_hyperthreading:
       # HT disabled via CpuOptions
       - regions: ["us-west-1"]
         instances: ["c5.xlarge"]
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
   test_disable_hyperthreading.py::test_sit_disable_hyperthreading:
     dimensions:
       # Manually disabled HT
-      {%- for os, scheduler in [("centos7", "torque"), ("ubuntu1804", "sge")] %}
+      {%- for os, scheduler in [("ubuntu2004", "torque"), ("ubuntu1804", "sge")] %}
       - regions: ["sa-east-1"]
         instances: ["m4.xlarge"]
         oss: ["{{ os }}"]
@@ -202,11 +202,11 @@ efa:
         schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos8"]
+        oss: ["alinux2", "centos8", "ubuntu2004"]
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
-        oss: ["alinux2", "ubuntu1804"]
+        oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
   test_efa.py::test_sit_efa:
     dimensions:
@@ -409,12 +409,11 @@ storage:
     dimensions:
       - regions: ["us-east-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "centos7", "centos8", "ubuntu1804"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-        oss: ["alinux2", "ubuntu1804", "centos8"]
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -438,8 +437,7 @@ storage:
         schedulers: ["sge"]
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-        oss: ["alinux2", "ubuntu1804", "centos8"]
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["sge"]
   test_fsx_lustre.py::test_existing_fsx:
     dimensions:
@@ -535,7 +533,7 @@ storage:
         schedulers: ["sge"]
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_existing:
     dimensions:
@@ -590,7 +588,7 @@ multiple_nics:
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "centos7"]
+        oss: ["ubuntu1804", "centos7", "ubuntu2004"]
         schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
@@ -604,5 +602,5 @@ nccl:
     dimensions:
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
