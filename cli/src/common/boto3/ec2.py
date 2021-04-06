@@ -121,7 +121,7 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def describe_placement_group(self, group_name):
         """Return the given placement group, if exists."""
-        return self._client.describe_placement_group(GroupNames=[group_name])
+        return self._client.describe_placement_groups(GroupNames=[group_name])
 
     @AWSExceptionHandler.handle_client_exception
     def describe_vpc_attribute(self, vpc_id, attribute):
