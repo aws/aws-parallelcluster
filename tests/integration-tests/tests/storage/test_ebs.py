@@ -25,7 +25,7 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 
 @pytest.mark.regions(["eu-west-3", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
-@pytest.mark.schedulers(["sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region):
     mount_dir = "ebs_mount_dir"
@@ -45,7 +45,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
     _test_ebs_encrypted_with_kms(volume_id, region, kms_key_id)
 
 
-@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "sge")
+@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos8", "slurm")
 @pytest.mark.usefixtures("os", "instance")
@@ -126,7 +126,7 @@ def _get_ebs_settings_by_name(config, name):
             return shared_storage["EbsSettings"]
 
 
-@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "centos7", "sge")
+@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
     request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory

@@ -506,21 +506,6 @@ class ClusterCdkStack(core.Stack):
                         resources=["*"],
                     ),
                     iam.PolicyStatement(
-                        sid="DynamoDBList", actions=["dynamodb:ListTables"], effect=iam.Effect.ALLOW, resources=["*"]
-                    ),
-                    iam.PolicyStatement(
-                        sid="SQSQueue",
-                        actions=[
-                            "sqs:SendMessage",
-                            "sqs:ReceiveMessage",
-                            "sqs:ChangeMessageVisibility",
-                            "sqs:DeleteMessage",
-                            "sqs:GetQueueUrl",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="sqs", resource=self._stack_name)],
-                    ),
-                    iam.PolicyStatement(
                         sid="Cloudformation",
                         actions=[
                             "cloudformation:DescribeStacks",

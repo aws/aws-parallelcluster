@@ -22,7 +22,7 @@ from conftest import add_custom_packages_configs
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["awsbatch", "slurm", "sge"])
+@pytest.mark.schedulers(["awsbatch", "slurm"])
 # Do not run on ARM + Batch
 # pcluster configure always picks optimal and Batch does not support ARM for optimal for now
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "*", "awsbatch")

@@ -16,11 +16,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 
 import pytest
 from assertpy import assert_that
-from benchmarks.common.metrics_reporter import (
-    enable_asg_metrics,
-    produce_benchmark_metrics_report,
-    publish_compute_nodes_metric,
-)
+from benchmarks.common.metrics_reporter import produce_benchmark_metrics_report, publish_compute_nodes_metric
 from benchmarks.common.util import get_instance_vcpus
 from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
@@ -29,7 +25,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.schedulers_common import get_scheduler_commands
 
 
-@pytest.mark.schedulers(["slurm", "sge", "torque"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.benchmarks
 def test_scheduler_performance(region, scheduler, os, instance, pcluster_config_reader, clusters_factory, request):
     """The test runs a stress test to verify scheduler behaviour with many submitted jobs."""
@@ -53,8 +49,6 @@ def test_scheduler_performance(region, scheduler, os, instance, pcluster_config_
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    if cluster.asg:
-        enable_asg_metrics(region, cluster)
 
     logging.info("Starting benchmark with following parameters: %s", benchmark_params)
     start_time = datetime.datetime.utcnow()
@@ -72,7 +66,6 @@ def test_scheduler_performance(region, scheduler, os, instance, pcluster_config_
         benchmark_params,
         region,
         cluster.cfn_name,
-        cluster.asg,
         start_time.replace(tzinfo=datetime.timezone.utc).isoformat(),
         end_time.replace(tzinfo=datetime.timezone.utc).isoformat(),
         benchmark_params["scaling_target"],
@@ -89,10 +82,7 @@ def _submit_jobs(benchmark_params, scheduler_commands, instance_slots, cluster):
     Submit 1 job to make the cluster scale to scaling_target and then a series of very small jobs
     to test scheduler performance.
     """
-    if benchmark_params["scheduler"] == "sge":
-        kwargs = {"slots": instance_slots * benchmark_params["scaling_target"]}
-    else:
-        kwargs = {"nodes": benchmark_params["scaling_target"]}
+    kwargs = {"nodes": benchmark_params["scaling_target"]}
     result = scheduler_commands.submit_command("sleep 1", **kwargs)
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
 

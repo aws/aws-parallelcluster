@@ -18,11 +18,11 @@ test-suites:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm"]
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:
       dimensions:
