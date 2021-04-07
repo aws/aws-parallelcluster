@@ -63,7 +63,7 @@ Scheduling:
           MinvCpus: 0  # 0
           DesiredvCpus: 10
           MaxvCpus: 20
-          SpotBidPercentage: 0.5
+          SpotBidPercentage: 50
           DisableSimultaneousMultithreading: false
 SharedStorage:
   - MountDir: /my/mount/point

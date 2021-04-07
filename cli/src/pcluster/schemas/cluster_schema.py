@@ -880,8 +880,8 @@ class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
     desired_vcpus = fields.Int(
         data_key="DesiredvCpus", validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.IGNORED}
     )
-    spot_bid_percentage = fields.Float(
-        validate=validate.Range(min=0, max=1, min_inclusive=False), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    spot_bid_percentage = fields.Int(
+        validate=validate.Range(min=0, max=100, min_inclusive=False), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
 
     @post_load
