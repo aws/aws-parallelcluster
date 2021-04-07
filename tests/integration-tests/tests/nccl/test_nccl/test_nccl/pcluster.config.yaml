@@ -8,8 +8,6 @@ HeadNode:
     KeyName: {{ key_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  SlurmSettings:
-    ScaledownIdletime: {{ scaledown_idletime }}
   Queues:
     - Name: ondemand1
       ComputeResources:
