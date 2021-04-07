@@ -27,3 +27,7 @@ Scheduling:
           DisableSimultaneousMultithreading: false
           InstanceType: {{ instance }}
           MinCount: 1
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

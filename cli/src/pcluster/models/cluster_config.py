@@ -737,12 +737,12 @@ class HeadNode(Resource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt
+        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt
+        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
 
     @property
     def instance_role(self):
@@ -1228,12 +1228,12 @@ class SlurmComputeResource(BaseComputeResource):
     @property
     def disable_simultaneous_multithreading_via_cpu_options(self) -> bool:
         """Return true if simultaneous multithreading must be disabled through cpu options."""
-        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt
+        return self.disable_simultaneous_multithreading and self.instance_type_info.is_cpu_options_supported_in_lt()
 
     @property
     def disable_simultaneous_multithreading_manually(self) -> bool:
         """Return true if simultaneous multithreading must be disabled with a cookbook script."""
-        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt
+        return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
 
 
 class SlurmQueue(BaseQueue):
