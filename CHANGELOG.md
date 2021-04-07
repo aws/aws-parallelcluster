@@ -4,17 +4,18 @@ CHANGELOG
 2.11.5
 -----
 
-**BUG FIXES**
-- Fix DCV connection through browsers.
-- Fix Tags in number interpreted as integer.
+**ENHANCEMENTS**
+- Add support for `NEW_CHANGED_DELETED` as value of FSx for Lustre `AutoImportPolicy` option.
 
 **CHANGES**
+- Drop support for SGE and Torque schedulers.
 - Upgrade NVIDIA driver to version 470.103.01.
 - Upgrade CUDA library to version 11.4.4.
 - Upgrade NVIDIA Fabric manager to version 470.103.01.
 
-**ENHANCEMENTS**
-- Add support for `NEW_CHANGED_DELETED` as value of FSx for Lustre `AutoImportPolicy` option.
+**BUG FIXES**
+- Fix DCV connection through browsers.
+- Fix Tags in number interpreted as integer.
 
 2.11.4
 -----

@@ -12,7 +12,6 @@ import logging
 import time
 
 import boto3
-from assertpy import assert_that
 from retrying import RetryError, retry
 from time_utils import seconds
 from utils import get_compute_nodes_count
@@ -105,30 +104,6 @@ def watch_compute_nodes(scheduler_commands, max_monitoring_time, number_of_nodes
     )
 
 
-def get_asg(region, stack_name):
-    """Retrieve the autoscaling group for a specific cluster."""
-    asg_conn = boto3.client("autoscaling", region_name=region)
-    tags = asg_conn.describe_tags(Filters=[{"Name": "value", "Values": [stack_name]}])
-    asg_name = tags.get("Tags")[0].get("ResourceId")
-    response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-    return response["AutoScalingGroups"][0]
-
-
-def get_desired_asg_capacity(region, stack_name):
-    """Retrieve the desired capacity of the autoscaling group for a specific cluster."""
-    return get_asg(region, stack_name)["DesiredCapacity"]
-
-
-def get_max_asg_capacity(region, stack_name):
-    """Retrieve the max capacity of the autoscaling group for a specific cluster."""
-    return get_asg(region, stack_name)["MaxSize"]
-
-
-def get_min_asg_capacity(region, stack_name):
-    """Retrieve the min capacity of the autoscaling group for a specific cluster."""
-    return get_asg(region, stack_name)["MinSize"]
-
-
 def get_stack(stack_name, region, cfn_client=None):
     """
     Get the output for a DescribeStacks action for the given Stack.
@@ -181,11 +156,3 @@ def get_batch_ce_min_size(stack_name, region):
         .get("computeResources")
         .get("minvCpus")
     )
-
-
-def assert_maintain_initial_size_behavior(stack_name, region, maintain_initial_size, initial_size):
-    min_size = get_min_asg_capacity(region, stack_name)
-    if maintain_initial_size == "true":
-        assert_that(min_size).is_equal_to(initial_size)
-    else:
-        assert_that(min_size).is_equal_to(0)

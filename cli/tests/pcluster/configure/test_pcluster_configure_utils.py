@@ -11,7 +11,7 @@ from pcluster.configure.utils import get_default_suggestion
         # doesn't matter what options are passed in with them.
         ("Scheduler", None, "slurm", None),
         ("Scheduler", [], "slurm", None),
-        ("Scheduler", ["sge", "torque", "awsbatch"], "slurm", None),
+        ("Scheduler", ["awsbatch"], "slurm", None),
         ("Operating System", None, "alinux2", None),
         ("Operating System", [], "alinux2", None),
         ("Operating System", ["centos7", "ubuntu1804"], "alinux2", None),

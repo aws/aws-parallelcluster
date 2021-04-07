@@ -202,7 +202,7 @@ def _test_fsx_lustre(
 
 @pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
 # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")

@@ -22,25 +22,8 @@ from tests.common.scaling_common import get_compute_nodes_allocation
 
 def assert_instance_replaced_or_terminating(instance_id, region):
     """Assert that a given instance got replaced or is marked as Unhealthy."""
-    response = boto3.client("autoscaling", region_name=region).describe_auto_scaling_instances(
-        InstanceIds=[instance_id]
-    )
-    if response["AutoScalingInstances"]:
-        assert_that(
-            response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
-            or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
-        ).is_true()
-    else:
-        ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
-        assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in(
-            "shutting-down", "terminated"
-        )
-
-
-def assert_asg_desired_capacity(region, asg_name, expected):
-    asg_client = boto3.client("autoscaling", region_name=region)
-    asg = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")[0]
-    assert_that(asg.get("DesiredCapacity")).is_equal_to(expected)
+    ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
+    assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in("shutting-down", "terminated")
 
 
 def assert_no_errors_in_logs(remote_command_executor, scheduler):
@@ -51,8 +34,6 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
             "/var/log/parallelcluster/slurm_resume.log",
             "/var/log/parallelcluster/slurm_suspend.log",
         ]
-    elif scheduler in {"sge", "torque"}:
-        log_files = ["/var/log/sqswatcher", "/var/log/jobwatcher"]
     else:
         log_files = []
 

@@ -61,10 +61,8 @@ def test_dcv_configuration(
     )
 
 
-@pytest.mark.parametrize(
-    "dcv_port, access_from, shared_dir", [(8443, "0.0.0.0/0", "/shared"), (5678, "192.168.1.1/32", "/myshared")]
-)
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "sge")
+@pytest.mark.parametrize("dcv_port, access_from", [(8443, "0.0.0.0/0", "/shared"), (5678, "192.168.1.1/32", "/myshared")])
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
 def test_dcv_with_remote_access(
     dcv_port,
     access_from,

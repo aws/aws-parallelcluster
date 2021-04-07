@@ -186,7 +186,7 @@ test-suites:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_ONE_PER_DISTRO }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm", "awsbatch"]
   cli_commands:
     test_cli_commands.py::test_hit_cli_commands:
       dimensions:
@@ -199,7 +199,7 @@ test-suites:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
-          schedulers: ["sge"]
+          schedulers: ["slurm"]
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:
       dimensions:
@@ -231,9 +231,7 @@ cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-awsbatch]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-sge]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-torque]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[eu-west-1-m6g.xlarge-alinux2-slurm]
 ```
   
@@ -458,10 +456,10 @@ def test_case_1(region, instance, os, scheduler):
 ```
 This test case will be automatically parametrized and executed for all combination of input dimensions.
 For example, given as input dimensions `--regions "eu-west-1" --instances "c4.xlarge" --oss "alinux2"
-"ubuntu1804" --scheduler "sge" "slurm"`, the following tests will run:
+"ubuntu1804" --scheduler "awsbatch" "slurm"`, the following tests will run:
 ```
-test_case_1[eu-west-1-c4.xlarge-alinux2-sge]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1804-sge]
+test_case_1[eu-west-1-c4.xlarge-alinux2-awsbatch]
+test_case_1[eu-west-1-c4.xlarge-ubuntu1804-awsbatch]
 test_case_1[eu-west-1-c4.xlarge-alinux2-slurm]
 test_case_1[eu-west-1-c4.xlarge-ubuntu1804-slurm]
 ```
@@ -522,13 +520,13 @@ While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "sge")
+@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "slurm")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2", "awsbatch")` or
-`("c4.xlarge", "centos7", "sge")`
+`("c4.xlarge", "centos7", "slurm")`
 
 #### Default Invalid Dimensions
 

@@ -182,11 +182,6 @@ class Cluster:
         return self.config.get("cluster {0}".format(cluster_template), "base_os", fallback="alinux2")
 
     @property
-    def asg(self):
-        """Return the asg name for the ComputeFleet."""
-        return self.cfn_outputs.get("ASGName")
-
-    @property
     def cfn_outputs(self):
         """
         Return the CloudFormation stack outputs for the cluster.
