@@ -446,10 +446,10 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
 @pytest.mark.parametrize(
     "architecture, supported_oses",
     [
-        ("x86_64", ["alinux2", "centos7", "centos8", "ubuntu1804"]),
-        ("arm64", ["alinux2", "ubuntu1804", "centos8"]),
+        ("x86_64", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
+        ("arm64", ["alinux2", "ubuntu1804", "ubuntu2004", "centos8"]),
         # doesn't check architecture's validity, only whether it's x86_64 or not
-        ("madeup-architecture", ["alinux2", "ubuntu1804", "centos8"]),
+        ("madeup-architecture", ["alinux2", "ubuntu1804", "ubuntu2004", "centos8"]),
     ],
 )
 def test_get_supported_os_for_architecture(architecture, supported_oses):
@@ -462,12 +462,12 @@ def test_get_supported_os_for_architecture(architecture, supported_oses):
 @pytest.mark.parametrize(
     "scheduler, supported_oses",
     [
-        ("sge", ["alinux2", "centos7", "centos8", "ubuntu1804"]),
-        ("slurm", ["alinux2", "centos7", "centos8", "ubuntu1804"]),
-        ("torque", ["alinux2", "centos7", "centos8", "ubuntu1804"]),
+        ("sge", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
+        ("slurm", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
+        ("torque", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
         ("awsbatch", ["alinux2"]),
         # doesn't check architecture's validity, only whether it's awsbatch or not
-        ("madeup-scheduler", ["alinux2", "centos7", "centos8", "ubuntu1804"]),
+        ("madeup-scheduler", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
     ],
 )
 def test_get_supported_os_for_scheduler(scheduler, supported_oses):
