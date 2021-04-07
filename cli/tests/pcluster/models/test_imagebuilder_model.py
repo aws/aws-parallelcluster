@@ -142,7 +142,7 @@ def test_imagebuilder_url_validator(
                 },
             },
             {
-                "cfncluster": {
+                "cluster": {
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
@@ -163,7 +163,7 @@ def test_imagebuilder_url_validator(
                 },
             },
             {
-                "cfncluster": {
+                "cluster": {
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
                     "custom_awsbatchcli_package": "",
@@ -186,7 +186,7 @@ def test_imagebuilder_url_validator(
                 },
             },
             {
-                "cfncluster": {
+                "cluster": {
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
@@ -209,7 +209,7 @@ def test_imagebuilder_url_validator(
                 },
             },
             {
-                "cfncluster": {
+                "cluster": {
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",

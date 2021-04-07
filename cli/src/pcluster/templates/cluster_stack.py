@@ -901,7 +901,7 @@ class ClusterCdkStack(core.Stack):
 
         dna_json = json.dumps(
             {
-                "cfncluster": {
+                "cluster": {
                     "stack_name": self._stack_name,
                     "cfn_raid_vol_ids": get_shared_storage_ids_by_type(
                         self.shared_storage_mappings, SharedStorageType.RAID
@@ -1013,7 +1013,7 @@ class ClusterCdkStack(core.Stack):
                     "jq": {
                         "command": (
                             "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 "
-                            "| .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json "
+                            "| .cluster = $f1.cluster + $f2.cluster' > /etc/chef/dna.json "
                             '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
                         )
                     },

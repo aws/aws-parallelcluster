@@ -213,5 +213,5 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
         )
         self.cfn_base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
         for key, value in self.__dict__.items():
-            if not key.startswith("_") and key not in self._cfncluster_attributes:
-                self._cfncluster_attributes.update({key: value})
+            if not key.startswith("_") and key not in self._cluster_attributes:
+                self._cluster_attributes.update({key: value})

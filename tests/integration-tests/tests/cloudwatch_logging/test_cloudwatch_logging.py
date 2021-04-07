@@ -192,7 +192,7 @@ class CloudWatchLoggingClusterState:
     def _read_head_node_config(self):
         """Read the node configuration JSON file at NODE_CONFIG_PATH on the head node."""
         read_cmd = "cat {0}".format(NODE_CONFIG_PATH)
-        head_node_config = json.loads(self._run_command_on_head_node(read_cmd)).get("cfncluster", {})
+        head_node_config = json.loads(self._run_command_on_head_node(read_cmd)).get("cluster", {})
         assert_that(head_node_config).is_not_empty()
         LOGGER.info("DNA config read from head node: {0}".format(_dump_json(head_node_config)))
         return head_node_config
@@ -207,7 +207,7 @@ class CloudWatchLoggingClusterState:
 
         # Use first one, since ParallelCluster-specific node config should be the same on every compute node
         for _, config_json in compute_hostname_to_config.items():
-            compute_node_config = json.loads(config_json).get("cfncluster", {})
+            compute_node_config = json.loads(config_json).get("cluster", {})
             break
 
         assert_that(compute_node_config).is_not_empty()
