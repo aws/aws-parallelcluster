@@ -60,12 +60,8 @@ def test_overwrite_sg(region, custom_security_group, pcluster_config_reader, clu
     for instance in instances:
         assert_that(instance["SecurityGroups"]).is_length(1)
 
-    cfn_client = boto3.client("cloudformation", region_name=region)
-
     logging.info("Collecting security groups of the FSx")
-    fsx_id = cfn_client.describe_stack_resource(
-        StackName=cluster.cfn_resources["FSXSubstack"], LogicalResourceId="FileSystem"
-    )["StackResourceDetail"]["PhysicalResourceId"]
+    fsx_id = cluster.cfn_resources["FSX0"]
     fsx_client = boto3.client("fsx", region_name=region)
     network_interface_id = fsx_client.describe_file_systems(FileSystemIds=[fsx_id])["FileSystems"][0][
         "NetworkInterfaceIds"
@@ -78,9 +74,7 @@ def test_overwrite_sg(region, custom_security_group, pcluster_config_reader, clu
     assert_that(fsx_security_groups).is_length(1)
 
     logging.info("Collecting security groups of the EFS")
-    efs_id = cfn_client.describe_stack_resource(
-        StackName=cluster.cfn_resources["EFSSubstack"], LogicalResourceId="EFSFS"
-    )["StackResourceDetail"]["PhysicalResourceId"]
+    efs_id = cluster.cfn_resources["EFS0"]
     efs_client = boto3.client("efs", region_name=region)
     mount_target_ids = [
         mount_target["MountTargetId"]
