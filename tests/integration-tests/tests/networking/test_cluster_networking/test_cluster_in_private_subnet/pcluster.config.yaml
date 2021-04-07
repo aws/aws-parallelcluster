@@ -22,3 +22,10 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: {{ fsx_mount_dir }}
+    Name: privatefsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+      DeploymentType: SCRATCH_2
