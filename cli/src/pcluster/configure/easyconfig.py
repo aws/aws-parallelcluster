@@ -8,9 +8,10 @@
 # or in the 'LICENSE.txt' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+import errno
 import logging
 import os
+import stat
 import sys
 from collections import OrderedDict
 
@@ -215,13 +216,30 @@ def configure(args):  # noqa: C901
         "Scheduling": {"Scheduler": scheduler, "Queues": queues},
     }
 
-    with open(config_file_path, "w") as config_file:
-        yaml.dump(result, config_file, sort_keys=False)
-    print(f"Configuration file written to {config_file_path}")
+    _write_configuration_file(config_file_path, result)
     print(
         f"You can edit your configuration file or simply run 'pcluster create -c {config_file_path} cluster-name' "
         "to create your cluster"
     )
+
+
+def _write_configuration_file(config_file_path, content):
+    if not os.path.isfile(config_file_path):
+        try:
+            config_folder = os.path.dirname(config_file_path) or "."
+            os.makedirs(config_folder)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise  # can safely ignore EEXISTS for this purpose...
+
+        # Fix permissions
+        with open(config_file_path, "a"):
+            os.chmod(config_file_path, stat.S_IRUSR | stat.S_IWUSR)
+
+    # Write configuration to disk
+    with open(config_file_path, "w") as config_file:
+        yaml.dump(content, config_file, sort_keys=False)
+    print(f"Configuration file written to {config_file_path}")
 
 
 def _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_types, cluster_size):
