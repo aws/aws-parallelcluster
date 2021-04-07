@@ -7,31 +7,25 @@ test-suites:
   runtime_bake:
     test_runtime_bake.py::test_runtime_bake:  # These are currently skipped
       dimensions:
-        {%- for os, scheduler in [("alinux2", "slurm"), ("alinux2", "torque"), ("centos7", "sge")] %}
+        {%- for os, scheduler in [("alinux2", "slurm")] %}
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1804", "sge")] %}
+        {%- for os, scheduler in [("ubuntu1804", "slurm")] %}
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1804", "sge"), ("alinux2", "slurm")] %}
+        {%- for os, scheduler in [("ubuntu1804", "slurm"), ("alinux2", "slurm")] %}
         - regions: ["us-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
   scaling:
-    test_scaling.py::test_nodewatcher_terminates_failing_node:
-      dimensions:
-        - regions: ["sa-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_ONE_PER_DISTRO }}
-          schedulers: ["sge", "torque"]
     test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
       dimensions:
         - regions: ["ap-east-1"]

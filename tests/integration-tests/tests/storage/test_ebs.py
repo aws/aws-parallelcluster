@@ -25,7 +25,7 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 
 @pytest.mark.regions(["eu-west-3", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
-@pytest.mark.schedulers(["sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region):
     mount_dir = "ebs_mount_dir"
@@ -45,7 +45,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
     _test_ebs_encrypted_with_kms(volume_id, region, kms_key_id)
 
 
-@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "sge")
+@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos8", "slurm")
 @pytest.mark.usefixtures("os", "instance")
@@ -110,30 +110,23 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, regio
     volume_ids = get_ebs_volume_ids(cluster, region)
     for i in range(len(volume_ids)):
         # test different volume types
-        volume_type = cluster.config.get("ebs ebs{0}".format(i + 1), "volume_type")
+        volume_type = _get_ebs_settings_by_name(cluster.config, f"ebs{i+1}")["VolumeType"]
         volume = describe_volume(volume_ids[i], region)
         assert_that(volume[0]).is_equal_to(volume_type)
         # test different iops
         # only the iops of io1 and io2 can be configured by us
         if volume_type in ["io1", "io2", "gp3"]:
-            volume_iops = cluster.config.get("ebs ebs{0}".format(i + 1), "volume_iops")
+            volume_iops = _get_ebs_settings_by_name(cluster.config, f"ebs{i+1}")["Iops"]
             assert_that(volume[1]).is_equal_to(int(volume_iops))
 
 
-@pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1804", "torque")
-@pytest.mark.usefixtures("region", "os", "instance")
-def test_ebs_single_empty(scheduler, pcluster_config_reader, clusters_factory):
-    cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-
-    mount_dir = "/shared"
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
-    _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+def _get_ebs_settings_by_name(config, name):
+    for shared_storage in config["SharedStorage"]:
+        if shared_storage["Name"] == name:
+            return shared_storage["EbsSettings"]
 
 
-@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "centos7", "sge")
+@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
     request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory

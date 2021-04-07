@@ -310,7 +310,7 @@ class ClusterCdkStack(core.Stack):
         )
 
         # Create and associate EIP to Head Node
-        if self.config.head_node.networking.elastic_ip:
+        if self.config.head_node.networking.elastic_ip is True:
             head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
 
             ec2.CfnEIPAssociation(
@@ -504,21 +504,6 @@ class ClusterCdkStack(core.Stack):
                         ],
                         effect=iam.Effect.ALLOW,
                         resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="DynamoDBList", actions=["dynamodb:ListTables"], effect=iam.Effect.ALLOW, resources=["*"]
-                    ),
-                    iam.PolicyStatement(
-                        sid="SQSQueue",
-                        actions=[
-                            "sqs:SendMessage",
-                            "sqs:ReceiveMessage",
-                            "sqs:ChangeMessageVisibility",
-                            "sqs:DeleteMessage",
-                            "sqs:GetQueueUrl",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="sqs", resource=self._stack_name)],
                     ),
                     iam.PolicyStatement(
                         sid="Cloudformation",
@@ -872,7 +857,7 @@ class ClusterCdkStack(core.Stack):
                 associate_public_ip_address=head_node.networking.assign_public_ip,
             )
         ]
-        for device_index in range(1, head_node.max_network_interface_count - 1):
+        for device_index in range(1, head_node.max_network_interface_count):
             head_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=device_index,
@@ -984,7 +969,7 @@ class ClusterCdkStack(core.Stack):
                     "cfn_log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
-                    "dcv_enabled": "true" if self.config.is_dcv_enabled else "false",
+                    "dcv_enabled": "master" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cfn_cluster_cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
@@ -1183,6 +1168,13 @@ class ClusterCdkStack(core.Stack):
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"
 
+    def _condition_head_node_has_public_ip(self):
+        head_node_networking = self.config.head_node.networking
+        assign_public_ip = head_node_networking.assign_public_ip
+        if assign_public_ip is None:
+            assign_public_ip = AWSApi.instance().ec2.get_subnet_auto_assign_public_ip(head_node_networking.subnet_id)
+        return assign_public_ip
+
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
     def _add_outputs(self):
@@ -1223,13 +1215,12 @@ class ClusterCdkStack(core.Stack):
             value=self.head_node_instance.attr_private_dns_name,
         )
 
-        head_public_ip = self.head_node_instance.attr_public_ip
-        if head_public_ip:
+        if self._condition_head_node_has_public_ip():
             core.CfnOutput(
                 scope=self,
                 id="MasterPublicIP",  # FIXME
-                description="Private IP Address of the head node",
-                value=head_public_ip,
+                description="Public IP Address of the head node",
+                value=self.head_node_instance.attr_public_ip,
             )
 
         core.CfnOutput(

@@ -23,7 +23,7 @@ from assertpy import assert_that
 @pytest.mark.regions(["ap-southeast-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.oss(["alinux2"])
-@pytest.mark.schedulers(["slurm", "torque", "awsbatch"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "instance")
 def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os):
     """
@@ -31,7 +31,6 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
 
     The following resources are checked for tags:
     - main CFN stack
-    - head node substack
     - head node
     - head node's root EBS volume
     - compute node (traditional schedulers)
@@ -49,17 +48,6 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
         {
             "resource": "Main CloudFormation Stack",
             "tag_getter": get_main_stack_tags,
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
-        },
-        {
-            "resource": "Head Node CloudFormation Stack",
-            "tag_getter": get_head_node_substack_tags,
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
-        },
-        {
-            "resource": "ComputeFleet CloudFormation Stack",
-            "tag_getter": get_compute_fleet_substack_tags,
-            "tag_getter_kwargs": {"cluster": cluster, "scheduler": scheduler},
             "expected_tags": (version_tags, config_file_tags, command_line_tags),
         },
         {
@@ -142,35 +130,9 @@ def get_main_stack_tags(cluster):
     return get_cloudformation_tags(cluster.region, cluster.cfn_name)
 
 
-def get_head_node_substack_name(cluster):
-    """Return the name of the given cluster's head node's substack."""
-    return cluster.cfn_resources.get("MasterServerSubstack")
-
-
-def get_head_node_substack_tags(cluster):
-    """Return the tags for the given cluster's head node's CFN stack."""
-    return get_cloudformation_tags(cluster.region, get_head_node_substack_name(cluster))
-
-
-def get_compute_fleet_substack_name(cluster, scheduler):
-    """Return the name of the given cluster's compute fleet substack."""
-    scheduler_to_compute_fleet_logical_stack_name = {
-        "slurm": "ComputeFleetHITSubstack",
-        "sge": "ComputeFleetSubstack",
-        "torque": "ComputeFleetSubstack",
-        "awsbatch": "AWSBatchStack",
-    }
-    return cluster.cfn_resources.get(scheduler_to_compute_fleet_logical_stack_name[scheduler])
-
-
-def get_compute_fleet_substack_tags(cluster, scheduler):
-    """Return the tags for the given cluster's compute fleet CFN stack."""
-    return get_cloudformation_tags(cluster.region, get_compute_fleet_substack_name(cluster, scheduler))
-
-
 def get_head_node_instance_id(cluster):
     """Return the given cluster's head node's instance ID."""
-    return cluster.head_node_substack_cfn_resources.get("MasterServer")
+    return cluster.cfn_resources.get("MasterServer")
 
 
 def get_ec2_instance_tags(instance_id, region):
@@ -252,7 +214,7 @@ def get_ebs_volume_tags(volume_id, region):
 
 def get_shared_volume_tags(cluster):
     """Return the given cluster's EBS volume's tags."""
-    shared_volume = cluster.ebs_substack_cfn_resources.get("Volume1")
+    shared_volume = cluster.cfn_resources.get("EBS0")
     return get_ebs_volume_tags(shared_volume, cluster.region)
 
 

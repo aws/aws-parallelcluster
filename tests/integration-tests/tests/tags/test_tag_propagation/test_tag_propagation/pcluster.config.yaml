@@ -22,6 +22,11 @@ Scheduling:
           {% else %}
           InstanceType: {{ instance }}
           MinCount: 1
+          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

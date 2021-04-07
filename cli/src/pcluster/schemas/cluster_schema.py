@@ -504,7 +504,7 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
     subnet_id = fields.Str(
         required=True, validate=get_field_validator("subnet_id"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
-    elastic_ip = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    elastic_ip = fields.Raw(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     proxy = fields.Nested(HeadNodeProxySchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
@@ -880,8 +880,8 @@ class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
     desired_vcpus = fields.Int(
         data_key="DesiredvCpus", validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.IGNORED}
     )
-    spot_bid_percentage = fields.Float(
-        validate=validate.Range(min=0, max=1, min_inclusive=False), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    spot_bid_percentage = fields.Int(
+        validate=validate.Range(min=0, max=100, min_inclusive=False), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
 
     @post_load

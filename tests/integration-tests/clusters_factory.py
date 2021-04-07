@@ -34,29 +34,21 @@ class Cluster:
         self.create_complete = False
         self.__cfn_outputs = None
         self.__cfn_resources = None
-        self.__head_node_substack_cfn_resources = None
-        self.__ebs_substack_cfn_resources = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
         return "{class_name}({attrs})".format(class_name=self.__class__.__name__, attrs=attrs)
 
-    def update(self, reset_desired=False, extra_params=None, force=True):
+    def update(self, force=True):
         """
         Update a cluster with an already updated config.
-        :param reset_desired: reset the current ASG desired capacity to initial config values
-        :param extra_params: extra parameters to pass to stack update
         :param force: if to use --force flag when update
         """
         # update the cluster
         logging.info("Updating cluster {0} with config {1}".format(self.name, self.config_file))
-        command = ["pcluster", "update", "--config", self.config_file, "--yes"]
+        command = ["pcluster", "update", "--config", self.config_file]
         if force:
             command.append("--force")
-        if reset_desired:
-            command.append("--reset-desired")
-        if extra_params:
-            command.extend(["--extra-parameters", extra_params])
         command.append(self.name)
         result = run_command(command)
         if "Status: {0} - UPDATE_COMPLETE".format(self.cfn_name) not in result.stdout:
@@ -174,11 +166,6 @@ class Cluster:
         return self.config["Image"]["Os"]
 
     @property
-    def asg(self):
-        """Return the asg name for the ComputeFleet."""
-        return self.cfn_outputs.get("ASGName")
-
-    @property
     def cfn_outputs(self):
         """
         Return the CloudFormation stack outputs for the cluster.
@@ -198,36 +185,10 @@ class Cluster:
             self.__cfn_resources = retrieve_cfn_resources(self.cfn_name, self.region)
         return self.__cfn_resources
 
-    @property
-    def head_node_substack_cfn_resources(self):
-        """
-        Return the CloudFormation stack resources for the cluster's head node substack.
-        Resources are retrieved only once and then cached.
-        """
-        if not self.__head_node_substack_cfn_resources:
-            self.__head_node_substack_cfn_resources = retrieve_cfn_resources(
-                self.cfn_resources.get("MasterServerSubstack"), self.region
-            )
-        return self.__head_node_substack_cfn_resources
-
-    @property
-    def ebs_substack_cfn_resources(self):
-        """
-        Return the CloudFormation stack resources for the cluster's EBS substack.
-        Resources are retrieved only once and then cached.
-        """
-        if not self.__ebs_substack_cfn_resources:
-            self.__ebs_substack_cfn_resources = retrieve_cfn_resources(
-                self.cfn_resources.get("EBSCfnStack"), self.region
-            )
-        return self.__ebs_substack_cfn_resources
-
     def _reset_cached_properties(self):
         """Discard cached data."""
         self.__cfn_outputs = None
         self.__cfn_resources = None
-        self.__head_node_substack_cfn_resources = None
-        self.__ebs_substack_cfn_resources = None
 
 
 class ClustersFactory:

@@ -18,12 +18,6 @@ from tests.common.utils import retrieve_latest_ami
 
 
 @pytest.mark.skip(reason="Temporarily disable this test")
-@pytest.mark.dimensions("eu-west-3", "c5.xlarge", "alinux2", "torque")
-@pytest.mark.dimensions("us-east-2", "c5.xlarge", "centos7", "sge")
-@pytest.mark.dimensions("us-east-2", "c5.xlarge", "centos8", "sge")
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "ubuntu1804", "sge")
-@pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "sge")
-@pytest.mark.dimensions("us-east-1", "m6g.xlarge", "ubuntu1804", "sge")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_runtime_bake(scheduler, os, region, pcluster_config_reader, clusters_factory, test_datadir, architecture):

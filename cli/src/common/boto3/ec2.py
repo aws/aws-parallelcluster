@@ -78,6 +78,14 @@ class Ec2Client(Boto3Client):
         raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
+    def get_subnet_auto_assign_public_ip(self, subnet_id):
+        """Return auto assign public ip setting of the given subnet."""
+        subnets = self.describe_subnets([subnet_id])
+        if subnets:
+            return subnets[0].get("MapPublicIpOnLaunch")
+        raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
+
+    @AWSExceptionHandler.handle_client_exception
     def describe_image(self, ami_id):
         """Return a dict of ami info."""
         result = self._client.describe_images(ImageIds=[ami_id])
@@ -113,7 +121,7 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def describe_placement_group(self, group_name):
         """Return the given placement group, if exists."""
-        return self._client.describe_placement_group(GroupNames=[group_name])
+        return self._client.describe_placement_groups(GroupNames=[group_name])
 
     @AWSExceptionHandler.handle_client_exception
     def describe_vpc_attribute(self, vpc_id, attribute):

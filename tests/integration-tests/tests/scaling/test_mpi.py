@@ -22,7 +22,7 @@ from tests.common.utils import fetch_instance_slots
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os")
 def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 3
@@ -57,7 +57,7 @@ def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_facto
 
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("region", "instance", "os")
 def test_mpi_ssh(scheduler, pcluster_config_reader, clusters_factory, test_datadir):
     cluster_config = pcluster_config_reader()
