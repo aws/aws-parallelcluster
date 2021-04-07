@@ -289,6 +289,7 @@ class SharedFsx(Resource):
         self.auto_import_policy = Resource.init_param(auto_import_policy)
         self.drive_cache_type = Resource.init_param(drive_cache_type)
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
+        self.__file_system_data = None
 
     def _validate(self):
         self._execute_validator(NameValidator, name=self.name)
@@ -344,6 +345,27 @@ class SharedFsx(Resource):
             self._execute_validator(
                 FsxAutoImportValidator, auto_import_policy=self.auto_import_policy, import_path=self.import_path
             )
+
+    @property
+    def file_system_data(self):
+        """Return filesystem information if using existing FSx."""
+        if not self.__file_system_data and self.file_system_id:
+            self.__file_system_data = AWSApi.instance().fsx.get_filesystem_info(self.file_system_id)
+        return self.__file_system_data
+
+    @property
+    def existing_mount_name(self):
+        """Return MountName if using existing FSx filesystem."""
+        if self.file_system_id:
+            return self.file_system_data.mount_name
+        return ""
+
+    @property
+    def existing_dns_name(self):
+        """Return DNSName if using existing FSx filesystem."""
+        if self.file_system_id:
+            return self.file_system_data.dns_name
+        return ""
 
 
 # ---------------------- Networking ---------------------- #

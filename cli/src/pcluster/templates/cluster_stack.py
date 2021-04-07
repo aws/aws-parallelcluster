@@ -86,6 +86,7 @@ class ClusterCdkStack(core.Stack):
         self.compute_security_groups = {}
         self.shared_storage_mappings = {storage_type: [] for storage_type in SharedStorageType}
         self.shared_storage_options = {storage_type: "" for storage_type in SharedStorageType}
+        self.shared_storage_attributes = {storage_type: {} for storage_type in SharedStorageType}
 
         self._add_resources()
         self._add_outputs()
@@ -170,6 +171,7 @@ class ClusterCdkStack(core.Stack):
                 compute_security_groups=self.compute_security_groups,  # Empty dict if provided by the user
                 shared_storage_mappings=self.shared_storage_mappings,
                 shared_storage_options=self.shared_storage_options,
+                shared_storage_attributes=self.shared_storage_attributes,
             )
 
         # Head Node
@@ -611,6 +613,9 @@ class ClusterCdkStack(core.Stack):
     def _add_fsx_storage(self, id: str, shared_fsx: SharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
         fsx_id = shared_fsx.file_system_id
+        # Initialize DNSName and MountName for existing filesystem, if any
+        self.shared_storage_attributes[shared_fsx.shared_storage_type]["MountName"] = shared_fsx.existing_mount_name
+        self.shared_storage_attributes[shared_fsx.shared_storage_type]["DNSName"] = shared_fsx.existing_dns_name
 
         if not fsx_id and shared_fsx.mount_dir:
             # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
@@ -645,12 +650,17 @@ class ClusterCdkStack(core.Stack):
                 security_group_ids=self._get_compute_security_groups(),
             )
             fsx_id = fsx_resource.ref
+            # Get MountName for new filesystem
+            # DNSName cannot be retrieved from CFN and will be generated in cookbook
+            self.shared_storage_attributes[shared_fsx.shared_storage_type][
+                "MountName"
+            ] = fsx_resource.attr_lustre_mount_name
 
         # [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,
         # export_path,import_path,weekly_maintenance_start_time,deployment_type,
         # per_unit_storage_throughput,daily_automatic_backup_start_time,
         # automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,
-        # auto_import_policy,storage_type,drive_cache_type]",
+        # auto_import_policy,storage_type,drive_cache_type,existing_mount_name,existing_dns_name]",
         self.shared_storage_options[shared_fsx.shared_storage_type] = ",".join(
             str(item)
             for item in [
@@ -671,6 +681,8 @@ class ClusterCdkStack(core.Stack):
                 shared_fsx.auto_import_policy or "NONE",
                 shared_fsx.fsx_storage_type or "NONE",
                 shared_fsx.drive_cache_type or "NONE",
+                shared_fsx.existing_mount_name,
+                shared_fsx.existing_dns_name,
             ]
         )
 
@@ -931,6 +943,8 @@ class ClusterCdkStack(core.Stack):
                         self.shared_storage_options, SharedStorageType.EFS
                     ),  # FIXME
                     "fsx_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.FSX),
+                    "fsx_mount_name": self.shared_storage_attributes[SharedStorageType.FSX].get("MountName", ""),
+                    "fsx_dns_name": self.shared_storage_attributes[SharedStorageType.FSX].get("DNSName", ""),
                     "fsx_options": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.FSX
                     ),

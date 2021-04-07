@@ -194,3 +194,20 @@ class InstanceTypeInfo:
             supported_classes.remove("on-demand")
             supported_classes.append("ondemand")
         return supported_classes
+
+
+class FsxFileSystemInfo:
+    """Data object wrapping the result of a describe_file_systems call."""
+
+    def __init__(self, file_system_data):
+        self.file_system_data = file_system_data
+
+    @property
+    def mount_name(self):
+        """Return MountName of the filesystem."""
+        return self.file_system_data.get("LustreConfiguration").get("MountName")
+
+    @property
+    def dns_name(self):
+        """Return DNSName of the filesystem."""
+        return self.file_system_data.get("DNSName")

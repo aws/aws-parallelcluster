@@ -60,6 +60,8 @@ write_files:
           "efs_fs_id": "${EFSId}",
           "efs_shared_dir": "${EFSOptions}",
           "fsx_fs_id": "${FSXId}",
+          "fsx_mount_name": "${FSXMountName}",
+          "fsx_dns_name": "${FSXDNSName}",
           "fsx_options": "${FSXOptions}",
           "scheduler": "${Scheduler}",
           "disable_hyperthreading_manually": "${DisableHyperThreadingManually}",

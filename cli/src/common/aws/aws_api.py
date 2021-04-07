@@ -13,6 +13,7 @@ from common.boto3.cfn import CfnClient
 from common.boto3.dynamodb import DynamodbClient
 from common.boto3.ec2 import Ec2Client
 from common.boto3.efs import EfsClient
+from common.boto3.fsx import FSxClient
 from common.boto3.iam import IamClient
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
@@ -37,6 +38,7 @@ class AWSApi:
         self.cfn = CfnClient()
         self.ec2 = Ec2Client()
         self.efs = EfsClient(ec2_client=self.ec2)
+        self.fsx = FSxClient()
         self.dynamodb = DynamodbClient()
         # pylint: disable=C0103
         self.s3 = S3Client()

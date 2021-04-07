@@ -14,6 +14,7 @@ from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.cfn import CfnClient
 from common.boto3.ec2 import Ec2Client
+from common.boto3.fsx import FSxClient
 from common.boto3.iam import IamClient
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
@@ -73,6 +74,7 @@ class _DummyAWSApi(AWSApi):
         os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
         self.ec2 = _DummyEc2Client()
         self.efs = _DummyEfsClient()
+        self.fsx = _DummyFSxClient()
         self.cfn = _DummyCfnClient()
         self.s3 = _DummyS3Client()
         self.imagebuilder = _DummyImageBuilderClient()
@@ -130,6 +132,20 @@ class _DummyEfsClient(Ec2Client):
             mt_id = mt_dict.get(avail_zone)
 
         return mt_id
+
+
+class _DummyFSxClient(FSxClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+    def get_filesystem_info(self, fsx_fs_id):
+        return {
+            "DNSName": "dummy-fsx-dns-name",
+            "LustreConfiguration": {
+                "MountName": "dummy-fsx-mount-name",
+            },
+        }
 
 
 class _DummyS3Client(S3Client):

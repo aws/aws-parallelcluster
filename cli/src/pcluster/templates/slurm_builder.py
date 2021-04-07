@@ -58,6 +58,7 @@ class SlurmConstruct(core.Construct):
         compute_security_groups: dict,
         shared_storage_mappings: dict,
         shared_storage_options: dict,
+        shared_storage_attributes: dict,
         **kwargs,
     ):
         super().__init__(scope, id)
@@ -74,6 +75,7 @@ class SlurmConstruct(core.Construct):
         self.compute_security_groups = compute_security_groups
         self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
+        self.shared_storage_attributes = shared_storage_attributes
 
         self._add_resources()
 
@@ -486,6 +488,10 @@ class SlurmConstruct(core.Construct):
                                 "FSXId": get_shared_storage_ids_by_type(
                                     self.shared_storage_mappings, SharedStorageType.FSX
                                 ),
+                                "FSXMountName": self.shared_storage_attributes[SharedStorageType.FSX].get(
+                                    "MountName", ""
+                                ),
+                                "FSXDNSName": self.shared_storage_attributes[SharedStorageType.FSX].get("DNSName", ""),
                                 "FSXOptions": get_shared_storage_options_by_type(
                                     self.shared_storage_options, SharedStorageType.FSX
                                 ),
