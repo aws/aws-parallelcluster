@@ -168,11 +168,6 @@ class Cluster:
         return self.config["Image"]["Os"]
 
     @property
-    def asg(self):
-        """Return the asg name for the ComputeFleet."""
-        return self.cfn_outputs.get("ASGName")
-
-    @property
     def cfn_outputs(self):
         """
         Return the CloudFormation stack outputs for the cluster.
