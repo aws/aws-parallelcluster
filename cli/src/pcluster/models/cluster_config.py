@@ -1263,14 +1263,14 @@ class SlurmQueue(BaseQueue):
             )
             self._execute_validator(
                 EfaSecurityGroupValidator,
-                efa_enabled=compute_resource.efa,
+                efa_enabled=compute_resource.efa.enabled,
                 security_groups=self.networking.security_groups,
                 additional_security_groups=self.networking.additional_security_groups,
             )
             if self.networking.placement_group:
                 self._execute_validator(
                     EfaPlacementGroupValidator,
-                    efa_enabled=compute_resource.efa,
+                    efa_enabled=compute_resource.efa.enabled,
                     placement_group_id=self.networking.placement_group.id,
                     placement_group_enabled=self.networking.placement_group.enabled,
                 )
