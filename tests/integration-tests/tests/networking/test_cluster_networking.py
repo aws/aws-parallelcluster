@@ -30,7 +30,7 @@ from tests.storage.test_fsx_lustre import (
 
 
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "alinux2", "slurm")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos7", "sge")
+@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_cluster_in_private_subnet(region, os, scheduler, pcluster_config_reader, clusters_factory, bastion_factory):
     # This test just creates a cluster in the private subnet and just checks that no failures occur

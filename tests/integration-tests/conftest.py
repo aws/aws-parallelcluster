@@ -341,7 +341,7 @@ def _write_cluster_config_to_outdir(request, cluster_config):
 
     # Sanitize config file name to make it Windows compatible
     # request.node.nodeid example:
-    # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-sge-8443-0.0.0.0/0-/shared]'
+    # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
     test_file, test_name = request.node.nodeid.split("::", 1)
     config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
 

@@ -23,45 +23,6 @@
     },
     {
       "Action": [
-        "dynamodb:ListTables"
-      ],
-      "Resource": [
-        "*"
-      ],
-      "Effect": "Allow",
-      "Sid": "DynamoDBList"
-    },
-    {
-      "Action": [
-        "sqs:SendMessage",
-        "sqs:ReceiveMessage",
-        "sqs:ChangeMessageVisibility",
-        "sqs:DeleteMessage",
-        "sqs:GetQueueUrl"
-      ],
-      "Resource": [
-        "arn:{{ partition }}:sqs:{{ region }}:{{ account_id }}:parallelcluster-*"
-      ],
-      "Effect": "Allow",
-      "Sid": "SQSQueue"
-    },
-    {
-      "Action": [
-        "autoscaling:DescribeAutoScalingGroups",
-        "autoscaling:TerminateInstanceInAutoScalingGroup",
-        "autoscaling:SetDesiredCapacity",
-        "autoscaling:UpdateAutoScalingGroup",
-        "autoscaling:DescribeTags",
-        "autoscaling:SetInstanceHealth"
-      ],
-      "Resource": [
-        "*"
-      ],
-      "Effect": "Allow",
-      "Sid": "Autoscaling"
-    },
-    {
-      "Action": [
         "cloudformation:DescribeStacks",
         "cloudformation:DescribeStackResource",
         "cloudformation:SignalResource"
@@ -96,16 +57,6 @@
       ],
       "Effect": "Allow",
       "Sid": "S3GetObj"
-    },
-    {
-      "Action": [
-        "sqs:ListQueues"
-      ],
-      "Resource": [
-        "*"
-      ],
-      "Effect": "Allow",
-      "Sid": "SQSList"
     },
     {
       "Action": [

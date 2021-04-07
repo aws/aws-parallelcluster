@@ -8,19 +8,19 @@ test-suites:
   runtime_bake:
     test_runtime_bake.py::test_runtime_bake: # arm instance tests are temporarily skipped
       dimensions:
-        {%- for os, scheduler in [("ubuntu1804", "torque"), ("centos7", "sge"), ("alinux2", "slurm"), ("ubuntu2004", "torque")] %}
+        {%- for os, scheduler in [("alinux2", "slurm")] %}
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1804", "sge")] %}
+        {%- for os, scheduler in [("ubuntu1804", "slurm")] %}
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
-#        {%- for os, scheduler in [("ubuntu1804", "sge"), ("alinux2", "slurm")] %}
+#        {%- for os, scheduler in [("ubuntu1804", "slurm"), ("alinux2", "slurm")] %}
 #        - regions: ["us-east-1"]
 #          instances: {{ common.INSTANCES_DEFAULT_ARM }}
 #          oss: ["{{ os }}"]

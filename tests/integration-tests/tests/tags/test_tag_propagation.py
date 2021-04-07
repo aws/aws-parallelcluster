@@ -23,7 +23,7 @@ from assertpy import assert_that
 @pytest.mark.regions(["ap-southeast-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.oss(["alinux2"])
-@pytest.mark.schedulers(["slurm", "torque", "awsbatch"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "instance")
 def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os):
     """

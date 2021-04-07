@@ -14,12 +14,7 @@ import logging
 
 import pytest
 from assertpy import assert_that
-from benchmarks.common.metrics_reporter import (
-    enable_asg_metrics,
-    produce_benchmark_metrics_report,
-    publish_compute_nodes_metric,
-)
-from benchmarks.common.util import get_instance_vcpus
+from benchmarks.common.metrics_reporter import produce_benchmark_metrics_report, publish_compute_nodes_metric
 from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes
 
@@ -27,7 +22,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.schedulers_common import get_scheduler_commands
 
 
-@pytest.mark.schedulers(["slurm", "sge", "torque"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.benchmarks
 def test_scaling_performance(region, scheduler, os, instance, pcluster_config_reader, clusters_factory, request):
     """The test runs benchmarks for the scaling logic."""
@@ -50,14 +45,9 @@ def test_scaling_performance(region, scheduler, os, instance, pcluster_config_re
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    if cluster.asg:
-        enable_asg_metrics(region, cluster)
     logging.info("Starting benchmark with following parameters: %s", benchmark_params)
     start_time = datetime.datetime.utcnow()
-    if scheduler == "sge":
-        kwargs = {"slots": get_instance_vcpus(region, instance) * benchmark_params["scaling_target"]}
-    else:
-        kwargs = {"nodes": benchmark_params["scaling_target"]}
+    kwargs = {"nodes": benchmark_params["scaling_target"]}
     result = scheduler_commands.submit_command("sleep {0}".format(benchmark_params["job_duration"]), **kwargs)
     scheduler_commands.assert_job_submitted(result.stdout)
     compute_nodes_time_series, timestamps, end_time = publish_compute_nodes_metric(

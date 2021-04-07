@@ -22,13 +22,7 @@ from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.hit_common import assert_initial_conditions
-from tests.common.scaling_common import (
-    get_batch_ce,
-    get_batch_ce_max_size,
-    get_batch_ce_min_size,
-    get_max_asg_capacity,
-    get_min_asg_capacity,
-)
+from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
@@ -351,16 +345,6 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
 
 
-def _check_max_queue(region, stack_name, queue_size):
-    asg_max_size = get_max_asg_capacity(region, stack_name)
-    assert_that(asg_max_size).is_equal_to(queue_size)
-
-
-def _check_initial_queue(region, stack_name, queue_size):
-    asg_min_size = get_min_asg_capacity(region, stack_name)
-    assert_that(asg_min_size).is_equal_to(queue_size)
-
-
 def _add_compute_nodes(scheduler_commands, slots_per_node, number_of_nodes=1):
     """
     Add new compute nodes to the cluster.
@@ -546,13 +530,13 @@ def _verify_initialization(region, cluster, config):
 
 
 def _test_max_vcpus(region, stack_name, vcpus):
-    asg_max_size = get_batch_ce_max_size(stack_name, region)
-    assert_that(asg_max_size).is_equal_to(vcpus)
+    ce_max_size = get_batch_ce_max_size(stack_name, region)
+    assert_that(ce_max_size).is_equal_to(vcpus)
 
 
 def _test_min_vcpus(region, stack_name, vcpus):
-    asg_min_size = get_batch_ce_min_size(stack_name, region)
-    assert_that(asg_min_size).is_equal_to(vcpus)
+    ce_min_size = get_batch_ce_min_size(stack_name, region)
+    assert_that(ce_min_size).is_equal_to(vcpus)
 
 
 def get_batch_spot_bid_percentage(stack_name, region):
@@ -630,9 +614,6 @@ def _check_update_compute(
     updated_config_file = pcluster_config_reader(update_config_name)
     cluster.config_file = str(updated_config_file)
     cluster.update()
-
-    logging.info("Sleeping for 180 seconds in case instance type properties cache is not updated yet in jobwatcher")
-    time.sleep(180)
 
     # Check cfn_scheduler_slots changed by changing compute instance type
     _check_compute_node_slots(

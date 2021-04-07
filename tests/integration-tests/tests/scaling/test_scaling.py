@@ -59,9 +59,9 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 
     logging.info("Verifying auto-scaling worked correctly")
     _assert_scaling_works(
-        asg_capacity_time_series=ec2_capacity_time_series,
+        ec2_capacity_time_series=ec2_capacity_time_series,
         compute_nodes_time_series=compute_nodes_time_series,
-        expected_asg_capacity=(0, 3),
+        expected_ec2_capacity=(0, 3),
         expected_compute_nodes=(0, 3),
     )
 
@@ -149,36 +149,36 @@ def _assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
 
 
 def _assert_scaling_works(
-    asg_capacity_time_series, compute_nodes_time_series, expected_asg_capacity, expected_compute_nodes
+    ec2_capacity_time_series, compute_nodes_time_series, expected_ec2_capacity, expected_compute_nodes
 ):
     """
     Verify that cluster scaling-up and scaling-down features work correctly.
 
-    :param asg_capacity_time_series: list describing the fluctuations over time in the asg capacity
+    :param ec2_capacity_time_series: list describing the fluctuations over time in the ec2 capacity
     :param compute_nodes_time_series: list describing the fluctuations over time in the compute nodes
-    :param expected_asg_capacity: pair containing the expected asg capacity (min_asg_capacity, max_asg_capacity)
+    :param expected_ec2_capacity: pair containing the expected ec2 capacity (min_ec2_capacity, max_ec2_capacity)
     :param expected_compute_nodes: pair containing the expected compute nodes (min_compute_nodes, max_compute_nodes)
     """
-    assert_that(asg_capacity_time_series).described_as("asg_capacity_time_series cannot be empty").is_not_empty()
+    assert_that(ec2_capacity_time_series).described_as("ec2_capacity_time_series cannot be empty").is_not_empty()
     assert_that(compute_nodes_time_series).described_as("compute_nodes_time_series cannot be empty").is_not_empty()
 
-    expected_asg_capacity_min, expected_asg_capacity_max = expected_asg_capacity
+    expected_ec2_capacity_min, expected_ec2_capacity_max = expected_ec2_capacity
     expected_compute_nodes_min, expected_compute_nodes_max = expected_compute_nodes
-    actual_asg_capacity_max = max(asg_capacity_time_series)
-    actual_asg_capacity_min = min(
-        asg_capacity_time_series[asg_capacity_time_series.index(actual_asg_capacity_max) :]  # noqa E203
+    actual_ec2_capacity_max = max(ec2_capacity_time_series)
+    actual_ec2_capacity_min = min(
+        ec2_capacity_time_series[ec2_capacity_time_series.index(actual_ec2_capacity_max) :]  # noqa E203
     )
     actual_compute_nodes_max = max(compute_nodes_time_series)
     actual_compute_nodes_min = min(
         compute_nodes_time_series[compute_nodes_time_series.index(actual_compute_nodes_max) :]  # noqa E203
     )
     with soft_assertions():
-        assert_that(actual_asg_capacity_min).described_as(
-            "actual asg min capacity does not match the expected one"
-        ).is_equal_to(expected_asg_capacity_min)
-        assert_that(actual_asg_capacity_max).described_as(
-            "actual asg max capacity does not match the expected one"
-        ).is_equal_to(expected_asg_capacity_max)
+        assert_that(actual_ec2_capacity_min).described_as(
+            "actual ec2 min capacity does not match the expected one"
+        ).is_equal_to(expected_ec2_capacity_min)
+        assert_that(actual_ec2_capacity_max).described_as(
+            "actual ec2 max capacity does not match the expected one"
+        ).is_equal_to(expected_ec2_capacity_max)
         assert_that(actual_compute_nodes_min).described_as(
             "actual number of min compute nodes does not match the expected one"
         ).is_equal_to(expected_compute_nodes_min)

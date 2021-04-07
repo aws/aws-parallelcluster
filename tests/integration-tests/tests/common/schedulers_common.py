@@ -173,108 +173,6 @@ class AWSBatchCommands(SchedulerCommands):
         raise NotImplementedError
 
 
-class SgeCommands(SchedulerCommands):
-    """Implement commands for sge scheduler."""
-
-    def __init__(self, remote_command_executor):
-        super().__init__(remote_command_executor)
-
-    @retry(retry_on_result=lambda result: result != 0, wait_fixed=seconds(3), stop_max_delay=minutes(7))
-    def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("qacct -j {0}".format(job_id), raise_on_error=False)
-        return result.return_code
-
-    def get_job_exit_status(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("qacct -j {0}".format(job_id))
-        match = re.search(r"exit_status\s+([0-9]+)", result.stdout)
-        assert_that(match).is_not_none()
-        return match.group(1)
-
-    def assert_job_submitted(self, qsub_output, is_array=False):  # noqa: D102
-        __tracebackhide__ = True
-        if is_array:
-            regex = r"Your job-array ([0-9]+)\.[0-9\-:]+ \(.+\) has been submitted"
-        else:
-            regex = r"Your job ([0-9]+) \(.+\) has been submitted"
-        match = re.search(regex, qsub_output)
-        assert_that(match).is_not_none()
-        return match.group(1)
-
-    def submit_command(self, command, nodes=1, slots=None, hold=False, after_ok=None, host=None):  # noqa: D102
-        flags = ""
-        if nodes > 1:
-            slots = nodes * slots
-        if slots:
-            flags += "-pe mpi {0} ".format(slots)
-        if hold:
-            flags += "-h "
-        if after_ok:
-            flags += "-hold_jid {0} ".format(after_ok)
-        if host:
-            flags += "-l hostname={0} ".format(host)
-        return self._remote_command_executor.run_remote_command(
-            "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
-        )
-
-    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None):
-        """Submit job with script."""
-        if not additional_files:
-            additional_files = []
-        if not script_args:
-            script_args = []
-        additional_files.append(script)
-        flags = ""
-        if slots:
-            flags += "-pe mpi {0} ".format(slots)
-        if host:
-            flags += "-l hostname={0} ".format(host)
-        script_name = os.path.basename(script)
-        return self._remote_command_executor.run_remote_command(
-            "qsub {0} {1} {2}".format(flags, script_name, " ".join(script_args)), additional_files=additional_files
-        )
-
-    def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
-        __tracebackhide__ = True
-        status = self.get_job_exit_status(job_id)
-        assert_that(status).is_equal_to("0")
-
-    def compute_nodes_count(self):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("qhost | grep -o ip- | wc -l")
-        # split()[-1] to extract last line and trim whitespaces
-        return int(result.stdout.split()[-1])
-
-    def get_compute_nodes(self):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("qhost | grep ip- | awk '{print $1}'")
-        return result.stdout.splitlines()
-
-    @retry(
-        retry_on_result=lambda result: "<state>d</state>" not in result,
-        wait_fixed=seconds(3),
-        stop_max_delay=minutes(5),
-    )
-    def wait_for_locked_node(self):  # noqa: D102
-        return self._remote_command_executor.run_remote_command("qstat -f -xml").stdout
-
-    def get_node_cores(self):
-        """Return number of slots from the scheduler."""
-        result = self._remote_command_executor.run_remote_command("qhost -F | grep hl:m_core")
-        return re.search(r"hl:m_core=(\d+).000000", result.stdout).group(1)
-
-    def set_nodes_state(self, compute_nodes, state):
-        """Not implemented."""
-        raise NotImplementedError
-
-    def get_nodes_status(self):
-        """Not implemented."""
-        raise NotImplementedError
-
-    @retry(retry_on_result=lambda result: result == [], wait_fixed=seconds(3), stop_max_delay=minutes(7))
-    def get_nodes_used_slots(self):  # noqa: D102
-        """Return a list that contains number of slots used by each node."""
-        result = self._remote_command_executor.run_remote_command("qstat -f | grep 'r ' | awk '{print$8}'")
-        return result.stdout.splitlines()
-
-
 class SlurmCommands(SchedulerCommands):
     """Implement commands for slurm scheduler."""
 
@@ -604,7 +502,6 @@ class TorqueCommands(SchedulerCommands):
 def get_scheduler_commands(scheduler, remote_command_executor):
     scheduler_commands = {
         "awsbatch": AWSBatchCommands,
-        "sge": SgeCommands,
         "slurm": SlurmCommands,
         "torque": TorqueCommands,
     }
