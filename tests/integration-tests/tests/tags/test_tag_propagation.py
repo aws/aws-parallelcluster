@@ -31,7 +31,6 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
 
     The following resources are checked for tags:
     - main CFN stack
-    - head node substack
     - head node
     - head node's root EBS volume
     - compute node (traditional schedulers)
@@ -133,7 +132,7 @@ def get_main_stack_tags(cluster):
 
 def get_head_node_instance_id(cluster):
     """Return the given cluster's head node's instance ID."""
-    return cluster.head_node_substack_cfn_resources.get("MasterServer")
+    return cluster.cfn_resources.get("MasterServer")
 
 
 def get_ec2_instance_tags(instance_id, region):
@@ -215,7 +214,7 @@ def get_ebs_volume_tags(volume_id, region):
 
 def get_shared_volume_tags(cluster):
     """Return the given cluster's EBS volume's tags."""
-    shared_volume = cluster.ebs_substack_cfn_resources.get("Volume1")
+    shared_volume = cluster.cfn_resources.get("EBS0")
     return get_ebs_volume_tags(shared_volume, cluster.region)
 
 
