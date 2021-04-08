@@ -426,7 +426,7 @@ class SlurmConstruct(core.Construct):
                 spot_options=ec2.CfnLaunchTemplate.SpotOptionsProperty(
                     spot_instance_type="one-time",
                     instance_interruption_behavior="terminate",
-                    max_price=compute_resource.spot_price,
+                    max_price=None if compute_resource.spot_price is None else str(compute_resource.spot_price),
                 ),
             )
 
