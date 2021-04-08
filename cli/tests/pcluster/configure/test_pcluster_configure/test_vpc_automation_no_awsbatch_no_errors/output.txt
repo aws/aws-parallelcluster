@@ -34,6 +34,7 @@ Allowed values for Operating System:
 2. centos7
 3. centos8
 4. ubuntu1804
+5. ubuntu2004
 Allowed values for Network Configuration:
 1. Head node in a public subnet and compute fleet in a private subnet
 2. Head node and compute fleet in the same public subnet

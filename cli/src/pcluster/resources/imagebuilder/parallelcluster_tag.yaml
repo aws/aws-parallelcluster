@@ -47,6 +47,8 @@ phases:
                 OS='centos8'
               elif [ $(echo "${RELEASE}" | grep '^ubuntu\.18') ]; then
                 OS='ubuntu1804'
+              elif [ $(echo "${RELEASE}" | grep '^ubuntu\.20') ]; then
+                OS='ubuntu2004'
               fi
 
               echo ${OS}

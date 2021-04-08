@@ -132,7 +132,7 @@ def test_update_stack_template(mocker, error_message):
     wait_for_update_mock = mocker.patch.object(cluster_stack, "_wait_for_update")
 
     if error_message is None or "no updates are to be performed" in error_message.lower():
-        cluster_stack._update_template(template_body)
+        cluster_stack.update_template(template_body)
         if error_message is None or "no updates are to be performed" not in error_message.lower():
             assert_that(wait_for_update_mock.called).is_true()
         else:
@@ -142,5 +142,5 @@ def test_update_stack_template(mocker, error_message):
             stack_name=FAKE_STACK_NAME, emsg=error_message
         )
         with pytest.raises(AWSClientError, match=full_error_message) as sysexit:
-            cluster_stack._update_template()
+            cluster_stack.update_template()
         assert_that(sysexit.value.code).is_not_equal_to(0)

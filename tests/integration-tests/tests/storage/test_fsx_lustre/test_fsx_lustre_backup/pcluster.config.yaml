@@ -33,5 +33,5 @@ SharedStorage:
       DeploymentType: PERSISTENT_1
       PerUnitStorageThroughput: 200
       AutomaticBackupRetentionDays: 1
-      DailyAutomaticBackupStartTime: {{ daily_automatic_backup_start_time }}
+      DailyAutomaticBackupStartTime: "{{ daily_automatic_backup_start_time }}"
       CopyTagsToBackups: True

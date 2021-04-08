@@ -78,6 +78,14 @@ class Ec2Client(Boto3Client):
         raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
+    def get_subnet_auto_assign_public_ip(self, subnet_id):
+        """Return auto assign public ip setting of the given subnet."""
+        subnets = self.describe_subnets([subnet_id])
+        if subnets:
+            return subnets[0].get("MapPublicIpOnLaunch")
+        raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
+
+    @AWSExceptionHandler.handle_client_exception
     def describe_image(self, ami_id):
         """Return a dict of ami info."""
         result = self._client.describe_images(ImageIds=[ami_id])
@@ -113,7 +121,7 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def describe_placement_group(self, group_name):
         """Return the given placement group, if exists."""
-        return self._client.describe_placement_group(GroupNames=[group_name])
+        return self._client.describe_placement_groups(GroupNames=[group_name])
 
     @AWSExceptionHandler.handle_client_exception
     def describe_vpc_attribute(self, vpc_id, attribute):
@@ -161,12 +169,10 @@ class Ec2Client(Boto3Client):
         owner = filters.owner if filters and filters.owner else "amazon"
         tags = filters.tags if filters and filters.tags else []
 
-        filters = [
-            {"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]},
-            {"Name": "owner-alias", "Values": [owner]},
-        ]
+        filters = [{"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]}]
         filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
         images = self._client.describe_images(
+            Owners=[owner],
             Filters=filters,
         ).get("Images")
         if not images:
@@ -181,6 +187,7 @@ class Ec2Client(Boto3Client):
             "centos7": "centos7-hvm",
             "centos8": "centos8-hvm",
             "ubuntu1804": "ubuntu-1804-lts-hvm",
+            "ubuntu2004": "ubuntu-2004-lts-hvm",
         }
         return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
             version=utils.get_installed_version(), suffix=suffixes[os], arch=architecture

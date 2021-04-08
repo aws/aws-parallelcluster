@@ -14,7 +14,7 @@
 #
 import logging
 from enum import Enum
-from typing import List
+from typing import List, Union
 
 import pkg_resources
 
@@ -381,7 +381,7 @@ class _BaseNetworking(Resource):
 class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
-    def __init__(self, subnet_id: str, elastic_ip: str = None, **kwargs):
+    def __init__(self, subnet_id: str, elastic_ip: Union[str, bool] = None, **kwargs):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
         self.elastic_ip = Resource.init_param(elastic_ip)
@@ -1263,14 +1263,14 @@ class SlurmQueue(BaseQueue):
             )
             self._execute_validator(
                 EfaSecurityGroupValidator,
-                efa_enabled=compute_resource.efa,
+                efa_enabled=compute_resource.efa.enabled,
                 security_groups=self.networking.security_groups,
                 additional_security_groups=self.networking.additional_security_groups,
             )
             if self.networking.placement_group:
                 self._execute_validator(
                     EfaPlacementGroupValidator,
-                    efa_enabled=compute_resource.efa,
+                    efa_enabled=compute_resource.efa.enabled,
                     placement_group_id=self.networking.placement_group.id,
                     placement_group_enabled=self.networking.placement_group.enabled,
                 )

@@ -140,9 +140,6 @@ class ClusterCdkStack(core.Stack):
         if self.config.additional_resources:
             core.CfnStack(scope=self, id="AdditionalCfnStack", template_url=self.config.additional_resources)
 
-        # AWSBatchStack
-        # TODO: inline resources
-
         # Cleanup Resources Lambda Function
         cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
 
@@ -192,7 +189,7 @@ class ClusterCdkStack(core.Stack):
                 head_node_instance=self.head_node_instance,
             )
 
-        # CloudWatchDashboardSubstack
+        # CloudWatch Dashboard
         if self.config.is_cw_dashboard_enabled:
             self.cloudwatch_dashboard = CWDashboardConstruct(
                 scope=self,
@@ -292,7 +289,7 @@ class ClusterCdkStack(core.Stack):
             properties={
                 "ResourcesS3Bucket": self.bucket.name,
                 "ArtifactS3RootDirectory": self.bucket.artifact_directory,
-                "RemoveBucketOnDeletion": self.bucket.remove_on_deletion,
+                "RemoveBucketOnDeletion": "True" if self.bucket.remove_on_deletion else "False",
                 "Action": "DELETE_S3_ARTIFACTS",
             },
         )
@@ -313,7 +310,7 @@ class ClusterCdkStack(core.Stack):
         )
 
         # Create and associate EIP to Head Node
-        if self.config.head_node.networking.elastic_ip:
+        if self.config.head_node.networking.elastic_ip is True:
             head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
 
             ec2.CfnEIPAssociation(
@@ -509,21 +506,6 @@ class ClusterCdkStack(core.Stack):
                         resources=["*"],
                     ),
                     iam.PolicyStatement(
-                        sid="DynamoDBList", actions=["dynamodb:ListTables"], effect=iam.Effect.ALLOW, resources=["*"]
-                    ),
-                    iam.PolicyStatement(
-                        sid="SQSQueue",
-                        actions=[
-                            "sqs:SendMessage",
-                            "sqs:ReceiveMessage",
-                            "sqs:ChangeMessageVisibility",
-                            "sqs:DeleteMessage",
-                            "sqs:GetQueueUrl",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="sqs", resource=self._stack_name)],
-                    ),
-                    iam.PolicyStatement(
                         sid="Cloudformation",
                         actions=[
                             "cloudformation:DescribeStacks",
@@ -645,6 +627,13 @@ class ClusterCdkStack(core.Stack):
         fsx_id = shared_fsx.file_system_id
 
         if not fsx_id and shared_fsx.mount_dir:
+            # Drive cache type must be set for HDD (Either "NONE" or "READ"), and must not be set for SDD (None).
+            drive_cache_type = None
+            if shared_fsx.fsx_storage_type == "HDD":
+                if shared_fsx.drive_cache_type:
+                    drive_cache_type = shared_fsx.drive_cache_type
+                else:
+                    drive_cache_type = "NONE"
             fsx_resource = fsx.CfnFileSystem(
                 scope=self,
                 storage_capacity=shared_fsx.storage_capacity,
@@ -659,13 +648,13 @@ class ClusterCdkStack(core.Stack):
                     daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time,
                     per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput,
                     auto_import_policy=shared_fsx.auto_import_policy,
-                    drive_cache_type=shared_fsx.drive_cache_type,
+                    drive_cache_type=drive_cache_type,
                 ),
                 backup_id=shared_fsx.backup_id,
                 kms_key_id=shared_fsx.kms_key_id,
                 id=id,
                 file_system_type="LUSTRE",
-                storage_type=shared_fsx.drive_cache_type,
+                storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
                 security_group_ids=self._get_compute_security_groups(),
             )
@@ -868,7 +857,7 @@ class ClusterCdkStack(core.Stack):
                 associate_public_ip_address=head_node.networking.assign_public_ip,
             )
         ]
-        for device_index in range(1, head_node.max_network_interface_count - 1):
+        for device_index in range(1, head_node.max_network_interface_count):
             head_lt_nw_interfaces.append(
                 ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=device_index,
@@ -980,7 +969,7 @@ class ClusterCdkStack(core.Stack):
                     "cfn_log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
-                    "dcv_enabled": head_node.dcv.enabled if head_node.dcv else "false",
+                    "dcv_enabled": "master" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cfn_cluster_cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
@@ -1179,6 +1168,13 @@ class ClusterCdkStack(core.Stack):
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"
 
+    def _condition_head_node_has_public_ip(self):
+        head_node_networking = self.config.head_node.networking
+        assign_public_ip = head_node_networking.assign_public_ip
+        if assign_public_ip is None:
+            assign_public_ip = AWSApi.instance().ec2.get_subnet_auto_assign_public_ip(head_node_networking.subnet_id)
+        return assign_public_ip
+
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
     def _add_outputs(self):
@@ -1219,13 +1215,12 @@ class ClusterCdkStack(core.Stack):
             value=self.head_node_instance.attr_private_dns_name,
         )
 
-        head_public_ip = self.head_node_instance.attr_public_ip
-        if head_public_ip:
+        if self._condition_head_node_has_public_ip():
             core.CfnOutput(
                 scope=self,
                 id="MasterPublicIP",  # FIXME
-                description="Private IP Address of the head node",
-                value=head_public_ip,
+                description="Public IP Address of the head node",
+                value=self.head_node_instance.attr_public_ip,
             )
 
         core.CfnOutput(

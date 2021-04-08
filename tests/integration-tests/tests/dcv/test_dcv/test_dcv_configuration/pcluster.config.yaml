@@ -11,17 +11,19 @@ HeadNode:
     Port: {{ dcv_port }}
     AllowedIps: {{ access_from }}
 Scheduling:
-  Scheduler: slurm
+  Scheduler: {{ scheduler }}
   Queues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          # Cpu count is valid for g3.8xlarge
+          MinvCpus: 32
+          {% else %}
           InstanceType: {{ instance }}
           MinCount: 1
+          {% endif %}
       Networking:
         SubnetIds:
           - {{ public_subnet_id }}
-SharedStorage:
-  - MountDir: {{ shared_dir }}
-    Name: ebs1
-    StorageType: Ebs

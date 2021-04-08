@@ -4,7 +4,6 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-    AssignPublicIp: false
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
@@ -21,4 +20,3 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-        AssignPublicIp: false

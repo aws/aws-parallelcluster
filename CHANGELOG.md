@@ -6,6 +6,7 @@ CHANGELOG
 
 **CHANGES**
 
+- Drop support for SGE and Torque schedulers.
 - Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
 - Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
 - Deprecate `--cluster-template`, `--extra-parameters`, `--reset-desired` and `--yes` parameters for the `update` command.
@@ -24,14 +25,16 @@ CHANGELOG
 - Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
 - Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
+- Remove `amis.txt` file.
+- Remove additional EBS volume attached to the head node by default. 
+- Change NICE DCV session storage path to `/home/{UserName}`.
 
 2.x.x
 ------
 **ENHANCEMENTS**
 
+- Add support for Ubuntu 20.04.
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
-- Add validation for `cluster_type` configuration parameter in `cluster` section
-- Add validation for `compute_type` configuration parameter in `queue` section
 
 **CHANGES**
 
@@ -50,7 +53,9 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 
-- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2. 
+- Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2.
+- Add validation for `cluster_type` configuration parameter in `cluster` section.
+- Add validation for `compute_type` configuration parameter in `queue` section.
 
 **CHANGES**
 

@@ -5,7 +5,7 @@ HeadNode:
   InstanceType: t2.micro  # t2.micro
   Networking:
     SubnetId: subnet-12345678  # subnet-xxx
-    ElasticIp: String  # true|false|EIP-id
+    ElasticIp: true  # true|false|EIP-id
     AssignPublicIp: True  # true|false
     AdditionalSecurityGroups:
       - sg-34567890

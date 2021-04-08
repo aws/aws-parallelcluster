@@ -200,6 +200,9 @@ class CloudWatchLoggingClusterState:
     def _read_compute_node_config(self):
         """Read the node configuration JSON file at NODE_CONFIG_PATH on a compute node."""
         compute_node_config = {}
+        # Do not try to fetch dna.json from compute if batch
+        if self.scheduler == "awsbatch":
+            return compute_node_config
         compute_hostname_to_config = self._run_command_on_computes("cat {{redirect}} {0}".format(NODE_CONFIG_PATH))
 
         # Use first one, since ParallelCluster-specific node config should be the same on every compute node

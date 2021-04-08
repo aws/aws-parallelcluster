@@ -99,7 +99,7 @@ def test_createami_post_install(
     instance_args = ["-i", instance]
 
     # Post install script
-    post_install_script_file = "post_install_ubuntu.sh" if os in ["ubuntu1804"] else "post_install.sh"
+    post_install_script_file = "post_install_ubuntu.sh" if os in ["ubuntu1804", "ubuntu2004"] else "post_install.sh"
     post_install_script = "file://{0}".format(test_datadir / post_install_script_file)
     post_install_args = ["--post-install", post_install_script]
 

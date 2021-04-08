@@ -127,12 +127,11 @@ def test_slurm_compute_resource_validator(section_dict, expected_message):
         ({"DesiredvCpus": 0}, None),
         ({"MaxvCpus": 0}, "Must be greater than or equal"),
         ({"MaxvCpus": 1}, None),
-        ({"SpotBidPercentage": ""}, "Not a valid number"),
-        ({"SpotBidPercentage": "NONE"}, "Not a valid number"),
-        ({"SpotBidPercentage": "wrong_value"}, "Not a valid number"),
-        ({"SpotBidPercentage": 0.01}, None),
-        ({"SpotBidPercentage": 0.22}, None),
-        ({"SpotBidPercentage": 1.01}, "Must be.*less than or equal to 1"),
+        ({"SpotBidPercentage": ""}, "Not a valid integer"),
+        ({"SpotBidPercentage": "wrong_value"}, "Not a valid integer"),
+        ({"SpotBidPercentage": 1}, None),
+        ({"SpotBidPercentage": 22}, None),
+        ({"SpotBidPercentage": 101}, "Must be.*less than or equal to 100"),
     ],
 )
 def test_awsbatch_compute_resource_validator(section_dict, expected_message):

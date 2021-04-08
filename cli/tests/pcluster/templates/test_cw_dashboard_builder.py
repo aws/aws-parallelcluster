@@ -113,11 +113,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
         assert_that(output_yaml).contains("slurm_resume")
         assert_that(output_yaml).contains("slurm_suspend")
         assert_that(output_yaml).contains("slurmctld")
-        assert_that(output_yaml).does_not_contain("jobwatcher")
-        assert_that(output_yaml).does_not_contain("sqswatcher")
     else:  # scheduler == "awsbatch"
-        assert_that(output_yaml).does_not_contain("jobwatcher")
-        assert_that(output_yaml).does_not_contain("sqswatcher")
         assert_that(output_yaml).does_not_contain("clustermgtd")
         assert_that(output_yaml).does_not_contain("slurm_resume")
         assert_that(output_yaml).does_not_contain("slurm_suspend")

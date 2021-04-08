@@ -4,6 +4,7 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
+    ElasticIp: true
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
@@ -22,3 +23,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

@@ -154,8 +154,8 @@ def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_r
     expected_params = {
         "Filters": [
             {"Name": "name", "Values": [f"aws-parallelcluster-{get_installed_version()}-amzn2-hvm-{architecture}*"]},
-            {"Name": "owner-alias", "Values": [filters.owner if filters and filters.owner else "amazon"]},
-        ]
+        ],
+        "Owners": [filters.owner if filters and filters.owner else "amazon"],
     }
     if filters and filters.tags:
         expected_params["Filters"].extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in filters.tags])

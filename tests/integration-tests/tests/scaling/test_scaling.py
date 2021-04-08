@@ -10,23 +10,17 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-from os import environ
 
 import pytest
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
 
-from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
-from tests.common.hit_common import wait_for_num_nodes_in_scheduler
-from tests.common.scaling_common import (
-    get_compute_nodes_allocation,
-    get_desired_asg_capacity,
-    test_maintain_initial_size,
-)
+from tests.common.assertions import assert_no_errors_in_logs
+from tests.common.scaling_common import get_compute_nodes_allocation
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.schedulers.test_slurm import _assert_job_state
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
@@ -42,6 +36,13 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+
+    logging.info("Executing sleep job to start a dynamic node")
+    result = scheduler_commands.submit_command("sleep 1")
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
+        scheduler_commands, job_id, job_state="COMPLETED"
+    )
 
     logging.info("Executing test jobs on cluster")
     remote_command_executor.run_remote_script(test_datadir / "cluster-check.sh", args=["submit", scheduler])
@@ -59,9 +60,9 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 
     logging.info("Verifying auto-scaling worked correctly")
     _assert_scaling_works(
-        asg_capacity_time_series=ec2_capacity_time_series,
+        ec2_capacity_time_series=ec2_capacity_time_series,
         compute_nodes_time_series=compute_nodes_time_series,
-        expected_asg_capacity=(0, 3),
+        expected_ec2_capacity=(0, 3),
         expected_compute_nodes=(0, 3),
     )
 
@@ -69,116 +70,37 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-@pytest.mark.regions(["sa-east-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["sge", "torque"])
-@pytest.mark.oss(["alinux2", "centos7", "centos8", "ubuntu1804"])
-@pytest.mark.usefixtures("region", "instance", "os")
-@pytest.mark.nodewatcher
-def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
-    # slurm test use more nodes because of internal request to test in multi-node settings
-    initial_queue_size = 1
-    maintain_initial_size = "true"
-    environ["AWS_DEFAULT_REGION"] = region
-    cluster_config = pcluster_config_reader(
-        initial_queue_size=initial_queue_size, maintain_initial_size=maintain_initial_size
-    )
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-
-    compute_nodes = scheduler_commands.get_compute_nodes()
-    instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
-    hostname_to_instance_id = get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname=False)
-
-    logging.info("Testing that nodewatcher will terminate a node in failing state")
-    # submit a job to run on all nodes
-    scheduler_commands.submit_command("sleep infinity", nodes=initial_queue_size)
-    expected_num_nodes_killed = 1
-    # simulate unexpected hardware failure by killing first x nodes
-    nodes_to_remove = compute_nodes[:expected_num_nodes_killed]
-    for node in nodes_to_remove:
-        remote_command_executor.run_remote_script(
-            str(test_datadir / "{0}_kill_scheduler_job.sh".format(scheduler)), args=[node]
-        )
-
-    # assert failing nodes are terminated according to ASG
-    _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, region)
-    nodes_to_retain = [compute for compute in compute_nodes if compute not in nodes_to_remove]
-    # verify that desired capacity is still the initial_queue_size
-    assert_that(get_desired_asg_capacity(region, cluster.cfn_name)).is_equal_to(initial_queue_size)
-    # assert failing nodes are removed from scheduler config
-    _assert_nodes_removed_and_replaced_in_scheduler(
-        scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=initial_queue_size
-    )
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-    test_maintain_initial_size(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
-
-
-@retry(wait_fixed=seconds(30), stop_max_delay=minutes(15))
-def _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, region):
-    for node in nodes_to_remove:
-        assert_instance_replaced_or_terminating(hostname_to_instance_id.get(node), region)
-
-
-def _assert_nodes_removed_and_replaced_in_scheduler(
-    scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity
-):
-    """
-    Assert that nodes are removed from scheduler and replaced so that number of nodes in scheduler equals to desired.
-    Returns list of new nodenames in scheduler.
-    """
-    _assert_nodes_removed_from_scheduler(scheduler_commands, nodes_to_remove)
-    wait_for_num_nodes_in_scheduler(scheduler_commands, desired_capacity)
-    new_compute_nodes = scheduler_commands.get_compute_nodes()
-    if nodes_to_retain:
-        assert_that(set(nodes_to_retain) <= set(new_compute_nodes)).is_true()
-    logging.info(
-        "\nNodes removed from scheduler: {}"
-        "\nNodes retained in scheduler {}"
-        "\nNodes currently in scheduler after replacements: {}".format(
-            nodes_to_remove, nodes_to_retain, new_compute_nodes
-        )
-    )
-
-
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
-def _assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
-    assert_that(scheduler_commands.get_compute_nodes()).does_not_contain(*nodes)
-
-
 def _assert_scaling_works(
-    asg_capacity_time_series, compute_nodes_time_series, expected_asg_capacity, expected_compute_nodes
+    ec2_capacity_time_series, compute_nodes_time_series, expected_ec2_capacity, expected_compute_nodes
 ):
     """
     Verify that cluster scaling-up and scaling-down features work correctly.
 
-    :param asg_capacity_time_series: list describing the fluctuations over time in the asg capacity
+    :param ec2_capacity_time_series: list describing the fluctuations over time in the ec2 capacity
     :param compute_nodes_time_series: list describing the fluctuations over time in the compute nodes
-    :param expected_asg_capacity: pair containing the expected asg capacity (min_asg_capacity, max_asg_capacity)
+    :param expected_ec2_capacity: pair containing the expected ec2 capacity (min_ec2_capacity, max_ec2_capacity)
     :param expected_compute_nodes: pair containing the expected compute nodes (min_compute_nodes, max_compute_nodes)
     """
-    assert_that(asg_capacity_time_series).described_as("asg_capacity_time_series cannot be empty").is_not_empty()
+    assert_that(ec2_capacity_time_series).described_as("ec2_capacity_time_series cannot be empty").is_not_empty()
     assert_that(compute_nodes_time_series).described_as("compute_nodes_time_series cannot be empty").is_not_empty()
 
-    expected_asg_capacity_min, expected_asg_capacity_max = expected_asg_capacity
+    expected_ec2_capacity_min, expected_ec2_capacity_max = expected_ec2_capacity
     expected_compute_nodes_min, expected_compute_nodes_max = expected_compute_nodes
-    actual_asg_capacity_max = max(asg_capacity_time_series)
-    actual_asg_capacity_min = min(
-        asg_capacity_time_series[asg_capacity_time_series.index(actual_asg_capacity_max) :]  # noqa E203
+    actual_ec2_capacity_max = max(ec2_capacity_time_series)
+    actual_ec2_capacity_min = min(
+        ec2_capacity_time_series[ec2_capacity_time_series.index(actual_ec2_capacity_max) :]  # noqa E203
     )
     actual_compute_nodes_max = max(compute_nodes_time_series)
     actual_compute_nodes_min = min(
         compute_nodes_time_series[compute_nodes_time_series.index(actual_compute_nodes_max) :]  # noqa E203
     )
     with soft_assertions():
-        assert_that(actual_asg_capacity_min).described_as(
-            "actual asg min capacity does not match the expected one"
-        ).is_equal_to(expected_asg_capacity_min)
-        assert_that(actual_asg_capacity_max).described_as(
-            "actual asg max capacity does not match the expected one"
-        ).is_equal_to(expected_asg_capacity_max)
+        assert_that(actual_ec2_capacity_min).described_as(
+            "actual ec2 min capacity does not match the expected one"
+        ).is_equal_to(expected_ec2_capacity_min)
+        assert_that(actual_ec2_capacity_max).described_as(
+            "actual ec2 max capacity does not match the expected one"
+        ).is_equal_to(expected_ec2_capacity_max)
         assert_that(actual_compute_nodes_min).described_as(
             "actual number of min compute nodes does not match the expected one"
         ).is_equal_to(expected_compute_nodes_min)

@@ -130,15 +130,6 @@ def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region
     return compute_nodes_time_series, timestamps, end_time
 
 
-def enable_asg_metrics(region, cluster):
-    logging.info("Enabling ASG metrics for %s", cluster.asg)
-    boto3.client("autoscaling", region_name=region).enable_metrics_collection(
-        AutoScalingGroupName=cluster.asg,
-        Metrics=["GroupDesiredCapacity", "GroupInServiceInstances", "GroupTerminatingInstances"],
-        Granularity="1Minute",
-    )
-
-
 def _publish_metric(region, instance, os, scheduler, state, count):
     cw_client = boto3.client("cloudwatch", region_name=region)
     logging.info("Publishing metric: state={0} count={1}".format(state, count))
