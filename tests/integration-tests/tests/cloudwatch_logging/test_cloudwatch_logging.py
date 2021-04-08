@@ -30,7 +30,7 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_SHARED_DIR = "/shared"
 DEFAULT_RETENTION_DAYS = 14
 NODE_CONFIG_PATH = "/etc/chef/dna.json"
-HEAD_NODE_ROLE_NAME = "MasterServer"
+HEAD_NODE_ROLE_NAME = "HeadNode"
 COMPUTE_NODE_ROLE_NAME = "ComputeFleet"
 NODE_ROLE_NAMES = {HEAD_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME}
 
@@ -55,8 +55,8 @@ class CloudWatchLoggingClusterState:
     The state is stored in the self._cluster_log_state dict. Here is an example of what that
     structure might look like for a cluster with one compute node, each containing one log:
     {
-        "MasterServer": {
-            "node_role": "MasterServer",
+        "HeadNode": {
+            "node_role": "HeadNode",
             "hostname": "ip-10-0-127-157.us-west-1.compute.internal",
             "instance_id": "i-01be4c67943df785d",
             "logs": {
@@ -177,7 +177,7 @@ class CloudWatchLoggingClusterState:
             tags = {tag.get("Key"): tag.get("Value") for tag in instance.get("Tags", [])}
             if tags.get("ClusterName", "") != self.cluster.name:
                 continue
-            elif tags.get("Name", "") == "Master":
+            elif tags.get("Name", "") == "HeadNode":
                 self._set_head_node_instance(instance)
             else:
                 self._add_compute_instance(instance)
@@ -279,7 +279,7 @@ class CloudWatchLoggingClusterState:
 
     def _populate_relevant_logs_for_node_roles(self, logs):
         """Populate self._relevant_logs with the entries of logs."""
-        # When the scheduler is AWS Batch, only keep log that whose config's node_role value is MasterServer, since
+        # When the scheduler is AWS Batch, only keep log that whose config's node_role value is HeadNode, since
         # Batch doesn't have compute nodes in the traditional sense.
         desired_node_roles = {HEAD_NODE_ROLE_NAME} if self.scheduler == "awsbatch" else NODE_ROLE_NAMES
         for log in logs:

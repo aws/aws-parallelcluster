@@ -142,8 +142,8 @@ def print_stack_outputs(stack_outputs):
     """
     whitelisted_outputs = [
         "ClusterUser",
-        "MasterPrivateIP",
-        "MasterPublicIP",
+        "HeadNodePrivateIP",
+        "HeadNodePublicIP",
         "BatchComputeEnvironmentArn",
         "BatchJobQueueArn",
         "BatchJobDefinitionArn",
@@ -232,9 +232,9 @@ def ssh(args, extra_args):
         if isinstance(result, ClusterInfo):
 
             # build command
-            cmd = "ssh {CFN_USER}@{MASTER_IP} {ARGS}".format(
+            cmd = "ssh {CFN_USER}@{HEAD_NODE_IP} {ARGS}".format(
                 CFN_USER=result.user,
-                MASTER_IP=result.head_node_ip,
+                HEAD_NODE_IP=result.head_node_ip,
                 ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args),
             )
 
@@ -288,7 +288,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 if result.stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
                     if isinstance(result, ClusterInfo) and result.head_node:
                         head_node_state = result.head_node.state
-                        LOGGER.info("MasterServer: %s" % head_node_state.upper())
+                        LOGGER.info("HeadNode: %s" % head_node_state.upper())
                         if head_node_state == "running":
                             print_stack_outputs(result.stack_outputs)
                     _print_compute_fleet_status(args.cluster_name, result.stack_outputs)

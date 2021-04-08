@@ -160,7 +160,7 @@ class AWSBatchCliConfig(object):
             log.debug("compute_environment = %s", self.compute_environment)
             log.debug("job_queue = %s", self.job_queue)
             log.debug("job_definition = %s", self.job_definition)
-            log.debug("master_ip = %s", self.head_node_ip)
+            log.debug("head_node_ip = %s", self.head_node_ip)
             log.info(self)
         except AttributeError as e:
             fail(
@@ -216,7 +216,7 @@ class AWSBatchCliConfig(object):
                     self.job_definition_mnp = config.get(cluster_section, "job_definition_mnp")
                 except NoOptionError:
                     pass
-                self.head_node_ip = config.get(cluster_section, "master_ip")
+                self.head_node_ip = config.get(cluster_section, "head_node_ip")
 
                 # get proxy
                 self.proxy = config.get(cluster_section, "proxy")
@@ -266,7 +266,7 @@ class AWSBatchCliConfig(object):
                         self.job_queue = output_value
                     elif output_key == "BatchJobDefinitionArn":
                         self.job_definition = output_value
-                    elif output_key == "MasterPrivateIP":
+                    elif output_key == "HeadNodePrivateIP":
                         self.head_node_ip = output_value
                     elif output_key == "BatchJobDefinitionMnpArn":
                         self.job_definition_mnp = output_value

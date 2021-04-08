@@ -879,14 +879,14 @@ class ClusterCdkStack(core.Stack):
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
                         tags=get_default_instance_tags(
-                            self._stack_name, self.config, head_node, "Master", self.shared_storage_mappings
+                            self._stack_name, self.config, head_node, "HeadNode", self.shared_storage_mappings
                         )
-                        + get_custom_tags(self.config),  # FIXME HeadNode
+                        + get_custom_tags(self.config),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
-                        tags=get_default_volume_tags(self._stack_name, "Master") + get_custom_tags(self.config),
-                    ),  # FIXME HeadNode
+                        tags=get_default_volume_tags(self._stack_name, "HeadNode") + get_custom_tags(self.config),
+                    ),
                 ],
             ),
         )
@@ -950,13 +950,13 @@ class ClusterCdkStack(core.Stack):
                     "hosted_zone": self.scheduler_resources.cluster_hosted_zone.ref
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
-                    "node_type": "MasterServer",  # FIXME
+                    "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
                     "ddb_table": self.dynamodb_table.ref,
                     "log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
-                    "dcv_enabled": "master" if self.config.is_dcv_enabled else "false",
+                    "dcv_enabled": "head_node" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
@@ -1123,7 +1123,7 @@ class ClusterCdkStack(core.Stack):
         head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
         head_node_instance = ec2.CfnInstance(
             self,
-            id="MasterServer",  # FIXME
+            id="HeadNode",
             launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
                 launch_template_id=head_node_launch_template.ref,
                 version=head_node_launch_template.attr_latest_version_number,
@@ -1183,21 +1183,21 @@ class ClusterCdkStack(core.Stack):
 
         core.CfnOutput(
             scope=self,
-            id="MasterInstanceID",  # FIXME
+            id="HeadNodeInstanceID",
             description="ID of the head node instance",
             value=self.head_node_instance.ref,
         )
 
         core.CfnOutput(
             scope=self,
-            id="MasterPrivateIP",  # FIXME
+            id="HeadNodePrivateIP",
             description="Private IP Address of the head node",
             value=self.head_node_instance.attr_private_ip,
         )
 
         core.CfnOutput(
             scope=self,
-            id="MasterPrivateDnsName",  # FIXME
+            id="HeadNodePrivateDnsName",
             description="Private DNS name of the head node",
             value=self.head_node_instance.attr_private_dns_name,
         )
@@ -1205,7 +1205,7 @@ class ClusterCdkStack(core.Stack):
         if self._condition_head_node_has_public_ip():
             core.CfnOutput(
                 scope=self,
-                id="MasterPublicIP",  # FIXME
+                id="HeadNodePublicIP",
                 description="Public IP Address of the head node",
                 value=self.head_node_instance.attr_public_ip,
             )

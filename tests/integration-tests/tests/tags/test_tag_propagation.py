@@ -51,12 +51,12 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
         {
             "resource": "Head Node",
             "tag_getter": get_head_node_tags,
-            "expected_tags": (cluster_name_tags, {"Name": "Master", "aws-parallelcluster-node-type": "Master"}),
+            "expected_tags": (cluster_name_tags, {"Name": "HeadNode", "aws-parallelcluster-node-type": "HeadNode"}),
         },
         {
             "resource": "Head Node Root Volume",
             "tag_getter": get_head_node_root_volume_tags,
-            "expected_tags": (cluster_name_tags, {"aws-parallelcluster-node-type": "Master"}),
+            "expected_tags": (cluster_name_tags, {"aws-parallelcluster-node-type": "HeadNode"}),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
         },
         {
@@ -128,7 +128,7 @@ def get_main_stack_tags(cluster):
 
 def get_head_node_instance_id(cluster):
     """Return the given cluster's head node's instance ID."""
-    return cluster.cfn_resources.get("MasterServer")
+    return cluster.cfn_resources.get("HeadNode")
 
 
 def get_ec2_instance_tags(instance_id, region):

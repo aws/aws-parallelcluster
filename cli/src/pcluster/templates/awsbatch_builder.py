@@ -456,7 +456,7 @@ class AwsbatchConstruct(core.Construct):
                     value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.RAID),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_MASTER_IP", value=self.head_node_instance.attr_private_ip
+                    name="PCLUSTER_HEAD_NODE_IP", value=self.head_node_instance.attr_private_ip
                 ),
             ],
         )
