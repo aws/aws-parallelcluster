@@ -20,6 +20,8 @@ Scheduling:
           InstanceTypes: {{ instance }}
           # Cpu count is valid for g3.8xlarge
           MinvCpus: 32
+          DesiredvCpus: 32
+          MaxvCpus: 32
           {% else %}
           InstanceType: {{ instance }}
           MinCount: 1
