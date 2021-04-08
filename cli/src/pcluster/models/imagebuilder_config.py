@@ -195,23 +195,23 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
 
     def __init__(self, dev_settings: ImagebuilderDevSettings):
         super().__init__(dev_settings)
-        self.cfn_region = None
+        self.region = None
         self.nvidia = None
         self.is_official_ami_build = None
         self.custom_node_package = None
         self.custom_awsbatchcli_package = None
-        self.cfn_base_os = None
+        self.base_os = None
         self._set_default(dev_settings)
 
     def _set_default(self, dev_settings: ImagebuilderDevSettings):
-        self.cfn_region = "{{ build.AWSRegion.outputs.stdout }}"
+        self.region = "{{ build.AWSRegion.outputs.stdout }}"
         self.nvidia = {"enabled": "false"}
         self.is_official_ami_build = "true" if dev_settings and dev_settings.update_os_and_reboot else "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         self.custom_awsbatchcli_package = (
             dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
         )
-        self.cfn_base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
+        self.base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
         for key, value in self.__dict__.items():
             if not key.startswith("_") and key not in self._cluster_attributes:
                 self._cluster_attributes.update({key: value})

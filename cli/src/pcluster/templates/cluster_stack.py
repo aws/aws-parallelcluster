@@ -903,65 +903,63 @@ class ClusterCdkStack(core.Stack):
             {
                 "cluster": {
                     "stack_name": self._stack_name,
-                    "cfn_raid_vol_ids": get_shared_storage_ids_by_type(
+                    "raid_vol_ids": get_shared_storage_ids_by_type(
                         self.shared_storage_mappings, SharedStorageType.RAID
                     ),
-                    "cfn_raid_parameters": get_shared_storage_options_by_type(
+                    "raid_parameters": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.RAID
                     ),
-                    "cfn_disable_hyperthreading_manually": "true"
+                    "disable_hyperthreading_manually": "true"
                     if head_node.disable_simultaneous_multithreading_manually
                     else "false",
-                    "cfn_base_os": self.config.image.os,
-                    "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
-                    "cfn_preinstall_args": join_shell_args(pre_install_action.args)
+                    "base_os": self.config.image.os,
+                    "preinstall": pre_install_action.script if pre_install_action else "NONE",
+                    "preinstall_args": join_shell_args(pre_install_action.args)
                     if pre_install_action and pre_install_action.args
                     else "NONE",
-                    "cfn_postinstall": post_install_action.script if post_install_action else "NONE",
-                    "cfn_postinstall_args": join_shell_args(post_install_action.args)
+                    "postinstall": post_install_action.script if post_install_action else "NONE",
+                    "postinstall_args": join_shell_args(post_install_action.args)
                     if post_install_action and pre_install_action.args
                     else "NONE",
-                    "cfn_region": self.region,
-                    "cfn_efs": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
-                    "cfn_efs_shared_dir": get_shared_storage_options_by_type(
+                    "region": self.region,
+                    "efs_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
+                    "efs_shared_dir": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EFS
                     ),  # FIXME
-                    "cfn_fsx_fs_id": get_shared_storage_ids_by_type(
-                        self.shared_storage_mappings, SharedStorageType.FSX
-                    ),
-                    "cfn_fsx_options": get_shared_storage_options_by_type(
+                    "fsx_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.FSX),
+                    "fsx_options": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.FSX
                     ),
-                    "cfn_volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
-                    "cfn_scheduler": self.config.scheduling.scheduler,
-                    "cfn_encrypted_ephemeral": "true"
+                    "volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
+                    "scheduler": self.config.scheduling.scheduler,
+                    "encrypted_ephemeral": "true"
                     if head_node.local_storage
                     and head_node.local_storage.ephemeral_volume
                     and head_node.local_storage.ephemeral_volume.encrypted
                     else "NONE",
-                    "cfn_ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
+                    "ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
                     if head_node.local_storage and head_node.local_storage.ephemeral_volume
                     else "/scratch",
-                    "cfn_shared_dir": get_shared_storage_options_by_type(
+                    "ebs_shared_dirs": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EBS
                     ),
-                    "cfn_proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
-                    "cfn_dns_domain": self.scheduler_resources.cluster_hosted_zone.name
+                    "proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
+                    "dns_domain": self.scheduler_resources.cluster_hosted_zone.name
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
-                    "cfn_hosted_zone": self.scheduler_resources.cluster_hosted_zone.ref
+                    "hosted_zone": self.scheduler_resources.cluster_hosted_zone.ref
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
-                    "cfn_node_type": "MasterServer",  # FIXME
-                    "cfn_cluster_user": OS_MAPPING[self.config.image.os]["user"],
-                    "cfn_ddb_table": self.dynamodb_table.ref,
-                    "cfn_log_group_name": self.log_group.log_group_name
+                    "node_type": "MasterServer",  # FIXME
+                    "cluster_user": OS_MAPPING[self.config.image.os]["user"],
+                    "ddb_table": self.dynamodb_table.ref,
+                    "log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
                     "dcv_enabled": "master" if self.config.is_dcv_enabled else "false",
                     "dcv_port": head_node.dcv.port if head_node.dcv else "NONE",
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
-                    "cfn_cluster_cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
+                    "cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
                     "cluster_s3_bucket": self.bucket.name,
                     "cluster_config_s3_key": f"{self.bucket.artifact_directory}/configs/cluster-config.yaml",
                     "cluster_config_version": self.config.config_version,

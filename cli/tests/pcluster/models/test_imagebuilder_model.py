@@ -143,12 +143,12 @@ def test_imagebuilder_url_validator(
             },
             {
                 "cluster": {
-                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                     "is_official_ami_build": "true",
                     "nvidia": {"enabled": "false"},
+                    "region": "{{ build.AWSRegion.outputs.stdout }}",
                 }
             },
         ),
@@ -164,13 +164,13 @@ def test_imagebuilder_url_validator(
             },
             {
                 "cluster": {
-                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "custom_awsbatchcli_package": "",
                     "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                     "dcv": "false",
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "true"},
+                    "region": "{{ build.AWSRegion.outputs.stdout }}",
                 }
             },
         ),
@@ -187,13 +187,13 @@ def test_imagebuilder_url_validator(
             },
             {
                 "cluster": {
-                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "",
                     "dcv": "false",
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "true"},
+                    "region": "{{ build.AWSRegion.outputs.stdout }}",
                 },
                 "nfs": "true",
             },
@@ -210,12 +210,12 @@ def test_imagebuilder_url_validator(
             },
             {
                 "cluster": {
-                    "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
-                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "",
                     "is_official_ami_build": "false",
                     "nvidia": {"enabled": "false"},
+                    "region": "{{ build.AWSRegion.outputs.stdout }}",
                 },
                 "nfs": "true",
             },

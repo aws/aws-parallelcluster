@@ -38,7 +38,7 @@ DevSettings:
   Cookbook:
     ChefCookbook: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
     ExtraChefAttributes: |
-      {"cluster": {"cfn_scheduler_slots": "cores"}}
+      {"cluster": {"scheduler_slots": "cores"}}
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
   AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   DistributionConfiguration:
