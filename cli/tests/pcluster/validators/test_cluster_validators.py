@@ -89,10 +89,12 @@ def test_region_validator(region, expected_message):
         ("centos7", "slurm", None),
         ("centos8", "slurm", None),
         ("ubuntu1804", "slurm", None),
+        ("ubuntu2004", "slurm", None),
         ("alinux2", "slurm", None),
         ("centos7", "awsbatch", "scheduler supports the following operating systems"),
         ("centos8", "awsbatch", "scheduler supports the following operating systems"),
         ("ubuntu1804", "awsbatch", "scheduler supports the following operating systems"),
+        ("ubuntu2004", "awsbatch", "scheduler supports the following operating systems"),
         ("alinux2", "awsbatch", None),
     ],
 )
@@ -342,6 +344,8 @@ def test_disable_simultaneous_multithreading_architecture_validator(
         (False, "centos8", "arm64", None),
         (True, "ubuntu1804", "x86_64", None),
         (True, "ubuntu1804", "arm64", None),
+        (True, "ubuntu2004", "x86_64", None),
+        (True, "ubuntu2004", "arm64", None),
     ],
 )
 def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
@@ -357,11 +361,13 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
         ("centos7", "x86_64", None),
         ("centos8", "x86_64", None),
         ("ubuntu1804", "x86_64", None),
+        ("ubuntu2004", "x86_64", None),
         # Only a subset of OSes supported for arm64
         ("alinux2", "arm64", None),
         ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
         ("centos8", "arm64", None),
         ("ubuntu1804", "arm64", None),
+        ("ubuntu2004", "arm64", None),
     ],
 )
 def test_architecture_os_validator(os, architecture, expected_message):
@@ -621,7 +627,9 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
         ("x86_64", "centos7", None),
         ("x86_64", "centos8", None),
         ("x86_64", "ubuntu1804", None),
+        ("x86_64", "ubuntu2004", None),
         ("arm64", "ubuntu1804", None),
+        ("arm64", "ubuntu2004", None),
         ("arm64", "alinux2", None),
         ("arm64", "centos8", None),
         # Unsupported combinations
@@ -699,6 +707,7 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
         (True, "centos8", "t2.medium", None, None, None),
         (True, "ubuntu1804", "t2.medium", None, None, None),
         (True, "ubuntu1804", "t2.medium", None, "1.2.3.4/32", None),
+        (True, "ubuntu2004", "t2.medium", None, None, None),
         (True, "centos7", "t2.medium", "0.0.0.0/0", 8443, "port 8443 to the world"),
         (True, "centos8", "t2.medium", "0.0.0.0/0", 9090, "port 9090 to the world"),
         (True, "alinux2", "t2.medium", None, None, None),
@@ -708,6 +717,7 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
         (True, "ubuntu1804", "m6g.xlarge", None, None, None),
         (True, "alinux2", "m6g.xlarge", None, None, None),
         (True, "centos7", "m6g.xlarge", None, None, "Please double check the os configuration"),
+        (True, "ubuntu2004", "m6g.xlarge", None, None, "Please double check the os configuration"),
         (True, "centos8", "m6g.xlarge", None, None, None),
     ],
 )
@@ -745,6 +755,7 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
         ("centos8", None),
         ("alinux2", "the operating system is required to be set"),
         ("ubuntu1804", "the operating system is required to be set"),
+        ("ubuntu2004", "the operating system is required to be set"),
         # TODO migrate the parametrization below to unit test for the whole model
         # intel hpc disabled, you can use any os
         # ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
