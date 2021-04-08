@@ -28,7 +28,7 @@ Scheduling:
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: gpu-i1
-          InstanceType: g3.8xlarge
+          InstanceType: {{ gpu_instance_type }}
           MaxCount: 5
 SharedStorage:
   - MountDir: /shared
