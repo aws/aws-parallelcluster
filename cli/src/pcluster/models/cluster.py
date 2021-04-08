@@ -42,7 +42,7 @@ LOGGER = logging.getLogger(__name__)
 class NodeType(Enum):
     """Enum that identifies the cluster node type."""
 
-    HEAD_NODE = "Master"  # FIXME HeadNode
+    HEAD_NODE = "HeadNode"
     COMPUTE = "Compute"
 
     def __str__(self):
@@ -115,7 +115,7 @@ class ClusterStack(StackInfo):
     @property
     def head_node_ip(self):
         """Return the IP to be used to connect to the head node, public or private."""
-        return self._get_output("MasterPublicIP") or self._get_output("MasterPrivateIP")
+        return self._get_output("HeadNodePublicIP") or self._get_output("HeadNodePrivateIP")
 
     @property
     def scheduler(self):

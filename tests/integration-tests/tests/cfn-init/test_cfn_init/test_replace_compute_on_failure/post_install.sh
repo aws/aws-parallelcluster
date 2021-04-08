@@ -2,7 +2,7 @@
 . "/etc/parallelcluster/cfnconfig"
 
 case "${node_type}" in
-    MasterServer)
+    HeadNode)
         exit 0
     ;;
     ComputeFleet)

@@ -586,33 +586,35 @@ test dimensions and additional test options (such as the value assigned to `key_
 For example in the following test, defined in the file `test_feature.py`:
 ```python
 def test_case_1(region, instance, os, scheduler, pcluster_config_reader):
-    cluster_config = pcluster_config_reader(vpc_id="id-xxx", master_subnet_id="id-xxx", compute_subnet_id="id-xxx")
+    cluster_config = pcluster_config_reader(public_subnet_id="id-xxx", private_subnet_id="id-xxx")
 ```
 you can simply render the parametrized cluster config which is defined in the file
 `integration-tests/tests/test_feature/test_case_1/pcluster.config.yaml`
 
 Here is an example of the parametrized pcluster config:
-```INI
-[global]
-cluster_template = awsbatch
-
-[aws]
-aws_region_name = {{ region }}
-
-[cluster awsbatch]
-base_os = {{ os }}
-key_name = {{ key_name }}
-vpc_settings = parallelcluster-vpc
-scheduler = awsbatch
-compute_instance_type = {{ instance }}
-min_vcpus = 2
-desired_vcpus = 2
-max_vcpus = 24
-
-[vpc parallelcluster-vpc]
-vpc_id = {{ vpc_id }}
-master_subnet_id = {{ public_subnet_id }}
-compute_subnet_id = {{ private_subnet_id }}
+```YAML
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
 ```
 
 The following placeholders are automatically injected by the `pcluster_config_reader` fixture and are
@@ -620,7 +622,7 @@ available in the `pcluster.config.yaml` files:
 * Test dimensions for the specific parametrized test case: `{{ region }}`, `{{ instance }}`, `{{ os }}`,
 `{{ scheduler }}`
 * EC2 key name specified at tests submission time by the user: `{{ key_name }}`
-* VPC related parameters: `{{ vpc_id }}`, `{{ public_subnet_id }}`, `{{ private_subnet_id }}`
+* Networking related parameters: `{{ public_subnet_id }}`, `{{ private_subnet_id }}`
 
 Additional parameters can be specified when calling the fixture to retrieve the rendered configuration
 as shown in the example above.
@@ -673,12 +675,18 @@ Parameters related to the generated VPC and Subnets are automatically exported t
 in particular are available when using the `pcluster_config_reader` fixture, as shown above. The only thing to do
 is to use them when defining the cluster config for the specific test case:
 
-```INI
-...
-[vpc parallelcluster-vpc]
-vpc_id = {{ vpc_id }}
-master_subnet_id = {{ public_subnet_id }}
-compute_subnet_id = {{ private_subnet_id }}
+```YAML
+HeadNode:
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  ...
+Scheduling:
+  Queues:
+    - Name: queue-0
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+  ...
 ```
 
 ### Create/Destroy Clusters
@@ -689,7 +697,7 @@ Cluster lifecycle management is fully managed by the testing framework and is ex
 Here is an example of how to use it:
 ```python
 def test_case_1(region, instance, os, scheduler, pcluster_config_reader, clusters_factory):
-    cluster_config = pcluster_config_reader(vpc_id="aaa", master_subnet_id="bbb", compute_subnet_id="ccc")
+    cluster_config = pcluster_config_reader(public_subnet_id="bbb", private_subnet_id="ccc")
     cluster = clusters_factory(cluster_config)
 ```
 
@@ -712,7 +720,7 @@ methods to execute remote commands and scripts as shown in the example below:
 import logging
 from remote_command_executor import RemoteCommandExecutor
 def test_case_1(region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir):
-    cluster_config = pcluster_config_reader(vpc_id="aaa", master_subnet_id="bbb", compute_subnet_id="ccc")
+    cluster_config = pcluster_config_reader(public_subnet_id="bbb", private_subnet_id="ccc")
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     result = remote_command_executor.run_remote_command("env")

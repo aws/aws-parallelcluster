@@ -11,7 +11,7 @@ eval $(ssh-agent -s) && ssh-add ${SSHDIR}/id_rsa
 
 # mount nfs
 echo "Mounting /home..."
-/parallelcluster/bin/mount_nfs.sh "${PCLUSTER_MASTER_IP}" "/home"
+/parallelcluster/bin/mount_nfs.sh "${PCLUSTER_HEAD_NODE_IP}" "/home"
 
 echo "Mounting shared file system..."
 ebs_shared_dirs=$(echo "${PCLUSTER_SHARED_DIRS}" | tr "," " ")
@@ -20,7 +20,7 @@ for ebs_shared_dir in ${ebs_shared_dirs}
 do
   if [[ ${ebs_shared_dir} != "NONE" ]]; then
     # mount nfs
-    /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_MASTER_IP}" "${ebs_shared_dir}"
+    /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_HEAD_NODE_IP}" "${ebs_shared_dir}"
   fi
 done
 
@@ -34,7 +34,7 @@ fi
 
 # mount RAID via nfs
 if [[ ${PCLUSTER_RAID_SHARED_DIR} != "NONE" ]]; then
-  /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_MASTER_IP}" "${PCLUSTER_RAID_SHARED_DIR}"
+  /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_HEAD_NODE_IP}" "${PCLUSTER_RAID_SHARED_DIR}"
 fi
 
 # create hostfile if mnp job

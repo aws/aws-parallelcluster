@@ -14,7 +14,7 @@
             "value": "/shared"
           },
           {
-            "name": "MASTER_IP",
+            "name": "PCLUSTER_HEAD_NODE_IP",
             "value": "10.0.0.47"
           },
           {
@@ -88,7 +88,7 @@
             "value": "/shared"
           },
           {
-            "name": "MASTER_IP",
+            "name": "PCLUSTER_HEAD_NODE_IP",
             "value": "10.0.0.47"
           },
           {
