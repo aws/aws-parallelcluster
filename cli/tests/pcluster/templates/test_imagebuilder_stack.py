@@ -639,7 +639,9 @@ def test_imagebuilder_instance_role(
     mock_bucket(mocker)
 
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster", dummy_imagebuilder_bucket())
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
     assert_that(generated_template.get("Resources").get("InstanceRole")).is_equal_to(expected_instance_role)
     assert_that(generated_template.get("Resources").get("InstanceProfile")).is_equal_to(expected_instance_profile)
     assert_that(
@@ -1076,7 +1078,9 @@ def test_imagebuilder_lambda_execution_role(
     mock_bucket(mocker)
 
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "My-Image", dummy_imagebuilder_bucket())
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "My-Image", dummy_imagebuilder_bucket()
+    )
     assert_that(generated_template.get("Resources").get("DeleteStackFunctionExecutionRole")).is_equal_to(
         expected_execution_role
     )
@@ -1218,7 +1222,9 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
     mock_bucket(mocker)
 
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster", dummy_imagebuilder_bucket())
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
     assert_that(generated_template.get("Resources").get("ImageRecipe").get("Properties").get("Components")).is_equal_to(
         expected_components
     )
@@ -1630,8 +1636,13 @@ def test_imagebuilder_instance_type(mocker, resource, response, expected_imagebu
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
 
     assert_that(
         generated_template.get("Resources").get("InfrastructureConfiguration").get("Properties").get("InstanceTypes")
@@ -1694,8 +1705,13 @@ def test_imagebuilder_parent_image(mocker, resource, response, expected_imagebui
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
 
     assert_that(
         generated_template.get("Resources").get("ImageRecipe").get("Properties").get("ParentImage")
@@ -2200,8 +2216,13 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
         "pcluster.utils.get_installed_version",
         return_value="2.10.1",
     )
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+
     dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild, "Pcluster")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(
+        dummy_imagebuild, "Pcluster", dummy_imagebuilder_bucket()
+    )
 
     assert_that(
         generated_template.get("Resources")

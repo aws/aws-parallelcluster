@@ -33,7 +33,7 @@ from common.imagebuilder_utils import (
 )
 from common.utils import get_url_scheme, load_yaml, parse_bucket_url
 from pcluster.constants import PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG
-from pcluster.models.common import BaseTag, S3Bucket
+from pcluster.models.common import BaseTag, S3Bucket, S3FileType
 from pcluster.models.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
 
@@ -536,9 +536,9 @@ class ImageBuilderCdkStack(core.Stack):
             id="DeleteStackFunction",
             function_name=self._build_resource_name(RESOURCE_NAME_PREFIX),
             code=awslambda.CfnFunction.CodeProperty(
-                # TODO use new S3 bucket
-                s3_bucket="<placeholder>",
-                s3_key="artifacts.zip",
+                s3_bucket=self.config.custom_s3_bucket
+                or S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), utils.get_region()),
+                s3_key=self.bucket.get_object_key(S3FileType.CUSTOM_RESOURCES.value, "artifacts.zip"),
             ),
             handler="delete_image_stack.handler",
             memory_size=128,
