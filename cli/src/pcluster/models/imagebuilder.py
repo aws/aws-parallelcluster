@@ -16,6 +16,8 @@ import copy
 import logging
 import re
 
+import pkg_resources
+
 from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import StackInfo
 from common.boto3.common import AWSClientError, ImageNotFoundError
@@ -119,6 +121,7 @@ class ImageBuilder:
             "source_config_name": "image-config-original.yaml",
             "config_name": "image-config.yaml",
             "template_name": "aws-parallelcluster-imagebuilder.cfn.yaml",
+            "custom_artifacts_name": "artifacts.zip",
         }
         self.__s3_artifact_dir = None
 
@@ -341,11 +344,23 @@ class ImageBuilder:
             )
 
     def _upload_artifacts(self):
-        """Upload  artifacts to S3 bucket."""
+        """
+        Upload image specific resources and image template.
+
+        All dirs contained in resource dir will be uploaded as zip files to
+        {bucket_name}/parallelcluster/imagebuilders/{image_name}/{resource_dir}/artifacts.zip.
+        All files contained in root dir will be uploaded to
+        {bucket_name}/parallelcluster/imagebuilder/{image_name}/{resource_dir}/artifact.
+        """
         try:
             if self.template_body:
                 # upload cfn template
                 self.bucket.upload_cfn_template(self.template_body, self._s3_artifacts_dict.get("template_name"))
+
+            resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
+            self.bucket.upload_resources(
+                resource_dir=resources, custom_artifacts_name=self._s3_artifacts_dict.get("custom_artifacts_name")
+            )
         except Exception as e:
             raise ImageBuilderActionError(
                 f"Unable to upload imagebuilder cfn template to the S3 bucket {self.bucket.name} due to exception: {e}"
