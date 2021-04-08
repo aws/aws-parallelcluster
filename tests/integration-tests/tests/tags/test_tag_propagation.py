@@ -156,6 +156,7 @@ def get_root_volume_id(instance_id, region, os):
         "centos8": "/dev/sda1",
         "alinux2": "/dev/xvda",
         "ubuntu1804": "/dev/sda1",
+        "ubuntu2004": "/dev/sda1",
     }
     block_device_mappings = (
         boto3.client("ec2", region_name=region)

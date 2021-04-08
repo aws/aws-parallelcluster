@@ -3,7 +3,7 @@ arm_pl:
     dimensions:
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2", "centos8", "ubuntu1804"]
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
@@ -101,7 +101,7 @@ dcv:
       # DCV on GPU enabled instance
       - regions: ["eu-west-1"]
         instances: ["g3.8xlarge"]
-        oss: ["alinux2", "centos7", "centos8", "ubuntu1804"]
+        oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
       # DCV on ARM
       - regions: ["sa-east-1"]
@@ -145,7 +145,7 @@ disable_hyperthreading:
       # HT disabled via CpuOptions
       - regions: ["us-west-1"]
         instances: ["c5.xlarge"]
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
 dns:
   test_dns.py::test_hit_no_cluster_dns_mpi:
@@ -163,11 +163,11 @@ efa:
         schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos8"]
+        oss: ["alinux2", "centos8", "ubuntu2004"]
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
-        oss: ["alinux2", "ubuntu1804"]
+        oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
 iam:
   test_iam.py::test_iam_policies:
@@ -313,12 +313,11 @@ storage:
     dimensions:
       - regions: ["us-east-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "centos7", "centos8", "ubuntu1804"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-        oss: ["alinux2", "ubuntu1804", "centos8"]
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -342,8 +341,7 @@ storage:
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-        oss: ["alinux2", "ubuntu1804", "centos8"]
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_existing_fsx:
     dimensions:
@@ -463,7 +461,7 @@ multiple_nics:
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "centos7"]
+        oss: ["ubuntu1804", "centos7", "ubuntu2004"]
         schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
@@ -477,5 +475,5 @@ nccl:
     dimensions:
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804"]
+        oss: ["ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]

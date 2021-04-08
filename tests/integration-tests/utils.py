@@ -338,6 +338,7 @@ def get_username_for_os(os):
         "centos7": "centos",
         "centos8": "centos",
         "ubuntu1804": "ubuntu",
+        "ubuntu2004": "ubuntu",
     }
     return usernames.get(os)
 

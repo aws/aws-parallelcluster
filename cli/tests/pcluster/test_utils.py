@@ -309,8 +309,8 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
 @pytest.mark.parametrize(
     "architecture, supported_oses",
     [
-        ("x86_64", ["alinux2", "centos7", "centos8", "ubuntu1804"]),
-        ("arm64", ["alinux2", "ubuntu1804", "centos8"]),
+        ("x86_64", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
+        ("arm64", ["alinux2", "ubuntu1804", "ubuntu2004", "centos8"]),
     ],
 )
 def test_get_supported_os_for_architecture(architecture, supported_oses):
@@ -323,7 +323,7 @@ def test_get_supported_os_for_architecture(architecture, supported_oses):
 @pytest.mark.parametrize(
     "scheduler, supported_oses",
     [
-        ("slurm", ["alinux2", "centos7", "centos8", "ubuntu1804"]),
+        ("slurm", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
         ("awsbatch", ["alinux2"]),
     ],
 )
