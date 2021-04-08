@@ -174,7 +174,7 @@ DevSettings:
   Cookbook:
     ChefCookbook: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
     ExtraChefAttributes: |
-      {"cluster": {"cfn_scheduler_slots": "cores"}}
+      {"cluster": {"scheduler_slots": "cores"}}
   AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
   AmiSearchFilters:

@@ -1,7 +1,7 @@
 #!/bin/bash
 . "/etc/parallelcluster/cfnconfig"
 
-case "${cfn_node_type}" in
+case "${node_type}" in
     MasterServer)
         exit 0
     ;;

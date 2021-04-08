@@ -17,8 +17,8 @@ from common.utils import get_url_scheme, parse_bucket_url, validate_json_format
 @pytest.mark.parametrize(
     "data, expected_value",
     [
-        ('{"cluster": {"cfn_scheduler_slots": "cores"}}', True),
-        ('{"cluster"}: {"cfn_scheduler_slots": "cores"}}', False),
+        ('{"cluster": {"scheduler_slots": "cores"}}', True),
+        ('{"cluster"}: {"scheduler_slots": "cores"}}', False),
     ],
 )
 def test_validate_json_format(data, expected_value):
