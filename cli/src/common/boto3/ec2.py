@@ -42,17 +42,14 @@ class Ec2Client(Boto3Client):
     @Cache.cached
     def get_default_instance_type(self):
         """If current region support free tier, return the free tier instance type. Otherwise, return t3.micro."""
-        free_tier_instance_type = self._client.describe_instance_types(
-            Filters=[
+        kwargs = {
+            "Filters": [
                 {"Name": "free-tier-eligible", "Values": ["true"]},
                 {"Name": "current-generation", "Values": ["true"]},
             ]
-        )
-        return (
-            free_tier_instance_type["InstanceTypes"][0]["InstanceType"]
-            if free_tier_instance_type["InstanceTypes"]
-            else "t3.micro"
-        )
+        }
+        free_tier_instance_type = list(self._paginate_results(self._client.describe_instance_types, **kwargs))
+        return free_tier_instance_type[0]["InstanceType"] if free_tier_instance_type else "t3.micro"
 
     @AWSExceptionHandler.handle_client_exception
     def describe_subnets(self, subnet_ids):
