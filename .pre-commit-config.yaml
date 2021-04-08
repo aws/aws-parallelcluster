@@ -32,7 +32,7 @@ repos:
     rev: 5.8.0
     hooks:
       - id: isort
-        args: ['-rc', '-w 120']
+        args: ['-rc', '-w 120', '--sp', 'cli/.isort.cfg']
 
   - repo: https://github.com/ambv/black
     rev: 20.8b1
