@@ -149,8 +149,6 @@ def print_stack_outputs(stack_outputs):
         "BatchJobDefinitionArn",
         "BatchJobDefinitionMnpArn",
         "BatchUserRole",
-        "GangliaPrivateURL",
-        "GangliaPublicURL",
     ]
 
     for output in stack_outputs:

@@ -18,6 +18,8 @@ CHANGELOG
   `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
    `--subnet-id`.
 - Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
+- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket 
+per cluster. 
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
 - Add possibility to configure different security groups for each queue.
@@ -28,8 +30,11 @@ CHANGELOG
 - Remove `amis.txt` file.
 - Remove additional EBS volume attached to the head node by default. 
 - Change NICE DCV session storage path to `/home/{UserName}`.
-- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket 
-per cluster. 
+- Rename MasterServer to HeadNode in cli outputs.
+- Rename variable exported in the AWS Batch job environment from MASTER_IP to PCLUSTER_HEAD_NODE_IP.
+- Rename all CFN outputs from Master* to HeadNode*.
+- Rename NodeType and tags from Master to HeadNode.
+- Remove Ganglia support.
 
 2.x.x
 ------
