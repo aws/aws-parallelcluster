@@ -139,7 +139,7 @@ dcv:
       # DCV on ARM
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: {{common.OSS_COMMERCIAL_ARM}}
+        oss: ["alinux2", "centos8", "ubuntu1804"]
         schedulers: ["slurm"]
       # DCV on Batch
       - regions: ["eu-west-1"]
