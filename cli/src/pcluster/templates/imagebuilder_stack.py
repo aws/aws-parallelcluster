@@ -32,7 +32,12 @@ from common.imagebuilder_utils import (
     InstanceRole,
 )
 from common.utils import get_url_scheme, load_yaml, parse_bucket_url
-from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG
+from pcluster.constants import (
+    PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_S3_BUCKET_TAG,
+    PCLUSTER_S3_IMAGE_DIR_TAG,
+    PCLUSTER_VERSION_TAG,
+)
 from pcluster.models.common import BaseTag, S3Bucket, S3FileType
 from pcluster.models.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
@@ -138,12 +143,7 @@ class ImageBuilderCdkStack(Stack):
         build_tags_list = [CfnTag(key=tag.key, value=tag.value) for tag in tags]
 
         # Add default ami tags information
-        tags = copy.deepcopy(self.config.image.tags) if self.config.image and self.config.image.tags else []
-        tags.append(BaseTag(key="pcluster_version", value=utils.get_installed_version()))
-        tags.append(BaseTag(key=PCLUSTER_S3_BUCKET_TAG, value=self.bucket.name))
-        tags.append(BaseTag(key=PCLUSTER_S3_IMAGE_DIR_TAG, value=self.bucket.artifact_directory))
-        tags.append(BaseTag(key=PCLUSTER_IMAGE_NAME_TAG, value=self.image_name))
-        ami_tags = {tag.key: tag.value for tag in tags}
+        ami_tags = self._get_image_tags()
 
         lambda_cleanup_policy_statements = []
 
@@ -168,6 +168,19 @@ class ImageBuilderCdkStack(Stack):
 
         lambda_cleanup = self._add_lambda_cleanup(lambda_cleanup_policy_statements, build_tags_list)
         self._add_sns_topic(lambda_cleanup, build_tags_list)
+
+    def _get_image_tags(self):
+        tags = copy.deepcopy(self.config.image.tags) if self.config.image and self.config.image.tags else []
+        # TODO add tags for build log
+        tag_list = [
+            {"key": PCLUSTER_VERSION_TAG, "value": utils.get_installed_version()},
+            {"key": PCLUSTER_IMAGE_NAME_TAG, "value": self.image_name},
+            {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
+            {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.bucket.artifact_directory},
+        ]
+        for tag in tag_list:
+            tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
+        return {tag.key: tag.value for tag in tags}
 
     def _add_imagebuilder_resources(
         self, build_tags, ami_tags, instance_profile_name, lambda_cleanup_policy_statements

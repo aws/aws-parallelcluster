@@ -68,9 +68,11 @@ class ImageSchema(BaseSchema):
         """Validate reserved tag in tags."""
         if value:
             for tag in value:
-                match = re.match(r"^pcluster_*", tag.key)
+                match = re.match(r"^parallelcluster:*", tag.key)
                 if match:
-                    raise ValidationError(message="The tag key prefix 'pcluster_' is reserved and cannot be used.")
+                    raise ValidationError(
+                        message="The tag key prefix 'parallelcluster:' is reserved and cannot be used."
+                    )
 
 
 # ---------------------- Build Schema---------------------- #
