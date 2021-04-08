@@ -19,7 +19,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids
+from utils import InstanceTypesData, get_compute_nodes_instance_ids
 
 from tests.common.assertions import (
     assert_errors_in_logs,
@@ -53,10 +53,12 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     scaledown_idletime = 3
+    gpu_instance_type = "g3.4xlarge"
+    gpu_instance_type_info = InstanceTypesData.get_instance_info(gpu_instance_type, region)
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
     supports_impi = architecture == "x86_64"
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime)
+    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, gpu_instance_type=gpu_instance_type)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
@@ -76,16 +78,18 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
         instance_type="c5.xlarge",
         cpu_per_instance=4,
     )
-    _gpu_resource_check(slurm_commands, partition="gpu", instance_type="g3.8xlarge")
+    _gpu_resource_check(
+        slurm_commands, partition="gpu", instance_type=gpu_instance_type, instance_type_info=gpu_instance_type_info
+    )
     _test_cluster_limits(
         slurm_commands, partition="ondemand", instance_type="c5.xlarge", max_count=5, cpu_per_instance=4
     )
     _test_cluster_gpu_limits(
         slurm_commands,
         partition="gpu",
-        instance_type="g3.8xlarge",
+        instance_type=gpu_instance_type,
         max_count=5,
-        gpu_per_instance=2,
+        gpu_per_instance=_get_num_gpus_on_instance(gpu_instance_type_info),
         gpu_type="m60",
     )
     # Test torque command wrapper
@@ -759,31 +763,33 @@ def _submit_command_and_assert_job_rejected(slurm_commands, submit_command_args)
     assert_that(result.stdout).contains("sbatch: error: Batch job submission failed:")
 
 
-def _gpu_resource_check(slurm_commands, partition, instance_type):
+def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_info):
     """Test GPU related resources are correctly allocated."""
     logging.info("Testing number of GPU/CPU resources allocated to job")
 
+    cpus_per_gpu = min(5, instance_type_info.get("VCpuInfo").get("DefaultCores"))
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": "-G 1 --cpus-per-gpu 5",
+            "other_options": f"-G 1 --cpus-per-gpu {cpus_per_gpu}",
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains("TresPerJob=gpu:1", "CpusPerTres=gpu:5")
+    assert_that(job_info).contains("TresPerJob=gpu:1", f"CpusPerTres=gpu:{cpus_per_gpu}")
 
+    gpus_per_instance = _get_num_gpus_on_instance(instance_type_info)
     job_id = slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
             "command": "sleep 1",
             "partition": partition,
             "constraint": instance_type,
-            "other_options": "--gres=gpu:2 --cpus-per-gpu 6",
+            "other_options": f"--gres=gpu:{gpus_per_instance} --cpus-per-gpu {cpus_per_gpu}",
         }
     )
     job_info = slurm_commands.get_job_info(job_id)
-    assert_that(job_info).contains("TresPerNode=gpu:2", "CpusPerTres=gpu:6")
+    assert_that(job_info).contains(f"TresPerNode=gpu:{gpus_per_instance}", f"CpusPerTres=gpu:{cpus_per_gpu}")
 
 
 def _test_slurm_version(remote_command_executor):
@@ -908,3 +914,28 @@ def _assert_slurmd_timeout(remote_command_executor, timeout):
         'scontrol show config | grep -oP "^SlurmdTimeout\\s*\\=\\s*\\K(.+)"'
     ).stdout
     assert_that(configured_timeout).is_equal_to("{0} sec".format(timeout))
+
+
+def _get_num_gpus_on_instance(instance_type_info):
+    """
+    Return the number of GPUs attached to the instance type.
+
+    instance_type_info is expected to be as returned by DescribeInstanceTypes:
+    {
+        ...,
+        "GpuInfo": {
+            "Gpus": [
+                {
+                    "Name": "M60",
+                    "Manufacturer": "NVIDIA",
+                    "Count": 2,
+                    "MemoryInfo": {
+                        "SizeInMiB": 8192
+                    }
+                }
+            ],
+        }
+        ...
+    }
+    """
+    return sum([gpu_type.get("Count") for gpu_type in instance_type_info.get("GpuInfo").get("Gpus")])
