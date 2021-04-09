@@ -84,10 +84,14 @@ jobs:
       - uses: actions/setup-java@v1
         with:
           java-version: 11
+      - run: |
+          sudo npm install -g redoc-cli
+          sudo snap install yq
       - working-directory: api
         run: ./gradlew buildSmithyModel openApiValidate
   api-docker-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: mikefarah/yq@v4.6.3
       - run: api/docker/awslambda/docker-build.sh
