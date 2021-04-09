@@ -35,10 +35,10 @@ from pcluster.constants import (
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import get_partition, get_region
 from pcluster.validators.awsbatch_validators import (
-    AwsbatchComputeInstanceTypeValidator,
-    AwsbatchComputeResourceSizeValidator,
-    AwsbatchInstancesArchitectureCompatibilityValidator,
-    AwsbatchRegionValidator,
+    AwsBatchComputeInstanceTypeValidator,
+    AwsBatchComputeResourceSizeValidator,
+    AwsBatchInstancesArchitectureCompatibilityValidator,
+    AwsBatchRegionValidator,
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
@@ -1052,8 +1052,8 @@ class BaseClusterConfig(Resource):
         )
 
 
-class AwsbatchComputeResource(BaseComputeResource):
-    """Represent the Awsbatch Compute Resource."""
+class AwsBatchComputeResource(BaseComputeResource):
+    """Represent the AwsBatch Compute Resource."""
 
     def __init__(
         self,
@@ -1074,24 +1074,24 @@ class AwsbatchComputeResource(BaseComputeResource):
     def _validate(self):
         super()._validate()
         self._execute_validator(
-            AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_types, max_vcpus=self.max_vcpus
+            AwsBatchComputeInstanceTypeValidator, instance_types=self.instance_types, max_vcpus=self.max_vcpus
         )
         self._execute_validator(
-            AwsbatchComputeResourceSizeValidator,
+            AwsBatchComputeResourceSizeValidator,
             min_vcpus=self.min_vcpus,
             max_vcpus=self.max_vcpus,
             desired_vcpus=self.desired_vcpus,
         )
 
 
-class AwsbatchQueue(BaseQueue):
-    """Represent the Awsbatch Queue resource."""
+class AwsBatchQueue(BaseQueue):
+    """Represent the AwsBatch Queue resource."""
 
     def __init__(
         self,
         name: str,
         networking: QueueNetworking,
-        compute_resources: List[AwsbatchComputeResource],
+        compute_resources: List[AwsBatchComputeResource],
         compute_settings: ComputeSettings = None,
         capacity_type: str = None,
     ):
@@ -1099,39 +1099,39 @@ class AwsbatchQueue(BaseQueue):
         self.compute_resources = compute_resources
 
 
-class AwsbatchSettings(Resource):
-    """Represent the AwsbatchSettings resource."""
+class AwsBatchSettings(Resource):
+    """Represent the AwsBatchSettings resource."""
 
     pass
 
 
-class AwsbatchScheduling(Resource):
-    """Represent a Awsbatch Scheduling resource."""
+class AwsBatchScheduling(Resource):
+    """Represent a AwsBatch Scheduling resource."""
 
-    def __init__(self, queues: List[AwsbatchQueue], settings: AwsbatchSettings = None):
+    def __init__(self, queues: List[AwsBatchQueue], settings: AwsBatchSettings = None):
         super().__init__()
         self.scheduler = "awsbatch"
         self.queues = queues
         self.settings = settings
 
 
-class AwsbatchClusterConfig(BaseClusterConfig):
-    """Represent the full Awsbatch Cluster configuration."""
+class AwsBatchClusterConfig(BaseClusterConfig):
+    """Represent the full AwsBatch Cluster configuration."""
 
-    def __init__(self, scheduling: AwsbatchScheduling, **kwargs):
+    def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
         super().__init__(**kwargs)
         self.scheduling = scheduling
 
     def _validate(self):
         super()._validate()
-        self._execute_validator(AwsbatchRegionValidator, region=self.region)
+        self._execute_validator(AwsBatchRegionValidator, region=self.region)
         self._execute_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 self._execute_validator(
-                    AwsbatchInstancesArchitectureCompatibilityValidator,
+                    AwsBatchInstancesArchitectureCompatibilityValidator,
                     instance_types=compute_resource.instance_types,
                     architecture=self.head_node.architecture,
                 )

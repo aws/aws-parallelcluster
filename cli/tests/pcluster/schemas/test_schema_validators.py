@@ -14,8 +14,8 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.schemas.cluster_schema import (
-    AwsbatchComputeResourceSchema,
-    AwsbatchQueueSchema,
+    AwsBatchComputeResourceSchema,
+    AwsBatchQueueSchema,
     CloudWatchLogsSchema,
     DcvSchema,
     EbsSchema,
@@ -89,7 +89,7 @@ def test_root_volume_size_validator(size, expected_message):
 )
 def test_compute_type_validator(capacity_type, expected_message):
     _validate_and_assert_error(SlurmQueueSchema(), {"CapacityType": capacity_type}, expected_message)
-    _validate_and_assert_error(AwsbatchQueueSchema(), {"CapacityType": capacity_type}, expected_message)
+    _validate_and_assert_error(AwsBatchQueueSchema(), {"CapacityType": capacity_type}, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -135,7 +135,7 @@ def test_slurm_compute_resource_validator(section_dict, expected_message):
     ],
 )
 def test_awsbatch_compute_resource_validator(section_dict, expected_message):
-    _validate_and_assert_error(AwsbatchComputeResourceSchema(), section_dict, expected_message)
+    _validate_and_assert_error(AwsBatchComputeResourceSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -155,7 +155,7 @@ def test_awsbatch_compute_resource_validator(section_dict, expected_message):
     ],
 )
 def test_awsbatch_queue_validator(section_dict, expected_message):
-    _validate_and_assert_error(AwsbatchQueueSchema(), section_dict, expected_message)
+    _validate_and_assert_error(AwsBatchQueueSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(

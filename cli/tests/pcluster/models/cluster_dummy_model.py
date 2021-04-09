@@ -12,10 +12,10 @@ from typing import List
 from unittest.mock import PropertyMock
 
 from pcluster.models.cluster_config import (
-    AwsbatchClusterConfig,
-    AwsbatchComputeResource,
-    AwsbatchQueue,
-    AwsbatchScheduling,
+    AwsBatchClusterConfig,
+    AwsBatchComputeResource,
+    AwsBatchQueue,
+    AwsBatchScheduling,
     ClusterIam,
     Dcv,
     HeadNode,
@@ -57,10 +57,10 @@ class _DummySlurmClusterConfig(SlurmClusterConfig):
         return "dummy_vpc_id"
 
 
-class _DummyAwsbatchClusterConfig(AwsbatchClusterConfig):
+class _DummyAwsBatchClusterConfig(AwsBatchClusterConfig):
     """Generate dummy Slurm cluster config."""
 
-    def __init__(self, scheduling: AwsbatchScheduling, **kwargs):
+    def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
         super().__init__(scheduling, **kwargs)
 
     @property
@@ -259,11 +259,11 @@ def dummy_awsbatch_cluster_config(mocker):
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
     compute_resources = [
-        AwsbatchComputeResource(name="dummy_compute_resource1", instance_types="dummyc5.xlarge,optimal")
+        AwsBatchComputeResource(name="dummy_compute_resource1", instance_types="dummyc5.xlarge,optimal")
     ]
     queue_networking = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
-    queues = [AwsbatchQueue(name="queue1", networking=queue_networking, compute_resources=compute_resources)]
-    scheduling = AwsbatchScheduling(queues=queues)
+    queues = [AwsBatchQueue(name="queue1", networking=queue_networking, compute_resources=compute_resources)]
+    scheduling = AwsBatchScheduling(queues=queues)
     # shared storage
     shared_storage: List[Resource] = []
     shared_storage.append(dummy_fsx())
@@ -273,7 +273,7 @@ def dummy_awsbatch_cluster_config(mocker):
     shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
     shared_storage.append(dummy_raid("/raid1"))
 
-    cluster = _DummyAwsbatchClusterConfig(
+    cluster = _DummyAwsBatchClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"

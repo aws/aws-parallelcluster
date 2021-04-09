@@ -39,7 +39,7 @@ from pcluster.models.cluster_config import (
     SlurmClusterConfig,
 )
 from pcluster.models.common import S3Bucket
-from pcluster.templates.awsbatch_builder import AwsbatchConstruct
+from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
@@ -177,9 +177,9 @@ class ClusterCdkStack(core.Stack):
 
         # AWS Batch related resources
         if self.config.scheduling.scheduler == "awsbatch":
-            self.scheduler_resources = AwsbatchConstruct(
+            self.scheduler_resources = AwsBatchConstruct(
                 scope=self,
-                id="Awsbatch",
+                id="AwsBatch",
                 stack_name=self._stack_name,
                 cluster_config=self.config,
                 bucket=self.bucket,

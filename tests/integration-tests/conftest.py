@@ -430,16 +430,21 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
                     ("HeadNode", "CustomActions", config_param, "Script"),
                 )
                 _add_policy_for_pre_post_install(config_content["HeadNode"], option, request, region)
-            for queue in config_content["Scheduling"]["Queues"]:
-                if not _dict_has_nested_key(queue, ("CustomActions", config_param)):
-                    _dict_add_nested_key(
-                        queue, request.config.getoption(option), ("CustomActions", config_param, "Script")
-                    )
-                    _add_policy_for_pre_post_install(queue, option, request, region)
 
-    for option_name, config_param in zip(["custom_awsbatchcli_package", "custom_node_package"], ["AwsBatchCliPackage", "NodePackage"]):
-        if request.config.getoption(option_name) and not _dict_has_nested_key(config_content, ("DevSettings", config_param)):
-            _dict_add_nested_key(config_content, request.config.getoption(option_name), ("DevSettings", config_param))
+            if config_content["Scheduling"]["Scheduler"] != "awsbatch":
+                for queue in config_content["Scheduling"]["Queues"]:
+                    if not _dict_has_nested_key(queue, ("CustomActions", config_param)):
+                        _dict_add_nested_key(
+                            queue, request.config.getoption(option), ("CustomActions", config_param, "Script")
+                        )
+                        _add_policy_for_pre_post_install(queue, option, request, region)
+
+    for option, config_param in [
+        ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
+        ("custom_node_package", "NodePackage"),
+    ]:
+        if request.config.getoption(option) and not _dict_has_nested_key(config_content, ("DevSettings", config_param)):
+            _dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
     with open(cluster_config, "w") as conf_file:
         yaml.dump(config_content, conf_file)

@@ -20,7 +20,7 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import core
 
-from pcluster.models.cluster_config import AwsbatchClusterConfig, CapacityType, SharedStorageType
+from pcluster.models.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
 from pcluster.models.common import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -37,14 +37,14 @@ from pcluster.templates.cdk_builder_utils import (
 )
 
 
-class AwsbatchConstruct(core.Construct):
+class AwsBatchConstruct(core.Construct):
     """Create the resources required when using AWS Batch as a scheduler."""
 
     def __init__(
         self,
         scope: core.Construct,
         id: str,
-        cluster_config: AwsbatchClusterConfig,
+        cluster_config: AwsBatchClusterConfig,
         stack_name: str,
         bucket: S3Bucket,
         create_lambda_roles: bool,
