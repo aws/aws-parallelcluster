@@ -29,7 +29,6 @@ from common.aws.aws_api import AWSApi
 from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import (
     BaseQueue,
-    CustomActionEvent,
     HeadNode,
     SharedEbs,
     SharedEfs,
@@ -58,8 +57,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-
-# pylint: disable=too-many-lines
+from pcluster.utils import join_shell_args
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -898,8 +896,11 @@ class ClusterCdkStack(core.Stack):
         # Metadata
         head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Head Node")
         # CloudFormation::Init metadata
-        pre_install_action = head_node.get_custom_action(event=CustomActionEvent.NODE_START)
-        post_install_action = head_node.get_custom_action(event=CustomActionEvent.NODE_CONFIGURED)
+        pre_install_action, post_install_action = (None, None)
+        if head_node.custom_actions:
+            pre_install_action = head_node.custom_actions.on_node_start
+            post_install_action = head_node.custom_actions.on_node_configured
+
         dna_json = json.dumps(
             {
                 "cfncluster": {
@@ -915,9 +916,13 @@ class ClusterCdkStack(core.Stack):
                     else "false",
                     "cfn_base_os": self.config.image.os,
                     "cfn_preinstall": pre_install_action.script if pre_install_action else "NONE",
-                    "cfn_preinstall_args": pre_install_action.args if pre_install_action else "NONE",
+                    "cfn_preinstall_args": join_shell_args(pre_install_action.args)
+                    if pre_install_action and pre_install_action.args
+                    else "NONE",
                     "cfn_postinstall": post_install_action.script if post_install_action else "NONE",
-                    "cfn_postinstall_args": post_install_action.args if post_install_action else "NONE",
+                    "cfn_postinstall_args": join_shell_args(post_install_action.args)
+                    if post_install_action and pre_install_action.args
+                    else "NONE",
                     "cfn_region": self.region,
                     "cfn_efs": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
                     "cfn_efs_shared_dir": get_shared_storage_options_by_type(

@@ -13,14 +13,14 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
   CustomActions:
-    - Script: s3://{{ bucket }}/scripts/preinstall.sh
+    OnNodeStart:
+      Script: s3://{{ bucket }}/scripts/preinstall.sh
       Args:
         - ABC
-      Event: NODE_START
-    - Script: s3://{{ bucket }}/scripts/postinstall.sh
+    OnNodeConfigured:
+      Script: s3://{{ bucket }}/scripts/postinstall.sh
       Args:
         - DEF
-      Event: NODE_CONFIGURED
   Iam:
     S3Access:
       - BucketName: {{ resource_bucket }}
@@ -38,14 +38,14 @@ Scheduling:
          RootVolume:
           size: 40
       CustomActions:
-        - Script: s3://{{ bucket }}/scripts/preinstall.sh
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
           Args:
             - ABC
-          Event: NODE_START
-        - Script: s3://{{ bucket }}/scripts/postinstall.sh
+        OnNodeConfigured:
+          Script: s3://{{ bucket }}/scripts/postinstall.sh
           Args:
             - DEF
-          Event: NODE_CONFIGURED
       CapacityType: SPOT
       ComputeResources:
         - Name: compute-resource-11
@@ -77,14 +77,14 @@ Scheduling:
           RootVolume:
             size: 40
       CustomActions:
-        - Script: s3://{{ bucket }}/scripts/preinstall.sh
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
           Args:
             - ABC
-          Event: NODE_START
-        - Script: s3://{{ bucket }}/scripts/postinstall.sh
+        OnNodeConfigured:
+          Script: s3://{{ bucket }}/scripts/postinstall.sh
           Args:
             - DEF
-          Event: NODE_CONFIGURED
       ComputeResources:
         - Name: compute-resource-21
           InstanceType: c5n.18xlarge
@@ -107,14 +107,14 @@ Scheduling:
             RootVolume:
               size: 40
       CustomActions:
-        - Script: s3://{{ bucket }}/scripts/preinstall.sh
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
           Args:
             - ABC
-          Event: NODE_START
-        - Script: s3://{{ bucket }}/scripts/postinstall.sh
+        OnNodeConfigured:
+          Script: s3://{{ bucket }}/scripts/postinstall.sh
           Args:
             - DEF
-          Event: NODE_CONFIGURED
       ComputeResources:
         - Name: compute-resource-31
           InstanceType: c5n.18xlarge

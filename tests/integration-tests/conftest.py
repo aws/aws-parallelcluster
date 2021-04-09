@@ -339,7 +339,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stack, request):
+def pcluster_config_reader(test_datadir, vpc_stack, request, region):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -364,7 +364,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        add_custom_packages_configs(config_file_path, request)
+        add_custom_packages_configs(config_file_path, request, region)
         return config_file_path
 
     return _config_renderer
@@ -390,7 +390,7 @@ def _dict_add_nested_key(d, value, keys):
     _d[keys[-1]] = value
 
 
-def add_custom_packages_configs(cluster_config, request):
+def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
     with open(cluster_config) as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
@@ -421,21 +421,28 @@ def add_custom_packages_configs(cluster_config, request):
                 config_content, request.config.getoption("ami_owner"), ("DevSettings", "AmiSearchFilters", "Owner")
             )
 
+    for option, config_param in [("pre_install", "OnNodeStart"), ("post_install", "OnNodeConfigured")]:
+        if request.config.getoption(option):
+            if not _dict_has_nested_key(config_content, ("HeadNode", "CustomActions", config_param)):
+                _dict_add_nested_key(
+                    config_content,
+                    request.config.getoption(option),
+                    ("HeadNode", "CustomActions", config_param, "Script"),
+                )
+                _add_policy_for_pre_post_install(config_content["HeadNode"], option, request, region)
+            for queue in config_content["Scheduling"]["Queues"]:
+                if not _dict_has_nested_key(queue, ("CustomActions", config_param)):
+                    _dict_add_nested_key(
+                        queue, request.config.getoption(option), ("CustomActions", config_param, "Script")
+                    )
+                    _add_policy_for_pre_post_install(queue, option, request, region)
+
     with open(cluster_config, "w") as conf_file:
         yaml.dump(config_content, conf_file)
 
 
 # ToDo uncomment and adapt the change below
 """
-    for custom_option in [
-        "pre_install",
-        "post_install",
-    ]:
-        if request.config.getoption(custom_option) and custom_option not in config[cluster_template]:
-            config[cluster_template][custom_option] = request.config.getoption(custom_option)
-            if custom_option in ["pre_install", "post_install"]:
-                _add_policy_for_pre_post_install(cluster_template, config, custom_option, request, region)
-
     extra_json = json.loads(config.get(cluster_template, "extra_json", fallback="{}"))
     for extra_json_custom_option in ["custom_awsbatchcli_package", "custom_node_package"]:
         if request.config.getoption(extra_json_custom_option):
@@ -454,22 +461,22 @@ def add_custom_packages_configs(cluster_config, request):
 """
 
 
-def _add_policy_for_pre_post_install(cluster_template, config, custom_option, request, region):
+def _add_policy_for_pre_post_install(node_config, custom_option, request, region):
     match = re.match(r"s3://(.*?)/(.*)", request.config.getoption(custom_option))
     if not match or len(match.groups()) < 2:
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
-        additional_iam_policies = "arn:" + _get_arn_partition(region) + ":iam::aws:policy/AmazonS3ReadOnlyAccess"
+        additional_iam_policies = {
+            "Policy": "arn:" + _get_arn_partition(region) + ":iam::aws:policy/AmazonS3ReadOnlyAccess"
+        }
         logging.info(
-            "{0} script is an S3 URL, adding additional_iam_policies={1}".format(custom_option, additional_iam_policies)
+            "{0} script is an S3 URL, adding AdditionalIamPolicies={1}".format(custom_option, additional_iam_policies)
         )
-
-        if "additional_iam_policies" not in config[cluster_template]:
-            config[cluster_template]["additional_iam_policies"] = additional_iam_policies
+        if _dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
+            if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
+                node_config["Iam"]["AdditionalIamPolicies"].append({"Policy": additional_iam_policies})
         else:
-            config[cluster_template]["additional_iam_policies"] = (
-                config[cluster_template]["additional_iam_policies"] + ", " + additional_iam_policies
-            )
+            _dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
 
 
 def _get_arn_partition(region):
