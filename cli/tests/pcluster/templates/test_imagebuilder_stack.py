@@ -13,6 +13,7 @@ import pytest
 from assertpy import assert_that
 
 import pcluster.utils as utils
+from common.aws.aws_resources import ImageInfo
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from tests.common.dummy_aws_api import mock_aws_api
 
@@ -453,7 +454,7 @@ def test_imagebuilder_parameters_and_resources(mocker, resource, response, expec
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -504,6 +505,7 @@ def _test_resources(generated_resources, expected_resources):
             {
                 "Type": "AWS::IAM::Role",
                 "Properties": {
+                    "RoleName": "Pcluster-InstanceRole",
                     "AssumeRolePolicyDocument": {
                         "Statement": [
                             {
@@ -547,8 +549,8 @@ def _test_resources(generated_resources, expected_resources):
                     ],
                     "Tags": [
                         {
-                            "Key": "pcluster_build_image",
-                            "Value": utils.get_installed_version(),
+                            "Key": "parallelcluster:image_name",
+                            "Value": "Pcluster",
                         }
                     ],
                 },
@@ -633,7 +635,7 @@ def test_imagebuilder_instance_role(
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -683,6 +685,7 @@ def test_imagebuilder_instance_role(
             {
                 "Type": "AWS::IAM::Role",
                 "Properties": {
+                    "RoleName": "My-Image-DeleteStackFunctionExecutionRole",
                     "AssumeRolePolicyDocument": {
                         "Statement": [
                             {
@@ -712,7 +715,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/My-Image-InstanceRole-*",
+                                                    ":role/ParallelClusterImage/My-Image-InstanceRole",
                                                 ],
                                             ]
                                         },
@@ -865,9 +868,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Region"},
                                                     ":",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":image-recipe/parallelclusterimage-",
-                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
-                                                    "/*",
+                                                    ":image-recipe/parallelclusterimage-my-image/*",
                                                 ],
                                             ]
                                         },
@@ -904,9 +905,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Region"},
                                                     ":",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":image/parallelclusterimage-",
-                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
-                                                    "/*",
+                                                    ":image/parallelclusterimage-my-image/*",
                                                 ],
                                             ]
                                         },
@@ -942,7 +941,7 @@ def test_imagebuilder_instance_role(
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
                                                     ":role/ParallelClusterImage/"
-                                                    "My-Image-DeleteStackFunctionExecutionRole-*",
+                                                    "My-Image-DeleteStackFunctionExecutionRole",
                                                 ],
                                             ]
                                         },
@@ -993,7 +992,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/My-Image-InstanceRole-*",
+                                                    ":role/ParallelClusterImage/My-Image-InstanceRole",
                                                 ],
                                             ]
                                         },
@@ -1025,8 +1024,8 @@ def test_imagebuilder_instance_role(
                     ],
                     "Tags": [
                         {
-                            "Key": "pcluster_build_image",
-                            "Value": utils.get_installed_version(),
+                            "Key": "parallelcluster:image_name",
+                            "Value": "My-Image",
                         }
                     ],
                 },
@@ -1072,7 +1071,7 @@ def test_imagebuilder_lambda_execution_role(
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1216,7 +1215,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1272,9 +1271,22 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                         "AmiTags": {
                             "keyTag1": "valueTag1",
                             "keyTag2": "valueTag2",
-                            "pcluster_version": utils.get_installed_version(),
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                     },
                     "Region": {"Ref": "AWS::Region"},
@@ -1306,9 +1318,22 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": utils.get_installed_version(),
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                     },
                     "Region": {"Ref": "AWS::Region"},
@@ -1343,9 +1368,22 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": utils.get_installed_version(),
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                     },
                     "Region": {"Ref": "AWS::Region"},
@@ -1359,7 +1397,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1401,12 +1439,20 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     {
                         "DeviceName": "/dev/xvda",
                         "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
                             "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
                         },
                     }
                 ],
             },
-            {"keyTag1": "valueTag1", "keyTag2": "valueTag2", "pcluster_build_image": utils.get_installed_version()},
+            {
+                "keyTag1": "valueTag1",
+                "keyTag2": "valueTag2",
+                "parallelcluster:image_name": "Pcluster",
+            },
             [
                 {
                     "Key": "keyTag1",
@@ -1416,10 +1462,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     "Key": "keyTag2",
                     "Value": "valueTag2",
                 },
-                {
-                    "Key": "pcluster_build_image",
-                    "Value": utils.get_installed_version(),
-                },
+                {"Key": "parallelcluster:image_name", "Value": "Pcluster"},
             ],
         ),
         (
@@ -1442,13 +1485,8 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     }
                 ],
             },
-            {"pcluster_build_image": utils.get_installed_version()},
-            [
-                {
-                    "Key": "pcluster_build_image",
-                    "Value": utils.get_installed_version(),
-                }
-            ],
+            {"parallelcluster:image_name": "Pcluster"},
+            [{"Key": "parallelcluster:image_name", "Value": "Pcluster"}],
         ),
         (
             {
@@ -1471,13 +1509,8 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     }
                 ],
             },
-            {"pcluster_build_image": utils.get_installed_version()},
-            [
-                {
-                    "Key": "pcluster_build_image",
-                    "Value": utils.get_installed_version(),
-                }
-            ],
+            {"parallelcluster:image_name": "Pcluster"},
+            [{"Key": "parallelcluster:image_name", "Value": "Pcluster"}],
         ),
     ],
 )
@@ -1486,7 +1519,7 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1565,7 +1598,7 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1634,7 +1667,7 @@ def test_imagebuilder_instance_type(mocker, resource, response, expected_imagebu
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1703,7 +1736,7 @@ def test_imagebuilder_parent_image(mocker, resource, response, expected_imagebui
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1773,7 +1806,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -1817,9 +1850,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                     },
                     "Region": {"Ref": "AWS::Region"},
@@ -1852,9 +1898,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                     },
                     "Region": {"Ref": "AWS::Region"},
@@ -1887,9 +1946,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                     },
                     "Region": "eu-south-1",
@@ -1922,9 +1994,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                         "LaunchPermissionConfiguration": "",
                     },
@@ -1963,9 +2048,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                         "LaunchPermissionConfiguration": {"UserIds": ["123456789012", "345678901234"]},
                     },
@@ -2004,9 +2102,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                         "LaunchPermissionConfiguration": {"UserIds": []},
                     },
@@ -2045,9 +2156,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                         "LaunchPermissionConfiguration": {"UserGroups": ["all"]},
                     },
@@ -2057,9 +2181,22 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "AmiDistributionConfiguration": {
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
-                            "pcluster_version": "2.10.1",
+                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_log": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {"Ref": "AWS::Partition"},
+                                        ":logs:us-east-1:",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                    ],
+                                ]
+                            },
                         },
                         "LaunchPermissionConfiguration": {"UserGroups": ["all"]},
                     },
@@ -2074,11 +2211,11 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     mocker.patch(
         "pcluster.utils.get_installed_version",
-        return_value="2.10.1",
+        return_value=utils.get_installed_version(),
     )
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -2210,7 +2347,7 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=response,
+        return_value=ImageInfo(response),
     )
     mocker.patch(
         "pcluster.utils.get_installed_version",

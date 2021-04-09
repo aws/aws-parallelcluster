@@ -11,7 +11,7 @@
 
 import pytest
 
-from common.aws.aws_resources import InstanceTypeInfo
+from common.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster_config import CapacityType
 from pcluster.validators.ec2_validators import (
@@ -44,6 +44,7 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
             "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
             None,
             {
+                "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
                 "BlockDeviceMappings": [
                     {
@@ -69,6 +70,7 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
             "the instance type m6g.xlarge chosen \\(\\['arm64'\\]\\). "
             "Use either a different AMI or a different instance type.",
             {
+                "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
                 "BlockDeviceMappings": [
                     {
@@ -91,21 +93,7 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
             "m6g.xlarge",
             "ami-000000000000",
             "Invalid image 'ami-000000000000'",
-            {
-                "Architecture": "x86_64",
-                "BlockDeviceMappings": [
-                    {
-                        "DeviceName": "/dev/xvda",
-                        "Ebs": {
-                            "DeleteOnTermination": True,
-                            "SnapshotId": "snap-0a20b6671bc5e3ead",
-                            "VolumeSize": 25,
-                            "VolumeType": "gp2",
-                            "Encrypted": False,
-                        },
-                    }
-                ],
-            },
+            None,
             AWSClientError(function_name="describe_image", message="error"),
             ["m6g.xlarge", "c5.xlarge"],
             ["arm64"],
@@ -115,6 +103,7 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
             "ami-0185634c5a8a37250",
             "The instance type 'p4d.24xlarge' is not supported.",
             {
+                "ImageId": "ami-0185634c5a8a37250",
                 "Architecture": "x86_64",
                 "BlockDeviceMappings": [
                     {
@@ -147,7 +136,9 @@ def test_instance_type_base_ami_compatible_validator(
 ):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=ami_response, side_effect=ami_side_effect)
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.describe_image", return_value=ImageInfo(ami_response), side_effect=ami_side_effect
+    )
     mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=instance_response)
     mocker.patch("common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=instance_architectures)
     actual_failures = InstanceTypeBaseAMICompatibleValidator().execute(instance_type=instance_type, image=parent_image)

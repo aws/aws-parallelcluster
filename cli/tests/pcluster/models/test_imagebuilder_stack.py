@@ -11,6 +11,7 @@
 import pytest
 from assertpy import assert_that
 
+from common.aws.aws_resources import ImageInfo
 from pcluster.models.imagebuilder import ImageBuilderStack
 from tests.common.dummy_aws_api import mock_aws_api
 
@@ -95,9 +96,16 @@ def test_image(mocker, stack_resources_response, describe_image_response):
         return_value=stack_resources_response,
     )
     mocker.patch("common.boto3.imagebuilder.ImageBuilderClient.get_image_id", return_value="ami-06b66530ba9f43a96")
-    mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=describe_image_response)
+    mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=ImageInfo(describe_image_response))
     imagebuilder_stack = ImageBuilderStack({"StackName": FAKE_IMAGEBUILDER_STACK_NAME})
     image = imagebuilder_stack.image
     for p in image.__dir__():
-        if not p.startswith("_") and p != "snapshot_ids":
+        if not p.startswith("_") and p not in [
+            "snapshot_ids",
+            "volume_size",
+            "device_name",
+            "s3_bucket_name",
+            "s3_artifact_directory",
+            "build_log",
+        ]:
             assert_that(getattr(image, p) in describe_image_response.values()).is_equal_to(True)

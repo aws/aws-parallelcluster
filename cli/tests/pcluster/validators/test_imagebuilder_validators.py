@@ -11,6 +11,7 @@
 
 import pytest
 
+from common.aws.aws_resources import ImageInfo
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
 from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -86,7 +87,7 @@ def test_ami_volume_size_validator(mocker, image, volume_size, expected_message,
     mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
-        return_value=ami_response,
+        return_value=ImageInfo(ami_response),
     )
     actual_failures = AMIVolumeSizeValidator().execute(volume_size, image)
     assert_failure_messages(actual_failures, expected_message)
