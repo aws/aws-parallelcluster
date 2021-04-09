@@ -721,7 +721,7 @@
         },
         "Source": {
           "Location": {
-            "Fn::Sub": "${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/docker/artifacts.zip"
+            "Fn::Sub": "${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/custom_resources/scheduler_resources.zip"
           },
           "Type": "S3"
         },
