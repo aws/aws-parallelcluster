@@ -21,7 +21,7 @@ from pcluster.validators.common import FailureLevel, Validator
 LOGGER = logging.getLogger(__name__)
 
 
-class AwsbatchRegionValidator(Validator):
+class AwsBatchRegionValidator(Validator):
     """
     AWS Batch region validator.
 
@@ -34,9 +34,9 @@ class AwsbatchRegionValidator(Validator):
             self._add_failure(f"AWS Batch scheduler is not supported in region '{region}'.", FailureLevel.ERROR)
 
 
-class AwsbatchComputeResourceSizeValidator(Validator):
+class AwsBatchComputeResourceSizeValidator(Validator):
     """
-    Awsbatch compute resource size validator.
+    AwsBatch compute resource size validator.
 
     Validate min, desired and max vCPUs combination.
     """
@@ -67,9 +67,9 @@ class BatchErrorMessageParsingException(Exception):
     pass
 
 
-class AwsbatchComputeInstanceTypeValidator(Validator):
+class AwsBatchComputeInstanceTypeValidator(Validator):
     """
-    Awsbatch compute instance type validator.
+    AwsBatch compute instance type validator.
 
     Validate instance types and max vCPUs combination.
     """
@@ -225,7 +225,7 @@ def _parse_supported_instance_types_and_families_from_cce_emsg(emsg):
     raise BatchErrorMessageParsingException(f"Could not parse supported instance types from the following: {emsg}")
 
 
-class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
+class AwsBatchInstancesArchitectureCompatibilityValidator(Validator):
     """
     Validate instance type and architecture combination.
 

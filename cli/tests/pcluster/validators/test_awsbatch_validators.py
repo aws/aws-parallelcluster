@@ -19,10 +19,10 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 import pcluster.validators.awsbatch_validators as awsbatch_validators
 from common.aws.aws_resources import InstanceTypeInfo
 from pcluster.validators.awsbatch_validators import (
-    AwsbatchComputeInstanceTypeValidator,
-    AwsbatchComputeResourceSizeValidator,
-    AwsbatchInstancesArchitectureCompatibilityValidator,
-    AwsbatchRegionValidator,
+    AwsBatchComputeInstanceTypeValidator,
+    AwsBatchComputeResourceSizeValidator,
+    AwsBatchInstancesArchitectureCompatibilityValidator,
+    AwsBatchRegionValidator,
     BatchErrorMessageParsingException,
 )
 from tests.common.dummy_aws_api import mock_aws_api
@@ -45,7 +45,7 @@ def boto3_stubber_path():
     ],
 )
 def test_awsbatch_region_validator(region, expected_message):
-    actual_failures = AwsbatchRegionValidator().execute(region)
+    actual_failures = AwsBatchRegionValidator().execute(region)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -73,7 +73,7 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
             }
         ),
     )
-    actual_failures = AwsbatchComputeInstanceTypeValidator().execute(instance_type, max_vcpus)
+    actual_failures = AwsBatchComputeInstanceTypeValidator().execute(instance_type, max_vcpus)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -87,7 +87,7 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
     ],
 )
 def test_awsbatch_compute_resource_size_validator(min_vcpus, desired_vcpus, max_vcpus, expected_message):
-    actual_failures = AwsbatchComputeResourceSizeValidator().execute(min_vcpus, desired_vcpus, max_vcpus)
+    actual_failures = AwsBatchComputeResourceSizeValidator().execute(min_vcpus, desired_vcpus, max_vcpus)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -120,14 +120,14 @@ def test_awsbatch_instances_architecture_compatibility_validator(
         "common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=[compute_architecture]
     )
     is_instance_type_patch = mocker.patch(
-        "pcluster.validators.awsbatch_validators.AwsbatchInstancesArchitectureCompatibilityValidator."
+        "pcluster.validators.awsbatch_validators.AwsBatchInstancesArchitectureCompatibilityValidator."
         "_is_instance_type_format",
         side_effect=_internal_is_instance_type,
     )
 
     instance_types = compute_instance_types.split(",")
 
-    actual_failures = AwsbatchInstancesArchitectureCompatibilityValidator().execute(
+    actual_failures = AwsBatchInstancesArchitectureCompatibilityValidator().execute(
         compute_instance_types, head_node_architecture
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -363,6 +363,6 @@ def test_get_instance_families_from_types(caplog, instance_types, error_expected
 )
 def test_is_instance_type_format(candidate, expected_return_value):
     """Verify function that decides whether or not a string represents an instance type behaves as expected."""
-    assert_that(AwsbatchInstancesArchitectureCompatibilityValidator._is_instance_type_format(candidate)).is_equal_to(
+    assert_that(AwsBatchInstancesArchitectureCompatibilityValidator._is_instance_type_format(candidate)).is_equal_to(
         expected_return_value
     )

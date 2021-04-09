@@ -13,7 +13,7 @@ Scheduling:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          {% if scheduler == "Awsbatch" %}
+          {% if scheduler == "awsbatch" %}
           InstanceTypes: {{ instance }}
           MinVcpus: 4
           {% else %}
