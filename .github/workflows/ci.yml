@@ -86,3 +86,8 @@ jobs:
           java-version: 11
       - working-directory: api
         run: ./gradlew buildSmithyModel openApiValidate
+  api-docker-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: api/docker/awslambda/docker-build.sh
