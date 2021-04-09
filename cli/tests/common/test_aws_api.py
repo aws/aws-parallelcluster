@@ -15,7 +15,7 @@
 import pytest
 from assertpy import assert_that
 
-from common.boto3.common import AWSClientError, ImageNotFoundError
+from common.boto3.common import ImageNotFoundError, StackNotFoundError
 from tests.common.dummy_aws_api import _DummyAWSApi, mock_aws_api
 
 FAKE_STACK_NAME = "parallelcluster-name"
@@ -26,7 +26,7 @@ FAKE_IMAGE_ID = "ami-1234567"
     "response,is_error",
     [
         (
-            AWSClientError(function_name="describe_stack", message=f"Stack with id {FAKE_STACK_NAME} does not exist"),
+            StackNotFoundError(function_name="describe_stack", stack_name=FAKE_STACK_NAME),
             True,
         ),
         ({"Stacks": [{"StackName": FAKE_STACK_NAME, "CreationTime": 0, "StackStatus": "CREATED"}]}, False),
