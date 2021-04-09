@@ -22,6 +22,7 @@ import time
 import urllib.request
 import zipfile
 from io import BytesIO
+from shlex import quote
 
 import boto3
 import pkg_resources
@@ -400,3 +401,7 @@ def grouper(iterable, n):
         if not chunk:
             return
         yield chunk
+
+
+def join_shell_args(args_list):
+    return " ".join(quote(arg) for arg in args_list)

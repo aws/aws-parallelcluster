@@ -2,14 +2,14 @@ Image:
   Os: {{ os }}
 HeadNode:
   CustomActions:
-    - Script: s3://{{ bucket_name }}/scripts/pre_install.sh
+    OnNodeStart:
+      Script: s3://{{ bucket_name }}/scripts/pre_install.sh
       Args:
         - "R curl wget"
-      Event: NODE_START
-    - Script: s3://{{ bucket_name }}/scripts/post_install.sh
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/scripts/post_install.sh
       Args:
         - "R curl wget"
-      Event: NODE_CONFIGURED
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
@@ -24,14 +24,14 @@ Scheduling:
   Queues:
     - Name: queue-0
       CustomActions:
-        - Script: s3://{{ bucket_name }}/scripts/pre_install.sh
+        OnNodeStart:
+          Script: s3://{{ bucket_name }}/scripts/pre_install.sh
           Args:
             - 'R curl wget'
-          Event: NODE_START
-        - Script: s3://{{ bucket_name }}/scripts/post_install.sh
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/scripts/post_install.sh
           Args:
             - 'R curl wget'
-          Event: NODE_CONFIGURED
       ComputeResources:
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}

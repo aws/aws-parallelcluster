@@ -48,7 +48,7 @@ from pcluster.models.cluster_config import (
     ClusterIam,
     ComputeSettings,
     CustomAction,
-    CustomActionEvent,
+    CustomActions,
     Dashboards,
     Dcv,
     Dns,
@@ -788,35 +788,53 @@ class ImageSchema(BaseSchema):
 
 
 class HeadNodeCustomActionSchema(BaseSchema):
-    """Represent the schema of the custom action for the Head node."""
+    """Represent the schema of the custom action."""
 
     script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    event = fields.Str(
-        validate=validate.OneOf([event.value for event in CustomActionEvent]),
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-    )
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return CustomAction(**data)
+
+
+class HeadNodeCustomActionsSchema(BaseSchema):
+    """Represent the schema for all available custom actions."""
+
+    on_node_start = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    on_node_configured = fields.Nested(HeadNodeCustomActionSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomActions(**data)
 
 
 class QueueCustomActionSchema(BaseSchema):
-    """Represent the schema of the custom action for the queue."""
+    """Represent the schema of the custom action."""
 
     script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    event = fields.Str(
-        validate=validate.OneOf([event.value for event in CustomActionEvent]),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
-    )
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return CustomAction(**data)
+
+
+class QueueCustomActionsSchema(BaseSchema):
+    """Represent the schema for all available custom actions."""
+
+    on_node_start = fields.Nested(QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    on_node_configured = fields.Nested(
+        QueueCustomActionSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomActions(**data)
 
 
 class HeadNodeSchema(BaseSchema):
@@ -830,11 +848,7 @@ class HeadNodeSchema(BaseSchema):
     ssh = fields.Nested(SshSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    custom_actions = fields.Nested(
-        HeadNodeCustomActionSchema,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Script"},
-    )  # TODO validate to avoid more than one script for event type or add support for them.
+    custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load()
@@ -925,9 +939,8 @@ class SlurmQueueSchema(BaseQueueSchema):
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     custom_actions = fields.Nested(
-        QueueCustomActionSchema,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Script"},
+        QueueCustomActionsSchema,
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
 
     @post_load

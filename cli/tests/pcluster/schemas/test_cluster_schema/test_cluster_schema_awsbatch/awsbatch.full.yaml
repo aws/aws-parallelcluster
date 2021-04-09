@@ -14,11 +14,16 @@ HeadNode:
       HttpProxyAddress: String  # https://proxy-address:port
   DisableSimultaneousMultithreading: true
   CustomActions:
-    - Script: https://test.tgz  # s3:// | https:// | file://*
+    OnNodeStart:
+      Script: https://test.tgz  # s3:// | https:// | file://*
       Args:
         - String  # arg1
         - stirng2
-      Event: NODE_START  # NODE_START | NODE_CONFIGURED
+    OnNodeConfigured:
+      Script: https://test.tgz  # s3:// | https:// | file://*
+      Args:
+        - String  # arg1
+        - stirng2
   Ssh:
     KeyName: String  # ec2-key-name
     AllowedIps: 1.2.3.4/32  # 1.2.3.4/32

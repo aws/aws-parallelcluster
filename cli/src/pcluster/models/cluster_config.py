@@ -640,13 +640,6 @@ class Image(Resource):
         self.custom_ami = Resource.init_param(custom_ami)
 
 
-class CustomActionEvent(Enum):
-    """Enum to identify the type of events supported by custom actions."""
-
-    NODE_START = "NODE_START"
-    NODE_CONFIGURED = "NODE_CONFIGURED"
-
-
 class CustomAction(Resource):
     """Represent a custom action resource."""
 
@@ -654,11 +647,18 @@ class CustomAction(Resource):
         super().__init__()
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)
-        _event = CustomActionEvent[event.upper()] if event else None
-        self.event = Resource.init_param(_event, default=CustomActionEvent.NODE_CONFIGURED)
 
     def _validate(self):
         self._execute_validator(UrlValidator, url=self.script)
+
+
+class CustomActions(Resource):
+    """Represent a custom action resource."""
+
+    def __init__(self, on_node_start: CustomAction = None, on_node_configured: CustomAction = None):
+        super().__init__()
+        self.on_node_start = Resource.init_param(on_node_start)
+        self.on_node_configured = Resource.init_param(on_node_configured)
 
 
 class HeadNode(Resource):
@@ -672,7 +672,7 @@ class HeadNode(Resource):
         disable_simultaneous_multithreading: bool = None,
         local_storage: LocalStorage = None,
         dcv: Dcv = None,
-        custom_actions: List[CustomAction] = None,
+        custom_actions: CustomActions = None,
         iam: Iam = None,
     ):
         super().__init__()
@@ -748,14 +748,6 @@ class HeadNode(Resource):
     def instance_role(self):
         """Return the IAM role for head node, if set."""
         return self.iam.instance_role if self.iam else None
-
-    def get_custom_action(self, event: CustomActionEvent) -> CustomAction:
-        """Return the first CustomAction corresponding to the specified event."""
-        return (
-            next((action for action in self.custom_actions if action.event == event), None)
-            if self.custom_actions
-            else None
-        )
 
 
 class BaseComputeResource(Resource):
@@ -1247,9 +1239,7 @@ class SlurmComputeResource(BaseComputeResource):
 class SlurmQueue(BaseQueue):
     """Represent the Slurm Queue resource."""
 
-    def __init__(
-        self, compute_resources: List[SlurmComputeResource], custom_actions: List[CustomAction] = None, **kwargs
-    ):
+    def __init__(self, compute_resources: List[SlurmComputeResource], custom_actions: CustomActions = None, **kwargs):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
         self.custom_actions = custom_actions
@@ -1279,14 +1269,6 @@ class SlurmQueue(BaseQueue):
     def instance_type_list(self):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
-
-    def get_custom_action(self, event: CustomActionEvent):
-        """Return the first CustomAction corresponding to the specified event."""
-        return (
-            next((action for action in self.custom_actions if action.event == event), None)
-            if self.custom_actions
-            else None
-        )
 
 
 class Dns(Resource):
