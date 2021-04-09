@@ -143,5 +143,5 @@ Tags:
 #  Cookbook:
 #    ChefCookbook: String
 #    ExtraChefAttributes: Object
-#  AWSBatchCLIPackage: String
+#  AwsBatchCliPackage: String
 #  NodePackage: String

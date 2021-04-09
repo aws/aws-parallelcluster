@@ -180,11 +180,7 @@ class Resource(ABC):
 class BaseTag(Resource):
     """Represent the Tag configuration."""
 
-    def __init__(
-        self,
-        key: str = None,
-        value: str = None,
-    ):
+    def __init__(self, key: str = None, value: str = None):
         super().__init__()
         self.key = Resource.init_param(key)
         self.value = Resource.init_param(value)
@@ -206,12 +202,7 @@ class Cookbook(Resource):
 class BaseDevSettings(Resource):
     """Represent the common dev settings configuration between the ImageBuilder and Cluster."""
 
-    def __init__(
-        self,
-        cookbook: Cookbook = None,
-        node_package: str = None,
-        aws_batch_cli_package: str = None,
-    ):
+    def __init__(self, cookbook: Cookbook = None, node_package: str = None, aws_batch_cli_package: str = None):
         super().__init__()
         self.cookbook = cookbook
         self.node_package = Resource.init_param(node_package)
