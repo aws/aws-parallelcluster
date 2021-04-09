@@ -114,6 +114,8 @@ phases:
                 OS='centos8'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.18'` ]; then
                 OS='ubuntu1804'
+              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
+                OS='ubuntu2004'
               else
                 echo "Operating System '${!RELEASE}' is not supported. Failing build."
                 exit {{ build.Fail.outputs.stdout }}
@@ -150,7 +152,7 @@ phases:
 
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-              if [[ ${!OS} =~ ^(centos8)$ ]]; then
+              if [[ ${!OS} =~ ^(centos8|ubuntu2004)$ ]]; then
                 echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"
               else
                 echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz"
@@ -191,10 +193,10 @@ phases:
                   exit {{ build.Fail.outputs.stdout }}
                 fi
 
-                # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804 and Centos8
+                # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004 and Centos8
                 ARCH=$(uname -m)
                 if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.8|ubuntu\.18\.04)'` ]; then
+                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.8|ubuntu\.18\.04|ubuntu\.20\.04)'` ]; then
                     echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
                     exit {{ build.Fail.outputs.stdout }}
                   fi
@@ -220,7 +222,7 @@ phases:
                   /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
                   /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
                   grub2-mkconfig -o /boot/grub2/grub.cfg
-              elif [[ ${!OS} =~ ^ubuntu1804$ ]]; then
+              elif [[ ${!OS} =~ ^ubuntu(18|20)04$ ]]; then
                   apt-cache search build-essential
                   apt-get clean
                   apt-get update
@@ -302,7 +304,7 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-              if [[ ${!OS} =~ ^(centos[7-8]|ubuntu1804)$ ]]; then
+              if [[ ${!OS} =~ ^(centos[7-8]|ubuntu(18|20)04)$ ]]; then
                 curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
                 if [[ ${!OS} == centos8 ]]; then
                   dnf install -y python3-pip
@@ -314,8 +316,10 @@ phases:
                   else
                     pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
                   fi
-                elif [[ ${!OS} =~ ^ubuntu1804$ ]]; then
+                elif [[ ${!OS} == ubuntu1804 ]]; then
                   pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                elif [[ ${!OS} == ubuntu2004 ]]; then
+                  pip3 install /tmp/aws-cfn-bootstrap-latest.tar.gz
                 fi
               fi
 
