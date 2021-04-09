@@ -59,7 +59,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import join_shell_args
+from pcluster.utils import join_shell_args, policy_name_to_arn
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -452,15 +452,11 @@ class ClusterCdkStack(core.Stack):
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
         additional_iam_policies = node.iam.additional_iam_policy_arns
         if self.config.monitoring.logs.cloud_watch.enabled:
-            cloud_watch_policy_arn = self.format_arn(
-                service="iam", region="", account="aws", resource="policy/CloudWatchAgentServerPolicy"
-            )
+            cloud_watch_policy_arn = policy_name_to_arn("CloudWatchAgentServerPolicy")
             if cloud_watch_policy_arn not in additional_iam_policies:
                 additional_iam_policies.append(cloud_watch_policy_arn)
         if self.config.scheduling.scheduler == "awsbatch":
-            awsbatch_full_access_arn = self.format_arn(
-                service="iam", region="", account="aws", resource="policy/AWSBatchFullAccess"
-            )
+            awsbatch_full_access_arn = policy_name_to_arn("AWSBatchFullAccess")
             if awsbatch_full_access_arn not in additional_iam_policies:
                 additional_iam_policies.append(awsbatch_full_access_arn)
         return iam.CfnRole(
