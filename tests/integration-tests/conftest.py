@@ -437,28 +437,12 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
                     )
                     _add_policy_for_pre_post_install(queue, option, request, region)
 
+    for option_name, config_param in zip(["custom_awsbatchcli_package", "custom_node_package"], ["AwsBatchCliPackage", "NodePackage"]):
+        if request.config.getoption(option_name) and not _dict_has_nested_key(config_content, ("DevSettings", config_param)):
+            _dict_add_nested_key(config_content, request.config.getoption(option_name), ("DevSettings", config_param))
+
     with open(cluster_config, "w") as conf_file:
         yaml.dump(config_content, conf_file)
-
-
-# ToDo uncomment and adapt the change below
-"""
-    extra_json = json.loads(config.get(cluster_template, "extra_json", fallback="{}"))
-    for extra_json_custom_option in ["custom_awsbatchcli_package", "custom_node_package"]:
-        if request.config.getoption(extra_json_custom_option):
-            cluster = extra_json.get("cluster", {})
-            if extra_json_custom_option not in cluster:
-                extra_json_custom_option_value = request.config.getoption(extra_json_custom_option)
-                # Escape '%' char to avoid 'Invalid Interpolation Syntax' error
-                extra_json_custom_option_value = extra_json_custom_option_value.replace("%", "%%")
-                cluster[extra_json_custom_option] = extra_json_custom_option_value
-                if extra_json_custom_option == "custom_node_package":
-                    # Do not skip install recipes so that custom node package can take effect
-                    cluster["skip_install_recipes"] = "no"
-                extra_json["cluster"] = cluster
-    if extra_json:
-        config[cluster_template]["extra_json"] = json.dumps(extra_json)
-"""
 
 
 def _add_policy_for_pre_post_install(node_config, custom_option, request, region):

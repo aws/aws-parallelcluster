@@ -24,7 +24,7 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder_bucket, imagebu
 # DisablePclusterComponent
 # Cookbook
 # NodePackage
-# AWSBatchCliPackage
+# AwsBatchCliPackage
 
 
 @pytest.mark.parametrize(
