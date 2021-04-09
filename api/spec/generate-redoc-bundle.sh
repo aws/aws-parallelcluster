@@ -7,5 +7,5 @@ then
     exit
 fi
 cd openapi
-redoc-cli bundle ParallelCluster.openapi.json -o ParallelCluster.openapi.redoc.html
+redoc-cli bundle ParallelCluster.openapi.yaml -o ParallelCluster.openapi.redoc.html
 echo "Generated redoc bundle: spec/openapi/ParallelCluster.openapi.redoc.html"

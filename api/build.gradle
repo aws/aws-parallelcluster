@@ -3,7 +3,7 @@ plugins {
 }
 
 openApiValidate {
-    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.json".toString()
+    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.yaml".toString()
 }
 
 task generatePythonServer(
@@ -15,10 +15,11 @@ task generatePythonServer(
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
     generatorName = "python-flask"
-    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.json".toString()
+    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.yaml".toString()
     outputDir = "$projectDir/generated/python-server".toString()
     configOptions = [
-            disallowAdditionalPropertiesIfNotPresent: "false"
+            disallowAdditionalPropertiesIfNotPresent: "false",
+            prependFormOrBodyParameters: "true"
     ]
 }
 
@@ -31,7 +32,7 @@ task generatePythonClient(
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
     generatorName = "python"
-    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.json".toString()
+    inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.yaml".toString()
     outputDir = "$projectDir/generated/python-client".toString()
 }
 
