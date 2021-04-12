@@ -5,6 +5,7 @@ __pycache__
 .env
 .venv
 *.egg-info
+.aws-sam
 
 # CDK asset staging directory
 .cdk.staging
