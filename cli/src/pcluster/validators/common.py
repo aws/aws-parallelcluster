@@ -36,25 +36,14 @@ class ValidationResult:
         self.level = level
 
 
-class ConfigValidationError(Exception):
-    """Configuration file validation error."""
-
-    def __init__(self, validation_result: ValidationResult):
-        message = f"{validation_result.level.name}: {validation_result.message}"
-        super().__init__(message)
-
-
 class Validator(ABC):
     """Abstract validator. The children must implement the validate method."""
 
-    def __init__(self, raise_on_error=False):
+    def __init__(self):
         self._failures = []
-        self._raise_on_error = raise_on_error
 
     def _add_failure(self, message: str, level: FailureLevel):
         result = ValidationResult(message, level)
-        if self._raise_on_error:
-            raise ConfigValidationError(result)
         self._failures.append(result)
 
     def execute(self, *arg, **kwargs):

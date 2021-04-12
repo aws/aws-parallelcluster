@@ -560,7 +560,8 @@ class AwsbatchConstruct(core.Construct):
             name=f"{cluster_name(self.stack_name)}-build-docker-images-project",
             service_role=self._code_build_role.ref,
             source=codebuild.CfnProject.SourceProperty(
-                location=f"{self.bucket.name}/{self.bucket.artifact_directory}/docker/artifacts.zip",
+                location=f"{self.bucket.name}/{self.bucket.artifact_directory}"
+                "/custom_resources/scheduler_resources.zip",
                 type="S3",
             ),
             logs_config=codebuild.CfnProject.LogsConfigProperty(

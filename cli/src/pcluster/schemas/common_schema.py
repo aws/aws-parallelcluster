@@ -13,6 +13,7 @@
 # This module contains all the classes representing the Schema of the configuration file.
 # These classes are created by following marshmallow syntax.
 #
+import copy
 import enum
 
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
@@ -77,23 +78,24 @@ class BaseSchema(Schema):
     @pre_dump
     def prepare_objects(self, data, **kwargs):
         """Prepare objects to be ready for yaml conversion."""
+        adapted_data = copy.deepcopy(data)
         if self.context.get("delete_defaults_when_dump"):
-            for key, value in vars(data).copy().items():
+            for key, value in vars(adapted_data).copy().items():
                 # Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file
-                if _is_implied(data, key, value):
-                    delattr(data, key)
+                if _is_implied(adapted_data, key, value):
+                    delattr(adapted_data, key)
                 if isinstance(value, list):
-                    value[:] = [v for v in value if not _is_implied(data, key, v)]
+                    value[:] = [v for v in value if not _is_implied(adapted_data, key, v)]
 
-        for key, value in vars(data).items():
+        for key, value in vars(adapted_data).items():
             # Unwrap "param" attributes
-            if data.get_param(key) is not None:
-                setattr(data, key, value)
+            if adapted_data.get_param(key) is not None:
+                setattr(adapted_data, key, value)
 
             # Convert back enums to string
             if isinstance(value, enum.Enum):
-                setattr(data, key, value.value)
-        return data
+                setattr(adapted_data, key, value.value)
+        return adapted_data
 
     @post_dump
     def remove_none_values(self, data, **kwargs):

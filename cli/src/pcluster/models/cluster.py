@@ -52,9 +52,23 @@ class NodeType(Enum):
 class ClusterActionError(Exception):
     """Represent an error during the execution of an action on the cluster."""
 
-    def __init__(self, message: str, validation_failures: list = None, update_changes: list = None):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class ConfigValidationError(ClusterActionError):
+    """Represent an error during the validation of the configuration."""
+
+    def __init__(self, message: str, validation_failures: list):
         super().__init__(message)
         self.validation_failures = validation_failures or []
+
+
+class ClusterUpdateError(ClusterActionError):
+    """Represent an error during the update of the cluster."""
+
+    def __init__(self, message: str, update_changes: list):
+        super().__init__(message)
         self.update_changes = update_changes or []
 
 
@@ -305,8 +319,14 @@ class Cluster:
         suppress_validators: bool = False,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
-        """Create cluster."""
+        """
+        Create cluster.
+
+        raises ClusterActionError: in case of generic error
+        raises ConfigValidationError: if configuration is invalid
+        """
         creation_result = None
+        artifacts_uploaded = False
         try:
             # check cluster existence
             if AWSApi.instance().cfn.stack_exists(self.stack_name):
@@ -325,6 +345,7 @@ class Cluster:
 
             # upload cluster artifacts and generated template
             self._upload_artifacts()
+            artifacts_uploaded = True
 
             LOGGER.info("Creating stack named: %s", self.stack_name)
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
@@ -340,8 +361,10 @@ class Cluster:
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
 
+        except ConfigValidationError as e:
+            raise e
         except Exception as e:
-            if not creation_result:
+            if not creation_result and artifacts_uploaded:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete_s3_artifacts()
             raise ClusterActionError(f"Cluster creation failed.\n{e}")
@@ -365,13 +388,13 @@ class Cluster:
                 for failure in validation_failures:
                     if failure.level.value >= FailureLevel(validation_failure_level).value:
                         # Raise the exception if there is a failure with a level greater than the specified one
-                        raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+                        raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
             LOGGER.info("Validation succeeded.")
 
         except ValidationError as e:
             # syntactic failure
             validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
-            raise ClusterActionError("Configuration is invalid", validation_failures=validation_failures)
+            raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
 
         return config
 
@@ -645,7 +668,13 @@ class Cluster:
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
         force: bool = False,
     ):
-        """Update cluster."""
+        """
+        Update cluster.
+
+        raises ClusterActionError: in case of generic error
+        raises ConfigValidationError: if configuration is invalid
+        raises ClusterUpdateError: if update is not allowed
+        """
         try:
             # check cluster existence
             if not AWSApi.instance().cfn.stack_exists(self.stack_name):
@@ -661,7 +690,7 @@ class Cluster:
             patch = ConfigPatch(cluster=self, base_config=self.source_config, target_config=cluster_config)
             patch_allowed, update_changes = patch.check()
             if not (patch_allowed or force):
-                raise ClusterActionError("Update failure", update_changes=update_changes)
+                raise ClusterUpdateError("Update failure", update_changes=update_changes)
 
             self._add_version_tag()
             self._upload_config()
@@ -689,6 +718,7 @@ class Cluster:
             LOGGER.info("Status: %s", self.stack.status)
 
         except ClusterActionError as e:
+            # It can be a ConfigValidationError or ClusterUpdateError
             raise e
         except Exception as e:
             LOGGER.critical(e)
