@@ -292,6 +292,7 @@ class ImageBuilder:
         cfn_tags = [{"Key": tag.key, "Value": tag.value} for tag in cfn_tags]
 
         creation_result = None
+        artifacts_uploaded = False
         try:
             self._upload_config()
 
@@ -304,6 +305,7 @@ class ImageBuilder:
 
             # upload generated template
             self._upload_artifacts()
+            artifacts_uploaded = True
 
             # Stack creation
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
@@ -321,7 +323,7 @@ class ImageBuilder:
 
         except Exception as e:
             LOGGER.critical(e)
-            if not creation_result:
+            if not creation_result and artifacts_uploaded:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete_s3_artifacts()
             raise ImageBuilderActionError(f"ParallelCluster image build infrastructure creation failed.\n{e}")

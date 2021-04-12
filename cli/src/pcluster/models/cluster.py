@@ -307,6 +307,7 @@ class Cluster:
     ):
         """Create cluster."""
         creation_result = None
+        artifacts_uploaded = False
         try:
             # check cluster existence
             if AWSApi.instance().cfn.stack_exists(self.stack_name):
@@ -325,6 +326,7 @@ class Cluster:
 
             # upload cluster artifacts and generated template
             self._upload_artifacts()
+            artifacts_uploaded = True
 
             LOGGER.info("Creating stack named: %s", self.stack_name)
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
@@ -341,7 +343,7 @@ class Cluster:
             LOGGER.info("Status: %s", self.stack.status)
 
         except Exception as e:
-            if not creation_result:
+            if not creation_result and artifacts_uploaded:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete_s3_artifacts()
             raise ClusterActionError(f"Cluster creation failed.\n{e}")
