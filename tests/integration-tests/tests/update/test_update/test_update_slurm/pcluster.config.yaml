@@ -13,14 +13,15 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: {{ scheduler }}
+  Scheduler: slurm
   SlurmSettings:
     ScaledownIdletime: 30
   Queues:
     - Name: queue1
       ComputeSettings:
         LocalStorage:
-        RootVolume: 40
+          RootVolume:
+            Size: 40
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: compute-resource-11
@@ -30,15 +31,17 @@ Scheduling:
         - Name: compute-resource-12
           InstanceType: t2.micro
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds:
+          - {{ private_subnet_id }}
       Iam:
         S3Access:
-          - BucketName: {{ bucket }}
+          - BucketName: {{ resource_bucket }}
             EnableWriteAccess: true
     - Name: queue2
       ComputeSettings:
         LocalStorage:
-          RootVolume: 40
+          RootVolume:
+            Size: 40
       ComputeResources:
         - Name: compute-resource-21
           Efa:
@@ -49,7 +52,8 @@ Scheduling:
           - BucketName: {{ resource_bucket }}
             EnableWriteAccess: true
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds:
+          - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: shared
     Name: ebs
@@ -71,11 +75,11 @@ SharedStorage:
         Type: 0
         NumberOfVolumes: 2
   - MountDir: fsx
-      Name: fsx
-      StorageType: FsxLustre
-      FsxLustreSettings:
-        StorageCapacity: 3600
-#        WeeklyMaintenanceStartTime: "3:02:30" #Initially not set
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 3600
+#     WeeklyMaintenanceStartTime: "3:02:30" #Initially not set
 Monitoring:
   DetailedMonitoring: false
   Logs:

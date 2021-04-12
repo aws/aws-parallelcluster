@@ -15,12 +15,13 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: {{ scheduler }}
+  Scheduler: awsbatch
   Queues:
     - Name: queue-0
       CapacityType: SPOT
       Networking:
-        SubnetId: {{ public_subnet_id }}
+        SubnetIds:
+          - {{ public_subnet_id }}
       ComputeResources:
         - Name: compute-resource-0
           InstanceTypes: {{ instance }}
