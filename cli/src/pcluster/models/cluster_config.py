@@ -1051,6 +1051,16 @@ class BaseClusterConfig(Resource):
             else None
         )
 
+    @property
+    def custom_node_package(self):
+        """Return custom node package value or None."""
+        return self.dev_settings.node_package if self.dev_settings else None
+
+    @property
+    def custom_aws_batch_cli_package(self):
+        """Return custom custom aws batch cli package value or None."""
+        return self.dev_settings.aws_batch_cli_package if self.dev_settings else None
+
 
 class AwsBatchComputeResource(BaseComputeResource):
     """Represent the AwsBatch Compute Resource."""
