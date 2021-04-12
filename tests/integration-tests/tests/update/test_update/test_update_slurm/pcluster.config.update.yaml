@@ -28,15 +28,15 @@ HeadNode:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
 Scheduling:
-  Scheduler: {{ scheduler }}
+  Scheduler: slurm
   SlurmSettings:
     ScaledownIdletime: 30
   Queues:
     - Name: queue1
       ComputeSettings:
         LocalStorage:
-         RootVolume:
-          size: 40
+          RootVolume:
+            Size: 40
       CustomActions:
         OnNodeStart:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
@@ -56,7 +56,7 @@ Scheduling:
           InstanceType: c5.2xlarge
           SpotPrice: 2.1
         - Name: compute-resource-13
-            InstanceType: t2.micro
+          InstanceType: t2.micro
       Iam:
         S3Access:
           - BucketName: {{ resource_bucket }}
@@ -64,7 +64,8 @@ Scheduling:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds:
+          - {{ private_subnet_id }}
     - Name: queue2
       Iam:
         S3Access:
@@ -75,7 +76,7 @@ Scheduling:
       ComputeSettings:
         LocalStorage:
           RootVolume:
-            size: 40
+            Size: 40
       CustomActions:
         OnNodeStart:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
@@ -93,7 +94,8 @@ Scheduling:
           Efa:
             Enabled: true
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds:
+          - {{ private_subnet_id }}
     - Name: queue3
       Iam:
         S3Access:
@@ -103,9 +105,8 @@ Scheduling:
           - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
       ComputeSettings:
         LocalStorage:
-          LocalStorage:
-            RootVolume:
-              size: 40
+          RootVolume:
+            Size: 40
       CustomActions:
         OnNodeStart:
           Script: s3://{{ bucket }}/scripts/preinstall.sh
@@ -127,7 +128,8 @@ Scheduling:
           Efa:
             Enabled: true
       Networking:
-        SubnetId: {{ private_subnet_id }}
+        SubnetIds:
+          - {{ private_subnet_id }}
 SharedStorage:
   - MountDir: shared
     Name: ebs
@@ -149,11 +151,11 @@ SharedStorage:
         Type: 0
         NumberOfVolumes: 2
   - MountDir: fsx
-      Name: fsx
-      StorageType: FsxLustre
-      FsxLustreSettings:
-        StorageCapacity: 3600
-        WeeklyMaintenanceStartTime: "3:02:30"
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 3600
+      WeeklyMaintenanceStartTime: "3:02:30"
 Monitoring:
   DetailedMonitoring: false
   Logs:
