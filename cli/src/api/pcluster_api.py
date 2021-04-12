@@ -16,7 +16,7 @@ from pkg_resources import packaging
 
 from common.aws.aws_api import AWSApi
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack
+from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack, ClusterUpdateError, ConfigValidationError
 from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError
 from pcluster.utils import get_installed_version, get_region
 from pcluster.validators.common import FailureLevel
@@ -112,8 +112,8 @@ class PclusterApi:
             cluster = Cluster(cluster_name, cluster_config)
             cluster.create(disable_rollback, suppress_validators, validation_failure_level)
             return ClusterInfo(cluster.stack)
-        except ClusterActionError as e:
-            return ApiFailure(str(e), e.validation_failures)
+        except ConfigValidationError as e:
+            return ApiFailure(str(e), validation_failures=e.validation_failures)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -178,8 +178,10 @@ class PclusterApi:
 
             cluster.update(cluster_config, suppress_validators, validation_failure_level, force)  # TODO add dryrun
             return ClusterInfo(cluster.stack, cluster)
-        except ClusterActionError as e:
-            return ApiFailure(str(e), update_changes=e.update_changes, validation_failures=e.validation_failures)
+        except ConfigValidationError as e:
+            return ApiFailure(str(e), validation_failures=e.validation_failures)
+        except ClusterUpdateError as e:
+            return ApiFailure(str(e), update_changes=e.update_changes)
         except Exception as e:
             return ApiFailure(str(e))
 
