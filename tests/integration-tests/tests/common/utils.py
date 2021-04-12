@@ -28,6 +28,10 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
         "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
     },
+    "ubuntu2004": {
+        "name": "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-*-server-*",
+        "owners": ["099720109477"],
+    },
 }
 
 # Remarkable AMIs are latest deep learning base AMI and FPGA developer AMI without pcluster infrastructure
