@@ -191,7 +191,7 @@ def get_head_node_tags(cluster):
 
 def get_compute_node_root_volume_tags(cluster, os):
     """Return the given cluster's compute node's root volume's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="ComputeFleet")
+    compute_nodes = cluster.instances(desired_instance_role="Compute node")
     assert_that(compute_nodes).is_length(1)
     root_volume_id = get_root_volume_id(compute_nodes[0], cluster.region, os)
     return get_tags_for_volume(root_volume_id, cluster.region)
@@ -199,7 +199,7 @@ def get_compute_node_root_volume_tags(cluster, os):
 
 def get_compute_node_tags(cluster):
     """Return the given cluster's compute node's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="ComputeFleet")
+    compute_nodes = cluster.instances(desired_instance_role="Compute node")
     assert_that(compute_nodes).is_length(1)
     return get_ec2_instance_tags(compute_nodes[0], cluster.region)
 
