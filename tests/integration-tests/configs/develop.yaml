@@ -4,38 +4,7 @@ test-suites:
 {% filter indent(2) %}
 {% include 'common/common.yaml' %}
 {% endfilter %}
-  runtime_bake:
-    test_runtime_bake.py::test_runtime_bake:  # These are currently skipped
-      dimensions:
-        {%- for os, scheduler in [("alinux2", "slurm")] %}
-        - regions: ["eu-west-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["{{ os }}"]
-          schedulers: ["{{ scheduler }}"]
-        {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1804", "slurm")] %}
-        - regions: ["us-gov-west-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["{{ os }}"]
-          schedulers: ["{{ scheduler }}"]
-        {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1804", "slurm"), ("alinux2", "slurm")] %}
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["{{ os }}"]
-          schedulers: ["{{ scheduler }}"]
-        {%- endfor %}
   scaling:
-    test_mpi.py::test_mpi:  # TODO: move outside of the scaling dir
-      dimensions:
-        - regions: ["ap-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm"]
-        - regions: ["us-east-1"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: ["slurm"]
     test_scaling.py::test_multiple_jobs_submission:
       dimensions:
         - regions: {{ common.REGIONS_COMMERCIAL }}

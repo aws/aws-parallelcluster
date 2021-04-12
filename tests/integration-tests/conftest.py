@@ -535,6 +535,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "ca-central-1": ["cac1-az1", "cac1-az2"],
     # instance can only be launch in placement group in eun1-az2
     "eu-north-1": ["eun1-az2"],
+    # g3.8xlarge is not supported in euc1-az1
+    "eu-central-1": ["euc1-az2", "euc1-az3"],
 }
 
 
