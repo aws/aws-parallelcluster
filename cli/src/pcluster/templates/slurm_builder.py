@@ -521,6 +521,8 @@ class SlurmConstruct(core.Construct):
                                 "EnableEfaGdr": "compute"
                                 if compute_resource.efa and compute_resource.efa.gdr_support
                                 else "NONE",
+                                "CustomNodePackage": self.config.custom_node_package or "",
+                                "CustomAwsBatchCliPackage": self.config.custom_aws_batch_cli_package or "",
                                 "ExtraJson": self.config.extra_chef_attributes,
                             },
                             **get_common_user_data_env(queue, self.config),

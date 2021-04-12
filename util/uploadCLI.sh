@@ -99,9 +99,8 @@ main() {
          _bucket_region=".${_bucket_region}"
      fi
 
-    echo ""
-    echo "Done. Add the following variable to the pcluster config file, under the [cluster ...] section"
-    echo "extra_json = { \"cluster\" : { \"custom_awsbatchcli_package\" : \"https://s3${_bucket_region}.amazonaws.com/${_bucket}/cli/aws-parallelcluster-${_version}.tgz\" } }"
+    echo "Done. Add the following variable to the pcluster create config file, under the DevSettings section"
+    echo "  AwsBatchCliPackage: https://s3${_bucket_region}.amazonaws.com/${_bucket}/cli/aws-parallelcluster-${_version}.tgz"
 }
 
 main "$@"

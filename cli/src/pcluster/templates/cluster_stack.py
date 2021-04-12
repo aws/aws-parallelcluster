@@ -964,6 +964,8 @@ class ClusterCdkStack(core.Stack):
                     "cluster_config_s3_key": f"{self.bucket.artifact_directory}/configs/cluster-config.yaml",
                     "cluster_config_version": self.config.config_version,
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/instance-types-data.json",
+                    "custom_node_package": self.config.custom_node_package or "",
+                    "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                 },
                 "run_list": f"recipe[aws-parallelcluster::{self.config.scheduling.scheduler}_config]",
             },

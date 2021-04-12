@@ -76,7 +76,9 @@ write_files:
           "enable_intel_hpc_platform": "${IntelHPCPlatform}",
           "cw_logging_enabled": "${CWLoggingEnabled}",
           "scheduler_queue_name": "${QueueName}",
-          "enable_efa_gdr": "${EnableEfaGdr}"
+          "enable_efa_gdr": "${EnableEfaGdr}",
+          "custom_node_package": "${CustomNodePackage}",
+          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}"
         },
         "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
       }
