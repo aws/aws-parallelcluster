@@ -397,13 +397,14 @@ class SharedStorageSchema(BaseSchema):
     @pre_load
     def preprocess(self, data, **kwargs):
         """Before load the data into schema, change the settings to adapt different storage types."""
-        if data.get("StorageType") == "Efs":
-            data["Efs"] = data.pop("EfsSettings", {})
-        elif data.get("StorageType") == "Ebs":
-            data["Ebs"] = data.pop("EbsSettings", {})
-        elif data.get("StorageType") == "FsxLustre":
-            data["Fsx"] = data.pop("FsxLustreSettings", {})
-        return data
+        adapted_data = copy.deepcopy(data)
+        if adapted_data.get("StorageType") == "Efs":
+            adapted_data["Efs"] = adapted_data.pop("EfsSettings", {})
+        elif adapted_data.get("StorageType") == "Ebs":
+            adapted_data["Ebs"] = adapted_data.pop("EbsSettings", {})
+        elif adapted_data.get("StorageType") == "FsxLustre":
+            adapted_data["Fsx"] = adapted_data.pop("FsxLustreSettings", {})
+        return adapted_data
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -419,13 +420,15 @@ class SharedStorageSchema(BaseSchema):
     @pre_dump
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema. Note: Enums are converted back to string from BaseSchema."""
-        child = copy.deepcopy(data)
+        adapted_data = copy.deepcopy(data)
         # Move SharedXxx as a child to be automatically managed by marshmallow
-        storage_type = "ebs" if data.shared_storage_type == "raid" else data.shared_storage_type
-        setattr(data, storage_type, child)
+        storage_type = "ebs" if adapted_data.shared_storage_type == "raid" else adapted_data.shared_storage_type
+        setattr(adapted_data, storage_type, adapted_data)
         # Restore storage type
-        data.storage_type = "FsxLustre" if data.shared_storage_type == "fsx" else storage_type.capitalize()
-        return data
+        adapted_data.storage_type = (
+            "FsxLustre" if adapted_data.shared_storage_type == "fsx" else storage_type.capitalize()
+        )
+        return adapted_data
 
     @post_dump
     def post_processed(self, data, **kwargs):
@@ -1037,23 +1040,24 @@ class SchedulingSchema(BaseSchema):
     @pre_load
     def preprocess(self, data, **kwargs):
         """Before load the data into schema, change the settings to adapt different storage types."""
-        if data.get("Scheduler") == "slurm":
+        adapted_data = copy.deepcopy(data)
+        if adapted_data.get("Scheduler") == "slurm":
             scheduler, scheduler_settings = "Slurm", "SlurmSettings"
-        elif data.get("Scheduler") == "awsbatch":
+        elif adapted_data.get("Scheduler") == "awsbatch":
             scheduler, scheduler_settings = "Awsbatch", "AwsbatchSettings"
         # elif data.get("Scheduler") == "custom":
         #     scheduler, scheduler_settings = "Custom", "CustomSettings"
         else:
             raise ValidationError("You must provide scheduler configuration")
 
-        data[scheduler] = {}
-        data[scheduler]["Settings"] = data.pop(scheduler_settings, {})
-        if data.get("Queues"):
-            data[scheduler]["Queues"] = data.pop("Queues")
+        adapted_data[scheduler] = {}
+        adapted_data[scheduler]["Settings"] = adapted_data.pop(scheduler_settings, {})
+        if adapted_data.get("Queues"):
+            adapted_data[scheduler]["Queues"] = adapted_data.pop("Queues")
         else:
             raise ValidationError("Queues must be configured in scheduler configuration")
 
-        return data
+        return adapted_data
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1069,8 +1073,9 @@ class SchedulingSchema(BaseSchema):
     @pre_dump
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema."""
-        setattr(data, data.scheduler, data)
-        return data
+        adapted_data = copy.deepcopy(data)
+        setattr(adapted_data, adapted_data.scheduler, adapted_data)
+        return adapted_data
 
     @post_dump
     def post_processed(self, data, **kwargs):
