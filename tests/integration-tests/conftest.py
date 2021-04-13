@@ -466,17 +466,21 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
     if not match or len(match.groups()) < 2:
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
-        additional_iam_policies = {
-            "Policy": "arn:" + _get_arn_partition(region) + ":iam::aws:policy/AmazonS3ReadOnlyAccess"
-        }
-        logging.info(
-            "{0} script is an S3 URL, adding AdditionalIamPolicies={1}".format(custom_option, additional_iam_policies)
-        )
-        if _dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
-            if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
-                node_config["Iam"]["AdditionalIamPolicies"].append({"Policy": additional_iam_policies})
+        additional_iam_policies = {"Policy": f"arn:{_get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
+        if _dict_has_nested_key(node_config, ("Iam", "InstanceRole")):
+            # AdditionalIamPolicies and InstanceRole can not co-exist
+            logging.info(
+                f"InstanceRole is specified, skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
+            )
         else:
-            _dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
+            logging.info(
+                f"{custom_option} script is an S3 URL, adding AdditionalIamPolicies: {additional_iam_policies}"
+            )
+            if _dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
+                if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
+                    node_config["Iam"]["AdditionalIamPolicies"].append({"Policy": additional_iam_policies})
+            else:
+                _dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
 
 
 def _get_arn_partition(region):

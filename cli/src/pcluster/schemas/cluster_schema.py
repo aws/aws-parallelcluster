@@ -496,7 +496,7 @@ class BaseNetworkingSchema(BaseSchema):
 
     @validates_schema
     def no_coexist_security_groups(self, data, **kwargs):
-        """Validate that security_groups and additional_security_groups are not co-exist."""
+        """Validate that security_groups and additional_security_groups do not co-exist."""
         if self.fields_coexist(data, ["security_groups", "additional_security_groups"], **kwargs):
             raise ValidationError("SecurityGroups and AdditionalSecurityGroups can not be configured together.")
 
@@ -711,8 +711,8 @@ class IamSchema(BaseSchema):
     )
 
     @validates_schema
-    def no_coexist_security_groups(self, data, **kwargs):
-        """Validate that security_groups and additional_security_groups are not co-exist."""
+    def no_coexist_role_policies(self, data, **kwargs):
+        """Validate that instance_role and additional_security_groups do not co-exist."""
         if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
             raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
 
