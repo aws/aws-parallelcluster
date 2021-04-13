@@ -1,8 +1,5 @@
 Image:
   Os: {{ os }}
-Iam:
-  Roles:
-    CustomLambdaResources: {{ iam_lambda_role }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -10,19 +7,31 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
   Iam:
-    InstanceRole: {{ ec2_iam_role }}
+    S3Access:
+      - BucketName: {{ bucket }}/read_only/  # FIXME find a better approach
+        EnableWriteAccess: false
+      - BucketName: {{ bucket }}/read_and_write  # FIXME find a better approach
+        EnableWriteAccess: true
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
     - Name: queue-0
-      Iam:
-        InstanceRole: {{ ec2_iam_role }}
       ComputeResources:
         - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes: {{ instance }}
+          {% else %}
           InstanceType: {{ instance }}
           Efa:
             Enabled: false
             GdrSupport: false
+          {% endif %}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket }}/read_only/  # FIXME find a better approach
+            EnableWriteAccess: false
+          - BucketName: {{ bucket }}/read_and_write  # FIXME find a better approach
+            EnableWriteAccess: true
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
