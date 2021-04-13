@@ -83,7 +83,7 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def describe_image(self, ami_id):
-        """Return a dict of ami info."""
+        """Describe image by image id, return an object of ImageInfo."""
         result = self._client.describe_images(ImageIds=[ami_id])
         if result.get("Images"):
             return ImageInfo(result.get("Images")[0])
@@ -91,7 +91,7 @@ class Ec2Client(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def describe_images(self, ami_ids, filters, owners):
-        """Return a list of dict of ami info."""
+        """Return a list of objects of ImageInfo."""
         result = self._client.describe_images(ImageIds=ami_ids, Filters=filters, Owners=owners)
         if result.get("Images"):
             return [ImageInfo(image) for image in result.get("Images")]
@@ -122,6 +122,15 @@ class Ec2Client(Boto3Client):
             )
             for instance in result.get("Instances")
         ]
+
+    def list_pcluster_images(self):
+        """Return existing pcluster images by pcluster image name tag."""
+        try:
+            filters = [{"Name": f"tag:{PCLUSTER_IMAGE_NAME_TAG}", "Values": ["*"]}]
+            owners = ["self"]
+            return self.describe_images(ami_ids=[], filters=filters, owners=owners)
+        except ImageNotFoundError:
+            return []
 
     @AWSExceptionHandler.handle_client_exception
     def describe_key_pair(self, key_name):

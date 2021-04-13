@@ -26,7 +26,7 @@ from pcluster.models.cluster import (
     NodeType,
 )
 from pcluster.models.cluster_resources import ClusterInstance
-from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, StackError
+from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, ImageBuilderStack, StackError
 from pcluster.utils import get_installed_version, get_region
 from pcluster.validators.common import FailureLevel
 
@@ -114,6 +114,7 @@ class ImageBuilderInfo:
             self.imagebuild_status = "BUILD_COMPLETE"
             self.creation_time = imagebuilder.image.creation_date
             self.build_log = imagebuilder.image.build_log
+            self.version = imagebuilder.image.version
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -347,5 +348,42 @@ class PclusterApi:
                 return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
             except StackError:
                 return ImageBuilderInfo(imagebuilder)
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
+    def list_images(region: str):
+        """
+        List existing images.
+
+        :param region: AWS region
+        :return list
+        """
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            # get built images by image name tag
+            built_images = AWSApi.instance().ec2.list_pcluster_images()
+
+            built_images_response = [
+                ImageBuilderInfo(imagebuilder=ImageBuilder(image_name=image.original_image_name))
+                for image in built_images
+            ]
+
+            # get building image stacks by image name tag
+            imagebuilder_stacks = AWSApi.instance().cfn.list_imagebuilder_stacks()
+
+            imagebuilder_list = [
+                ImageBuilder(image_name=stack.get("StackName"), stack=ImageBuilderStack(stack))
+                for stack in imagebuilder_stacks
+            ]
+
+            building_stacks_response = [
+                ImageBuilderInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
+                for imagebuilder in imagebuilder_list
+            ]
+
+            return built_images_response + building_stacks_response
         except Exception as e:
             return ApiFailure(str(e))

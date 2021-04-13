@@ -12,14 +12,22 @@ import pytest
 from assertpy import assert_that
 
 from common.aws.aws_resources import ImageInfo
+from pcluster.constants import (
+    PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_S3_BUCKET_TAG,
+    PCLUSTER_S3_IMAGE_DIR_TAG,
+    PCLUSTER_VERSION_TAG,
+)
 from pcluster.models.imagebuilder import ImageBuilderStack
+from pcluster.utils import get_installed_version
 from tests.common.dummy_aws_api import mock_aws_api
 
 FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
 
 
 @pytest.mark.parametrize(
-    "stack_resources_response, describe_image_response",
+    "stack_resources_response, describe_image_response, expected_image_property_value",
     [
         (
             {
@@ -61,35 +69,50 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                 "RootDeviceType": "ebs",
                 "SriovNetSupport": "simple",
                 "Tags": [
-                    {"Key": "pcluster_os", "Value": "alinux2"},
+                    {"Key": "parallelcluster_os", "Value": "alinux2"},
                     {"Key": "CreatedBy", "Value": "EC2 Image Builder"},
-                    {"Key": "pcluster_dcv_server", "Value": "nice-dcv-server-2020.2.9662-1.el7.x86_64"},
-                    {"Key": "pcluster_efa_profile", "Value": "efa-profile-1.1-1.amzn2.noarch"},
-                    {"Key": "pcluster_munge", "Value": "munge-0.5.14"},
+                    {"Key": "parallelcluster_dcv_server", "Value": "nice-dcv-server-2020.2.9662-1.el7.x86_64"},
+                    {"Key": "parallelcluster_efa_profile", "Value": "efa-profile-1.1-1.amzn2.noarch"},
+                    {"Key": "parallelcluster_munge", "Value": "munge-0.5.14"},
                     {
                         "Key": "Ec2ImageBuilderArn",
                         "Value": "arn:aws:imagebuilder:us-east-1:xxxxxxxxxxxx:image/parallelclusterimagerecipe-"
                         "87ofwi610f0aiktu/2.10.1/1",
                     },
-                    {"Key": "pcluster_bootstrap_file", "Value": "aws-parallelcluster-cookbook-2.10.1"},
-                    {"Key": "pcluster_nvidia", "Value": "nvidia-450.80.02"},
-                    {"Key": "pcluster_version", "Value": "2.10.1"},
-                    {"Key": "pcluster_pmix", "Value": "pmix-3.1.5"},
-                    {"Key": "pcluster_efa_openmpi40_aws", "Value": "openmpi40-aws-4.0.5-1.amzn2.x86_64"},
-                    {"Key": "pcluster_kernel", "Value": "4.14.203-156.332.amzn2.x86_64"},
-                    {"Key": "pcluster_dcv_xdcv", "Value": "nice-xdcv-2020.2.359-1.el7.x86_64"},
-                    {"Key": "pcluster_efa_rdma_core", "Value": "rdma-core-31.amzn0-1.amzn2.x86_64"},
-                    {"Key": "pcluster_sudo", "Value": "sudo-1.8.23-10.amzn2.1.x86_64"},
-                    {"Key": "pcluster_slurm", "Value": "slurm-20.02.4"},
-                    {"Key": "pcluster_lustre", "Value": "lustre-client-2.10.8-5.amzn2.x86_64"},
-                    {"Key": "pcluster_efa_config", "Value": "efa-config-1.5-1.amzn2.noarch"},
+                    {"Key": "parallelcluster_bootstrap_file", "Value": "aws-parallelcluster-cookbook-2.10.1"},
+                    {"Key": "parallelcluster_nvidia", "Value": "nvidia-450.80.02"},
+                    {"Key": "parallelcluster_version", "Value": "2.10.1"},
+                    {"Key": "parallelcluster_pmix", "Value": "pmix-3.1.5"},
+                    {"Key": "parallelcluster_efa_openmpi40_aws", "Value": "openmpi40-aws-4.0.5-1.amzn2.x86_64"},
+                    {"Key": "parallelcluster_kernel", "Value": "4.14.203-156.332.amzn2.x86_64"},
+                    {"Key": "parallelcluster_dcv_xdcv", "Value": "nice-xdcv-2020.2.359-1.el7.x86_64"},
+                    {"Key": "parallelcluster_efa_rdma_core", "Value": "rdma-core-31.amzn0-1.amzn2.x86_64"},
+                    {"Key": "parallelcluster_sudo", "Value": "sudo-1.8.23-10.amzn2.1.x86_64"},
+                    {"Key": "parallelcluster_slurm", "Value": "slurm-20.02.4"},
+                    {"Key": "parallelcluster_lustre", "Value": "lustre-client-2.10.8-5.amzn2.x86_64"},
+                    {"Key": "parallelcluster_efa_config", "Value": "efa-config-1.5-1.amzn2.noarch"},
+                    {"Key": PCLUSTER_S3_BUCKET_TAG, "Value": "my_bucket"},
+                    {"Key": PCLUSTER_S3_IMAGE_DIR_TAG, "Value": "parallelcluster/images/image-abced"},
+                    {"Key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "Value": "arn:aws:log:us-east-1:1111111111111:log-group"},
+                    {"Key": PCLUSTER_VERSION_TAG, "Value": get_installed_version()},
+                    {"Key": PCLUSTER_IMAGE_NAME_TAG, "Value": FAKE_IMAGEBUILDER_STACK_NAME},
                 ],
                 "VirtualizationType": "hvm",
+            },
+            {
+                "snapshot_ids": ["snap-0d34320a1c1683c70"],
+                "volume_size": 65,
+                "device_name": "/dev/xvda",
+                "s3_bucket_name": "my_bucket",
+                "s3_artifact_directory": "parallelcluster/images/image-abced",
+                "build_log": "arn:aws:log:us-east-1:1111111111111:log-group",
+                "version": get_installed_version(),
+                "original_image_name": FAKE_IMAGEBUILDER_STACK_NAME,
             },
         )
     ],
 )
-def test_image(mocker, stack_resources_response, describe_image_response):
+def test_image(mocker, stack_resources_response, describe_image_response, expected_image_property_value):
     mock_aws_api(mocker)
     mocker.patch(
         "common.boto3.cfn.CfnClient.describe_stack_resource",
@@ -100,12 +123,8 @@ def test_image(mocker, stack_resources_response, describe_image_response):
     imagebuilder_stack = ImageBuilderStack({"StackName": FAKE_IMAGEBUILDER_STACK_NAME})
     image = imagebuilder_stack.image
     for p in image.__dir__():
-        if not p.startswith("_") and p not in [
-            "snapshot_ids",
-            "volume_size",
-            "device_name",
-            "s3_bucket_name",
-            "s3_artifact_directory",
-            "build_log",
-        ]:
-            assert_that(getattr(image, p) in describe_image_response.values()).is_equal_to(True)
+        if not p.startswith("_"):
+            if p not in expected_image_property_value.keys():
+                assert_that(getattr(image, p) in describe_image_response.values()).is_equal_to(True)
+            else:
+                assert_that(getattr(image, p)).is_equal_to(expected_image_property_value.get(p))

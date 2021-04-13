@@ -116,22 +116,27 @@ class ImageBuilderStack(StackInfo):
     @property
     def s3_artifact_directory(self):
         """Return the artifact directory of the bucket used to store image information."""
-        return self._get_tag(PCLUSTER_S3_IMAGE_DIR_TAG)
+        return self.get_tag(PCLUSTER_S3_IMAGE_DIR_TAG)
 
     @property
     def s3_bucket_name(self):
         """Return the name of the bucket used to store image information."""
-        return self._get_tag(PCLUSTER_S3_BUCKET_TAG)
+        return self.get_tag(PCLUSTER_S3_BUCKET_TAG)
+
+    @property
+    def image_name(self):
+        """Return image name tag value."""
+        return self.get_tag(PCLUSTER_IMAGE_NAME_TAG)
 
     @property
     def version(self):
         """Return the version of ParallelCluster used to create the stack."""
-        return self._get_tag(PCLUSTER_VERSION_TAG)
+        return self.get_tag(PCLUSTER_VERSION_TAG)
 
     @property
     def build_log(self):
         """Return build log arn."""
-        return self._get_tag(PCLUSTER_IMAGE_BUILD_LOG_TAG)
+        return self.get_tag(PCLUSTER_IMAGE_BUILD_LOG_TAG)
 
     @property
     def image(self):
@@ -149,7 +154,7 @@ class ImageBuilderStack(StackInfo):
         """Return output image id."""
         if self._image_resource:
             try:
-                image_build_version_arn = self._image_resource.get("StackResourceDetail").get("PhysicalResourceId")
+                image_build_version_arn = self._image_resource["StackResourceDetail"]["PhysicalResourceId"]
                 return AWSApi.instance().imagebuilder.get_image_id(image_build_version_arn)
             except (AWSClientError, KeyError):
                 return None
@@ -159,7 +164,7 @@ class ImageBuilderStack(StackInfo):
 class ImageBuilder:
     """Represent a building image, composed by an ImageBuilder config and an ImageBuilderStack."""
 
-    def __init__(self, image_name: str, config: dict = None, stack: ImageBuilderStack = None):
+    def __init__(self, image_name: str = None, config: dict = None, stack: ImageBuilderStack = None):
         self.image_name = image_name
         self.__source_config = config
         self.__stack = stack

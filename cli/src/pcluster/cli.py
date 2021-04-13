@@ -89,6 +89,10 @@ def describe_image(args):
     pcluster.describe_image(args)
 
 
+def list_images(args):
+    pcluster.list_images(args)
+
+
 def config_logger():
     logger = logging.getLogger("pcluster")
     file_only_logger = logging.getLogger("cli_log_file")
@@ -338,6 +342,18 @@ Returns an ssh command with the cluster username and IP address pre-populated::
     )
     _addarg_region(pdescribeami)
     pdescribeami.set_defaults(func=describe_image)
+
+    # list images command subparser
+    plistami = subparsers.add_parser(
+        "list-images",
+        help="Displays a list of images built by AWS ParallelCluster in a given AWS region associated with "
+        "status and version.",
+        epilog="This command lists the name, status and version of images built by AWS ParallelCluster in a given "
+        "AWS region.",
+    )
+    plistami.add_argument("--color", action="store_true", default=False, help="Display the cluster status in color.")
+    _addarg_region(plistami)
+    plistami.set_defaults(func=list_images)
 
     # configure command subparser
     pconfigure = subparsers.add_parser("configure", help="Start the AWS ParallelCluster configuration.")

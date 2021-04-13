@@ -28,7 +28,7 @@ class ClusterStack(StackInfo):
     @property
     def version(self):
         """Return the version of ParallelCluster used to create the stack."""
-        return self._get_tag("Version")
+        return self.get_tag("Version")
 
     @property
     def s3_bucket_name(self):

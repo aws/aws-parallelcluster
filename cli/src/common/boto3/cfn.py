@@ -10,8 +10,9 @@
 # limitations under the License.
 import json
 
+from common.aws.aws_resources import StackInfo
 from common.boto3.common import AWSExceptionHandler, Boto3Client, StackNotFoundError
-from pcluster.constants import PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, PCLUSTER_STACK_PREFIX
 
 
 class CfnClient(Boto3Client):
@@ -116,3 +117,12 @@ class CfnClient(Boto3Client):
     def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
         """Get stack resource information."""
         return self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
+
+    @AWSExceptionHandler.handle_client_exception
+    def list_imagebuilder_stacks(self):
+        """List existing imagebuilder stacks."""
+        stack_list = []
+        for stack in self._paginate_results(self._client.describe_stacks):
+            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_IMAGE_NAME_TAG):
+                stack_list.append(stack)
+        return stack_list
