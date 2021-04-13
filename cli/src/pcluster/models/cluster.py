@@ -663,7 +663,7 @@ class Cluster:
 
     def update(
         self,
-        cluster_config: dict,
+        target_source_config: dict,
         suppress_validators: bool = False,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
         force: bool = False,
@@ -684,13 +684,18 @@ class Cluster:
                 raise ClusterActionError(f"Cannot execute update while stack is in {self.stack.status} status.")
 
             # validate target config
-            self._validate_and_parse_config(suppress_validators, validation_failure_level, cluster_config)
+            target_config = self._validate_and_parse_config(
+                suppress_validators, validation_failure_level, target_source_config
+            )
 
             # verify changes
-            patch = ConfigPatch(cluster=self, base_config=self.source_config, target_config=cluster_config)
+            patch = ConfigPatch(cluster=self, base_config=self.source_config, target_config=target_source_config)
             patch_allowed, update_changes = patch.check()
             if not (patch_allowed or force):
                 raise ClusterUpdateError("Update failure", update_changes=update_changes)
+
+            self.config = target_config
+            self.__source_config = target_source_config
 
             self._add_version_tag()
             self._upload_config()

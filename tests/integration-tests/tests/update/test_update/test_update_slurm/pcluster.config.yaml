@@ -24,12 +24,13 @@ Scheduling:
             Size: 40
       CapacityType: ONDEMAND
       ComputeResources:
-        - Name: compute-resource-11
+        - Name: queue1-i1
           InstanceType: c5.xlarge
           MinCount: 1
           MaxCount: 2
-        - Name: compute-resource-12
+        - Name: queue1-i2
           InstanceType: t2.micro
+          MinCount: 1
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -43,7 +44,7 @@ Scheduling:
           RootVolume:
             Size: 40
       ComputeResources:
-        - Name: compute-resource-21
+        - Name: queue2-i1
           Efa:
             Enabled: true
           InstanceType: c5n.18xlarge
