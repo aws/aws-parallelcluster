@@ -8,9 +8,9 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     S3Access:
-      - BucketName: {{ bucket }}/read_only/*  # FIXME doesn't work
+      - BucketName: {{ bucket }}/read_only/  # FIXME find a better approach
         EnableWriteAccess: false
-      - BucketName: {{ bucket }}/read_and_write/*  # FIXME doesn't work
+      - BucketName: {{ bucket }}/read_and_write  # FIXME find a better approach
         EnableWriteAccess: true
 Scheduling:
   Scheduler: {{ scheduler }}
@@ -27,7 +27,7 @@ Scheduling:
           - {{ private_subnet_id }}
       Iam:
         S3Access:
-          - BucketName: {{ bucket }}/read_only/*  # FIXME doesn't work
+          - BucketName: {{ bucket }}/read_only/  # FIXME find a better approach
             EnableWriteAccess: false
-          - BucketName: {{ bucket }}/read_and_write/*  # FIXME doesn't work
+          - BucketName: {{ bucket }}/read_and_write  # FIXME find a better approach
             EnableWriteAccess: true
