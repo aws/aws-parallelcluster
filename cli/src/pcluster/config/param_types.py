@@ -519,11 +519,11 @@ class Section(ABC):
                 errors, warnings = validation_func(self.key, self.label, self.pcluster_config)
                 if errors:
                     self.pcluster_config.error(
-                        "The section [{0}] is wrongly configured\n" "{1}".format(section_name, "\n".join(errors))
+                        "The section [{0}] is incorrectly configured\n" "{1}".format(section_name, "\n".join(errors))
                     )
                 elif warnings:
                     self.pcluster_config.warn(
-                        "The section [{0}] is wrongly configured\n{1}".format(section_name, "\n".join(warnings))
+                        "The section [{0}] is incorrectly configured\n{1}".format(section_name, "\n".join(warnings))
                     )
                 else:
                     LOGGER.debug("Section '[%s]' is valid", section_name)

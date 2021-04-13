@@ -211,7 +211,6 @@ def assert_section_from_cfn(
             section_dict[param_key] = param.value
 
     remove_ignored_params(section_dict)
-
     assert_that(section_dict).is_equal_to(expected_dict)
 
 

@@ -28,6 +28,7 @@ from pcluster.utils import (
     get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
+    get_fsx_info,
     get_supported_architectures_for_instance_type,
 )
 
@@ -1344,3 +1345,34 @@ class VolumeIopsParam(IntCfnParam):
             if volume_type in VolumeIopsParam.EBS_VOLUME_TYPE_IOPS_DEFAULT:
                 default_iops = VolumeIopsParam.EBS_VOLUME_TYPE_IOPS_DEFAULT.get(volume_type)
                 self.value = default_iops
+
+
+class FSxMountNameParam(CfnParam):
+    """Class to manage FSx MountName."""
+
+    def refresh(self):
+        """Retrieve the MountName for existing filesystem and pass to cookbook for mounting."""
+        section = self.pcluster_config.get_section(self.section_key, self.section_label)
+        if section:
+            fs_id = section.get_param_value("fsx_fs_id")
+            if fs_id and fs_id != "NONE":
+                file_system = get_fsx_info(fs_id)
+                self.value = file_system.get("LustreConfiguration").get("MountName")
+
+
+class FSxDNSNameParam(CfnParam):
+    """Class to manage FSx DNSName."""
+
+    def refresh(self):
+        """
+        Retrieve the DNSName for existing filesystem and pass to cookbook for mounting.
+
+        This is needed because some old filesystems in China have .com instead of .com.cn domain.
+        For newer filesystems the DNS name can be generated: <fsx-id>.fsx.<region>.amazonaws.<partition-domain>
+        """
+        section = self.pcluster_config.get_section(self.section_key, self.section_label)
+        if section:
+            fs_id = section.get_param_value("fsx_fs_id")
+            if fs_id and fs_id != "NONE":
+                file_system = get_fsx_info(fs_id)
+                self.value = file_system.get("DNSName")

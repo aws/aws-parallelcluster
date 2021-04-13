@@ -284,6 +284,23 @@
         },
         "HDD"
       ]
+    },
+    "UseDNSName": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "18",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
     }
   },
   "Outputs": {
@@ -305,6 +322,45 @@
           }
         ]
       }
+    },
+    "MountName": {
+      "Description": "Mount name of the FileSystem",
+      "Value": {
+        "Fn::If": [
+          "CreateFSX",
+          {
+            "Fn::GetAtt": [
+              "FileSystem",
+              "LustreMountName"
+            ]
+          },
+          {
+            "Fn::Select": [
+              "17",
+              {
+                "Ref": "FSXOptions"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "DNSName": {
+      "Description": "DNS Name of the FileSystem",
+      "Value": {
+        "Fn::If": [
+          "UseDNSName",
+          {
+            "Fn::Select": [
+              "18",
+              {
+                "Ref": "FSXOptions"
+              }
+            ]
+          },
+          ""
+        ]
+      }
     }
   },
   "Parameters": {
@@ -317,7 +373,7 @@
       "Type": "String"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of fsx related options, 17 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,auto_import_policy,storage_type,drive_cache_type]",
+      "Description": "Comma separated list of fsx related options, 19 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,auto_import_policy,storage_type,drive_cache_type,existing_mount_name,existing_dns_name]",
       "Type": "CommaDelimitedList"
     },
     "SubnetId": {

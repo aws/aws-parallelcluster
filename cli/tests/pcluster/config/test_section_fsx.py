@@ -21,21 +21,24 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         (DefaultCfnParams["fsx"].value, DefaultDict["fsx"].value),
         ({}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "{}".format(",".join(["NONE"] * 19))},
             DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "{}".format(",".join(["NONE"] * 19))},
             DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {
+                "FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
+                "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+            },
             utils.merge_dicts(DefaultDict["fsx"].value, {"shared_dir": "test"}),
         ),
         (
             {
                 "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
-                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,READ"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,READ,mount_name,dns.name"
             },
             {
                 "shared_dir": "test",
@@ -55,12 +58,14 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "auto_import_policy": "NEW_CHANGED",
                 "storage_type": "HDD",
                 "drive_cache_type": "READ",
+                "existing_mount_name": "mount_name",
+                "existing_dns_name": "dns.name",
             },
         ),
         (
             {
                 "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
-                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,NONE"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,NONE,NONE,NONE"
             },
             {
                 "shared_dir": "test",
@@ -80,6 +85,8 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "auto_import_policy": "NEW_CHANGED",
                 "storage_type": "HDD",
                 "drive_cache_type": "NONE",
+                "existing_mount_name": "NONE",
+                "existing_dns_name": "NONE",
             },
         ),
         (
@@ -325,7 +332,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
 
 
 @pytest.mark.parametrize(
-    "settings_label, expected_cfn_params",
+    "settings_label, expected_cfn_params, use_existing_fsx",
     [
         (
             "test1",
@@ -334,6 +341,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 DefaultCfnParams["fsx"].value,
                 {"MasterSubnetId": "subnet-12345678", "AvailabilityZone": "mocked_avail_zone"},
             ),
+            False,
         ),
         (
             "test2",
@@ -343,9 +351,10 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
-                    "NONE,NONE",
+                    "NONE,NONE,NONE,NONE",
                 },
             ),
+            False,
         ),
         (
             "test3",
@@ -355,9 +364,11 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ,"
+                    "somemountname,my.fsx.dns.name",
                 },
             ),
+            True,
         ),
         (
             "test3",
@@ -367,13 +378,15 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ,"
+                    "somemountname,my.fsx.dns.name",
                 },
             ),
+            True,
         ),
-        ("test1,test2", SystemExit()),
-        ("test4", SystemExit()),
-        ("test5", SystemExit()),
+        ("test1,test2", SystemExit(), False),
+        ("test4", SystemExit(), False),
+        ("test5", SystemExit(), False),
         (
             "test6",
             utils.merge_dicts(
@@ -382,10 +395,10 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
-                    "NONE,"
-                    "NONE",
+                    "NONE,NONE,NONE,NONE",
                 },
             ),
+            False,
         ),
         (
             "test7",
@@ -395,9 +408,11 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,NONE",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,NONE,"
+                    "somemountname,my.fsx.dns.name",
                 },
             ),
+            True,
         ),
         (
             "test8",
@@ -407,9 +422,11 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,READ",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,READ,"
+                    "somemountname,my.fsx.dns.name",
                 },
             ),
+            True,
         ),
         (
             "test9",
@@ -419,14 +436,24 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,SSD,NONE",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,SSD,NONE,"
+                    "somemountname,my.fsx.dns.name",
                 },
             ),
+            True,
         ),
     ],
 )
-def test_fsx_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
-    """Unit tests for parsing EFS related options."""
+def test_fsx_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params, use_existing_fsx):
+    """Unit tests for parsing FSx related options."""
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="mount_target_id")
     mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
+    fsx_spy = mocker.patch(
+        "pcluster.config.cfn_param_types.get_fsx_info",
+        return_value={"DNSName": "my.fsx.dns.name", "LustreConfiguration": {"MountName": "somemountname"}},
+    )
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
+    if use_existing_fsx:
+        fsx_spy.assert_called_with("fs-12345678901234567")
+    else:
+        fsx_spy.assert_not_called()

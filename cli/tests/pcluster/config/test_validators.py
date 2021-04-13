@@ -1418,13 +1418,17 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
             )
 
     boto3_stubber("ec2", ec2_mocked_requests)
-
+    fsx_spy = mocker.patch(
+        "pcluster.config.cfn_param_types.get_fsx_info",
+        return_value={"DNSName": "my.fsx.dns.name", "LustreConfiguration": {"MountName": "somemountname"}},
+    )
     config_parser_dict = {
         "cluster default": {"fsx_settings": "default", "vpc_settings": "default"},
         "vpc default": {"master_subnet_id": "subnet-12345678"},
         "fsx default": {"fsx_fs_id": "fs-0ff8da96d57f3b4e3"},
     }
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+    fsx_spy.assert_called_with("fs-0ff8da96d57f3b4e3")
 
 
 @pytest.mark.parametrize(
