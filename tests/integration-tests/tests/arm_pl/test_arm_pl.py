@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import re
 
 import pytest
 from assertpy import assert_that
@@ -27,7 +28,7 @@ def test_arm_pl(region, scheduler, instance, os, pcluster_config_reader, cluster
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     # arm performance library version and gcc version
-    armpl_version = "20.2.1"
+    armpl_version = "21.0.0"
     gcc_version = "9.3"
 
     # loading module armpl/{armpl_version} will load module armpl/gcc-{gcc_version}
@@ -48,6 +49,8 @@ def test_arm_pl(region, scheduler, instance, os, pcluster_config_reader, cluster
 def _test_armpl_examples(
     remote_command_executor, armpl_module_general_name, armpl_module_name, gcc_module_name, armpl_version, gcc_version
 ):
+    armpl_major_minor_version = armpl_version[0:-2]
+
     # Test arm performance library examples to check arm performance library is available in cluster
     logging.info("Test arm performance library examples")
 
@@ -58,13 +61,22 @@ def _test_armpl_examples(
     for module in [armpl_module_general_name, armpl_module_name, gcc_module_name]:
         assert_that(module_result).contains(module)
 
+    # Check that EULA docs are correctly linked in the module output
+    eula_path = re.search(".*EULA can be found in the '(.*)'", module_result)[1]
+    # Clean up ANSI escape sequences from the output
+    eula_path = re.compile(r"\x1b[^m]*m| \x08").sub("", eula_path)
+    eula_path_result = remote_command_executor.run_remote_command("ls {0}".format(eula_path)).stdout
+    assert_that(eula_path_result).contains("license_agreement.txt")
+    assert_that(eula_path_result).contains("third_party_licenses.txt")
+
     # Assert pass the example tests
     remote_command_executor.run_remote_command(
-        f"sudo chmod 777 /opt/arm/armpl/{armpl_version}/armpl_{armpl_version}_gcc-{gcc_version}/examples"
+        f"sudo chmod 777 /opt/arm/armpl/{armpl_version}/armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples"
     )
     test_result = remote_command_executor.run_remote_command(
         f"module load {armpl_module_general_name} && "
-        f"cd /opt/arm/armpl/{armpl_version}/armpl_{armpl_version}_gcc-{gcc_version}/examples && make clean && make"
+        f"cd /opt/arm/armpl/{armpl_version}/"
+        f"armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples && make clean && make"
     ).stdout.lower()
     assert_that(test_result).contains("testing: no example difference files were generated")
     assert_that(test_result).contains("test passed ok")
