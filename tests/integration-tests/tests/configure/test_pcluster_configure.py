@@ -54,7 +54,7 @@ def test_pcluster_configure(
         config_path,
     )
 
-    add_custom_packages_configs(config_path, request)
+    add_custom_packages_configs(config_path, request, region)
     clusters_factory(config_path)
 
 
