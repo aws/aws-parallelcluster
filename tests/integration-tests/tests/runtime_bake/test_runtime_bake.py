@@ -25,12 +25,21 @@ from tests.common.utils import retrieve_latest_ami
 # @pytest.mark.dimensions("us-east-1", "m6g.xlarge", "ubuntu1804", "sge")
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_runtime_bake(
-    scheduler, os, region, pcluster_config_reader, clusters_factory, test_datadir, architecture, s3_bucket_factory
+    request,
+    scheduler,
+    os,
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    s3_bucket_factory,
 ):
     """Test cluster creation with runtime bake."""
     # Remarkable AMIs are not available for ARM yet
     # Disable centos7,8 remarkable AMIs, because FPGA AMI's volume size is not enough.
-    if architecture == "x86_64" and os not in ["centos7", "centos8"]:
+    # Use official AMI with ubuntu2004 because DLAMI is not available yet
+    if architecture == "x86_64" and os not in ["centos7", "centos8", "ubuntu2004"]:
         ami_type = "remarkable"
     elif architecture == "x86_64" and os == "centos8":
         # Test centos8 for epel package installation with pcluster ami as base AMI instead of official AMI,
@@ -38,6 +47,9 @@ def test_runtime_bake(
         ami_type = "pcluster"
     else:
         ami_type = "official"
+
+    # Custom Cookbook
+    custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
 
     # Create S3 bucket for pre install scripts, to remove epel package if it is installed
     bucket_name = s3_bucket_factory()
@@ -47,6 +59,7 @@ def test_runtime_bake(
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         custom_ami=retrieve_latest_ami(region, os, ami_type=ami_type, architecture=architecture),
+        custom_cookbook=custom_cookbook if custom_cookbook else "",
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
