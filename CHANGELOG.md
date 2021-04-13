@@ -20,6 +20,7 @@ CHANGELOG
 - Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
 - Add `delete-image` command with `--name`, `--region`, `--force` parameters.
 - Add `describe-image` command with `--name`, `--region` parameters.
+- Add`list-images` command with `--region`, `--color`parameters.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
 - Add possibility to configure different security groups for each queue.

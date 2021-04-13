@@ -478,3 +478,25 @@ def describe_image(args):
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
         sys.exit(0)
+
+
+def list_images(args):
+    """List existing AWS ParallelCluster AMIs."""
+    try:
+        result = PclusterApi().list_images(region=utils.get_region())
+        if isinstance(result, list):
+            images = []
+            for info in result:
+                if info.stack_exist:
+                    name = info.stack_name
+                    imagebuild_status = info.imagebuild_status
+                else:
+                    name = info.image_name
+                    imagebuild_status = "BUILD_COMPLETE"
+                images.append([name, _colorize(imagebuild_status, args), info.version])
+            LOGGER.info(tabulate(images, tablefmt="plain"))
+        else:
+            utils.error(f"Unable to retrieve the list of images.\n{result.message}")
+    except KeyboardInterrupt:
+        LOGGER.info("Exiting...")
+        sys.exit(0)

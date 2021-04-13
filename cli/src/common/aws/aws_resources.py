@@ -12,8 +12,10 @@ import logging
 
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
+    PCLUSTER_VERSION_TAG,
     SUPPORTED_ARCHITECTURES,
 )
 
@@ -59,7 +61,8 @@ class StackInfo:
         """Return true if the stack is in a working status."""
         return self.status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
 
-    def _get_tag(self, tag_key: str):
+    def get_tag(self, tag_key: str):
+        """Get stack tag by tag key."""
         return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)
 
     def _get_output(self, output_key: str):
@@ -235,7 +238,7 @@ class FsxFileSystemInfo:
 
 
 class ImageInfo:
-    """Object to store Image information, initialized with the describe image."""
+    """Object to store Image information, initialized with the describe_image or describe_images in ec2 client."""
 
     def __init__(self, image_data: dict):
         self._image_data = image_data
@@ -244,6 +247,11 @@ class ImageInfo:
     def name(self) -> str:
         """Return image name."""
         return self._image_data.get("Name")
+
+    @property
+    def original_image_name(self) -> str:
+        """Return original image name without date."""
+        return self._get_tag(PCLUSTER_IMAGE_NAME_TAG)
 
     @property
     def id(self) -> str:
@@ -312,6 +320,11 @@ class ImageInfo:
     def build_log(self) -> str:
         """Return build log arn."""
         return self._get_tag(PCLUSTER_IMAGE_BUILD_LOG_TAG)
+
+    @property
+    def version(self) -> str:
+        """Return version."""
+        return self._get_tag(PCLUSTER_VERSION_TAG)
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)
