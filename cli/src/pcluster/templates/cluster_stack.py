@@ -919,7 +919,7 @@ class ClusterCdkStack(core.Stack):
                     else "NONE",
                     "postinstall": post_install_action.script if post_install_action else "NONE",
                     "postinstall_args": join_shell_args(post_install_action.args)
-                    if post_install_action and pre_install_action.args
+                    if post_install_action and post_install_action.args
                     else "NONE",
                     "region": self.region,
                     "efs_fs_id": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EFS),
