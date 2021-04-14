@@ -179,6 +179,12 @@ class Ec2Client(Boto3Client):
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
         return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
 
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_eip_allocation_id(self, eip):
+        """Retrieve the allocation id of an Elastic IP."""
+        return self._client.describe_addresses(PublicIps=[eip])["Addresses"][0]["AllocationId"]
+
     @staticmethod
     def _get_official_image_name_prefix(os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""

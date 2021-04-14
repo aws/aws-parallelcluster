@@ -307,14 +307,18 @@ class ClusterCdkStack(core.Stack):
             group_set=head_eni_group_set,
         )
 
-        # Create and associate EIP to Head Node
-        if self.config.head_node.networking.elastic_ip is True:
-            head_eip = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc")
-
+        elastic_ip = self.config.head_node.networking.elastic_ip
+        if elastic_ip:
+            # Create and associate EIP to Head Node
+            if elastic_ip is True:
+                allocation_id = ec2.CfnEIP(scope=self, id="HeadNodeEIP", domain="vpc").attr_allocation_id
+            # Attach existing EIP
+            else:
+                allocation_id = AWSApi.instance().ec2.get_eip_allocation_id(elastic_ip)
             ec2.CfnEIPAssociation(
                 scope=self,
                 id="AssociateEIP",
-                allocation_id=head_eip.attr_allocation_id,
+                allocation_id=allocation_id,
                 network_interface_id=head_eni.ref,
             )
 
