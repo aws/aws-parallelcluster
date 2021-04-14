@@ -14,21 +14,19 @@ from assertpy import assert_that
 
 
 def check_s3_read_resource(region, cluster, s3_arn):
-    check_role_inline_policy(region, cluster, "S3Read", s3_arn)
+    check_role_inline_policy(region, cluster, enable_write_access=False, policy_statement=s3_arn)
 
 
 def check_s3_read_write_resource(region, cluster, s3_arn):
-    check_role_inline_policy(region, cluster, "S3ReadWrite", s3_arn)
+    check_role_inline_policy(region, cluster, enable_write_access=True, policy_statement=s3_arn)
 
 
-def check_role_inline_policy(region, cluster, policy_name, policy_statement):
+def check_role_inline_policy(region, cluster, enable_write_access, policy_statement):
     iam_client = boto3.client("iam", region_name=region)
-    root_role = cluster.cfn_resources.get("RootRole")
-
-    statement = (
-        iam_client.get_role_policy(RoleName=root_role, PolicyName=policy_name)
-        .get("PolicyDocument")
-        .get("Statement")[0]
-        .get("Resource")[0]
-    )
-    assert_that(statement).is_equal_to(policy_statement)
+    root_role = cluster.cfn_resources["RoleHeadNode"]
+    statement = iam_client.get_role_policy(RoleName=root_role, PolicyName="S3Access")["PolicyDocument"]["Statement"]
+    sid = "S3ReadWrite" if enable_write_access else "S3Read"
+    for stm in statement:
+        if stm["Sid"] == sid:
+            assert_that(policy_statement in stm["Resource"]).is_true()
+            return
