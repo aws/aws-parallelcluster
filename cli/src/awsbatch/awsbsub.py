@@ -559,10 +559,7 @@ def main():
             dependencies=depends_on,
             retry_attempts=args.retry_attempts,
             timeout=args.timeout,
-            env=[
-                ("PCLUSTER_HEAD_NODE_IP", config.head_node_ip),  # TODO remove
-                ("PCLUSTER_JOB_S3_URL", "s3://{0}/{1}".format(config.s3_bucket, job_s3_folder)),
-            ],
+            env=[("PCLUSTER_JOB_S3_URL", f"s3://{config.s3_bucket}/{job_s3_folder}")],
         )
     except KeyboardInterrupt:
         print("Exiting...")
