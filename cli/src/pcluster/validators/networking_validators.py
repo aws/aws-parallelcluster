@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import List
+from typing import List, Union
 
 import boto3
 from botocore.exceptions import ClientError
@@ -58,3 +58,14 @@ class SubnetsValidator(Validator):
 
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class ElasticIpValidator(Validator):
+    """Elastic Ip validator."""
+
+    def _validate(self, elastic_ip: Union[str, bool]):
+        if isinstance(elastic_ip, str):
+            try:
+                AWSApi.instance().ec2.get_eip_allocation_id(elastic_ip)
+            except AWSClientError as e:
+                self._add_failure(str(e), FailureLevel.ERROR)

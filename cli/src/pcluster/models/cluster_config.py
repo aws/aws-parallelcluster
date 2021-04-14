@@ -91,7 +91,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageTypeOptionsValidator,
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
-from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
+from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import (
     S3BucketRegionValidator,
     S3BucketUriValidator,
@@ -385,6 +385,10 @@ class HeadNodeNetworking(_BaseNetworking):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
         self.elastic_ip = Resource.init_param(elastic_ip)
+
+    def _validate(self):
+        super()._validate()
+        self._execute_validator(ElasticIpValidator, elastic_ip=self.elastic_ip)
 
     @property
     def availability_zone(self):
