@@ -19,7 +19,7 @@ Scheduling:
   Queues:
     - Name: compute
       CustomActions:
-        OnNodeStart:
+        OnNodeConfigured:
           Script: s3://{{ bucket_name }}/post_install.sh
       ComputeResources:
         - Name: compute-i1
