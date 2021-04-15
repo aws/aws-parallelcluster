@@ -15,6 +15,7 @@ from flask import Response
 from werkzeug.exceptions import HTTPException
 
 from api import encoder
+from api.models.errors import ParallelClusterApiException
 
 
 class CustomParameterValidator(ParameterValidator):
@@ -57,6 +58,7 @@ class ParallelClusterFlaskApp:
         )
         app.add_error_handler(HTTPException, self._render_http_exception)
         app.add_error_handler(ProblemException, self._render_problem_exception)
+        app.add_error_handler(ParallelClusterApiException, self._render_parallel_cluster_api_exception)
         self.app = app
 
     @staticmethod
@@ -76,6 +78,13 @@ class ParallelClusterFlaskApp:
             response=json.dumps({"message": f"{exception.title}: {exception.detail}"}),
             status=exception.status,
             mimetype="application/json",
+        )
+
+    @staticmethod
+    def _render_parallel_cluster_api_exception(exception: ParallelClusterApiException):
+        """Render a ParallelClusterApiException according to ParallelCluster API specs."""
+        return Response(
+            response=json.dumps(exception.content.to_dict()), status=exception.code, mimetype="application/json"
         )
 
     def start_local_server(self, port: int = 8080, debug: bool = False):
