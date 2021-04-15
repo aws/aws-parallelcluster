@@ -46,4 +46,3 @@ def update_compute_fleet_status(cluster_name, update_compute_fleet_status_reques
     update_compute_fleet_status_request_content = UpdateComputeFleetStatusRequestContent.from_dict(
         update_compute_fleet_status_request_content
     )
-    return None
