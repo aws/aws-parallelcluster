@@ -17,6 +17,7 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from api.awslambda.serverless_wsgi import handle_request
 from api.flask_app import ParallelClusterFlaskApp
+from pcluster.utils import Cache
 
 logger = Logger(service="pcluster", location="%(filename)s:%(lineno)s - %(funcName)s()")
 
@@ -36,6 +37,7 @@ pcluster_api = ParallelClusterFlaskApp(swagger_ui=is_dev_profile, validate_respo
 @logger.inject_lambda_context(log_event=is_dev_profile)
 def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, Any]:
     try:
+        Cache.clear_all()
         return handle_request(pcluster_api.app, event, context)
     except Exception:
         logger.exception("Unexpected exception")
