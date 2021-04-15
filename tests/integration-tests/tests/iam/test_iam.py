@@ -160,3 +160,5 @@ def _get_bucket_name(config, enable_write_access):
     )
     if not bucket_name:
         logging.error("Bucket name couldn't be found in the configuration file.")
+    else:
+        return bucket_name
