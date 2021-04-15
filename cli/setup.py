@@ -48,6 +48,11 @@ REQUIRES = [
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
 ]
 
+API_REQUIRES = [
+    "werkzeug~=1.0",
+    "connexion~=2.7",
+]
+
 setup(
     name="aws-parallelcluster",
     version=VERSION,
@@ -60,6 +65,9 @@ setup(
     packages=find_packages("src"),
     python_requires=">=3.6",
     install_requires=REQUIRES,
+    extras_require={
+        "api": API_REQUIRES,
+    },
     entry_points={
         "console_scripts": [
             "pcluster = pcluster.cli:main",
