@@ -12,13 +12,45 @@ Globals:
     MemorySize: 256
 
 Resources:
+  ApiGatewayApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Auth:
+        DefaultAuthorizer: AWS_IAM
+      EndpointConfiguration:
+        Type: REGIONAL
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ../../../spec/openapi/ParallelCluster.openapi.yaml
+  APIGatewayExecutionRole:
+   Type: AWS::IAM::Role
+   Properties:
+     AssumeRolePolicyDocument:
+       Version: 2012-10-17
+       Statement:
+         - Effect: Allow
+           Principal:
+             Service:
+               - apigateway.amazonaws.com
+           Action:
+             - 'sts:AssumeRole'
+     Policies:
+       - PolicyName: lambda-invoke
+         PolicyDocument:
+           Version: "2012-10-17"
+           Statement:
+             - Effect: Allow
+               Action: lambda:InvokeFunction
+               Resource: !GetAtt ParallelClusterFunction.Arn
   ParallelClusterFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       PackageType: Image
-      Events:
-        ApiEvent:
-          Type: HttpApi
+      Policies:
+        - AWSLambdaBasicExecutionRole
     Metadata:
       Dockerfile: ../api/docker/awslambda/Dockerfile
       DockerContext: ../../../../cli
