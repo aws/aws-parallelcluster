@@ -10,7 +10,12 @@
 # limitations under the License.
 import logging
 
-from pcluster.constants import PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_IMAGE_DIR_TAG, SUPPORTED_ARCHITECTURES
+from pcluster.constants import (
+    PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_S3_BUCKET_TAG,
+    PCLUSTER_S3_IMAGE_DIR_TAG,
+    SUPPORTED_ARCHITECTURES,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -302,6 +307,11 @@ class ImageInfo:
     def creation_date(self) -> str:
         """Return image creation date."""
         return self._image_data.get("CreationDate")
+
+    @property
+    def build_log(self) -> str:
+        """Return build log arn."""
+        return self._get_tag(PCLUSTER_IMAGE_BUILD_LOG_TAG)
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)
