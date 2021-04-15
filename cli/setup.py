@@ -51,6 +51,7 @@ REQUIRES = [
 API_REQUIRES = [
     "werkzeug~=1.0",
     "connexion~=2.7",
+    "aws-lambda-powertools~=1.14",
 ]
 
 setup(
