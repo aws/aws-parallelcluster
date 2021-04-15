@@ -366,6 +366,7 @@ class ImageBuilder:
                 ),
                 disable_rollback=disable_rollback,
                 tags=self._get_cfn_tags(),
+                capabilities="CAPABILITY_NAMED_IAM",
             )
 
             self.__stack = ImageBuilderStack(AWSApi.instance().cfn.describe_stack(self.image_name))
