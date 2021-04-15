@@ -98,6 +98,10 @@ class ImageBuilderCdkStack(Stack):
             return InstanceRole.ROLE
         return InstanceRole.INSTANCE_PROFILE
 
+    def _get_role_name(self, role_type):
+        """Generate role name and truncate it to 64 chars."""
+        return "-".join([self.image_name, role_type])[0:64]
+
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_cfn_parameters(self):
@@ -459,8 +463,8 @@ class ImageBuilderCdkStack(Stack):
                         service="iam",
                         resource="role",
                         region="",
-                        resource_name="{0}/{1}-{2}-*".format(
-                            RESOURCE_NAME_PREFIX, self.image_name, "DeleteStackFunctionExecutionRole"
+                        resource_name="{0}/{1}".format(
+                            RESOURCE_NAME_PREFIX, self._get_role_name("DeleteStackFunctionExecutionRole")
                         ),
                     )
                 ],
@@ -500,7 +504,7 @@ class ImageBuilderCdkStack(Stack):
                         service="iam",
                         resource="role",
                         region="",
-                        resource_name="{0}/{1}-{2}-*".format(RESOURCE_NAME_PREFIX, self.image_name, "InstanceRole"),
+                        resource_name="{0}/{1}".format(RESOURCE_NAME_PREFIX, self._get_role_name("InstanceRole")),
                     )
                 ],
             )
@@ -535,6 +539,7 @@ class ImageBuilderCdkStack(Stack):
                     ),
                 ],
                 tags=build_tags,
+                role_name=self._get_role_name("DeleteStackFunctionExecutionRole"),
             )
 
             execution_role = lambda_cleanup_execution_role.attr_arn
@@ -644,6 +649,7 @@ class ImageBuilderCdkStack(Stack):
                 instancerole_policy,
             ],
             tags=build_tags,
+            role_name=self._get_role_name("InstanceRole"),
         )
         if not self.custom_cleanup_lambda_role:
             self._add_resource_delete_policy(
@@ -654,7 +660,7 @@ class ImageBuilderCdkStack(Stack):
                         service="iam",
                         region="",
                         resource="role",
-                        resource_name="{0}/{1}-{2}-*".format(RESOURCE_NAME_PREFIX, self.image_name, "InstanceRole"),
+                        resource_name="{0}/{1}".format(RESOURCE_NAME_PREFIX, self._get_role_name("InstanceRole")),
                     )
                 ],
             )
