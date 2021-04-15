@@ -23,6 +23,7 @@ from common.aws.aws_resources import StackInfo
 from common.boto3.common import AWSClientError, ImageNotFoundError, StackNotFoundError
 from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.constants import (
+    PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
@@ -31,7 +32,8 @@ from pcluster.constants import (
 from pcluster.models.common import BaseTag, S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_region
+from pcluster.templates.imagebuilder_stack import RESOURCE_NAME_PREFIX
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, get_region
 from pcluster.validators.common import FailureLevel
 
 ImageBuilderStatusMapping = {
@@ -125,6 +127,11 @@ class ImageBuilderStack(StackInfo):
     def version(self):
         """Return the version of ParallelCluster used to create the stack."""
         return self._get_tag(PCLUSTER_VERSION_TAG)
+
+    @property
+    def build_log(self):
+        """Return build log arn."""
+        return self._get_tag(PCLUSTER_IMAGE_BUILD_LOG_TAG)
 
     @property
     def image(self):
@@ -479,13 +486,20 @@ class ImageBuilder:
     def _get_cfn_tags(self):
         """Get cfn tags."""
         cfn_tags = copy.deepcopy(self.config.build.tags) or []
-        # TODO add tags for build log
         tag_list = [
             {"key": PCLUSTER_VERSION_TAG, "value": get_installed_version()},
             {"key": PCLUSTER_IMAGE_NAME_TAG, "value": self.image_name},
             {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
             {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.s3_artifact_dir},
+            {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
         ]
         for tag in tag_list:
             cfn_tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
         return [{"Key": tag.key, "Value": tag.value} for tag in cfn_tags]
+
+    def _get_log_group_arn(self):
+        """Get log group arn."""
+        image_recipe_name = "{0}-{1}".format(RESOURCE_NAME_PREFIX, self.image_name)[0:1024]
+        return "arn:{0}:logs:{1}:{2}:log-group:/aws/imagebuilder/{3}".format(
+            get_partition(), get_region(), AWSApi.instance().sts.get_account_id(), image_recipe_name
+        )

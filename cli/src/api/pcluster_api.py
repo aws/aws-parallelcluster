@@ -99,6 +99,7 @@ class ImageBuilderInfo:
             self.tags = imagebuilder.stack.tags
             self.version = imagebuilder.stack.version
             self.creation_time = imagebuilder.stack.creation_time
+            self.build_log = imagebuilder.stack.build_log
 
             # build image process status by stack status mapping
             self.imagebuild_status = imagebuilder.imagebuild_status
@@ -112,6 +113,7 @@ class ImageBuilderInfo:
             self.image_tags = imagebuilder.image.tags
             self.imagebuild_status = "BUILD_COMPLETE"
             self.creation_time = imagebuilder.image.creation_date
+            self.build_log = imagebuilder.image.build_log
 
     def __repr__(self):
         return json.dumps(self.__dict__)

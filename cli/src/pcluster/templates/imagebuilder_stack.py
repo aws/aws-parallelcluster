@@ -33,6 +33,7 @@ from common.imagebuilder_utils import (
 )
 from common.utils import get_url_scheme, load_yaml, parse_bucket_url
 from pcluster.constants import (
+    PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
@@ -55,7 +56,7 @@ class ImageBuilderCdkStack(Stack):
         image_config: ImageBuilderConfig,
         image_name: str,
         bucket: S3Bucket,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.config = image_config
@@ -91,6 +92,21 @@ class ImageBuilderCdkStack(Stack):
             name = name.lower()
         return "-".join([name, self._stack_unique_id()])
 
+    def _build_image_recipe_name(self, to_lower=False):
+        name = "{0}-{1}".format(RESOURCE_NAME_PREFIX, self.image_name)[0:1024]
+        if to_lower:
+            name = name.lower()
+        return name
+
+    def _get_log_group_arn(self):
+        log_group_arn = self.format_arn(
+            service="logs",
+            resource="log-group",
+            region=utils.get_region(),
+            resource_name=f":aws/imagebuilder/{self._build_image_recipe_name()}",
+        )
+        return log_group_arn
+
     def _get_instance_role_type(self):
         """Get instance role type based on instance_role in config."""
         identifier = self.custom_instance_role.split("/", 1)[0]
@@ -101,6 +117,20 @@ class ImageBuilderCdkStack(Stack):
     def _get_role_name(self, role_type):
         """Generate role name and truncate it to 64 chars."""
         return "-".join([self.image_name, role_type])[0:64]
+
+    def _get_image_tags(self):
+        """Get image tags."""
+        image_tags = copy.deepcopy(self.config.image.tags) if self.config.image and self.config.image.tags else []
+        tag_list = [
+            {"key": PCLUSTER_VERSION_TAG, "value": utils.get_installed_version()},
+            {"key": PCLUSTER_IMAGE_NAME_TAG, "value": self.image_name},
+            {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
+            {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.bucket.artifact_directory},
+            {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
+        ]
+        for tag in tag_list:
+            image_tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
+        return {tag.key: tag.value for tag in image_tags}
 
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
@@ -146,7 +176,7 @@ class ImageBuilderCdkStack(Stack):
         build_tags_map = {tag.key: tag.value for tag in tags}
         build_tags_list = [CfnTag(key=tag.key, value=tag.value) for tag in tags]
 
-        # Add default ami tags information
+        # Get ami tags information
         ami_tags = self._get_image_tags()
 
         lambda_cleanup_policy_statements = []
@@ -172,19 +202,6 @@ class ImageBuilderCdkStack(Stack):
 
         lambda_cleanup = self._add_lambda_cleanup(lambda_cleanup_policy_statements, build_tags_list)
         self._add_sns_topic(lambda_cleanup, build_tags_list)
-
-    def _get_image_tags(self):
-        tags = copy.deepcopy(self.config.image.tags) if self.config.image and self.config.image.tags else []
-        # TODO add tags for build log
-        tag_list = [
-            {"key": PCLUSTER_VERSION_TAG, "value": utils.get_installed_version()},
-            {"key": PCLUSTER_IMAGE_NAME_TAG, "value": self.image_name},
-            {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
-            {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.bucket.artifact_directory},
-        ]
-        for tag in tag_list:
-            tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
-        return {tag.key: tag.value for tag in tags}
 
     def _add_imagebuilder_resources(
         self, build_tags, ami_tags, instance_profile_name, lambda_cleanup_policy_statements
@@ -219,7 +236,7 @@ class ImageBuilderCdkStack(Stack):
                     self.format_arn(
                         service="imagebuilder",
                         resource="image",
-                        resource_name="{0}/*".format(self._build_resource_name(RESOURCE_NAME_PREFIX, to_lower=True)),
+                        resource_name="{0}/*".format(self._build_image_recipe_name(to_lower=True)),
                     )
                 ],
             )
@@ -279,7 +296,7 @@ class ImageBuilderCdkStack(Stack):
         imagebuilder.CfnImageRecipe(
             self,
             id="ImageRecipe",
-            name=self._build_resource_name(RESOURCE_NAME_PREFIX),
+            name=self._build_image_recipe_name(),
             version=utils.get_installed_version(),
             tags=build_tags,
             parent_image=self.config.build.parent_image,
@@ -299,7 +316,7 @@ class ImageBuilderCdkStack(Stack):
                     self.format_arn(
                         service="imagebuilder",
                         resource="image-recipe",
-                        resource_name="{0}/*".format(self._build_resource_name(RESOURCE_NAME_PREFIX, to_lower=True)),
+                        resource_name="{0}/*".format(self._build_image_recipe_name(to_lower=True)),
                     )
                 ],
             )
