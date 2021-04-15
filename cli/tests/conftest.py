@@ -9,7 +9,10 @@ import os
 import boto3
 import pytest
 from botocore.stub import Stubber
+from flask.testing import FlaskClient
 from jinja2 import Environment, FileSystemLoader
+
+from api.flask_app import ParallelClusterFlaskApp
 
 
 @pytest.fixture(autouse=True)
@@ -186,3 +189,10 @@ def aws_api_mock(mocker):
     mocked_aws_api = mocker.MagicMock(autospec=True)
     mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=mocked_aws_api)
     return mocked_aws_api
+
+
+@pytest.fixture
+def client() -> FlaskClient:
+    flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).app.app
+    with flask_app.test_client() as client:
+        yield client

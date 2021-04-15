@@ -11,7 +11,7 @@
 from enum import Enum
 
 
-class UpdatePolicy(object):
+class UpdatePolicy:
     """Describes the policy that rules the update of a configuration parameter."""
 
     class CheckResult(Enum):
