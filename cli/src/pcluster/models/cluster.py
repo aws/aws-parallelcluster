@@ -32,7 +32,7 @@ from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
 from pcluster.models.common import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, grouper, get_region
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_region, grouper
 from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
