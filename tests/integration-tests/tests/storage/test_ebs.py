@@ -26,8 +26,8 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 @pytest.mark.regions(["eu-west-3", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.usefixtures("region", "os", "instance")
-def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region):
+@pytest.mark.usefixtures("instance")
+def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region, os):
     mount_dir = "ebs_mount_dir"
     kms_key_id = kms_key_factory.create_kms_key(region)
     cluster_config = pcluster_config_reader(
@@ -38,11 +38,13 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
 
     mount_dir = "/" + mount_dir
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    volume_id = get_ebs_volume_ids(cluster, region)
+    volume_id = get_ebs_volume_ids(cluster, region)[0]
 
     _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
-    _test_ebs_encrypted_with_kms(volume_id, region, kms_key_id)
+    _test_ebs_encrypted_with_kms(volume_id, region, encrypted=True, kms_key_id=kms_key_id)
+
+    _test_root_volume_encryption(cluster, os, region, scheduler, encrypted=True)
 
 
 @pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "slurm")
@@ -82,8 +84,8 @@ def test_ebs_snapshot(
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos8", "slurm")
-@pytest.mark.usefixtures("os", "instance")
-def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region):
+@pytest.mark.usefixtures("instance")
+def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region, os):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
 
@@ -110,14 +112,23 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, regio
     volume_ids = get_ebs_volume_ids(cluster, region)
     for i in range(len(volume_ids)):
         # test different volume types
-        volume_type = _get_ebs_settings_by_name(cluster.config, f"ebs{i+1}")["VolumeType"]
-        volume = describe_volume(volume_ids[i], region)
+        volume_id = volume_ids[i]
+        ebs_settings = _get_ebs_settings_by_name(cluster.config, f"ebs{i+1}")
+        volume_type = ebs_settings["VolumeType"]
+        volume = describe_volume(volume_id, region)
         assert_that(volume[0]).is_equal_to(volume_type)
+        encrypted = ebs_settings.get("Encrypted")
+        if encrypted is None:
+            # Default encryption if not specified
+            encrypted = True
+        _test_ebs_encrypted_with_kms(volume_id, region, encrypted=encrypted, kms_key_id=ebs_settings.get("KmsKeyId"))
         # test different iops
         # only the iops of io1 and io2 can be configured by us
         if volume_type in ["io1", "io2", "gp3"]:
-            volume_iops = _get_ebs_settings_by_name(cluster.config, f"ebs{i+1}")["Iops"]
+            volume_iops = ebs_settings["Iops"]
             assert_that(volume[1]).is_equal_to(int(volume_iops))
+
+    _test_root_volume_encryption(cluster, os, region, scheduler, encrypted=False)
 
 
 def _get_ebs_settings_by_name(config, name):
@@ -244,11 +255,26 @@ def _assert_volume_exist(volume_id, region):
     assert_that(volume_status).is_equal_to("available")
 
 
-def _test_ebs_encrypted_with_kms(volume_id, region, kms_key_id):
+def _test_ebs_encrypted_with_kms(volume_id, region, encrypted, kms_key_id=None):
     logging.info("Getting Encrypted information from DescribeVolumes API.")
-    volume_info = boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=volume_id).get("Volumes")[0]
-    assert_that(volume_info.get("Encrypted")).is_true()
-    assert_that(volume_info.get("KmsKeyId")).matches(kms_key_id)
+    volume_info = boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+    assert_that(volume_info.get("Encrypted") == encrypted).is_true()
+    if kms_key_id:
+        assert_that(volume_info.get("KmsKeyId")).matches(kms_key_id)
+
+
+def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
+    logging.info("Testing root volume encryption.")
+    if scheduler == "slurm":
+        # If the scheduler is slurm, root volumes both on head and compute can be encrypted
+        instance_ids = cluster.instances()
+        for instance in instance_ids:
+            root_volume_id = utils.get_root_volume_id(instance, region, os)
+            _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
+    else:
+        # If the scheduler is awsbatch, only the headnode root volume can be encrypted.
+        root_volume_id = utils.get_root_volume_id(cluster.cfn_resources["HeadNode"], region, os)
+        _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
 
 
 @pytest.fixture()

@@ -116,7 +116,7 @@ class Ebs(Resource):
     ):
         super().__init__()
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
-        self.encrypted = Resource.init_param(encrypted, default=False)
+        self.encrypted = Resource.init_param(encrypted, default=True)
 
 
 class Raid(Resource):
@@ -815,25 +815,16 @@ class BaseQueue(Resource):
         self,
         name: str,
         networking: QueueNetworking,
-        compute_settings: ComputeSettings = None,
         capacity_type: str = None,
-        iam: Iam = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
         self.networking = networking
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
-        self.compute_settings = compute_settings
-        self.iam = iam or Iam(implied=True)
 
     def _validate(self):
         self._execute_validator(NameValidator, name=self.name)
-
-    @property
-    def instance_role(self):
-        """Return the IAM role for compute nodes, if set."""
-        return self.iam.instance_role if self.iam else None
 
 
 class BaseClusterConfig(Resource):
@@ -1119,15 +1110,8 @@ class AwsBatchComputeResource(BaseComputeResource):
 class AwsBatchQueue(BaseQueue):
     """Represent the AwsBatch Queue resource."""
 
-    def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        compute_resources: List[AwsBatchComputeResource],
-        compute_settings: ComputeSettings = None,
-        capacity_type: str = None,
-    ):
-        super().__init__(name, networking, compute_settings, capacity_type)
+    def __init__(self, compute_resources: List[AwsBatchComputeResource], **kwargs):
+        super().__init__(**kwargs)
         self.compute_resources = compute_resources
 
 
@@ -1271,10 +1255,19 @@ class SlurmComputeResource(BaseComputeResource):
 class SlurmQueue(BaseQueue):
     """Represent the Slurm Queue resource."""
 
-    def __init__(self, compute_resources: List[SlurmComputeResource], custom_actions: CustomActions = None, **kwargs):
+    def __init__(
+        self,
+        compute_resources: List[SlurmComputeResource],
+        compute_settings: ComputeSettings = None,
+        custom_actions: CustomActions = None,
+        iam: Iam = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
+        self.compute_settings = compute_settings
         self.custom_actions = custom_actions
+        self.iam = iam or Iam(implied=True)
 
     def _validate(self):
         super()._validate()
@@ -1301,6 +1294,11 @@ class SlurmQueue(BaseQueue):
     def instance_type_list(self):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
+
+    @property
+    def instance_role(self):
+        """Return the IAM role for compute nodes, if set."""
+        return self.iam.instance_role if self.iam else None
 
 
 class Dns(Resource):
