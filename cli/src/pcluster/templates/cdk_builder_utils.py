@@ -185,6 +185,8 @@ def get_default_instance_tags(
             fsx=len(shared_storage_ids[SharedStorageType.FSX]),
         ),
     }
+    if config.is_intel_hpc_platform_enabled:
+        tags["aws-parallelcluster-intel-hpc"] = "enable_intel_hpc_platform=true"
     return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
 
 
