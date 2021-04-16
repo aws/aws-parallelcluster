@@ -6,10 +6,19 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  LocalStorage:
+    RootVolume:
+      Encrypted: false # Test turning off root volume encryption
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
     - Name: queue-0
+      {% if scheduler == "slurm" %}
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Encrypted: false  # Test turning off root volume encryption
+      {% endif %}
       ComputeResources:
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}

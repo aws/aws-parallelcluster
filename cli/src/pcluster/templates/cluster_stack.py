@@ -138,9 +138,10 @@ class ClusterCdkStack(Stack):
         # Head Node EC2 Iam Role
         self._add_role_and_policies(self.config.head_node, "HeadNode")
 
-        # Compute Nodes EC2 Iam Roles
-        for queue in self.config.scheduling.queues:
-            self._add_role_and_policies(queue, queue.name)
+        if self._condition_is_slurm():
+            # Compute Nodes EC2 Iam Roles
+            for queue in self.config.scheduling.queues:
+                self._add_role_and_policies(queue, queue.name)
 
         # Managed security groups
         self._head_security_group, self._compute_security_group = self._add_security_groups()

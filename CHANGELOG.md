@@ -39,6 +39,8 @@ per cluster.
 - Rename NodeType and tags from Master to HeadNode.
 - Remove Ganglia support.
 - Add support for associating an existing Elastic IP to the head node.
+- Encrypt root EBS volumes and shared EBS volumes by default. 
+  Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
 
 2.x.x
 ------

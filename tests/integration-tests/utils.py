@@ -20,6 +20,7 @@ import subprocess
 
 import boto3
 from assertpy import assert_that
+from constants import OS_TO_ROOT_VOLUME_DEVICE
 from retrying import retry
 
 
@@ -401,3 +402,22 @@ def check_headnode_security_group(region, cluster, port, expected_cidr):
 def get_network_interfaces_count(instance_type, region_name=None):
     """Return the number of Network Interfaces for the provided instance type."""
     return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
+
+
+def get_root_volume_id(instance_id, region, os):
+    """Return the root EBS volume's ID for the given EC2 instance."""
+    logging.info("Getting root volume for instance %s", instance_id)
+    block_device_mappings = (
+        boto3.client("ec2", region_name=region)
+        .describe_instances(InstanceIds=[instance_id])
+        .get("Reservations")[0]
+        .get("Instances")[0]
+        .get("BlockDeviceMappings")
+    )
+    matching_devices = [
+        device_mapping
+        for device_mapping in block_device_mappings
+        if device_mapping.get("DeviceName") == OS_TO_ROOT_VOLUME_DEVICE[os]
+    ]
+    assert_that(matching_devices).is_length(1)
+    return matching_devices[0].get("Ebs").get("VolumeId")

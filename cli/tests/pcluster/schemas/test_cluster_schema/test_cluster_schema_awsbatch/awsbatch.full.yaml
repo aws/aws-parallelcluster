@@ -42,14 +42,6 @@ Scheduling:
   Scheduler: awsbatch
   Queues:
     - Name: String  # queue
-      ComputeSettings:
-        LocalStorage:
-          RootVolume:
-            Size: 38  # 35
-            Encrypted: true  # true
-          EphemeralVolume:
-            Encrypted: true  # true
-            MountDir: String  # /scratch
       CapacityType: ONDEMAND  # ONDEMAND | SPOT
       Networking:
         SubnetIds:

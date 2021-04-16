@@ -17,14 +17,6 @@ Scheduling:
         - Name: compute_resource1
           InstanceTypes: c4.xlarge
           MaxvCpus: 10
-      ComputeSettings:
-        LocalStorage:
-          RootVolume:
-            Size: 35
-            Encrypted: true
-          EphemeralVolume:
-            Encrypted: true
-            MountDir: /scratch
 SharedStorage:
   - MountDir: /my/mount/ebs1
     Name: name1

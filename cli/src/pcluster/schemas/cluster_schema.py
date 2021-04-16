@@ -423,7 +423,7 @@ class SharedStorageSchema(BaseSchema):
         adapted_data = copy.deepcopy(data)
         # Move SharedXxx as a child to be automatically managed by marshmallow
         storage_type = "ebs" if adapted_data.shared_storage_type == "raid" else adapted_data.shared_storage_type
-        setattr(adapted_data, storage_type, adapted_data)
+        setattr(adapted_data, storage_type, copy.copy(adapted_data))
         # Restore storage type
         adapted_data.storage_type = (
             "FsxLustre" if adapted_data.shared_storage_type == "fsx" else storage_type.capitalize()
@@ -922,7 +922,6 @@ class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
     name = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    compute_settings = fields.Nested(ComputeSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     networking = fields.Nested(
         QueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
@@ -930,12 +929,12 @@ class BaseQueueSchema(BaseSchema):
         validate=validate.OneOf([event.value for event in CapacityType]),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
-    iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
 
 class SlurmQueueSchema(BaseQueueSchema):
     """Represent the schema of a Slurm Queue."""
 
+    compute_settings = fields.Nested(ComputeSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
@@ -945,6 +944,7 @@ class SlurmQueueSchema(BaseQueueSchema):
         QueueCustomActionsSchema,
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
+    iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1075,7 +1075,7 @@ class SchedulingSchema(BaseSchema):
         """Restore back the child in the schema."""
         adapted_data = copy.deepcopy(data)
         attribute_name = "aws_batch" if adapted_data.scheduler == "awsbatch" else adapted_data.scheduler
-        setattr(adapted_data, attribute_name, adapted_data)
+        setattr(adapted_data, attribute_name, copy.copy(adapted_data))
         return adapted_data
 
     @post_dump
