@@ -27,6 +27,7 @@ import pcluster.utils as utils
 from api.pcluster_api import ApiFailure, ClusterInfo, PclusterApi
 from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
+from pcluster.models.cluster import NodeType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -191,21 +192,10 @@ def list_clusters(args):
 def instances(args):
     """Print the list of instances associated to the cluster."""
     try:
-        result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterInfo):
-            cluster_instances = []
-            if result.head_node:
-                cluster_instances.append(("Head node\t", result.head_node.id))
-
-            if result.compute_instances:
-                for instance in result.compute_instances:
-                    cluster_instances.append(("Compute node\t", instance.id))
-
-            if result.scheduler == "awsbatch":
-                LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
-
-            for instance in cluster_instances:
-                LOGGER.info("%s         %s", instance[0], instance[1])
+        result = PclusterApi().describe_cluster_instances(cluster_name=args.cluster_name, region=utils.get_region())
+        if isinstance(result, list):
+            for instance in result:
+                LOGGER.info("%s         %s", f"{instance.node_type}\t", instance.instance_id)
         else:
             utils.error(f"Unable to retrieve the instances of the cluster.\n{result.message}")
     except KeyboardInterrupt:
@@ -226,13 +216,14 @@ def ssh(args, extra_args):
         except ImportError:
             from pipes import quote as cmd_quote
 
-        result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-        if isinstance(result, ClusterInfo):
-
+        result = PclusterApi().describe_cluster_instances(
+            cluster_name=args.cluster_name, region=utils.get_region(), node_type=NodeType.HEAD_NODE
+        )
+        if isinstance(result, list) and len(result) == 1:
             # build command
             cmd = "ssh {CFN_USER}@{HEAD_NODE_IP} {ARGS}".format(
-                CFN_USER=result.user,
-                HEAD_NODE_IP=result.head_node_ip,
+                CFN_USER=result[0].user,
+                HEAD_NODE_IP=result[0].public_ip_address or result[0].private_ip_address,
                 ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args),
             )
 

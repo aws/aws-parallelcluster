@@ -11,12 +11,21 @@
 import json
 import logging
 import os
+from typing import List, Union
 
 from pkg_resources import packaging
 
 from common.aws.aws_api import AWSApi
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.models.cluster import Cluster, ClusterActionError, ClusterStack, ClusterUpdateError, ConfigValidationError
+from pcluster.models.cluster import (
+    Cluster,
+    ClusterActionError,
+    ClusterStack,
+    ClusterUpdateError,
+    ConfigValidationError,
+    NodeType,
+)
+from pcluster.models.cluster_resources import ClusterInstance
 from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError
 from pcluster.utils import get_installed_version, get_region
 from pcluster.validators.common import FailureLevel
@@ -34,32 +43,38 @@ class ApiFailure:
 
 
 class ClusterInfo:
-    """Representation of a running cluster."""
+    """Minimal representation of a running cluster."""
 
-    def __init__(self, stack: ClusterStack, cluster: Cluster = None):
+    def __init__(self, stack: ClusterStack):
         # Cluster info
         self.name = stack.cluster_name
         self.region = get_region()
         self.version = stack.version
         self.scheduler = stack.scheduler
         self.status = stack.status  # FIXME cluster status should be different from stack status
-
         # Stack info
         self.stack_arn = stack.id
         self.stack_name = stack.name
         self.stack_status = stack.status
         self.stack_outputs = stack.outputs
-        if stack.is_working_status:
-            self.head_node_ip = stack.head_node_ip
-            self.user = stack.head_node_user
 
-        # Add information from running resources. Config file is required.
-        self.head_node = None
-        self.compute_instances = None
-        if cluster:
-            if stack.is_working_status:
-                self.head_node = cluster.head_node_instance
-            self.compute_instances = cluster.compute_instances
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+
+class ClusterInstanceInfo:
+    """Minimal representation of an instance of a cluster."""
+
+    def __init__(self, instance: ClusterInstance):
+        self.launch_time = instance.launch_time
+        self.instance_id = instance.id
+        self.public_ip_address = instance.public_ip
+        self.private_ip_address = instance.private_ip
+        self.instance_type = instance.instance_type
+        self.os = instance.os
+        self.user = instance.default_user
+        self.state = instance.state
+        self.node_type = instance.node_type
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -126,7 +141,7 @@ class PclusterApi:
             # retrieve cluster config and generate model
             cluster = Cluster(cluster_name)
             cluster.delete(keep_logs)
-            return ClusterInfo(cluster.stack, cluster)
+            return ClusterInfo(cluster.stack)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -138,7 +153,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             cluster = Cluster(cluster_name)
-            return ClusterInfo(cluster.stack, cluster)
+            return ClusterInfo(cluster.stack)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -177,7 +192,7 @@ class PclusterApi:
                 )
 
             cluster.update(cluster_config, suppress_validators, validation_failure_level, force)  # TODO add dryrun
-            return ClusterInfo(cluster.stack, cluster)
+            return ClusterInfo(cluster.stack)
         except ConfigValidationError as e:
             return ApiFailure(str(e), validation_failures=e.validation_failures)
         except ClusterUpdateError as e:
@@ -195,6 +210,26 @@ class PclusterApi:
             stacks = AWSApi.instance().cfn.list_pcluster_stacks()
             return [ClusterInfo(ClusterStack(stack)) for stack in stacks]
 
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
+    def describe_cluster_instances(
+        cluster_name: str, region: str, node_type: NodeType = None
+    ) -> Union[List[ClusterInstanceInfo], ApiFailure]:
+        """List instances for a cluster."""
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            cluster = Cluster(cluster_name)
+            instances = []
+            if node_type == NodeType.HEAD_NODE or node_type is None:
+                instances.append(cluster.head_node_instance)
+            if node_type == NodeType.COMPUTE or node_type is None:
+                instances += cluster.compute_instances
+
+            return [ClusterInstanceInfo(instance) for instance in instances]
         except Exception as e:
             return ApiFailure(str(e))
 

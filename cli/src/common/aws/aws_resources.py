@@ -71,6 +71,7 @@ class InstanceInfo:
 
     def __init__(self, instance_data: dict):
         self._instance_data = instance_data
+        self._tags = self._instance_data.get("Tags", [])
 
     @property
     def id(self) -> str:
@@ -91,6 +92,16 @@ class InstanceInfo:
     def private_ip(self) -> str:
         """Return Private Ip of the instance."""
         return self._instance_data.get("PrivateIpAddress")
+
+    @property
+    def instance_type(self) -> str:
+        """Return instance type."""
+        return self._instance_data.get("InstanceType")
+
+    @property
+    def launch_time(self):
+        """Return launch time of the instance."""
+        return self._instance_data.get("LaunchTime")
 
 
 class InstanceTypeInfo:

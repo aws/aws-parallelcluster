@@ -14,9 +14,10 @@ import subprocess as sub
 import time
 import webbrowser
 
-from api.pcluster_api import ClusterInfo, PclusterApi
+from api.pcluster_api import PclusterApi
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.dcv.utils import DCV_CONNECT_SCRIPT
+from pcluster.models.cluster import NodeType
 from pcluster.utils import error, get_region
 
 LOGGER = logging.getLogger(__name__)
@@ -41,18 +42,21 @@ def dcv_connect(args):
 
     :param args: pcluster cli arguments.
     """
-    result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=get_region())
-    if isinstance(result, ClusterInfo):
+    result = PclusterApi().describe_cluster_instances(
+        cluster_name=args.cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
+    )
+    if isinstance(result, list) and len(result) == 1:
+        head_node_ip = result[0].public_ip_address or result[0].private_ip_address
         # Prepare ssh command to execute in the head node instance
         cmd = 'ssh {CFN_USER}@{HEAD_NODE_IP} {KEY} "{REMOTE_COMMAND} /home/{CFN_USER}"'.format(
-            CFN_USER=result.user,
-            HEAD_NODE_IP=result.head_node_ip,
+            CFN_USER=result[0].user,
+            HEAD_NODE_IP=head_node_ip,
             KEY="-i {0}".format(args.key_path) if args.key_path else "",
             REMOTE_COMMAND=DCV_CONNECT_SCRIPT,
         )
 
         try:
-            url = _retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, result.head_node_ip], attempts=4)
+            url = _retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, head_node_ip], attempts=4)
             url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
 
             if args.show_url:

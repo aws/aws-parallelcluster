@@ -23,16 +23,16 @@ import yaml
 from marshmallow import ValidationError
 
 from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import InstanceInfo, StackInfo
 from common.boto3.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.config_patch import ConfigPatch
-from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
+from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
 from pcluster.models.common import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_region, grouper
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, grouper, get_region
 from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
@@ -70,94 +70,6 @@ class ClusterUpdateError(ClusterActionError):
     def __init__(self, message: str, update_changes: list):
         super().__init__(message)
         self.update_changes = update_changes or []
-
-
-class ClusterStack(StackInfo):
-    """Class representing a running stack associated to a Cluster."""
-
-    def __init__(self, stack_data: dict):
-        """Init stack info."""
-        super().__init__(stack_data)
-
-    @property
-    def cluster_name(self):
-        """Return cluster name associated to this cluster."""
-        return self.name[len(PCLUSTER_STACK_PREFIX) :]  # noqa: E203
-
-    @property
-    def template(self):
-        """Return the template body of the stack."""
-        try:
-            return yaml.safe_load(AWSApi.instance().cfn.get_stack_template(self.name))
-        except AWSClientError as e:
-            raise ClusterActionError(f"Unable to retrieve template for stack {self.name}. {e}")
-
-    @property
-    def version(self):
-        """Return the version of ParallelCluster used to create the stack."""
-        return self._get_tag("Version")
-
-    @property
-    def s3_bucket_name(self):
-        """Return the name of the bucket used to store cluster information."""
-        return self._get_output("ResourcesS3Bucket")
-
-    @property
-    def s3_artifact_directory(self):
-        """Return the artifact directory of the bucket used to store cluster information."""
-        return self._get_output("ArtifactS3RootDirectory")
-
-    @property
-    def head_node_user(self):
-        """Return the output storing cluster user."""
-        return self._get_output("ClusterUser")
-
-    @property
-    def head_node_ip(self):
-        """Return the IP to be used to connect to the head node, public or private."""
-        return self._get_output("HeadNodePublicIP") or self._get_output("HeadNodePrivateIP")
-
-    @property
-    def scheduler(self):
-        """Return the scheduler used in the cluster."""
-        return self._get_output("Scheduler")
-
-    def updated_status(self):
-        """Return updated status."""
-        try:
-            return AWSApi.instance().cfn.describe_stack(self.name).get("StackStatus")
-        except AWSClientError as e:
-            raise ClusterActionError(f"Unable to retrieve status of stack {self.name}. {e}")
-
-    def delete(self):
-        """Delete stack."""
-        AWSApi.instance().cfn.delete_stack(self.name)
-
-    def update_template(self, template_url):
-        """Update template of the running stack according to updated template."""
-        try:
-            AWSApi.instance().cfn.update_stack_from_url(self.name, template_url)
-            self._wait_for_update()
-        except AWSClientError as e:
-            if "no updates are to be performed" in str(e).lower():
-                return  # If updated_template was the same as the stack's current one, consider the update a success
-            raise e
-
-    def _wait_for_update(self):
-        """Wait for the given stack to be finished updating."""
-        while self.updated_status() == "UPDATE_IN_PROGRESS":
-            time.sleep(5)
-        while self.updated_status() == "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS":
-            time.sleep(2)
-
-    def get_default_user(self, os: str):
-        """Get the default user for the given os."""
-        return OS_MAPPING.get(os, []).get("user", None)
-
-    @property
-    def batch_compute_environment(self):
-        """Return Batch compute environment."""
-        return self._get_output("BatchComputeEnvironmentArn")
 
 
 class Cluster:
@@ -445,7 +357,6 @@ class Cluster:
             if self.template_body:
                 self.bucket.upload_cfn_template(self.template_body, self._s3_artifacts_dict.get("template_name"))
 
-            # Fixme: the code doesn't work for awsbatch
             if isinstance(self.config.scheduling, SlurmScheduling):
                 # upload instance types data
                 self.bucket.upload_config(
@@ -480,21 +391,52 @@ class Cluster:
     def _get_unretained_cw_log_group_resource_keys(self):
         """Return the keys to all CloudWatch log group resources in template if the resource is not to be retained."""
         unretained_cw_log_group_keys = []
-        for key, resource in self.stack.template.get("Resources", {}).items():
+        for key, resource in self._get_stack_template().get("Resources", {}).items():
             if resource.get("Type") == "AWS::Logs::LogGroup" and resource.get("DeletionPolicy") != "Retain":
                 unretained_cw_log_group_keys.append(key)
         return unretained_cw_log_group_keys
 
     def _persist_stack_resources(self, keys):
         """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
-        template = self.stack.template
+        template = self._get_stack_template()
         for key in keys:
             template["Resources"][key]["DeletionPolicy"] = "Retain"
         try:
             self.bucket.upload_cfn_template(template, self._s3_artifacts_dict.get("template_name"))
-            self.stack.update_template(self.bucket.get_cfn_template_url(self._s3_artifacts_dict.get("template_name")))
+            self._update_stack_template(self.bucket.get_cfn_template_url(self._s3_artifacts_dict.get("template_name")))
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
+
+    def _get_updated_stack_status(self):
+        """Return updated status of the stack."""
+        try:
+            return AWSApi.instance().cfn.describe_stack(self.stack_name).get("StackStatus")
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unable to retrieve status of stack {self.stack_name}. {e}")
+
+    def _update_stack_template(self, template_url):
+        """Update template of the running stack according to updated template."""
+        try:
+            AWSApi.instance().cfn.update_stack_from_url(self.stack_name, template_url)
+            self._wait_for_stack_update()
+        except AWSClientError as e:
+            if "no updates are to be performed" in str(e).lower():
+                return  # If updated_template was the same as the stack's current one, consider the update a success
+            raise e
+
+    def _wait_for_stack_update(self):
+        """Wait for the given stack to be finished updating."""
+        while self._get_updated_stack_status() == "UPDATE_IN_PROGRESS":
+            time.sleep(5)
+        while self._get_updated_stack_status() == "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS":
+            time.sleep(2)
+
+    def _get_stack_template(self):
+        """Return the template body of the stack."""
+        try:
+            return yaml.safe_load(AWSApi.instance().cfn.get_stack_template(self.stack_name))
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unable to retrieve template for stack {self.stack_name}. {e}")
 
     def _terminate_nodes(self):
         try:
@@ -512,17 +454,20 @@ class Cluster:
             LOGGER.error("Failed when checking for running EC2 instances with error: %s", str(e))
 
     @property
-    def compute_instances(self) -> List[InstanceInfo]:
+    def compute_instances(self) -> List[ClusterInstance]:
         """Get compute instances."""
-        return self._describe_instances(node_type=NodeType.COMPUTE)
+        return [
+            ClusterInstance(instance_data) for instance_data in self._describe_instances(node_type=NodeType.COMPUTE)
+        ]
 
     @property
-    def head_node_instance(self) -> InstanceInfo:
+    def head_node_instance(self) -> ClusterInstance:
         """Get head node instance."""
         try:
-            return self._describe_instances(node_type=NodeType.HEAD_NODE)[0]
-        except IndexError:
-            raise ClusterActionError("Unable to retrieve head node information.")
+            instance_data = self._describe_instances(node_type=NodeType.HEAD_NODE)[0]
+            return ClusterInstance(instance_data)
+        except Exception as e:
+            raise ClusterActionError(f"Unable to retrieve head node information. {e}")
 
     def _get_instance_filters(self, node_type: NodeType):
         return [
@@ -538,35 +483,6 @@ class Cluster:
             return AWSApi.instance().ec2.describe_instances(filters)
         except AWSClientError as e:
             raise ClusterActionError(f"Failed to retrieve cluster instances. {e}")
-
-    @property
-    def head_node_user(self):
-        """Return the default user for the head node."""
-        user = self.stack.get_default_user(self.config.image.os)
-        if not user:
-            raise ClusterActionError("Failed to get cluster {0} username.".format(self.name))
-        return user
-
-    @property
-    def head_node_ip(self):
-        """Get the IP Address of the head node."""
-        stack_status = self.stack.updated_status()
-        if stack_status in ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]:
-            raise ClusterActionError(
-                "Unable to retrieve head node ip for a stack in the status: {0}".format(stack_status)
-            )
-
-        head_node = self.head_node_instance
-        if not head_node:
-            raise ClusterActionError("Head node not running.")
-
-        ip_address = head_node.public_ip
-        if ip_address is None:
-            ip_address = head_node.private_ip
-
-        if head_node.state != "running" or ip_address is None:
-            raise ClusterActionError("Head node: {0}\nCannot get ip address.".format(head_node.state.upper()))
-        return ip_address
 
     def has_running_capacity(self, updated_value: bool = False):
         """Return True if the cluster has running capacity. Note: the value will be cached."""

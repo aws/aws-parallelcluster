@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import List
 
-from common.aws.aws_resources import InstanceInfo, InstanceTypeInfo
+from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client, ImageNotFoundError
 from pcluster import utils
 from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, SUPPORTED_ARCHITECTURES
@@ -216,7 +216,7 @@ class Ec2Client(Boto3Client):
     def describe_instances(self, filters):
         """Retrieve a filtered list of instances."""
         return [
-            InstanceInfo(instance)
+            instance
             for result in self._paginate_results(self._client.describe_instances, Filters=filters)
             for instance in result.get("Instances")
         ]

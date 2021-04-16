@@ -45,7 +45,10 @@ def get_region():
 
     The region from the env has higher priority because it can be explicitly set from the code (e.g. unit test).
     """
-    return os.environ.get("AWS_DEFAULT_REGION") or boto3.session.Session().region_name
+    region = os.environ.get("AWS_DEFAULT_REGION") or boto3.session.Session().region_name
+    if region is None:
+        error("AWS region not configured")
+    return region
 
 
 def get_partition():

@@ -122,7 +122,7 @@ class Cluster:
 
     def instances(self, desired_instance_role=None):
         """Run pcluster stop and return the result."""
-        if desired_instance_role and desired_instance_role not in ("Head node", "Compute node"):
+        if desired_instance_role and desired_instance_role not in ("HeadNode", "Compute"):
             raise ValueError
         cmd_args = ["pcluster", "instances", self.name]
         try:

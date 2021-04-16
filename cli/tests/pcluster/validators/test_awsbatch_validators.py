@@ -259,7 +259,7 @@ def test_parse_supported_instance_types_and_families_from_cce_emsg(
 
 
 @pytest.mark.parametrize("error_type", [ClientError, EndpointConnectionError(endpoint_url="dummy_endpoint"), None])
-def test_get_cce_emsg_containing_supported_instance_types(mocker, boto3_stubber, error_type):
+def test_get_cce_emsg_containing_supported_instance_types(mocker, aws_api_mock, boto3_stubber, error_type):
     """Verify CreateComputeEnvironment call to get error message with supported instance types behaves as expected."""
     dummy_error_message = "dummy message"
     call_api_patch = None
@@ -296,8 +296,9 @@ def test_get_cce_emsg_containing_supported_instance_types(mocker, boto3_stubber,
         return_value = awsbatch_validators._get_cce_emsg_containing_supported_instance_types()
         assert_that(return_value).is_equal_to(dummy_error_message)
     else:
+        mocker.patch("pcluster.validators.awsbatch_validators.get_region", return_value="eu-west-2")
         expected_message = (
-            "Could not connect to the batch endpoint"
+            "Could not connect to the batch endpoint for region eu-west-2"
             if isinstance(error_type, EndpointConnectionError)
             else "did not result in an error as expected"
         )
