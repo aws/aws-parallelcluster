@@ -356,16 +356,12 @@ class SharedFsx(Resource):
     @property
     def existing_mount_name(self):
         """Return MountName if using existing FSx filesystem."""
-        if self.file_system_id:
-            return self.file_system_data.mount_name
-        return ""
+        return self.file_system_data.mount_name if self.file_system_id else ""
 
     @property
     def existing_dns_name(self):
         """Return DNSName if using existing FSx filesystem."""
-        if self.file_system_id:
-            return self.file_system_data.dns_name
-        return ""
+        return self.file_system_data.dns_name if self.file_system_id else ""
 
 
 # ---------------------- Networking ---------------------- #
