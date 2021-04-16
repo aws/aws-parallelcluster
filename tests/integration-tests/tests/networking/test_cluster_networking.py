@@ -85,6 +85,7 @@ def bastion_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
 
         bastion_instance = ec2.Instance(
             "NetworkingBastionInstance",
+            InstanceType="c5.xlarge",
             ImageId=retrieve_latest_ami(region, "alinux2"),
             KeyName=key_name,
             SecurityGroupIds=[Ref(bastion_sg)],
