@@ -18,7 +18,7 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
-from aws_cdk import core
+from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.models.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
 from pcluster.models.common import S3Bucket
@@ -37,12 +37,12 @@ from pcluster.templates.cdk_builder_utils import (
 )
 
 
-class AwsBatchConstruct(core.Construct):
+class AwsBatchConstruct(Construct):
     """Create the resources required when using AWS Batch as a scheduler."""
 
     def __init__(
         self,
-        scope: core.Construct,
+        scope: Construct,
         id: str,
         cluster_config: AwsBatchClusterConfig,
         stack_name: str,
@@ -76,24 +76,24 @@ class AwsBatchConstruct(core.Construct):
 
     @property
     def _stack_account(self):
-        return core.Stack.of(self).account
+        return Stack.of(self).account
 
     @property
     def _stack_region(self):
-        return core.Stack.of(self).region
+        return Stack.of(self).region
 
     @property
     def _url_suffix(self):
-        return core.Stack.of(self).url_suffix
+        return Stack.of(self).url_suffix
 
     def _stack_unique_id(self):
-        return core.Fn.select(2, core.Fn.split("/", core.Stack.of(self).stack_id))
+        return Fn.select(2, Fn.split("/", Stack.of(self).stack_id))
 
     def _format_arn(self, **kwargs):
-        return core.Stack.of(self).format_arn(**kwargs)
+        return Stack.of(self).format_arn(**kwargs)
 
     def _get_compute_env_prefix(self):
-        core.Fn.select(1, core.Fn.split("compute-environment/", self._compute_env.ref))
+        Fn.select(1, Fn.split("compute-environment/", self._compute_env.ref))
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -679,7 +679,7 @@ class AwsBatchConstruct(core.Construct):
         ).lambda_func
 
     def _add_manage_docker_images_custom_resource(self):
-        return core.CfnResource(
+        return CfnResource(
             scope=self.stack_scope,
             id="ManageDockerImagesCustomResource",
             type="AWS::CloudFormation::CustomResource",
@@ -710,43 +710,43 @@ class AwsBatchConstruct(core.Construct):
 
     def _add_outputs(self):
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="BatchComputeEnvironmentArn",
             description="Compute Environment created within the cluster.",
             value=self._compute_env.ref,
         )
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="BatchJobQueueArn",
             description="Job Queue created within the cluster.",
             value=self._job_queue.ref,
         )
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="BatchJobDefinitionArn",
             description="Job Definition for serial submission.",
             value=self._job_definition_serial.ref,
         )
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="ECRRepoName",
             description="Name of the ECR repository where docker images used by AWS Batch are located.",
             value=self._docker_images_repo.ref,
         )
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="CodeBuildDockerImageBuilderProject",
             description="CodeBuild project used to bake docker images.",
             value=self._code_build_image_builder_project.ref,
         )
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="BatchJobDefinitionMnpArn",
             description="Job Definition for MNP submission.",
             value=self._job_definition_mnp.ref,
         )
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="BatchUserRole",
             description="Role to be used to contact AWS Batch resources created within the cluster.",

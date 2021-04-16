@@ -12,7 +12,7 @@ from collections import namedtuple
 
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import core
+from aws_cdk.core import Construct, Stack
 
 from pcluster.models.cluster_config import BaseClusterConfig, SharedStorageType
 
@@ -39,12 +39,12 @@ def new_pcluster_metric(title=None, metrics=None, supported_vol_types=None):
     return _PclusterMetric(title, metrics, supported_vol_types)
 
 
-class CWDashboardConstruct(core.Construct):
+class CWDashboardConstruct(Construct):
     """Create the resources required when creating cloudwatch dashboard."""
 
     def __init__(
         self,
-        scope: core.Construct,
+        scope: Construct,
         stack_name: str,
         id: str,
         cluster_config: BaseClusterConfig,
@@ -75,7 +75,7 @@ class CWDashboardConstruct(core.Construct):
 
     @property
     def _stack_region(self):
-        return core.Stack.of(self).region
+        return Stack.of(self).region
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 

@@ -18,7 +18,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
-from aws_cdk import core
+from aws_cdk.core import CfnTag, Construct, Fn, Stack
 
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
@@ -151,7 +151,7 @@ def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     if raw_dict:
         custom_tags = {tag.key: tag.value for tag in config.tags} if config.tags else {}
     else:
-        custom_tags = [core.CfnTag(key=tag.key, value=tag.value) for tag in config.tags] if config.tags else []
+        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in config.tags] if config.tags else []
     return custom_tags
 
 
@@ -185,7 +185,7 @@ def get_default_instance_tags(
             fsx=len(shared_storage_ids[SharedStorageType.FSX]),
         ),
     }
-    return tags if raw_dict else [core.CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
 
 
 def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = False):
@@ -195,7 +195,7 @@ def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = Fa
         "Application": stack_name,
         "aws-parallelcluster-node-type": node_type,
     }
-    return tags if raw_dict else [core.CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
 
 
 def get_assume_role_policy_document(service: str):
@@ -263,12 +263,12 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
     )
 
 
-class PclusterLambdaConstruct(core.Construct):
+class PclusterLambdaConstruct(Construct):
     """Create a Lambda function with some pre-filled fields."""
 
     def __init__(
         self,
-        scope: core.Construct,
+        scope: Construct,
         id: str,
         function_id: str,
         bucket: S3Bucket,
@@ -304,7 +304,7 @@ class PclusterLambdaConstruct(core.Construct):
         )
 
     def _stack_unique_id(self):
-        return core.Fn.select(2, core.Fn.split("/", core.Stack.of(self).stack_id))
+        return Fn.select(2, Fn.split("/", Stack.of(self).stack_id))
 
     def _format_arn(self, **kwargs):
-        return core.Stack.of(self).format_arn(**kwargs)
+        return Stack.of(self).format_arn(**kwargs)

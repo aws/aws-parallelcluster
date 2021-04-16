@@ -15,7 +15,7 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
-from aws_cdk import core
+from aws_cdk.core import CfnOutput, CfnTag, Construct, CustomResource, Fn, Stack
 
 from pcluster.constants import OS_MAPPING
 from pcluster.models.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
@@ -39,12 +39,12 @@ from pcluster.templates.cdk_builder_utils import (
 from pcluster.utils import join_shell_args
 
 
-class SlurmConstruct(core.Construct):
+class SlurmConstruct(Construct):
     """Create the resources required when using Slurm as a scheduler."""
 
     def __init__(
         self,
-        scope: core.Construct,
+        scope: Construct,
         id: str,
         stack_name: str,
         cluster_config: SlurmClusterConfig,
@@ -83,17 +83,17 @@ class SlurmConstruct(core.Construct):
 
     @property
     def _stack_region(self):
-        return core.Stack.of(self).region
+        return Stack.of(self).region
 
     @property
     def _stack_account(self):
-        return core.Stack.of(self).account
+        return Stack.of(self).account
 
     def _stack_unique_id(self):
-        return core.Fn.select(2, core.Fn.split("/", core.Stack.of(self).stack_id))
+        return Fn.select(2, Fn.split("/", Stack.of(self).stack_id))
 
     def _format_arn(self, **kwargs):
-        return core.Stack.of(self).format_arn(**kwargs)
+        return Stack.of(self).format_arn(**kwargs)
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -220,7 +220,7 @@ class SlurmConstruct(core.Construct):
                     queue_placement_group,
                 )
 
-        core.CustomResource(
+        CustomResource(
             scope=self.stack_scope,
             id="TerminateComputeFleetCustomResource",
             service_token=self.cleanup_lambda.attr_arn,
@@ -229,7 +229,7 @@ class SlurmConstruct(core.Construct):
         # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
         # terminate_compute_fleet_custom_resource.add_depends_on()
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="ConfigVersion",
             description="Version of the config used to generate the stack",
@@ -312,20 +312,20 @@ class SlurmConstruct(core.Construct):
             handler_func="cleanup_resources",
         ).lambda_func
 
-        core.CustomResource(
+        CustomResource(
             scope=self.stack_scope,
             id="CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
             properties={"ClusterHostedZone": cluster_hosted_zone.ref, "Action": "DELETE_DNS_RECORDS"},
         )
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
             value=cluster_hosted_zone.ref,
         )
-        core.CfnOutput(
+        CfnOutput(
             scope=self.stack_scope,
             id="ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
@@ -376,7 +376,7 @@ class SlurmConstruct(core.Construct):
             handler_func="wait_for_update",
         ).lambda_func
 
-        core.CustomResource(
+        CustomResource(
             self.stack_scope,
             "UpdateWaiterCustomResource",
             service_token=update_waiter_lambda.attr_arn,
@@ -386,7 +386,7 @@ class SlurmConstruct(core.Construct):
             },
         )
 
-        core.CfnOutput(scope=self.stack_scope, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
+        CfnOutput(scope=self.stack_scope, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
     def _add_compute_resource_launch_template(
         self,
@@ -453,8 +453,8 @@ class SlurmConstruct(core.Construct):
                     name=self.instance_profiles[queue.name]
                 ),
                 instance_market_options=instance_market_options,
-                user_data=core.Fn.base64(
-                    core.Fn.sub(
+                user_data=Fn.base64(
+                    Fn.sub(
                         get_user_data_content("../resources/compute_node/user_data.sh"),
                         {
                             **{
@@ -542,13 +542,13 @@ class SlurmConstruct(core.Construct):
                         tags=get_default_instance_tags(
                             self.stack_name, self.config, compute_resource, "Compute", self.shared_storage_mappings
                         )
-                        + [core.CfnTag(key="QueueName", value=queue.name)]
+                        + [CfnTag(key="QueueName", value=queue.name)]
                         + get_custom_tags(self.config),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "Compute")
-                        + [core.CfnTag(key="QueueName", value=queue.name)]
+                        + [CfnTag(key="QueueName", value=queue.name)]
                         + get_custom_tags(self.config),
                     ),
                 ],

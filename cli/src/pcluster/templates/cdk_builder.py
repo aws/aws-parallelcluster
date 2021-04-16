@@ -15,7 +15,7 @@
 import os
 import tempfile
 
-from aws_cdk import core
+from aws_cdk.core import App
 
 from common.utils import load_yaml_dict
 from pcluster.models.cluster_config import BaseClusterConfig
@@ -33,7 +33,7 @@ class CDKTemplateBuilder:
         """Build template for the given cluster and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = str(stack_name)
-            app = core.App(outdir=str(tempdir))
+            app = App(outdir=str(tempdir))
             ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
@@ -45,7 +45,7 @@ class CDKTemplateBuilder:
         """Build template for the given imagebuilder and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "imagebuilder"
-            app = core.App(outdir=str(tempdir))
+            app = App(outdir=str(tempdir))
             ImageBuilderCdkStack(app, output_file, image_config, image_name, bucket)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))

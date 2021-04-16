@@ -25,7 +25,17 @@ from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
-from aws_cdk import core
+from aws_cdk.core import (
+    CfnCreationPolicy,
+    CfnDeletionPolicy,
+    CfnOutput,
+    CfnResourceSignal,
+    CfnStack,
+    Construct,
+    CustomResource,
+    Fn,
+    Stack,
+)
 
 from common.aws.aws_api import AWSApi
 from pcluster.constants import OS_MAPPING
@@ -64,12 +74,12 @@ from pcluster.utils import join_shell_args, policy_name_to_arn
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
 
-class ClusterCdkStack(core.Stack):
+class ClusterCdkStack(Stack):
     """Create the CloudFormation stack template for the Cluster."""
 
     def __init__(
         self,
-        scope: core.Construct,
+        scope: Construct,
         construct_id: str,
         stack_name: str,
         cluster_config: SlurmClusterConfig,
@@ -94,7 +104,7 @@ class ClusterCdkStack(core.Stack):
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
     def _stack_unique_id(self):
-        return core.Fn.select(2, core.Fn.split("/", self.stack_id))
+        return Fn.select(2, Fn.split("/", self.stack_id))
 
     def _get_head_node_security_groups(self):
         """Return the security groups to be used for the head node, created by us OR provided by the user."""
@@ -140,7 +150,7 @@ class ClusterCdkStack(core.Stack):
 
         # Additional Cfn Stack
         if self.config.additional_resources:
-            core.CfnStack(scope=self, id="AdditionalCfnStack", template_url=self.config.additional_resources)
+            CfnStack(scope=self, id="AdditionalCfnStack", template_url=self.config.additional_resources)
 
         # Cleanup Resources Lambda Function
         cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
@@ -283,7 +293,7 @@ class ClusterCdkStack(core.Stack):
             handler_func="cleanup_resources",
         ).lambda_func
 
-        core.CustomResource(
+        CustomResource(
             scope=self,
             id="CleanupResourcesS3BucketCustomResource",
             service_token=cleanup_resources_lambda.attr_arn,
@@ -839,8 +849,8 @@ class ClusterCdkStack(core.Stack):
             ],
             billing_mode="PAY_PER_REQUEST",
         )
-        table.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        table.cfn_options.deletion_policy = core.CfnDeletionPolicy.DELETE
+        table.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        table.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
         return table
 
     def _add_head_node(self):
@@ -882,8 +892,8 @@ class ClusterCdkStack(core.Stack):
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=self.instance_profiles["HeadNode"]
                 ),
-                user_data=core.Fn.base64(
-                    core.Fn.sub(
+                user_data=Fn.base64(
+                    Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
                         {
                             **{"IamRoleName": self.instance_roles["HeadNode"]["RoleRef"]},
@@ -1040,7 +1050,7 @@ class ClusterCdkStack(core.Stack):
             "cfnHupConfig": {
                 "files": {
                     "/etc/cfn/hooks.d/parallelcluster-update.conf": {
-                        "content": core.Fn.sub(
+                        "content": Fn.sub(
                             (
                                 "[parallelcluster-update]\n"
                                 "triggers=post.update\n"
@@ -1061,7 +1071,7 @@ class ClusterCdkStack(core.Stack):
                         "group": "root",
                     },
                     "/etc/cfn/cfn-hup.conf": {
-                        "content": core.Fn.sub(
+                        "content": Fn.sub(
                             "[main]\nstack=${StackId}\nregion=${Region}\nrole=${IamRoleName}\ninterval=2",
                             {
                                 "StackId": self.stack_id,
@@ -1149,8 +1159,8 @@ class ClusterCdkStack(core.Stack):
                 version=head_node_launch_template.attr_latest_version_number,
             ),
         )
-        head_node_instance.cfn_options.creation_policy = core.CfnCreationPolicy(
-            resource_signal=core.CfnResourceSignal(count=1, timeout="PT30M")
+        head_node_instance.cfn_options.creation_policy = CfnCreationPolicy(
+            resource_signal=CfnResourceSignal(count=1, timeout="PT30M")
         )
 
         return head_node_instance
@@ -1187,35 +1197,35 @@ class ClusterCdkStack(core.Stack):
     def _add_outputs(self):
         # Storage filesystem Ids
         for storage_type, storage_list in self.shared_storage_mappings.items():
-            core.CfnOutput(
+            CfnOutput(
                 scope=self,
                 id="{0}Ids".format(storage_type.name),
                 description="{0} Filesystem IDs".format(storage_type.name),
                 value=",".join(storage.id for storage in storage_list),
             )
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self,
             id="ClusterUser",
             description="Username to login to head node",
             value=OS_MAPPING[self.config.image.os]["user"],
         )
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self,
             id="HeadNodeInstanceID",
             description="ID of the head node instance",
             value=self.head_node_instance.ref,
         )
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self,
             id="HeadNodePrivateIP",
             description="Private IP Address of the head node",
             value=self.head_node_instance.attr_private_ip,
         )
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self,
             id="HeadNodePrivateDnsName",
             description="Private DNS name of the head node",
@@ -1223,31 +1233,31 @@ class ClusterCdkStack(core.Stack):
         )
 
         if self._condition_head_node_has_public_ip():
-            core.CfnOutput(
+            CfnOutput(
                 scope=self,
                 id="HeadNodePublicIP",
                 description="Public IP Address of the head node",
                 value=self.head_node_instance.attr_public_ip,
             )
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self,
             id="ResourcesS3Bucket",
             description="S3 user bucket where AWS ParallelCluster resources are stored",
             value=self.bucket.name,
         )
 
-        core.CfnOutput(
+        CfnOutput(
             scope=self,
             id="ArtifactS3RootDirectory",
             description="Root directory in S3 bucket where cluster artifacts are stored",
             value=self.bucket.artifact_directory,
         )
 
-        core.CfnOutput(id="Scheduler", scope=self, value=self.config.scheduling.scheduler)
+        CfnOutput(id="Scheduler", scope=self, value=self.config.scheduling.scheduler)
 
         if self.log_group:
-            core.CfnOutput(
+            CfnOutput(
                 scope=self,
                 id="ClusterCWLogGroup",
                 description="CloudWatch Log Group associated to the cluster",
