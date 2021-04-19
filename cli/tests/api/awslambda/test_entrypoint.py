@@ -5,16 +5,19 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import json
+import os
 
 import pytest
 from assertpy import assert_that
 
-from api.awslambda import entrypoint
+
+@pytest.fixture(autouse=True)
+def disable_lambda_tracing():
+    os.environ["POWERTOOLS_TRACE_DISABLED"] = "1"
 
 
-@pytest.fixture()
+@pytest.fixture
 def apigw_event():
     return {
         "body": None,
@@ -70,6 +73,7 @@ def apigw_event():
 
 
 def test_lambda_handler(apigw_event, mocker):
+    from api.awslambda import entrypoint
 
     ret = entrypoint.lambda_handler(apigw_event, mocker.MagicMock())
     data = json.loads(ret["body"])
