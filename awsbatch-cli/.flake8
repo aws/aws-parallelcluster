@@ -1,0 +1,31 @@
+[flake8]
+ignore =
+    D105, # Missing docstring in magic method
+    D100, # Missing docstring in public module
+    D104, # Missing docstring in public package
+    D107, # Missing docstring in __init__
+    D103, # Missing docstring in public function
+    W503, # line break before binary operator => Conflicts with black style.
+    D413, # Missing blank line after last section
+    F821, # undefined name
+# D101 Missing docstring in public class
+# D102 Missing docstring in public method
+per-file-ignores =
+    tests/*: D101, D102
+exclude =
+    .tox,
+    .git,
+    .pytest_cache,
+    docs/source/conf.py,
+    build,
+    dist,
+    tests/fixtures/*,
+    *.pyc,
+    *.egg-info,
+    .cache,
+    .eggs
+max-complexity = 10
+max-line-length = 120
+import-order-style = google
+application-import-names = flake8
+format = ${cyan}%(path)s${reset}:${yellow_bold}%(row)d${reset}:${green_bold}%(col)d${reset}: ${red_bold}%(code)s${reset} %(text)s

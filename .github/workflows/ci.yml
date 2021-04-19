@@ -17,7 +17,17 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: Depcheck report
-          path: ${{github.workspace}}/reports
+          path: ${{github.workspace}}/cli-reports
+      - name: AWS Batch CLI Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          path: './awsbatch-cli'
+          format: 'HTML'
+      - name: Upload AWS Batch CLI Test results
+        uses: actions/upload-artifact@master
+        with:
+          name: Depcheck report
+          path: ${{github.workspace}}/awsbatch-cli-reports
   build:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -34,6 +44,12 @@ jobs:
           - CLI CloudFormation Templates Checks
           - API CloudFormation Templates Checks
           - Integration Tests Config Checks
+          - Python 3.6 AWS Batch CLI Tests
+          - Python 3.7 AWS Batch CLI Tests
+          - Python 3.8 AWS Batch CLI Tests
+          - Python 3.9 AWS Batch CLI Tests
+          - Python 3.8 AWS Batch CLI Tests Coverage
+          - Code Checks AWS Batch CLI
         include:
           - name: Python 3.6 Tests
             python: 3.6
@@ -71,7 +87,30 @@ jobs:
             python: 3.6
             toxdir: tests/integration-tests
             toxenv: validate-test-configs
-
+          - name: Python 3.6 AWS Batch CLI Tests
+            python: 3.6
+            toxdir: awsbatch-cli
+            toxenv: py36-nocov
+          - name: Python 3.7 AWS Batch CLI Tests
+            python: 3.7
+            toxdir: awsbatch-cli
+            toxenv: py37-nocov
+          - name: Python 3.8 AWS Batch CLI Tests
+            python: 3.8
+            toxdir: awsbatch-cli
+            toxenv: py38-nocov
+          - name: Python 3.9 AWS Batch CLI Tests
+            python: 3.9
+            toxdir: awsbatch-cli
+            toxenv: py39-nocov
+          - name: Python 3.8 AWS Batch CLI Tests Coverage
+            python: 3.8
+            toxdir: awsbatch-cli
+            toxenv: py38-cov
+          - name: Code Checks AWS Batch CLI
+            python: 3.6
+            toxdir: awsbatch-cli
+            toxenv: code-linters
     steps:
       - uses: actions/checkout@v2
       - name: Setup Python

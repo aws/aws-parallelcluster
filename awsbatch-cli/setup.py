@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
 # with the License. A copy of the License is located at
@@ -20,64 +20,46 @@ def readme():
         return f.read()
 
 
-VERSION = "3.0.0"
-CDK_VERSION = "1.94"
+VERSION = "1.0.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
     "tabulate>=0.8.2,<0.8.10",
-    "ipaddress>=1.0.22",
-    "PyYAML>=5.3.1",
-    "jinja2>=2.11.0",
-    "marshmallow~=3.10",
-    "aws-cdk.core~=" + CDK_VERSION,
-    "aws-cdk.aws-batch~=" + CDK_VERSION,
-    "aws_cdk.aws-cloudwatch~=" + CDK_VERSION,
-    "aws-cdk.aws-codebuild~=" + CDK_VERSION,
-    "aws-cdk.aws-dynamodb~=" + CDK_VERSION,
-    "aws-cdk.aws-ec2~=" + CDK_VERSION,
-    "aws-cdk.aws-efs~=" + CDK_VERSION,
-    "aws-cdk.aws-events~=" + CDK_VERSION,
-    "aws-cdk.aws-fsx~=" + CDK_VERSION,
-    "aws-cdk.aws-imagebuilder~=" + CDK_VERSION,
-    "aws-cdk.aws-iam~=" + CDK_VERSION,
-    "aws_cdk.aws-lambda~=" + CDK_VERSION,
-    "aws-cdk.aws-logs~=" + CDK_VERSION,
-    "aws-cdk.aws-route53~=" + CDK_VERSION,
-    "aws-cdk.aws-ssm~=" + CDK_VERSION,
-    "aws-cdk.aws-sqs~=" + CDK_VERSION,
-    "werkzeug~=2.0",
-    "connexion~=2.7",
-    "flask~=2.0",
-]
-
-LAMBDA_REQUIRES = [
-    "aws-lambda-powertools~=1.14",
+    "configparser>=3.5.0",
 ]
 
 setup(
-    name="aws-parallelcluster",
+    name="aws-parallelcluster-awsbatch-cli",
     version=VERSION,
     author="Amazon Web Services",
-    description="AWS ParallelCluster is an AWS supported Open Source cluster management tool to deploy "
-    "and manage HPC clusters in the AWS cloud.",
+    description=(
+        "AWS ParallelCluster AWS Batch CLI provides a set of commands to manage "
+        "AWS Batch resources created by ParallelCluster and AWS Batch jobs."
+    ),
     url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_packages("src"),
     python_requires=">=3.6",
     install_requires=REQUIRES,
-    extras_require={
-        "awslambda": LAMBDA_REQUIRES,
-    },
     entry_points={
         "console_scripts": [
-            "pcluster = pcluster.cli.entrypoint:main",
+            "awsbqueues = awsbatch.awsbqueues:main",
+            "awsbhosts = awsbatch.awsbhosts:main",
+            "awsbstat = awsbatch.awsbstat:main",
+            "awsbkill = awsbatch.awsbkill:main",
+            "awsbsub = awsbatch.awsbsub:main",
+            "awsbout = awsbatch.awsbout:main",
         ]
     },
     include_package_data=True,
     zip_safe=False,
-    long_description=readme(),
+    long_description=(
+        "aws-parallelcluster-awsbatch-cli is the python package installed on the Amazon EC2 instances launched "
+        "as part of AWS ParallelCluster when using AWS Batch as a scheduler. It provides a set of commands "
+        "to manage AWS Batch resources created within the cluster and AWS Batch jobs."
+    ),
+    long_description_content_type="text/plain",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
