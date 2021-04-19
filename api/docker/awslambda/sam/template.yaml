@@ -18,6 +18,7 @@ Resources:
       StageName: prod
       Auth:
         DefaultAuthorizer: AWS_IAM
+      TracingEnabled: True
       EndpointConfiguration:
         Type: REGIONAL
       DefinitionBody:
@@ -49,8 +50,10 @@ Resources:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       PackageType: Image
+      Tracing: Active
       Policies:
         - AWSLambdaBasicExecutionRole
+        - AWSXRayDaemonWriteAccess
     Metadata:
       Dockerfile: ../api/docker/awslambda/Dockerfile
       DockerContext: ../../../../cli

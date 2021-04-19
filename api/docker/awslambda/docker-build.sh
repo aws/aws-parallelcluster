@@ -10,7 +10,7 @@ echo "Use the following to run a shell in the container"
 echo "  docker run -it --entrypoint /bin/bash pcluster-lambda"
 echo
 echo "Use the following to run a local AWS Lambda endpoint hosting the API"
-echo "  docker run -p 9000:8080 pcluster-lambda"
+echo "  docker run -e POWERTOOLS_TRACE_DISABLED=1 -p 9000:8080 pcluster-lambda"
 echo "Then you can use the following to send requests to the local endpoint"
 echo "  curl -XPOST \"http://localhost:9000/2015-03-31/functions/function/invocations\" -d @${SCRIPT_DIR}/test-events/event.json"
 echo
