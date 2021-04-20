@@ -12,8 +12,8 @@
 from ipaddress import ip_address, ip_network, summarize_address_range
 
 
-def unicode(ip):
-    return "{0}".format(ip)
+def unicode(ip_addr):
+    return "{0}".format(ip_addr)
 
 
 def get_subnet_cidr(vpc_cidr, occupied_cidr, min_subnet_size):
@@ -74,8 +74,8 @@ def evaluate_cidr(vpc_cidr, occupied_cidrs, target_size):
     resulting_cidr = None
 
     subnets_limits.append((vpc_end_address_decimal, vpc_end_address_decimal))
-    for index in range(0, len(subnets_limits)):
-        current_lower_limit = subnets_limits[index][lower_limit_index]
+    for index, subnet_limit in enumerate(subnets_limits):
+        current_lower_limit = subnet_limit[lower_limit_index]
         # In the first case, vpc_begin_address is free, whereas upper_limit_index is not
         previous_upper_limit = (
             subnets_limits[index - 1][upper_limit_index] if index > 0 else vpc_begin_address_decimal - 1
@@ -128,9 +128,9 @@ def _get_cidr_limits_as_decimal(cidr):
     return _ip_to_decimal(str(address[0])), _ip_to_decimal(str(address[-1]))
 
 
-def _ip_to_decimal(ip):
-    """Transform an ip into its decimal representantion."""
-    return int(ip_address(unicode(ip)))
+def _ip_to_decimal(ip_addr):
+    """Transform an ip into its decimal representation."""
+    return int(ip_address(unicode(ip_addr)))
 
 
 def expand_cidr(cidr, new_size):
@@ -144,6 +144,6 @@ def expand_cidr(cidr, new_size):
     return str(ip_addr.supernet(new_prefix=new_size))
 
 
-def next_power_of_2(x):
+def next_power_of_2(number):
     """Given a number returns the following power of 2 of that number."""
-    return 1 if x == 0 else 2 ** (x - 1).bit_length()
+    return 1 if number == 0 else 2 ** (number - 1).bit_length()

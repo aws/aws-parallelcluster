@@ -8,15 +8,12 @@ ignore =
     W503, # line break before binary operator => Conflicts with black style.
     D413, # Missing blank line after last section
     F821, # undefined name
-# E402 module level import not at top of file
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method
 # D205 1 blank line required between summary line and description
 # D400 First line should end with a period
 # D401 First line should be in imperative mood
 per-file-ignores =
-    src/pcluster/configure/easyconfig.py: E402
-    src/pcluster/utils.py: E402
     tests/*: D101, D102
     ../tests/integration-tests/*: D205, D400, D401
 exclude =

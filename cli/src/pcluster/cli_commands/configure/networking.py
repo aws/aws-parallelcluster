@@ -79,18 +79,15 @@ class BaseNetworkConfig(ABC):
         ]
 
     def _get_availability_zone(self):
-        if self.availability_zones:
-            # To Do: is the first az in the azs list the optimal option?
-            return self.availability_zones.pop()
-        else:
-            return ""
+        # ToDo: is the first az in the azs list the optimal option?
+        return self.availability_zones.pop() if self.availability_zones else ""
 
 
 class PublicNetworkConfig(BaseNetworkConfig):
     """The public configuration that creates one public subnet with head node and compute fleet."""
 
     def __init__(self, availability_zones=None):
-        super(PublicNetworkConfig, self).__init__(
+        super().__init__(
             config_type="Head node and compute fleet in the same public subnet",
             template_name="public",
             stack_name_prefix="pub",
@@ -100,7 +97,7 @@ class PublicNetworkConfig(BaseNetworkConfig):
     def get_cfn_parameters(self, vpc_id, internet_gateway_id, public_cidr):
         """Create cloudformation-compatible stack parameter given the variables."""
         parameters = self._get_cfn_parameters(vpc_id, internet_gateway_id)
-        parameters.append(super(PublicNetworkConfig, self)._build_cfn_param("PublicCIDR", public_cidr))
+        parameters.append(super()._build_cfn_param("PublicCIDR", public_cidr))
         return parameters
 
     def _create(self, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):
@@ -120,7 +117,7 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
     """The public private config that creates one public subnet for head node and one private subnet for compute."""
 
     def __init__(self, availability_zones=None):
-        super(PublicPrivateNetworkConfig, self).__init__(
+        super().__init__(
             config_type="Head node in a public subnet and compute fleet in a private subnet",
             template_name="public-private",
             stack_name_prefix="pubpriv",
@@ -130,8 +127,8 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
     def get_cfn_parameters(self, vpc_id, internet_gateway_id, public_cidr, private_cidr):
         """Create cloudformation-compatible stack parameter given the variables."""
         parameters = self._get_cfn_parameters(vpc_id, internet_gateway_id)
-        parameters.append(super(PublicPrivateNetworkConfig, self)._build_cfn_param("PublicCIDR", public_cidr))
-        parameters.append(super(PublicPrivateNetworkConfig, self)._build_cfn_param("PrivateCIDR", private_cidr))
+        parameters.append(super()._build_cfn_param("PublicCIDR", public_cidr))
+        parameters.append(super()._build_cfn_param("PrivateCIDR", private_cidr))
         return parameters
 
     def _create(self, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):  # noqa D102
@@ -171,8 +168,8 @@ def _create_network_stack(configuration, parameters):
             Parameters=parameters,
             Capabilities=["CAPABILITY_IAM"],
         )
-        LOGGER.debug("StackId: {0}".format(stack.get("StackId")))
-        LOGGER.info("Stack Name: {0}".format(stack_name))
+        LOGGER.debug("StackId: %s", stack.get("StackId"))
+        LOGGER.info("Stack Name: %s", stack_name)
         if not verify_stack_status(
             stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_state="CREATE_COMPLETE"
         ):
@@ -185,13 +182,17 @@ def _create_network_stack(configuration, parameters):
         print()
         LOGGER.info(
             "Unable to update the configuration file with the selected network configuration. "
-            "Please manually check the status of the CloudFormation stack: {0}".format(stack_name)
+            "Please manually check the status of the CloudFormation stack: %s",
+            stack_name,
         )
+        sys.exit(0)
     except Exception as e:  # Any exception is a problem
         print()
         LOGGER.error(
-            "An exception occured while creating the CloudFormation stack: {0}. "
-            "For details please check log file: {1}".format(stack_name, get_cli_log_file())
+            "An exception occured while creating the CloudFormation stack: %s. "
+            "For details please check log file: %s",
+            stack_name,
+            get_cli_log_file(),
         )
         LOGGER.critical(e)
         sys.exit(1)
