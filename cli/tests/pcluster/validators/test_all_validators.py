@@ -64,18 +64,18 @@ def test_all_validators_are_called(test_datadir, mocker):
 
     # mock properties that use boto3 calls
     mocker.patch(
-        "pcluster.models.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
+        "pcluster.config.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
     )
     mocker.patch(
-        "pcluster.models.cluster_config.SlurmComputeResource.architecture",
+        "pcluster.config.cluster_config.SlurmComputeResource.architecture",
         new_callable=PropertyMock(return_value="x86_64"),
     )
     mocker.patch(
-        "pcluster.models.cluster_config.HeadNodeNetworking.availability_zone",
+        "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     mocker.patch(
-        "pcluster.models.cluster_config.BaseClusterConfig.ami_id",
+        "pcluster.config.cluster_config.BaseClusterConfig.ami_id",
         new_callable=PropertyMock(return_value="ami-12345678"),
     )
     mock_aws_api(mocker)
@@ -180,10 +180,10 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     )
 
     mocker.patch(
-        "pcluster.models.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
+        "pcluster.config.cluster_config.HeadNode.architecture", new_callable=PropertyMock(return_value="x86_64")
     )
     mocker.patch(
-        "pcluster.models.cluster_config.SlurmComputeResource.architecture",
+        "pcluster.config.cluster_config.SlurmComputeResource.architecture",
         new_callable=PropertyMock(return_value="x86_64"),
     )
     mock_aws_api(mocker)

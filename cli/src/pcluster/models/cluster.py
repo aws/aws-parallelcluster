@@ -27,9 +27,9 @@ from common.boto3.common import AWSClientError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import PCLUSTER_STACK_PREFIX
-from pcluster.models.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
+from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
-from pcluster.models.common import S3Bucket, S3BucketFactory, S3FileFormat
+from pcluster.config.common import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_region, grouper

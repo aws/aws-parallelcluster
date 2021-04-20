@@ -18,7 +18,7 @@ import re
 from marshmallow import ValidationError, fields, post_load, validate, validates, validates_schema
 
 from common.utils import get_url_scheme, validate_json_format
-from pcluster.models.imagebuilder_config import (
+from pcluster.config.imagebuilder_config import (
     Build,
     Component,
     DistributionConfiguration,

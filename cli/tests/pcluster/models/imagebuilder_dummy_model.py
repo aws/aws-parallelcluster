@@ -8,8 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.models.common import BaseTag, Cookbook, S3Bucket
-from pcluster.models.imagebuilder_config import (
+from pcluster.config.common import BaseTag, Cookbook, S3Bucket
+from pcluster.config.imagebuilder_config import (
     Build,
     Component,
     DistributionConfiguration,

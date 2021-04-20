@@ -20,8 +20,8 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
-from pcluster.models.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
-from pcluster.models.common import S3Bucket
+from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
+from pcluster.config.common import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,

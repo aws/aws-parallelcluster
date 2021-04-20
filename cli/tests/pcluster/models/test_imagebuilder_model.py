@@ -16,7 +16,7 @@ from assertpy import assert_that
 
 from common.aws.aws_resources import ImageInfo
 from common.boto3.common import AWSClientError
-from pcluster.models.imagebuilder_config import ImageBuilderExtraChefAttributes
+from pcluster.config.imagebuilder_config import ImageBuilderExtraChefAttributes
 from pcluster.validators.common import FailureLevel
 from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory

@@ -17,8 +17,8 @@ from enum import Enum
 import boto3
 import pkg_resources
 
-from pcluster.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
-from pcluster.configure.utils import handle_client_exception
+from pcluster.cli_commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
+from pcluster.cli_commands.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
 from pcluster.utils import (
     get_cli_log_file,

@@ -16,7 +16,7 @@ from assertpy import assert_that
 from common.aws.aws_resources import InstanceTypeInfo
 from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
-from pcluster.models.cluster_config import AmiSearchFilters, Tag
+from pcluster.config.cluster_config import AmiSearchFilters, Tag
 from pcluster.utils import get_installed_version
 from tests.common.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request

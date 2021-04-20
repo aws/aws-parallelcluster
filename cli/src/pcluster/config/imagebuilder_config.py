@@ -16,7 +16,7 @@
 from typing import List
 
 from common.imagebuilder_utils import ROOT_VOLUME_TYPE
-from pcluster.models.common import BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
+from pcluster.config.common import BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
 from pcluster.utils import get_region
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator

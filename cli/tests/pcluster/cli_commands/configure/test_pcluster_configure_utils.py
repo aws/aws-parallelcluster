@@ -1,7 +1,7 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.configure.utils import get_default_suggestion
+from pcluster.cli_commands.configure.utils import get_default_suggestion
 
 
 @pytest.mark.parametrize(

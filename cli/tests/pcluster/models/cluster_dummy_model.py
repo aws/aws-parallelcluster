@@ -11,7 +11,7 @@
 from typing import List
 from unittest.mock import PropertyMock
 
-from pcluster.models.cluster_config import (
+from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     AwsBatchComputeResource,
     AwsBatchQueue,
@@ -35,7 +35,7 @@ from pcluster.models.cluster_config import (
     Ssh,
     Tag,
 )
-from pcluster.models.common import Resource, S3Bucket
+from pcluster.config.common import Resource, S3Bucket
 
 
 class _DummySlurmClusterConfig(SlurmClusterConfig):
@@ -94,8 +94,8 @@ def mock_bucket(
     mocker,
 ):
     """Mock cluster bucket initialization."""
-    mocker.patch("pcluster.models.common.get_partition", return_value="fake_partition")
-    mocker.patch("pcluster.models.common.get_region", return_value="fake-region")
+    mocker.patch("pcluster.config.common.get_partition", return_value="fake_partition")
+    mocker.patch("pcluster.config.common.get_region", return_value="fake-region")
     mocker.patch("common.boto3.sts.StsClient.get_account_id", return_value="fake-id")
 
 
@@ -107,16 +107,16 @@ def mock_bucket_utils(
     create_bucket_side_effect=None,
     configure_bucket_side_effect=None,
 ):
-    get_bucket_name_mock = mocker.patch("pcluster.models.common.S3Bucket.get_bucket_name", return_value=bucket_name)
+    get_bucket_name_mock = mocker.patch("pcluster.config.common.S3Bucket.get_bucket_name", return_value=bucket_name)
     create_bucket_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.create_bucket", side_effect=create_bucket_side_effect
+        "pcluster.config.common.S3Bucket.create_bucket", side_effect=create_bucket_side_effect
     )
     check_bucket_exists_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.check_bucket_exists", side_effect=check_bucket_exists_side_effect
+        "pcluster.config.common.S3Bucket.check_bucket_exists", side_effect=check_bucket_exists_side_effect
     )
-    mocker.patch("pcluster.models.common.S3Bucket.generate_s3_bucket_hash_suffix", return_value=root_service_dir)
+    mocker.patch("pcluster.config.common.S3Bucket.generate_s3_bucket_hash_suffix", return_value=root_service_dir)
     configure_s3_bucket_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.configure_s3_bucket", side_effect=configure_bucket_side_effect
+        "pcluster.config.common.S3Bucket.configure_s3_bucket", side_effect=configure_bucket_side_effect
     )
     mock_dict = {
         "get_bucket_name": get_bucket_name_mock,
@@ -141,39 +141,39 @@ def mock_bucket_object_utils(
     # mock call from config
     fake_config = {"Image": "image"}
     upload_config_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.upload_config", side_effect=upload_config_side_effect
+        "pcluster.config.common.S3Bucket.upload_config", side_effect=upload_config_side_effect
     )
     get_config_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.get_config", return_value=fake_config, side_effect=get_config_side_effect
+        "pcluster.config.common.S3Bucket.get_config", return_value=fake_config, side_effect=get_config_side_effect
     )
 
     # mock call from template
     fake_template = {"Resources": "fake_resource"}
     upload_cfn_template_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.upload_cfn_template", side_effect=upload_template_side_effect
+        "pcluster.config.common.S3Bucket.upload_cfn_template", side_effect=upload_template_side_effect
     )
     get_cfn_template_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.get_cfn_template",
+        "pcluster.config.common.S3Bucket.get_cfn_template",
         return_value=fake_template,
         side_effect=get_template_side_effect,
     )
 
     # mock calls from custom resources
     upload_resources_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.upload_resources", side_effect=upload_resources_side_effect
+        "pcluster.config.common.S3Bucket.upload_resources", side_effect=upload_resources_side_effect
     )
 
     # mock delete_s3_artifacts
     delete_s3_artifacts_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.delete_s3_artifacts", side_effect=delete_s3_artifacts_side_effect
+        "pcluster.config.common.S3Bucket.delete_s3_artifacts", side_effect=delete_s3_artifacts_side_effect
     )
 
     # mock bootstrapped_file
     upload_bootstrapped_file_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.upload_bootstrapped_file", side_effect=upload_bootstrapped_file_side_effect
+        "pcluster.config.common.S3Bucket.upload_bootstrapped_file", side_effect=upload_bootstrapped_file_side_effect
     )
     check_bucket_is_bootstrapped_mock = mocker.patch(
-        "pcluster.models.common.S3Bucket.check_bucket_is_bootstrapped",
+        "pcluster.config.common.S3Bucket.check_bucket_is_bootstrapped",
         side_effect=check_bucket_is_bootstrapped_side_effect,
     )
 
@@ -194,7 +194,7 @@ def mock_bucket_object_utils(
 def dummy_head_node(mocker):
     """Generate dummy head node."""
     mocker.patch(
-        "pcluster.models.cluster_config.HeadNodeNetworking.availability_zone",
+        "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     head_node_networking = HeadNodeNetworking(subnet_id="dummy-subnet-1")
@@ -207,7 +207,7 @@ def dummy_head_node(mocker):
 
     disable_ht_cpu_opts_mock = mocker.PropertyMock(return_value="true")
     mocker.patch(
-        "pcluster.models.cluster_config.HeadNode.disable_simultaneous_multithreading_via_cpu_options",
+        "pcluster.config.cluster_config.HeadNode.disable_simultaneous_multithreading_via_cpu_options",
         new_callable=disable_ht_cpu_opts_mock,
     )
     return head_node

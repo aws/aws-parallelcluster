@@ -20,10 +20,10 @@ import argparse
 from botocore.exceptions import NoCredentialsError
 
 import pcluster.cli_commands.update as pcluster_update
-import pcluster.commands as pcluster
-import pcluster.configure.easyconfig as easyconfig
+import pcluster.cli_commands.commands as pcluster
+import pcluster.cli_commands.configure.easyconfig as easyconfig
 import pcluster.utils as utils
-from pcluster.dcv.connect import dcv_connect
+from pcluster.cli_commands.dcv.connect import dcv_connect
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)

@@ -18,9 +18,9 @@ import tempfile
 from aws_cdk.core import App
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster_config import BaseClusterConfig
-from pcluster.models.common import S3Bucket
-from pcluster.models.imagebuilder_config import ImageBuilderConfig
+from pcluster.config.cluster_config import BaseClusterConfig
+from pcluster.config.common import S3Bucket
+from pcluster.config.imagebuilder_config import ImageBuilderConfig
 from pcluster.templates.cluster_stack import ClusterCdkStack
 from pcluster.templates.imagebuilder_stack import ImageBuilderCdkStack
 
