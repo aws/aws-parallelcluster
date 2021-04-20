@@ -184,47 +184,72 @@ class ImageBuilderCdkStack(Stack):
         ami_tags = self._get_image_tags()
 
         lambda_cleanup_policy_statements = []
+        resources_dependency_list = []
 
         # InstanceRole and InstanceProfile
         instance_profile_name = None
         if self.custom_instance_role:
             instance_role_type = self._get_instance_role_type()
             if instance_role_type == InstanceRole.ROLE:
-                self._add_instance_profile(
-                    instance_role=self.custom_instance_role,
-                    cleanup_policy_statements=lambda_cleanup_policy_statements,
+                resources_dependency_list.append(
+                    self._add_instance_profile(
+                        instance_role=self.custom_instance_role,
+                        cleanup_policy_statements=lambda_cleanup_policy_statements,
+                    )
                 )
             else:
                 instance_profile_name = self.custom_instance_role
         else:
-            self._add_default_instance_role(lambda_cleanup_policy_statements, build_tags_list)
-            self._add_instance_profile(cleanup_policy_statements=lambda_cleanup_policy_statements)
+            resources_dependency_list.append(
+                self._add_default_instance_role(lambda_cleanup_policy_statements, build_tags_list)
+            )
+            resources_dependency_list.append(
+                self._add_instance_profile(cleanup_policy_statements=lambda_cleanup_policy_statements)
+            )
 
         self._add_imagebuilder_resources(
-            build_tags_map, ami_tags, instance_profile_name, lambda_cleanup_policy_statements
+            build_tags_map, ami_tags, instance_profile_name, lambda_cleanup_policy_statements, resources_dependency_list
         )
 
-        lambda_cleanup = self._add_lambda_cleanup(lambda_cleanup_policy_statements, build_tags_list)
-        self._add_sns_topic(lambda_cleanup, build_tags_list)
+        lambda_cleanup, permission, lambda_cleanup_execution_role = self._add_lambda_cleanup(
+            lambda_cleanup_policy_statements, build_tags_list
+        )
+        resources_dependency_list.extend([lambda_cleanup, permission])
+
+        resources_dependency_list.append(self._add_sns_topic(lambda_cleanup, build_tags_list))
+
+        if lambda_cleanup_execution_role:
+            for resource in resources_dependency_list:
+                resource.add_depends_on(lambda_cleanup_execution_role)
 
     def _add_imagebuilder_resources(
-        self, build_tags, ami_tags, instance_profile_name, lambda_cleanup_policy_statements
+        self, build_tags, ami_tags, instance_profile_name, lambda_cleanup_policy_statements, resource_dependency_list
     ):
-        self._add_imagebuilder_infrastructure_configuration(
-            build_tags, instance_profile_name, lambda_cleanup_policy_statements
+        resource_dependency_list.append(
+            self._add_imagebuilder_infrastructure_configuration(
+                build_tags, instance_profile_name, lambda_cleanup_policy_statements
+            )
         )
 
-        components = self._add_imagebuilder_components(build_tags, lambda_cleanup_policy_statements)
+        components, components_resources = self._add_imagebuilder_components(
+            build_tags, lambda_cleanup_policy_statements
+        )
 
-        self._add_imagebuilder_image_recipe(build_tags, components, lambda_cleanup_policy_statements)
+        resource_dependency_list.extend(components_resources)
 
-        self._add_imagebuilder_distribution_configuration(ami_tags, build_tags, lambda_cleanup_policy_statements)
+        resource_dependency_list.append(
+            self._add_imagebuilder_image_recipe(build_tags, components, lambda_cleanup_policy_statements)
+        )
 
-        self._add_imagebuilder_image(build_tags, lambda_cleanup_policy_statements)
+        resource_dependency_list.append(
+            self._add_imagebuilder_distribution_configuration(ami_tags, build_tags, lambda_cleanup_policy_statements)
+        )
+
+        resource_dependency_list.append(self._add_imagebuilder_image(build_tags, lambda_cleanup_policy_statements))
 
     def _add_imagebuilder_image(self, build_tags, lambda_cleanup_policy_statements):
         # ImageBuilderImage
-        imagebuilder.CfnImage(
+        image_resource = imagebuilder.CfnImage(
             self,
             id=RESOURCE_NAME_PREFIX,
             tags=build_tags,
@@ -244,6 +269,8 @@ class ImageBuilderCdkStack(Stack):
                     )
                 ],
             )
+
+        return image_resource
 
     def _add_imagebuilder_distribution_configuration(self, ami_tags, build_tags, lambda_cleanup_policy_statements):
         # ImageBuilderDistributionConfiguration
@@ -275,7 +302,7 @@ class ImageBuilderCdkStack(Stack):
                     region=self.region,
                 )
             )
-        imagebuilder.CfnDistributionConfiguration(
+        distribution_configuration_resource = imagebuilder.CfnDistributionConfiguration(
             self,
             id="DistributionConfiguration",
             name=self._build_resource_name(RESOURCE_NAME_PREFIX),
@@ -295,9 +322,11 @@ class ImageBuilderCdkStack(Stack):
                 ],
             )
 
+        return distribution_configuration_resource
+
     def _add_imagebuilder_image_recipe(self, build_tags, components, lambda_cleanup_policy_statements):
         # ImageBuilderImageRecipe
-        imagebuilder.CfnImageRecipe(
+        image_recipe_resource = imagebuilder.CfnImageRecipe(
             self,
             id="ImageRecipe",
             name=self._build_image_recipe_name(),
@@ -325,13 +354,16 @@ class ImageBuilderCdkStack(Stack):
                 ],
             )
 
+        return image_recipe_resource
+
     def _add_imagebuilder_components(self, build_tags, lambda_cleanup_policy_statements):
         imagebuilder_resources_dir = os.path.join(imagebuilder_utils.get_resources_directory(), "imagebuilder")
 
         # ImageBuilderComponents
         components = []
+        components_resources = []
         if self.config.dev_settings and self.config.dev_settings.update_os_and_reboot:
-            imagebuilder.CfnComponent(
+            update_os_component_resource = imagebuilder.CfnComponent(
                 self,
                 id="UpdateOSComponent",
                 name=self._build_resource_name(RESOURCE_NAME_PREFIX + "-UpdateOS"),
@@ -344,6 +376,7 @@ class ImageBuilderCdkStack(Stack):
             components.append(
                 imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref("UpdateOSComponent"))
             )
+            components_resources.append(update_os_component_resource)
             if not self.custom_cleanup_lambda_role:
                 self._add_resource_delete_policy(
                     lambda_cleanup_policy_statements,
@@ -365,7 +398,7 @@ class ImageBuilderCdkStack(Stack):
             else False
         )
         if not disable_pcluster_component:
-            imagebuilder.CfnComponent(
+            parallelcluster_component_resource = imagebuilder.CfnComponent(
                 self,
                 id="ParallelClusterComponent",
                 name=self._build_resource_name(RESOURCE_NAME_PREFIX),
@@ -380,6 +413,7 @@ class ImageBuilderCdkStack(Stack):
                     component_arn=Fn.ref("ParallelClusterComponent")
                 )
             )
+            components_resources.append(parallelcluster_component_resource)
             if not self.custom_cleanup_lambda_role:
                 self._add_resource_delete_policy(
                     lambda_cleanup_policy_statements,
@@ -396,9 +430,9 @@ class ImageBuilderCdkStack(Stack):
                 )
 
         if self.config.build.components:
-            self._add_custom_components(components, lambda_cleanup_policy_statements)
+            self._add_custom_components(components, lambda_cleanup_policy_statements, components_resources)
 
-        imagebuilder.CfnComponent(
+        tag_component_resource = imagebuilder.CfnComponent(
             self,
             id="TagComponent",
             name=self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag"),
@@ -411,6 +445,7 @@ class ImageBuilderCdkStack(Stack):
         components.append(
             imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref("TagComponent"))
         )
+        components_resources.append(tag_component_resource)
         if not self.custom_cleanup_lambda_role:
             self._add_resource_delete_policy(
                 lambda_cleanup_policy_statements,
@@ -426,13 +461,13 @@ class ImageBuilderCdkStack(Stack):
                 ],
             )
 
-        return components
+        return components, components_resources
 
     def _add_imagebuilder_infrastructure_configuration(
         self, build_tags, instance_profile_name, lambda_cleanup_policy_statements
     ):
         # ImageBuilderInfrastructureConfiguration
-        imagebuilder.CfnInfrastructureConfiguration(
+        infrastructure_configuration_resource = imagebuilder.CfnInfrastructureConfiguration(
             self,
             id="InfrastructureConfiguration",
             name=self._build_resource_name(RESOURCE_NAME_PREFIX),
@@ -459,7 +494,10 @@ class ImageBuilderCdkStack(Stack):
                 ],
             )
 
+        return infrastructure_configuration_resource
+
     def _add_lambda_cleanup(self, policy_statements, build_tags):
+        lambda_cleanup_execution_role = None
         if self.custom_cleanup_lambda_role:
             execution_role = self.custom_cleanup_lambda_role
         else:
@@ -586,7 +624,7 @@ class ImageBuilderCdkStack(Stack):
             environment=lambda_env,
             tags=build_tags,
         )
-        awslambda.CfnPermission(
+        permission = awslambda.CfnPermission(
             self,
             id="DeleteStackFunctionPermission",
             action="lambda:InvokeFunction",
@@ -595,18 +633,19 @@ class ImageBuilderCdkStack(Stack):
             source_arn=Fn.ref("BuildNotificationTopic"),
         )
 
-        return lambda_cleanup
+        return lambda_cleanup, permission, lambda_cleanup_execution_role
 
     def _add_sns_topic(self, lambda_cleanup, build_tags):
         # SNSTopic
         subscription = sns.CfnTopic.SubscriptionProperty(endpoint=lambda_cleanup.attr_arn, protocol="lambda")
-        sns.CfnTopic(
+        sns_topic_resource = sns.CfnTopic(
             self,
             id="BuildNotificationTopic",
             subscription=[subscription],
             topic_name=self._build_resource_name(RESOURCE_NAME_PREFIX),
             tags=build_tags,
         )
+        return sns_topic_resource
 
     def _add_default_instance_role(self, cleanup_policy_statements, build_tags):
         """Set default instance role in imagebuilder cfn template."""
@@ -660,7 +699,7 @@ class ImageBuilderCdkStack(Stack):
             policy_document=instancerole_policy_document,
         )
 
-        iam.CfnRole(
+        instance_role_resource = iam.CfnRole(
             self,
             id="InstanceRole",
             managed_policy_arns=managed_policy_arns,
@@ -686,9 +725,11 @@ class ImageBuilderCdkStack(Stack):
                 ],
             )
 
+        return instance_role_resource
+
     def _add_instance_profile(self, cleanup_policy_statements, instance_role=None):
         """Set default instance profile in imagebuilder cfn template."""
-        iam.CfnInstanceProfile(
+        instance_profile_resource = iam.CfnInstanceProfile(
             self,
             id="InstanceProfile",
             path="/{0}/".format(RESOURCE_NAME_PREFIX),
@@ -709,7 +750,9 @@ class ImageBuilderCdkStack(Stack):
                 ],
             )
 
-    def _add_custom_components(self, components, policy_statements):
+        return instance_profile_resource
+
+    def _add_custom_components(self, components, policy_statements, components_resources):
         """Set custom component in imagebuilder cfn template."""
         initial_components_len = len(components)
         arn_components_len = 0
@@ -723,7 +766,7 @@ class ImageBuilderCdkStack(Stack):
             else:
                 component_script_name = custom_component.value.split("/")[-1]
                 component_id = "ScriptComponent" + str(custom_components_len)
-                imagebuilder.CfnComponent(
+                custom_component_resource = imagebuilder.CfnComponent(
                     self,
                     id=component_id,
                     name=self._build_resource_name(
@@ -738,6 +781,7 @@ class ImageBuilderCdkStack(Stack):
                 components.append(
                     imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref(component_id))
                 )
+                components_resources.append(custom_component_resource)
                 if not self.custom_cleanup_lambda_role:
                     self._add_resource_delete_policy(
                         policy_statements,
