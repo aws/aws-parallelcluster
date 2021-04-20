@@ -312,6 +312,7 @@ def _evaluate_tags(pcluster_config, preferred_tags=None):
     tags = {}
 
     configured_tags = pcluster_config.get_section("cluster").get_param_value("tags")
+    _add_intel_tags(pcluster_config, tags)
     if configured_tags:
         tags.update(configured_tags)
 
@@ -324,6 +325,11 @@ def _evaluate_tags(pcluster_config, preferred_tags=None):
 
     # convert to CFN tags
     return [{"Key": tag, "Value": tags[tag]} for tag in tags]
+
+
+def _add_intel_tags(pcluster_config, tags):
+    if pcluster_config.get_section("cluster").get_param_value("enable_intel_hpc_platform"):
+        tags.update({"aws-parallelcluster-intel-hpc": "enable_intel_hpc_platform=true"})
 
 
 def _print_compute_fleet_status(cluster_name, stack):

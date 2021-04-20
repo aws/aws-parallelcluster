@@ -129,7 +129,7 @@ class Cluster:
             raise
 
     def instances(self, desired_instance_role=None):
-        """Run pcluster stop and return the result."""
+        """Run pcluster instances and return the result."""
         if desired_instance_role and desired_instance_role not in ("MasterServer", "ComputeFleet"):
             raise ValueError
         cmd_args = ["pcluster", "instances", "--config", self.config_file, self.name]

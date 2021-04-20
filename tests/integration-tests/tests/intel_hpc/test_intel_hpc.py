@@ -11,8 +11,10 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 
+import boto3
 import pytest
 from assertpy import assert_that
+from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.assertions import assert_no_errors_in_logs
@@ -29,9 +31,40 @@ def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clus
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    _test_intel_instance_tags(cluster.instances(), region)
     _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir, os)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
+
+
+def _test_intel_instance_tags(cluster_instances, region):
+    """Check that instances with enable_intel_hpc_platform are tagged."""
+    logging.info("Checking that instances are tagged when enable_intel_hpc_platform")
+    try:
+        instances_with_tag = {
+            tag.get("ResourceId")
+            for tag in boto3.client("ec2", region_name=region)
+            .describe_tags(
+                Filters=[
+                    {
+                        "Name": "tag:aws-parallelcluster-intel-hpc",
+                        "Values": [
+                            "enable_intel_hpc_platform=true",
+                        ],
+                    },
+                    {
+                        "Name": "resource-id",
+                        "Values": cluster_instances,
+                    },
+                ]
+            )
+            .get("Tags")
+        }
+    except ClientError as e:
+        logging.error(e.response.get("Error").get("Message"))
+        raise
+
+    assert_that(all(instance in instances_with_tag for instance in cluster_instances)).is_true()
 
 
 def _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir, os):
