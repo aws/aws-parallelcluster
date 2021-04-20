@@ -16,7 +16,7 @@ from typing import List
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from api.pcluster_api import ClusterInfo, PclusterApi
+from pcluster.api.pcluster_api import ClusterInfo, PclusterApi
 from pcluster.cli_commands.commands import _parse_config_file, print_stack_outputs
 from pcluster.config.update_policy import UpdatePolicy
 
