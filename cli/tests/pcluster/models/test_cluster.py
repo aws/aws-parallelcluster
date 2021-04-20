@@ -18,9 +18,9 @@ from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
-from pcluster.models.cluster_config import Resource, Tag
+from pcluster.config.cluster_config import Resource, Tag
 from pcluster.models.cluster_resources import ClusterStack
-from pcluster.models.common import S3Bucket
+from pcluster.config.common import S3Bucket
 from pcluster.validators.common import FailureLevel, Validator
 from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.cluster_dummy_model import (

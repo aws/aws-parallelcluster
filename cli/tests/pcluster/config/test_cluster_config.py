@@ -2,7 +2,7 @@ import pytest
 from assertpy import assert_that
 
 from common.aws.aws_resources import InstanceTypeInfo
-from pcluster.models.cluster_config import (
+from pcluster.config.cluster_config import (
     AmiSearchFilters,
     BaseClusterConfig,
     ClusterDevSettings,

@@ -31,7 +31,7 @@ from marshmallow import (
 
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
-from pcluster.models.cluster_config import (
+from pcluster.config.cluster_config import (
     AdditionalIamPolicy,
     AdditionalPackages,
     AmiSearchFilters,

@@ -14,7 +14,7 @@ from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk.core import Construct, Stack
 
-from pcluster.models.cluster_config import BaseClusterConfig, SharedStorageType
+from pcluster.config.cluster_config import BaseClusterConfig, SharedStorageType
 
 MAX_WIDTH = 24
 

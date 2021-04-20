@@ -13,7 +13,7 @@ import pytest
 
 from common.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from common.boto3.common import AWSClientError
-from pcluster.models.cluster_config import CapacityType
+from pcluster.config.cluster_config import CapacityType
 from pcluster.validators.ec2_validators import (
     CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,

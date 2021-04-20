@@ -15,7 +15,7 @@ import yaml
 from assertpy import assert_that
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster_config import SharedStorageType
+from pcluster.config.cluster_config import SharedStorageType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from tests.common.dummy_aws_api import mock_aws_api
@@ -36,7 +36,7 @@ from ..models.cluster_dummy_model import dummy_cluster_bucket, mock_bucket
 def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
     mocker.patch(
-        "pcluster.models.cluster_config.HeadNodeNetworking.availability_zone",
+        "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     # mock bucket initialization parameters

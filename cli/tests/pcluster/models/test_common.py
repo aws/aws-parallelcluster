@@ -14,7 +14,7 @@ import pytest
 from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
-from pcluster.models.common import Resource
+from pcluster.config.common import Resource
 from tests.common.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.cluster_dummy_model import dummy_cluster_bucket, mock_bucket
 

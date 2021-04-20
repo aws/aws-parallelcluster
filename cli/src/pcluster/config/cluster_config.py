@@ -32,7 +32,7 @@ from pcluster.constants import (
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
     MAX_STORAGE_COUNT,
 )
-from pcluster.models.common import BaseDevSettings, BaseTag, Resource
+from pcluster.config.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import get_partition, get_region
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,

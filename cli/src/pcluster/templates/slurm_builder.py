@@ -18,8 +18,8 @@ from aws_cdk import aws_route53 as route53
 from aws_cdk.core import CfnOutput, CfnTag, Construct, CustomResource, Fn, Stack
 
 from pcluster.constants import OS_MAPPING
-from pcluster.models.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
-from pcluster.models.common import S3Bucket
+from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
+from pcluster.config.common import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,

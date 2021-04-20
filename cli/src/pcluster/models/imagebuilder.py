@@ -29,7 +29,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.models.common import BaseTag, S3Bucket, S3BucketFactory
+from pcluster.config.common import BaseTag, S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.imagebuilder_stack import RESOURCE_NAME_PREFIX

@@ -207,7 +207,7 @@ def test_setup_bucket_with_resources_creation_failure(
         cluster = _mock_cluster(mocker, "slurm")
 
     # mock bucket object utils
-    mocker.patch("pcluster.models.common.S3Bucket.check_bucket_is_bootstrapped")
+    mocker.patch("pcluster.config.common.S3Bucket.check_bucket_is_bootstrapped")
 
     # assert failures
     if provided_bucket_name:

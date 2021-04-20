@@ -22,7 +22,7 @@ from pcluster.constants import (
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
 )
-from pcluster.dcv.utils import get_supported_dcv_os
+from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.utils import get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
 

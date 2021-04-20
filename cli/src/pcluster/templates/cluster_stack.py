@@ -39,7 +39,7 @@ from aws_cdk.core import (
 
 from common.aws.aws_api import AWSApi
 from pcluster.constants import OS_MAPPING
-from pcluster.models.cluster_config import (
+from pcluster.config.cluster_config import (
     BaseQueue,
     HeadNode,
     SharedEbs,
@@ -48,7 +48,7 @@ from pcluster.models.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.models.common import S3Bucket
+from pcluster.config.common import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,

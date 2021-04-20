@@ -26,7 +26,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_STACK_PREFIX,
 )
-from pcluster.models.cluster_config import (
+from pcluster.config.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
     BaseQueue,
@@ -34,7 +34,7 @@ from pcluster.models.cluster_config import (
     HeadNode,
     SharedStorageType,
 )
-from pcluster.models.common import S3Bucket
+from pcluster.config.common import S3Bucket
 from pcluster.utils import get_installed_version
 
 

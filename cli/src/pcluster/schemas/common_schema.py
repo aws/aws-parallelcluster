@@ -21,8 +21,8 @@ from marshmallow import Schema, ValidationError, fields, post_dump, post_load, p
 from common.utils import validate_json_format
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import SUPPORTED_ARCHITECTURES
-from pcluster.models.cluster_config import BaseTag
-from pcluster.models.common import Cookbook
+from pcluster.config.cluster_config import BaseTag
+from pcluster.config.common import Cookbook
 from pcluster.utils import camelcase
 
 ALLOWED_VALUES = {
