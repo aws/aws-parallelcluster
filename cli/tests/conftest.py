@@ -12,7 +12,7 @@ from botocore.stub import Stubber
 from flask.testing import FlaskClient
 from jinja2 import Environment, FileSystemLoader
 
-from api.flask_app import ParallelClusterFlaskApp
+from pcluster.api.flask_app import ParallelClusterFlaskApp
 
 
 @pytest.fixture(autouse=True)

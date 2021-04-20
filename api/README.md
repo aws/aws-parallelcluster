@@ -105,14 +105,14 @@ Then you can use the following to send requests to the local endpoint:
 This is useful to test the integration with AWS Lambda.
 
 #### Run the Flask development server
-Use the following to run a local Flask development server hosting the API: `docker run --entrypoint python pcluster-lambda -m api.app`
+Use the following to run a local Flask development server hosting the API: `docker run -p 8080:8080 --entrypoint python pcluster-lambda -m pcluster.api.flask_app`
 
 Then you can navigate to the following url to test the API: `http://0.0.0.0:8080/ui`
 Note that to enable swagger-ui you have to build the docker with `--build-arg PROFILE=dev`.
 
 This is particularly useful to ignore the AWS Lambda layer and directly hit the Flask application with plain HTTP requests.
 An even simpler way to do this which also offers live reloading of the API code, is to just ignore the Docker container
-and run a local Flask server on your host by executing `cd ../cli/src && python -m api.app`
+and run a local Flask server on your host by executing `cd ../cli/src && python -m pcluster.api.flask_app`
 
 ## Deploy the API test infrastructure with SAM cli (API Gateway + Lambda)
 The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality
