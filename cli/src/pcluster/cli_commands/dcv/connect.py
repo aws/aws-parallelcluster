@@ -15,8 +15,8 @@ import time
 import webbrowser
 
 from api.pcluster_api import PclusterApi
-from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.cli_commands.dcv.utils import DCV_CONNECT_SCRIPT
+from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.models.cluster import NodeType
 from pcluster.utils import error, get_region
 

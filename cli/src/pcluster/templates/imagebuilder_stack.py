@@ -39,8 +39,9 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.config.common import BaseTag, S3Bucket, S3FileType
+from pcluster.config.common import BaseTag
 from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
+from pcluster.models.s3_bucket import S3Bucket, S3FileType
 from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
 
 RESOURCE_NAME_PREFIX = "ParallelClusterImage"

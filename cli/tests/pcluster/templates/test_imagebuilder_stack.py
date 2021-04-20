@@ -17,8 +17,8 @@ from common.aws.aws_resources import ImageInfo
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from tests.common.dummy_aws_api import mock_aws_api
 
-from ..models.cluster_dummy_model import mock_bucket
-from ..models.imagebuilder_dummy_model import dummy_imagebuilder_bucket, imagebuilder_factory
+from tests.pcluster.config.dummy_imagebuilder_config import imagebuilder_factory
+from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, mock_bucket
 
 # TODO missing tests for the following configuration parameters:
 # UpdateOsAndReboot

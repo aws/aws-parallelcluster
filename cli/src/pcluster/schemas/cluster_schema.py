@@ -29,8 +29,6 @@ from marshmallow import (
     validates_schema,
 )
 
-from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.config.cluster_config import (
     AdditionalIamPolicy,
     AdditionalPackages,
@@ -79,6 +77,8 @@ from pcluster.config.cluster_config import (
     SlurmSettings,
     Ssh,
 )
+from pcluster.config.update_policy import UpdatePolicy
+from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.schemas.common_schema import BaseDevSettingsSchema, BaseSchema, TagSchema, get_field_validator
 from pcluster.validators.cluster_validators import FSX_MESSAGES
 

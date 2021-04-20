@@ -19,9 +19,9 @@ from logging.handlers import RotatingFileHandler
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-import pcluster.cli_commands.update as pcluster_update
 import pcluster.cli_commands.commands as pcluster
 import pcluster.cli_commands.configure.easyconfig as easyconfig
+import pcluster.cli_commands.update as pcluster_update
 import pcluster.utils as utils
 from pcluster.cli_commands.dcv.connect import dcv_connect
 from pcluster.validators.common import FailureLevel
