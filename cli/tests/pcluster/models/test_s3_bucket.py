@@ -11,53 +11,10 @@
 import os
 
 import pytest
-from assertpy import assert_that
 
 from common.boto3.common import AWSClientError
-from pcluster.config.common import Resource
 from tests.common.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.cluster_dummy_model import dummy_cluster_bucket, mock_bucket
-
-
-@pytest.mark.parametrize(
-    "value, default, expected_value, expected_implied",
-    [
-        ("abc", "default_value", "abc", False),
-        (None, "default_value", "default_value", True),
-        (5, 10, 5, False),
-        (None, 10, 10, True),
-    ],
-)
-def test_resource_params(value, default, expected_value, expected_implied):
-    class TestBaseBaseResource(Resource):
-        def __init__(self):
-            super().__init__()
-
-    class TestBaseResource(TestBaseBaseResource):
-        def __init__(self):
-            super().__init__()
-
-    class TestResource(TestBaseResource):
-        def __init__(self):
-            super().__init__()
-            self.test_attr = Resource.init_param(value=value, default=default)
-
-    test_resource = TestResource()
-    assert_that(test_resource.test_attr).is_equal_to(expected_value)
-    assert_that(test_resource.is_implied("test_attr")).is_equal_to(expected_implied)
-
-    param = test_resource.get_param("test_attr")
-    assert_that(param).is_not_none()
-    assert_that(param.value).is_equal_to(expected_value)
-    assert_that(param.default).is_equal_to(default)
-
-    test_resource.test_attr = "new_value"
-    assert_that(test_resource.is_implied("test_attr")).is_false()
-
-    param = test_resource.get_param("test_attr")
-    assert_that(param).is_not_none()
-    assert_that(param.value).is_equal_to("new_value")
-    assert_that(param.default).is_equal_to(default)
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
 
 @pytest.mark.parametrize(

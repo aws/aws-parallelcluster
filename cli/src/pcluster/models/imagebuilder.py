@@ -19,7 +19,6 @@ import re
 import pkg_resources
 
 from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import StackInfo
 from common.boto3.common import AWSClientError, ImageNotFoundError, StackNotFoundError
 from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.constants import (
@@ -29,7 +28,9 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.config.common import BaseTag, S3Bucket, S3BucketFactory
+from pcluster.config.common import BaseTag
+from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError, StackError
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.imagebuilder_stack import RESOURCE_NAME_PREFIX
@@ -81,84 +82,11 @@ class ImageError(Exception):
         super().__init__(message)
 
 
-class StackError(Exception):
-    """Represent stack errors."""
-
-    def __init__(self, message: str):
-        super().__init__(message)
-
-
 class NonExistingImageError(ImageError):
     """Represent an error if image does not exist."""
 
     def __init__(self, image_name):
         super().__init__(f"Image {image_name} does not exist.")
-
-
-class NonExistingStackError(StackError):
-    """Represent an error if stack doesn't exist."""
-
-    def __init__(self, stack_name):
-        super().__init__(f"ImageBuilder stack {stack_name} does not exist.")
-
-
-class ImageBuilderStack(StackInfo):
-    """Class representing a running stack associated to a building image."""
-
-    def __init__(self, stack_data: dict):
-        """Init stack info."""
-        super().__init__(stack_data)
-        try:
-            self._image_resource = AWSApi.instance().cfn.describe_stack_resource(self.name, "ParallelClusterImage")
-        except AWSClientError:
-            self._image_resource = None
-
-    @property
-    def s3_artifact_directory(self):
-        """Return the artifact directory of the bucket used to store image information."""
-        return self.get_tag(PCLUSTER_S3_IMAGE_DIR_TAG)
-
-    @property
-    def s3_bucket_name(self):
-        """Return the name of the bucket used to store image information."""
-        return self.get_tag(PCLUSTER_S3_BUCKET_TAG)
-
-    @property
-    def image_name(self):
-        """Return image name tag value."""
-        return self.get_tag(PCLUSTER_IMAGE_NAME_TAG)
-
-    @property
-    def version(self):
-        """Return the version of ParallelCluster used to create the stack."""
-        return self.get_tag(PCLUSTER_VERSION_TAG)
-
-    @property
-    def build_log(self):
-        """Return build log arn."""
-        return self.get_tag(PCLUSTER_IMAGE_BUILD_LOG_TAG)
-
-    @property
-    def image(self):
-        """Return created image by imagebuilder stack."""
-        try:
-            image_id = self.image_id
-            if image_id:
-                return AWSApi.instance().ec2.describe_image(image_id)
-            return None
-        except AWSClientError:
-            return None
-
-    @property
-    def image_id(self):
-        """Return output image id."""
-        if self._image_resource:
-            try:
-                image_build_version_arn = self._image_resource["StackResourceDetail"]["PhysicalResourceId"]
-                return AWSApi.instance().imagebuilder.get_image_id(image_build_version_arn)
-            except (AWSClientError, KeyError):
-                return None
-        return None
 
 
 class ImageBuilder:

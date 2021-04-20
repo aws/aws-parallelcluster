@@ -19,8 +19,8 @@ from common.boto3.common import AWSClientError
 from pcluster.config.imagebuilder_config import ImageBuilderExtraChefAttributes
 from pcluster.validators.common import FailureLevel
 from tests.common.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
-from tests.pcluster.models.test_cluster import _assert_validation_result
+from tests.pcluster.config.dummy_imagebuilder_config import imagebuilder_factory
+from tests.pcluster.config.test_common import assert_validation_result
 
 
 @pytest.mark.parametrize(
@@ -258,7 +258,7 @@ def _test_imagebuilder(
     for validation_failure, expected_failure_level, expected_failure_message in zip(
         validation_failures, expected_failure_levels, expected_failure_messages
     ):
-        _assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
+        assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
 
 
 def _test_image(resource, expected_failure_messages, expected_failure_levels):
@@ -267,7 +267,7 @@ def _test_image(resource, expected_failure_messages, expected_failure_levels):
     for validation_failure, expected_failure_level, expected_failure_message in zip(
         validation_failures, expected_failure_levels, expected_failure_messages
     ):
-        _assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
+        assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
 
 
 def _test_build(
@@ -291,7 +291,7 @@ def _test_build(
     for validation_failure, expected_failure_level, expected_failure_message in zip(
         validation_failures, expected_failure_levels, expected_failure_messages
     ):
-        _assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
+        assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
 
 
 def _test_dev_settings(
@@ -312,4 +312,4 @@ def _test_dev_settings(
     for validation_failure, expected_failure_level, expected_failure_message in zip(
         validation_failures, expected_failure_levels, expected_failure_messages
     ):
-        _assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
+        assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)

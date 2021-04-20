@@ -20,12 +20,6 @@ from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnTag, Construct, Fn, Stack
 
-from pcluster.constants import (
-    COOKBOOK_PACKAGES_VERSIONS,
-    CW_LOGS_RETENTION_DAYS_DEFAULT,
-    OS_MAPPING,
-    PCLUSTER_STACK_PREFIX,
-)
 from pcluster.config.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
@@ -34,7 +28,13 @@ from pcluster.config.cluster_config import (
     HeadNode,
     SharedStorageType,
 )
-from pcluster.config.common import S3Bucket
+from pcluster.constants import (
+    COOKBOOK_PACKAGES_VERSIONS,
+    CW_LOGS_RETENTION_DAYS_DEFAULT,
+    OS_MAPPING,
+    PCLUSTER_STACK_PREFIX,
+)
+from pcluster.models.s3_bucket import S3Bucket
 from pcluster.utils import get_installed_version
 
 

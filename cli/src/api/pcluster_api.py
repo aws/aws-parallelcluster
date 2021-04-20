@@ -26,7 +26,8 @@ from pcluster.models.cluster import (
     NodeType,
 )
 from pcluster.models.cluster_resources import ClusterInstance
-from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, ImageBuilderStack, StackError
+from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError
+from pcluster.models.imagebuilder_resources import ImageBuilderStack, StackError
 from pcluster.utils import get_installed_version, get_region
 from pcluster.validators.common import FailureLevel
 

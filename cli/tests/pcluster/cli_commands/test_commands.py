@@ -16,13 +16,8 @@ from assertpy import assert_that
 from common.boto3.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError, ClusterStack
 from tests.common.dummy_aws_api import mock_aws_api
-from tests.pcluster.models.cluster_dummy_model import (
-    dummy_awsbatch_cluster_config,
-    dummy_slurm_cluster_config,
-    mock_bucket,
-    mock_bucket_object_utils,
-    mock_bucket_utils,
-)
+from tests.pcluster.config.dummy_cluster_config import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
+from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
 from tests.pcluster.test_utils import dummy_cluster
 
 
@@ -207,7 +202,7 @@ def test_setup_bucket_with_resources_creation_failure(
         cluster = _mock_cluster(mocker, "slurm")
 
     # mock bucket object utils
-    mocker.patch("pcluster.config.common.S3Bucket.check_bucket_is_bootstrapped")
+    mocker.patch("pcluster.models.s3_bucket.S3Bucket.check_bucket_is_bootstrapped")
 
     # assert failures
     if provided_bucket_name:

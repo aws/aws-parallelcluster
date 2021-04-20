@@ -20,6 +20,7 @@ import pkg_resources
 
 from common.aws.aws_api import AWSApi
 from common.aws.aws_resources import InstanceTypeInfo
+from pcluster.config.common import BaseDevSettings, BaseTag, Resource
 from pcluster.constants import (
     CIDR_ALL_IPS,
     CW_DASHBOARD_ENABLED_DEFAULT,
@@ -32,7 +33,6 @@ from pcluster.constants import (
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
     MAX_STORAGE_COUNT,
 )
-from pcluster.config.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import get_partition, get_region
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,

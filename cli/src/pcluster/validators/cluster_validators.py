@@ -15,6 +15,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from common.aws.aws_api import AWSApi
+from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     PCLUSTER_NAME_MAX_LENGTH,
@@ -22,7 +23,6 @@ from pcluster.constants import (
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
 )
-from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.utils import get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
 

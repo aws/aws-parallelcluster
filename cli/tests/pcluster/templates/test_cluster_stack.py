@@ -14,12 +14,8 @@ import yaml
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from tests.common.dummy_aws_api import mock_aws_api
 
-from ..models.cluster_dummy_model import (
-    dummy_awsbatch_cluster_config,
-    dummy_cluster_bucket,
-    dummy_slurm_cluster_config,
-    mock_bucket,
-)
+from tests.pcluster.config.dummy_cluster_config import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
+from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
 
 def test_slurm_cluster_builder(mocker):
