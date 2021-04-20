@@ -157,7 +157,7 @@ def configure(args):  # noqa: C901
             number_of_compute_resources = int(
                 prompt(
                     f"Number of compute resources for {queue_name}",
-                    lambda x: str(x).isdigit() and int(x) >= 1,
+                    validator=lambda x: str(x).isdigit() and int(x) >= 1,
                     default_value=1,
                 )
             )
@@ -167,7 +167,7 @@ def configure(args):  # noqa: C901
             if scheduler != "awsbatch":
                 compute_instance_type = prompt(
                     f"Compute instance type for {compute_resource_name} in {queue_name}",
-                    lambda x: x in AWSApi.instance().ec2.list_instance_types(),
+                    validator=lambda x: x in AWSApi.instance().ec2.list_instance_types(),
                     default_value=default_instance_type,
                 )
             min_cluster_size = int(
@@ -180,7 +180,7 @@ def configure(args):  # noqa: C901
             max_cluster_size = int(
                 prompt(
                     "Maximum {0}".format(size_name),
-                    validator=lambda x: str(x).isdigit() and int(x) >= int(min_cluster_size),
+                    validator=lambda x: str(x).isdigit() and int(x) >= min_cluster_size,
                     default_value=DEFAULT_MAX_COUNT,
                 )
             )

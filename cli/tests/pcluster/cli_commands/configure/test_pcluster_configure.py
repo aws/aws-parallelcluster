@@ -743,7 +743,6 @@ def test_invalid_min_max_exception(mocker, temp_path_for_config, min_size, max_s
 
 @pytest.mark.parametrize("min_size, max_size", [("", ""), ("1", "2"), ("", "1"), ("4", "")])
 def test_valid_min_max(mocker, temp_path_for_config, min_size, max_size):
-
     assert_that(
         general_wrapper_for_prompt_testing(mocker, temp_path_for_config, min_size=min_size, max_size=max_size)
     ).is_true()
@@ -758,9 +757,7 @@ def test_invalid_key_exception(mocker, temp_path_for_config, key):
 
 def test_valid_key(mocker, temp_path_for_config):
     for i in range(1, 7):
-
         assert_that(general_wrapper_for_prompt_testing(mocker, temp_path_for_config, key="key" + str(i))).is_true()
-
         assert_that(general_wrapper_for_prompt_testing(mocker, temp_path_for_config, key=str(i))).is_true()
 
 
@@ -781,7 +778,6 @@ def test_valid_key(mocker, temp_path_for_config):
 def test_invalid_vpc(mocker, temp_path_for_config, vpc_id):
     # Look at _mock_list_vpcs and subnets
     with pytest.raises(StopIteration):
-
         general_wrapper_for_prompt_testing(mocker, temp_path_for_config, vpc_id=vpc_id)
 
 
@@ -795,7 +791,6 @@ def test_invalid_vpc(mocker, temp_path_for_config, vpc_id):
 )
 def test_invalid_subnet(mocker, temp_path_for_config, vpc_id, head_node_id, compute_id):
     with pytest.raises(StopIteration):
-
         assert_that(
             general_wrapper_for_prompt_testing(
                 mocker, temp_path_for_config, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id
@@ -809,7 +804,6 @@ def test_invalid_subnet(mocker, temp_path_for_config, vpc_id, head_node_id, comp
 )
 def test_valid_subnet(mocker, temp_path_for_config, vpc_id, head_node_id, compute_id):
     # valid subnets
-
     assert_that(
         general_wrapper_for_prompt_testing(
             mocker, temp_path_for_config, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id
