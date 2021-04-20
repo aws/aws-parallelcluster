@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import os
-import sys
 
 from setuptools import find_packages, setup
 
@@ -25,15 +24,12 @@ VERSION = "2.10.3"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "tabulate==0.8.5" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "tabulate>=0.8.2,<0.8.10",
+    "tabulate>=0.8.2,<0.8.10",
     "ipaddress>=1.0.22",
-    "PyYAML==5.2" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "PyYAML>=5.3.1",
-    "jinja2==2.10.1" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "jinja2>=2.11.0",
+    "PyYAML>=5.3.1",
+    "jinja2>=2.11.0",
 ]
 
-if sys.version_info[0] == 2:
-    REQUIRES.append("enum34>=1.1.6")
-    REQUIRES.append("configparser>=3.5.0,<=3.8.1")
 
 setup(
     name="aws-parallelcluster",
