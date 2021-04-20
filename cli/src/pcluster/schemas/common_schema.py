@@ -15,14 +15,14 @@
 #
 import copy
 import enum
+import json
 
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
-from common.utils import validate_json_format
-from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.config.cluster_config import BaseTag
 from pcluster.config.common import Cookbook
+from pcluster.config.update_policy import UpdatePolicy
+from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.utils import camelcase
 
 ALLOWED_VALUES = {
@@ -35,6 +35,15 @@ ALLOWED_VALUES = {
     "architectures": SUPPORTED_ARCHITECTURES,
     "volume_type": ["standard", "io1", "io2", "gp2", "st1", "sc1", "gp3"],
 }
+
+
+def validate_json_format(data):
+    """Validate the input data in json format."""
+    try:
+        json.loads(data)
+    except ValueError:
+        return False
+    return True
 
 
 def get_field_validator(field_name):

@@ -9,8 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common import imagebuilder_utils
-from common.aws.aws_api import AWSApi
+from pcluster import imagebuilder_utils
+from pcluster.aws.aws_api import AWSApi
 from pcluster.validators.common import FailureLevel, Validator
 
 

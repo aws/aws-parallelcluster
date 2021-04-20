@@ -13,18 +13,18 @@ import os
 import pytest
 from assertpy import assert_that
 
-from common.aws.aws_resources import InstanceTypeInfo
-from common.boto3.common import AWSClientError
-from common.boto3.ec2 import Ec2Client
+from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.common import AWSClientError
+from pcluster.aws.ec2 import Ec2Client
 from pcluster.config.cluster_config import AmiSearchFilters, Tag
 from pcluster.utils import get_installed_version
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()
 def boto3_stubber_path():
-    return "common.boto3.common.boto3"
+    return "pcluster.aws.common.boto3"
 
 
 @pytest.mark.parametrize(
@@ -97,7 +97,7 @@ def test_get_supported_architectures(mocker, instance_type, supported_architectu
     """Verify that get_supported_architectures_for_instance_type behaves as expected for various cases."""
     mock_aws_api(mocker)
     get_instance_types_info_patch = mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo({"ProcessorInfo": {"SupportedArchitectures": supported_architectures}}),
     )
     observed_architectures = Ec2Client().get_supported_architectures(instance_type)

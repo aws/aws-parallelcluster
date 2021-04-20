@@ -14,7 +14,7 @@ from abc import ABC
 import boto3
 from botocore.exceptions import ClientError
 
-from common.aws.aws_api import AWSApi
+from pcluster.aws.aws_api import AWSApi
 from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,

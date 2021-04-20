@@ -8,17 +8,18 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import pytest
+from assertpy import assert_that
 
-from common.boto3.common import AWSExceptionHandler, Boto3Client
+from pcluster.schemas.common_schema import validate_json_format
 
 
-class DynamodbClient(Boto3Client):
-    """Implement DynamoDB Boto3 client."""
-
-    def __init__(self):
-        super().__init__("dynamodb")
-
-    @AWSExceptionHandler.handle_client_exception
-    def get_item(self, table_name, key_name):
-        """Return item from a table."""
-        return self._client.get_item(TableName=table_name, ConsistentRead=True, Key={"Id": key_name})
+@pytest.mark.parametrize(
+    "data, expected_value",
+    [
+        ('{"cluster": {"scheduler_slots": "cores"}}', True),
+        ('{"cluster"}: {"scheduler_slots": "cores"}}', False),
+    ],
+)
+def test_validate_json_format(data, expected_value):
+    assert_that(validate_json_format(data)).is_equal_to(expected_value)

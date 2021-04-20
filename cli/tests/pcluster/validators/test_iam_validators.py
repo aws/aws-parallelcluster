@@ -12,13 +12,13 @@
 import pytest
 from assertpy import assert_that
 
-from common.boto3.common import AWSClientError
+from pcluster.aws.common import AWSClientError
 from pcluster.validators.iam_validators import (
     InstanceProfileValidator,
     RoleValidator,
     _get_resource_name_from_resource_arn,
 )
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -41,7 +41,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
 )
 def test_role_validator(mocker, role_arn, side_effect, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.iam.IamClient.get_role", side_effect=side_effect)
+    mocker.patch("pcluster.aws.iam.IamClient.get_role", side_effect=side_effect)
 
     actual_failures = RoleValidator().execute(role_arn=role_arn)
     assert_failure_messages(actual_failures, expected_message)
@@ -70,7 +70,7 @@ def test_role_validator(mocker, role_arn, side_effect, expected_message):
 )
 def test_instance_profile_validator(mocker, instance_profile_arn, side_effect, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.iam.IamClient.get_instance_profile", side_effect=side_effect)
+    mocker.patch("pcluster.aws.iam.IamClient.get_instance_profile", side_effect=side_effect)
 
     actual_failures = InstanceProfileValidator().execute(instance_profile_arn=instance_profile_arn)
     assert_failure_messages(actual_failures, expected_message)

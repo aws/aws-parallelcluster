@@ -37,7 +37,7 @@ from aws_cdk.core import (
     Stack,
 )
 
-from common.aws.aws_api import AWSApi
+from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     BaseQueue,
     HeadNode,

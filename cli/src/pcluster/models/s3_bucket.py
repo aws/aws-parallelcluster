@@ -20,8 +20,8 @@ from enum import Enum
 
 import yaml
 
-from common.aws.aws_api import AWSApi
-from common.boto3.common import AWSClientError
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
 from pcluster.utils import get_partition, get_region, zip_dir
 

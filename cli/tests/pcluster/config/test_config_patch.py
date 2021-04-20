@@ -14,9 +14,9 @@ import shutil
 import pytest
 from assertpy import assert_that
 
-from common.utils import load_yaml_dict
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
+from pcluster.utils import load_yaml_dict
 from tests.pcluster.test_utils import dummy_cluster
 
 default_cluster_params = {

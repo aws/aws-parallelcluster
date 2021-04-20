@@ -12,8 +12,8 @@ import os
 
 import pytest
 
-from common.boto3.common import AWSClientError
-from tests.common.dummy_aws_api import mock_aws_api
+from pcluster.aws.common import AWSClientError
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
 
@@ -35,7 +35,7 @@ def test_create_s3_bucket(region, create_error, mocker):
         expected_params["CreateBucketConfiguration"] = {"LocationConstraint": region}
 
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.s3.S3Client.create_bucket", side_effect=create_error)
+    mocker.patch("pcluster.aws.s3.S3Client.create_bucket", side_effect=create_error)
 
     mock_bucket(mocker)
     bucket = dummy_cluster_bucket(bucket_name=bucket_name)
@@ -59,9 +59,9 @@ def test_configure_s3_bucket(mocker, put_bucket_versioning_error, put_bucket_enc
     mock_bucket(mocker)
     bucket = dummy_cluster_bucket()
 
-    mocker.patch("common.boto3.s3.S3Client.put_bucket_versioning", side_effect=put_bucket_versioning_error)
-    mocker.patch("common.boto3.s3.S3Client.put_bucket_encryption", side_effect=put_bucket_encryption_error)
-    mocker.patch("common.boto3.s3.S3Client.put_bucket_policy", side_effect=put_bucket_policy_error)
+    mocker.patch("pcluster.aws.s3.S3Client.put_bucket_versioning", side_effect=put_bucket_versioning_error)
+    mocker.patch("pcluster.aws.s3.S3Client.put_bucket_encryption", side_effect=put_bucket_encryption_error)
+    mocker.patch("pcluster.aws.s3.S3Client.put_bucket_policy", side_effect=put_bucket_policy_error)
 
     if put_bucket_versioning_error or put_bucket_encryption_error or put_bucket_policy_error:
         with pytest.raises(AWSClientError, match="An error occurred"):

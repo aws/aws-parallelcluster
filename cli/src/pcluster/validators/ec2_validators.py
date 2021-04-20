@@ -8,10 +8,10 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from common import imagebuilder_utils
-from common.aws.aws_api import AWSApi
-from common.boto3.common import AWSClientError
-from common.boto3.iam import IamClient
+from pcluster import imagebuilder_utils
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
+from pcluster.aws.iam import IamClient
 from pcluster.utils import policy_name_to_arn
 from pcluster.validators.common import FailureLevel, Validator
 

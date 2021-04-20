@@ -14,11 +14,11 @@ import pytest
 import yaml
 from assertpy import assert_that
 
-from common.utils import load_yaml_dict
 from pcluster.config.cluster_config import SharedStorageType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from tests.common.dummy_aws_api import mock_aws_api
+from pcluster.utils import load_yaml_dict
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
 

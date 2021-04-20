@@ -13,8 +13,8 @@ from enum import Enum
 
 import yaml
 
-from common.aws.aws_api import AWSApi
-from common.utils import get_url_scheme
+from pcluster.aws.aws_api import AWSApi
+from pcluster.utils import get_url_scheme
 
 ROOT_VOLUME_TYPE = "gp2"
 PCLUSTER_RESERVED_VOLUME_SIZE = 15
@@ -31,9 +31,18 @@ def get_ami_id(parent_image):
     return ami_id
 
 
-def get_info_for_ami_from_arn(image_arn):
-    """Get image resources returned by imagebuilder's get_image API for the given arn of AMI."""
-    return AWSApi.instance().imagebuilder.get_image_resources(image_arn)
+def get_resources_directory():
+    """Get imagebuilder resources directory."""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(current_dir, "..", "pcluster", "resources")
+
+
+def search_tag(resource_info, tag_key):
+    """Search tag in tag list by given tag key."""
+    return next(
+        (tag["Value"] for tag in resource_info.get("Tags", []) if tag["Key"] == tag_key),
+        None,
+    )
 
 
 def wrap_script_to_component(url):
@@ -41,9 +50,7 @@ def wrap_script_to_component(url):
     scheme = get_url_scheme(url)
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
-    custom_component_script_template_file = os.path.join(
-        current_dir, "..", "pcluster", "resources", "imagebuilder", "custom_script.yaml"
-    )
+    custom_component_script_template_file = os.path.join(current_dir, "resources", "imagebuilder", "custom_script.yaml")
 
     with open(custom_component_script_template_file, "r") as file:
         custom_component_script_template = yaml.load(file, Loader=yaml.SafeLoader)
@@ -60,17 +67,3 @@ def _generate_action(action_name, commands):
     """Generate action in imagebuilder components."""
     action = {"name": action_name, "action": "ExecuteBash", "inputs": {"commands": [commands]}}
     return action
-
-
-def get_resources_directory():
-    """Get imagebuilder resources directory."""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(current_dir, "..", "pcluster", "resources")
-
-
-def search_tag(resource_info, tag_key):
-    """Search tag in tag list by given tag key."""
-    return next(
-        (tag["Value"] for tag in resource_info.get("Tags", []) if tag["Key"] == tag_key),
-        None,
-    )

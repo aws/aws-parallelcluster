@@ -1,4 +1,4 @@
-from common.boto3.common import AWSExceptionHandler, Boto3Client
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client
 
 
 class ImageBuilderClient(Boto3Client):

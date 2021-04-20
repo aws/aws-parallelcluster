@@ -14,11 +14,11 @@ from urllib.error import URLError
 import pytest
 from assertpy import assert_that
 
-from common.aws.aws_resources import ImageInfo
-from common.boto3.common import AWSClientError
+from pcluster.aws.aws_resources import ImageInfo
+from pcluster.aws.common import AWSClientError
 from pcluster.config.imagebuilder_config import ImageBuilderExtraChefAttributes
 from pcluster.validators.common import FailureLevel
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_imagebuilder_config import imagebuilder_factory
 from tests.pcluster.config.test_common import assert_validation_result
 
@@ -242,16 +242,16 @@ def _test_imagebuilder(
     expected_failure_messages,
     expected_failure_levels,
 ):
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=supported_architecture)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_supported_architectures", return_value=supported_architecture)
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image", return_value=ImageInfo(ami_response), side_effect=ami_side_effect
+        "pcluster.aws.ec2.Ec2Client.describe_image", return_value=ImageInfo(ami_response), side_effect=ami_side_effect
     )
-    mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=instance_response)
-    mocker.patch("common.boto3.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=instance_response)
+    mocker.patch("pcluster.aws.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)
     mocker.patch("pcluster.validators.s3_validators.urlopen", side_effect=url_open_side_effect)
-    mocker.patch("common.boto3.kms.KmsClient.describe_key", return_value=None)
+    mocker.patch("pcluster.aws.kms.KmsClient.describe_key", return_value=None)
 
     imagebuilder = imagebuilder_factory(resource).get("imagebuilder")
     validation_failures = imagebuilder.validate()
@@ -280,11 +280,11 @@ def _test_build(
     expected_failure_messages,
     expected_failure_levels,
 ):
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=supported_architecture)
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=ami_response, side_effect=ami_side_effect)
-    mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=instance_response)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image", return_value=ami_response, side_effect=ami_side_effect)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=instance_response)
 
     build = imagebuilder_factory(resource).get("build")
     validation_failures = build.validate()
@@ -304,7 +304,7 @@ def _test_dev_settings(
     expected_failure_levels,
 ):
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)
+    mocker.patch("pcluster.aws.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)
     mocker.patch("pcluster.validators.s3_validators.urlopen", side_effect=url_open_side_effect)
 
     dev_settings = imagebuilder_factory(resource).get("dev_settings")

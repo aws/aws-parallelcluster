@@ -14,7 +14,7 @@ import re
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 
-from common.aws.aws_api import AWSApi
+from pcluster.aws.aws_api import AWSApi
 from pcluster.utils import get_region
 from pcluster.validators.common import FailureLevel, Validator
 

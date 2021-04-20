@@ -8,18 +8,18 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from common.boto3.batch import BatchClient
-from common.boto3.cfn import CfnClient
-from common.boto3.dynamodb import DynamodbClient
-from common.boto3.ec2 import Ec2Client
-from common.boto3.efs import EfsClient
-from common.boto3.fsx import FSxClient
-from common.boto3.iam import IamClient
-from common.boto3.imagebuilder import ImageBuilderClient
-from common.boto3.kms import KmsClient
-from common.boto3.s3 import S3Client
-from common.boto3.s3_resource import S3Resource
-from common.boto3.sts import StsClient
+from pcluster.aws.batch import BatchClient
+from pcluster.aws.cfn import CfnClient
+from pcluster.aws.dynamodb import DynamodbClient
+from pcluster.aws.ec2 import Ec2Client
+from pcluster.aws.efs import EfsClient
+from pcluster.aws.fsx import FSxClient
+from pcluster.aws.iam import IamClient
+from pcluster.aws.imagebuilder import ImageBuilderClient
+from pcluster.aws.kms import KmsClient
+from pcluster.aws.s3 import S3Client
+from pcluster.aws.s3_resource import S3Resource
+from pcluster.aws.sts import StsClient
 
 
 class AWSApi:

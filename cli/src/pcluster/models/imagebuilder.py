@@ -18,9 +18,9 @@ import re
 
 import pkg_resources
 
-from common.aws.aws_api import AWSApi
-from common.boto3.common import AWSClientError, ImageNotFoundError, StackNotFoundError
-from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError
+from pcluster.config.common import BaseTag
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
@@ -28,7 +28,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.config.common import BaseTag
+from pcluster.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError, StackError
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema

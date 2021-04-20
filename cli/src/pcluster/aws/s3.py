@@ -10,7 +10,7 @@
 # limitations under the License.
 from botocore.exceptions import ClientError
 
-from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
+from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client
 
 
 class S3Client(Boto3Client):

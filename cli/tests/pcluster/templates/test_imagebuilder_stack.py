@@ -13,10 +13,10 @@ import pytest
 from assertpy import assert_that
 
 import pcluster.utils as utils
-from common.aws.aws_resources import ImageInfo
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from tests.common.dummy_aws_api import mock_aws_api
-
+from pcluster.templates.imagebuilder_stack import parse_bucket_url
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_imagebuilder_config import imagebuilder_factory
 from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, mock_bucket
 
@@ -451,9 +451,9 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
 )
 def test_imagebuilder_parameters_and_resources(mocker, resource, response, expected_template):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -632,9 +632,9 @@ def test_imagebuilder_instance_role(
     expected_instance_profile_in_infrastructure_configuration,
 ):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1068,9 +1068,9 @@ def test_imagebuilder_lambda_execution_role(
     expected_execution_role_in_lambda_function,
 ):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1212,9 +1212,9 @@ def test_imagebuilder_lambda_execution_role(
 )
 def test_imagebuilder_components(mocker, resource, response, expected_components):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1394,9 +1394,9 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
 )
 def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribution_configuration):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1516,9 +1516,9 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
 )
 def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuilder_resource_tags, expected_role_tags):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1595,9 +1595,9 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
 )
 def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilder_subnet_id):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1664,9 +1664,9 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
 )
 def test_imagebuilder_instance_type(mocker, resource, response, expected_imagebuilder_instance_type):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1733,9 +1733,9 @@ def test_imagebuilder_instance_type(mocker, resource, response, expected_imagebu
 )
 def test_imagebuilder_parent_image(mocker, resource, response, expected_imagebuilder_parent_image):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -1803,9 +1803,9 @@ def test_imagebuilder_parent_image(mocker, resource, response, expected_imagebui
 )
 def test_imagebuilder_security_group_ids(mocker, resource, response, expected_imagebuilder_security_group_ids):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     # mock bucket initialization parameters
@@ -2208,9 +2208,9 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
 )
 def test_imagebuilder_distribution_configuraton(mocker, resource, response, expected_distributions):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     mocker.patch(
@@ -2344,9 +2344,9 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
 )
 def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volume):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
     mocker.patch(
@@ -2368,3 +2368,24 @@ def test_imagebuilder_root_volume(mocker, resource, response, expected_root_volu
         .get("BlockDeviceMappings")[0]
         .get("Ebs")
     ).is_equal_to(expected_root_volume)
+
+
+@pytest.mark.parametrize(
+    "url, expect_output",
+    [
+        (
+            "s3://test/post_install.sh",
+            {"bucket_name": "test", "object_key": "post_install.sh", "object_name": "post_install.sh"},
+        ),
+        (
+            "s3://test/templates/3.0/post_install.sh",
+            {
+                "bucket_name": "test",
+                "object_key": "templates/3.0/post_install.sh",
+                "object_name": "post_install.sh",
+            },
+        ),
+    ],
+)
+def test_parse_bucket_url(url, expect_output):
+    assert_that(parse_bucket_url(url)).is_equal_to(expect_output)

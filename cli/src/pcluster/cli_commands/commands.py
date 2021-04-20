@@ -25,9 +25,9 @@ from tabulate import tabulate
 
 import pcluster.utils as utils
 from api.pcluster_api import ApiFailure, ClusterInfo, ImageBuilderInfo, PclusterApi
-from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.models.cluster import NodeType
+from pcluster.utils import load_yaml_dict
 
 LOGGER = logging.getLogger(__name__)
 

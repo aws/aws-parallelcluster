@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 import functools
 import itertools
 import json
@@ -23,9 +22,11 @@ import urllib.request
 import zipfile
 from io import BytesIO
 from shlex import quote
+from urllib.parse import urlparse
 
 import boto3
 import pkg_resources
+import yaml
 from botocore.exceptions import ClientError
 from pkg_resources import packaging
 
@@ -408,3 +409,17 @@ def grouper(iterable, n):
 
 def join_shell_args(args_list):
     return " ".join(quote(arg) for arg in args_list)
+
+
+def get_url_scheme(url):
+    """Parse url to get scheme."""
+    return urlparse(url).scheme
+
+
+def load_yaml_dict(file_path):
+    """Read the content of a yaml file."""
+    with open(file_path) as conf_file:
+        yaml_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
+
+    # TODO use from cfn_flip import load_yaml
+    return yaml_content

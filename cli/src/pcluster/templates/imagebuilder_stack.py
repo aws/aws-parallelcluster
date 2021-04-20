@@ -14,8 +14,11 @@
 #
 import copy
 import os
+import re
 from typing import List
+from urllib.error import URLError
 
+import yaml
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_imagebuilder as imagebuilder
 from aws_cdk import aws_lambda as awslambda
@@ -23,15 +26,10 @@ from aws_cdk import aws_sns as sns
 from aws_cdk.core import CfnParameter, CfnTag, Construct, Fn, Stack
 
 import pcluster.utils as utils
-from common import imagebuilder_utils
-from common.aws.aws_api import AWSApi
-from common.imagebuilder_utils import (
-    AMI_NAME_REQUIRED_SUBSTRING,
-    PCLUSTER_RESERVED_VOLUME_SIZE,
-    ROOT_VOLUME_TYPE,
-    InstanceRole,
-)
-from common.utils import get_url_scheme, load_yaml, parse_bucket_url
+from pcluster import imagebuilder_utils
+from pcluster.aws.aws_api import AWSApi
+from pcluster.config.common import BaseTag
+from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
@@ -39,8 +37,13 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.config.common import BaseTag
-from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
+from pcluster.imagebuilder_utils import (
+    AMI_NAME_REQUIRED_SUBSTRING,
+    PCLUSTER_RESERVED_VOLUME_SIZE,
+    ROOT_VOLUME_TYPE,
+    InstanceRole,
+    wrap_script_to_component,
+)
 from pcluster.models.s3_bucket import S3Bucket, S3FileType
 from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
 
@@ -336,7 +339,7 @@ class ImageBuilderCdkStack(Stack):
                 tags=build_tags,
                 description="Update OS and Reboot",
                 platform="Linux",
-                data=Fn.sub(load_yaml(imagebuilder_resources_dir, "update_and_reboot.yaml")),
+                data=Fn.sub(_load_yaml(imagebuilder_resources_dir, "update_and_reboot.yaml")),
             )
             components.append(
                 imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref("UpdateOSComponent"))
@@ -370,7 +373,7 @@ class ImageBuilderCdkStack(Stack):
                 tags=build_tags,
                 description="Install ParallelCluster software stack",
                 platform="Linux",
-                data=Fn.sub(load_yaml(imagebuilder_resources_dir, "parallelcluster.yaml")),
+                data=Fn.sub(_load_yaml(imagebuilder_resources_dir, "parallelcluster.yaml")),
             )
             components.append(
                 imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
@@ -403,7 +406,7 @@ class ImageBuilderCdkStack(Stack):
             tags=build_tags,
             description="Tag ParallelCluster AMI",
             platform="Linux",
-            data=load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
+            data=_load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
         )
         components.append(
             imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref("TagComponent"))
@@ -632,7 +635,7 @@ class ImageBuilderCdkStack(Stack):
         if self.config.build.components:
             for custom_component in self.config.build.components:
                 # Check custom component is script, and the url is S3 url
-                if custom_component.type == "script" and get_url_scheme(custom_component.value) == "s3":
+                if custom_component.type == "script" and utils.get_url_scheme(custom_component.value) == "s3":
                     bucket_info = parse_bucket_url(custom_component.value)
                     bucket_name = bucket_info.get("bucket_name")
                     object_key = bucket_info.get("object_key")
@@ -730,7 +733,7 @@ class ImageBuilderCdkStack(Stack):
                     description="This component is custom component for script, script name is {0}, script url is "
                     "{1}".format(component_script_name, custom_component.value),
                     platform="Linux",
-                    data=imagebuilder_utils.wrap_script_to_component(custom_component.value),
+                    data=wrap_script_to_component(custom_component.value),
                 )
                 components.append(
                     imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref(component_id))
@@ -793,3 +796,26 @@ class ImageBuilderCdkStack(Stack):
                 resources=resources,
             )
         )
+
+
+def parse_bucket_url(url):
+    """
+    Parse s3 url to get bucket name and object name.
+
+    input: s3://test/templates/3.0/post_install.sh
+    output: {"bucket_name": "test", "object_key": "templates/3.0/post_install.sh", "object_name": "post_install.sh"}
+    """
+    match = re.match(r"s3://(.*?)/(.*)", url)
+    if match:
+        bucket_name = match.group(1)
+        object_key = match.group(2)
+        object_name = object_key.split("/")[-1]
+    else:
+        raise URLError("Invalid s3 url: {0}".format(url))
+
+    return {"bucket_name": bucket_name, "object_key": object_key, "object_name": object_name}
+
+
+def _load_yaml(source_dir, file_name):
+    """Get string data from yaml file."""
+    return yaml.dump(utils.load_yaml_dict(os.path.join(source_dir, file_name)))

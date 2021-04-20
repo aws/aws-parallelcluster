@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common.boto3.common import AWSExceptionHandler, Boto3Client
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client
 
 
 class BatchClient(Boto3Client):

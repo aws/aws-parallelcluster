@@ -10,17 +10,17 @@
 # limitations under the License.
 import os
 
-from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import InstanceTypeInfo
-from common.boto3.cfn import CfnClient
-from common.boto3.ec2 import Ec2Client
-from common.boto3.fsx import FSxClient
-from common.boto3.iam import IamClient
-from common.boto3.imagebuilder import ImageBuilderClient
-from common.boto3.kms import KmsClient
-from common.boto3.s3 import S3Client
-from common.boto3.s3_resource import S3Resource
-from common.boto3.sts import StsClient
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.cfn import CfnClient
+from pcluster.aws.ec2 import Ec2Client
+from pcluster.aws.fsx import FSxClient
+from pcluster.aws.iam import IamClient
+from pcluster.aws.imagebuilder import ImageBuilderClient
+from pcluster.aws.kms import KmsClient
+from pcluster.aws.s3 import S3Client
+from pcluster.aws.s3_resource import S3Resource
+from pcluster.aws.sts import StsClient
 
 
 class _DummyInstanceTypeInfo(InstanceTypeInfo):
@@ -186,8 +186,8 @@ class _DummyIamClient(IamClient):
 
 def mock_aws_api(mocker, mock_instance_type_info=True):
     """Mock AWS Api."""
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
+    mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=_DummyAWSApi())
     if mock_instance_type_info:
         mocker.patch(
-            "common.boto3.ec2.Ec2Client.get_instance_type_info", return_value=_DummyInstanceTypeInfo("t2.micro")
+            "pcluster.aws.ec2.Ec2Client.get_instance_type_info", return_value=_DummyInstanceTypeInfo("t2.micro")
         )
