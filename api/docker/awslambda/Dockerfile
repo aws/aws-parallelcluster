@@ -26,4 +26,4 @@ ENV PROFILE=${PROFILE}
 # Install additional dependencies to start the SwaggerUI in dev mode
 RUN if [ "${PROFILE}" = "dev" ]; then python -m pip install connexion[swagger-ui]; fi
 
-CMD ["api.awslambda.entrypoint.lambda_handler"]
+CMD ["pcluster.api.awslambda.entrypoint.lambda_handler"]

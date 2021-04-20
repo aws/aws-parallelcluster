@@ -15,7 +15,7 @@ echo "Then you can use the following to send requests to the local endpoint"
 echo "  curl -XPOST \"http://localhost:9000/2015-03-31/functions/function/invocations\" -d @${SCRIPT_DIR}/test-events/event.json"
 echo
 echo "Use the following to run a local Flask development server hosting the API"
-echo "  docker run --entrypoint python pcluster-lambda -m api.flask_app"
+echo "  docker run -p 8080:8080 --entrypoint python pcluster-lambda -m pcluster.api.flask_app"
 echo "Then you can navigate to the following url to test the API: http://0.0.0.0:8080/ui"
 echo "Note that to enable swagger-ui you have to build the docker with '--build-arg PROFILE=dev'"
 echo

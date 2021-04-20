@@ -18,8 +18,8 @@ ignore =
 per-file-ignores =
     tests/*: D101, D102
     ../tests/integration-tests/*: D202, D205, D400, D401
-    src/api/models/*: D101, D202, D205, D400, D401, D403
-    src/api/awslambda/serverless_wsgi.py: D205, D400
+    src/pcluster/api/models/*: D101, D202, D205, D400, D401, D403
+    src/pcluster/api/awslambda/serverless_wsgi.py: D205, D400
 exclude =
     .tox,
     .git,
