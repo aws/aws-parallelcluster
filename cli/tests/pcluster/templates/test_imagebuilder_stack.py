@@ -504,6 +504,7 @@ def _test_resources(generated_resources, expected_resources):
             },
             {
                 "Type": "AWS::IAM::Role",
+                "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {
                     "RoleName": "Pcluster-InstanceRole",
                     "AssumeRolePolicyDocument": {
@@ -557,6 +558,7 @@ def _test_resources(generated_resources, expected_resources):
             },
             {
                 "Type": "AWS::IAM::InstanceProfile",
+                "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {"Roles": [{"Ref": "InstanceRole"}], "Path": "/ParallelClusterImage/"},
             },
             {"Ref": "InstanceProfile"},
@@ -587,6 +589,7 @@ def _test_resources(generated_resources, expected_resources):
             None,
             {
                 "Type": "AWS::IAM::InstanceProfile",
+                "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {
                     "Roles": ["arn:aws:iam::xxxxxxxxxxxx:role/test-InstanceRole"],
                     "Path": "/ParallelClusterImage/",
