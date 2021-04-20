@@ -80,7 +80,7 @@ class ClusterInstance(InstanceInfo):
     def os(self) -> str:
         """Return os of the instance."""
         os = None
-        attributes_tag = self._get_tag("aws-parallelcluster-attributes")
+        attributes_tag = self._get_tag("parallelcluster:attributes")
         if attributes_tag:
             # tag is in the form "{BaseOS}, {Scheduler}, {Version}, {Architecture}"
             os = attributes_tag.split(",")[0].strip()
@@ -89,7 +89,7 @@ class ClusterInstance(InstanceInfo):
     @property
     def node_type(self) -> str:
         """Return os of the instance."""
-        return self._get_tag("aws-parallelcluster-node-type")
+        return self._get_tag("parallelcluster:node-type")
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)

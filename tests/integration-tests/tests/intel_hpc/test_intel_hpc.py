@@ -47,7 +47,7 @@ def _test_intel_instance_tags(cluster_instances, region):
             .describe_tags(
                 Filters=[
                     {
-                        "Name": "tag:aws-parallelcluster-intel-hpc",
+                        "Name": "tag:parallelcluster:intel-hpc",
                         "Values": [
                             "enable_intel_hpc_platform=true",
                         ],

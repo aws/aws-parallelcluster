@@ -168,17 +168,17 @@ def get_default_instance_tags(
         "Name": node_type,
         "ClusterName": cluster_name(stack_name),
         "Application": stack_name,
-        "aws-parallelcluster-node-type": node_type,
-        "aws-parallelcluster-attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
+        "parallelcluster:node-type": node_type,
+        "parallelcluster:attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
             BaseOS=config.image.os,
             Scheduler=config.scheduling.scheduler,
             Version=get_installed_version(),
             Architecture=node.architecture if hasattr(node, "architecture") else "NONE",
         ),
-        "aws-parallelcluster-networking": "EFA={0}".format(
+        "parallelcluster:networking": "EFA={0}".format(
             "true" if hasattr(node, "efa") and node.efa and node.efa.enabled else "NONE"
         ),
-        "aws-parallelcluster-filesystem": "efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
+        "parallelcluster:filesystem": "efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
             efs=len(shared_storage_ids[SharedStorageType.EFS]),
             multiebs=len(shared_storage_ids[SharedStorageType.EBS]),
             raid=len(shared_storage_ids[SharedStorageType.RAID]),
@@ -186,7 +186,7 @@ def get_default_instance_tags(
         ),
     }
     if config.is_intel_hpc_platform_enabled:
-        tags["aws-parallelcluster-intel-hpc"] = "enable_intel_hpc_platform=true"
+        tags["parallelcluster:intel-hpc"] = "enable_intel_hpc_platform=true"
     return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
 
 
@@ -195,7 +195,7 @@ def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = Fa
     tags = {
         "ClusterName": cluster_name(stack_name),
         "Application": stack_name,
-        "aws-parallelcluster-node-type": node_type,
+        "parallelcluster:node-type": node_type,
     }
     return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
 

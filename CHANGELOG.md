@@ -41,6 +41,7 @@ per cluster.
 - Add support for associating an existing Elastic IP to the head node.
 - Encrypt root EBS volumes and shared EBS volumes by default. 
   Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
+- Change tags prefix from `aws-parallelcluster-` to `parallelcluster:`.
 
 2.x.x
 ------

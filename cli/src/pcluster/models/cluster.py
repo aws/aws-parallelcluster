@@ -473,7 +473,7 @@ class Cluster:
         return [
             {"Name": "tag:Application", "Values": [self.stack_name]},
             {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
-            {"Name": "tag:aws-parallelcluster-node-type", "Values": [node_type.value]},
+            {"Name": "tag:parallelcluster:node-type", "Values": [node_type.value]},
         ]
 
     def _describe_instances(self, node_type: NodeType):
