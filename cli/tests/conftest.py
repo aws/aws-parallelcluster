@@ -184,5 +184,5 @@ def pcluster_config_reader(test_datadir):
 @pytest.fixture
 def aws_api_mock(mocker):
     mocked_aws_api = mocker.MagicMock(autospec=True)
-    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=mocked_aws_api)
+    mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=mocked_aws_api)
     return mocked_aws_api

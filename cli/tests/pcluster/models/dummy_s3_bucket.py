@@ -43,9 +43,9 @@ def mock_bucket(
     mocker,
 ):
     """Mock cluster bucket initialization."""
-    mocker.patch("pcluster.config.common.get_partition", return_value="fake_partition")
-    mocker.patch("pcluster.config.common.get_region", return_value="fake-region")
-    mocker.patch("common.boto3.sts.StsClient.get_account_id", return_value="fake-id")
+    mocker.patch("pcluster.models.s3_bucket.get_partition", return_value="fake_partition")
+    mocker.patch("pcluster.models.s3_bucket.get_region", return_value="fake-region")
+    mocker.patch("pcluster.aws.sts.StsClient.get_account_id", return_value="fake-id")
 
 
 def mock_bucket_utils(

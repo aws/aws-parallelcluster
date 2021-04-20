@@ -15,8 +15,8 @@
 import pytest
 from assertpy import assert_that
 
-from common.boto3.common import ImageNotFoundError, StackNotFoundError
-from tests.common.dummy_aws_api import _DummyAWSApi, mock_aws_api
+from pcluster.aws.common import ImageNotFoundError, StackNotFoundError
+from tests.pcluster.aws.dummy_aws_api import _DummyAWSApi, mock_aws_api
 
 FAKE_STACK_NAME = "parallelcluster-name"
 FAKE_IMAGE_ID = "ami-1234567"
@@ -36,7 +36,7 @@ def test_stack_exists(mocker, response, is_error):
     """Verify that CfnClient.stack_exists behaves as expected."""
     should_exist = not is_error
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.cfn.CfnClient.describe_stack", side_effect=response)
+    mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=response)
     assert_that(_DummyAWSApi().instance().cfn.stack_exists(FAKE_STACK_NAME)).is_equal_to(should_exist)
 
 
@@ -54,5 +54,5 @@ def test_image_exists(mocker, response, is_error):
     """Verify that EC2Client.image_exists behaves as expected."""
     should_exist = not is_error
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.describe_images", side_effect=response)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_images", side_effect=response)
     assert_that(_DummyAWSApi().instance().ec2.image_exists(FAKE_IMAGE_ID)).is_equal_to(should_exist)

@@ -25,7 +25,6 @@ from collections import OrderedDict
 import argparse
 import boto3
 from botocore.exceptions import ClientError
-
 from common import PARTITION_TO_MAIN_REGION, PARTITIONS
 
 DISTROS = OrderedDict(

@@ -12,9 +12,9 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import StackInfo
-from common.boto3.common import AWSClientError
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import StackInfo
+from pcluster.aws.common import AWSClientError
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_NAME_TAG,

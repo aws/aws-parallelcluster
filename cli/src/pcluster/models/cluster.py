@@ -22,8 +22,8 @@ import pkg_resources
 import yaml
 from marshmallow import ValidationError
 
-from common.aws.aws_api import AWSApi
-from common.boto3.common import AWSClientError, StackNotFoundError
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.config_patch import ConfigPatch

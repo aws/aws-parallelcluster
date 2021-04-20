@@ -6,11 +6,11 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
-from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.models.cluster import Cluster, ClusterStack
 from pcluster.utils import Cache
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster-name"
@@ -369,7 +369,7 @@ def test_init_from_instance_type(mocker, caplog):
     mock_aws_api(mocker, mock_instance_type_info=False)
 
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "c4.xlarge",
@@ -389,7 +389,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(c4_instance_info.is_efa_supported()).is_equal_to(False)
 
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "g4dn.metal",
@@ -410,7 +410,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(g4dn_instance_info.is_efa_supported()).is_equal_to(True)
 
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "g4ad.16xlarge",
@@ -429,3 +429,17 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(g4ad_instance_info.vcpus_count()).is_equal_to(64)
     assert_that(g4ad_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(g4ad_instance_info.is_efa_supported()).is_equal_to(False)
+
+
+@pytest.mark.parametrize(
+    "url, expect_output",
+    [
+        ("https://test.s3.cn-north-1.amazonaws.com.cn/post_install.sh", "https"),
+        (
+            "s3://test/post_install.sh",
+            "s3",
+        ),
+    ],
+)
+def test_get_url_scheme(url, expect_output):
+    assert_that(utils.get_url_scheme(url)).is_equal_to(expect_output)

@@ -8,8 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from common.boto3.common import AWSExceptionHandler, Boto3Client
-from common.boto3.ec2 import Ec2Client
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client
+from pcluster.aws.ec2 import Ec2Client
 
 
 class EfsClient(Boto3Client):

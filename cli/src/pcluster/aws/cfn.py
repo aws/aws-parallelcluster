@@ -10,8 +10,8 @@
 # limitations under the License.
 import json
 
-from common.aws.aws_resources import StackInfo
-from common.boto3.common import AWSExceptionHandler, Boto3Client, StackNotFoundError
+from pcluster.aws.aws_resources import StackInfo
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client, StackNotFoundError
 from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, PCLUSTER_STACK_PREFIX
 
 

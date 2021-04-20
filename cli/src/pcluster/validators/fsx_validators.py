@@ -11,7 +11,7 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from common.aws.aws_api import AWSApi
+from pcluster.aws.aws_api import AWSApi
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.utils import get_region
 from pcluster.validators.common import FailureLevel, Validator

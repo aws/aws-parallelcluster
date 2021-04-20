@@ -4,9 +4,9 @@ import pytest
 import yaml
 from assertpy import assert_that
 
-from common.utils import load_yaml_dict
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
-from tests.common.dummy_aws_api import mock_aws_api
+from pcluster.utils import load_yaml_dict
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
 @pytest.mark.parametrize(
@@ -52,9 +52,9 @@ from tests.common.dummy_aws_api import mock_aws_api
 )
 def test_imagebuilder_schema(mocker, test_datadir, config_file_name, response):
     mock_aws_api(mocker)
-    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.describe_image",
+        "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=response,
     )
     # Load imagebuilder model from Yaml file

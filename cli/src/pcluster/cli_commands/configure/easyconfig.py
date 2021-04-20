@@ -18,7 +18,7 @@ from collections import OrderedDict
 import boto3
 import yaml
 
-from common.aws.aws_api import AWSApi
+from pcluster.aws.aws_api import AWSApi
 from pcluster.cli_commands.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,

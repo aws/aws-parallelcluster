@@ -17,7 +17,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 import pcluster.validators.awsbatch_validators as awsbatch_validators
-from common.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -25,7 +25,7 @@ from pcluster.validators.awsbatch_validators import (
     AwsBatchRegionValidator,
     BatchErrorMessageParsingException,
 )
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
 from .utils import assert_failure_messages
@@ -62,9 +62,9 @@ def test_awsbatch_region_validator(region, expected_message):
 )
 def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=["t2.micro", "p4d.24xlarge"])
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=["t2.micro", "p4d.24xlarge"])
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": instance_type,
@@ -117,7 +117,7 @@ def test_awsbatch_instances_architecture_compatibility_validator(
 
     mock_aws_api(mocker)
     supported_architectures_patch = mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=[compute_architecture]
+        "pcluster.aws.ec2.Ec2Client.get_supported_architectures", return_value=[compute_architecture]
     )
     is_instance_type_patch = mocker.patch(
         "pcluster.validators.awsbatch_validators.AwsBatchInstancesArchitectureCompatibilityValidator."
@@ -168,7 +168,7 @@ def test_get_supported_batch_instance_types(
     )
     mock_aws_api(mocker)
     supported_instance_types_patch = mocker.patch(
-        "common.boto3.ec2.Ec2Client.list_instance_types", return_value=dummy_all_instance_types
+        "pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=dummy_all_instance_types
     )
     get_instance_families_patch = mocker.patch(
         "pcluster.validators.awsbatch_validators._get_instance_families_from_types",

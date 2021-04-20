@@ -10,9 +10,9 @@
 # limitations under the License.
 from typing import List
 
-from common.aws.aws_resources import ImageInfo, InstanceTypeInfo
-from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client, ImageNotFoundError
 from pcluster import utils
+from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
+from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, ImageNotFoundError
 from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, SUPPORTED_ARCHITECTURES
 from pcluster.utils import Cache
 

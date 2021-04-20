@@ -15,12 +15,12 @@ import pytest
 import yaml
 from assertpy import assert_that
 
-from common.boto3.common import AWSClientError
-from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
+from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
+from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
 from tests.pcluster.test_utils import FAKE_CLUSTER_NAME, FAKE_STACK_NAME
@@ -53,7 +53,7 @@ class TestCluster:
     def test_describe_instances(self, cluster, mocker, node_type, expected_response, expected_instances):
         mock_aws_api(mocker)
         mocker.patch(
-            "common.boto3.ec2.Ec2Client.describe_instances",
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
             return_value=expected_response,
             expected_params=[
                 {"Name": "tag:Application", "Values": ["test-cluster"]},
@@ -174,7 +174,7 @@ class TestCluster:
         response = json.dumps(template_body) if template_body is not None else error_message
         mock_aws_api(mocker)
         mocker.patch(
-            "common.boto3.cfn.CfnClient.get_stack_template",
+            "pcluster.aws.cfn.CfnClient.get_stack_template",
             return_value=response,
             expected_params=FAKE_STACK_NAME,
             side_effect=AWSClientError(function_name="get_template", message="error") if not template_body else None,
@@ -202,9 +202,9 @@ class TestCluster:
         response = error_message or {"StackId": "stack ID"}
 
         mock_aws_api(mocker)
-        mocker.patch("common.boto3.cfn.CfnClient.get_stack_template", return_value=template_body)
+        mocker.patch("pcluster.aws.cfn.CfnClient.get_stack_template", return_value=template_body)
         mocker.patch(
-            "common.boto3.cfn.CfnClient.update_stack_from_url",
+            "pcluster.aws.cfn.CfnClient.update_stack_from_url",
             return_value=response,
             expected_params={
                 "stack_name": FAKE_STACK_NAME,
@@ -250,8 +250,8 @@ class TestCluster:
         """Verify that delete behaves as expected."""
         mocker.patch.object(cluster.stack, "delete")
         mock_aws_api(mocker)
-        mocker.patch("common.boto3.cfn.CfnClient.describe_stack")
-        mocker.patch("common.boto3.cfn.CfnClient.delete_stack")
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack")
+        mocker.patch("pcluster.aws.cfn.CfnClient.delete_stack")
         persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster, "_persist_cloudwatch_log_groups")
         terminate_nodes_mock = mocker.patch.object(cluster, "_terminate_nodes")
 
@@ -296,7 +296,7 @@ class TestCluster:
             cluster, "_update_stack_template", side_effect=client_error if fail_on_persist else None
         )
         mock_aws_api(mocker)
-        mocker.patch("common.boto3.cfn.CfnClient.update_stack_from_url")
+        mocker.patch("pcluster.aws.cfn.CfnClient.update_stack_from_url")
         mock_bucket(mocker)
         mock_bucket_utils(mocker)
         mock_bucket_object_utils(mocker)
@@ -336,7 +336,7 @@ class TestCluster:
         mocker.patch("pcluster.models.cluster.Cluster._get_stack_template", return_value=template)
         update_stack_template_mock = mocker.patch("pcluster.models.cluster.Cluster._update_stack_template")
         mock_aws_api(mocker)
-        mocker.patch("common.boto3.cfn.CfnClient.update_stack_from_url")
+        mocker.patch("pcluster.aws.cfn.CfnClient.update_stack_from_url")
         mock_bucket(mocker)
         mock_bucket_utils(mocker)
         mock_bucket_object_utils(mocker)

@@ -11,7 +11,7 @@
 import pytest
 from assertpy import assert_that
 
-from common.aws.aws_resources import ImageInfo
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
@@ -21,7 +21,7 @@ from pcluster.constants import (
 )
 from pcluster.models.imagebuilder import ImageBuilderStack
 from pcluster.utils import get_installed_version
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
 
@@ -115,11 +115,11 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
 def test_image(mocker, stack_resources_response, describe_image_response, expected_image_property_value):
     mock_aws_api(mocker)
     mocker.patch(
-        "common.boto3.cfn.CfnClient.describe_stack_resource",
+        "pcluster.aws.cfn.CfnClient.describe_stack_resource",
         return_value=stack_resources_response,
     )
-    mocker.patch("common.boto3.imagebuilder.ImageBuilderClient.get_image_id", return_value="ami-06b66530ba9f43a96")
-    mocker.patch("common.boto3.ec2.Ec2Client.describe_image", return_value=ImageInfo(describe_image_response))
+    mocker.patch("pcluster.aws.imagebuilder.ImageBuilderClient.get_image_id", return_value="ami-06b66530ba9f43a96")
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image", return_value=ImageInfo(describe_image_response))
     imagebuilder_stack = ImageBuilderStack({"StackName": FAKE_IMAGEBUILDER_STACK_NAME})
     image = imagebuilder_stack.image
     for p in image.__dir__():

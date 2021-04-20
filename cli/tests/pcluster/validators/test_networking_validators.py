@@ -11,7 +11,7 @@
 import pytest
 
 from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 from tests.utils import MockedBoto3Request
 
@@ -69,9 +69,9 @@ def test_ec2_subnet_id_validator(mocker):
     ]
 
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.describe_subnets", return_value=describe_subnets_response)
-    mocker.patch("common.boto3.ec2.Ec2Client.is_enable_dns_support", return_value=True)
-    mocker.patch("common.boto3.ec2.Ec2Client.is_enable_dns_hostnames", return_value=describe_subnets_response)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_subnets", return_value=describe_subnets_response)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.is_enable_dns_support", return_value=True)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.is_enable_dns_hostnames", return_value=describe_subnets_response)
 
     # TODO test with invalid key
     actual_failures = SubnetsValidator().execute(["subnet-12345678", "subnet-23456789"])

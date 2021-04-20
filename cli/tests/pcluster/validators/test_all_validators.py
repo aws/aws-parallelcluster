@@ -12,8 +12,8 @@ from unittest.mock import PropertyMock, call
 
 from assertpy import assert_that
 
-from common.utils import load_yaml_dict
 from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.utils import load_yaml_dict
 from pcluster.validators import (
     cluster_validators,
     ebs_validators,
@@ -24,7 +24,7 @@ from pcluster.validators import (
     s3_validators,
 )
 from pcluster.validators.common import Validator
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
 def _mock_all_validators(mocker, mockers):

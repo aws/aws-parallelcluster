@@ -13,9 +13,9 @@
 import pytest
 from assertpy import assert_that
 
-from common.boto3.common import AWSClientError
+from pcluster.aws.common import AWSClientError
 from pcluster.models.cluster import ClusterActionError, ClusterStack
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
 from tests.pcluster.test_utils import dummy_cluster
@@ -35,10 +35,10 @@ def _mock_cluster(
                 {"OutputKey": "ResourcesS3Bucket", "OutputValue": bucket_name},
             ]
         }
-        mocker.patch("common.boto3.cfn.CfnClient.describe_stack", return_value=stack_output)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_output)
         cluster = dummy_cluster(stack=ClusterStack(stack_output))
     else:
-        mocker.patch("common.boto3.cfn.CfnClient.describe_stack", side_effect=describe_stack_side_effect)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=describe_stack_side_effect)
         cluster = dummy_cluster()
 
     if scheduler == "slurm":

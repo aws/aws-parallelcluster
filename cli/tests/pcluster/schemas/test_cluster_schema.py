@@ -17,9 +17,9 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from common.utils import load_yaml_dict
 from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SlurmSchema
-from tests.common.dummy_aws_api import mock_aws_api
+from pcluster.utils import load_yaml_dict
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
 def _check_cluster_schema(test_datadir, config_file_name):

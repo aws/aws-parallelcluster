@@ -9,8 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common.aws.aws_api import AWSApi
-from common.boto3.common import AWSClientError
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.validators.common import FailureLevel, Validator
 
 

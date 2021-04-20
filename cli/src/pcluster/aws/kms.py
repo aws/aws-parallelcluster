@@ -8,3 +8,17 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client
+
+
+class KmsClient(Boto3Client):
+    """KMS Boto3 client."""
+
+    def __init__(self):
+        super().__init__("kms")
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_key(self, kms_key_id):
+        """Describe key."""
+        self._client.describe_key(KeyId=kms_key_id)

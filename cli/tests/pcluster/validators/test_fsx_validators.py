@@ -21,7 +21,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 from tests.utils import MockedBoto3Request
 
@@ -434,7 +434,7 @@ def test_fsx_backup_id_validator(boto3_stubber, backup_id, expected_message):
 )
 def test_auto_import_policy_validator(mocker, auto_import_policy, cluster_region, bucket_region, expected_message):
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.s3.S3Client.get_bucket_region", return_value=bucket_region)
+    mocker.patch("pcluster.aws.s3.S3Client.get_bucket_region", return_value=bucket_region)
     os.environ["AWS_DEFAULT_REGION"] = cluster_region
 
     actual_failures = FsxAutoImportValidator().execute(auto_import_policy, "s3://test/test1/test2")

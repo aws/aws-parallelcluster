@@ -17,12 +17,12 @@ import tempfile
 
 from aws_cdk.core import App
 
-from common.utils import load_yaml_dict
 from pcluster.config.cluster_config import BaseClusterConfig
 from pcluster.config.imagebuilder_config import ImageBuilderConfig
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cluster_stack import ClusterCdkStack
 from pcluster.templates.imagebuilder_stack import ImageBuilderCdkStack
+from pcluster.utils import load_yaml_dict
 
 
 class CDKTemplateBuilder:

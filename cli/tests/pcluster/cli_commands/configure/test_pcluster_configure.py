@@ -6,11 +6,11 @@ import pytest
 import yaml
 from assertpy import assert_that
 
-from common.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.cli_commands.configure.easyconfig import configure
 from pcluster.cli_commands.configure.networking import NetworkConfiguration
 from pcluster.schemas.cluster_schema import ClusterSchema
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 EASYCONFIG = "pcluster.cli_commands.configure.easyconfig."
 NETWORKING = "pcluster.cli_commands.configure.networking."
@@ -27,7 +27,7 @@ def temp_path_for_config(tmp_path):
 
 def _mock_instance_type_info(mocker, instance_type="t2.micro"):
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         InstanceTypeInfo(
             {
                 "InstanceType": instance_type,
@@ -73,7 +73,7 @@ def _mock_aws_region(mocker, partition="commercial"):
 
 def _mock_availability_zone(mocker, availability_zones=("eu-west-1a", "eu-west-1b", "eu-west-1c")):
     # To Do: return different list for different region or instance type
-    mocker.patch("common.boto3.ec2.Ec2Client.get_supported_az_for_instance_type", return_value=availability_zones)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_supported_az_for_instance_type", return_value=availability_zones)
     mocker.patch(EASYCONFIG + "_get_common_supported_az_for_multi_instance_types", return_value=availability_zones)
 
 
@@ -303,11 +303,11 @@ def _mock_aws_api_required_calls(mocker):
         "p4d.24xlarge",
     ]
     mock_aws_api(mocker, mock_instance_type_info=False)
-    mocker.patch("common.boto3.ec2.Ec2Client.get_default_instance_type", return_value="t2.micro")
-    mocker.patch("common.boto3.ec2.Ec2Client.list_instance_types", return_value=supported_instance_types)
-    mocker.patch("common.boto3.ec2.Ec2Client.get_subnet_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_default_instance_type", return_value="t2.micro")
+    mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=supported_instance_types)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_subnet_avail_zone", return_value="mocked_avail_zone")
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_instance_type_info",
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
         side_effect=[
             InstanceTypeInfo(
                 {
@@ -704,7 +704,7 @@ def general_wrapper_for_prompt_testing(
 def test_vpc_automation_with_no_single_qualified_az(mocker, temp_path_for_config, capsys, test_datadir):
     mock_handler = MockHandler(mocker, mock_availability_zone=False)
     mocker.patch(
-        "common.boto3.ec2.Ec2Client.get_supported_az_for_instance_type",
+        "pcluster.aws.ec2.Ec2Client.get_supported_az_for_instance_type",
         side_effect=lambda x: ["eu-west-1a"] if x == "t2.nano" else ["eu-west-1b"],
     )
     mocker.patch(

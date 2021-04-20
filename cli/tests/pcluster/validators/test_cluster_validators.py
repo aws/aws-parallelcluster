@@ -10,7 +10,7 @@
 # limitations under the License.
 import pytest
 
-from common.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -37,7 +37,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerOsValidator,
     TagKeyValidator,
 )
-from tests.common.dummy_aws_api import mock_aws_api
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 from tests.utils import MockedBoto3Request
 
@@ -156,7 +156,7 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
     if efa_enabled:
         mock_aws_api(mocker)
         get_instance_type_info_mock = mocker.patch(
-            "common.boto3.ec2.Ec2Client.get_instance_type_info",
+            "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
             return_value=InstanceTypeInfo(
                 {
                     "InstanceType": instance_type,
@@ -399,7 +399,7 @@ def test_instance_architecture_compatibility_validator(
     mocker, head_node_architecture, compute_architecture, compute_instance_type, expected_message
 ):
     mock_aws_api(mocker)
-    mocker.patch("common.boto3.ec2.Ec2Client.get_supported_architectures", return_value=[compute_architecture])
+    mocker.patch("pcluster.aws.ec2.Ec2Client.get_supported_architectures", return_value=[compute_architecture])
     actual_failures = InstanceArchitectureCompatibilityValidator().execute(
         compute_instance_type, head_node_architecture
     )

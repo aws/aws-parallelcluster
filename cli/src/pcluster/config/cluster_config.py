@@ -18,8 +18,8 @@ from typing import List, Union
 
 import pkg_resources
 
-from common.aws.aws_api import AWSApi
-from common.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.config.common import BaseDevSettings, BaseTag, Resource
 from pcluster.constants import (
     CIDR_ALL_IPS,

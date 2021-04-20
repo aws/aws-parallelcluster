@@ -17,7 +17,6 @@ import re
 
 from marshmallow import ValidationError, fields, post_load, validate, validates, validates_schema
 
-from common.utils import get_url_scheme, validate_json_format
 from pcluster.config.imagebuilder_config import (
     Build,
     Component,
@@ -34,7 +33,9 @@ from pcluster.schemas.common_schema import (
     BaseSchema,
     TagSchema,
     get_field_validator,
+    validate_json_format,
 )
+from pcluster.utils import get_url_scheme
 
 # ---------------------- Image Schema---------------------- #
 
