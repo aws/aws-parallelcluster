@@ -58,7 +58,7 @@ class TestCluster:
             expected_params=[
                 {"Name": "tag:Application", "Values": ["test-cluster"]},
                 {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
-                {"Name": "tag:aws-parallelcluster-node-type", "Values": [node_type.value]},
+                {"Name": "tag:parallelcluster:node-type", "Values": [node_type.value]},
             ],
         )
 

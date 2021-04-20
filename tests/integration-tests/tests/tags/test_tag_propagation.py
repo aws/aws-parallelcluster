@@ -52,12 +52,12 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
         {
             "resource": "Head Node",
             "tag_getter": get_head_node_tags,
-            "expected_tags": (cluster_name_tags, {"Name": "HeadNode", "aws-parallelcluster-node-type": "HeadNode"}),
+            "expected_tags": (cluster_name_tags, {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"}),
         },
         {
             "resource": "Head Node Root Volume",
             "tag_getter": get_head_node_root_volume_tags,
-            "expected_tags": (cluster_name_tags, {"aws-parallelcluster-node-type": "HeadNode"}),
+            "expected_tags": (cluster_name_tags, {"parallelcluster:node-type": "HeadNode"}),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
         },
         {
@@ -65,7 +65,7 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
             "tag_getter": get_compute_node_tags,
             "expected_tags": (
                 cluster_name_tags,
-                {"Name": "Compute", "aws-parallelcluster-node-type": "Compute"},
+                {"Name": "Compute", "parallelcluster:node-type": "Compute"},
                 config_file_tags,
             ),
             "skip": scheduler == "awsbatch",
@@ -75,7 +75,7 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
             "tag_getter": get_compute_node_root_volume_tags,
             "expected_tags": (
                 cluster_name_tags,
-                {"aws-parallelcluster-node-type": "Compute"},
+                {"parallelcluster:node-type": "Compute"},
                 config_file_tags if scheduler == "slurm" else {},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
@@ -165,7 +165,7 @@ def get_head_node_tags(cluster):
 
 def get_compute_node_root_volume_tags(cluster, os):
     """Return the given cluster's compute node's root volume's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="Compute node")
+    compute_nodes = cluster.instances(desired_instance_role="Compute")
     assert_that(compute_nodes).is_length(1)
     root_volume_id = get_root_volume_id(compute_nodes[0], cluster.region, os)
     return get_tags_for_volume(root_volume_id, cluster.region)
@@ -173,7 +173,7 @@ def get_compute_node_root_volume_tags(cluster, os):
 
 def get_compute_node_tags(cluster):
     """Return the given cluster's compute node's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="Compute node")
+    compute_nodes = cluster.instances(desired_instance_role="Compute")
     assert_that(compute_nodes).is_length(1)
     return get_ec2_instance_tags(compute_nodes[0], cluster.region)
 

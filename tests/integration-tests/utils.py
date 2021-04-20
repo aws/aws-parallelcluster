@@ -161,7 +161,7 @@ def _describe_cluster_instances(
         {"Name": "instance-state-name", "Values": ["running"]},
     ]
     if filter_by_node_type:
-        filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
+        filters.append({"Name": "tag:parallelcluster:node-type", "Values": [filter_by_node_type]})
     if filter_by_name:
         filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
     if filter_by_instance_types:
