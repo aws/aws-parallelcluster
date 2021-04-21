@@ -195,13 +195,15 @@ def get_stack_events(stack_name, raise_on_error=False):
         )
 
 
-def verify_stack_status(stack_name, waiting_states, successful_state, cfn_client=None):
+def verify_stack_status(stack_name, waiting_states, successful_states, cfn_client=None):
     """
     Wait for the stack creation to be completed and notify if the stack creation fails.
 
     :param stack_name: the stack name that we should verify
+    :param waiting_states: list of status to wait for
+    :param successful_states: list of final status considered as successful
     :param cfn_client: the CloudFormation client to use to verify stack status
-    :return: True if the creation was successful, false otherwise.
+    :return: True if the final status is in the successful_states list, False otherwise.
     """
     if not cfn_client:
         cfn_client = boto3.client("cloudformation")
@@ -219,16 +221,17 @@ def verify_stack_status(stack_name, waiting_states, successful_state, cfn_client
     # print the last status update in the logs
     if resource_status != "":
         LOGGER.debug(resource_status)
-    if status != successful_state:
-        return False
-    return True
+    return status in successful_states
 
 
-def log_stack_failure_recursive(stack_name, indent=2):
+def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
     """Log stack failures in recursive manner, until there is no substack layer."""
+    if not failed_states:
+        failed_states = ["CREATE_FAILED"]
+
     events = get_stack_events(stack_name, raise_on_error=True)
     for event in events:
-        if event.get("ResourceStatus") == "CREATE_FAILED":
+        if event.get("ResourceStatus") in failed_states:
             _log_failed_cfn_event(event, indent)
             if event.get("ResourceType") == "AWS::CloudFormation::Stack":
                 # Sample substack error:
@@ -247,8 +250,10 @@ def log_stack_failure_recursive(stack_name, indent=2):
 def _log_failed_cfn_event(event, indent):
     """Log failed CFN events."""
     LOGGER.info(
-        "%s- %s %s %s",
+        "%s- %s %s %s %s %s",
         " " * indent,
+        event.get("Timestamp"),
+        event.get("ResourceStatus"),
         event.get("ResourceType"),
         event.get("LogicalResourceId"),
         event.get("ResourceStatusReason"),

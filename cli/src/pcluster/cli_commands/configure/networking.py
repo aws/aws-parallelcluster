@@ -171,7 +171,7 @@ def _create_network_stack(configuration, parameters):
         LOGGER.debug("StackId: %s", stack.get("StackId"))
         LOGGER.info("Stack Name: %s", stack_name)
         if not verify_stack_status(
-            stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_state="CREATE_COMPLETE"
+            stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_states=["CREATE_COMPLETE"]
         ):
             LOGGER.error("Could not create the network configuration")
             sys.exit(0)
