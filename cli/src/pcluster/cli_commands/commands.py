@@ -17,7 +17,6 @@
 import logging
 import os
 import sys
-import time
 from builtins import str
 
 from botocore.exceptions import ClientError
@@ -97,7 +96,7 @@ def create(args):
 
             if not args.nowait:
                 verified = utils.verify_stack_status(
-                    result.stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_state="CREATE_COMPLETE"
+                    result.stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_states=["CREATE_COMPLETE"]
                 )
                 if not verified:
                     LOGGER.critical("\nCluster creation failed. Failed events:")
@@ -247,52 +246,45 @@ def ssh(args, extra_args):
         sys.exit(0)
 
 
-def status(args):  # noqa: C901 FIXME!!!
+def status(args):
     """Get cluster status."""
     try:
         result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
         if isinstance(result, ClusterInfo):
-            sys.stdout.write("\rStatus: %s" % result.stack_status)
+            sys.stdout.write(f"\rStatus: {result.stack_status}\n")
             sys.stdout.flush()
             if not args.nowait:
-                while result.stack_status not in [
-                    "CREATE_COMPLETE",
-                    "UPDATE_COMPLETE",
-                    "UPDATE_ROLLBACK_COMPLETE",
-                    "ROLLBACK_COMPLETE",
-                    "CREATE_FAILED",
-                    "DELETE_FAILED",
-                ]:
-                    time.sleep(5)
-                    result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
-
-                    events = utils.get_stack_events(result.stack_name)[0]
-                    resource_status = (
-                        "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
-                    ).ljust(80)
-                    sys.stdout.write("\r%s" % resource_status)
-                    sys.stdout.flush()
-                sys.stdout.write("\rStatus: %s\n" % result.stack_status)
-                sys.stdout.flush()
-                if result.stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
-                    if isinstance(result, ClusterInfo) and result.head_node:
-                        head_node_state = result.head_node.state
-                        LOGGER.info("HeadNode: %s" % head_node_state.upper())
-                        if head_node_state == "running":
-                            print_stack_outputs(result.stack_outputs)
-                    _print_compute_fleet_status(args.cluster_name, result.stack_outputs)
-                elif result.stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
-                    events = utils.get_stack_events(result.stack_name)
-                    for event in events:
-                        if event.get("ResourceStatus") in ["CREATE_FAILED", "DELETE_FAILED", "UPDATE_FAILED"]:
-                            LOGGER.info(
-                                "%s %s %s %s %s",
-                                event.get("Timestamp"),
-                                event.get("ResourceStatus"),
-                                event.get("ResourceType"),
-                                event.get("LogicalResourceId"),
-                                event.get("ResourceStatusReason"),
-                            )
+                verified = utils.verify_stack_status(
+                    result.stack_name,
+                    waiting_states=[
+                        "CREATE_IN_PROGRESS",
+                        "ROLLBACK_IN_PROGRESS",
+                        "UPDATE_IN_PROGRESS",
+                        "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
+                        "UPDATE_ROLLBACK_IN_PROGRESS",
+                        "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS",
+                        "REVIEW_IN_PROGRESS",
+                        "IMPORT_IN_PROGRESS",
+                        "IMPORT_ROLLBACK_IN_PROGRESS",
+                        "DELETE_IN_PROGRESS",
+                    ],
+                    successful_states=["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"],
+                )
+                if verified:
+                    # Retrieve instances info
+                    result = PclusterApi().describe_cluster_instances(
+                        cluster_name=args.cluster_name, region=utils.get_region()
+                    )
+                    if isinstance(result, list):
+                        for instance in result:
+                            LOGGER.info("%s         %s", f"{instance.node_type}\t", instance.instance_id)
+                    else:
+                        utils.error(f"Unable to retrieve the instances of the cluster.\n{result.message}")
+                else:
+                    # Log failed events
+                    utils.log_stack_failure_recursive(
+                        result.stack_name, failed_states=["CREATE_FAILED", "DELETE_FAILED", "UPDATE_FAILED"]
+                    )
             else:
                 sys.stdout.write("\n")
                 sys.stdout.flush()
@@ -321,16 +313,13 @@ def delete(args):  # noqa: C901
         sys.stdout.flush()
         LOGGER.debug("Status: %s", result.stack_status)
         if not args.nowait:
-            while result.stack_status == "DELETE_IN_PROGRESS":
-                time.sleep(5)
+            verified = utils.verify_stack_status(
+                result.stack_name, waiting_states=["DELETE_IN_PROGRESS"], successful_states=["DELETE_COMPLETE"]
+            )
+            if not verified:
                 result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
                 if isinstance(result, ClusterInfo):
-                    events = utils.get_stack_events(result.stack_name, raise_on_error=True)[0]
-                    resource_status = (
-                        "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
-                    ).ljust(80)
-                    sys.stdout.write("\r%s" % resource_status)
-                    sys.stdout.flush()
+                    utils.log_stack_failure_recursive(result.stack_name, failed_states=["DELETE_FAILED"])
                 elif isinstance(result, ApiFailure):
                     # If stack is already deleted
                     if f"Cluster {args.cluster_name} doesn't exist." in result.message:

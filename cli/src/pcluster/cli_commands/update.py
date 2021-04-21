@@ -43,7 +43,7 @@ def execute(args):
                 verified = utils.verify_stack_status(
                     result.stack_name,
                     waiting_states=["UPDATE_IN_PROGRESS", "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"],
-                    successful_state="UPDATE_COMPLETE",
+                    successful_states=["UPDATE_COMPLETE"],
                 )
                 if not verified:
                     LOGGER.critical("\nCluster update failed.  Failed events:")
