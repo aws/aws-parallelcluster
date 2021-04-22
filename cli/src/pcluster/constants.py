@@ -50,8 +50,8 @@ DEFAULT_MIN_COUNT = 0
 MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1, "raid": 1}
 
 COOKBOOK_PACKAGES_VERSIONS = {
-    "parallelcluster": "2.10.3",
-    "cookbook": "aws-parallelcluster-cookbook-2.10.3",
+    "parallelcluster": "3.0.0",
+    "cookbook": "aws-parallelcluster-cookbook-3.0.0",
     "chef": "15.11.8",
     "berkshelf": "7.0.10",
     "ami": "dev",

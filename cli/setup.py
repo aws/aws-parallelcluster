@@ -20,7 +20,7 @@ def readme():
         return f.read()
 
 
-VERSION = "2.10.3"
+VERSION = "3.0.0"
 CDK_VERSION = "1.94"
 REQUIRES = [
     "setuptools",
