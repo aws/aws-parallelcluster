@@ -9,6 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import random
+import string
 
 import boto3
 import pkg_resources
@@ -70,6 +72,7 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", 
             )
         else:
             ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
+        logging.info("Parent image name %s" % ami_name)
         response = boto3.client("ec2", region_name=region).describe_images(
             Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
             + additional_filters,
@@ -101,7 +104,7 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
                 {"Name": "name", "Values": [official_ami_name]},
                 {"Name": "architecture", "Values": [architecture]},
             ],
-            Owners=["self"],
+            Owners=["self", "amazon"],
         ).get("Images", [])
         ami_id = client.copy_image(
             Description="This AMI is a copy from an official AMI but uses a different naming. "
@@ -145,3 +148,12 @@ def get_installed_parallelcluster_version():
 def get_sts_endpoint(region):
     """Get regionalized STS endpoint."""
     return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
+
+
+def generate_random_string():
+    """
+    Generate a random prefix that is 16 characters long.
+
+    Example: 4htvo26lchkqeho1
+    """
+    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
