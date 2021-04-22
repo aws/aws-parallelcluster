@@ -733,7 +733,7 @@ class ImageBuilderCdkStack(Stack):
             self,
             id="InstanceProfile",
             path="/{0}/".format(RESOURCE_NAME_PREFIX),
-            roles=[instance_role or Fn.ref("InstanceRole")],
+            roles=[instance_role.split("/")[-1] if instance_role else Fn.ref("InstanceRole")],
         )
 
         if not self.custom_cleanup_lambda_role:
