@@ -130,6 +130,16 @@ class Ec2Client(Boto3Client):
             for instance in result.get("Instances")
         ]
 
+    @AWSExceptionHandler.handle_client_exception
+    def get_image_shared_account_ids(self, image_id):
+        """Get account ids that image is shared with."""
+        return [
+            permission.get("UserId") or permission.get("Group")
+            for permission in self._client.describe_image_attribute(Attribute="launchPermission", ImageId=image_id).get(
+                "LaunchPermissions"
+            )
+        ]
+
     def get_images(self):
         """Return existing pcluster images by pcluster image name tag."""
         try:
