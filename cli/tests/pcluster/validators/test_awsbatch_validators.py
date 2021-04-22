@@ -243,7 +243,7 @@ def test_parse_supported_instance_types_and_families_from_cce_emsg(
 ):
     """Verify parsing supported instance types from the CreateComputeEnvironment error message works as expected."""
     results_log_msg_preamble = "Parsed the following instance types and families from Batch CCE error message:"
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.DEBUG, logger="pcluster")
     if match_expected:
         assert_that(
             awsbatch_validators._parse_supported_instance_types_and_families_from_cce_emsg(api_emsg)
@@ -317,7 +317,7 @@ def test_get_cce_emsg_containing_supported_instance_types(mocker, aws_api_mock, 
 )
 def test_batch_instance_types_and_families_are_supported(caplog, candidates, knowns):
     """Verify function that describes whether all given instance types/families are supported behaves as expected."""
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.DEBUG, logger="pcluster")
     unknown_candidates = [candidate for candidate in candidates if candidate not in knowns]
     expected_return_value = not unknown_candidates
     observed_return_value = awsbatch_validators._batch_instance_types_and_families_are_supported(candidates, knowns)
@@ -338,7 +338,7 @@ def test_batch_instance_types_and_families_are_supported(caplog, candidates, kno
 def test_get_instance_families_from_types(caplog, instance_types, error_expected, expected_return_value):
     """Verify the function that parses instance families from instance types works as expected."""
     error_message_prefix = "Unable to parse instance family for instance type"
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.DEBUG, logger="pcluster")
     assert_that(awsbatch_validators._get_instance_families_from_types(instance_types)).contains_only(
         *expected_return_value
     )

@@ -1,3 +1,4 @@
+import logging
 import os
 
 import boto3
@@ -156,6 +157,7 @@ class TestComputeFleetStatusManager:
         expected_error_message,
         wait_for_transitions,
     ):
+        caplog.set_level(logging.WARNING, logger="pcluster")
         get_status_mock = mocker.patch.object(
             compute_fleet_status_manager, "get_status", side_effect=get_status_responses
         )

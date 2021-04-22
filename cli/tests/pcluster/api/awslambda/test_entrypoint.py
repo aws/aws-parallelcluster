@@ -17,6 +17,13 @@ def disable_lambda_tracing():
     os.environ["POWERTOOLS_TRACE_DISABLED"] = "1"
 
 
+@pytest.fixture(autouse=True)
+def disable_log_deduplication():
+    # Pytest Live Log feature duplicates emitted log messages in order to style log statements according to their
+    # levels, for this to work use POWERTOOLS_LOG_DEDUPLICATION_DISABLED env var.
+    os.environ["POWERTOOLS_LOG_DEDUPLICATION_DISABLED"] = "1"
+
+
 @pytest.fixture
 def apigw_event():
     return {
