@@ -360,8 +360,7 @@ class ImageBuilder:
 
     def delete(self, force=False):
         """Delete CFN Stack and associate resources and deregister the image."""
-        # TODO: check image is shared
-        if force or not self._check_instance_using_image():
+        if force or (not self._check_instance_using_image() and not self._check_image_is_shared()):
             try:
                 if AWSApi.instance().ec2.image_exists(self.image_name):
                     # Deregister image
@@ -383,6 +382,24 @@ class ImageBuilder:
 
             except (AWSClientError, ImageError) as e:
                 raise ImageBuilderActionError(f"Unable to delete image and stack, due to {str(e)}")
+
+    def _check_image_is_shared(self):
+        """Check the image is shared with other account."""
+        try:
+            result = AWSApi.instance().ec2.get_image_shared_account_ids(self.image.id)
+            if result:
+                logging.error(
+                    "Image %s is shared with accounts or group %s. In case you want to delete the image, "
+                    "please use the --force flag.",
+                    self.image_name,
+                    str(result),
+                )
+                raise ImageBuilderActionError("Unable to delete image and stack")
+            return False
+        except (AWSClientError, ImageError) as e:
+            if isinstance(e, NonExistingImageError):
+                return False
+            raise ImageBuilderActionError(f"Unable to delete image and stack, due to {str(e)}")
 
     def _check_instance_using_image(self):
         """Check image is used by other instances."""
