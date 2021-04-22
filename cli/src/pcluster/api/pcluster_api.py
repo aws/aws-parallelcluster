@@ -365,26 +365,21 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             # get built images by image name tag
-            built_images = AWSApi.instance().ec2.list_pcluster_images()
-
-            built_images_response = [
-                ImageBuilderInfo(imagebuilder=ImageBuilder(image_name=image.original_image_name))
-                for image in built_images
+            images = AWSApi.instance().ec2.get_images()
+            images_response = [
+                ImageBuilderInfo(imagebuilder=ImageBuilder(image_name=image.original_image_name)) for image in images
             ]
 
             # get building image stacks by image name tag
-            imagebuilder_stacks = AWSApi.instance().cfn.list_imagebuilder_stacks()
-
-            imagebuilder_list = [
+            imagebuilder_stacks = [
                 ImageBuilder(image_name=stack.get("StackName"), stack=ImageBuilderStack(stack))
-                for stack in imagebuilder_stacks
+                for stack in AWSApi.instance().cfn.get_imagebuilder_stacks()
             ]
-
-            building_stacks_response = [
+            imagebuilder_stacks_response = [
                 ImageBuilderInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
-                for imagebuilder in imagebuilder_list
+                for imagebuilder in imagebuilder_stacks
             ]
 
-            return built_images_response + building_stacks_response
+            return images_response + imagebuilder_stacks_response
         except Exception as e:
             return ApiFailure(str(e))

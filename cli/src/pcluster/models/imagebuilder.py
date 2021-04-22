@@ -263,7 +263,7 @@ class ImageBuilder:
         self._validate_image_name()
 
         # check image existence
-        if AWSApi.instance().ec2.image_exists(self.image_name):
+        if AWSApi.instance().ec2.image_exists(self.image_name, build_status_avaliable=True):
             raise ImageBuilderActionError(f"ParallelCluster image {self.image_name} already exists")
 
         # check stack existence
@@ -370,7 +370,7 @@ class ImageBuilder:
                     # Delete snapshot
                     for snapshot_id in self.image.snapshot_ids:
                         AWSApi.instance().ec2.delete_snapshot(snapshot_id)
-                elif AWSApi.instance().cfn.stack_exists(self.image_name):
+                if AWSApi.instance().cfn.stack_exists(self.image_name):
                     # Delete stack
                     AWSApi.instance().cfn.delete_stack(self.image_name)
 
