@@ -222,10 +222,11 @@ phases:
                   /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
                   /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
                   grub2-mkconfig -o /boot/grub2/grub.cfg
-              elif [[ ${!OS} =~ ^ubuntu(18|20)04$ ]]; then
+              elif [[ ${!PLATFORM} == DEBIAN ]]; then
+                  [ ${CfnParamUpdateOsAndReboot} == false ] && flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl stop apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
                   apt-cache search build-essential
                   apt-get clean
-                  apt-get update
+                  apt-get update -y
               fi
 
               if [[ ${!PLATFORM} == RHEL ]]; then
