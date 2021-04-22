@@ -370,6 +370,10 @@ class ImageBuilder:
                     for snapshot_id in self.image.snapshot_ids:
                         AWSApi.instance().ec2.delete_snapshot(snapshot_id)
                 if AWSApi.instance().cfn.stack_exists(self.image_name):
+                    if self.stack.imagebuilder_image_is_building:
+                        raise ImageBuilderActionError(
+                            "Image cannot be deleted because EC2 ImageBuilder Image has a running workflow."
+                        )
                     # Delete stack
                     AWSApi.instance().cfn.delete_stack(self.image_name)
 

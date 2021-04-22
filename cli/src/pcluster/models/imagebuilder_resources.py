@@ -45,9 +45,11 @@ class ImageBuilderStack(StackInfo):
         """Init stack info."""
         super().__init__(stack_data)
         try:
-            self._image_resource = AWSApi.instance().cfn.describe_stack_resource(self.name, "ParallelClusterImage")
+            self._imagebuilder_image_resource = AWSApi.instance().cfn.describe_stack_resource(
+                self.name, "ParallelClusterImage"
+            )
         except AWSClientError:
-            self._image_resource = None
+            self._imagebuilder_image_resource = None
 
     @property
     def s3_artifact_directory(self):
@@ -86,11 +88,22 @@ class ImageBuilderStack(StackInfo):
             return None
 
     @property
+    def imagebuilder_image_is_building(self):
+        """Return imagebuilder image resource is building or not."""
+        try:
+            imagebuilder_image_status = self._imagebuilder_image_resource["StackResourceDetail"]["ResourceStatus"]
+            if imagebuilder_image_status == "CREATE_IN_PROGRESS":
+                return True
+            return False
+        except KeyError:
+            return False
+
+    @property
     def image_id(self):
         """Return output image id."""
-        if self._image_resource:
+        if self._imagebuilder_image_resource:
             try:
-                image_build_version_arn = self._image_resource["StackResourceDetail"]["PhysicalResourceId"]
+                image_build_version_arn = self._imagebuilder_image_resource["StackResourceDetail"]["PhysicalResourceId"]
                 return AWSApi.instance().imagebuilder.get_image_id(image_build_version_arn)
             except (AWSClientError, KeyError):
                 return None
