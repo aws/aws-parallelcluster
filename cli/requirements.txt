@@ -1,7 +1,5 @@
 boto3>=1.16.14
 tabulate>=0.8.2,<0.8.10
 ipaddress>=1.0.22
-enum34>=1.1.6
-configparser>=3.5.0
 PyYAML>=5.3.1
 jinja2>=2.11.0

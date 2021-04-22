@@ -17,6 +17,7 @@ CHANGELOG
 - Upgrade Slurm to version 20.11.5.
   - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds
   - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value for all GPU, Type=tesla
+- Upgrade Arm Performance Libraries (APL) to version 21.0.0  
 - Make `key_name` parameter optional to support cluster configurations without a key pair. 
 - Remove support for Python versions < 3.6.
 - Remove dependency on `future` package and `__future__` module.
