@@ -13,7 +13,7 @@ from typing import List
 from pcluster import utils
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, ImageNotFoundError
-from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, SUPPORTED_ARCHITECTURES
+from pcluster.constants import PCLUSTER_IMAGE_BUILD_STATUS_TAG, PCLUSTER_IMAGE_NAME_TAG, SUPPORTED_ARCHITECTURES
 from pcluster.utils import Cache
 
 
@@ -97,36 +97,46 @@ class Ec2Client(Boto3Client):
             return [ImageInfo(image) for image in result.get("Images")]
         raise ImageNotFoundError(function_name="describe_images")
 
-    def image_exists(self, image_name):
+    def image_exists(self, image_name: str, build_status_avaliable: bool = False):
         """Return a boolean describing whether or not an image with the given search criteria exists."""
         try:
-            self.describe_image_by_name_tag(image_name)
+            self.describe_image_by_name_tag(image_name, build_status_avaliable)
             return True
         except ImageNotFoundError:
             return False
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_image_by_name_tag(self, image_name):
+    def describe_image_by_name_tag(self, image_name: str, build_status_avaliable: bool = False):
         """Return a dict of image info by searching image name tag as filter."""
         filters = [{"Name": "tag:" + PCLUSTER_IMAGE_NAME_TAG, "Values": [image_name]}]
+        if build_status_avaliable:
+            filters.append({"Name": "tag:" + PCLUSTER_IMAGE_BUILD_STATUS_TAG, "Values": ["available"]})
         owners = ["self"]
         return self.describe_images(ami_ids=[], filters=filters, owners=owners)[0]
 
     @AWSExceptionHandler.handle_client_exception
     def get_instance_ids_by_ami_id(self, image_id):
-        """Get instance ids by ami id."""
+        """Get instance ids by ami id, when status is not terminated nor shutting-down."""
+        instance_state = ("pending", "running", "stopping", "stopped")
         return [
             instance.get("InstanceId")
             for result in self._paginate_results(
-                self._client.describe_instances, Filters=[{"Name": "image-id", "Values": [image_id]}]
+                self._client.describe_instances,
+                Filters=[
+                    {"Name": "image-id", "Values": [image_id]},
+                    {"Name": "instance-state-name", "Values": list(instance_state)},
+                ],
             )
             for instance in result.get("Instances")
         ]
 
-    def list_pcluster_images(self):
+    def get_images(self):
         """Return existing pcluster images by pcluster image name tag."""
         try:
-            filters = [{"Name": f"tag:{PCLUSTER_IMAGE_NAME_TAG}", "Values": ["*"]}]
+            filters = [
+                {"Name": f"tag:{PCLUSTER_IMAGE_NAME_TAG}", "Values": ["*"]},
+                {"Name": f"tag:{PCLUSTER_IMAGE_BUILD_STATUS_TAG}", "Values": ["available"]},
+            ]
             owners = ["self"]
             return self.describe_images(ami_ids=[], filters=filters, owners=owners)
         except ImageNotFoundError:

@@ -119,7 +119,7 @@ class CfnClient(Boto3Client):
         return self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
 
     @AWSExceptionHandler.handle_client_exception
-    def list_imagebuilder_stacks(self):
+    def get_imagebuilder_stacks(self):
         """List existing imagebuilder stacks."""
         stack_list = []
         for stack in self._paginate_results(self._client.describe_stacks):

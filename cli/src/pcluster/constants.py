@@ -62,6 +62,7 @@ CW_DASHBOARD_ENABLED_DEFAULT = True
 CW_LOGS_ENABLED_DEFAULT = True
 
 PCLUSTER_IMAGE_NAME_TAG = "parallelcluster:image_name"
+PCLUSTER_IMAGE_BUILD_STATUS_TAG = "parallelcluster:build_status"
 PCLUSTER_S3_IMAGE_DIR_TAG = "parallelcluster:s3_image_dir"
 PCLUSTER_S3_BUCKET_TAG = "parallelcluster:s3_bucket"
 PCLUSTER_IMAGE_BUILD_LOG_TAG = "parallelcluster:build_log"
