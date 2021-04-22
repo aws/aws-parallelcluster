@@ -591,7 +591,7 @@ def _test_resources(generated_resources, expected_resources):
                 "Type": "AWS::IAM::InstanceProfile",
                 "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {
-                    "Roles": ["arn:aws:iam::xxxxxxxxxxxx:role/test-InstanceRole"],
+                    "Roles": ["test-InstanceRole"],
                     "Path": "/ParallelClusterImage/",
                 },
             },
