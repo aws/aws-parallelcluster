@@ -121,15 +121,18 @@ def pytest_generate_tests(metafunc):
 
 def pytest_configure(config):
     """This hook is called for every plugin and initial conftest file after command line options have been parsed."""
-    # read tests config file if used
-    if config.getoption("tests_config_file", None):
-        config.option.tests_config = read_config_file(config.getoption("tests_config_file"))
-
     # Read instance types data file if used
+    logging.info("configuring - 0")
     if config.getoption("instance_types_data_file", None):
         config.option.instance_types_data = _read_json_file(config.getoption("instance_types_data_file"))
         # Load additional instance types data
         _set_additional_instance_types_data(config.option.instance_types_data)
+    logging.info("configuring - 1")
+
+    # read tests config file if used
+    if config.getoption("tests_config_file", None):
+        config.option.tests_config = read_config_file(config.getoption("tests_config_file"))
+    logging.info("configuring - 2")
 
     # register additional markers
     config.addinivalue_line("markers", "instances(instances_list): run test only against the listed instances.")
@@ -209,8 +212,14 @@ def _log_collected_tests(session):
 
 
 def _set_additional_instance_types_data(instance_types_data):
+    logging.info("Loading additional instance types data...")
     InstanceTypesData.additional_instance_types_data = instance_types_data
     logging.info("Additional instance types data loaded: {0}".format(InstanceTypesData.additional_instance_types_data))
+    if instance_types_data:
+        logging.info("Extracting additional instance types...")
+        InstanceTypesData.additional_instance_types = [instance_type for instance_type, _ in instance_types_data.items()]
+        logging.info("Additional instance types: {0}".format(InstanceTypesData.additional_instance_types))
+
 
 
 def pytest_exception_interact(node, call, report):

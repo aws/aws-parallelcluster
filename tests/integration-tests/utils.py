@@ -28,6 +28,7 @@ class InstanceTypesData:
 
     # Additional instance types data provided via tests configuration
     additional_instance_types_data = {}
+    additional_instance_types = []
 
     @staticmethod
     def get_instance_info(instance_type, region_name=None):
