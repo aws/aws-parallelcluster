@@ -31,10 +31,6 @@ from pcluster.utils import load_yaml_dict
 LOGGER = logging.getLogger(__name__)
 
 
-def version():
-    return utils.get_installed_version()
-
-
 def _parse_config_file(config_file, fail_on_config_file_absence=True):
     """
     Parse the config file and initialize config_file and config_parser attributes.
