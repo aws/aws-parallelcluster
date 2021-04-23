@@ -16,8 +16,6 @@
 #
 # Search for AWS ParallelCluster AMIs and generate a list in json and txt format
 #
-# usage: ./generate-ami-list.py --version <aws-parallelcluster-version> --date <release-date>
-
 import json
 import re
 from collections import OrderedDict
@@ -40,11 +38,7 @@ ARCHITECTURES_TO_MAPPING_NAME = {"x86_64": "AWSRegionOS2AMIx86", "arm64": "AWSRe
 
 
 def get_initialized_mappings_dicts():
-    """
-    Get dict with two keys initialized to empty dicts.
-
-    This is the same structure as the portion of the CFN template's Mappings that contains default AMIs.
-    """
+    """Get dict with two keys initialized to empty dicts."""
     return {mapping_name: {} for _, mapping_name in ARCHITECTURES_TO_MAPPING_NAME.items()}
 
 
@@ -62,17 +56,33 @@ def get_placeholder_region_dict():
     return {distro_mapping_key: "UNSUPPORTED" for distro_mapping_key in DISTROS}
 
 
-def get_ami_list_from_file(regions, cfn_template_file):
-    """Read the AMI mappings from cfn_template_file for the given regions."""
-    amis_json = get_initialized_mappings_dicts()
+def get_ami_list_from_file(regions, json_amis):
+    """
+    Read the AMI mappings from json_amis for the given regions.
 
-    with open(cfn_template_file) as cfn_file:
-        # object_pairs_hook=OrderedDict allows to preserve input order
-        cfn_data = json.load(cfn_file, object_pairs_hook=OrderedDict)
+     The format of json_amis is as follows:
+    {
+      "AWSRegionOS2AMIx86": {
+        "af-south-1": {
+          "alinux2": "ami-xxx",
+          "centos7": "UNSUPPORTED",
+          "centos8": "ami-yyy",
+          "ubuntu1804": "ami-zzz",
+          "ubuntu2004": "ami-www"
+        },
+        "ap-east-1": {
+          "alinux2": "ami-01905ce1b2d63e7e0",
+          "centos7": "UNSUPPORTED",
+          ...
+      "AWSRegionOS2AMIarm64": {
+         ...
+    """
+    amis_json = get_initialized_mappings_dicts()
+    json_data = read_json_file(json_amis)
 
     current_amis = {}
     for mapping_name in amis_json:
-        current_amis[mapping_name] = cfn_data.get("Mappings").get(mapping_name, {})
+        current_amis[mapping_name] = json_data.get(mapping_name, {})
         for region_name in regions:
             if region_name in current_amis.get(mapping_name, []):
                 # Ensure mapping for the region_name is sorted by OS name
@@ -240,53 +250,26 @@ def get_all_aws_regions_from_ec2(region):
     return sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
 
-def read_cfn_template(template_path):
-    """Read the existing CFN template from the given path."""
-    with open(template_path) as cfn_file:
+def read_json_file(json_file_path):
+    """Read the existing json file from the given path."""
+    with open(json_file_path) as json_file:
         # object_pairs_hook=OrderedDict allows to preserve input order
-        return json.load(cfn_file, object_pairs_hook=OrderedDict)
+        return json.load(json_file, object_pairs_hook=OrderedDict)
 
 
-def write_cfn_template(template_path, cfn_data):
-    """Write the CFN template represented by cfn_data to the given path."""
-    with open(template_path, "w") as cfn_file:
+def write_json_file(json_file_path, json_data):
+    """Write the json represented by json_data to the given path."""
+    with open(json_file_path, "w") as json_file:
         # setting separators to (',', ': ') to avoid trailing spaces after commas
-        json.dump(cfn_data, cfn_file, indent=2, separators=(",", ": "))
+        json.dump(json_data, json_file, indent=2, separators=(",", ": "))
         # add new line at the end of the file
-        cfn_file.write("\n")
+        json_file.write("\n")
 
 
-def update_cfn_template(cfn_template_file, amis_to_update):
-    """Update in-place the mappings section of cfn_template_file with the AMI IDs contained in amis_to_update."""
-    # Read in existing CFN template
-    cfn_data = read_cfn_template(cfn_template_file)
-    # update id for new amis without removing regions that are not in the amis_to_update dict
-    for mapping_name in ARCHITECTURES_TO_MAPPING_NAME.values():
-        current_amis_for_mapping = cfn_data.get("Mappings").get(mapping_name, {})
-        for region, amis_to_update_region_mapping in amis_to_update.get(mapping_name, {}).items():
-            if not amis_to_update_region_mapping:
-                # No new AMIs for this region in this mapping
-                continue
-            elif region not in current_amis_for_mapping and amis_to_update_region_mapping:
-                # There are no AMIs for this region in the existing mapping, but there are in the updated version
-                current_amis_for_mapping[region] = amis_to_update_region_mapping
-            else:
-                current_amis_for_mapping[region].update(amis_to_update_region_mapping)
-            current_amis_for_mapping[region] = OrderedDict(sorted(current_amis_for_mapping[region].items()))
-
-        # enforce alphabetical regions order
-        current_amis_for_mapping = OrderedDict(sorted(current_amis_for_mapping.items()))
-        cfn_data.get("Mappings")[mapping_name] = current_amis_for_mapping
-    # Ensure mappings are sorted
-    cfn_data["Mappings"] = OrderedDict(sorted(cfn_data["Mappings"].items()))
-    # Write back modified CFN template
-    write_cfn_template(cfn_template_file, cfn_data)
-
-
-def update_amis_txt(amis_txt_file, cfn_template_file):
-    """Write amis_txt_file using the updated information contained in cfn_template_file."""
-    cfn_data = read_cfn_template(cfn_template_file)
-    amis_txt = convert_json_to_txt(cfn_data.get("Mappings"))
+def write_amis_txt(amis_txt_file, json_file):
+    """Write amis_txt_file using the updated information contained in json_file."""
+    json_data = read_json_file(json_file)
+    amis_txt = convert_json_to_txt(json_data)
     with open(amis_txt_file, "w") as f:
         f.write("%s" % amis_txt)
 
@@ -294,6 +277,8 @@ def update_amis_txt(amis_txt_file, cfn_template_file):
 def parse_args():
     """Parse command line args."""
     parser = argparse.ArgumentParser(description="Get AWS ParallelCluster instances and generate a json and txt file")
+
+    # Group of arguments to be used to retrieve list of AMIs from EC2, given git references
     git_ref_group = parser.add_argument_group(
         "Retrieve instances from EC2 searching by cookbook and node git reference"
     )
@@ -310,25 +295,23 @@ def parse_args():
         "Could be specified multiple times",
         required=False,
     )
-    local_file_group = parser.add_argument_group("Retrieve instances from local cfn template for given regions")
+
+    # Group of arguments to be used to retrieve list of AMIs from a local json file
+    local_file_group = parser.add_argument_group("Retrieve instances from local json file for given regions")
     local_file_group.add_argument(
-        "--json-template", type=str, help="path to input json cloudformation template", required=False
+        "--json-amis", type=str, help="path to input json file containing the AMIs", required=False
     )
     local_file_group.add_argument(
         "--json-regions", type=str, help="path to input json file containing the regions", required=False
     )
+
+    # General inputs and outputs of the utility
     parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
     parser.add_argument(
         "--partition", type=str, help="commercial | china | govcloud", required=True, choices=PARTITIONS
     )
     parser.add_argument("--account-id", type=str, help="AWS account id owning the AMIs", required=False)
-    parser.add_argument(
-        "--cloudformation-template",
-        type=str,
-        help="path to output cloudfomation template",
-        required=False,
-        default="cloudformation/aws-parallelcluster.cfn.json",
-    )
+    parser.add_argument("--json-file", type=str, help="path to output json file", required=False, default="amis.json")
     args = parser.parse_args()
     if args.cookbook_git_ref and args.node_git_ref and not args.account_id:
         raise Exception("Must specify value for --account-id when using --cookbook-git-ref and --node-git-ref.")
@@ -363,15 +346,15 @@ def main():
             credentials=credentials,
         )
     else:
-        # This path is used by the pre_release_flow pipleine, which uses the
-        # retrive_ami_list pipeline to generate CFN templates with updated mappings
+        # This path is used by the pre_release_flow pipeline, which uses the
+        # retrieve_ami_list pipeline to generate json file with updated mappings
         # for each partition and then aggregates the mappings from each those files
-        # into a single CFN template.
+        # into a single json file.
         regions = get_aws_regions_from_file(args.json_regions)
-        amis_dict = get_ami_list_from_file(regions, args.json_template)
+        amis_dict = get_ami_list_from_file(regions, args.json_amis)
 
-    update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
-    update_amis_txt(amis_txt_file=args.txt_file, cfn_template_file=args.cloudformation_template)
+    write_json_file(json_file_path=args.json_file, json_data=amis_dict)
+    write_amis_txt(amis_txt_file=args.txt_file, json_file=args.json_file)
 
 
 if __name__ == "__main__":
