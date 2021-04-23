@@ -163,14 +163,14 @@ def _write_file_into_efs(region, vpc_stack, efs_stack, request, key_name, cfn_st
         package_update: true
         package_upgrade: true
         runcmd:
-        - yum install -y amazon-efs-utils
         - yum install -y nfs-utils
         - file_system_id_1="""
         + efs_stack.cfn_resources["FileSystemResource"]
         + """
         - efs_mount_point_1=/mnt/efs/fs1
         - mkdir -p "${!efs_mount_point_1}"
-        - mount -t efs ${!file_system_id_1}:/ ${!efs_mount_point_1}
+        - mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev """
+        + """"${!file_system_id_1}.efs.${AWS::Region}.${AWS::URLSuffix}:/" "${!efs_mount_point_1}"
         - touch ${!efs_mount_point_1}/"""
         + random_file_name
         + """
