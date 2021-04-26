@@ -13,6 +13,7 @@
 # This module contains all the classes required to convert a ImageBuilder into a CFN template by using CDK.
 #
 import copy
+import json
 import os
 import re
 from typing import List
@@ -277,8 +278,12 @@ class ImageBuilderCdkStack(Stack):
         ami_distribution_configuration = {
             "Name": self.image_name + AMI_NAME_REQUIRED_SUBSTRING,
             "AmiTags": ami_tags,
-            "LaunchPermissionConfiguration": self.config.dev_settings.distribution_configuration.launch_permission
-            if self.config.dev_settings and self.config.dev_settings.distribution_configuration
+            "LaunchPermissionConfiguration": json.loads(
+                self.config.dev_settings.distribution_configuration.launch_permission
+            )
+            if self.config.dev_settings
+            and self.config.dev_settings.distribution_configuration
+            and self.config.dev_settings.distribution_configuration.launch_permission
             else None,
         }
         distributions = []
