@@ -34,19 +34,20 @@ def test_runtime_bake(
     test_datadir,
     architecture,
     s3_bucket_factory,
+    amis_dict,
 ):
     """Test cluster creation with runtime bake."""
     # Remarkable AMIs are not available for ARM yet
     # Disable centos7,8 remarkable AMIs, because FPGA AMI's volume size is not enough.
     # Use official AMI with ubuntu2004 because DLAMI is not available yet
     if architecture == "x86_64" and os not in ["centos7", "centos8", "ubuntu2004"]:
-        ami_type = "remarkable"
+        custom_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
     elif architecture == "x86_64" and os == "centos8":
         # Test centos8 for epel package installation with pcluster ami as base AMI instead of official AMI,
         # Because unable to update os during runtime baking
-        ami_type = "pcluster"
+        custom_ami = amis_dict.get(os)
     else:
-        ami_type = "official"
+        custom_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
     # Custom Cookbook
     custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
@@ -58,7 +59,7 @@ def test_runtime_bake(
 
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
-        custom_ami=retrieve_latest_ami(region, os, ami_type=ami_type, architecture=architecture),
+        custom_ami=custom_ami,
         custom_cookbook=custom_cookbook if custom_cookbook else "",
     )
     cluster = clusters_factory(cluster_config)
