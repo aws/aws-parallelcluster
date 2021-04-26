@@ -12,7 +12,8 @@ phases:
           commands:
             - |
               set -v
-              AMI_ID=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/ami-id)
+              IMDS_TOKEN=$(curl --retry 3 --retry-delay 0 -s --fail -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+              AMI_ID=$(curl --retry 3 --retry-delay 0 -s --fail -H "X-aws-ec2-metadata-token: ${IMDS_TOKEN}" http://169.254.169.254/latest/meta-data/ami-id)
               echo ${AMI_ID}
 
       # Get AWS region
@@ -22,8 +23,8 @@ phases:
           commands:
             - |
               set -v
-
-              AVAIL_ZONE=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/placement/availability-zone)
+              IMDS_TOKEN=$(curl --retry 3 --retry-delay 0 -s --fail -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+              AVAIL_ZONE=$(curl --retry 3 --retry-delay 0 -s --fail -H "X-aws-ec2-metadata-token: ${IMDS_TOKEN}" http://169.254.169.254/latest/meta-data/placement/availability-zone)
               AWS_REGION=${AVAIL_ZONE::-1}
               echo ${AWS_REGION}
 
