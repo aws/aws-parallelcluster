@@ -15,7 +15,7 @@ from flask import Response
 from werkzeug.exceptions import HTTPException
 
 from pcluster.api import encoder
-from pcluster.api.models.errors import ParallelClusterApiException
+from pcluster.api.errors import ParallelClusterApiException
 
 
 class CustomParameterValidator(ParameterValidator):

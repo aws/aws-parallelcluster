@@ -12,6 +12,7 @@
 from datetime import datetime
 from typing import Dict, List
 
+from pcluster.api.errors import CreateClusterBadRequestException
 from pcluster.api.models import (
     CloudFormationStatus,
     ClusterConfigurationStructure,
@@ -29,7 +30,6 @@ from pcluster.api.models import (
     UpdateClusterResponseContent,
 )
 from pcluster.api.models.cluster_status import ClusterStatus
-from pcluster.api.models.errors import CreateClusterBadRequestException
 
 
 def create_cluster(
