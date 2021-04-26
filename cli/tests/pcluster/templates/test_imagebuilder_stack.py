@@ -2014,7 +2014,6 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                 ]
                             },
                         },
-                        "LaunchPermissionConfiguration": "",
                     },
                     "Region": "eu-south-1",
                 },
@@ -2030,7 +2029,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "dev_settings": {
                         "distribution_configuration": {
                             "regions": "eu-south-1",
-                            "launch_permission": {"UserIds": ["123456789012", "345678901234"]},
+                            "launch_permission": '{"UserIds": ["123456789012", "345678901234"]}',
                         }
                     },
                 }
@@ -2084,7 +2083,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "dev_settings": {
                         "distribution_configuration": {
                             "regions": "eu-south-1",
-                            "launch_permission": {"UserIds": []},
+                            "launch_permission": '{"UserIds": []}',
                         }
                     },
                 }
@@ -2138,7 +2137,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "dev_settings": {
                         "distribution_configuration": {
                             "regions": "eu-south-1,us-west-1",
-                            "launch_permission": {"UserGroups": ["all"]},
+                            "launch_permission": '{"UserGroups": ["all"]}',
                         }
                     },
                 }

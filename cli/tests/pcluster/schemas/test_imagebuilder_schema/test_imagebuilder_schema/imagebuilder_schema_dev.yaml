@@ -44,7 +44,7 @@ DevSettings:
   DistributionConfiguration:
     Regions: us-east-2,eu-south-1
     LaunchPermission: |
-      { "UserIds": ["123456789012", "345678901234"] }
+      { "UserIds": ["123456789012", "345678901234"], "UserGroups": ["all"] }
   TerminateInstanceOnFailure: True
 
 CustomS3Bucket: bucket-name
