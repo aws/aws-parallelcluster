@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 
 import argparse
 
+from pcluster.constants import SUPPORTED_REGIONS
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -30,7 +32,7 @@ class CliCommand(ABC):
         parser = subparsers.add_parser(parser_name, **argparse_kwargs)
         parser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
         if region_arg:
-            parser.add_argument("-r", "--region", help="AWS Region to use.")
+            parser.add_argument("-r", "--region", help="AWS Region to use.", choices=SUPPORTED_REGIONS)
         if config_arg:
             parser.add_argument("-c", "--config", dest="config_file", help="Defines an alternative config file.")
         if nowait_arg:
