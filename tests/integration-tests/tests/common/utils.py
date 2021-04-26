@@ -42,7 +42,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
 }
 
 # Get official pcluster AMIs or get from dev account
-PCLUSTER_AMI_OWNERS = ["amazon", "self"]
+PCLUSTER_AMI_OWNERS = ["amazon"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
