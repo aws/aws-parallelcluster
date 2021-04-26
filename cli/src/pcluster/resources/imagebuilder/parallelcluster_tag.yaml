@@ -82,7 +82,7 @@ phases:
                   KEY="$(echo ${KEY} | cut -c -128)"
                   VALUE="$(echo ${VALUE} | cut -c -256)"
                   echo "Adding Tag Key=${KEY},Value=${VALUE}"
-                  aws ec2 create-tags --region {{ test.AWSRegion.outputs.stdout }} --resource {{ test.AmiId.outputs.stdout }} --tags "Key=${KEY},Value=${VALUE}" || echo "Not able to set AMI tag"; exit 1
+                  aws ec2 create-tags --region {{ test.AWSRegion.outputs.stdout }} --resource {{ test.AmiId.outputs.stdout }} --tags "Key=${KEY},Value=${VALUE}" || { echo "Not able to set AMI tag"; exit 1; }
                 fi
               }
 
