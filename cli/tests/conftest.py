@@ -193,7 +193,7 @@ def aws_api_mock(mocker):
 
 @pytest.fixture
 def client() -> FlaskClient:
-    flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).app.app
+    flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).flask_app
     with flask_app.test_client() as client:
         yield client
 

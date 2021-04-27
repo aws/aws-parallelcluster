@@ -7,7 +7,7 @@
 # limitations under the License.
 from abc import ABC
 
-from pcluster.api.models import BadRequestExceptionResponseContent
+from pcluster.api.models import BadRequestExceptionResponseContent, InternalServiceExceptionResponseContent
 from pcluster.api.models.base_model_ import Model
 from pcluster.api.models.build_image_bad_request_exception_response_content import (
     BuildImageBadRequestExceptionResponseContent,
@@ -65,3 +65,12 @@ class BadRequestException(ParallelClusterApiException):
 
     def __init__(self, content: str):
         super().__init__(BadRequestExceptionResponseContent(f"Bad Request: {content}"))
+
+
+class InternalServiceException(ParallelClusterApiException):
+    """Exception raised for internal service errors."""
+
+    code = 500
+
+    def __init__(self, content: InternalServiceExceptionResponseContent):
+        super().__init__(content)
