@@ -97,7 +97,7 @@ Use the following to run a shell in the container: `docker run -it --entrypoint 
 This is particularly useful to debug issues with the container runtime.
 
 #### Run a local AWS Lambda endpoint
-Use the following to run a local AWS Lambda endpoint hosting the API: `docker run -e POWERTOOLS_TRACE_DISABLED=1 -p 9000:8080 pcluster-lambda`
+Use the following to run a local AWS Lambda endpoint hosting the API: `docker run -e POWERTOOLS_TRACE_DISABLED=1 -e AWS_REGION=eu-west-1 -p 9000:8080 pcluster-lambda`
 
 Then you can use the following to send requests to the local endpoint:
 `curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d @docker/awslambda/test-events/event.json`

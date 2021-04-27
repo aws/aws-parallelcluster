@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 from os import environ
 from typing import Any, Dict
 
@@ -43,7 +43,10 @@ XRayMiddleware(pcluster_api.app.app, xray_recorder)
 @tracer.capture_lambda_handler
 def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, Any]:
     try:
+        # Clearing cache since the same ParallelClusterFlaskApp is reused
         Cache.clear_all()
+        # Setting default region to region where lambda function is executed
+        os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
         return handle_request(pcluster_api.app, event, context)
     except Exception:
         logger.exception("Unexpected exception")

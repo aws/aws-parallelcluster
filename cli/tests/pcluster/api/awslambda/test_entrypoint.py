@@ -6,22 +6,18 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
-import os
 
 import pytest
 from assertpy import assert_that
 
 
 @pytest.fixture(autouse=True)
-def disable_lambda_tracing():
-    os.environ["POWERTOOLS_TRACE_DISABLED"] = "1"
-
-
-@pytest.fixture(autouse=True)
-def disable_log_deduplication():
+def set_lambda_env(set_env):
+    set_env("POWERTOOLS_TRACE_DISABLED", "1")
     # Pytest Live Log feature duplicates emitted log messages in order to style log statements according to their
     # levels, for this to work use POWERTOOLS_LOG_DEDUPLICATION_DISABLED env var.
-    os.environ["POWERTOOLS_LOG_DEDUPLICATION_DISABLED"] = "1"
+    set_env("POWERTOOLS_LOG_DEDUPLICATION_DISABLED", "1")
+    set_env("AWS_REGION", "eu-west-1")
 
 
 @pytest.fixture
