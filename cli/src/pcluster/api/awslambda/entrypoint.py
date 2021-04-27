@@ -24,6 +24,9 @@ from pcluster.utils import Cache
 logger = Logger(service="pcluster", location="%(filename)s:%(lineno)s - %(funcName)s()")
 tracer = Tracer(service="pcluster")
 
+# Initialize as a global to re-use across Lambda invocations
+pcluster_api = None  # pylint: disable=invalid-name
+
 profile = environ.get("PROFILE", "prod")
 is_dev_profile = profile == "dev"
 
@@ -32,17 +35,23 @@ if is_dev_profile:
     environ["FLASK_ENV"] = "development"
     environ["FLASK_DEBUG"] = "1"
 
-# Initialize as a global to re-use across Lambda invocations
-pcluster_api = ParallelClusterFlaskApp(swagger_ui=is_dev_profile, validate_responses=is_dev_profile)
-# Instrument X-Ray recorder to trace requests served by the Flask application
-xray_recorder.configure(service="ParallelCluster Flask App")
-XRayMiddleware(pcluster_api.app.app, xray_recorder)
+
+@tracer.capture_method
+def _init_flask_app():
+    return ParallelClusterFlaskApp(swagger_ui=is_dev_profile, validate_responses=is_dev_profile)
 
 
 @logger.inject_lambda_context(log_event=is_dev_profile)
 @tracer.capture_lambda_handler
 def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, Any]:
     try:
+        global pcluster_api  # pylint: disable=global-statement,invalid-name
+        if not pcluster_api:
+            logger.info("Initializing Flask Application")
+            pcluster_api = _init_flask_app()
+            # Instrument X-Ray recorder to trace requests served by the Flask application
+            xray_recorder.configure(service="ParallelCluster Flask App")
+            XRayMiddleware(pcluster_api.flask_app, xray_recorder)
         # Clearing cache since the same ParallelClusterFlaskApp is reused
         Cache.clear_all()
         # Setting default region to region where lambda function is executed
