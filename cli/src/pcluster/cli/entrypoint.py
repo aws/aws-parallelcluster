@@ -108,7 +108,9 @@ class ParallelClusterCli:
             "version": 1,
             "disable_existing_loggers": True,
             "formatters": {
-                "standard": {"format": "%(asctime)s - %(levelname)s - %(module)s - %(message)s"},
+                "standard": {
+                    "format": "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s:%(funcName)s() - %(message)s"
+                },
                 "console": {"format": "%(message)s"},
             },
             "handlers": {

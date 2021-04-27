@@ -21,7 +21,7 @@ from pcluster.api.awslambda.serverless_wsgi import handle_request
 from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.utils import Cache
 
-logger = Logger(service="pcluster", location="%(filename)s:%(lineno)s - %(funcName)s()")
+logger = Logger(service="pcluster", location="%(filename)s:%(lineno)s:%(funcName)s()")
 tracer = Tracer(service="pcluster")
 
 # Initialize as a global to re-use across Lambda invocations
