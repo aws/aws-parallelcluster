@@ -196,3 +196,27 @@ def client() -> FlaskClient:
     flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).app.app
     with flask_app.test_client() as client:
         yield client
+
+
+@pytest.fixture
+def set_env():
+    old_environ = dict(os.environ)
+
+    def _set_env_var(key, value):
+        os.environ[key] = value
+
+    yield _set_env_var
+    os.environ.clear()
+    os.environ.update(old_environ)
+
+
+@pytest.fixture
+def unset_env():
+    old_environ = dict(os.environ)
+
+    def _unset_env_var(key):
+        os.environ.pop(key, default=None)
+
+    yield _unset_env_var
+    os.environ.clear()
+    os.environ.update(old_environ)

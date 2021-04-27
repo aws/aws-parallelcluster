@@ -23,8 +23,10 @@ from pcluster.api.models import (
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.api.validators import validate_region
 
 
+@validate_region(is_query_string_arg=False)
 def build_image(
     build_image_request_content,
     suppress_validators=None,
@@ -68,6 +70,7 @@ def build_image(
     )
 
 
+@validate_region()
 def delete_image(image_name, region=None, client_token=None, force=None):
     """
     Initiate the deletion of the custom ParallelCluster image.
@@ -96,6 +99,7 @@ def delete_image(image_name, region=None, client_token=None, force=None):
     )
 
 
+@validate_region()
 def describe_image(image_name, region=None):
     """
     Get detailed information about an existing image.
@@ -122,6 +126,7 @@ def describe_image(image_name, region=None):
     )
 
 
+@validate_region()
 def describe_official_images(version=None, region=None, os=None, architecture=None, next_token=None):
     """
     Describe ParallelCluster AMIs.
@@ -142,6 +147,7 @@ def describe_official_images(version=None, region=None, os=None, architecture=No
     return DescribeOfficialImagesResponseContent(items=[])
 
 
+@validate_region()
 def list_images(region=None, next_token=None, image_status=None):
     """
     Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default.

@@ -15,8 +15,10 @@ from pcluster.api.models import (
     DescribeComputeFleetStatusResponseContent,
     UpdateComputeFleetStatusRequestContent,
 )
+from pcluster.api.validators import validate_region
 
 
+@validate_region()
 def describe_compute_fleet_status(cluster_name, region=None):
     """
     Describe the status of the compute fleet.
@@ -33,6 +35,7 @@ def describe_compute_fleet_status(cluster_name, region=None):
     )
 
 
+@validate_region()
 def update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content, region=None):
     """
     Update the status of the cluster compute fleet.

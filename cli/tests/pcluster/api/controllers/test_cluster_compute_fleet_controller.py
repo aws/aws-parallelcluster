@@ -14,7 +14,7 @@ class TestClusterComputeFleetController:
 
     def test_describe_compute_fleet_status(self, client):
         """Test case for describe_compute_fleet_status."""
-        query_string = [("region", "region_example")]
+        query_string = [("region", "eu-west-1")]
         headers = {
             "Accept": "application/json",
         }
@@ -29,7 +29,7 @@ class TestClusterComputeFleetController:
     def test_update_compute_fleet_status(self, client):
         """Test case for update_compute_fleet_status."""
         update_compute_fleet_status_request_content = {"status": "STOP_REQUESTED"}
-        query_string = [("region", "region_example")]
+        query_string = [("region", "eu-west-1")]
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",

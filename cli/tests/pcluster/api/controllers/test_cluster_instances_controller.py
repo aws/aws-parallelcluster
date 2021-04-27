@@ -15,7 +15,7 @@ class TestClusterInstancesController:
 
     def test_delete_cluster_instances(self, client):
         """Test case for delete_cluster_instances."""
-        query_string = [("region", "region_example"), ("force", True)]
+        query_string = [("region", "eu-west-1"), ("force", True)]
         headers = {
             "Accept": "application/json",
         }
@@ -30,7 +30,7 @@ class TestClusterInstancesController:
     def test_describe_cluster_instances(self, client):
         """Test case for describe_cluster_instances."""
         query_string = [
-            ("region", "region_example"),
+            ("region", "eu-west-1"),
             ("nextToken", "next_token_example"),
             ("nodeType", NodeType.HEAD),
             ("queueName", "queue_name_example"),

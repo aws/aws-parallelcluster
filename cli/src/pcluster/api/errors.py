@@ -7,6 +7,7 @@
 # limitations under the License.
 from abc import ABC
 
+from pcluster.api.models import BadRequestExceptionResponseContent
 from pcluster.api.models.base_model_ import Model
 from pcluster.api.models.build_image_bad_request_exception_response_content import (
     BuildImageBadRequestExceptionResponseContent,
@@ -20,29 +21,47 @@ from pcluster.api.models.update_cluster_bad_request_exception_response_content i
 
 
 class ParallelClusterApiException(ABC, Exception):
+    """Base class for ParallelCluster Api exceptions."""
+
     code: int = None
     content: Model = None
 
+    def __init__(self, content: Model):
+        super().__init__()
+        self.content = content
+
 
 class CreateClusterBadRequestException(ParallelClusterApiException):
+    """Exception raised when receiving an invalid cluster config on a create operation."""
+
     code = 400
 
     def __init__(self, content: CreateClusterBadRequestExceptionResponseContent):
-        super().__init__()
-        self.content = content
+        super().__init__(content)
 
 
 class BuildImageBadRequestException(ParallelClusterApiException):
+    """Exception raised when receiving an invalid image config on a create operation."""
+
     code = 400
 
     def __init__(self, content: BuildImageBadRequestExceptionResponseContent):
-        super().__init__()
-        self.content = content
+        super().__init__(content)
 
 
 class UpdateClusterBadRequestException(ParallelClusterApiException):
+    """Exception raised when receiving an invalid cluster config on an update operation."""
+
     code = 400
 
     def __init__(self, content: UpdateClusterBadRequestExceptionResponseContent):
-        super().__init__()
-        self.content = content
+        super().__init__(content)
+
+
+class BadRequestException(ParallelClusterApiException):
+    """Exception raised for invalid requests."""
+
+    code = 400
+
+    def __init__(self, content: str):
+        super().__init__(BadRequestExceptionResponseContent(f"Bad Request: {content}"))

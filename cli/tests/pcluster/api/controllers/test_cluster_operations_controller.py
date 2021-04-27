@@ -20,7 +20,7 @@ class TestClusterOperationsController:
         """Test case for create_cluster."""
         create_cluster_request_content = {
             "name": "clustername",
-            "region": "region",
+            "region": "eu-west-1",
             "clusterConfiguration": "clusterConfiguration",
         }
         query_string = [
@@ -46,7 +46,7 @@ class TestClusterOperationsController:
 
     def test_delete_cluster(self, client):
         """Test case for delete_cluster."""
-        query_string = [("region", "region_example"), ("retainLogs", True), ("clientToken", "client_token_example")]
+        query_string = [("region", "eu-west-1"), ("retainLogs", True), ("clientToken", "client_token_example")]
         headers = {
             "Accept": "application/json",
         }
@@ -60,7 +60,7 @@ class TestClusterOperationsController:
 
     def test_describe_cluster(self, client):
         """Test case for describe_cluster."""
-        query_string = [("region", "region_example")]
+        query_string = [("region", "eu-west-1")]
         headers = {
             "Accept": "application/json",
         }
@@ -75,7 +75,7 @@ class TestClusterOperationsController:
     def test_list_clusters(self, client):
         """Test case for list_clusters."""
         query_string = [
-            ("region", "region_example"),
+            ("region", "eu-west-1"),
             ("nextToken", "next_token_example"),
             ("clusterStatus", ClusterStatus.CREATE_COMPLETE),
         ]
@@ -91,7 +91,7 @@ class TestClusterOperationsController:
         query_string = [
             ("suppressValidators", ["suppress_validators_example"]),
             ["validationFailureLevel", ValidationLevel.INFO],
-            ("region", "region_example"),
+            ("region", "eu-west-1"),
             ("dryrun", True),
             ("forceUpdate", True),
             ("clientToken", "client_token_example"),
