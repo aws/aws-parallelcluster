@@ -15,13 +15,9 @@
 import os
 import tempfile
 
-from aws_cdk.core import App
-
 from pcluster.config.cluster_config import BaseClusterConfig
 from pcluster.config.imagebuilder_config import ImageBuilderConfig
 from pcluster.models.s3_bucket import S3Bucket
-from pcluster.templates.cluster_stack import ClusterCdkStack
-from pcluster.templates.imagebuilder_stack import ImageBuilderCdkStack
 from pcluster.utils import load_yaml_dict
 
 
@@ -31,6 +27,10 @@ class CDKTemplateBuilder:
     @staticmethod
     def build_cluster_template(cluster_config: BaseClusterConfig, bucket: S3Bucket, stack_name: str):
         """Build template for the given cluster and return as output in Yaml format."""
+        from aws_cdk.core import App  # pylint: disable=C0415
+
+        from pcluster.templates.cluster_stack import ClusterCdkStack  # pylint: disable=C0415
+
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = str(stack_name)
             app = App(outdir=str(tempdir))
@@ -43,6 +43,10 @@ class CDKTemplateBuilder:
     @staticmethod
     def build_imagebuilder_template(image_config: ImageBuilderConfig, image_name: str, bucket: S3Bucket):
         """Build template for the given imagebuilder and return as output in Yaml format."""
+        from aws_cdk.core import App  # pylint: disable=C0415
+
+        from pcluster.templates.imagebuilder_stack import ImageBuilderCdkStack  # pylint: disable=C0415
+
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "imagebuilder"
             app = App(outdir=str(tempdir))
