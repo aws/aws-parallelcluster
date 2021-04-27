@@ -15,3 +15,11 @@
 {%- set INSTANCES_DEFAULT_X86 = ["c5.xlarge"] -%}
 {%- set INSTANCES_DEFAULT_ARM = ["m6g.xlarge"] -%} # m6g.xlarge is not supported in af-south-1, eu-south-1, eu-west-3, me-south-1
 {%- set INSTANCES_DEFAULT = ["c5.xlarge", "m6g.xlarge"] -%}
+
+{%- macro instance(instance_key) -%}
+    {%- if additional_instance_types_map -%}
+        {{ additional_instance_types_map.get(instance_key, instance_key) }}
+    {%- else -%}
+        "{{ instance_key }}"
+    {%- endif -%}
+{%- endmacro -%}

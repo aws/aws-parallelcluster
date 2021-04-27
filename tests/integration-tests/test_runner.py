@@ -27,6 +27,7 @@ from framework.tests_configuration.config_renderer import dump_rendered_config_f
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
 from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
+from utils import InstanceTypesData
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
@@ -75,6 +76,7 @@ TEST_DEFAULTS = {
     "keep_logs_on_cluster_failure": False,
     "keep_logs_on_test_failure": False,
     "tests_root_dir": "./tests",
+    "instance_types_data": None,
 }
 
 
@@ -125,7 +127,6 @@ def _init_argparser():
         "Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. "
         "Refer to the docs for further details on the config format: "
         "https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md",
-        type=_test_config_file,
     )
     dimensions_group.add_argument(
         "-i",
@@ -234,6 +235,13 @@ def _init_argparser():
     )
     custom_group.add_argument(
         "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install")
+    )
+    custom_group.add_argument(
+        "--instance-types-data",
+        help="Additional information about instance types used in the tests. The format is a JSON map "
+        "instance_type -> data, where data must respect the same structure returned by ec2 "
+        "describe-instance-types",
+        default=TEST_DEFAULTS.get("instance_types_data"),
     )
 
     ami_group = parser.add_argument_group("AMI selection parameters")
@@ -406,6 +414,9 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append(" or ".join(list(_join_with_not(args.features))))
     if args.tests_config:
         _set_tests_config_args(args, pytest_args, out_dir)
+    if args.instance_types_data:
+        pytest_args.append("--instance-types-data-file={0}".format(args.instance_types_data))
+
     if regions:
         pytest_args.append("--regions")
         pytest_args.extend(regions)
@@ -583,6 +594,7 @@ def _check_args(args):
         assert_that(args.schedulers).described_as("--schedulers cannot be empty").is_not_empty()
     else:
         try:
+            args.tests_config = _test_config_file(args.tests_config)
             assert_valid_config(args.tests_config, args.tests_root_dir)
             logger.info("Found valid config file:\n%s", dump_rendered_config_file(args.tests_config))
         except Exception:
@@ -606,6 +618,12 @@ def main():
         exit(1)
 
     args = _init_argparser().parse_args()
+
+    # Load additional instance types data, if provided.
+    # This step must be done before loading test config files in order to resolve instance type placeholders.
+    if args.instance_types_data:
+        InstanceTypesData.load_additional_instance_types_data(args.instance_types_data)
+
     _check_args(args)
     logger.info("Parsed test_runner parameters {0}".format(args))
 

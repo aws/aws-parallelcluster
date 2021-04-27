@@ -17,7 +17,7 @@ import pexpect
 import pytest
 import yaml
 from assertpy import assert_that
-from conftest import add_custom_packages_configs
+from conftest import inject_additional_config_settings
 
 
 @pytest.mark.regions(["us-east-1"])
@@ -54,7 +54,7 @@ def test_pcluster_configure(
         config_path,
     )
 
-    add_custom_packages_configs(config_path, request, region)
+    inject_additional_config_settings(config_path, request, region)
     clusters_factory(config_path)
 
 
