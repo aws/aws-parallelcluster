@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 import os
 import random
@@ -22,6 +23,52 @@ import boto3
 from assertpy import assert_that
 from constants import OS_TO_ROOT_VOLUME_DEVICE
 from retrying import retry
+
+
+class InstanceTypesData:
+    """Utility class to retrieve instance types information needed for integration tests."""
+
+    # Additional instance types data provided via tests configuration
+    additional_instance_types_data = {}
+    additional_instance_types_map = {}
+
+    @staticmethod
+    def load_additional_instance_types_data(instance_types_data_file):
+        """
+        Load additional instance types data from configuration json file.
+        The file must contain two keys:
+          - "instance_types_data": The json structure to be passed to cluster configuration files
+          - "instance_types_map": A dict containing logical instance types names (that can be used in cluster config
+            files) vs real ones (e.g. "t2.micro")
+        """
+        instance_types_data_file_content = read_json_file(instance_types_data_file)
+        InstanceTypesData.additional_instance_types_data = instance_types_data_file_content.get(
+            "instance_types_data", {}
+        )
+        InstanceTypesData.additional_instance_types_map = instance_types_data_file_content.get("instance_types_map", {})
+        logging.info(
+            "Additional instance types data loaded: {0}".format(InstanceTypesData.additional_instance_types_data)
+        )
+
+    @staticmethod
+    def get_instance_info(instance_type, region_name=None):
+        """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
+        if (
+            InstanceTypesData.additional_instance_types_data
+            and instance_type in InstanceTypesData.additional_instance_types_data.keys()
+        ):
+            instance_info = InstanceTypesData.additional_instance_types_data[instance_type]
+        else:
+            try:
+                ec2_client = boto3.client("ec2", region_name=region_name)
+                instance_info = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[
+                    0
+                ]
+            except Exception as exception:
+                logging.error(f"Failed to get instance type info for instance type: {exception}")
+                raise
+
+        return instance_info
 
 
 def retry_if_subprocess_error(exception):
@@ -373,12 +420,7 @@ def remove_keys_from_known_hosts(hostname, host_keys_file, env):
 
 def get_instance_info(instance_type, region_name=None):
     """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
-    try:
-        ec2_client = boto3.client("ec2", region_name=region_name)
-        return ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
-    except Exception as exception:
-        logging.error(f"Failed to get instance type info for instance type: {exception}")
-        raise
+    return InstanceTypesData.get_instance_info(instance_type, region_name)
 
 
 def get_architecture_supported_by_instance_type(instance_type, region_name=None):
@@ -450,3 +492,13 @@ def dict_add_nested_key(d, value, keys):
             _d[key] = {}
         _d = _d[key]
     _d[keys[-1]] = value
+
+
+def read_json_file(file):
+    """Read a Json file into a String and raise an exception if the file is invalid."""
+    try:
+        with open(file) as f:
+            return json.load(f)
+    except Exception as e:
+        logging.exception("Failed when reading json file %s", file)
+        raise e

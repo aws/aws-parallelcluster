@@ -43,6 +43,7 @@ from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
 from utils import (
+    InstanceTypesData,
     create_s3_bucket,
     delete_s3_bucket,
     dict_add_nested_key,
@@ -97,6 +98,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
     )
+    parser.addoption("--instance-types-data-file", help="JSON file with additional instance types data")
     parser.addoption(
         "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
     )
@@ -132,6 +134,12 @@ def pytest_configure(config):
     # read tests config file if used
     if config.getoption("tests_config_file", None):
         config.option.tests_config = read_config_file(config.getoption("tests_config_file"))
+
+    # Read instance types data file if used
+    if config.getoption("instance_types_data_file", None):
+        # Load additional instance types data
+        InstanceTypesData.load_additional_instance_types_data(config.getoption("instance_types_data_file"))
+        config.option.instance_types_data = InstanceTypesData.additional_instance_types_data
 
     # register additional markers
     config.addinivalue_line("markers", "instances(instances_list): run test only against the listed instances.")
@@ -370,13 +378,13 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        add_custom_packages_configs(config_file_path, request, region)
+        inject_additional_config_settings(config_file_path, request, region)
         return config_file_path
 
     return _config_renderer
 
 
-def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
+def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
     with open(cluster_config) as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
@@ -406,6 +414,11 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
             dict_add_nested_key(
                 config_content, request.config.getoption("ami_owner"), ("DevSettings", "AmiSearchFilters", "Owner")
             )
+
+    # Additional instance types data is copied it into config files to make it available at cluster creation
+    instance_types_data = request.config.getoption("instance_types_data", None)
+    if instance_types_data:
+        dict_add_nested_key(config_content, json.dumps(instance_types_data), ("DevSettings", "InstanceTypesData"))
 
     for option, config_param in [("pre_install", "OnNodeStart"), ("post_install", "OnNodeConfigured")]:
         if request.config.getoption(option):
@@ -518,8 +531,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     # m6g.xlarge is not supported in use1-az2 or use1-az3
     # p4d.24xlarge is only available on use1-az2
     "us-east-1": ["use1-az2"],
-    # m6g.xlarge is not supported in use2-az1
-    "us-east-2": ["use2-az2", "use2-az3"],
+    # some instance type is only supported in use2-az2
+    "us-east-2": ["use2-az2"],
     # c4.xlarge is not supported in usw2-az4
     # p4d.24xlarge is only available on uw2-az2
     "us-west-2": ["usw2-az2"],
