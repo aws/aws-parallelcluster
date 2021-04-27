@@ -126,9 +126,9 @@ def pytest_configure(config):
 
     # Read instance types data file if used
     if config.getoption("instance_types_data_file", None):
-        config.option.instance_types_data = _read_json_file(config.getoption("instance_types_data_file"))
         # Load additional instance types data
-        _set_additional_instance_types_data(config.option.instance_types_data)
+        InstanceTypesData.load_additional_instance_types_data(config.getoption("instance_types_data_file"))
+        config.option.instance_types_data = InstanceTypesData.additional_instance_types_data
 
     # register additional markers
     config.addinivalue_line("markers", "instances(instances_list): run test only against the listed instances.")
@@ -205,11 +205,6 @@ def _log_collected_tests(session):
         with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
             out_f.write("\n".join(collected_tests))
             out_f.write("\n")
-
-
-def _set_additional_instance_types_data(instance_types_data):
-    InstanceTypesData.additional_instance_types_data = instance_types_data
-    logging.info("Additional instance types data loaded: {0}".format(InstanceTypesData.additional_instance_types_data))
 
 
 def pytest_exception_interact(node, call, report):
@@ -870,12 +865,3 @@ def pcluster_ami_without_standard_naming(region, os, architecture):
     if ami_id:
         client = boto3.client("ec2", region_name=region)
         client.deregister_image(ImageId=ami_id)
-
-
-def _read_json_file(file):
-    """Read a Json file into a String and raise an exception if the file is invalid."""
-    try:
-        with open(file) as f:
-            return json.load(f)
-    except Exception:
-        logging.exception("Failed when reading json file %s", file)
