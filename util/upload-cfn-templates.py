@@ -81,7 +81,7 @@ def upload_to_s3(args, region, aws_credentials=None):
         buckets = args.bucket.split(",")
     else:
         buckets = ["%s-aws-parallelcluster" % region]
-    key_path = "templates/"
+    key_path = "parallelcluster/{version}/templates/".format(version=args.version)
     template_paths = "cloudformation/"
 
     for t in args.templates:

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not
 # use this file except in compliance with the License. A copy of the License
@@ -26,9 +26,12 @@ from datetime import datetime
 
 import argparse
 import boto3
+import pkg_resources
 from botocore.exceptions import ClientError
 
-_COOKBOOKS_DIR = "cookbooks"
+_COOKBOOKS_DIR = "parallelcluster/{version}/cookbooks".format(
+    version=pkg_resources.get_distribution("aws-parallelcluster").version
+)
 _BACKUP_DIR = "{0}/backup".format(_COOKBOOKS_DIR)
 _bck_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 _bck_error_array = set()
