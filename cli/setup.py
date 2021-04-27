@@ -46,11 +46,11 @@ REQUIRES = [
     "aws-cdk.aws-route53~=" + CDK_VERSION,
     "aws-cdk.aws-ssm~=" + CDK_VERSION,
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
-]
-
-API_REQUIRES = [
     "werkzeug~=1.0",
     "connexion~=2.7",
+]
+
+LAMBDA_REQUIRES = [
     "aws-lambda-powertools~=1.14",
 ]
 
@@ -67,7 +67,7 @@ setup(
     python_requires=">=3.6",
     install_requires=REQUIRES,
     extras_require={
-        "api": API_REQUIRES,
+        "awslambda": LAMBDA_REQUIRES,
     },
     entry_points={
         "console_scripts": [
