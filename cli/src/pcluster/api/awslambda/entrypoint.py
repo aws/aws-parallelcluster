@@ -48,6 +48,6 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         # Setting default region to region where lambda function is executed
         os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
         return handle_request(pcluster_api.app, event, context)
-    except Exception:
-        logger.exception("Unexpected exception")
-        raise
+    except Exception as e:
+        logger.critical("Unexpected exception: %s", e, exc_info=True)
+        raise Exception("Unexpected fatal exception. Please look at API logs for details on the encountered failure.")
