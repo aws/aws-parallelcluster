@@ -1,0 +1,10 @@
+{%- import 'common.jinja2' as common with context -%}
+---
+test-suites:
+  schedulers:
+    test_slurm.py::test_slurm:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: [{{ common.instance("instance_type_1") }}]
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
