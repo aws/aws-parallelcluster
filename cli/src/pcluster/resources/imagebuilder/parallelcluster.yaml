@@ -28,7 +28,7 @@ phases:
           commands:
             - |
               set -v
-              echo "15.11.8"
+              echo "16.13.16"
 
       # Get Berkshelf Version
       - name: BerkshelfVersion
@@ -37,7 +37,7 @@ phases:
           commands:
             - |
               set -v
-              echo "7.0.10"
+              echo "7.2.0"
 
       # Get Cookbook name
       - name: PClusterCookbookVersionName
