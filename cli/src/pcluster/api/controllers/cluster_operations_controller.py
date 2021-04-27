@@ -8,7 +8,6 @@
 
 # pylint: disable=W0613
 
-
 from datetime import datetime
 from typing import Dict, List
 
@@ -30,8 +29,10 @@ from pcluster.api.models import (
     UpdateClusterResponseContent,
 )
 from pcluster.api.models.cluster_status import ClusterStatus
+from pcluster.api.validators import validate_region
 
 
+@validate_region(is_query_string_arg=False)
 def create_cluster(
     create_cluster_request_content: Dict,
     suppress_validators: List[str] = None,
@@ -73,6 +74,7 @@ def create_cluster(
     )
 
 
+@validate_region()
 def delete_cluster(cluster_name, region=None, retain_logs=None, client_token=None):
     """
     Initiate the deletion of a cluster.
@@ -101,6 +103,7 @@ def delete_cluster(cluster_name, region=None, retain_logs=None, client_token=Non
     )
 
 
+@validate_region()
 def describe_cluster(cluster_name, region=None):
     """
     Get detailed information about an existing cluster.
@@ -135,6 +138,7 @@ def describe_cluster(cluster_name, region=None):
     )
 
 
+@validate_region()
 def list_clusters(region=None, next_token=None, cluster_status=None):
     """
     Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.
@@ -151,6 +155,7 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
     return ListClustersResponseContent(items=[])
 
 
+@validate_region()
 def update_cluster(
     update_cluster_request_content: Dict,
     cluster_name,

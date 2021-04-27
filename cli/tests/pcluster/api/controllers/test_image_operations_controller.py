@@ -21,7 +21,7 @@ class TestImageOperationsController:
         build_image_request_content = {
             "imageConfiguration": "imageConfiguration",
             "name": "imagename",
-            "region": "region",
+            "region": "eu-west-1",
         }
         query_string = [
             ("suppressValidators", ["suppress_validators_example"]),
@@ -46,7 +46,7 @@ class TestImageOperationsController:
 
     def test_delete_image(self, client):
         """Test case for delete_image."""
-        query_string = [("region", "region_example"), ("clientToken", "client_token_example"), ("force", True)]
+        query_string = [("region", "eu-west-1"), ("clientToken", "client_token_example"), ("force", True)]
         headers = {
             "Accept": "application/json",
         }
@@ -60,7 +60,7 @@ class TestImageOperationsController:
 
     def test_describe_image(self, client):
         """Test case for describe_image."""
-        query_string = [("region", "region_example")]
+        query_string = [("region", "eu-west-1")]
         headers = {
             "Accept": "application/json",
         }
@@ -76,7 +76,7 @@ class TestImageOperationsController:
         """Test case for describe_official_images."""
         query_string = [
             ("version", "version_example"),
-            ("region", "region_example"),
+            ("region", "eu-west-1"),
             ("os", "os_example"),
             ("architecture", "architecture_example"),
             ("nextToken", "next_token_example"),
@@ -90,7 +90,7 @@ class TestImageOperationsController:
     def test_list_images(self, client):
         """Test case for list_images."""
         query_string = [
-            ("region", "region_example"),
+            ("region", "eu-west-1"),
             ("nextToken", "next_token_example"),
             ("imageStatus", ImageBuildStatus.BUILD_FAILED),
             ("imageStatus", ImageBuildStatus.BUILD_COMPLETE),
