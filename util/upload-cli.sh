@@ -76,7 +76,7 @@ main() {
         fi
     fi
 
-    _version=$(grep "VERSION = \"" "${_srcdir}/cli/setup.py" |awk '{print $3}'| tr -d \")
+    _version=$(grep "^VERSION = \"" "${_srcdir}/cli/setup.py" |awk '{print $3}'| tr -d \")
     if [ -z "${_version}" ]; then
         _error_exit "Unable to detect AWS ParallelCluster version, are you in the right directory?"
     fi
@@ -90,7 +90,8 @@ main() {
     popd > /dev/null
 
     # upload package
-    aws ${_profile} --region "${_region}" s3 cp --acl public-read aws-parallelcluster-${_version}.tgz s3://${_bucket}/cli/aws-parallelcluster-${_version}.tgz || _error_exit 'Failed to push node to S3'
+    _key_path="parallelcluster/${_version}/cli"
+    aws ${_profile} --region "${_region}" s3 cp aws-parallelcluster-${_version}.tgz s3://${_bucket}/${_key_path}/aws-parallelcluster-${_version}.tgz || _error_exit 'Failed to push CLI to S3'
 
     _bucket_region=$(aws ${_profile} s3api get-bucket-location --bucket ${_bucket} --output text)
     if [ ${_bucket_region} == "None" ]; then
@@ -99,8 +100,10 @@ main() {
          _bucket_region=".${_bucket_region}"
      fi
 
-    echo "Done. Add the following variable to the pcluster create config file, under the DevSettings section"
-    echo "  AwsBatchCliPackage: https://s3${_bucket_region}.amazonaws.com/${_bucket}/cli/aws-parallelcluster-${_version}.tgz"
+    echo "Done. Add the following configuration to the pcluster create config file:"
+    echo ""
+    echo "DevSettings:"
+    echo "  AwsBatchCliPackage: s3://${_bucket}/${_key_path}/aws-parallelcluster-${_version}.tgz"
 }
 
 main "$@"

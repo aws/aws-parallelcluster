@@ -141,12 +141,13 @@ class Cluster:
         Generate artifact directory in S3 bucket.
 
         cluster artifact dir is generated before cfn stack creation and only generate once.
-        artifact_directory: e.g. parallelcluster/clusters/{cluster_name}-jfr4odbeonwb1w5k
+        artifact_directory: e.g. parallelcluster/{version}/clusters/{cluster_name}-jfr4odbeonwb1w5k
         """
         service_directory = generate_random_name_with_prefix(self.name)
         self.__s3_artifact_dir = "/".join(
             [
                 self._s3_artifacts_dict.get("root_directory"),
+                get_installed_version(),
                 self._s3_artifacts_dict.get("root_cluster_directory"),
                 service_directory,
             ]
@@ -338,9 +339,9 @@ class Cluster:
         Upload cluster specific resources and cluster template.
 
         All dirs contained in resource dir will be uploaded as zip files to
-        {bucket_name}/parallelcluster/clusters/{cluster_name}/{resource_dir}/artifacts.zip.
+        {bucket_name}/parallelcluster/{version}/clusters/{cluster_name}/{resource_dir}/artifacts.zip.
         All files contained in root dir will be uploaded to
-        {bucket_name}/parallelcluster/clusters/{cluster_name}/{resource_dir}/artifact.
+        {bucket_name}/parallelcluster/{version}/clusters/{cluster_name}/{resource_dir}/artifact.
         """
         try:
             resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
