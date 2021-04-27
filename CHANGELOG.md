@@ -42,6 +42,7 @@ per cluster.
 - Encrypt root EBS volumes and shared EBS volumes by default. 
   Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
 - Change tags prefix from `aws-parallelcluster-` to `parallelcluster:`.
+- Enable EFA for a compute resource by default if the instance type supports EFA.
 
 2.x.x
 ------
