@@ -18,7 +18,7 @@ COPY --from=nodejs_docker /var/lang/bin/node /var/lang/bin
 COPY --from=build_pcluster /var/task/cli/dist/* ./dist/
 # Install aws-parallelcluster
 RUN python -m pip install --upgrade pip
-RUN export PKG=(./dist/*.whl); python -m pip install "${PKG}[api]" && rm -rf ./dist
+RUN export PKG=(./dist/*.whl); python -m pip install "${PKG}[awslambda]" && rm -rf ./dist
 
 # When the PROFILE is set to dev the Flask application is started in debug mode and with SwaggerUI support
 ARG PROFILE=prod
