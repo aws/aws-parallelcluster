@@ -21,6 +21,7 @@ import re
 import time
 from shutil import copyfile
 from traceback import format_tb
+from urllib.parse import urlparse
 
 import boto3
 import configparser
@@ -57,7 +58,11 @@ from utils import (
     unset_credentials,
 )
 
-from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import (
+    get_installed_parallelcluster_version,
+    get_sts_endpoint,
+    retrieve_pcluster_ami_without_standard_naming,
+)
 
 
 def pytest_addoption(parser):
@@ -867,6 +872,32 @@ def key_name(request):
 
 
 @pytest.fixture()
+def amis_dict(request, architecture, region):
+    """
+    Get the amis dict in cloudforamtion template for given region and architecture.
+
+    In released test, ami dict contains released public amis with different OSes
+    In develop test, ami dict contains newly built private amis with different OSes
+    :return: amis dict
+    """
+    template_url = request.config.getoption("template_url") or _get_default_template_url(region)
+    url_parse_result = urlparse(template_url)
+    bucket_name = url_parse_result.netloc.split(".")[0]
+    path = url_parse_result.path
+    template_content = json.loads(
+        boto3.client("s3")
+        .get_object(Bucket=bucket_name, Key=path if not path.startswith("/") else path[1:])["Body"]
+        .read()
+    )
+    ami_mappings = template_content.get("Mappings")
+    if architecture == "x86_64":
+        amis_dict = ami_mappings.get("AWSRegionOS2AMIx86").get(region)
+    else:
+        amis_dict = ami_mappings.get("AWSRegionOS2AMIarm64").get(region)
+    return amis_dict
+
+
+@pytest.fixture()
 def pcluster_ami_without_standard_naming(region, os, architecture):
     """
     Define a fixture to manage the creation and deletion of AMI without standard naming.
@@ -894,3 +925,14 @@ def _read_json_file(file):
             return json.load(f)
     except Exception:
         logging.exception("Failed when reading json file %s", file)
+
+
+def _get_default_template_url(region):
+    return (
+        "https://{REGION}-aws-parallelcluster.s3.{REGION}.amazonaws.com{SUFFIX}/templates/"
+        "aws-parallelcluster-{VERSION}.cfn.json".format(
+            REGION=region,
+            SUFFIX=".cn" if region.startswith("cn") else "",
+            VERSION=get_installed_parallelcluster_version(),
+        )
+    )
