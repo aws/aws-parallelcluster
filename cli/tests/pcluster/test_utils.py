@@ -444,22 +444,6 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
 
 
 @pytest.mark.parametrize(
-    "architecture, supported_oses",
-    [
-        ("x86_64", ["alinux2", "ubuntu1804", "ubuntu2004", "centos7", "centos8"]),
-        ("arm64", ["alinux2", "ubuntu1804", "ubuntu2004", "centos7", "centos8"]),
-        # doesn't check architecture's validity, only whether it's x86_64 or not
-        ("madeup-architecture", ["alinux2", "ubuntu1804", "ubuntu2004", "centos7", "centos8"]),
-    ],
-)
-def test_get_supported_os_for_architecture(architecture, supported_oses):
-    """Verify that the expected OSes are supported based on a given architecture."""
-    assert_that(utils.get_supported_os_for_architecture(architecture)).contains_only(
-        *supported_oses
-    ).does_not_contain_duplicates()
-
-
-@pytest.mark.parametrize(
     "scheduler, supported_oses",
     [
         ("sge", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
