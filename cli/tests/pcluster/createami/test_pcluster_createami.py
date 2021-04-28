@@ -76,8 +76,6 @@ def test_get_default_createami_instance_type(
         ("ami-id-two", "t2.xlarge", "alinux2", "x86_64", ["x86_64"], ["alinux2"]),
         # instance type arch is not compatible with base AMI arch
         ("ami-id-three", "t2.xlarge", "alinux2", "arm64", ["x86_64"], ["alinux2"]),
-        # instance type arch compatible with base AMI arch, but OS isn't
-        ("ami-id-four", "m6g.xlarge", "centos7", "arm64", ["arm64"], ["alinux2"]),
     ],
 )
 def test_validate_createami_args_architecture_compatibility(
@@ -93,7 +91,6 @@ def test_validate_createami_args_architecture_compatibility(
     mocker.patch(
         "pcluster.createami.utils.get_supported_architectures_for_instance_type"
     ).return_value = supported_instance_archs
-    mocker.patch("pcluster.createami.utils.get_supported_os_for_architecture").return_value = supported_os
 
     args = MockedCreateAmiArgs(base_ami_id, instance_type, base_ami_os)
     error_expected = any(
@@ -118,9 +115,6 @@ def test_validate_createami_args_architecture_compatibility(
         createami._get_default_createami_instance_type.assert_called_with(base_ami_architecture)
     else:
         createami.utils.get_supported_architectures_for_instance_type.assert_called_with(instance_type)
-
-    if instance_type is None or base_ami_architecture in supported_instance_archs:
-        createami.utils.get_supported_os_for_architecture.assert_called_with(base_ami_architecture)
 
 
 @pytest.mark.parametrize(
