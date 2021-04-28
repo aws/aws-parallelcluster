@@ -17,6 +17,7 @@
 # Search for AWS ParallelCluster AMIs and generate a list in json and txt format
 #
 import json
+import os
 import re
 from collections import OrderedDict
 
@@ -268,25 +269,30 @@ def write_json_file(json_file_path, json_data):
 
 def update_json_file(json_file_path, amis_to_update):
     """Update in-place the mappings section of json_file_path with the AMI IDs contained in amis_to_update."""
-    # Read in existing json file
-    json_data = read_json_file(json_file_path)
-    # update id for new amis without removing regions that are not in the amis_to_update dict
-    for mapping_name in ARCHITECTURES_TO_MAPPING_NAME.values():
-        current_amis_for_mapping = json_data.get(mapping_name, {})
-        for region, amis_to_update_region_mapping in amis_to_update.get(mapping_name, {}).items():
-            if not amis_to_update_region_mapping:
-                # No new AMIs for this region in this mapping
-                continue
-            elif region not in current_amis_for_mapping and amis_to_update_region_mapping:
-                # There are no AMIs for this region in the existing mapping, but there are in the updated version
-                current_amis_for_mapping[region] = amis_to_update_region_mapping
-            else:
-                current_amis_for_mapping[region].update(amis_to_update_region_mapping)
-            current_amis_for_mapping[region] = OrderedDict(sorted(current_amis_for_mapping[region].items()))
+    if os.path.isfile(json_file_path):
+        # Read in existing json file
+        json_data = read_json_file(json_file_path)
 
-        # enforce alphabetical regions order
-        current_amis_for_mapping = OrderedDict(sorted(current_amis_for_mapping.items()))
-        json_data[mapping_name] = current_amis_for_mapping
+        # update id for new amis without removing regions that are not in the amis_to_update dict
+        for mapping_name in ARCHITECTURES_TO_MAPPING_NAME.values():
+            current_amis_for_mapping = json_data.get(mapping_name, {})
+            for region, amis_to_update_region_mapping in amis_to_update.get(mapping_name, {}).items():
+                if not amis_to_update_region_mapping:
+                    # No new AMIs for this region in this mapping
+                    continue
+                elif region not in current_amis_for_mapping and amis_to_update_region_mapping:
+                    # There are no AMIs for this region in the existing mapping, but there are in the updated version
+                    current_amis_for_mapping[region] = amis_to_update_region_mapping
+                else:
+                    current_amis_for_mapping[region].update(amis_to_update_region_mapping)
+                current_amis_for_mapping[region] = OrderedDict(sorted(current_amis_for_mapping[region].items()))
+
+            # enforce alphabetical regions order
+            current_amis_for_mapping = OrderedDict(sorted(current_amis_for_mapping.items()))
+            json_data[mapping_name] = current_amis_for_mapping
+    else:
+        # file doesn't exist yet
+        json_data = amis_to_update
 
     # Write back modified json file
     write_json_file(json_file_path, json_data)
