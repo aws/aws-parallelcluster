@@ -15,13 +15,13 @@ import sys
 from enum import Enum
 
 import boto3
-import pkg_resources
 
 from pcluster.cli_commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 from pcluster.cli_commands.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
 from pcluster.utils import (
     get_cli_log_file,
+    get_installed_version,
     get_region,
     get_stack,
     get_stack_output_value,
@@ -158,13 +158,12 @@ def _create_network_stack(configuration, parameters):
     LOGGER.info("Creating CloudFormation stack...")
     LOGGER.info("Do not leave the terminal until the process has finished")
     stack_name = "parallelclusternetworking-{0}{1}".format(configuration.stack_name_prefix, TIMESTAMP)
-    version = pkg_resources.get_distribution("aws-parallelcluster").version
     try:
         cfn_client = boto3.client("cloudformation")
         stack = cfn_client.create_stack_from_url(
             StackName=stack_name,
             TemplateURL=get_templates_bucket_path()
-            + "networking/%s-%s.cfn.json" % (configuration.template_name, version),
+            + "networking/%s-%s.cfn.json" % (configuration.template_name, get_installed_version()),
             Parameters=parameters,
             Capabilities=["CAPABILITY_IAM"],
         )
