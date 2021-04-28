@@ -17,7 +17,8 @@ import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from time_utils import minutes
+from retrying import retry
+from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.scaling_common import watch_compute_nodes
@@ -228,9 +229,9 @@ def _get_job_state(remote_command_executor, job_id):
 
 def _assert_scheduler_configuration(remote_command_executor, torque_commands, max_slots, max_queue_size):
     compute_nodes_count = torque_commands.compute_nodes_count()
-    hostname = remote_command_executor.run_remote_command("hostname").stdout
-    result = remote_command_executor.run_remote_command("pbsnodes {0}".format(hostname)).stdout
-    assert_that(result).contains("np = {0}\n".format((max_queue_size - compute_nodes_count) * max_slots))
+    # Add wait head node np setting retry for 1 mins, daemons retrieve ASG every 3 mins and there is a time gap
+    # between ASG retrieval and head node np setting, 200 seconds sleep is not enough for this test after updating ASG
+    _wait_head_node_np_setting_complete(compute_nodes_count, max_queue_size, max_slots, remote_command_executor)
 
     torque_config = remote_command_executor.run_remote_command("sudo /opt/torque/bin/qmgr -c 'p s'").stdout
     assert_that(torque_config).contains("set queue batch resources_max.ncpus = {0}\n".format(max_slots))
@@ -242,6 +243,17 @@ def _assert_scheduler_configuration(remote_command_executor, torque_commands, ma
     )
     assert_that(torque_config).contains("set queue batch resources_max.nodect = {0}\n".format(max_queue_size))
     assert_that(torque_config).contains("set server resources_max.nodect = {0}\n".format(max_queue_size))
+
+
+@retry(
+    retry_on_result=lambda result: result is False,
+    wait_fixed=seconds(5),
+    stop_max_delay=minutes(1),
+)
+def _wait_head_node_np_setting_complete(compute_nodes_count, max_queue_size, max_slots, remote_command_executor):
+    hostname = remote_command_executor.run_remote_command("hostname").stdout
+    result = remote_command_executor.run_remote_command("pbsnodes {0}".format(hostname)).stdout
+    return "np = {0}\n".format((max_queue_size - compute_nodes_count) * max_slots) in result
 
 
 def _assert_job_completed(remote_command_executor, job_id):
