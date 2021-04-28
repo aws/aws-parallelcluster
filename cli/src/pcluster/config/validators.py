@@ -31,7 +31,6 @@ from pcluster.utils import (
     get_supported_architectures_for_instance_type,
     get_supported_compute_instance_types,
     get_supported_instance_types,
-    get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
     is_instance_type_format,
     paginate_boto3,
@@ -90,7 +89,7 @@ FSX_MESSAGES = {
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSS,
-    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2", "centos7", "centos8"],
+    "arm64": SUPPORTED_OSS,
 }
 
 FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
@@ -1125,11 +1124,10 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    allowed_oses = get_supported_os_for_architecture(architecture)
-    if param_value not in allowed_oses:
+    if param_value not in SUPPORTED_OSS:
         errors.append(
             "The architecture {0} is only supported for the following operating systems: {1}".format(
-                architecture, allowed_oses
+                architecture, SUPPORTED_OSS
             )
         )
 
