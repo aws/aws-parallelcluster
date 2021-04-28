@@ -35,6 +35,7 @@ from botocore.exceptions import ClientError
 import pcluster.utils as utils
 from pcluster.commands import evaluate_pcluster_template_url
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.constants import SUPPORTED_OSS
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve
@@ -273,7 +274,7 @@ def _validate_createami_args_ami_compatibility(args):
         )
         sys.exit(1)
 
-    if args.base_ami_os not in utils.get_supported_os_for_architecture(ami_architecture):
+    if args.base_ami_os not in SUPPORTED_OSS:
         LOGGER.error(
             "ParallelCluster does not currently support the OS {0} on the base AMI's architecture {1}".format(
                 args.base_ami_os, ami_architecture
