@@ -561,11 +561,6 @@ def get_supported_os_for_scheduler(scheduler):
     return list(oses)
 
 
-def get_supported_os_for_architecture(architecture):
-    """Return list of supported OSes for the specified architecture."""
-    return ["alinux2", "ubuntu1804", "ubuntu2004", "centos7", "centos8"]
-
-
 def get_supported_schedulers():
     """
     Return a tuple of the scheduler supported by parallelcluster.

@@ -1799,7 +1799,6 @@ def test_dcv_enabled_validator(
         "pcluster.config.validators.get_supported_instance_types": ["t2.nano", "t2.micro", "t2.medium", "m6g.xlarge"],
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.validators.get_supported_os_for_architecture": [base_os],
     }
     utils.assert_param_validator(
         mocker, config_parser_dict, expected_error, capsys, expected_warning, extra_patches=extra_patches
@@ -1838,7 +1837,6 @@ def test_fsx_architecture_os_validator(mocker, architecture, base_os, expected_m
     extra_patches = {
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": [architecture],
         "pcluster.config.validators.get_supported_architectures_for_instance_type": [architecture],
-        "pcluster.config.validators.get_supported_os_for_architecture": [base_os],
     }
     utils.assert_param_validator(mocker, config_parser_dict, expected_message, extra_patches=extra_patches)
 
