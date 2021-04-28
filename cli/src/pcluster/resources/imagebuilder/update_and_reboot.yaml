@@ -103,15 +103,28 @@ phases:
 
               if [[ ${!PLATFORM} == RHEL ]]; then
                 if [[ ${!OS} == centos8 ]]; then
-                  dnf -y update
+                  dnf -y update && dnf remove $(dnf repoquery --installonly --latest-limit=-1 -q)
                 else
                   yum -y update && package-cleanup -y --oldkernels --count=1
                 fi
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done
                 flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl stop apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
-                DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade && apt-get autoremove -y
-                apt -y install linux-aws
+                DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --with-new-pkgs upgrade && apt-get --purge autoremove -y
+                apt-get -y install linux-aws
+              fi
+
+      - name: KeepSSM
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              if [[ -f /tmp/imagebuilder_service/ssm_installed ]]; then
+                echo "Keeping SSM agent installed"
+                rm -rf /tmp/imagebuilder_service/ssm_installed
+              else
+                 echo "SSM agent is installed by default"
               fi
 
       - name: RebootStep
