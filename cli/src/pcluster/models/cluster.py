@@ -167,7 +167,7 @@ class Cluster:
 
         try:
             return self.bucket.get_config(
-                version_id=config_version, config_name=self._s3_artifacts_dict.get("config_name")
+                version_id=config_version, config_name=self._s3_artifacts_dict.get("source_config_name")
             )
         except Exception as e:
             raise ClusterActionError(

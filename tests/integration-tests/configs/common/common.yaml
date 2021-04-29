@@ -54,7 +54,7 @@ configure:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
-      - regions: ["us-east-1"]
+      - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -99,7 +99,7 @@ dcv:
   test_dcv.py::test_dcv_configuration:
     dimensions:
       # DCV on GPU enabled instance
-      - regions: ["eu-west-1"]
+      - regions: ["ca-central-1"]
         instances: ["g3.8xlarge"]
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
@@ -157,7 +157,7 @@ dns:
 efa:
   test_efa.py::test_hit_efa:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["sa-east-1"]
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -191,7 +191,7 @@ iam:
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["sa-east-1"]
         instances: ["c5n.18xlarge"]
         oss: ["centos7", "centos8"]
         schedulers: ["slurm"]
@@ -253,7 +253,7 @@ scaling:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      - regions: ["us-east-1"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
@@ -314,14 +314,14 @@ spot:
         oss: ["centos7"]
         schedulers: ["slurm"]
 storage:
-  # Regions were carefully picked for FSx test to ensure they have the deployment type required
+  # Commercial regions that cant test FSx: ap-northeast-1, ap-southeast-1, ap-southeast-2, eu-central-1, eu-north-1, eu-west-1, eu-west-2, us-east-1, us-east-2, us-west-1, us-west-2
   test_fsx_lustre.py::test_fsx_lustre:
     dimensions:
-      - regions: ["us-east-2"]
+      - regions: ["eu-west-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      - regions: ["eu-west-1"]
+      - regions: ["eu-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
@@ -345,7 +345,7 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
-      - regions: ["us-west-2"]
+      - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
@@ -355,6 +355,7 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
+  # EFS tests can be done in any region.
   test_efs.py::test_efs_compute_az:
     dimensions:
       - regions: ["us-west-1"]
@@ -463,11 +464,11 @@ multiple_nics:
     dimensions:
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos8"]
+        oss: ["alinux2", "centos8", "ubuntu1804", "centos7"]
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "centos7", "ubuntu2004"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:

@@ -310,12 +310,12 @@ def delete(args):  # noqa: C901
         LOGGER.debug("Status: %s", result.stack_status)
         if not args.nowait:
             verified = utils.verify_stack_status(
-                result.stack_name, waiting_states=["DELETE_IN_PROGRESS"], successful_states=["DELETE_COMPLETE"]
+                result.stack_arn, waiting_states=["DELETE_IN_PROGRESS"], successful_states=["DELETE_COMPLETE"]
             )
             if not verified:
                 result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
                 if isinstance(result, ClusterInfo):
-                    utils.log_stack_failure_recursive(result.stack_name, failed_states=["DELETE_FAILED"])
+                    utils.log_stack_failure_recursive(result.stack_arn, failed_states=["DELETE_FAILED"])
                 elif isinstance(result, ApiFailure):
                     # If stack is already deleted
                     if f"Cluster {args.cluster_name} doesn't exist." in result.message:

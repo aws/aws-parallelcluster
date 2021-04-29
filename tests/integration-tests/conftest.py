@@ -520,8 +520,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "ap-southeast-1": ["apse1-az2", "apse1-az1"],
     # c4.xlarge is not supported in aps1-az2
     "ap-south-1": ["aps1-az1", "aps1-az3"],
-    # NAT Gateway not available in sae1-az2
-    "sa-east-1": ["sae1-az1", "sae1-az3"],
+    # NAT Gateway not available in sae1-az2 , c5n.18xlarge is not supported in sae1-az3
+    "sa-east-1": ["sae1-az1"],
     # m6g.xlarge instances not available in euw1-az3
     "eu-west-1": ["euw1-az1", "euw1-az2"],
     # io2 EBS volumes not available in cac1-az4
