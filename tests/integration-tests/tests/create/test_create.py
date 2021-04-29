@@ -39,7 +39,7 @@ def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, a
     logging.info("Verifying error in logs")
     assert_errors_in_logs(
         remote_command_executor,
-        ["/var/log/cfn-init.log"],
+        ["/var/log/chef-client.log"],
         ["RuntimeError", fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}"],
     )
 
