@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -49,7 +47,7 @@ def _get_parser():
     return parser
 
 
-class Queue(object):
+class Queue:
     """Generic queue object."""
 
     def __init__(self, arn, name, priority, status, status_reason):
@@ -61,7 +59,7 @@ class Queue(object):
         self.status_reason = status_reason
 
 
-class AWSBqueuesCommand(object):
+class AWSBqueuesCommand:
     """awsbqueues command."""
 
     def __init__(self, log, boto3_factory):
@@ -137,7 +135,7 @@ def main():
         # parse input parameters and config file
         args = _get_parser().parse_args()
         log = config_logger(args.log_level)
-        log.info("Input parameters: %s" % args)
+        log.info("Input parameters: %s", args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
         boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy)
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -70,7 +68,7 @@ def _validate_parameters(args):
         fail("Parameters validation error: --stream-period can be used only with --stream option")
 
 
-class AWSBoutCommand(object):
+class AWSBoutCommand:
     """awsbout command."""
 
     def __init__(self, log, boto3_factory):
@@ -178,7 +176,7 @@ class AWSBoutCommand(object):
                         )
         except KeyboardInterrupt:
             self.log.info("Interrupted by the user")
-            exit(0)
+            sys.exit(0)
         except Exception as e:
             fail("Error listing jobs from AWS Batch. Failed with exception: %s" % e)
 
@@ -200,7 +198,7 @@ def main():
         args = _get_parser().parse_args()
         _validate_parameters(args)
         log = config_logger(args.log_level)
-        log.info("Input parameters: %s" % args)
+        log.info("Input parameters: %s", args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
         boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy)
 

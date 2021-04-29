@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -32,7 +30,7 @@ def _get_stack_name(cluster_name):
     return PCLUSTER_STACK_PREFIX + cluster_name
 
 
-class Output(object):
+class Output:
     """Generic Output object."""
 
     def __init__(self, mapping, items=None):
@@ -50,7 +48,7 @@ class Output(object):
 
     def add(self, items):
         """Add items to output."""
-        if type(items) == list:
+        if isinstance(items, list):
             self.items.extend(items)
         else:
             self.items.append(items)
@@ -98,14 +96,14 @@ class Output(object):
         return self.items
 
 
-class Boto3ClientFactory(object):
+class Boto3ClientFactory:
     """Boto3 configuration object."""
 
     def __init__(self, region, proxy="NONE"):
         """Initialize the object."""
         self.region = region
         self.proxy_config = Config()
-        if not proxy == "NONE":
+        if proxy != "NONE":
             self.proxy_config = Config(proxies={"https": proxy})
 
     def get_client(self, service):
@@ -121,7 +119,7 @@ class Boto3ClientFactory(object):
             fail("AWS %s service failed with exception: %s" % (service, e))
 
 
-class AWSBatchCliConfig(object):
+class AWSBatchCliConfig:
     """AWS ParallelCluster AWS Batch CLI configuration object."""
 
     def __init__(self, log, cluster):
