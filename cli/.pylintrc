@@ -158,6 +158,7 @@ disable=print-statement,
         no-self-use,
         no-member,
         unused-import, # handled by flake8
+        no-else-return, # A complete if else block can improve readability even with returns in the body
 
 
 # Enable the message, report, category or checker with the given id(s). You can

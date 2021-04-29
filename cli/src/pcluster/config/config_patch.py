@@ -31,7 +31,7 @@ if sys.version_info <= (3, 7):
 LOGGER = logging.getLogger(__name__)
 
 
-class ConfigPatch(object):
+class ConfigPatch:
     """
     Represents the Diff Patch between two PclusterConfig instances.
 
@@ -219,7 +219,7 @@ class ConfigPatch(object):
         """
         return (
             max(change.update_policy.level for change in self.changes)
-            if len(self.changes)
+            if len(self.changes) > 0
             else UpdatePolicy.SUPPORTED.level
         )
 

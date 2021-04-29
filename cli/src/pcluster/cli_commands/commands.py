@@ -161,13 +161,13 @@ def _colorize(stack_status, args):
     :param args: args
     :return: colorized status string
     """
-    if not args.color:
-        return stack_status
-    end = "0m"
-    status_to_color = {"COMPLETE": "0;32m", "FAILED": "0;31m", "IN_PROGRESS": "10;33m"}
-    for status_label in status_to_color:
-        if status_label in stack_status:
-            return "\033[%s%s\033[%s" % (status_to_color[status_label], stack_status, end)
+    if args.color:
+        end = "0m"
+        status_to_color = {"COMPLETE": "0;32m", "FAILED": "0;31m", "IN_PROGRESS": "10;33m"}
+        for status_label in status_to_color:
+            if status_label in stack_status:
+                return "\033[%s%s\033[%s" % (status_to_color[status_label], stack_status, end)
+    return stack_status
 
 
 def list_clusters(args):
@@ -199,6 +199,7 @@ def instances(args):
 
 
 def ssh(args, extra_args):
+    # pylint: disable=import-outside-toplevel
     """
     Execute an SSH command to the head node instance, according to the [aliases] section if there.
 
@@ -319,7 +320,7 @@ def delete(args):  # noqa: C901
                 elif isinstance(result, ApiFailure):
                     # If stack is already deleted
                     if f"Cluster {args.cluster_name} doesn't exist." in result.message:
-                        LOGGER.warning(f"\nCluster {args.cluster_name} has already been deleted or does not exist.")
+                        LOGGER.warning("\nCluster %s has already been deleted or does not exist.", args.cluster_name)
                         sys.exit(0)
                     LOGGER.critical(result.message)
                     sys.stdout.flush()
@@ -337,7 +338,7 @@ def delete(args):  # noqa: C901
             LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", args.cluster_name)
     except ClientError as e:
         if e.response.get("Error").get("Message").endswith("doesn't exist"):
-            LOGGER.warning(f"\nCluster {args.cluster_name} has already been deleted or does not exist.")
+            LOGGER.warning("\nCluster %s has already been deleted or does not exist.", args.cluster_name)
             sys.exit(0)
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
@@ -459,7 +460,7 @@ def describe_image(args):
         result = PclusterApi().describe_image(image_name=args.image_name, region=utils.get_region())
         LOGGER.info("Response:")
         if isinstance(result, ApiFailure):
-            LOGGER.info(f"Build image error {result.message}")
+            LOGGER.info("Build image error %s", result.message)
         else:
             LOGGER.info({"image": result.__repr__()})
     except KeyboardInterrupt:
