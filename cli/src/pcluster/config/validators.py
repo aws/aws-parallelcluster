@@ -1124,11 +1124,11 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    if param_value not in SUPPORTED_OSS:
-        errors.append(
-            "The architecture {0} is only supported for the following operating systems: {1}".format(
-                architecture, SUPPORTED_OSS
-            )
+    if param_value == "centos7" and architecture == "arm64":
+        warnings.append(
+            "Warning: The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
+            "(M6g, C6g, etc.). To proceed please provide a custom_ami, "
+            "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes"
         )
 
     return errors, warnings
