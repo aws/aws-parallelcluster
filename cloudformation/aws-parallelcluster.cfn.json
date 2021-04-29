@@ -683,16 +683,6 @@
         "NONE"
       ]
     },
-    "AddHITIamPolicies": {
-      "Fn::And": [
-        {
-          "Condition": "CreateEC2IAMRole"
-        },
-        {
-          "Condition": "CreateHITSubstack"
-        }
-      ]
-    },
     "UseExistingSecurityGroup": {
       "Fn::Not": [
         {
@@ -1732,88 +1722,6 @@
         ]
       },
       "Condition": "CreateEC2IAMRole"
-    },
-    "ParallelClusterHITPolicies": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyName": "parallelcluster-hit",
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Sid": "EC2Terminate",
-              "Effect": "Allow",
-              "Action": [
-                "ec2:TerminateInstances"
-              ],
-              "Resource": "*",
-              "Condition": {
-                "StringEquals": {
-                  "ec2:ResourceTag/Application": {
-                    "Ref": "AWS::StackName"
-                  }
-                }
-              }
-            },
-            {
-              "Sid": "EC2",
-              "Effect": "Allow",
-              "Action": [
-                "ec2:DescribeInstances",
-                "ec2:DescribeLaunchTemplates",
-                "ec2:RunInstances",
-                "ec2:DescribeInstanceStatus",
-                "ec2:CreateTags"
-              ],
-              "Resource": "*"
-            },
-            {
-              "Sid": "ResourcesS3Bucket",
-              "Effect": "Allow",
-              "Action": {
-                "Fn::If": [
-                  "UseProvidedResourcesS3Bucket",
-                  [
-                    "s3:ListBucket",
-                    "s3:ListBucketVersions",
-                    "s3:GetObject*",
-                    "s3:PutObject*"
-                  ],
-                  "s3:*"
-                ]
-              },
-              "Resource": [
-                {
-                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
-                },
-                {
-                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/*"
-                }
-              ]
-            },
-            {
-              "Sid": "DynamoDBTableQuery",
-              "Action": [
-                "dynamodb:Query"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}"
-                },
-                {
-                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}/index/*"
-                }
-              ]
-            }
-          ]
-        },
-        "Roles": [
-          {
-            "Ref": "RootRole"
-          }
-        ]
-      },
-      "Condition": "AddHITIamPolicies"
     },
     "S3ReadRolePolicies": {
       "Type": "AWS::IAM::Policy",
@@ -4081,6 +3989,20 @@
           },
           "ArtifactS3RootDirectory": {
             "Ref": "ArtifactS3RootDirectory"
+          },
+          "UseProvidedResourcesS3Bucket": {
+            "Fn::If": [
+              "UseProvidedResourcesS3Bucket",
+              "true",
+              "false"
+            ]
+          },
+          "CreateEC2IAMRole": {
+            "Fn::If": [
+              "CreateEC2IAMRole",
+              "true",
+              "false"
+            ]
           }
         },
         "TemplateURL": {

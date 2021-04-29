@@ -89,9 +89,13 @@ Parameters:
     Type: AWS::EC2::VPC::Id
   RootRole:
     Type: String
+  CreateEC2IAMRole:
+    Type: String
   IAMLambdaRoleName:
     Type: String
   ResourcesS3Bucket:
+    Type: String
+  UseProvidedResourcesS3Bucket:
     Type: String
   ArtifactS3RootDirectory:
     Type: String
@@ -107,6 +111,9 @@ Conditions:
   UseAssociatePublicIpAddress: !Equals
     - !Ref 'AssociatePublicIpAddress'
     - true
+  CreateEC2IAMRoleCondition: !Equals
+    - !Ref 'CreateEC2IAMRole'
+    - true
   CreateIAMLambdaRole: !Equals
     - !Ref 'IAMLambdaRoleName'
     - NONE
@@ -114,6 +121,9 @@ Conditions:
     - !Equals
       - !Ref 'KeyName'
       - NONE
+  UseProvidedResourcesS3BucketCondition: !Equals
+    - !Ref 'UseProvidedResourcesS3Bucket'
+    - true
 Resources:
 {%- for queue, queue_config in queues.items() %}
   {%- for compute_resource in queue_config.compute_resource_settings.values() %}
@@ -513,6 +523,64 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+  ParallelClusterHITPolicies:
+    Type: AWS::IAM::Policy
+    Condition: CreateEC2IAMRoleCondition
+    Properties:
+      PolicyName: parallelcluster-hit
+      Roles:
+        - !Ref 'RootRole'
+      PolicyDocument:
+        Statement:
+          - Sid: EC2Terminate
+            Effect: Allow
+            Action:
+              - ec2:TerminateInstances
+            Resource: '*'
+            Condition:
+              StringEquals:
+                ec2:ResourceTag/Application: !Ref 'MainStackName'
+          - Sid: EC2
+            Action:
+              - ec2:DescribeInstances
+              - ec2:DescribeLaunchTemplates
+              - ec2:DescribeInstanceStatus
+              - ec2:CreateTags
+            Effect: Allow
+            Resource: '*'
+          - Sid: EC2RunInstances
+            Action:
+              - ec2:RunInstances
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${ComputeSubnetId}'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}::image/${ImageId}'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:key-pair/${KeyName}'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:launch-template/*'
+              - !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:placement-group/*'
+          - Sid: ResourcesS3Bucket
+            Action: !If
+              - UseProvidedResourcesS3BucketCondition
+              - - s3:ListBucket
+                - s3:ListBucketVersions
+                - s3:GetObject*
+                - s3:PutObject*
+              - s3:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}'
+              - !Sub 'arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/*'
+          - Sid: DynamoDBTableQuery
+            Action:
+              - dynamodb:Query
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${MainStackName}'
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${MainStackName}/index/*'
   {%- if config.cluster.disable_cluster_dns == False %}
   ClusterHostedZone:
     Type: AWS::Route53::HostedZone
