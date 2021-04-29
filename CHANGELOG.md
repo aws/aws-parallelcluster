@@ -23,6 +23,8 @@ CHANGELOG
 - Remove dependency on `future` package and `__future__` module.
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
 - Add sanity check to prevent cluster creation in non officially supported AWS regions 
+- Change instance IAM policies to restrict run-instance API to only launching instances in the compute subnet.
+
 
 2.10.3
 ------
