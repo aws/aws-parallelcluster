@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -49,7 +47,7 @@ def _get_parser():
     return parser
 
 
-class Host(object):
+class Host:
     """Generic host object."""
 
     def __init__(
@@ -86,7 +84,7 @@ class Host(object):
         self.mem_avail = mem_avail
 
 
-class AWSBhostsCommand(object):
+class AWSBhostsCommand:
     """awsbhosts command."""
 
     def __init__(self, log, boto3_factory):
@@ -305,7 +303,7 @@ def main():
         # parse input parameters and  config file
         args = _get_parser().parse_args()
         log = config_logger(args.log_level)
-        log.info("Input parameters: %s" % args)
+        log.info("Input parameters: %s", args)
         config = AWSBatchCliConfig(log, args.cluster)
         boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy)
 

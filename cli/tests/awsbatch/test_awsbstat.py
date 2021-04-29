@@ -11,7 +11,7 @@ ALL_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SU
 DEFAULT_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING"]
 
 
-class TestArgs(object):
+class TestArgs:
     def test_missing_cluster_parameter(self, failed_with_message):
         failed_with_message(awsbstat.main, "Error: cluster parameter is required\n", argv=[])
 
@@ -25,7 +25,7 @@ def boto3_stubber_path():
 
 @pytest.mark.usefixtures("awsbatchcliconfig_mock")
 @pytest.mark.usefixtures("convert_to_date_mock")
-class TestOutput(object):
+class TestOutput:
     def test_no_jobs_default_status(self, capsys, boto3_stubber, test_datadir):
         empty_response = {"jobSummaryList": []}
         mocked_requests = []
