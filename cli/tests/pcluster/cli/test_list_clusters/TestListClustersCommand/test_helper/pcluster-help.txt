@@ -1,0 +1,21 @@
+usage: pcluster list-clusters [-h] [--debug]
+                              [-r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}]
+                              [--next-token NEXT_TOKEN]
+                              [--cluster-status CLUSTER_STATUS]
+
+Displays the list of existing AWS ParallelCluster clusters.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --debug               Turn on debug logging.
+  -r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}, --region {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}
+                        AWS Region to use.
+  --next-token NEXT_TOKEN
+                        Token for paginated requests
+  --cluster-status CLUSTER_STATUS
+                        Comma separated status values to filter by. Available
+                        values are ['CREATE_IN_PROGRESS', 'CREATE_FAILED',
+                        'CREATE_COMPLETE', 'DELETE_IN_PROGRESS',
+                        'DELETE_FAILED', 'DELETE_COMPLETE',
+                        'UPDATE_IN_PROGRESS', 'UPDATE_COMPLETE',
+                        'UPDATE_FAILED']
