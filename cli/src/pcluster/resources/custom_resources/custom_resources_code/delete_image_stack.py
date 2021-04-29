@@ -22,7 +22,7 @@ boto3_config = Config(retries={"max_attempts": 60})
 
 
 def handler(event, context):
-    logger.info("Printing event: %s" % json.dumps(event))
+    logger.info("Printing event: %s", json.dumps(event))
     for record in event["Records"]:
         event_message = record["Sns"]["Message"]
         logger.info("Printing event message: %s", json.dumps(event_message))

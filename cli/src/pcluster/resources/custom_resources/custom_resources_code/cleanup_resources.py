@@ -177,7 +177,7 @@ def delete(event, _):
     if action in ACTION_HANDLERS:
         ACTION_HANDLERS[action](event)
     else:
-        raise Exception("Unsupported action %s", action)
+        raise Exception(f"Unsupported action {action}")
 
 
 def handler(event, context):

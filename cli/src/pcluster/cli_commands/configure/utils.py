@@ -130,7 +130,7 @@ def prompt_iterable(message, options, default_value=None):
         return prompt(
             message,
             validator=lambda x: x in valid_options,
-            input_to_option=lambda x: input_to_parameter(x),
+            input_to_option=input_to_parameter,
             default_value=default_value,
             options_to_print=rows,
             table_header=header,
@@ -140,7 +140,7 @@ def prompt_iterable(message, options, default_value=None):
         return prompt(
             message,
             validator=lambda x: x in valid_options,
-            input_to_option=lambda x: input_to_parameter(x),
+            input_to_option=input_to_parameter,
             default_value=default_value,
             options_to_print=generate_printable_list(options),
         )
