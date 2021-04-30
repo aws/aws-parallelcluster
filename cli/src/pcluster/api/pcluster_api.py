@@ -84,27 +84,28 @@ class ClusterInstanceInfo:
 class ImageBuilderInfo:
     """Minimal representation of a building image."""
 
-    def __init__(self, imagebuilder: ImageBuilder, stack=None):
+    def __init__(self, imagebuilder: ImageBuilder, check_stack=False):
         self.stack_exist = False
         self.image_exist = False
         self.region = get_region()
         # image config file url
         self.image_configuration = imagebuilder.config_url
 
-        if stack:
-            # imagebuilder stack info
-            self.stack_exist = True
-            self.stack_name = imagebuilder.stack.name
-            self.stack_status = imagebuilder.stack.status
-            self.stack_arn = imagebuilder.stack.id
-            self.tags = imagebuilder.stack.tags
-            self.version = imagebuilder.stack.version
-            self.creation_time = imagebuilder.stack.creation_time
-            self.build_log = imagebuilder.stack.build_log
+        if check_stack:
+            if imagebuilder.stack:
+                # imagebuilder stack info
+                self.stack_exist = True
+                self.stack_name = imagebuilder.stack.name
+                self.stack_status = imagebuilder.stack.status
+                self.stack_arn = imagebuilder.stack.id
+                self.tags = imagebuilder.stack.tags
+                self.version = imagebuilder.stack.version
+                self.creation_time = imagebuilder.stack.creation_time
+                self.build_log = imagebuilder.stack.build_log
 
-            # build image process status by stack status mapping
-            self.imagebuild_status = imagebuilder.imagebuild_status
-        else:
+                # build image process status by stack status mapping
+                self.imagebuild_status = imagebuilder.imagebuild_status
+        elif imagebuilder.image:
             # image info
             self.image_exist = True
             self.image_name = imagebuilder.image.name
@@ -304,7 +305,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             imagebuilder = ImageBuilder(image_name=image_name, config=imagebuilder_config)
             imagebuilder.create(disable_rollback)
-            return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
+            return ImageBuilderInfo(imagebuilder, check_stack=True)
         except ImageBuilderActionError as e:
             return ApiFailure(str(e), e.validation_failures)
         except Exception as e:
@@ -326,10 +327,9 @@ class PclusterApi:
             imagebuilder = ImageBuilder(image_name)
             imagebuilder.delete(force=force)
             try:
-                if imagebuilder.image:
-                    return ImageBuilderInfo(imagebuilder)
+                return ImageBuilderInfo(imagebuilder)
             except ImageError:
-                return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
+                return ImageBuilderInfo(imagebuilder, check_stack=True)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -347,10 +347,9 @@ class PclusterApi:
 
             imagebuilder = ImageBuilder(image_name)
             try:
-                if imagebuilder.image:
-                    return ImageBuilderInfo(imagebuilder)
+                return ImageBuilderInfo(imagebuilder)
             except ImageError:
-                return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
+                return ImageBuilderInfo(imagebuilder, check_stack=True)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -378,8 +377,7 @@ class PclusterApi:
                 for stack in AWSApi.instance().cfn.get_imagebuilder_stacks()
             ]
             imagebuilder_stacks_response = [
-                ImageBuilderInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
-                for imagebuilder in imagebuilder_stacks
+                ImageBuilderInfo(imagebuilder=imagebuilder, check_stack=True) for imagebuilder in imagebuilder_stacks
             ]
 
             return images_response + imagebuilder_stacks_response
