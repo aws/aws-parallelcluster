@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -48,7 +46,7 @@ def _get_parser():
     return parser
 
 
-class AWSBkillCommand(object):
+class AWSBkillCommand:
     """awsbkill command."""
 
     def __init__(self, log, boto3_factory):
@@ -91,12 +89,12 @@ class AWSBkillCommand(object):
         for job in jobs:
             status = job["status"]
             job_id = job["jobId"]
-            if status == "FAILED" or status == "SUCCEEDED":
+            if status in ["FAILED", "SUCCEEDED"]:
                 print("Job (%s) is already in (%s) status." % (job_id, status))
             else:
                 try:
                     self.batch_client.terminate_job(jobId=job_id, reason=reason)
-                    if status == "SUBMITTED" or status == "PENDING" or status == "RUNNABLE":
+                    if status in ["SUBMITTED", "PENDING", "RUNNABLE"]:
                         action = "cancellation"
                     else:
                         # status == 'STARTING' or status == 'RUNNING'
@@ -106,7 +104,6 @@ class AWSBkillCommand(object):
                     )
                 except Exception as e:
                     print("Error killing job (%s). Failed with exception: %s" % e)
-                    pass
 
 
 def main():
@@ -115,7 +112,7 @@ def main():
         # parse input parameters and config file
         args = _get_parser().parse_args()
         log = config_logger(args.log_level)
-        log.info("Input parameters: %s" % args)
+        log.info("Input parameters: %s", args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
         boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy)
         AWSBkillCommand(log, boto3_factory).run(job_ids=args.job_ids, reason=args.reason)

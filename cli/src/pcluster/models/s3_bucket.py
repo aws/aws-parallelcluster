@@ -211,12 +211,6 @@ class S3Bucket:
         """
         Upload custom resources to S3 bucket.
 
-        All dirs contained in resource dir will be uploaded as zip files to
-        {bucket_name}/parallelcluster/clusters/{cluster_name}/{resource_dir}/artifacts.zip.
-        or {bucket_name}/parallelcluster/imagebuilders/{image_name}/{resource_dir}/artifacts.zip.
-        All files contained in root dir will be uploaded to
-        {bucket_name}/parallelcluster/clusters/{cluster_name}/{resource_dir}/artifact.
-        or {bucket_name}/parallelcluster/imagebuilders/{image_name}/{resource_dir}/artifacts
         :param resource_dir: resource directory containing the resources to upload.
         :param custom_artifacts_name: custom_artifacts_name for zipped dir
         """

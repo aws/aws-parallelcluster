@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -74,7 +72,7 @@ def _get_parser():
     return parser
 
 
-class Job(object):
+class Job:
     """Generic job object."""
 
     def __init__(
@@ -119,7 +117,7 @@ class Job(object):
         self.s3_folder_url = s3_folder_url
 
 
-class JobConverter(object):
+class JobConverter:
     """Converter for AWS Batch simple job data object."""
 
     def convert(self, job):
@@ -246,7 +244,7 @@ class ArrayJobConverter(JobConverter):
         return "-", "-"
 
 
-class AWSBstatCommand(object):
+class AWSBstatCommand:
     """awsbstat command."""
 
     __JOB_CONVERTERS = {"SIMPLE": JobConverter(), "ARRAY": ArrayJobConverter(), "MNP": MNPJobConverter()}
@@ -490,7 +488,7 @@ def main(argv=None):
         # parse input parameters and config file
         args = _get_parser().parse_args(argv)
         log = config_logger(args.log_level)
-        log.info("Input parameters: %s" % args)
+        log.info("Input parameters: %s", args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
         boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy)
 

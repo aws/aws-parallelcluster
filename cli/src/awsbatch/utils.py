@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -27,7 +25,7 @@ def fail(error_message):
     :param error_message: message to print
     """
     print(error_message, file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
 
 def get_region_by_stack_id(stack_id):
@@ -110,7 +108,7 @@ def get_job_type(job):
     return "SIMPLE"
 
 
-class S3Uploader(object):
+class S3Uploader:
     """S3 uploader."""
 
     def __init__(self, boto3_factory, s3_bucket, default_folder=""):

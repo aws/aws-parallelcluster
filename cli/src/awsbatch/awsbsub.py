@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.6
-
 # Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
@@ -163,15 +161,15 @@ def _validate_parameters(args):
     :param args: args variable
     """
     if args.command_file:
-        if not type(args.command) == str:
+        if not isinstance(args.command, str):
             fail("The command parameter is required with --command-file option")
         elif not os.path.isfile(args.command):
             fail("The command parameter (%s) must be an existing file" % args.command)
     elif not sys.stdin.isatty():
         # stdin
-        if args.arguments or type(args.command) == str:
+        if args.arguments or isinstance(args.command, str):
             fail("Error: command and arguments cannot be specified when submitting by stdin.")
-    elif not type(args.command) == str:
+    elif not isinstance(args.command, str):
         fail("Parameters validation error: command parameter is required.")
 
     if args.depends_on and not re.match(r"^(jobId|type)=[^\s,]+([\s,]?(jobId|type)=[^\s]+)*$", args.depends_on):
@@ -242,7 +240,7 @@ def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config
         # define command to execute
         bash_command = _compose_bash_command(args, config.s3_bucket, config.region, job_s3_folder, job_script, env_file)
         command = ["/bin/bash", "-c", bash_command]
-    elif type(args.command) == str:
+    elif isinstance(args.command, str):
         log.info("Using command parameter")
         command = [args.command] + args.arguments
     else:
@@ -369,7 +367,7 @@ def _get_env_key_value_list(env_vars, log, env_blacklist_vars=None):
             # export variables explicitly specified by the user
             _add_env_var_to_list(key_value_list, var_name, log)
         else:
-            log.warn("Environment variable (%s) does not exist." % var_name)
+            log.warn("Environment variable (%s) does not exist.", var_name)
 
     return key_value_list
 
@@ -394,9 +392,9 @@ def _add_env_var_to_list(key_value_list, var_name, log):
     ):
         var_value = os.environ[var_name]
         key_value_list.append("export %s=%s;" % (var_name, pipes.quote(var_value)))
-        log.info("Exporting environment variable: (%s=%s)." % (var_name, var_value))
+        log.info("Exporting environment variable: (%s=%s).", var_name, var_value)
     else:
-        log.warn("Excluded variable: (%s)." % var_name)
+        log.warn("Excluded variable: (%s).", var_name)
 
 
 def _get_depends_on(args):
@@ -419,7 +417,7 @@ def _get_depends_on(args):
     return depends_on
 
 
-class AWSBsubCommand(object):
+class AWSBsubCommand:
     """awsbsub command."""
 
     def __init__(self, log, boto3_factory):
@@ -498,7 +496,7 @@ class AWSBsubCommand(object):
                 if timeout:
                     submission_args.update({"timeout": {"attemptDurationSeconds": timeout}})
 
-            self.log.debug("Job submission args: %s" % submission_args)
+            self.log.debug("Job submission args: %s", submission_args)
             response = self.batch_client.submit_job(**submission_args)
             print("Job %s (%s) has been submitted." % (response["jobId"], response["jobName"]))
         except Exception as e:
@@ -512,7 +510,7 @@ def main():
         args = _get_parser().parse_args()
         _validate_parameters(args)
         log = config_logger(args.log_level)
-        log.info("Input parameters: %s" % args)
+        log.info("Input parameters: %s", args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
         boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy)
 
@@ -527,7 +525,7 @@ def main():
             else:
                 # normalize name
                 job_name = re.sub(r"\W+", "_", os.path.basename(args.command))
-            log.info("Job name not specified, setting it to (%s)" % job_name)
+            log.info("Job name not specified, setting it to (%s)", job_name)
 
         # generate an internal unique job-id
         job_key = _generate_unique_job_key(job_name)
