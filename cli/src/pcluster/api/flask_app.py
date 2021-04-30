@@ -103,10 +103,9 @@ class ParallelClusterFlaskApp:
     @staticmethod
     def _handle_parallel_cluster_api_exception(exception: ParallelClusterApiException):
         """Render a ParallelClusterApiException according to ParallelCluster API specs."""
-        ParallelClusterFlaskApp._log_exception(exception.code, exception.content)
-        return Response(
-            response=json.dumps(exception.content.to_dict()), status=exception.code, mimetype="application/json"
-        )
+        message = json.dumps(exception.content.to_dict())
+        ParallelClusterFlaskApp._log_exception(exception.code, message)
+        return Response(response=message, status=exception.code, mimetype="application/json")
 
     @staticmethod
     def _handle_unexpected_exception(exception: Exception):
