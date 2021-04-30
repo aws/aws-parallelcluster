@@ -72,7 +72,7 @@ class TestParallelClusterFlaskApp:
         self._assert_log_message(
             caplog,
             logging.INFO,
-            "Handling exception (status code 400): {'message': 'Bad Request: invalid request'}",
+            'Handling exception (status code 400): {"message": "Bad Request: invalid request"}',
         )
 
         caplog.clear()
@@ -85,7 +85,7 @@ class TestParallelClusterFlaskApp:
             body='{"message": "failure"}',
             code=500,
         )
-        self._assert_log_message(caplog, logging.ERROR, "Handling exception (status code 500): {'message': 'failure'}")
+        self._assert_log_message(caplog, logging.ERROR, 'Handling exception (status code 500): {"message": "failure"}')
 
     def test_handle_unexpected_exception(self, caplog):
         response = ParallelClusterFlaskApp._handle_unexpected_exception(Exception("error"))
