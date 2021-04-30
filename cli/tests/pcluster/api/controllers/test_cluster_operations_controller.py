@@ -13,11 +13,8 @@ from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
 
 
-class TestClusterOperationsController:
-    """ClusterOperationsController integration test stubs."""
-
+class TestCreateCluster:
     def test_create_cluster(self, client):
-        """Test case for create_cluster."""
         create_cluster_request_content = {
             "name": "clustername",
             "region": "eu-west-1",
@@ -44,8 +41,9 @@ class TestClusterOperationsController:
         )
         assert_that(response.status_code).is_equal_to(200)
 
+
+class TestDeleteCluster:
     def test_delete_cluster(self, client):
-        """Test case for delete_cluster."""
         query_string = [("region", "eu-west-1"), ("retainLogs", True), ("clientToken", "client_token_example")]
         headers = {
             "Accept": "application/json",
@@ -58,8 +56,9 @@ class TestClusterOperationsController:
         )
         assert_that(response.status_code).is_equal_to(200)
 
+
+class TestDescribeCluster:
     def test_describe_cluster(self, client):
-        """Test case for describe_cluster."""
         query_string = [("region", "eu-west-1")]
         headers = {
             "Accept": "application/json",
@@ -72,8 +71,9 @@ class TestClusterOperationsController:
         )
         assert_that(response.status_code).is_equal_to(200)
 
+
+class TestListClusters:
     def test_list_clusters(self, client):
-        """Test case for list_clusters."""
         query_string = [
             ("region", "eu-west-1"),
             ("nextToken", "next_token_example"),
@@ -85,8 +85,9 @@ class TestClusterOperationsController:
         response = client.open("/v3/clusters", method="GET", headers=headers, query_string=query_string)
         assert_that(response.status_code).is_equal_to(200)
 
+
+class TestUpdateCluster:
     def test_update_cluster(self, client):
-        """Test case for update_cluster."""
         update_cluster_request_content = {"clusterConfiguration": "clusterConfiguration"}
         query_string = [
             ("suppressValidators", ["suppress_validators_example"]),
