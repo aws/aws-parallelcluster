@@ -506,7 +506,15 @@ def _test_resources(generated_resources, expected_resources):
                 "Type": "AWS::IAM::Role",
                 "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {
-                    "RoleName": "Pcluster-InstanceRole",
+                    "RoleName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImage-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
                     "AssumeRolePolicyDocument": {
                         "Statement": [
                             {
@@ -559,7 +567,19 @@ def _test_resources(generated_resources, expected_resources):
             {
                 "Type": "AWS::IAM::InstanceProfile",
                 "DependsOn": ["DeleteStackFunctionExecutionRole"],
-                "Properties": {"Roles": [{"Ref": "InstanceRole"}], "Path": "/ParallelClusterImage/"},
+                "Properties": {
+                    "Roles": [{"Ref": "InstanceRole"}],
+                    "Path": "/ParallelClusterImage/",
+                    "InstanceProfileName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImage-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
+                },
             },
             {"Ref": "InstanceProfile"},
         ),
@@ -593,6 +613,15 @@ def _test_resources(generated_resources, expected_resources):
                 "Properties": {
                     "Roles": ["test-InstanceRole"],
                     "Path": "/ParallelClusterImage/",
+                    "InstanceProfileName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImage-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
                 },
             },
             {"Ref": "InstanceProfile"},
@@ -688,7 +717,15 @@ def test_imagebuilder_instance_role(
             {
                 "Type": "AWS::IAM::Role",
                 "Properties": {
-                    "RoleName": "My-Image-DeleteStackFunctionExecutionRole",
+                    "RoleName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImageCleanup-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
                     "AssumeRolePolicyDocument": {
                         "Statement": [
                             {
@@ -718,7 +755,8 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/My-Image-InstanceRole",
+                                                    ":role/ParallelClusterImage/ParallelClusterImage-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
                                         },
@@ -734,7 +772,8 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":instance-profile/ParallelClusterImage/My-Image-InstanceProfile-*",
+                                                    ":instance-profile/ParallelClusterImage/ParallelClusterImage-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
                                         },
@@ -943,8 +982,8 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/"
-                                                    "My-Image-DeleteStackFunctionExecutionRole",
+                                                    ":role/ParallelClusterImage/" "ParallelClusterImageCleanup-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
                                         },
@@ -979,7 +1018,8 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":instance-profile/ParallelClusterImage/My-Image-InstanceProfile-*",
+                                                    ":instance-profile/ParallelClusterImage/ParallelClusterImage-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
                                         },
@@ -995,7 +1035,8 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/My-Image-InstanceRole",
+                                                    ":role/ParallelClusterImage/ParallelClusterImage-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
                                         },
