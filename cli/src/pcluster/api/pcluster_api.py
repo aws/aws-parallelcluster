@@ -26,8 +26,8 @@ from pcluster.models.cluster import (
     NodeType,
 )
 from pcluster.models.cluster_resources import ClusterInstance
-from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError
-from pcluster.models.imagebuilder_resources import ImageBuilderStack, StackError
+from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, ImageError
+from pcluster.models.imagebuilder_resources import ImageBuilderStack
 from pcluster.utils import get_installed_version, get_region
 from pcluster.validators.common import FailureLevel
 
@@ -326,9 +326,10 @@ class PclusterApi:
             imagebuilder = ImageBuilder(image_name)
             imagebuilder.delete(force=force)
             try:
+                if imagebuilder.image:
+                    return ImageBuilderInfo(imagebuilder)
+            except ImageError:
                 return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
-            except StackError:
-                return ImageBuilderInfo(imagebuilder)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -346,9 +347,10 @@ class PclusterApi:
 
             imagebuilder = ImageBuilder(image_name)
             try:
+                if imagebuilder.image:
+                    return ImageBuilderInfo(imagebuilder)
+            except ImageError:
                 return ImageBuilderInfo(imagebuilder, stack=imagebuilder.stack)
-            except StackError:
-                return ImageBuilderInfo(imagebuilder)
         except Exception as e:
             return ApiFailure(str(e))
 
