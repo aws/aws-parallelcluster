@@ -14,9 +14,9 @@ import re
 import time
 
 import boto3
-import configparser
 import pytest
 import utils
+import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
@@ -170,8 +170,8 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
     _assert_launch_templates_config(queues_config=updated_queues_config, cluster_name=cluster.name, region=region)
 
     # Read updated configuration
-    updated_config = configparser.ConfigParser()
-    updated_config.read(updated_config_file)
+    with open(updated_config_file) as conf_file:
+        updated_config = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     # Check new S3 resources
     check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
@@ -405,8 +405,8 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     cluster.update()
 
     # Read updated configuration
-    updated_config = configparser.ConfigParser()
-    updated_config.read(updated_config_file)
+    with open(updated_config_file) as conf_file:
+        updated_config = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     # verify updated parameters
     _verify_initialization(region, cluster, updated_config)
@@ -414,9 +414,9 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
 def _verify_initialization(region, cluster, config):
     # Verify initial settings
-    _test_max_vcpus(region, cluster.cfn_name, config.getint("cluster default", "max_vcpus"))
-    _test_min_vcpus(region, cluster.cfn_name, config.getint("cluster default", "min_vcpus"))
-    spot_bid_percentage = config.getint("cluster default", "spot_bid_percentage")
+    _test_max_vcpus(region, cluster.cfn_name, config["Scheduling"]["Queues"][0]["ComputeResources"][0]["MaxvCpus"])
+    _test_min_vcpus(region, cluster.cfn_name, config["Scheduling"]["Queues"][0]["ComputeResources"][0]["MinvCpus"])
+    spot_bid_percentage = config["Scheduling"]["Queues"][0]["ComputeResources"][0]["SpotBidPercentage"]
     assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
 
 

@@ -5,9 +5,6 @@ Tags:
     Value: value3
   - Key: key2
     Value: value2
-#Tags:
-#  Key: key2
-#  Value: value2
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -25,7 +22,7 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           InstanceTypes: {{ instance }}
-          MinvCpus: 1
-          MaxvCpus: 4
-          DesiredvCpus: 2
+          MinvCpus: 4
+          MaxvCpus: 12
+          DesiredvCpus: 8
           SpotBidPercentage: 35

@@ -187,7 +187,8 @@ class Cookbook(Resource):
         # TODO: add validator
 
     def _validate(self):
-        self._execute_validator(UrlValidator, url=self.chef_cookbook)
+        if self.chef_cookbook is not None:
+            self._execute_validator(UrlValidator, url=self.chef_cookbook)
 
 
 class BaseDevSettings(Resource):
