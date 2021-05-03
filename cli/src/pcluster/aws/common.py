@@ -12,6 +12,7 @@
 import functools
 import logging
 from abc import ABC
+from enum import Enum
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
@@ -21,6 +22,18 @@ LOGGER = logging.getLogger(__name__)
 
 class AWSClientError(Exception):
     """Error during execution of some AWS calls."""
+
+    class ErrorCode(Enum):
+        """Error codes for AWS ClientError."""
+
+        VALIDATION_ERROR = "ValidationError"
+        REQUEST_LIMIT_EXCEEDED = "RequestLimitExceeded"
+        THROTTLING_EXCEPTION = "ThrottlingException"
+
+        @classmethod
+        def throttling_error_codes(cls):
+            """Return a set of error codes returned when service rate limits are exceeded."""
+            return {cls.REQUEST_LIMIT_EXCEEDED.value, cls.THROTTLING_EXCEPTION.value}
 
     def __init__(self, function_name: str, message: str, error_code: str = None):
         super().__init__(message)
