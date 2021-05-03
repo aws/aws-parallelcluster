@@ -72,16 +72,16 @@ class _DummyInstanceTypeInfo(InstanceTypeInfo):
 class _DummyAWSApi(AWSApi):
     def __init__(self):
         os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-        self.ec2 = _DummyEc2Client()
-        self.efs = _DummyEfsClient()
-        self.fsx = _DummyFSxClient()
-        self.cfn = _DummyCfnClient()
-        self.s3 = _DummyS3Client()
-        self.imagebuilder = _DummyImageBuilderClient()
-        self.kms = _DummyKmsClient()
-        self.sts = _DummyStsClient()
-        self.s3_resource = _DummyS3Resource()
-        self.iam = _DummyIamClient()
+        self._ec2 = _DummyEc2Client()
+        self._efs = _DummyEfsClient()
+        self._fsx = _DummyFSxClient()
+        self._cfn = _DummyCfnClient()
+        self._s3 = _DummyS3Client()
+        self._imagebuilder = _DummyImageBuilderClient()
+        self._kms = _DummyKmsClient()
+        self._sts = _DummyStsClient()
+        self._s3_resource = _DummyS3Resource()
+        self._iam = _DummyIamClient()
         # TODO: mock all clients
 
 
