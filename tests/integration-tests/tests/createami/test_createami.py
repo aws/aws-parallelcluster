@@ -16,7 +16,7 @@ from os import environ
 import pytest
 from assertpy import assert_that
 from packaging import version
-from utils import run_command
+from utils import get_username_for_os, run_command
 
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
@@ -117,15 +117,18 @@ def test_createami_post_install(
     assert_that(stdout_lower).does_not_contain("no custom ami created")
 
 
-@pytest.mark.dimensions("eu-central-1", "c5.xlarge", "ubuntu1804", "*")
 def test_createami_wrong_os(region, instance, os, request, pcluster_config_reader, vpc_stack, architecture):
     """Test error message when os provide is different from the os of custom AMI"""
     cluster_config = pcluster_config_reader()
 
-    # ubuntu1804 is specified in the config file but an AMI of centos8 is provided
+    # centos7 is specified in the config file but an AMI of centos8 is provided
     wrong_os = "centos8"
     logging.info("Asserting os fixture is different from wrong_os variable")
     assert_that(os != wrong_os).is_true()
+    # This test only works if both OSs have the same login username
+    # Else ssh to packer instance will fail and cookbook logic cannot be tested
+    logging.info("Asserting os and wrong_os have the same login username")
+    assert_that(get_username_for_os(os) == get_username_for_os(wrong_os)).is_true()
     base_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture)
 
     command = _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config)
