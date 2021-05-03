@@ -144,7 +144,7 @@ class Ec2Client(Boto3Client):
         """Return existing pcluster images by pcluster image name tag."""
         try:
             filters = [
-                {"Name": f"tag:{PCLUSTER_IMAGE_NAME_TAG}", "Values": ["*"]},
+                {"Name": "tag-key", "Values": [PCLUSTER_IMAGE_NAME_TAG]},
                 {"Name": f"tag:{PCLUSTER_IMAGE_BUILD_STATUS_TAG}", "Values": ["available"]},
             ]
             owners = ["self"]
