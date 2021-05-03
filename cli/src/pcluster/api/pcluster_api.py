@@ -246,7 +246,7 @@ class PclusterApi:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
-            stacks = AWSApi.instance().cfn.list_pcluster_stacks()
+            stacks, _ = AWSApi.instance().cfn.list_pcluster_stacks()
             return [ClusterInfo(ClusterStack(stack)) for stack in stacks]
 
         except Exception as e:

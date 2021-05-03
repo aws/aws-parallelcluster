@@ -10,6 +10,8 @@ import json
 import pytest
 from assertpy import assert_that
 
+from pcluster.api.models import ListClustersResponseContent
+
 
 @pytest.fixture(autouse=True)
 def set_lambda_env(set_env):
@@ -86,8 +88,13 @@ def lambda_context():
     return LambdaContext()
 
 
-def test_lambda_handler(apigw_event, lambda_context):
+def test_lambda_handler(apigw_event, lambda_context, mocker):
     from pcluster.api.awslambda import entrypoint
+
+    mocker.patch(
+        "pcluster.api.controllers.cluster_operations_controller.list_clusters",
+        return_value=ListClustersResponseContent(items=[]),
+    )
 
     ret = entrypoint.lambda_handler(apigw_event, lambda_context)
     data = json.loads(ret["body"])
