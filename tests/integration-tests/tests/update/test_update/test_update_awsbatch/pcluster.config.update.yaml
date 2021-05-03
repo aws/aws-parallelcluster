@@ -21,8 +21,8 @@ Scheduling:
           - {{ public_subnet_id }}
       ComputeResources:
         - Name: compute-resource-0
-          InstanceType: {{ instance }}
-          MinvCpus: 2
-          MaxvCpus: 4
-          DesiredvCpus: 3
+          InstanceTypes: {{ instance }}
+          MinvCpus: 8
+          MaxvCpus: 16
+          DesiredvCpus: 12
           SpotBidPercentage: 70

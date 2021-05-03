@@ -35,7 +35,13 @@ def execute(args):
             )
 
         cluster_config = _parse_config_file(config_file=args.config_file)
-        result = PclusterApi().update_cluster(cluster_config, args.cluster_name, utils.get_region(), args.force)
+        result = PclusterApi().update_cluster(
+            cluster_config,
+            args.cluster_name,
+            utils.get_region(),
+            suppress_validators=args.suppress_validators,
+            force=args.force,
+        )
         if isinstance(result, ClusterInfo):
             print("Cluster update started correctly.")
 
