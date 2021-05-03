@@ -77,8 +77,7 @@ def test_list_instance_types(boto3_stubber, generate_error):
     ]
     boto3_stubber("ec2", mocked_requests)
     if generate_error:
-        error_message = "Error during execution of describe_instance_type_offerings. {0}".format(dummy_message)
-        with pytest.raises(AWSClientError, match=error_message):
+        with pytest.raises(AWSClientError, match=dummy_message):
             Ec2Client().list_instance_types()
     else:
         return_value = Ec2Client().list_instance_types()
