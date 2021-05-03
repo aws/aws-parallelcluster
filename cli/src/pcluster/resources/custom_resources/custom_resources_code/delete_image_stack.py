@@ -28,8 +28,8 @@ def handler(event, context):
         logger.info("Printing event message: %s", json.dumps(event_message))
 
         # retrieve environment
-        stack_arn = os.environ["IMAGE_STACK_ARN"]
-        region = os.getenv("AWS_REGION")
+        stack_arn = os.environ.get("IMAGE_STACK_ARN")
+        aws_region = os.environ.get("AWS_REGION")
 
         # convert the event message to json
         message_json = json.loads(event_message)
@@ -44,9 +44,30 @@ def handler(event, context):
         logger.info("Image status is %s", image_status)
         if image_status == "AVAILABLE":
             try:
+                # tag EC2 AMI
+                image_id = message_json["outputResources"]["amis"][0]["image"]
+                aws_partition = message_json["arn"].split(':')[1]
+                parent_image = message_json["imageRecipe"]["parentImage"]
+                image_arn = f"arn:{aws_partition}:ec2:{aws_region}::image/{image_id}"
+                logger.info("Tagging EC2 AMI %s", image_arn)
+                tag_client = boto3.client("resourcegroupstaggingapi", config=boto3_config, region_name=aws_region)
+                tag_client.tag_resources(
+                    ResourceARNList=[
+                        image_arn,
+                    ],
+                    Tags={
+                        "parallelcluster:build_status": "available",
+                        "parallelcluster:parent_image": parent_image,
+                    }
+                )
+            except KeyError as e:
+                logger.error("Failed to parse message with exception: %s", e)
+            except ClientError as e:
+                logging.error("Tagging EC2 AMI %s failed with exception: %s", image_arn, e)
+            try:
                 # delete stack
                 logger.info("Deleting stack %s", stack_arn)
-                cfn_client = boto3.client("cloudformation", config=boto3_config, region_name=region)
+                cfn_client = boto3.client("cloudformation", config=boto3_config, region_name=aws_region)
                 cfn_client.delete_stack(StackName=stack_arn)
                 break
             except ClientError as e:
