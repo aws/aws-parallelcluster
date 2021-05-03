@@ -10,11 +10,11 @@
 
 from datetime import datetime
 
+from pcluster.api.controllers.common import configure_aws_region
 from pcluster.api.models import DescribeClusterInstancesResponseContent, EC2Instance, InstanceState
-from pcluster.api.validators import validate_region
 
 
-@validate_region()
+@configure_aws_region()
 def delete_cluster_instances(cluster_name, region=None, force=None):
     """
     Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters.
@@ -31,7 +31,7 @@ def delete_cluster_instances(cluster_name, region=None, force=None):
     return None
 
 
-@validate_region()
+@configure_aws_region()
 def describe_cluster_instances(cluster_name, region=None, next_token=None, node_type=None, queue_name=None):
     """
     Describe the instances belonging to a given cluster.
