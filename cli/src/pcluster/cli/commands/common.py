@@ -5,11 +5,16 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import logging
+import sys
 from abc import ABC, abstractmethod
+from typing import Dict
 
 import argparse
+from flask.testing import FlaskClient
 
+from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.constants import SUPPORTED_REGIONS
 
 LOGGER = logging.getLogger(__name__)
@@ -55,8 +60,57 @@ class CliCommand(ABC):
         """Execute CLI command."""
         pass
 
+    @staticmethod
+    def _exit_on_http_status(http_response):
+        if 200 <= http_response.status_code <= 299:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+
+class CliCommandV3(CliCommand, ABC):  # TODO: remove once all commands are converted
+    """Temporary class to identify pcluster v3 commands."""
+
+    pass
+
 
 class DcvCommand(CliCommand, ABC):
     """Abstract class for DCV CLI commands."""
 
     pass
+
+
+def print_json(obj):
+    """Print formatted Json to stdout."""
+    print(json.dumps(obj, indent=2))
+
+
+def csv_type(choices):
+    """Return a function that splits and checks comma-separated values."""
+
+    def split_arg(arg):
+        values = set(token.strip() for token in arg.split(","))
+        for value in values:
+            if value not in choices:
+                raise argparse.ArgumentTypeError(
+                    "invalid choice: {!r} (choose from {})".format(value, ", ".join(map(repr, choices)))
+                )
+        return values
+
+    return split_arg
+
+
+class ParallelClusterFlaskClient(FlaskClient):
+    """ParallelCluster Api client to invoke the WSGI application programmatically."""
+
+    def __init__(self, *args, **kwargs):
+        flask_app = ParallelClusterFlaskApp().flask_app
+        super().__init__(*args, application=flask_app, response_wrapper=flask_app.response_class, **kwargs)
+
+    def open(self, *args, headers: Dict[str, str] = None, **kwargs):
+        """Invoke ParallelCLuster Api functionalities as they were exposed by a HTTP endpoint."""
+        default_headers = {
+            "Accept": "application/json",
+        }
+        headers = headers or {}
+        return super().open(*args, headers={**default_headers, **headers}, **kwargs)

@@ -86,7 +86,7 @@ class TestListClusters:
             (
                 "us-east-1",
                 None,
-                None,
+                [],
                 [
                     {
                         "StackName": "name1",
@@ -127,7 +127,7 @@ class TestListClusters:
             (
                 "eu-west-1",
                 None,
-                ClusterStatus.CREATE_IN_PROGRESS,
+                [ClusterStatus.CREATE_IN_PROGRESS, ClusterStatus.UPDATE_FAILED],
                 [
                     {
                         "StackName": "name1",
@@ -143,6 +143,13 @@ class TestListClusters:
                         "StackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
                         "Tags": [{"Key": "Version", "Value": "3.1.0"}],
                     },
+                    {
+                        "StackName": "name3",
+                        "StackId": "arn:id3",
+                        "CreationTime": datetime(2021, 5, 30),
+                        "StackStatus": CloudFormationStatus.DELETE_IN_PROGRESS,
+                        "Tags": [{"Key": "Version", "Value": "3.1.0"}],
+                    },
                 ],
                 {
                     "items": [
@@ -154,13 +161,21 @@ class TestListClusters:
                             "region": "eu-west-1",
                             "version": "3.0.0",
                         },
+                        {
+                            "cloudformationStackArn": "arn:id2",
+                            "cloudformationStackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
+                            "clusterName": "name2",
+                            "clusterStatus": ClusterStatus.UPDATE_FAILED,
+                            "region": "eu-west-1",
+                            "version": "3.1.0",
+                        },
                     ]
                 },
             ),
             (
                 "eu-west-1",
                 "token",
-                ClusterStatus.CREATE_IN_PROGRESS,
+                [ClusterStatus.CREATE_IN_PROGRESS],
                 [
                     {
                         "StackName": "name1",
@@ -202,8 +217,8 @@ class TestListClusters:
         query_string = [
             ("region", region),
             ("nextToken", next_token),
-            ("clusterStatus", cluster_status),
         ]
+        query_string.extend([("clusterStatus", status) for status in cluster_status])
         headers = {
             "Accept": "application/json",
         }

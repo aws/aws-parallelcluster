@@ -16,7 +16,7 @@ from botocore.exceptions import NoCredentialsError
 
 import pcluster.cli.commands.cluster  # noqa: F401
 import pcluster.cli.commands.image  # noqa: F401
-from pcluster.cli.commands.common import CliCommand, DcvCommand
+from pcluster.cli.commands.common import CliCommand, CliCommandV3, DcvCommand
 from pcluster.utils import get_cli_log_file, get_installed_version
 
 LOGGER = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class ParallelClusterCli:
         )
         subparsers = self._parser.add_subparsers(dest="command")
         subparsers.required = True
-        for command_class in CliCommand.__subclasses__():
+        for command_class in CliCommand.__subclasses__() + CliCommandV3.__subclasses__():
             if not isabstract(command_class):
                 command_class(subparsers)  # pylint: disable=abstract-class-instantiated
 
@@ -76,8 +76,13 @@ class ParallelClusterCli:
         try:
             args, extra_args = self._parser.parse_known_args()
 
+            # TODO: remove once all commands are converted
+            if args.func.__self__.__class__.__bases__[0].__name__ == "CliCommandV3":
+                logging.getLogger("pcluster").removeHandler(logging.getLogger("pcluster").handlers[1])
+
             if args.debug:
                 logging.getLogger("pcluster").setLevel(logging.DEBUG)
+            LOGGER.info("Handling CLI command %s", args.command)
             LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
 
             # TODO: remove this logic from here

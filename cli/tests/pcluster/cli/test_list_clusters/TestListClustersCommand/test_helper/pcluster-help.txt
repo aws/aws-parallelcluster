@@ -3,7 +3,7 @@ usage: pcluster list-clusters [-h] [--debug]
                               [--next-token NEXT_TOKEN]
                               [--cluster-status CLUSTER_STATUS]
 
-Displays the list of existing AWS ParallelCluster clusters.
+Retrieves the list of existing AWS ParallelCluster clusters.
 
 optional arguments:
   -h, --help            show this help message and exit

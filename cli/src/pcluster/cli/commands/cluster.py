@@ -15,7 +15,15 @@ from typing import List
 import argparse
 from argparse import ArgumentParser, Namespace
 
-from pcluster.cli.commands.common import CliCommand, DcvCommand
+from pcluster.api.models.cluster_status import ClusterStatusEnum
+from pcluster.cli.commands.common import (
+    CliCommand,
+    CliCommandV3,
+    DcvCommand,
+    ParallelClusterFlaskClient,
+    csv_type,
+    print_json,
+)
 from pcluster.constants import PCLUSTER_STACK_PREFIX
 from pcluster.validators.common import FailureLevel
 
@@ -200,7 +208,7 @@ class ClusterStatusCommand(CliCommand):
         status(args)
 
 
-class ListClustersCommand(CliCommand):
+class ListClustersCommandV2(CliCommand):  # TODO: to be removed
     """Implement pcluster list command."""
 
     # CLI
@@ -219,6 +227,43 @@ class ListClustersCommand(CliCommand):
         from pcluster.cli_commands.commands import list_clusters
 
         list_clusters(args)
+
+
+class ListClustersCommand(CliCommandV3):
+    """Implement pcluster list-clusters command."""
+
+    # CLI
+    name = "list-clusters"
+    help = "Retrieves the list of existing AWS ParallelCluster clusters."
+    description = help
+    # HTTP API
+    method = "GET"
+    url = "/v3/clusters"
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        cluster_status_values = [e.value for e in ClusterStatusEnum]
+
+        parser.add_argument("--next-token", help="Token for paginated requests")
+        parser.add_argument(
+            "--cluster-status",
+            type=csv_type(cluster_status_values),
+            help=f"Comma separated status values to filter by. Available values are {cluster_status_values}",
+        )
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+        query_string = [
+            ("region", args.region),
+            ("nextToken", args.next_token),
+        ]
+        if args.cluster_status:
+            query_string.extend([("clusterStatus", status) for status in args.cluster_status])
+        with ParallelClusterFlaskClient() as client:
+            response = client.open(self.url, method=self.method, query_string=query_string)
+        print_json(response.get_json())
+        self._exit_on_http_status(response)
 
 
 class InstancesCommand(CliCommand):
