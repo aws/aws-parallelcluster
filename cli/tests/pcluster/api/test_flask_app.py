@@ -14,13 +14,25 @@ from werkzeug.exceptions import InternalServerError, MethodNotAllowed
 
 from pcluster.api.errors import BadRequestException, InternalServiceException
 from pcluster.api.flask_app import ParallelClusterFlaskApp
-from pcluster.api.models import InternalServiceExceptionResponseContent
 
 
 class TestParallelClusterFlaskApp:
     @pytest.fixture(autouse=True)
     def configure_caplog(self, caplog):
         caplog.set_level(logging.INFO, logger="pcluster")
+
+    @pytest.fixture
+    def flask_app_with_error_route(self):
+        def _flask_app(error: Exception):
+            flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).flask_app
+
+            def _raise_error():
+                raise error
+
+            flask_app.add_url_rule("/error", "error", view_func=_raise_error)
+            return flask_app
+
+        return _flask_app
 
     @staticmethod
     def _assert_response(response, body, code, mimetype="application/json"):
@@ -30,16 +42,18 @@ class TestParallelClusterFlaskApp:
 
     @staticmethod
     def _assert_log_message(caplog, level, message):
-        assert_that(caplog.records).is_length(1)
-        assert_that(caplog.records[0].levelno).is_equal_to(level)
-        assert_that(caplog.records[0].message).contains(message)
+        # Expects to find a log entry for the requst, one for the error and one for the response
+        assert_that(caplog.records).is_length(3)
+        assert_that(caplog.records[1].levelno).is_equal_to(level)
+        assert_that(caplog.records[1].message).contains(message)
         if level >= logging.ERROR:
-            assert_that(caplog.records[0].exc_info).is_true()
+            assert_that(caplog.records[1].exc_info).is_true()
         else:
-            assert_that(caplog.records[0].exc_info).is_false()
+            assert_that(caplog.records[1].exc_info).is_false()
 
-    def test_handle_http_exception(self, caplog):
-        response = ParallelClusterFlaskApp._handle_http_exception(MethodNotAllowed())
+    def test_handle_http_exception(self, caplog, flask_app_with_error_route):
+        with flask_app_with_error_route(MethodNotAllowed()).test_client() as client:
+            response = client.get("/error")
 
         self._assert_response(
             response, body='{"message": "The method is not allowed for the requested URL."}', code=405
@@ -51,7 +65,8 @@ class TestParallelClusterFlaskApp:
         )
 
         caplog.clear()
-        response = ParallelClusterFlaskApp._handle_http_exception(InternalServerError())
+        with flask_app_with_error_route(InternalServerError()).test_client() as client:
+            response = client.get("/error")
 
         self._assert_response(
             response,
@@ -63,10 +78,9 @@ class TestParallelClusterFlaskApp:
             caplog, logging.ERROR, "Handling exception (status code 500): The server encountered an internal error"
         )
 
-    def test_handle_parallel_cluster_api_exception(self, caplog):
-        response = ParallelClusterFlaskApp._handle_parallel_cluster_api_exception(
-            BadRequestException("invalid request")
-        )
+    def test_handle_parallel_cluster_api_exception(self, caplog, flask_app_with_error_route):
+        with flask_app_with_error_route(BadRequestException("invalid request")).test_client() as client:
+            response = client.get("/error")
 
         self._assert_response(response, body='{"message": "Bad Request: invalid request"}', code=400)
         self._assert_log_message(
@@ -76,9 +90,8 @@ class TestParallelClusterFlaskApp:
         )
 
         caplog.clear()
-        response = ParallelClusterFlaskApp._handle_parallel_cluster_api_exception(
-            InternalServiceException(InternalServiceExceptionResponseContent("failure"))
-        )
+        with flask_app_with_error_route(InternalServiceException("failure")).test_client() as client:
+            response = client.get("/error")
 
         self._assert_response(
             response,
@@ -87,8 +100,9 @@ class TestParallelClusterFlaskApp:
         )
         self._assert_log_message(caplog, logging.ERROR, 'Handling exception (status code 500): {"message": "failure"}')
 
-    def test_handle_unexpected_exception(self, caplog):
-        response = ParallelClusterFlaskApp._handle_unexpected_exception(Exception("error"))
+    def test_handle_unexpected_exception(self, caplog, flask_app_with_error_route):
+        with flask_app_with_error_route(Exception("error")).test_client() as client:
+            response = client.get("/error")
 
         self._assert_response(
             response,
@@ -102,8 +116,9 @@ class TestParallelClusterFlaskApp:
             "Unexpected exception: error",
         )
 
-    def test_handle_problem_exception(self, caplog):
-        response = ParallelClusterFlaskApp._handle_problem_exception(BadRequestProblem(detail="malformed"))
+    def test_handle_problem_exception(self, caplog, flask_app_with_error_route):
+        with flask_app_with_error_route(BadRequestProblem(detail="malformed")).test_client() as client:
+            response = client.get("/error")
         self._assert_response(response, body='{"message": "Bad Request: malformed"}', code=400)
         self._assert_log_message(
             caplog,
