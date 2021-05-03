@@ -19,6 +19,7 @@ import re
 import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
@@ -92,11 +93,13 @@ class NonExistingImageError(ImageError):
 class ImageBuilder:
     """Represent a building image, composed by an ImageBuilder config and an ImageBuilderStack."""
 
-    def __init__(self, image_name: str = None, config: dict = None, stack: ImageBuilderStack = None):
+    def __init__(
+        self, image: ImageInfo = None, image_name: str = None, config: dict = None, stack: ImageBuilderStack = None
+    ):
         self.image_name = image_name
         self.__source_config = config
         self.__stack = stack
-        self.__image = None
+        self.__image = image
         self.__config = None
         self.__bucket = None
         self.template_body = None

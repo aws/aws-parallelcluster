@@ -46,7 +46,7 @@ def handler(event, context):
             try:
                 # tag EC2 AMI
                 image_id = message_json["outputResources"]["amis"][0]["image"]
-                aws_partition = message_json["arn"].split(':')[1]
+                aws_partition = message_json["arn"].split(":")[1]
                 parent_image = message_json["imageRecipe"]["parentImage"]
                 image_arn = f"arn:{aws_partition}:ec2:{aws_region}::image/{image_id}"
                 logger.info("Tagging EC2 AMI %s", image_arn)
@@ -58,7 +58,7 @@ def handler(event, context):
                     Tags={
                         "parallelcluster:build_status": "available",
                         "parallelcluster:parent_image": parent_image,
-                    }
+                    },
                 )
             except KeyError as e:
                 logger.error("Failed to parse message with exception: %s", e)

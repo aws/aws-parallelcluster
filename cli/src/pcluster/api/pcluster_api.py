@@ -16,7 +16,6 @@ from typing import List, Union
 from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import ImageInfo
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.cluster import (
     Cluster,
@@ -336,7 +335,7 @@ class PclusterApi:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
             # retrieve imagebuilder config and generate model
-            imagebuilder = ImageBuilder(image_name)
+            imagebuilder = ImageBuilder(image_name=image_name)
             imagebuilder.delete(force=force)
             try:
                 return ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
@@ -344,8 +343,7 @@ class PclusterApi:
                 try:
                     return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
                 except NonExistingStackError:
-                    raise ImageBuilderActionError(f"Image {image_name} and imagebuilder stack do not exist.")
-
+                    raise ImageBuilderActionError(f"Image {image_name} does not exist.")
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -361,14 +359,14 @@ class PclusterApi:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
-            imagebuilder = ImageBuilder(image_name)
+            imagebuilder = ImageBuilder(image_name=image_name)
             try:
                 return ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
             except NonExistingImageError:
                 try:
                     return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
                 except NonExistingStackError:
-                    raise ImageBuilderActionError(f"Image {image_name} and imagebuilder stack do not exist.")
+                    raise ImageBuilderActionError(f"Image {image_name} does not exist.")
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -386,7 +384,7 @@ class PclusterApi:
 
             # get built images by image name tag
             images = AWSApi.instance().ec2.get_images()
-            imagebuilders = [ImageBuilder(image_name=image.original_image_name) for image in images]
+            imagebuilders = [ImageBuilder(image=image, image_name=image.original_image_name) for image in images]
             images_response = [
                 ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
                 for imagebuilder in imagebuilders
