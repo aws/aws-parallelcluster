@@ -972,6 +972,27 @@ def test_imagebuilder_instance_role(
                                         },
                                     },
                                     {
+                                        "Action": "ec2:CreateTags",
+                                        "Effect": "Allow",
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":ec2:",
+                                                    {"Ref": "AWS::Region"},
+                                                    "::image/*",
+                                                ],
+                                            ]
+                                        },
+                                    },
+                                    {
+                                        "Action": "tag:TagResources",
+                                        "Effect": "Allow",
+                                        "Resource": "*",
+                                    },
+                                    {
                                         "Action": ["iam:DetachRolePolicy", "iam:DeleteRole", "iam:DeleteRolePolicy"],
                                         "Effect": "Allow",
                                         "Resource": {

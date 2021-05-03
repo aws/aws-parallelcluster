@@ -518,6 +518,25 @@ class ImageBuilderCdkStack(Stack):
 
             self._add_resource_delete_policy(
                 policy_statements,
+                ["ec2:CreateTags"],
+                [
+                    self.format_arn(
+                        service="ec2",
+                        account="",
+                        resource="image",
+                        resource_name="*",
+                    )
+                ],
+            )
+
+            self._add_resource_delete_policy(
+                policy_statements,
+                ["tag:TagResources"],
+                ["*"],
+            )
+
+            self._add_resource_delete_policy(
+                policy_statements,
                 ["iam:DetachRolePolicy", "iam:DeleteRole", "iam:DeleteRolePolicy"],
                 [
                     self.format_arn(
