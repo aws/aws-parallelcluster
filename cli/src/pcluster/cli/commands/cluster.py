@@ -102,6 +102,9 @@ class UpdateClusterCommand(CliCommand):
             help="Disable CloudFormation stack rollback on error.",
         )
         parser.add_argument(
+            "--suppress-validators", action="store_true", default=False, help="Disable validators execution."
+        )
+        parser.add_argument(
             "-f", "--force", action="store_true", help="Forces the update skipping security checks. Not recommended."
         )
 
@@ -290,7 +293,7 @@ class ConfigureCommand(CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
-        pass
+        parser.add_argument("-c", "--config", help="Path of the output config file.")
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
         from pcluster.cli_commands.configure.easyconfig import configure

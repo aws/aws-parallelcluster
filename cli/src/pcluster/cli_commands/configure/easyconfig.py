@@ -105,7 +105,7 @@ def _get_subnets(conn, vpc_id):
 
 def configure(args):  # noqa: C901
 
-    config_file_path = args.config_file if args.config_file else default_config_file_path()
+    config_file_path = args.config if args.config else default_config_file_path()
     # Check for invalid path (eg. a directory)
     if os.path.exists(config_file_path):
         error(f"A file/folder exists at {config_file_path}. Please specify a different file path")
