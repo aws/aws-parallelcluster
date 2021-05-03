@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 from pcluster.aws.batch import BatchClient
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.dynamodb import DynamodbClient
@@ -34,23 +36,108 @@ class AWSApi:
     _instance = None
 
     def __init__(self):
-        self.batch = BatchClient()
-        self.cfn = CfnClient()
-        self.ec2 = Ec2Client()
-        self.efs = EfsClient(ec2_client=self.ec2)
-        self.fsx = FSxClient()
-        self.dynamodb = DynamodbClient()
-        # pylint: disable=C0103
-        self.s3 = S3Client()
-        self.kms = KmsClient()
-        self.imagebuilder = ImageBuilderClient()
-        self.sts = StsClient()
-        self.s3_resource = S3Resource()
-        self.iam = IamClient()
+        self.aws_region = os.environ.get("AWS_DEFAULT_REGION")
+
+        self._batch = None
+        self._cfn = None
+        self._ec2 = None
+        self._efs = None
+        self._fsx = None
+        self._dynamodb = None
+        self._s3 = None  # pylint: disable=C0103
+        self._kms = None
+        self._imagebuilder = None
+        self._sts = None
+        self._s3_resource = None
+        self._iam = None
+
+    @property
+    def cfn(self):
+        """CloudFormation client."""  # noqa: D403
+        if not self._cfn:
+            self._cfn = CfnClient()
+        return self._cfn
+
+    @property
+    def batch(self):
+        """AWS Batch client."""
+        if not self._batch:
+            self._batch = BatchClient()
+        return self._batch
+
+    @property
+    def ec2(self):
+        """EC2 client."""
+        if not self._ec2:
+            self._ec2 = Ec2Client()
+        return self._ec2
+
+    @property
+    def efs(self):
+        """EFS client."""
+        if not self._efs:
+            self._efs = EfsClient(ec2_client=self.ec2)
+        return self._efs
+
+    @property
+    def fsx(self):
+        """FSX client."""
+        if not self._fsx:
+            self._fsx = FSxClient()
+        return self._fsx
+
+    @property
+    def dynamodb(self):
+        """DynamoDB client."""  # noqa: D403
+        if not self._dynamodb:
+            self._dynamodb = DynamodbClient()
+        return self._dynamodb
+
+    @property
+    def s3(self):  # pylint: disable=C0103
+        """S3 client."""
+        if not self._s3:
+            self._s3 = S3Client()
+        return self._s3
+
+    @property
+    def kms(self):
+        """KMS client."""
+        if not self._kms:
+            self._kms = KmsClient()
+        return self._kms
+
+    @property
+    def imagebuilder(self):
+        """ImageBuilder client."""  # noqa: D403
+        if not self._imagebuilder:
+            self._imagebuilder = ImageBuilderClient()
+        return self._imagebuilder
+
+    @property
+    def sts(self):
+        """STS client."""
+        if not self._sts:
+            self._sts = StsClient()
+        return self._sts
+
+    @property
+    def s3_resource(self):
+        """S3Resource client."""
+        if not self._s3_resource:
+            self._s3_resource = S3Resource()
+        return self._s3_resource
+
+    @property
+    def iam(self):
+        """IAM client."""
+        if not self._iam:
+            self._iam = IamClient()
+        return self._iam
 
     @staticmethod
     def instance():
         """Return the singleton AWSApi instance."""
-        if not AWSApi._instance:
+        if not AWSApi._instance or AWSApi._instance.aws_region != os.environ.get("AWS_DEFAULT_REGION"):
             AWSApi._instance = AWSApi()
         return AWSApi._instance
