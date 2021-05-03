@@ -29,7 +29,9 @@ class ClusterStack(StackInfo):
     @property
     def cluster_name(self):
         """Return cluster name associated to this cluster."""
-        return self.name[len(PCLUSTER_STACK_PREFIX) :]  # noqa: E203
+        if self.name.startswith(PCLUSTER_STACK_PREFIX):
+            return self.name[len(PCLUSTER_STACK_PREFIX) :]  # noqa: E203
+        return self.name
 
     @property
     def version(self):
