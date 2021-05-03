@@ -14,6 +14,7 @@ from werkzeug.exceptions import InternalServerError, MethodNotAllowed
 
 from pcluster.api.errors import BadRequestException, InternalServiceException
 from pcluster.api.flask_app import ParallelClusterFlaskApp
+from pcluster.aws.common import AWSClientError
 
 
 class TestParallelClusterFlaskApp:
@@ -36,7 +37,7 @@ class TestParallelClusterFlaskApp:
 
     @staticmethod
     def _assert_response(response, body, code, mimetype="application/json"):
-        assert_that(response.get_data().decode()).is_equal_to(body)
+        assert_that(response.get_json()).is_equal_to(body)
         assert_that(response.status_code).is_equal_to(code)
         assert_that(response.mimetype).is_equal_to(mimetype)
 
@@ -55,9 +56,7 @@ class TestParallelClusterFlaskApp:
         with flask_app_with_error_route(MethodNotAllowed()).test_client() as client:
             response = client.get("/error")
 
-        self._assert_response(
-            response, body='{"message": "The method is not allowed for the requested URL."}', code=405
-        )
+        self._assert_response(response, body={"message": "The method is not allowed for the requested URL."}, code=405)
         self._assert_log_message(
             caplog,
             logging.INFO,
@@ -70,8 +69,10 @@ class TestParallelClusterFlaskApp:
 
         self._assert_response(
             response,
-            body='{"message": "The server encountered an internal error and was unable to complete your request. '
-            'Either the server is overloaded or there is an error in the application."}',
+            body={
+                "message": "The server encountered an internal error and was unable to complete your request. "
+                "Either the server is overloaded or there is an error in the application."
+            },
             code=500,
         )
         self._assert_log_message(
@@ -82,7 +83,7 @@ class TestParallelClusterFlaskApp:
         with flask_app_with_error_route(BadRequestException("invalid request")).test_client() as client:
             response = client.get("/error")
 
-        self._assert_response(response, body='{"message": "Bad Request: invalid request"}', code=400)
+        self._assert_response(response, body={"message": "Bad Request: invalid request"}, code=400)
         self._assert_log_message(
             caplog,
             logging.INFO,
@@ -95,7 +96,7 @@ class TestParallelClusterFlaskApp:
 
         self._assert_response(
             response,
-            body='{"message": "failure"}',
+            body={"message": "failure"},
             code=500,
         )
         self._assert_log_message(caplog, logging.ERROR, 'Handling exception (status code 500): {"message": "failure"}')
@@ -106,8 +107,10 @@ class TestParallelClusterFlaskApp:
 
         self._assert_response(
             response,
-            body='{"message": "Unexpected fatal exception. '
-            'Please look at the application logs for details on the encountered failure."}',
+            body={
+                "message": "Unexpected fatal exception. Please look at the application logs for details on the "
+                "encountered failure."
+            },
             code=500,
         )
         self._assert_log_message(
@@ -119,9 +122,48 @@ class TestParallelClusterFlaskApp:
     def test_handle_problem_exception(self, caplog, flask_app_with_error_route):
         with flask_app_with_error_route(BadRequestProblem(detail="malformed")).test_client() as client:
             response = client.get("/error")
-        self._assert_response(response, body='{"message": "Bad Request: malformed"}', code=400)
+        self._assert_response(response, body={"message": "Bad Request: malformed"}, code=400)
         self._assert_log_message(
             caplog,
             logging.INFO,
             "Handling exception (status code 400): Bad Request: malformed",
+        )
+
+    @pytest.mark.parametrize(
+        "error, expected_status, expected_response",
+        [
+            (
+                AWSClientError(
+                    "function_name", "Testing validation error", AWSClientError.ErrorCode.VALIDATION_ERROR.value
+                ),
+                400,
+                {"message": "Bad Request: Testing validation error"},
+            ),
+            (
+                AWSClientError(
+                    "function_name",
+                    "Testing throttling error",
+                    AWSClientError.ErrorCode.THROTTLING_EXCEPTION.value,
+                ),
+                429,
+                {"message": "Testing throttling error"},
+            ),
+            (
+                AWSClientError("function_name", "Testing unexpected error", None),
+                500,
+                {"message": "Failed when calling AWS service in function_name: Testing unexpected error"},
+            ),
+        ],
+        ids=["validation", "throttling", "unexpected"],
+    )
+    def test_handle_aws_client_error(
+        self, caplog, flask_app_with_error_route, error, expected_status, expected_response
+    ):
+        with flask_app_with_error_route(error).test_client() as client:
+            response = client.get("/error")
+        self._assert_response(response, body=expected_response, code=expected_status)
+        self._assert_log_message(
+            caplog,
+            logging.ERROR if expected_status == 500 else logging.INFO,
+            expected_response["message"],
         )
