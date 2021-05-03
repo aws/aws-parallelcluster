@@ -97,7 +97,7 @@ class Ec2Client(Boto3Client):
             return [ImageInfo(image) for image in result.get("Images")]
         raise ImageNotFoundError(function_name="describe_images")
 
-    def image_exists(self, image_name: str, build_status_avaliable: bool = False):
+    def image_exists(self, image_name: str, build_status_avaliable: bool = True):
         """Return a boolean describing whether or not an image with the given search criteria exists."""
         try:
             self.describe_image_by_name_tag(image_name, build_status_avaliable)
@@ -106,7 +106,7 @@ class Ec2Client(Boto3Client):
             return False
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_image_by_name_tag(self, image_name: str, build_status_avaliable: bool = False):
+    def describe_image_by_name_tag(self, image_name: str, build_status_avaliable: bool = True):
         """Return a dict of image info by searching image name tag as filter."""
         filters = [{"Name": "tag:" + PCLUSTER_IMAGE_NAME_TAG, "Values": [image_name]}]
         if build_status_avaliable:

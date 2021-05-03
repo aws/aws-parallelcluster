@@ -267,7 +267,7 @@ class ImageBuilder:
         self._validate_image_name()
 
         # check image existence
-        if AWSApi.instance().ec2.image_exists(self.image_name, build_status_avaliable=True):
+        if AWSApi.instance().ec2.image_exists(self.image_name):
             raise ImageBuilderActionError(f"ParallelCluster image {self.image_name} already exists")
 
         # check stack existence
@@ -366,7 +366,7 @@ class ImageBuilder:
         """Delete CFN Stack and associate resources and deregister the image."""
         if force or (not self._check_instance_using_image() and not self._check_image_is_shared()):
             try:
-                if AWSApi.instance().ec2.image_exists(self.image_name):
+                if AWSApi.instance().ec2.image_exists(image_name=self.image_name, build_status_avaliable=False):
                     # Deregister image
                     AWSApi.instance().ec2.deregister_image(self.image.id)
 
