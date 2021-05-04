@@ -115,7 +115,7 @@ createami:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]  # os must be different from centos8 to test os validation logic when wrong os is provided
+        oss: ["centos7"]  # must be different from wrong_os(centos8), but with the same username, to test os validation logic
   test_createami.py::test_createami_wrong_pcluster_version:
     dimensions:
       - regions: ["ca-central-1"]
