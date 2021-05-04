@@ -43,11 +43,13 @@ def _get_private_ip_addresses(instance_id, region, remote_command_executor):
 def _test_head_node_nics(remote_command_executor, region):
     # On the head node we just check that all the private IPs have been assigned to NICs
     token = remote_command_executor.run_remote_command(
-        "curl -s -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 300'"
+        "curl --retry 3 --retry-delay 0  --fail -s -X PUT 'http://169.254.169.254/latest/api/token' "
+        "-H 'X-aws-ec2-metadata-token-ttl-seconds: 300'"
     ).stdout
 
     head_node_instance_id = remote_command_executor.run_remote_command(
-        f'curl -s -H "X-aws-ec2-metadata-token: {token}" http://169.254.169.254/latest/meta-data/instance-id'
+        f'curl --retry 3 --retry-delay 0  --fail -s -H "X-aws-ec2-metadata-token: {token}" '
+        "http://169.254.169.254/latest/meta-data/instance-id"
     ).stdout
 
     head_node_ip_addresses = _get_private_ip_addresses(head_node_instance_id, region, remote_command_executor)
