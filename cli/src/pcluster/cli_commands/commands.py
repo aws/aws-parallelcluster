@@ -430,6 +430,8 @@ def delete_image(args):
         # delete image raises an exception if stack does not exist
         result = PclusterApi().delete_image(image_name=args.image_name, region=utils.get_region(), force=args.force)
         if isinstance(result, ImageBuilderInfo):
+            result.imagebuild_status = "DELETE_IN_PROGRESS"
+
             print(f"Image deletion started correctly. {result}")
         else:
             utils.error(f"Image deletion failed. {result.message}")
