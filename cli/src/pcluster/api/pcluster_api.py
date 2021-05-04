@@ -16,6 +16,7 @@ from typing import List, Union
 from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.aws_resources import ImageInfo
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.cluster import (
     Cluster,
