@@ -2,8 +2,8 @@
 set -e
 
 echo "ip container: $(/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1)"
-TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
-echo "ip host: $(curl -s -H "X-aws-ec2-metadata-token: ${TOKEN}" "http://169.254.169.254/latest/meta-data/local-ipv4")"
+TOKEN=$(curl --retry 3 --retry-delay 0  --fail -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+echo "ip host: $(curl --retry 3 --retry-delay 0  --fail -s -H "X-aws-ec2-metadata-token: ${TOKEN}" "http://169.254.169.254/latest/meta-data/local-ipv4")"
 
 # get shared dir
 IFS=',' _shared_dirs=(${PCLUSTER_SHARED_DIRS})
