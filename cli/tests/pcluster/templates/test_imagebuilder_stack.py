@@ -1348,7 +1348,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -1395,7 +1395,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -1445,7 +1445,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -1927,7 +1927,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -1975,7 +1975,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -2023,7 +2023,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -2071,7 +2071,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -2124,7 +2124,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -2178,7 +2178,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -2232,7 +2232,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
@@ -2257,7 +2257,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                                         {"Ref": "AWS::Partition"},
                                         ":logs:us-east-1:",
                                         {"Ref": "AWS::AccountId"},
-                                        ":log-group/:aws/imagebuilder/ParallelClusterImage-Pcluster",
+                                        ":log-group:/aws/imagebuilder/ParallelClusterImage-Pcluster",
                                     ],
                                 ]
                             },
