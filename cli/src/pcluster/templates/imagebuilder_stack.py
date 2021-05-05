@@ -108,7 +108,8 @@ class ImageBuilderCdkStack(Stack):
             service="logs",
             resource="log-group",
             region=utils.get_region(),
-            resource_name=f":aws/imagebuilder/{self._build_image_recipe_name()}",
+            sep=":",
+            resource_name=f"/aws/imagebuilder/{self._build_image_recipe_name()}",
         )
         return log_group_arn
 
