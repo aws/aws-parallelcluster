@@ -61,7 +61,11 @@ CW_LOGS_RETENTION_DAYS_DEFAULT = 14
 CW_DASHBOARD_ENABLED_DEFAULT = True
 CW_LOGS_ENABLED_DEFAULT = True
 
+PCLUSTER_IMAGE_NAME_REGEX = r"^[-_A-Za-z0-9{][-_A-Za-z0-9\s:{}\.]+[-_A-Za-z0-9}]$"
+PCLUSTER_IMAGE_ID_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,127})$"
+
 PCLUSTER_IMAGE_NAME_TAG = "parallelcluster:image_name"
+PCLUSTER_IMAGE_ID_TAG = "parallelcluster:image_id"
 PCLUSTER_IMAGE_BUILD_STATUS_TAG = "parallelcluster:build_status"
 PCLUSTER_S3_IMAGE_DIR_TAG = "parallelcluster:s3_image_dir"
 PCLUSTER_S3_CLUSTER_DIR_TAG = "parallelcluster:cluster_dir"
