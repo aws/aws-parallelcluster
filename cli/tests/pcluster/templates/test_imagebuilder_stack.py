@@ -558,9 +558,13 @@ def _test_resources(generated_resources, expected_resources):
                     ],
                     "Tags": [
                         {
+                            "Key": "parallelcluster:image_id",
+                            "Value": "Pcluster",
+                        },
+                        {
                             "Key": "parallelcluster:image_name",
                             "Value": "Pcluster",
-                        }
+                        },
                     ],
                 },
             },
@@ -1089,9 +1093,13 @@ def test_imagebuilder_instance_role(
                     ],
                     "Tags": [
                         {
+                            "Key": "parallelcluster:image_id",
+                            "Value": "My-Image",
+                        },
+                        {
                             "Key": "parallelcluster:image_name",
                             "Value": "My-Image",
-                        }
+                        },
                     ],
                 },
             },
@@ -1337,6 +1345,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                             "keyTag1": "valueTag1",
                             "keyTag2": "valueTag2",
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -1386,6 +1395,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:image_name": "Pcluster",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
@@ -1409,6 +1419,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
             {
                 "imagebuilder": {
                     "image": {
+                        "name": "pcluster_3.0.0",
                         "tags": [],
                     },
                     "build": {
@@ -1431,12 +1442,13 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
             [
                 {
                     "AmiDistributionConfiguration": {
-                        "Name": "Pcluster {{ imagebuilder:buildDate }}",
+                        "Name": "pcluster_3.0.0 {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
-                            "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
+                            "parallelcluster:image_name": "pcluster_3.0.0",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -1516,6 +1528,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
             {
                 "keyTag1": "valueTag1",
                 "keyTag2": "valueTag2",
+                "parallelcluster:image_id": "Pcluster",
                 "parallelcluster:image_name": "Pcluster",
             },
             [
@@ -1527,6 +1540,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     "Key": "keyTag2",
                     "Value": "valueTag2",
                 },
+                {"Key": "parallelcluster:image_id", "Value": "Pcluster"},
                 {"Key": "parallelcluster:image_name", "Value": "Pcluster"},
             ],
         ),
@@ -1550,8 +1564,11 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     }
                 ],
             },
-            {"parallelcluster:image_name": "Pcluster"},
-            [{"Key": "parallelcluster:image_name", "Value": "Pcluster"}],
+            {"parallelcluster:image_id": "Pcluster", "parallelcluster:image_name": "Pcluster"},
+            [
+                {"Key": "parallelcluster:image_id", "Value": "Pcluster"},
+                {"Key": "parallelcluster:image_name", "Value": "Pcluster"},
+            ],
         ),
         (
             {
@@ -1574,8 +1591,11 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
                     }
                 ],
             },
-            {"parallelcluster:image_name": "Pcluster"},
-            [{"Key": "parallelcluster:image_name", "Value": "Pcluster"}],
+            {"parallelcluster:image_id": "Pcluster", "parallelcluster:image_name": "Pcluster"},
+            [
+                {"Key": "parallelcluster:image_id", "Value": "Pcluster"},
+                {"Key": "parallelcluster:image_name", "Value": "Pcluster"},
+            ],
         ),
     ],
 )
@@ -1916,6 +1936,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -1964,6 +1985,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -2012,6 +2034,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -2060,6 +2083,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -2113,6 +2137,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -2167,6 +2192,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -2221,6 +2247,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
@@ -2246,6 +2273,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                         "Name": "Pcluster {{ imagebuilder:buildDate }}",
                         "AmiTags": {
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",

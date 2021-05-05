@@ -12,7 +12,7 @@ import logging
 
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
-    PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
@@ -238,7 +238,7 @@ class FsxFileSystemInfo:
 
 
 class ImageInfo:
-    """Object to store Image information, initialized with the describe_image or describe_images in ec2 client."""
+    """Object to store Ec2 Image information, initialized with the describe_image or describe_images in ec2 client."""
 
     def __init__(self, image_data: dict):
         self._image_data = image_data
@@ -249,9 +249,9 @@ class ImageInfo:
         return self._image_data.get("Name")
 
     @property
-    def original_image_name(self) -> str:
-        """Return original image name without date."""
-        return self._get_tag(PCLUSTER_IMAGE_NAME_TAG)
+    def pcluster_image_id(self) -> str:
+        """Return pcluster image id."""
+        return self._get_tag(PCLUSTER_IMAGE_ID_TAG)
 
     @property
     def id(self) -> str:

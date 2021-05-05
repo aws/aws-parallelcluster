@@ -27,6 +27,8 @@ from pcluster.config.imagebuilder_config import (
     ImagebuilderDevSettings,
     Volume,
 )
+from pcluster.constants import PCLUSTER_IMAGE_NAME_REGEX
+from pcluster.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.schemas.common_schema import (
     ALLOWED_VALUES,
     BaseDevSettingsSchema,
@@ -56,6 +58,10 @@ class VolumeSchema(BaseSchema):
 class ImageSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Image."""
 
+    name = fields.Str(
+        validate=validate.Regexp(PCLUSTER_IMAGE_NAME_REGEX)
+        and validate.Length(max=128 - len(AMI_NAME_REQUIRED_SUBSTRING)),
+    )
     tags = fields.List(fields.Nested(TagSchema))
     root_volume = fields.Nested(VolumeSchema)
 

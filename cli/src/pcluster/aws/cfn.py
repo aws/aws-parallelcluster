@@ -12,7 +12,7 @@ import json
 
 from pcluster.aws.aws_resources import StackInfo
 from pcluster.aws.common import AWSExceptionHandler, Boto3Client, StackNotFoundError
-from pcluster.constants import PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_IMAGE_NAME_TAG
+from pcluster.constants import PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_IMAGE_ID_TAG
 
 
 class CfnClient(Boto3Client):
@@ -128,6 +128,6 @@ class CfnClient(Boto3Client):
         """List existing imagebuilder stacks."""
         stack_list = []
         for stack in self._paginate_results(self._client.describe_stacks):
-            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_IMAGE_NAME_TAG):
+            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_IMAGE_ID_TAG):
                 stack_list.append(stack)
         return stack_list

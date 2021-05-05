@@ -17,7 +17,7 @@ from pcluster.aws.aws_resources import StackInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
-    PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
@@ -64,7 +64,7 @@ class ImageBuilderStack(StackInfo):
     @property
     def image_name(self):
         """Return image name tag value."""
-        return self.get_tag(PCLUSTER_IMAGE_NAME_TAG)
+        return self.get_tag(PCLUSTER_IMAGE_ID_TAG)
 
     @property
     def version(self):

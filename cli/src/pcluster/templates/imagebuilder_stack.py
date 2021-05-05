@@ -33,6 +33,7 @@ from pcluster.config.common import BaseTag
 from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
@@ -59,13 +60,13 @@ class ImageBuilderCdkStack(Stack):
         scope: Construct,
         construct_id: str,
         image_config: ImageBuilderConfig,
-        image_name: str,
+        image_id: str,
         bucket: S3Bucket,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.config = image_config
-        self.image_name = image_name
+        self.image_id = image_id
         self.bucket = bucket
 
         self.custom_instance_role = (
@@ -98,7 +99,7 @@ class ImageBuilderCdkStack(Stack):
         return "-".join([name, self._stack_unique_id()])
 
     def _build_image_recipe_name(self, to_lower=False):
-        name = "{0}-{1}".format(RESOURCE_NAME_PREFIX, self.image_name)[0:1024]
+        name = "{0}-{1}".format(RESOURCE_NAME_PREFIX, self.image_id)[0:1024]
         if to_lower:
             name = name.lower()
         return name
@@ -124,8 +125,12 @@ class ImageBuilderCdkStack(Stack):
         """Get image tags."""
         image_tags = copy.deepcopy(self.config.image.tags) if self.config.image and self.config.image.tags else []
         tag_list = [
+            {
+                "key": PCLUSTER_IMAGE_NAME_TAG,
+                "value": self.config.image.name if self.config.image and self.config.image.name else self.image_id,
+            },
             {"key": PCLUSTER_VERSION_TAG, "value": utils.get_installed_version()},
-            {"key": PCLUSTER_IMAGE_NAME_TAG, "value": self.image_name},
+            {"key": PCLUSTER_IMAGE_ID_TAG, "value": self.image_id},
             {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
             {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.bucket.artifact_directory},
             {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
@@ -183,7 +188,13 @@ class ImageBuilderCdkStack(Stack):
     def _add_resources(self):
         # Add default build tags information
         tags = copy.deepcopy(self.config.build.tags) or []
-        tags.append(BaseTag(key=PCLUSTER_IMAGE_NAME_TAG, value=self.image_name))
+        tags.append(BaseTag(key=PCLUSTER_IMAGE_ID_TAG, value=self.image_id))
+        tags.append(
+            BaseTag(
+                key=PCLUSTER_IMAGE_NAME_TAG,
+                value=self.config.image.name if self.config.image and self.config.image.name else self.image_id,
+            )
+        )
         build_tags_map = {tag.key: tag.value for tag in tags}
         build_tags_list = [CfnTag(key=tag.key, value=tag.value) for tag in tags]
 
@@ -282,7 +293,8 @@ class ImageBuilderCdkStack(Stack):
     def _add_imagebuilder_distribution_configuration(self, ami_tags, build_tags, lambda_cleanup_policy_statements):
         # ImageBuilderDistributionConfiguration
         ami_distribution_configuration = {
-            "Name": self.image_name + AMI_NAME_REQUIRED_SUBSTRING,
+            "Name": (self.config.image.name if self.config.image and self.config.image.name else self.image_id)
+            + AMI_NAME_REQUIRED_SUBSTRING,
             "AmiTags": ami_tags,
             "LaunchPermissionConfiguration": json.loads(
                 self.config.dev_settings.distribution_configuration.launch_permission
@@ -508,7 +520,7 @@ class ImageBuilderCdkStack(Stack):
                     self.format_arn(
                         service="cloudformation",
                         resource="stack",
-                        resource_name="{0}/{1}".format(self.image_name, self._stack_unique_id()),
+                        resource_name="{0}/{1}".format(self.image_id, self._stack_unique_id()),
                     )
                 ],
             )
