@@ -613,6 +613,26 @@ class TagKeyValidator(Validator):
             self._add_failure(f"The tag key '{PCLUSTER_CLUSTER_VERSION_TAG}' is a reserved one.", FailureLevel.ERROR)
 
 
+class DuplicateNameValidator(Validator):
+    """
+    Duplicate name validator.
+
+    Verify if there are duplicated names.
+    """
+
+    def _validate(self, name_list, resource_name):
+        duplicated_names = _find_duplicate_params(name_list)
+        if duplicated_names:
+            self._add_failure(
+                "{0} {1} {2} must be unique.".format(
+                    resource_name,
+                    "names" if len(duplicated_names) > 1 else "name",
+                    ", ".join(name for name in duplicated_names),
+                ),
+                FailureLevel.ERROR,
+            )
+
+
 # --------------- Instance settings validators --------------- #
 
 
