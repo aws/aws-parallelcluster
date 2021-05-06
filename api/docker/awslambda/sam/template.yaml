@@ -54,6 +54,7 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXRayDaemonWriteAccess
+        - AdministratorAccess  # TODO: replace with less permissive
     Metadata:
       Dockerfile: ../api/docker/awslambda/Dockerfile
       DockerContext: ../../../../cli
