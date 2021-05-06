@@ -48,6 +48,7 @@ from pcluster.validators.cluster_validators import (
     DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
+    DuplicateNameValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -902,6 +903,11 @@ class BaseClusterConfig(Resource):
     def _register_storage_validators(self):
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}
         if self.shared_storage:
+            self._execute_validator(
+                DuplicateNameValidator,
+                name_list=[storage.name for storage in self.shared_storage],
+                resource_name="Shared Storage",
+            )
             for storage in self.shared_storage:
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
@@ -1114,6 +1120,14 @@ class AwsBatchQueue(BaseQueue):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
 
+    def _validate(self):
+        super()._validate()
+        self._execute_validator(
+            DuplicateNameValidator,
+            name_list=[compute_resource.name for compute_resource in self.compute_resources],
+            resource_name="Compute resource",
+        )
+
 
 class AwsBatchSettings(Resource):
     """Represent the AwsBatchSettings resource."""
@@ -1129,6 +1143,11 @@ class AwsBatchScheduling(Resource):
         self.scheduler = "awsbatch"
         self.queues = queues
         self.settings = settings
+
+    def _validate(self):
+        self._execute_validator(
+            DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
+        )
 
 
 class AwsBatchClusterConfig(BaseClusterConfig):
@@ -1272,6 +1291,11 @@ class SlurmQueue(BaseQueue):
     def _validate(self):
         super()._validate()
         self._execute_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
+        self._execute_validator(
+            DuplicateNameValidator,
+            name_list=[compute_resource.name for compute_resource in self.compute_resources],
+            resource_name="Compute resource",
+        )
         for compute_resource in self.compute_resources:
             self._execute_validator(
                 CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
@@ -1326,6 +1350,11 @@ class SlurmScheduling(Resource):
         self.scheduler = "slurm"
         self.queues = queues
         self.settings = settings or SlurmSettings(implied=True)
+
+    def _validate(self):
+        self._execute_validator(
+            DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
+        )
 
 
 class SlurmClusterConfig(BaseClusterConfig):
