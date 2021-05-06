@@ -21,6 +21,35 @@ logger.setLevel(logging.INFO)
 boto3_config = Config(retries={"max_attempts": 60})
 
 
+def _tag_ami(message_json):
+    # tag EC2 AMI
+    try:
+        for ami in message_json["outputResources"]["amis"]:
+            try:
+                image_id = ami["image"]
+                ami_region = ami["region"]
+                aws_partition = message_json["arn"].split(":")[1]
+                parent_image = message_json["imageRecipe"]["parentImage"]
+                image_arn = f"arn:{aws_partition}:ec2:{ami_region}::image/{image_id}"
+                logger.info("Tagging EC2 AMI %s", image_arn)
+                tag_client = boto3.client("resourcegroupstaggingapi", config=boto3_config, region_name=ami_region)
+                tag_client.tag_resources(
+                    ResourceARNList=[
+                        image_arn,
+                    ],
+                    Tags={
+                        "parallelcluster:build_status": "available",
+                        "parallelcluster:parent_image": parent_image,
+                    },
+                )
+            except KeyError as e:
+                logger.error("Unable to parse ami information, exception is: %s", e)
+            except ClientError as e:
+                logging.error("Tagging EC2 AMI %s failed with exception: %s", image_arn, e)
+    except KeyError as e:
+        logger.error("Message doesn't contain output amis, exception is: %s", e)
+
+
 def handler(event, context):  # pylint: disable=unused-argument
     logger.info("Printing event: %s", json.dumps(event))
     for record in event["Records"]:
@@ -37,33 +66,13 @@ def handler(event, context):  # pylint: disable=unused-argument
         # get image status
         try:
             image_status = message_json["state"]["status"]
-        except KeyError:
-            logger.error("Message doesn't contain image status notification")
+        except KeyError as e:
+            logger.error("Message doesn't contain image status notification, exception is: %s", e)
             continue
 
         logger.info("Image status is %s", image_status)
         if image_status == "AVAILABLE":
-            try:
-                # tag EC2 AMI
-                image_id = message_json["outputResources"]["amis"][0]["image"]
-                aws_partition = message_json["arn"].split(":")[1]
-                parent_image = message_json["imageRecipe"]["parentImage"]
-                image_arn = f"arn:{aws_partition}:ec2:{aws_region}::image/{image_id}"
-                logger.info("Tagging EC2 AMI %s", image_arn)
-                tag_client = boto3.client("resourcegroupstaggingapi", config=boto3_config, region_name=aws_region)
-                tag_client.tag_resources(
-                    ResourceARNList=[
-                        image_arn,
-                    ],
-                    Tags={
-                        "parallelcluster:build_status": "available",
-                        "parallelcluster:parent_image": parent_image,
-                    },
-                )
-            except KeyError as e:
-                logger.error("Failed to parse message with exception: %s", e)
-            except ClientError as e:
-                logging.error("Tagging EC2 AMI %s failed with exception: %s", image_arn, e)
+            _tag_ami(message_json)
             try:
                 # delete stack
                 logger.info("Deleting stack %s", stack_arn)
