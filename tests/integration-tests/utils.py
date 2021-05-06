@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 import os
 import random
@@ -28,6 +29,25 @@ class InstanceTypesData:
 
     # Additional instance types data provided via tests configuration
     additional_instance_types_data = {}
+    additional_instance_types_map = {}
+
+    @staticmethod
+    def load_additional_instance_types_data(instance_types_data_file):
+        """
+        Load additional instance types data from configuration json file.
+        The file must contain two keys:
+          - "instance_types_data": The json structure to be passed to cluster configuration files
+          - "instance_types_map": A dict containing logical instance types names (that can be used in cluster config
+            files) vs real ones (e.g. "t2.micro")
+        """
+        instance_types_data_file_content = read_json_file(instance_types_data_file)
+        InstanceTypesData.additional_instance_types_data = instance_types_data_file_content.get(
+            "instance_types_data", {}
+        )
+        InstanceTypesData.additional_instance_types_map = instance_types_data_file_content.get("instance_types_map", {})
+        logging.info(
+            "Additional instance types data loaded: {0}".format(InstanceTypesData.additional_instance_types_data)
+        )
 
     @staticmethod
     def get_instance_info(instance_type, region_name=None):
@@ -423,3 +443,13 @@ def check_headnode_security_group(region, cluster, port, expected_cidr):
 def get_network_interfaces_count(instance_type, region_name=None):
     """Return the number of Network Interfaces for the provided instance type."""
     return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
+
+
+def read_json_file(file):
+    """Read a Json file into a String and raise an exception if the file is invalid."""
+    try:
+        with open(file) as f:
+            return json.load(f)
+    except Exception as e:
+        logging.exception("Failed when reading json file %s", file)
+        raise e
