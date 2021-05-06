@@ -298,7 +298,7 @@ def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
 
 
-def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
+def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
     while True:
         try:
             return func(*args, **kwargs)
@@ -400,9 +400,9 @@ class Cache:
 
 def grouper(iterable, size):
     """Slice iterable into chunks of size."""
-    it = iter(iterable)
+    itr = iter(iterable)
     while True:
-        chunk = tuple(itertools.islice(it, size))
+        chunk = tuple(itertools.islice(itr, size))
         if not chunk:
             return
         yield chunk

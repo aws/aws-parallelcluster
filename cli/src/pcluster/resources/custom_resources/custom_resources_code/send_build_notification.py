@@ -14,7 +14,7 @@ from http.client import HTTPSConnection
 from urllib.parse import urlsplit, urlunsplit
 
 
-def handler(event, context):
+def handler(event, context):  # pylint: disable=unused-argument
     """Handle CodeBuild build status changes and send notifications to CFN WaitCondition."""
     print("CodeBuild event: %s" % json.dumps(event))
     environment_variables = event["detail"]["additional-information"]["environment"]["environment-variables"]

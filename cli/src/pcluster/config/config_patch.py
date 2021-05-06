@@ -26,7 +26,7 @@ Change = namedtuple("Change", ["path", "key", "old_value", "new_value", "update_
 # see https://bugs.python.org/issue10076
 # see https://docs.python.org/3/whatsnew/3.7.html#re
 if sys.version_info <= (3, 7):
-    copy._deepcopy_dispatch[type(re.compile(""))] = lambda r, _: r
+    copy._deepcopy_dispatch[type(re.compile(""))] = lambda r, _: r  # pylint: disable=protected-access
 
 LOGGER = logging.getLogger(__name__)
 
