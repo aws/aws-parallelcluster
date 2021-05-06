@@ -1168,10 +1168,6 @@ class ClusterCdkStack(Stack):
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
-    def _condition_create_iam_role(self, node: Union[HeadNode, BaseQueue]):
-        """Iam role is created if instance role is not specified."""
-        return not node.iam or not node.iam.instance_role
-
     def _condition_create_lambda_iam_role(self):
         return (
             not self.config.iam

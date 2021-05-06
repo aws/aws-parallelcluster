@@ -165,21 +165,6 @@ def get_stack(stack_name, cfn_client=None):
         )
 
 
-def get_stack_resources(stack_name):
-    """Get the given stack's resources."""
-    cfn_client = boto3.client("cloudformation")
-    try:
-        return retry_on_boto3_throttling(cfn_client.describe_stack_resources, StackName=stack_name).get(
-            "StackResources"
-        )
-    except ClientError as client_err:
-        error(
-            "Unable to get {stack_name}'s resources: {reason}".format(
-                stack_name=stack_name, reason=client_err.response.get("Error").get("Message")
-            )
-        )
-
-
 def get_stack_events(stack_name, raise_on_error=False):
     cfn_client = boto3.client("cloudformation")
     try:

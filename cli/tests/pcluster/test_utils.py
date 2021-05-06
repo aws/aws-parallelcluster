@@ -41,50 +41,6 @@ def dummy_cluster(name=FAKE_CLUSTER_NAME, stack=None):
     return Cluster(name, stack=stack)
 
 
-@pytest.mark.parametrize(
-    "resources, error_message",
-    [
-        (
-            [
-                {
-                    "StackName": FAKE_STACK_NAME,
-                    "StackId": "stack_id",
-                    "LogicalResourceId": "logical_resource_id",
-                    "ResourceType": "resource_type",
-                    "Timestamp": 0,
-                    "ResourceStatus": "resource_status",
-                }
-            ],
-            None,
-        ),
-        (None, "Some error message"),
-    ],
-)
-def test_get_stack_resources(boto3_stubber, resources, error_message):
-    """Verify that utils.get_stack_resources behaves as expected."""
-    if error_message is None:
-        response = {"StackResources": resources}
-    else:
-        response = "Unable to get {stack_name}'s resources: {error_message}".format(
-            stack_name=FAKE_STACK_NAME, error_message=error_message
-        )
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_stack_resources",
-            response=response,
-            expected_params={"StackName": FAKE_STACK_NAME},
-            generate_error=error_message is not None,
-        )
-    ]
-    boto3_stubber("cloudformation", mocked_requests)
-    if error_message is None:
-        assert_that(utils.get_stack_resources(FAKE_STACK_NAME)).is_equal_to(resources)
-    else:
-        with pytest.raises(SystemExit, match=response) as sysexit:
-            utils.get_stack_resources(FAKE_STACK_NAME)
-        assert_that(sysexit.value.code).is_not_equal_to(0)
-
-
 def test_retry_on_boto3_throttling(boto3_stubber, mocker):
     sleep_mock = mocker.patch("pcluster.utils.time.sleep")
     mocked_requests = [
@@ -108,25 +64,6 @@ def test_retry_on_boto3_throttling(boto3_stubber, mocker):
     ]
     client = boto3_stubber("cloudformation", mocked_requests)
     utils.retry_on_boto3_throttling(client.describe_stack_resources, StackName=FAKE_STACK_NAME)
-    sleep_mock.assert_called_with(5)
-
-
-def test_get_stack_resources_retry(boto3_stubber, mocker):
-    sleep_mock = mocker.patch("pcluster.utils.time.sleep")
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_stack_resources",
-            response="Error",
-            expected_params={"StackName": FAKE_STACK_NAME},
-            generate_error=True,
-            error_code="Throttling",
-        ),
-        MockedBoto3Request(
-            method="describe_stack_resources", response={}, expected_params={"StackName": FAKE_STACK_NAME}
-        ),
-    ]
-    boto3_stubber("cloudformation", mocked_requests)
-    utils.get_stack_resources(FAKE_STACK_NAME)
     sleep_mock.assert_called_with(5)
 
 
