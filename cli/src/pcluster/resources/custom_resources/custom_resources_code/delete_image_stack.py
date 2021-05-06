@@ -21,7 +21,7 @@ logger.setLevel(logging.INFO)
 boto3_config = Config(retries={"max_attempts": 60})
 
 
-def handler(event, context):
+def handler(event, context):  # pylint: disable=unused-argument
     logger.info("Printing event: %s", json.dumps(event))
     for record in event["Records"]:
         event_message = record["Sns"]["Message"]

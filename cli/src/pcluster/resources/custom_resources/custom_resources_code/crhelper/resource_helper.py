@@ -9,6 +9,8 @@ TODO:
 * Functional tests
 """
 
+# pylint: disable=invalid-name
+
 import json
 import logging
 import os
@@ -103,7 +105,7 @@ class CfnResource():
             if self._timer:
                 self._timer.cancel()
 
-    def _wait_for_cwlogs(self, sleep=sleep):
+    def _wait_for_cwlogs(self, sleep=sleep):  # pylint: disable=redefined-outer-name
         time_left = int(self._context.get_remaining_time_in_millis() / 1000) - 15
         sleep_time = 0
 
@@ -168,7 +170,7 @@ class CfnResource():
             self._rand_string(8)
         ])
 
-    def _cfn_response(self, event):
+    def _cfn_response(self, event):  # pylint: disable=unused-argument
         self._send()
 
     def _poll_enabled(self):

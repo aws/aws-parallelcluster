@@ -18,7 +18,7 @@ from pcluster.api import util
 T = typing.TypeVar("T")  # pylint: disable=C0103
 
 
-class Model(object):
+class Model:
     # openapiTypes: The key is attribute name and the
     # value is attribute type.
     openapi_types = {}
