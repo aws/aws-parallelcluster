@@ -134,6 +134,15 @@ class ImageBuilderCdkStack(Stack):
             image_tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
         return {tag.key: tag.value for tag in image_tags}
 
+    def _get_distribution_regions(self) -> set:
+        if (
+            self.config.dev_settings
+            and self.config.dev_settings.distribution_configuration
+            and self.config.dev_settings.distribution_configuration.regions
+        ):
+            return set(map(str.strip, self.config.dev_settings.distribution_configuration.regions.split(",")))
+        return [self.region]
+
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_cfn_parameters(self):
@@ -284,24 +293,11 @@ class ImageBuilderCdkStack(Stack):
             else None,
         }
         distributions = []
-        if (
-            self.config.dev_settings
-            and self.config.dev_settings.distribution_configuration
-            and self.config.dev_settings.distribution_configuration.regions
-        ):
-            regions = set(map(str.strip, self.config.dev_settings.distribution_configuration.regions.split(",")))
-            for region in regions:
-                distributions.append(
-                    imagebuilder.CfnDistributionConfiguration.DistributionProperty(
-                        ami_distribution_configuration=ami_distribution_configuration,
-                        region=region,
-                    )
-                )
-        else:
+        for region in self._get_distribution_regions():
             distributions.append(
                 imagebuilder.CfnDistributionConfiguration.DistributionProperty(
                     ami_distribution_configuration=ami_distribution_configuration,
-                    region=self.region,
+                    region=region,
                 )
             )
         distribution_configuration_resource = imagebuilder.CfnDistributionConfiguration(
@@ -525,8 +521,10 @@ class ImageBuilderCdkStack(Stack):
                         service="ec2",
                         account="",
                         resource="image",
+                        region=region,
                         resource_name="*",
                     )
+                    for region in self._get_distribution_regions()
                 ],
             )
 
