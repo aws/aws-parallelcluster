@@ -28,3 +28,16 @@ class AMIVolumeSizeValidator(Validator):
                 "volume size.".format(volume_size, min_volume_size),
                 FailureLevel.ERROR,
             )
+
+
+class ComponentsValidator(Validator):
+    """Components number validator."""
+
+    def _validate(self, components: list):
+        """Validate the number of components is not greater than 15."""
+        if components and len(components) > 15:
+            self._add_failure(
+                "Number of build components is {0}. "
+                "It's not possible to specify more than 15 build components.".format(len(components)),
+                FailureLevel.ERROR,
+            )
