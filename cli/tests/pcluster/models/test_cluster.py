@@ -26,6 +26,7 @@ from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_objec
 from tests.pcluster.test_utils import FAKE_CLUSTER_NAME, FAKE_STACK_NAME
 
 LOG_GROUP_TYPE = "AWS::Logs::LogGroup"
+ARTIFACT_DIRECTORY = "s3_artifacts_dir"
 
 
 class TestCluster:
@@ -35,7 +36,7 @@ class TestCluster:
             "pcluster.models.cluster.Cluster.bucket",
             new_callable=PropertyMock(
                 return_value=S3Bucket(
-                    service_name=FAKE_CLUSTER_NAME, stack_name=FAKE_STACK_NAME, artifact_directory="s3_artifacts_dir"
+                    service_name=FAKE_CLUSTER_NAME, stack_name=FAKE_STACK_NAME, artifact_directory=ARTIFACT_DIRECTORY
                 )
             ),
         )
@@ -79,13 +80,11 @@ class TestCluster:
 
         # Expected tags:
         installed_version = "FakeInstalledVersion"
-        tags = {"Version": installed_version}
-        tags.update(existing_tags)
+        bucket_name = "FakeBucketName"
+        tags = existing_tags
+        tags["Version"] = installed_version
         expected_tags_list = self._sort_tags(
             [Tag(key=tag_name, value=tag_value) for tag_name, tag_value in tags.items()]
-        )
-        expected_cfn_tags = self._sort_cfn_tags(
-            [{"Key": tag_name, "Value": tag_value} for tag_name, tag_value in tags.items()]
         )
 
         # Test method to add version tag
@@ -94,6 +93,7 @@ class TestCluster:
         )
         cluster._add_version_tag()
         assert_that(get_version_patch.call_count).is_equal_to(1)
+        assert_that(len(cluster.config.tags)).is_equal_to(len(expected_tags_list))
         assert_that(
             all(
                 [
@@ -104,7 +104,16 @@ class TestCluster:
         ).is_true()
 
         # Test method to retrieve CFN tags
+        tags.update({"parallelcluster:s3_bucket": bucket_name, "parallelcluster:cluster_dir": ARTIFACT_DIRECTORY})
+        expected_cfn_tags = self._sort_cfn_tags(
+            [{"Key": tag_name, "Value": tag_value} for tag_name, tag_value in tags.items()]
+        )
+        mocker.patch(
+            "pcluster.models.s3_bucket.S3Bucket.name",
+            new_callable=PropertyMock(return_value=bucket_name),
+        )
         cfn_tags = self._sort_cfn_tags(cluster._get_cfn_tags())
+        assert_that(len(cfn_tags)).is_equal_to(len(expected_cfn_tags))
         assert_that(
             all([source["Value"] == target["Value"] for source, target in zip(cfn_tags, expected_cfn_tags)])
         ).is_true()

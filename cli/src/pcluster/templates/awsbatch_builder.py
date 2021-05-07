@@ -409,7 +409,7 @@ class AwsBatchConstruct(Construct):
     def _add_spot_fleet_iam_role(self):
         return iam.CfnRole(
             scope=self.stack_scope,
-            id="BatchServiceRole",
+            id="BatchSpotRole",
             managed_policy_arns=[
                 self._format_arn(
                     service="iam",

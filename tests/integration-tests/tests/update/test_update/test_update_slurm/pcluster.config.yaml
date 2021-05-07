@@ -59,7 +59,8 @@ SharedStorage:
   - MountDir: shared
     Name: ebs
     StorageType: Ebs
-#    EbsSettings:
+    EbsSettings:
+      VolumeType: io2
 #      Iops: 140 #Initially not set
   - MountDir: efs
     Name: efs
@@ -71,6 +72,7 @@ SharedStorage:
     StorageType: Ebs
     Name: raid
     EbsSettings:
+      VolumeType: io2
 #      Iops: 110 #Initially not set
       Raid:
         Type: 0
@@ -87,3 +89,7 @@ Monitoring:
     CloudWatch:
       Enabled: true
 #      RetentionInDays: 1 #Initially not set
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: |
+      {"test_key" : "test_value_1"}

@@ -22,6 +22,7 @@ import urllib.request
 import zipfile
 from io import BytesIO
 from shlex import quote
+from typing import NoReturn
 from urllib.parse import urlparse
 
 import boto3
@@ -144,7 +145,7 @@ def get_stack_output_value(stack_outputs, output_key):
     return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
 
 
-def get_stack(stack_name, cfn_client=None, raise_on_error=False):
+def get_stack(stack_name, cfn_client=None):
     """
     Get the output for a DescribeStacks action for the given Stack.
 
@@ -157,8 +158,6 @@ def get_stack(stack_name, cfn_client=None, raise_on_error=False):
             cfn_client = boto3.client("cloudformation")
         return retry_on_boto3_throttling(cfn_client.describe_stacks, StackName=stack_name).get("Stacks")[0]
     except ClientError as e:
-        if raise_on_error:
-            raise
         error(
             "Could not retrieve CloudFormation stack data. Failed with error: {0}".format(
                 e.response.get("Error").get("Message")
@@ -290,12 +289,9 @@ def warn(message):
     print("WARNING: {0}".format(message))
 
 
-def error(message, fail_on_error=True):
-    """Print an error message and Raise SystemExit exception to the stderr if fail_on_error is true."""
-    if fail_on_error:
-        sys.exit("ERROR: {0}".format(message))
-    else:
-        print("ERROR: {0}".format(message))
+def error(message) -> NoReturn:
+    """Raise SystemExit exception to the stderr."""
+    sys.exit("ERROR: {0}".format(message))
 
 
 def get_cli_log_file():
@@ -402,11 +398,11 @@ class Cache:
         return wrapper
 
 
-def grouper(iterable, n):
-    """Slice iterable into chunks of size n."""
+def grouper(iterable, size):
+    """Slice iterable into chunks of size."""
     it = iter(iterable)
     while True:
-        chunk = tuple(itertools.islice(it, n))
+        chunk = tuple(itertools.islice(it, size))
         if not chunk:
             return
         yield chunk

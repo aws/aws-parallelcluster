@@ -14,11 +14,12 @@ import pipes
 import re
 import sys
 from datetime import datetime
+from typing import NoReturn
 
 from dateutil import tz
 
 
-def fail(error_message):
+def fail(error_message) -> NoReturn:
     """
     Print error message and exit(1).
 

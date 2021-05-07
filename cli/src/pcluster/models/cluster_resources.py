@@ -10,7 +10,7 @@
 # limitations under the License.
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.constants import OS_MAPPING, PCLUSTER_STACK_PREFIX
+from pcluster.constants import OS_MAPPING, PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_CLUSTER_DIR_TAG, PCLUSTER_STACK_PREFIX
 
 
 class ClusterStack(StackInfo):
@@ -33,12 +33,12 @@ class ClusterStack(StackInfo):
     @property
     def s3_bucket_name(self):
         """Return the name of the bucket used to store cluster information."""
-        return self._get_output("ResourcesS3Bucket")
+        return self.get_tag(PCLUSTER_S3_BUCKET_TAG)
 
     @property
     def s3_artifact_directory(self):
         """Return the artifact directory of the bucket used to store cluster information."""
-        return self._get_output("ArtifactS3RootDirectory")
+        return self.get_tag(PCLUSTER_S3_CLUSTER_DIR_TAG)
 
     @property
     def head_node_user(self):

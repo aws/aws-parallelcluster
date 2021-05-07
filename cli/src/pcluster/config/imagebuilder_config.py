@@ -21,7 +21,7 @@ from pcluster.utils import get_region
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
-from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
+from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator, ComponentsValidator
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.s3_validators import S3BucketRegionValidator, S3BucketValidator
 
@@ -123,6 +123,10 @@ class Build(Resource):
             InstanceTypeBaseAMICompatibleValidator,
             instance_type=self.instance_type,
             image=self.parent_image,
+        )
+        self._execute_validator(
+            ComponentsValidator,
+            components=self.components,
         )
 
 

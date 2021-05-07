@@ -325,7 +325,7 @@ def _run_configuration(mocker, path, with_config=False, region=None):
     if not with_config and os.path.isfile(path):
         os.remove(path)
     args = mocker.MagicMock(autospec=True)
-    args.config_file = path
+    args.config = path
     args.region = region
     configure(args)
 
