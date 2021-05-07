@@ -205,7 +205,7 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
 
     def _set_default(self, dev_settings: ImagebuilderDevSettings):
         self.region = "{{ build.AWSRegion.outputs.stdout }}"
-        self.nvidia = {"enabled": "false"}
+        self.nvidia = {"enabled": "no"}
         self.is_official_ami_build = "true" if dev_settings and dev_settings.update_os_and_reboot else "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         self.custom_awsbatchcli_package = (
