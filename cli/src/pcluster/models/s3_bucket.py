@@ -239,6 +239,10 @@ class S3Bucket:
         """Get config file http url from S3 bucket."""
         return self._get_file_url(file_name=config_name, file_type=S3FileType.CONFIGS.value)
 
+    def get_config_s3_url(self, config_name):
+        """Get config file s3 url path in S3 bucket."""
+        return self._get_file_s3_url(file_name=config_name, file_type=S3FileType.CONFIGS.value)
+
     def get_cfn_template(self, template_name, version_id=None, format=S3FileFormat.YAML):
         """Get cfn template from S3 bucket."""
         return self._get_file(
@@ -294,7 +298,7 @@ class S3Bucket:
         return file
 
     def _get_file_url(self, file_name, file_type):
-        """Get file url from S3 bucket."""
+        """Get file http url from S3 bucket."""
         url = "https://{bucket_name}.s3.{region}.amazonaws.com{partition_suffix}/{config_key}".format(
             bucket_name=self.name,
             region=self.region,
@@ -302,6 +306,12 @@ class S3Bucket:
             config_key=self.get_object_key(file_type, file_name),
         )
         return url
+
+    def _get_file_s3_url(self, file_name, file_type):
+        """Get file s3 url from S3 bucket."""
+        return "s3://{bucket_name}/{config_key}".format(
+            bucket_name=self.name, config_key=self.get_object_key(file_type, file_name)
+        )
 
 
 class S3BucketFactory:

@@ -24,6 +24,7 @@ from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoun
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_REGEX,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
@@ -101,6 +102,7 @@ class ImageBuilder:
         self.__source_config = config
         self.__stack = stack
         self.__image = image
+        self.__config_url = None
         self.__config = None
         self.__bucket = None
         self.template_body = None
@@ -123,7 +125,18 @@ class ImageBuilder:
     @property
     def config_url(self):
         """Return configuration file S3 bucket url."""
-        return self.bucket.get_config_url(self._s3_artifacts_dict.get("config_name"))
+        if not self.__config_url:
+            # get config url in build image command
+            if self.__source_config:
+                self.__config_url = self.bucket.get_config_s3_url(self._s3_artifacts_dict.get("config_name"))
+            else:
+                if self.__image:
+                    self.__config_url = self.image.config_url
+                elif self.__stack:
+                    self.__config_url = self.stack.config_url
+                else:
+                    ImageBuilderActionError(f"Unable to get image {self.image_id} config url.")
+        return self.__config_url
 
     @property
     def stack(self):
@@ -437,6 +450,7 @@ class ImageBuilder:
     def _get_cfn_tags(self):
         """Get cfn tags."""
         cfn_tags = copy.deepcopy(self.config.build.tags) or []
+        self.__config_url = self.bucket.get_config_s3_url(self._s3_artifacts_dict.get("config_name"))
         tag_list = [
             {
                 "key": PCLUSTER_IMAGE_NAME_TAG,
@@ -447,6 +461,7 @@ class ImageBuilder:
             {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
             {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.s3_artifact_dir},
             {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
+            {"Key": PCLUSTER_IMAGE_CONFIG_TAG, "value": self.config_url},
         ]
         for tag in tag_list:
             cfn_tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))

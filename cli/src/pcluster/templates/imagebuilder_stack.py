@@ -33,6 +33,7 @@ from pcluster.config.common import BaseTag
 from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
@@ -134,6 +135,7 @@ class ImageBuilderCdkStack(Stack):
             {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
             {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.bucket.artifact_directory},
             {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
+            {"key": PCLUSTER_IMAGE_CONFIG_TAG, "value": self.bucket.get_config_s3_url("image-config.yaml")},
         ]
         for tag in tag_list:
             image_tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
