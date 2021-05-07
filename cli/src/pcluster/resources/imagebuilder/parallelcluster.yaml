@@ -213,29 +213,29 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
-              if [[ ${!OS} =~ ^centos[7-8]$ ]]; then
-                  if [[ ${!OS} == centos7 ]]; then
-                    yum -y install epel-release
-                  else
-                    dnf -y install epel-release
-                  fi
+              if [[ ${PLATFORM} == RHEL ]]; then
+                if [[ ${OS} == centos7 ]]; then
+                  yum -y install epel-release
+                fi
+
+                if [[ ${OS} == centos8 ]]; then
+                  dnf -y install epel-release
+                  dnf -y groupinstall development && sudo dnf -y install curl wget jq
+                else
+                  # all RHEL except centos8
+                  yum -y groupinstall development && sudo yum -y install curl wget jq
+                fi
+
+                if [[ ${OS} =~ ^centos ]]; then
                   /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
                   /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
                   grub2-mkconfig -o /boot/grub2/grub.cfg
-              elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                  [ ${CfnParamUpdateOsAndReboot} == false ] && flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl stop apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
-                  apt-cache search build-essential
-                  apt-get clean
-                  apt-get update -y
-              fi
-
-              if [[ ${!PLATFORM} == RHEL ]]; then
-                if [[ ${!OS} == centos8 ]]; then
-                  dnf -y groupinstall development && sudo dnf -y install curl wget jq
-                else
-                  yum -y groupinstall development && sudo yum -y install curl wget jq
                 fi
-              elif [[ ${!PLATFORM} == DEBIAN ]]; then
+              elif [[ ${PLATFORM} == DEBIAN ]]; then
+                [ ${CfnParamUpdateOsAndReboot} == false ] && flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl stop apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
+                apt-cache search build-essential
+                apt-get clean
+                apt-get -y update
                 apt-get -y install build-essential curl wget jq
               fi
 
@@ -305,23 +305,25 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-              if [[ ${!OS} =~ ^(centos[7-8]|ubuntu(18|20)04)$ ]]; then
-                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
-                if [[ ${!OS} == centos8 ]]; then
+              if [[ ${OS} =~ ^(centos[7-8]|ubuntu(18|20)04)$ ]]; then
+                if [[ ${OS} == centos8 ]]; then
                   dnf install -y python3-pip
-                  pip3 install /tmp/aws-cfn-bootstrap-latest.tar.gz
-                elif [[ ${!OS} == centos7 ]]; then
+                  PIP_COMMAND="pip3"
+                elif [[ ${OS} == centos7 ]]; then
                   which pip2
                   if [ $? -eq 0 ]; then
-                    pip2 install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                    PIP_COMMAND="pip2"
                   else
-                    pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                    PIP_COMMAND="pip"
                   fi
-                elif [[ ${!OS} == ubuntu1804 ]]; then
-                  pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
-                elif [[ ${!OS} == ubuntu2004 ]]; then
-                  pip3 install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                elif [[ ${OS} == ubuntu1804 ]]; then
+                  PIP_COMMAND="pip"
+                elif [[ ${OS} == ubuntu2004 ]]; then
+                  PIP_COMMAND="pip3"
                 fi
+
+                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ "{{ test.CfnBootstrapUrl.outputs.stdout }}" }}
+                ${PIP_COMMAND} install /tmp/aws-cfn-bootstrap-latest.tar.gz
               fi
 
       - name: CreateBootstrapFile
