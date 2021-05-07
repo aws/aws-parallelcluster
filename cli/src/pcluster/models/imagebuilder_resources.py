@@ -17,6 +17,7 @@ from pcluster.aws.aws_resources import StackInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
@@ -60,6 +61,11 @@ class ImageBuilderStack(StackInfo):
     def s3_bucket_name(self):
         """Return the name of the bucket used to store image information."""
         return self.get_tag(PCLUSTER_S3_BUCKET_TAG)
+
+    @property
+    def config_url(self) -> str:
+        """Return config url in S3 bucket."""
+        return self.get_tag(PCLUSTER_IMAGE_CONFIG_TAG)
 
     @property
     def image_name(self):

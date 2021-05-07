@@ -1378,6 +1378,8 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -1426,6 +1428,8 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
                             "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:image_name": "Pcluster",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -1478,6 +1482,8 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
                             "parallelcluster:image_id": "Pcluster",
                             "parallelcluster:image_name": "pcluster_3.0.0",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -1973,6 +1979,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -2022,6 +2030,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -2071,6 +2081,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -2120,6 +2132,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -2174,6 +2188,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -2229,6 +2245,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -2284,6 +2302,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",
@@ -2310,6 +2330,8 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                             "parallelcluster:version": utils.get_installed_version(),
                             "parallelcluster:s3_bucket": "parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete",
                             "parallelcluster:s3_image_dir": "parallelcluster/imagebuilders/dummy-image-randomstring123",
+                            "parallelcluster:build_config": "s3://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete"
+                            "/parallelcluster/imagebuilders/dummy-image-randomstring123/configs/image-config.yaml",
                             "parallelcluster:build_log": {
                                 "Fn::Join": [
                                     "",

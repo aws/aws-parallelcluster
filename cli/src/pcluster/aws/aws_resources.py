@@ -12,6 +12,7 @@ import logging
 
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
@@ -325,6 +326,11 @@ class ImageInfo:
     def version(self) -> str:
         """Return version."""
         return self._get_tag(PCLUSTER_VERSION_TAG)
+
+    @property
+    def config_url(self) -> str:
+        """Return config url in S3 bucket."""
+        return self._get_tag(PCLUSTER_IMAGE_CONFIG_TAG)
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self.tags if tag["Key"] == tag_key]), None)
