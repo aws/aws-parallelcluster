@@ -12,7 +12,7 @@ import json
 
 from pcluster.aws.aws_resources import StackInfo
 from pcluster.aws.common import AWSExceptionHandler, Boto3Client, StackNotFoundError
-from pcluster.constants import PCLUSTER_IMAGE_NAME_TAG, PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_IMAGE_NAME_TAG
 
 
 class CfnClient(Boto3Client):
@@ -105,13 +105,18 @@ class CfnClient(Boto3Client):
         return self._client.get_template(StackName=stack_name).get("TemplateBody")
 
     @AWSExceptionHandler.handle_client_exception
-    def list_pcluster_stacks(self):
+    def list_pcluster_stacks(self, next_token=None):
         """List existing pcluster stacks."""
-        return [
-            stack
-            for stack in self._paginate_results(self._client.describe_stacks)
-            if stack.get("ParentId") is None and stack.get("StackName").startswith(PCLUSTER_STACK_PREFIX)
-        ]
+        describe_stacks_kwargs = {}
+        if next_token:
+            describe_stacks_kwargs["NextToken"] = next_token
+
+        result = self._client.describe_stacks(**describe_stacks_kwargs)
+        stack_list = []
+        for stack in result.get("Stacks", []):
+            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_CLUSTER_VERSION_TAG):
+                stack_list.append(stack)
+        return stack_list, result.get("NextToken")
 
     @AWSExceptionHandler.handle_client_exception
     def describe_stack_resource(self, stack_name: str, logic_resource_id: str):

@@ -10,7 +10,13 @@
 # limitations under the License.
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.constants import OS_MAPPING, PCLUSTER_S3_BUCKET_TAG, PCLUSTER_S3_CLUSTER_DIR_TAG, PCLUSTER_STACK_PREFIX
+from pcluster.constants import (
+    OS_MAPPING,
+    PCLUSTER_CLUSTER_VERSION_TAG,
+    PCLUSTER_S3_BUCKET_TAG,
+    PCLUSTER_S3_CLUSTER_DIR_TAG,
+    PCLUSTER_STACK_PREFIX,
+)
 
 
 class ClusterStack(StackInfo):
@@ -23,12 +29,14 @@ class ClusterStack(StackInfo):
     @property
     def cluster_name(self):
         """Return cluster name associated to this cluster."""
-        return self.name[len(PCLUSTER_STACK_PREFIX) :]  # noqa: E203
+        if self.name.startswith(PCLUSTER_STACK_PREFIX):
+            return self.name[len(PCLUSTER_STACK_PREFIX) :]  # noqa: E203
+        return self.name
 
     @property
     def version(self):
         """Return the version of ParallelCluster used to create the stack."""
-        return self.get_tag("Version")
+        return self.get_tag(PCLUSTER_CLUSTER_VERSION_TAG)
 
     @property
     def s3_bucket_name(self):

@@ -10,21 +10,36 @@
 # limitations under the License.
 
 import functools
+import logging
 from abc import ABC
+from enum import Enum
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AWSClientError(Exception):
     """Error during execution of some AWS calls."""
 
+    class ErrorCode(Enum):
+        """Error codes for AWS ClientError."""
+
+        VALIDATION_ERROR = "ValidationError"
+        REQUEST_LIMIT_EXCEEDED = "RequestLimitExceeded"
+        THROTTLING_EXCEPTION = "ThrottlingException"
+
+        @classmethod
+        def throttling_error_codes(cls):
+            """Return a set of error codes returned when service rate limits are exceeded."""
+            return {cls.REQUEST_LIMIT_EXCEEDED.value, cls.THROTTLING_EXCEPTION.value}
+
     def __init__(self, function_name: str, message: str, error_code: str = None):
-        message = f"Error during execution of {function_name}. {message}."
-        if error_code:
-            message += f" Error code: {error_code}"
         super().__init__(message)
+        self.message = message
         self.error_code = error_code
+        self.function_name = function_name
 
 
 class ImageNotFoundError(AWSClientError):
@@ -53,15 +68,17 @@ class AWSExceptionHandler:
             try:
                 return func(*args, **kwargs)
             except ParamValidationError as validation_error:
-                raise AWSClientError(
+                error = AWSClientError(
                     func.__name__,
                     "Error validating parameter. Failed with exception: {0}".format(str(validation_error)),
                 )
             except BotoCoreError as e:
-                raise AWSClientError(func.__name__, str(e))
+                error = AWSClientError(func.__name__, str(e))
             except ClientError as e:
                 # add request id
-                raise AWSClientError(func.__name__, e.response["Error"]["Message"], e.response["Error"]["Code"])
+                error = AWSClientError(func.__name__, e.response["Error"]["Message"], e.response["Error"]["Code"])
+            LOGGER.error("Encountered error when performing boto3 call in %s: %s", error.function_name, error.message)
+            raise error
 
         return wrapper
 

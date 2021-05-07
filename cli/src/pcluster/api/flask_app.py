@@ -15,7 +15,13 @@ from flask import Response, request
 from werkzeug.exceptions import HTTPException
 
 from pcluster.api import encoder
-from pcluster.api.errors import ParallelClusterApiException
+from pcluster.api.errors import (
+    BadRequestException,
+    InternalServiceException,
+    LimitExceededException,
+    ParallelClusterApiException,
+)
+from pcluster.aws.common import AWSClientError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -62,6 +68,7 @@ class ParallelClusterFlaskApp:
         self.app.add_error_handler(HTTPException, self._handle_http_exception)
         self.app.add_error_handler(ProblemException, self._handle_problem_exception)
         self.app.add_error_handler(ParallelClusterApiException, self._handle_parallel_cluster_api_exception)
+        self.app.add_error_handler(AWSClientError, self._handle_aws_client_error)
         self.app.add_error_handler(Exception, self._handle_unexpected_exception)
 
         @self.flask_app.before_request
@@ -120,6 +127,19 @@ class ParallelClusterFlaskApp:
             ),
             status=500,
             mimetype="application/json",
+        )
+
+    @staticmethod
+    def _handle_aws_client_error(exception: AWSClientError):
+        """Transform a AWSClientError into a valid API error."""
+        if exception.error_code == AWSClientError.ErrorCode.VALIDATION_ERROR.value:
+            return ParallelClusterFlaskApp._handle_parallel_cluster_api_exception(BadRequestException(str(exception)))
+        if exception.error_code in AWSClientError.ErrorCode.throttling_error_codes():
+            return ParallelClusterFlaskApp._handle_parallel_cluster_api_exception(
+                LimitExceededException(str(exception))
+            )
+        return ParallelClusterFlaskApp._handle_parallel_cluster_api_exception(
+            InternalServiceException(f"Failed when calling AWS service in {exception.function_name}: {exception}")
         )
 
     @staticmethod

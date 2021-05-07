@@ -7,7 +7,11 @@
 # limitations under the License.
 from abc import ABC
 
-from pcluster.api.models import BadRequestExceptionResponseContent, InternalServiceExceptionResponseContent
+from pcluster.api.models import (
+    BadRequestExceptionResponseContent,
+    InternalServiceExceptionResponseContent,
+    LimitExceededExceptionResponseContent,
+)
 from pcluster.api.models.base_model_ import Model
 from pcluster.api.models.build_image_bad_request_exception_response_content import (
     BuildImageBadRequestExceptionResponseContent,
@@ -72,5 +76,14 @@ class InternalServiceException(ParallelClusterApiException):
 
     code = 500
 
-    def __init__(self, content: InternalServiceExceptionResponseContent):
-        super().__init__(content)
+    def __init__(self, content: str):
+        super().__init__(InternalServiceExceptionResponseContent(content))
+
+
+class LimitExceededException(ParallelClusterApiException):
+    """Exception raised when the client is sending more than the allowed number of requests per unit of time."""
+
+    code = 429
+
+    def __init__(self, content: str):
+        super().__init__(LimitExceededExceptionResponseContent(content))

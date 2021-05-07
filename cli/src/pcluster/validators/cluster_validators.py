@@ -18,6 +18,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    PCLUSTER_CLUSTER_VERSION_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
     SUPPORTED_OSES,
@@ -608,8 +609,8 @@ class TagKeyValidator(Validator):
     """
 
     def _validate(self, key):
-        if key == "Version":
-            self._add_failure("The tag key 'Version' is a reserved one.", FailureLevel.ERROR)
+        if key == PCLUSTER_CLUSTER_VERSION_TAG:
+            self._add_failure(f"The tag key '{PCLUSTER_CLUSTER_VERSION_TAG}' is a reserved one.", FailureLevel.ERROR)
 
 
 class DuplicateNameValidator(Validator):

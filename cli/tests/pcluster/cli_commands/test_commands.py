@@ -231,8 +231,7 @@ def test_setup_bucket_with_resources_creation_failure(
             AWSClientError(function_name="head_object", message="No object", error_code="404"),
             AWSClientError(function_name="put_bucket_versioning", message="No put bucket versioning policy"),
             None,
-            "Unable to initialize s3 bucket. Error during execution of put_bucket_versioning. "
-            "No put bucket versioning policy.",
+            "Unable to initialize s3 bucket. No put bucket versioning policy",
         ),
         (
             AWSClientError(function_name="head_object", message="NoSuchBucket", error_code="403"),

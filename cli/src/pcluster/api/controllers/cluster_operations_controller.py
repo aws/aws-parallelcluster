@@ -7,10 +7,12 @@
 # limitations under the License.
 
 # pylint: disable=W0613
-
+import os
 from datetime import datetime
 from typing import Dict, List
 
+from pcluster.api.controllers.common import configure_aws_region
+from pcluster.api.converters import cloud_formation_status_to_cluster_status
 from pcluster.api.errors import CreateClusterBadRequestException
 from pcluster.api.models import (
     CloudFormationStatus,
@@ -29,10 +31,11 @@ from pcluster.api.models import (
     UpdateClusterResponseContent,
 )
 from pcluster.api.models.cluster_status import ClusterStatus
-from pcluster.api.validators import validate_region
+from pcluster.aws.aws_api import AWSApi
+from pcluster.models.cluster_resources import ClusterStack
 
 
-@validate_region(is_query_string_arg=False)
+@configure_aws_region(is_query_string_arg=False)
 def create_cluster(
     create_cluster_request_content: Dict,
     suppress_validators: List[str] = None,
@@ -74,7 +77,7 @@ def create_cluster(
     )
 
 
-@validate_region()
+@configure_aws_region()
 def delete_cluster(cluster_name, region=None, retain_logs=None, client_token=None):
     """
     Initiate the deletion of a cluster.
@@ -103,7 +106,7 @@ def delete_cluster(cluster_name, region=None, retain_logs=None, client_token=Non
     )
 
 
-@validate_region()
+@configure_aws_region()
 def describe_cluster(cluster_name, region=None):
     """
     Get detailed information about an existing cluster.
@@ -138,7 +141,7 @@ def describe_cluster(cluster_name, region=None):
     )
 
 
-@validate_region()
+@configure_aws_region()
 def list_clusters(region=None, next_token=None, cluster_status=None):
     """
     Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.
@@ -152,10 +155,27 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
 
     :rtype: ListClustersResponseContent
     """
-    return ListClustersResponseContent(items=[])
+    stacks, next_token = AWSApi.instance().cfn.list_pcluster_stacks(next_token=next_token)
+    stacks = [ClusterStack(stack) for stack in stacks]
+
+    cluster_info_list = []
+    for stack in stacks:
+        current_cluster_status = cloud_formation_status_to_cluster_status(stack.status)
+        if not cluster_status or current_cluster_status in cluster_status:
+            cluster_info = ClusterInfoSummary(
+                cluster_name=stack.cluster_name,
+                cloudformation_stack_status=stack.status,
+                cloudformation_stack_arn=stack.id,
+                region=os.environ.get("AWS_DEFAULT_REGION"),
+                version=stack.version,
+                cluster_status=current_cluster_status,
+            )
+            cluster_info_list.append(cluster_info)
+
+    return ListClustersResponseContent(items=cluster_info_list, next_token=next_token)
 
 
-@validate_region()
+@configure_aws_region()
 def update_cluster(
     update_cluster_request_content: Dict,
     cluster_name,
