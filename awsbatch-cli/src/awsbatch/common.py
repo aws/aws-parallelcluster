@@ -151,20 +151,21 @@ class AWSBatchCliConfig:
         return "{0}({1})".format(self.__class__.__name__, self.__dict__)
 
     def __verify_initialization(self, log):
-        try:
-            log.debug("stack_name = %s", self.stack_name)
-            log.debug("region = %s", self.region)
-            log.debug("s3_bucket = %s", self.s3_bucket)
-            log.debug("compute_environment = %s", self.compute_environment)
-            log.debug("job_queue = %s", self.job_queue)
-            log.debug("job_definition = %s", self.job_definition)
-            log.debug("head_node_ip = %s", self.head_node_ip)
-            log.info(self)
-        except AttributeError as e:
-            fail(
-                "Error getting cluster information from AWS CloudFormation."
-                "Missing attribute (%s) from the output CloudFormation stack." % e
-            )
+        param_outputs_map = [
+            ("s3_bucket", "ResourcesS3Bucket"),
+            ("compute_environment", "BatchComputeEnvironmentArn"),
+            ("job_queue", "BatchJobQueueArn"),
+            ("job_definition", "BatchJobDefinitionArn"),
+            ("head_node_ip", "HeadNodePrivateIP"),
+        ]
+        for param_name, output in param_outputs_map:
+            try:
+                log.debug("%s = %s", param_name, getattr(self, param_name))
+            except AttributeError:
+                fail(
+                    "Error getting cluster information from AWS CloudFormation. "
+                    f"Missing output '{output}' from the CloudFormation stack."
+                )
 
     def __init_from_config(self, cli_config_file, cluster, log):  # noqa: C901 FIXME
         """
