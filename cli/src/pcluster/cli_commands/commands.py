@@ -140,6 +140,7 @@ def print_stack_outputs(stack_outputs):
         "ClusterUser",
         "HeadNodePrivateIP",
         "HeadNodePublicIP",
+        "BatchCliRequirements",
         "BatchComputeEnvironmentArn",
         "BatchJobQueueArn",
         "BatchJobDefinitionArn",

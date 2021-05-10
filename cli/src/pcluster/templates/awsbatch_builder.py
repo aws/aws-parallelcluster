@@ -21,6 +21,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
+from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -710,6 +711,12 @@ class AwsBatchConstruct(Construct):
 
     def _add_outputs(self):
 
+        CfnOutput(
+            scope=self.stack_scope,
+            id="BatchCliRequirements",
+            description="List of requirements for the ParallelCluster AWS Batch CLI.",
+            value=AWSBATCH_CLI_REQUIREMENTS,
+        )
         CfnOutput(
             self.stack_scope,
             "BatchComputeEnvironmentArn",
