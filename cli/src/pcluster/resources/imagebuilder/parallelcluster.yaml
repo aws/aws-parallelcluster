@@ -48,17 +48,6 @@ phases:
               set -v
               echo "aws-parallelcluster-cookbook-${CfnParamCookbookVersion}"
 
-      # Get AWS domain
-      - name: AWSDomain
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              DOMAIN=".amazonaws.com"
-              [[ ${AWS::Region} =~ ^cn- ]] && DOMAIN=".amazonaws.com.cn"
-              echo ${!DOMAIN}
-
       # Get Cookbook Url
       - name: CookbookUrl
         action: ExecuteBash
@@ -66,7 +55,7 @@ phases:
           commands:
             - |
               set -v
-              COOKBOOK_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz
+              COOKBOOK_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz
               [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL=${CfnParamChefCookbook}
               echo "${!COOKBOOK_URL}"
 
@@ -77,7 +66,7 @@ phases:
           commands:
             - |
               set -v
-              CINC_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/archives/cinc/cinc-install.sh
+              CINC_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install.sh
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL=${CfnParamCincInstaller}
               echo "${!CINC_URL}"
 
