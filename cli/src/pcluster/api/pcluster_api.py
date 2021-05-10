@@ -302,12 +302,12 @@ class PclusterApi:
         return packaging.version.parse(cluster.stack.version) < packaging.version.parse("3.0.0")
 
     @staticmethod
-    def build_image(imagebuilder_config: dict, image_name: str, region: str, disable_rollback: bool = True):
+    def build_image(imagebuilder_config: dict, image_id: str, region: str, disable_rollback: bool = True):
         """
         Load imagebuilder model from imagebuilder_config and create stack.
 
         :param imagebuilder_config: imagebuilder configuration (yaml dict)
-        :param image_name: the image name(the same as cfn stack name)
+        :param image_id: Id for pcluster Image, the same as imagebuilder cfn stack name
         :param region: AWS region
         :param disable_rollback: Disable rollback in case of failures
         """
@@ -315,7 +315,7 @@ class PclusterApi:
             # Generate model from imagebuilder config dict
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
-            imagebuilder = ImageBuilder(image_name=image_name, config=imagebuilder_config)
+            imagebuilder = ImageBuilder(image_id=image_id, config=imagebuilder_config)
             imagebuilder.create(disable_rollback)
             return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
         except ImageBuilderActionError as e:
@@ -324,11 +324,11 @@ class PclusterApi:
             return ApiFailure(str(e))
 
     @staticmethod
-    def delete_image(image_name: str, region: str, force: bool = False):
+    def delete_image(image_id: str, region: str, force: bool = False):
         """
         Delete image and imagebuilder stack.
 
-        :param image_name: the image name(the same as cfn stack name)
+        :param image_id: Id for pcluster Image, the same as imagebuilder cfn stack name
         :param region: AWS region
         :param force: Delete image even if the image is shared or instance is using it
         """
@@ -336,7 +336,7 @@ class PclusterApi:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
             # retrieve imagebuilder config and generate model
-            imagebuilder = ImageBuilder(image_name=image_name)
+            imagebuilder = ImageBuilder(image_id=image_id)
             imagebuilder.delete(force=force)
             try:
                 return ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
@@ -344,30 +344,30 @@ class PclusterApi:
                 try:
                     return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
                 except NonExistingStackError:
-                    raise ImageBuilderActionError(f"Image {image_name} does not exist.")
+                    raise ImageBuilderActionError(f"Image {image_id} does not exist.")
         except Exception as e:
             return ApiFailure(str(e))
 
     @staticmethod
-    def describe_image(image_name: str, region: str):
+    def describe_image(image_id: str, region: str):
         """
         Get image information.
 
-        :param image_name: the image name(the same as cfn stack name)
+        :param image_id: Id for pcluster Image, the same as imagebuilder cfn stack name
         :param region: AWS region
         """
         try:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
-            imagebuilder = ImageBuilder(image_name=image_name)
+            imagebuilder = ImageBuilder(image_id=image_id)
             try:
                 return ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
             except NonExistingImageError:
                 try:
                     return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
                 except NonExistingStackError:
-                    raise ImageBuilderActionError(f"Image {image_name} does not exist.")
+                    raise ImageBuilderActionError(f"Image {image_id} does not exist.")
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -385,7 +385,7 @@ class PclusterApi:
 
             # get built images by image name tag
             images = AWSApi.instance().ec2.get_images()
-            imagebuilders = [ImageBuilder(image=image, image_name=image.original_image_name) for image in images]
+            imagebuilders = [ImageBuilder(image=image, image_id=image.pcluster_image_id) for image in images]
             images_response = [
                 ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
                 for imagebuilder in imagebuilders
@@ -393,7 +393,7 @@ class PclusterApi:
 
             # get building image stacks by image name tag
             imagebuilder_stacks = [
-                ImageBuilder(image_name=stack.get("StackName"), stack=ImageBuilderStack(stack))
+                ImageBuilder(image_id=stack.get("StackName"), stack=ImageBuilderStack(stack))
                 for stack in AWSApi.instance().cfn.get_imagebuilder_stacks()
             ]
             imagebuilder_stacks_response = [

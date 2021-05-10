@@ -24,12 +24,13 @@ from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoun
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
+    PCLUSTER_IMAGE_ID_REGEX,
+    PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError, StackError
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
@@ -86,17 +87,17 @@ class ImageError(Exception):
 class NonExistingImageError(ImageError):
     """Represent an error if image does not exist."""
 
-    def __init__(self, image_name):
-        super().__init__(f"Image {image_name} does not exist.")
+    def __init__(self, image_id):
+        super().__init__(f"Image {image_id} does not exist.")
 
 
 class ImageBuilder:
     """Represent a building image, composed by an ImageBuilder config and an ImageBuilderStack."""
 
     def __init__(
-        self, image: ImageInfo = None, image_name: str = None, config: dict = None, stack: ImageBuilderStack = None
+        self, image: ImageInfo = None, image_id: str = None, config: dict = None, stack: ImageBuilderStack = None
     ):
-        self.image_name = image_name
+        self.image_id = image_id
         self.__source_config = config
         self.__stack = stack
         self.__image = image
@@ -129,11 +130,11 @@ class ImageBuilder:
         """Return the ImageBuilderStack object."""
         if not self.__stack:
             try:
-                self.__stack = ImageBuilderStack(AWSApi.instance().cfn.describe_stack(self.image_name))
+                self.__stack = ImageBuilderStack(AWSApi.instance().cfn.describe_stack(self.image_id))
             except StackNotFoundError:
-                raise NonExistingStackError(self.image_name)
+                raise NonExistingStackError(self.image_id)
             except AWSClientError as e:
-                raise StackError(f"Unable to find imagebuilder stack {self.image_name}, due to {e}")
+                raise StackError(f"Unable to get image {self.image_id}, due to {e}")
         return self.__stack
 
     @property
@@ -141,11 +142,11 @@ class ImageBuilder:
         """Return Image object."""
         if not self.__image:
             try:
-                self.__image = AWSApi.instance().ec2.describe_image_by_name_tag(self.image_name)
+                self.__image = AWSApi.instance().ec2.describe_image_by_id_tag(self.image_id)
             except ImageNotFoundError:
-                raise NonExistingImageError(self.image_name)
+                raise NonExistingImageError(self.image_id)
             except AWSClientError as e:
-                raise ImageError(f"Unable to get Image {self.image_name} info, due to {e}.")
+                raise ImageError(f"Unable to get image {self.image_id}, due to {e}.")
 
         return self.__image
 
@@ -159,7 +160,7 @@ class ImageBuilder:
                     return key
             return None
         except StackError as e:
-            raise ImageBuilderActionError(f"Unable to get imagebuilder {self.image_name} status, due to {e}")
+            raise ImageBuilderActionError(f"Unable to get image {self.image_id} status , due to {e}")
 
     @property
     def source_config(self):
@@ -185,8 +186,8 @@ class ImageBuilder:
             custom_bucket_name = self._get_custom_bucket()
 
         self.__bucket = S3BucketFactory.init_s3_bucket(
-            service_name=self.image_name,
-            stack_name=self.image_name,
+            service_name=self.image_id,
+            stack_name=self.image_id,
             custom_s3_bucket=custom_bucket_name,
             artifact_directory=self.s3_artifact_dir,
         )
@@ -199,13 +200,13 @@ class ImageBuilder:
             custom_bucket_name = self.image.s3_bucket_name
         except ImageError as e:
             if not isinstance(e, NonExistingImageError):
-                raise ImageBuilderActionError(f"Unable to get S3 bucket name from image {self.image_name} tag. {e}")
+                raise ImageBuilderActionError(f"Unable to get S3 bucket name from image {self.image_id} . {e}")
 
         if custom_bucket_name is None:
             try:
                 custom_bucket_name = self.stack.s3_bucket_name
             except StackError as e:
-                raise ImageBuilderActionError(f"Unable to get S3 bucket name from stack {self.image_name} tag. {e}")
+                raise ImageBuilderActionError(f"Unable to get S3 bucket name from image {self.image_id}. {e}")
 
         return (
             custom_bucket_name
@@ -220,8 +221,8 @@ class ImageBuilder:
             s3_artifact_dir = self.image.s3_artifact_directory
         except ImageError as e:
             if not isinstance(e, NonExistingImageError):
-                LOGGER.error("Unable to find tag %s in image %s.", PCLUSTER_S3_IMAGE_DIR_TAG, self.image_name)
-                raise ImageBuilderActionError(f"Unable to get artifact directory from image {self.image_name} tag. {e}")
+                LOGGER.error("Unable to find tag %s in image %s.", PCLUSTER_S3_IMAGE_DIR_TAG, self.image_id)
+                raise ImageBuilderActionError(f"Unable to get artifact directory from image {self.image_id}. {e}")
 
         if s3_artifact_dir is None:
             try:
@@ -232,10 +233,7 @@ class ImageBuilder:
                         "No artifact directory found in image tag and cloudformation stack tag."
                     )
             except StackError as e:
-                raise ImageBuilderActionError(
-                    f"Unable to get artifact directory from image {self.image_name} tag "
-                    f"and cloudformation stack tag. {e}"
-                )
+                raise ImageBuilderActionError(f"Unable to get artifact directory from image {self.image_id}. {e}")
 
         return s3_artifact_dir
 
@@ -244,9 +242,9 @@ class ImageBuilder:
         Generate artifact directory in S3 bucket.
 
         Image artifact dir is generated before cfn stack creation and only generate once.
-        artifact_directory: e.g. parallelcluster/{version}/imagebuilders/{image_name}-jfr4odbeonwb1w5k
+        artifact_directory: e.g. parallelcluster/{version}/images/{image_id}-jfr4odbeonwb1w5k
         """
-        service_directory = generate_random_name_with_prefix(self.image_name)
+        service_directory = generate_random_name_with_prefix(self.image_id)
         self.__s3_artifact_dir = "/".join(
             [
                 self._s3_artifacts_dict.get("root_directory"),
@@ -263,17 +261,17 @@ class ImageBuilder:
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
         """Create the CFN Stack and associate resources."""
-        # validate image name
-        self._validate_image_name()
+        # validate image id
+        self._validate_id()
 
         # check image existence
-        if AWSApi.instance().ec2.image_exists(self.image_name):
-            raise ImageBuilderActionError(f"ParallelCluster image {self.image_name} already exists")
+        if AWSApi.instance().ec2.image_exists(self.image_id):
+            raise ImageBuilderActionError(f"ParallelCluster image {self.image_id} already exists.")
 
         # check stack existence
-        if AWSApi.instance().cfn.stack_exists(self.image_name):
+        if AWSApi.instance().cfn.stack_exists(self.image_id):
             raise ImageBuilderActionError(
-                f"ParallelCluster build infrastructure for image {self.image_name} already exists"
+                f"ParallelCluster build infrastructure for image {self.image_id} already exists"
             )
 
         if not suppress_validators:
@@ -291,11 +289,11 @@ class ImageBuilder:
         try:
             self._upload_config()
 
-            LOGGER.info("Building ParallelCluster image named: %s", self.image_name)
+            LOGGER.info("Building ParallelCluster image: %s", self.image_id)
 
             # Generate cdk cfn template
             self.template_body = CDKTemplateBuilder().build_imagebuilder_template(
-                image_config=self.config, image_name=self.image_name, bucket=self.bucket
+                image_config=self.config, image_id=self.image_id, bucket=self.bucket
             )
 
             # upload generated template
@@ -304,7 +302,7 @@ class ImageBuilder:
 
             # Stack creation
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
-                stack_name=self.image_name,
+                stack_name=self.image_id,
                 template_url=self.bucket.get_cfn_template_url(
                     template_name=self._s3_artifacts_dict.get("template_name")
                 ),
@@ -313,7 +311,7 @@ class ImageBuilder:
                 capabilities="CAPABILITY_NAMED_IAM",
             )
 
-            self.__stack = ImageBuilderStack(AWSApi.instance().cfn.describe_stack(self.image_name))
+            self.__stack = ImageBuilderStack(AWSApi.instance().cfn.describe_stack(self.image_id))
 
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
@@ -344,9 +342,9 @@ class ImageBuilder:
         Upload image specific resources and image template.
 
         All dirs contained in resource dir will be uploaded as zip files to
-        {bucket_name}/parallelcluster/{version}/imagebuilders/{image_name}/{resource_dir}/artifacts.zip.
+        /{version}/parallelcluster/{version}/images/{image_id}-jfr4odbeonwb1w5k/{resource_dir}/artifacts.zip.
         All files contained in root dir will be uploaded to
-        {bucket_name}/parallelcluster/{version}/imagebuilder/{image_name}/{resource_dir}/artifact.
+        /{version}/parallelcluster/{version}/images/{image_id}-jfr4odbeonwb1w5k/{resource_dir}/artifact.
         """
         try:
             if self.template_body:
@@ -366,20 +364,20 @@ class ImageBuilder:
         """Delete CFN Stack and associate resources and deregister the image."""
         if force or (not self._check_instance_using_image() and not self._check_image_is_shared()):
             try:
-                if AWSApi.instance().ec2.image_exists(image_name=self.image_name, build_status_avaliable=False):
+                if AWSApi.instance().ec2.image_exists(image_id=self.image_id, build_status_avaliable=False):
                     # Deregister image
                     AWSApi.instance().ec2.deregister_image(self.image.id)
 
                     # Delete snapshot
                     for snapshot_id in self.image.snapshot_ids:
                         AWSApi.instance().ec2.delete_snapshot(snapshot_id)
-                if AWSApi.instance().cfn.stack_exists(self.image_name):
+                if AWSApi.instance().cfn.stack_exists(self.image_id):
                     if self.stack.imagebuilder_image_is_building:
                         raise ImageBuilderActionError(
                             "Image cannot be deleted because EC2 ImageBuilder Image has a running workflow."
                         )
                     # Delete stack
-                    AWSApi.instance().cfn.delete_stack(self.image_name)
+                    AWSApi.instance().cfn.delete_stack(self.image_id)
 
                 # Delete s3 image directory
                 try:
@@ -397,9 +395,9 @@ class ImageBuilder:
             result = AWSApi.instance().ec2.get_image_shared_account_ids(self.image.id)
             if result:
                 logging.error(
-                    "Image %s is shared with accounts or group %s. In case you want to delete the image, "
-                    "please use the --force flag.",
-                    self.image_name,
+                    "Image %s is shared with accounts or group %s. "
+                    "In case you want to delete the image, please use the --force flag.",
+                    self.image_id,
                     str(result),
                 )
                 raise ImageBuilderActionError("Unable to delete image and stack")
@@ -415,9 +413,9 @@ class ImageBuilder:
             result = AWSApi.instance().ec2.get_instance_ids_by_ami_id(self.image.id)
             if result:
                 logging.error(
-                    "Image %s is used by instances %s. In case you want to delete the image, "
-                    "please use the --force flag.",
-                    self.image_name,
+                    "Image %s is used by instances %s. "
+                    "In case you want to delete the image, please use the --force flag.",
+                    self.image_id,
                     str(result),
                 )
                 raise ImageBuilderActionError("Unable to delete image and stack")
@@ -427,26 +425,25 @@ class ImageBuilder:
                 return False
             raise ImageBuilderActionError(f"Unable to delete image and stack, due to {str(e)}")
 
-    def _validate_image_name(self):
-        match = re.match(r"^[-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]$", self.image_name)
+    def _validate_id(self):
+        match = re.match(PCLUSTER_IMAGE_ID_REGEX, self.image_id)
         if match is None:
             raise ImageBuilderActionError(
-                "Image name '{0}' failed to satisfy constraint: ".format(self.image_name)
-                + "Member must satisfy regular expression pattern: [-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]"
-            )
-        if len(self.image_name) > 1024 - len(AMI_NAME_REQUIRED_SUBSTRING):
-            raise ImageBuilderActionError(
-                "Image name failed to satisfy constraint, the length should be shorter than {0}".format(
-                    str(1024 - len(AMI_NAME_REQUIRED_SUBSTRING))
-                )
+                "Image id '{0}' failed to satisfy constraint: ".format(self.image_id)
+                + "The process id can contain only alphanumeric characters (case-sensitive) and hyphens. "
+                + "It must start with an alphabetic character and can't be longer than 128 characters."
             )
 
     def _get_cfn_tags(self):
         """Get cfn tags."""
         cfn_tags = copy.deepcopy(self.config.build.tags) or []
         tag_list = [
+            {
+                "key": PCLUSTER_IMAGE_NAME_TAG,
+                "value": self.config.image.name if self.config.image and self.config.image.name else self.image_id,
+            },
             {"key": PCLUSTER_VERSION_TAG, "value": get_installed_version()},
-            {"key": PCLUSTER_IMAGE_NAME_TAG, "value": self.image_name},
+            {"key": PCLUSTER_IMAGE_ID_TAG, "value": self.image_id},
             {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
             {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.s3_artifact_dir},
             {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
@@ -457,7 +454,7 @@ class ImageBuilder:
 
     def _get_log_group_arn(self):
         """Get log group arn."""
-        image_recipe_name = "{0}-{1}".format(RESOURCE_NAME_PREFIX, self.image_name)[0:1024]
+        image_recipe_name = "{0}-{1}".format(RESOURCE_NAME_PREFIX, self.image_id)
         return "arn:{0}:logs:{1}:{2}:log-group:/aws/imagebuilder/{3}".format(
             get_partition(), get_region(), AWSApi.instance().sts.get_account_id(), image_recipe_name
         )

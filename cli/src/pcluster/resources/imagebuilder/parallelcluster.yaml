@@ -322,7 +322,7 @@ phases:
                   PIP_COMMAND="pip3"
                 fi
 
-                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ test.CfnBootstrapUrl.outputs.stdout }}
+                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
                 ${!PIP_COMMAND} install /tmp/aws-cfn-bootstrap-latest.tar.gz
               fi
 

@@ -31,11 +31,11 @@ class BuildImageCommand(CliCommand):
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument(
-            "-n",
-            "--name",
-            dest="image_name",
+            "-i",
+            "--id",
+            dest="id",
             required=True,
-            help="Specifies the image name to use for building the AWS ParallelCluster AMI.",
+            help="Specifies the id to use for building the AWS ParallelCluster Image.",
         )
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
@@ -57,7 +57,7 @@ class DeleteImageCommand(CliCommand):
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument(
-            "-n", "--name", dest="image_name", required=True, help="Name of the AWS ParallelCluster AMI to delete."
+            "-i", "--id", dest="id", required=True, help="Id of the AWS ParallelCluster Image to delete."
         )
         parser.add_argument(
             "-f",
@@ -85,7 +85,7 @@ class DescribeImageCommand(CliCommand):
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument(
-            "-n", "--name", dest="image_name", required=True, help="Name of the AWS ParallelCluster AMI to describe."
+            "-i", "--id", dest="id", required=True, help="Id of the AWS ParallelCluster Image to describe."
         )
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102

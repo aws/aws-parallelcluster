@@ -14,7 +14,7 @@ from assertpy import assert_that
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
-    PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
@@ -95,7 +95,7 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                     {"Key": PCLUSTER_S3_IMAGE_DIR_TAG, "Value": "parallelcluster/images/image-abced"},
                     {"Key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "Value": "arn:aws:log:us-east-1:1111111111111:log-group"},
                     {"Key": PCLUSTER_VERSION_TAG, "Value": get_installed_version()},
-                    {"Key": PCLUSTER_IMAGE_NAME_TAG, "Value": FAKE_IMAGEBUILDER_STACK_NAME},
+                    {"Key": PCLUSTER_IMAGE_ID_TAG, "Value": FAKE_IMAGEBUILDER_STACK_NAME},
                 ],
                 "VirtualizationType": "hvm",
             },
@@ -107,7 +107,7 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                 "s3_artifact_directory": "parallelcluster/images/image-abced",
                 "build_log": "arn:aws:log:us-east-1:1111111111111:log-group",
                 "version": get_installed_version(),
-                "original_image_name": FAKE_IMAGEBUILDER_STACK_NAME,
+                "pcluster_image_id": FAKE_IMAGEBUILDER_STACK_NAME,
             },
         )
     ],
