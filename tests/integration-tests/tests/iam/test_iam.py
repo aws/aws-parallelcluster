@@ -18,7 +18,7 @@ import pytest
 import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_bucket_name
 
 from tests.common.assertions import assert_no_errors_in_logs
 
@@ -149,16 +149,5 @@ def test_s3_read_write_resource(
         config = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     # Check S3 resources
-    check_s3_read_resource(region, cluster, _get_bucket_name(config, enable_write_access=False))
-    check_s3_read_write_resource(region, cluster, _get_bucket_name(config, enable_write_access=True))
-
-
-def _get_bucket_name(config, enable_write_access):
-    s3_access = config["HeadNode"]["Iam"]["S3Access"]
-    bucket_name = next(
-        (access["BucketName"] for access in s3_access if access["EnableWriteAccess"] == enable_write_access), None
-    )
-    if not bucket_name:
-        logging.error("Bucket name couldn't be found in the configuration file.")
-    else:
-        return bucket_name
+    check_s3_read_resource(region, cluster, get_bucket_name(config, enable_write_access=False))
+    check_s3_read_write_resource(region, cluster, get_bucket_name(config, enable_write_access=True))

@@ -860,6 +860,7 @@ class BaseClusterConfig(Resource):
         self.cluster_template_body = None
         self.source_config = None
         self.config_version = ""
+        self.original_config_version = ""
 
     def _validate(self):
         self._execute_validator(RegionValidator, region=self.region)

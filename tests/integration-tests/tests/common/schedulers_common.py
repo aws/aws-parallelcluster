@@ -293,7 +293,7 @@ class SlurmCommands(SchedulerCommands):
         if partition:
             submission_command += " -p {0}".format(partition)
         if constraint:
-            submission_command += " -C {0}".format(constraint)
+            submission_command += " -C '{0}'".format(constraint)
         if other_options:
             submission_command += " {0}".format(other_options)
         submission_command += " {0}".format(job_submit_command)

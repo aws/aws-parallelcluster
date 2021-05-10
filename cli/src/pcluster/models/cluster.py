@@ -155,16 +155,7 @@ class Cluster:
 
     def _get_cluster_config_dict(self):
         """Retrieve cluster config content."""
-        table_name = self.stack.name
-        config_version = None
-        try:
-            config_version_item = AWSApi.instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
-            if config_version_item or "Item" in config_version_item:
-                config_version = config_version_item["Item"].get("Version")
-        except Exception:  # nosec
-            # Use latest if not found
-            pass
-
+        config_version = self.stack.original_config_version
         try:
             return self.bucket.get_config(
                 version_id=config_version, config_name=self._s3_artifacts_dict.get("source_config_name")
@@ -344,13 +335,16 @@ class Cluster:
                     config_name=self._s3_artifacts_dict.get("config_name"),
                 )
 
-                # config version will be stored in DB by the cookbook at the first update
+                # config version will be stored in DB by the cookbook
                 self.config.config_version = result.get("VersionId")
 
                 # Upload original config
-                self.bucket.upload_config(
+                result = self.bucket.upload_config(
                     config=self.config.source_config, config_name=self._s3_artifacts_dict.get("source_config_name")
                 )
+
+                # original config version will be stored in CloudFormation Parameters
+                self.config.original_config_version = result.get("VersionId")
 
         except Exception as e:
             raise ClusterActionError(
@@ -643,7 +637,10 @@ class Cluster:
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
                 self.template_body = CDKTemplateBuilder().build_cluster_template(
-                    cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
+                    cluster_config=self.config,
+                    bucket=self.bucket,
+                    stack_name=self.stack_name,
+                    log_group_name=self.stack.log_group_name,
                 )
 
             # upload cluster artifacts and generated template

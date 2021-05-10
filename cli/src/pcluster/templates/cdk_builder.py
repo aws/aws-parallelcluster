@@ -25,7 +25,9 @@ class CDKTemplateBuilder:
     """Create the template, starting from the given resources."""
 
     @staticmethod
-    def build_cluster_template(cluster_config: BaseClusterConfig, bucket: S3Bucket, stack_name: str):
+    def build_cluster_template(
+        cluster_config: BaseClusterConfig, bucket: S3Bucket, stack_name: str, log_group_name: str = None
+    ):
         """Build template for the given cluster and return as output in Yaml format."""
         from aws_cdk.core import App  # pylint: disable=C0415
 
@@ -34,7 +36,7 @@ class CDKTemplateBuilder:
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = str(stack_name)
             app = App(outdir=str(tempdir))
-            ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket)
+            ClusterCdkStack(app, output_file, stack_name, cluster_config, bucket, log_group_name)
             app.synth()
             generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 
