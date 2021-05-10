@@ -250,6 +250,7 @@ class AWSBatchCliConfig:
                 self.region = get_region_by_stack_id(stack.get("StackId"))
             self.proxy = "NONE"
 
+            scheduler = None
             stack_status = stack.get("StackStatus")
             if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
                 for output in stack.get("Outputs", []):
@@ -265,6 +266,8 @@ class AWSBatchCliConfig:
                         self.head_node_ip = output_value
                     elif output_key == "BatchJobDefinitionMnpArn":
                         self.job_definition_mnp = output_value
+                    elif output_key == "Scheduler":
+                        scheduler = output_value
 
                 for parameter in stack.get("Parameters", []):
                     parameter_key = parameter.get("ParameterKey")
@@ -278,7 +281,12 @@ class AWSBatchCliConfig:
                     elif parameter_key == "ArtifactS3RootDirectory":
                         self.artifact_directory = parameter_value
             else:
-                fail("The cluster is in the (%s) status." % stack_status)
+                fail(f"The cluster is in the ({stack_status}) status.")
+
+            if scheduler is None:
+                fail("Unable to retrieve Scheduler info from the Cluster. Double check CloudFormation stack outputs.")
+            elif scheduler != "awsbatch":
+                fail(f"This command cannot be used for {scheduler} clusters.")
 
         except (ClientError, ParamValidationError) as e:
             fail("Error getting cluster information from AWS CloudFormation. Failed with exception: %s" % e)
