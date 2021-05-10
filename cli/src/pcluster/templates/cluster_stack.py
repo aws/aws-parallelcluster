@@ -84,12 +84,14 @@ class ClusterCdkStack(Stack):
         stack_name: str,
         cluster_config: SlurmClusterConfig,
         bucket: S3Bucket,
+        log_group_name=None,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self._stack_name = stack_name
         self.config = cluster_config
         self.bucket = bucket
+        self.log_group_name = log_group_name
 
         self.instance_roles = {}
         self.instance_profiles = {}
@@ -216,11 +218,15 @@ class ClusterCdkStack(Stack):
             )
 
     def _add_cluster_log_group(self):
-        timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
+        if self.log_group_name:
+            log_group_name = self.log_group_name
+        else:
+            timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
+            log_group_name = f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}"
         log_group = logs.CfnLogGroup(
             scope=self,
             id="CloudWatchLogGroup",
-            log_group_name=f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}",
+            log_group_name=log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
         return log_group

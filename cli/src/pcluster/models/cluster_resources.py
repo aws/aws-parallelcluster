@@ -63,6 +63,16 @@ class ClusterStack(StackInfo):
         """Return the scheduler used in the cluster."""
         return self._get_output("Scheduler")
 
+    @property
+    def log_group_name(self):
+        """Return the log group name used in the cluster."""
+        return self._get_output("ClusterCWLogGroup")
+
+    @property
+    def original_config_version(self):
+        """Return the log group name used in the cluster."""
+        return self._get_param("ConfigVersion")
+
     def delete(self):
         """Delete stack."""
         AWSApi.instance().cfn.delete_stack(self.name)

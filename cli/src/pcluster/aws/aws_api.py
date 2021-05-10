@@ -12,7 +12,6 @@ import os
 
 from pcluster.aws.batch import BatchClient
 from pcluster.aws.cfn import CfnClient
-from pcluster.aws.dynamodb import DynamodbClient
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.efs import EfsClient
 from pcluster.aws.fsx import FSxClient
@@ -85,13 +84,6 @@ class AWSApi:
         if not self._fsx:
             self._fsx = FSxClient()
         return self._fsx
-
-    @property
-    def dynamodb(self):
-        """DynamoDB client."""  # noqa: D403
-        if not self._dynamodb:
-            self._dynamodb = DynamodbClient()
-        return self._dynamodb
 
     @property
     def s3(self):  # pylint: disable=C0103
