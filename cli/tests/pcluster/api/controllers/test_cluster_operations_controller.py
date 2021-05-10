@@ -246,10 +246,10 @@ class TestListClusters:
             (
                 "us-east-1",
                 None,
-                "invalid",
+                "DELETE_COMPLETE",
                 {
-                    "message": "Bad Request: 'invalid' is not one of ['CREATE_IN_PROGRESS', 'CREATE_FAILED', "
-                    "'CREATE_COMPLETE', 'DELETE_IN_PROGRESS', 'DELETE_FAILED', 'DELETE_COMPLETE', "
+                    "message": "Bad Request: 'DELETE_COMPLETE' is not one of ['CREATE_IN_PROGRESS', 'CREATE_FAILED', "
+                    "'CREATE_COMPLETE', 'DELETE_IN_PROGRESS', 'DELETE_FAILED', "
                     "'UPDATE_IN_PROGRESS', 'UPDATE_COMPLETE', 'UPDATE_FAILED']"
                 },
             ),
