@@ -425,7 +425,7 @@ def update(args):
 
 def delete_image(args):
     """Delete image described by image_name."""
-    LOGGER.info("Deleting: %s", args.image_id)
+    LOGGER.info("Deleting: %s", args.id)
     LOGGER.debug("CLI args: %s", str(args))
     try:
         # delete image raises an exception if stack does not exist
