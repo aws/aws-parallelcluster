@@ -19,7 +19,8 @@ task generatePythonServer(
     outputDir = "$projectDir/generated/python-server".toString()
     configOptions = [
             disallowAdditionalPropertiesIfNotPresent: "false",
-            prependFormOrBodyParameters: "true"
+            prependFormOrBodyParameters: "true",
+            packageName: "pcluster.api"
     ]
 }
 

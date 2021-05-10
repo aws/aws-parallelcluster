@@ -38,6 +38,18 @@ list ClusterSummaries {
     member: ClusterInfoSummary
 }
 
+@enum([
+    {name: "CREATE_IN_PROGRESS", value: "CREATE_IN_PROGRESS"},
+    {name: "CREATE_FAILED", value: "CREATE_FAILED"},
+    {name: "CREATE_COMPLETE", value: "CREATE_COMPLETE"},
+    {name: "DELETE_IN_PROGRESS", value: "DELETE_IN_PROGRESS"},
+    {name: "DELETE_FAILED", value: "DELETE_FAILED"},
+    {name: "UPDATE_IN_PROGRESS", value: "UPDATE_IN_PROGRESS"},
+    {name: "UPDATE_COMPLETE", value: "UPDATE_COMPLETE"},
+    {name: "UPDATE_FAILED", value: "UPDATE_FAILED"},
+])
+string ClusterStatusFilteringOption
+
 set ClusterStatusFilteringOptions {
-    member: ClusterStatus
+    member: ClusterStatusFilteringOption
 }

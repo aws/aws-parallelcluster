@@ -28,7 +28,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/components/schemas/ClusterStatus'
+              $ref: '#/components/schemas/ClusterStatusFilteringOption'
             uniqueItems: true
             description: Filter by cluster status.
           explode: true
@@ -739,7 +739,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: '#/components/schemas/ImageBuildStatus'
+              $ref: '#/components/schemas/ImageStatusFilteringOption'
             uniqueItems: true
             description: Filter by image status.
           explode: true
@@ -1241,6 +1241,17 @@ components:
         - UPDATE_IN_PROGRESS
         - UPDATE_COMPLETE
         - UPDATE_FAILED
+    ClusterStatusFilteringOption:
+      type: string
+      enum:
+        - CREATE_IN_PROGRESS
+        - CREATE_FAILED
+        - CREATE_COMPLETE
+        - DELETE_IN_PROGRESS
+        - DELETE_FAILED
+        - UPDATE_IN_PROGRESS
+        - UPDATE_COMPLETE
+        - UPDATE_FAILED
     ComputeFleetStatus:
       type: string
       enum:
@@ -1582,6 +1593,14 @@ components:
         - imageName
         - region
         - version
+    ImageStatusFilteringOption:
+      type: string
+      enum:
+        - BUILD_IN_PROGRESS
+        - BUILD_FAILED
+        - BUILD_COMPLETE
+        - DELETE_IN_PROGRESS
+        - DELETE_FAILED
     InstanceState:
       type: string
       enum:

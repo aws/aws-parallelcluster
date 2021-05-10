@@ -24,6 +24,7 @@ from pcluster.api.models.cloud_formation_status import CloudFormationStatus
 from pcluster.api.models.cluster_configuration_structure import ClusterConfigurationStructure
 from pcluster.api.models.cluster_info_summary import ClusterInfoSummary
 from pcluster.api.models.cluster_status import ClusterStatus
+from pcluster.api.models.cluster_status_filtering_option import ClusterStatusFilteringOption
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
 from pcluster.api.models.config_validation_message import ConfigValidationMessage
 from pcluster.api.models.conflict_exception_response_content import ConflictExceptionResponseContent
@@ -46,6 +47,7 @@ from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.api.models.image_builder_image_status import ImageBuilderImageStatus
 from pcluster.api.models.image_configuration_structure import ImageConfigurationStructure
 from pcluster.api.models.image_info_summary import ImageInfoSummary
+from pcluster.api.models.image_status_filtering_option import ImageStatusFilteringOption
 from pcluster.api.models.instance_state import InstanceState
 from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
