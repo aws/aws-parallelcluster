@@ -383,7 +383,7 @@ def build_image(args):
     LOGGER.info("Building AWS ParallelCluster image. This could take a while...")
     try:
         response = PclusterApi().build_image(
-            imagebuilder_config=load_yaml_dict(args.config_file), image_name=args.image_name, region=utils.get_region()
+            imagebuilder_config=load_yaml_dict(args.config_file), image_id=args.id, region=utils.get_region()
         )
 
         if isinstance(response, ApiFailure):
@@ -425,11 +425,11 @@ def update(args):
 
 def delete_image(args):
     """Delete image described by image_name."""
-    LOGGER.info("Deleting: %s", args.image_name)
+    LOGGER.info("Deleting: %s", args.image_id)
     LOGGER.debug("CLI args: %s", str(args))
     try:
         # delete image raises an exception if stack does not exist
-        result = PclusterApi().delete_image(image_name=args.image_name, region=utils.get_region(), force=args.force)
+        result = PclusterApi().delete_image(image_id=args.id, region=utils.get_region(), force=args.force)
         if isinstance(result, ImageBuilderInfo):
             result.imagebuild_status = "DELETE_IN_PROGRESS"
 
@@ -457,7 +457,7 @@ def delete_image(args):
 def describe_image(args):
     """Describe image info by image_name."""
     try:
-        result = PclusterApi().describe_image(image_name=args.image_name, region=utils.get_region())
+        result = PclusterApi().describe_image(image_id=args.id, region=utils.get_region())
         LOGGER.info("Response:")
         if isinstance(result, ApiFailure):
             LOGGER.info("Build image error %s", result.message)

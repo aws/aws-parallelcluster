@@ -48,10 +48,12 @@ class Image(Resource):
 
     def __init__(
         self,
+        name: str = None,
         tags: List[BaseTag] = None,
         root_volume: Volume = None,
     ):
         super().__init__()
+        self.name = name
         self.tags = tags
         self.root_volume = root_volume
 
