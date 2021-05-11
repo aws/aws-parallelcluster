@@ -74,6 +74,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -118,6 +119,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -163,6 +165,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -209,6 +212,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DistributionConfiguration": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -253,6 +257,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -300,6 +305,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -345,6 +351,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                     "ScriptComponent0": {},
                 },
             },
@@ -398,6 +405,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                     "ScriptComponent0": {},
                     "ScriptComponent1": {},
                 },
@@ -444,6 +452,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -1033,6 +1042,26 @@ def test_imagebuilder_instance_role(
                                         },
                                     },
                                     {
+                                        "Action": "logs:DeleteLogGroup",
+                                        "Effect": "Allow",
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":logs:",
+                                                    {"Ref": "AWS::Region"},
+                                                    ":",
+                                                    {"Ref": "AWS::AccountId"},
+                                                    ":log-group:/aws/lambda/ParallelClusterImage-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                                                    ":*",
+                                                ],
+                                            ]
+                                        },
+                                    },
+                                    {
                                         "Action": "iam:RemoveRoleFromInstanceProfile",
                                         "Effect": "Allow",
                                         "Resource": {
@@ -1614,8 +1643,12 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         imagebuild, "Pcluster", dummy_imagebuilder_bucket()
     )
     for resource_name, resource in generated_template.get("Resources").items():
-        if resource_name == "InstanceProfile" or resource_name == "DeleteStackFunctionPermission":
-            # InstanceProfile and DeleteStackFunctionPermission have no tags
+        if (
+            resource_name == "InstanceProfile"
+            or resource_name == "DeleteStackFunctionPermission"
+            or resource_name == "DeleteStackFunctionLog"
+        ):
+            # InstanceProfile, DeleteStackFunctionPermission and DeleteStackFunctionLog have no tags
             continue
         elif (
             resource_name == "InstanceRole"
