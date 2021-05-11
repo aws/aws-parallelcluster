@@ -221,6 +221,107 @@ Resources:
       ImageTestsConfiguration:
         ImageTestsEnabled: false
 
+  EcrImageDeletionLambda:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import boto3
+
+          # Suggestion is to instantiate clients in global context to reuse them across Lambda invocations
+          ecr = boto3.client('ecr')
+
+          def get_tag_from_image_arn(image_arn):
+              """ Returns the Docker image tag given an ImageBuilder image ARN
+
+              Arn format: arn:aws:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/.../${Version}/${BuildNumber}
+              Tag format: ${Version}-${BuildNumber}
+              """
+              parts = image_arn.split('/')
+              version = parts[-2]
+              build_number = parts[-1]
+              return '{}-{}'.format(version, build_number)
+
+          def handle_deletion_event(event):
+              """ Handle deletion event by removing the created Docker image from the ECR repository
+              """
+              ecr_repository_name = event['ResourceProperties']['EcrRepositoryName']
+              tag = get_tag_from_image_arn(event['ResourceProperties']['ImageToDeleteArn'])
+              return ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=[{'imageTag': tag}])
+
+          def handler(event, context):
+              print(event)
+              print('boto version {}'.format(boto3.__version__))
+
+              response_data = {}
+              response_status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Create':
+                  response_data['Message'] = 'Resource creation successful!'
+              elif event['RequestType'] == 'Update':
+                  response_data['Message'] = 'Resource update successful!'
+              elif event['RequestType'] == 'Delete':
+                  try:
+                      handle_deletion_event(event)
+                      response_data['Message'] = 'Resource deletion successful!'
+                  except ecr.exceptions.RepositoryNotFoundException:
+                      response_data['Message'] = 'Repository was not found, considering image deletion successfull'
+                  except Exception as exception:
+                      response_status = cfnresponse.FAILURE
+                      response_data['Message'] = 'Failed resource deletion with error: {}'.format(exception)
+
+              cfnresponse.send(event, context, response_status, response_data)
+
+      Handler: index.handler
+      Runtime: python3.7
+      Role: !GetAtt EcrImageDeletionLambdaRole.Arn
+
+  EcrImageDeletionLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${EcrImageDeletionLambda}
+
+  EcrImageDeletionLambdaRole:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: LoggingPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+        - PolicyName: S3Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchDeleteImage
+                Resource: !GetAtt PrivateEcrRepository.Arn
+
+  EcrImagesRemover:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: Custom::EcrImagesRemover
+    Properties:
+      ServiceToken: !GetAtt EcrImageDeletionLambda.Arn
+      EcrRepositoryName: !Ref PrivateEcrRepository
+      ImageToDeleteArn: !Ref EcrImage
+
 
 Outputs:
   ParallelClusterLambdaArn:
