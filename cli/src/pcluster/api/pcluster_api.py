@@ -121,7 +121,8 @@ class ImageBuilderImageInfo(ImageBuilderInfo):
         super().__init__(imagebuilder=imagebuilder)
         self.image_exist = True
         self.image_name = image.name
-        self.image_id = image.id
+        self.image_id = image.pcluster_image_id
+        self.ec2_image_id = image.id
         self.image_state = image.state
         self.image_architecture = image.architecture
         self.image_tags = image.tags
