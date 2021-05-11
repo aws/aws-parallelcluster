@@ -19,12 +19,13 @@ from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     PCLUSTER_CLUSTER_VERSION_TAG,
+    PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
 )
-from pcluster.utils import get_supported_os_for_architecture, get_supported_os_for_scheduler
+from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
 
 NAME_MAX_LENGTH = 30
@@ -92,6 +93,48 @@ class SchedulerOsValidator(Validator):
         if os not in supported_os:
             self._add_failure(
                 f"{scheduler} scheduler supports the following operating systems: {supported_os}.",
+                FailureLevel.ERROR,
+            )
+
+
+class CustomAmiTagValidator(Validator):
+    """Custom AMI tag validator to check if the AMI was created by pcluster to avoid runtime baking."""
+
+    def _validate(self, custom_ami: str):
+        tags = AWSApi.instance().ec2.describe_image(custom_ami).tags
+        tags_dict = {}
+        if tags:  # tags can be None if there is no tag
+            for tag in tags:
+                tags_dict[tag["Key"]] = tag["Value"]
+        current_version = get_installed_version()
+        if PCLUSTER_VERSION_TAG not in tags_dict:
+            self._add_failure(
+                (
+                    "The custom AMI may not have been created by pcluster."
+                    "You can ignore this warning if the AMI is shared or copied from another pcluster AMI."
+                    "If the AMI is indeed not created by pcluster, cluster creation will fail."
+                    "If the cluster creation fails, please goto"
+                    "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html"
+                    "#troubleshooting-stack-creation-failures for troubleshooting."
+                ),
+                FailureLevel.WARNING,
+            )
+        elif tags_dict[PCLUSTER_VERSION_TAG] != current_version:
+            self._add_failure(
+                (
+                    f"The custom AMI was created with pcluster {tags_dict[PCLUSTER_VERSION_TAG]}, "
+                    f"but is trying to be used with pcluster {current_version}. "
+                    f"Please either use an AMI created with ${current_version} or"
+                    f" change your ParallelCluster to ${tags_dict[PCLUSTER_VERSION_TAG]}"
+                ),
+                FailureLevel.ERROR,
+            )
+        elif PCLUSTER_IMAGE_BUILD_STATUS_TAG not in tags_dict:
+            self._add_failure(
+                (
+                    "The custom AMI did not pass the tests in image builder. "
+                    "Cluster created from this AMI may have unexpected behaviors."
+                ),
                 FailureLevel.ERROR,
             )
 
