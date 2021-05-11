@@ -15,7 +15,8 @@ Scheduling:
           - {{ private_subnet_id }}
       ComputeResources:
         - Name: compute-resource-11
-          InstanceTypes: {{ instance }}
+          InstanceTypes:
+            - {{ instance }}
           # we usually use c4.xlarge and c5.xlarge for test, the min vcpus for one instance is 4.
           MinvCpus: 4
           DesiredvCpus: 8

@@ -12,7 +12,8 @@ Scheduling:
     - Name: queue0
       ComputeResources:
         - Name: queue0-i0
-          InstanceTypes: optimal
+          InstanceTypes:
+            - optimal
           MinvCpus: 13
           DesiredvCpus: 13
           MaxvCpus: 14

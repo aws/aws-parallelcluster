@@ -142,12 +142,12 @@ def test_awsbatch_compute_resource_validator(section_dict, expected_message):
     "section_dict, expected_message",
     [
         ({"ComputeResources": []}, "Length must be 1"),
-        ({"ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": "c5.xlarge"}]}, None),
+        ({"ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}]}, None),
         (
             {
                 "ComputeResources": [
-                    {"Name": "compute_resource1", "InstanceTypes": "c4.xlarge,c5.xlarge"},
-                    {"Name": "compute_resource1", "InstanceTypes": "c4.xlarge"},
+                    {"Name": "compute_resource1", "InstanceTypes": ["c4.xlarge", "c5.xlarge"]},
+                    {"Name": "compute_resource1", "InstanceTypes": ["c4.xlarge"]},
                 ]
             },
             "Length must be 1",

@@ -885,7 +885,11 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
 class AwsBatchComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Batch ComputeResource."""
 
-    instance_types = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    instance_types = fields.List(
+        fields.Str(),
+        required=True,
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
     max_vcpus = fields.Int(
         data_key="MaxvCpus",
         validate=validate.Range(min=1),

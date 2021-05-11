@@ -56,7 +56,10 @@ Scheduling:
           HttpProxyAddress: String  # https://proxy-address:port
       ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
         - Name: compute_resource
-          InstanceTypes: optimal,c4.xlarge,c5.large
+          InstanceTypes:
+            - optimal
+            - c4.xlarge
+            - c5.large
           MinvCpus: 0  # 0
           DesiredvCpus: 10
           MaxvCpus: 20

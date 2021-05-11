@@ -17,7 +17,8 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}
-          InstanceTypes: {{ instance }}
+          InstanceTypes:
+            - {{ instance }}
           # Cpu count is valid for g3.8xlarge
           MinvCpus: 32
           DesiredvCpus: 32

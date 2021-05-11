@@ -147,7 +147,7 @@ class AwsBatchConstruct(Construct):
                 minv_cpus=self.compute_resource.min_vcpus,
                 desiredv_cpus=self.compute_resource.desired_vcpus,
                 maxv_cpus=self.compute_resource.max_vcpus,
-                instance_types=self.compute_resource.instance_types.split(","),
+                instance_types=self.compute_resource.instance_types,
                 subnets=self.queue.networking.subnet_ids,
                 security_group_ids=get_queue_security_groups_full(self.compute_security_groups, self.queue),
                 # ec2_key_pair=  TODO?
