@@ -479,7 +479,7 @@ def list_images(args):
                     name = info.stack_name
                     imagebuild_status = info.imagebuild_status
                 else:
-                    name = info.image_name
+                    name = info.image_id
                     imagebuild_status = "BUILD_COMPLETE"
                 images.append([name, _colorize(imagebuild_status, args), info.version])
             LOGGER.info(tabulate(images, tablefmt="plain"))
