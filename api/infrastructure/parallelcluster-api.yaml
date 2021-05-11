@@ -1,0 +1,250 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Template for the ParallelCluster API'
+
+Parameters:
+  EcrImageUri:
+    Description: When specified use this image for the Lambda function and skip the import phase
+    Type: String
+    Default: ''
+
+  ApiDefinitionS3Uri:
+    Description: S3 URI of the ParallelCluster API spec
+    Type: String
+    Default: '' # TODO change with actual URI
+
+  CustomDomainName:
+    Description: When specified, the custom domain name of the ParallelCluster API. Requires specifying a custom domain certificate
+    Type: String
+    Default: ''
+
+  CustomDomainCertificate:
+    Description: When specified, the ARN of the certificate for the custom domain name of the ParallelCluster API. Required when specifying a custom domain name
+    Type: String
+    Default: ''
+
+  CustomDomainHostedZoneId:
+    Description: When specified, the id of the Hosted Zone where the custom domain record of the ParallelCluster API is registered
+    Type: String
+    Default: ''
+
+  PublicEcrImageUri:
+    Description: When specified, the URI of the Docker image for the Lambda of the ParallelCluster API
+    Type: String
+    Default: '' # TODO change with actual URI
+
+
+Mappings:
+  ParallelCluster:
+    Constants:
+      Version: 3.0.0
+      Stage: prod
+
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Tags:
+      'parallelcluster:version': !FindInMap [ParallelCluster, Constants, Version]
+
+  Api:
+    Auth:
+      DefaultAuthorizer: AWS_IAM
+    TracingEnabled: True
+    EndpointConfiguration:
+      Type: REGIONAL
+
+
+Conditions:
+  UseCustomEcrImageUri: !Not [!Equals [!Ref EcrImageUri, '']]
+  DoNotUseCustomEcrImageUri: !Not [!Condition UseCustomEcrImageUri]
+  UseCustomDomain: !Not [!Equals [!Ref CustomDomainName, '']]
+  UseRoute53Configuration: !Not [!Equals [!Ref CustomDomainHostedZoneId, '']]
+  UseCustomDomainAndRoute53Configuration: !And
+    - !Condition UseCustomDomain
+    - !Condition UseRoute53Configuration
+  DoNotUseCustomDomain: !Not [!Condition UseCustomDomain]
+
+
+Resources:
+
+  # We need to define two AWS::Serverless::Api due to an issue with the handling of AWS::NoValue
+  # See related GitHub issue: https://github.com/aws/serverless-application-model/issues/1435
+  ApiGatewayApiWithCustomDomainAndRoute53Configuration:
+    Condition: UseCustomDomainAndRoute53Configuration
+    Type: AWS::Serverless::Api
+    Properties:
+      Tags:
+        'parallelcluster:version': !FindInMap [ParallelCluster, Constants, Version]
+      StageName: !FindInMap [ParallelCluster, Constants, Stage]
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: !Ref ApiDefinitionS3Uri
+      Domain:
+        DomainName: !Ref CustomDomainName
+        CertificateArn: !Ref CustomDomainCertificate
+        Route53:
+          HostedZoneId: !Ref CustomDomainHostedZoneId
+
+  ApiGatewayApiWithoutCustomDomain:
+    Condition: DoNotUseCustomDomain
+    Type: AWS::Serverless::Api
+    Properties:
+      Tags:
+        'parallelcluster:version': !FindInMap [ParallelCluster, Constants, Version]
+      StageName: !FindInMap [ParallelCluster, Constants, Stage]
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: !Ref ApiDefinitionS3Uri
+
+  # Note that even for Chinese regions here we need to use apigateway.amazonaws.com instead of apigateway.amazonaws.com.cn
+  APIGatewayExecutionRole:
+   Type: AWS::IAM::Role
+   Properties:
+     AssumeRolePolicyDocument:
+       Version: 2012-10-17
+       Statement:
+         - Effect: Allow
+           Principal:
+             Service:
+               - apigateway.amazonaws.com
+           Action:
+             - 'sts:AssumeRole'
+     Policies:
+       - PolicyName: lambda-invoke
+         PolicyDocument:
+           Version: '2012-10-17'
+           Statement:
+             - Effect: Allow
+               Action: lambda:InvokeFunction
+               Resource: !GetAtt ParallelClusterFunction.Arn
+
+  ParallelClusterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - AdministratorAccess
+      Tracing: Active
+      PackageType: Image
+      ImageUri: !If
+        - UseCustomEcrImageUri
+        - !Ref EcrImageUri
+        - !Sub
+          - ${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${Repository}:${Version}
+          - Repository: !Ref PrivateEcrRepository
+            Version: !Join
+              - '-'
+              - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
+
+  ParallelClusterFunctionLogGroup:
+    DependsOn: ParallelClusterFunction
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 30
+
+  ImageBuilderInstanceRole:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilderECRContainerBuilds
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - !Sub ec2.${AWS::URLSuffix}
+        Version: '2012-10-17'
+      Path: /executionServiceEC2Role/
+
+  ImageBuilderInstanceProfile:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /executionServiceEC2Role/
+      Roles:
+        - !Ref ImageBuilderInstanceRole
+
+  InfrastructureConfiguration:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Name: !Sub
+        - ParallelClusterImageBuilderInfrastructureConfiguration-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      InstanceProfileName: !Ref ImageBuilderInstanceProfile
+      TerminateInstanceOnFailure: true
+
+  PrivateEcrRepository:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub
+        - 'aws-parallelcluster-${Version}-${StackIdSuffix}'
+        - { Version: !FindInMap [ParallelCluster, Constants, Version], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+
+  EcrImageRecipe:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::ImageBuilder::ContainerRecipe
+    Properties:
+      Components:
+        - ComponentArn: !Sub arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:component/update-linux/x.x.x
+      ContainerType: DOCKER
+      Name: !Sub
+        - 'ImportPublicEcrImage-${StackIdSuffix}'
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      Version: !FindInMap [ParallelCluster, Constants, Version]
+      ParentImage: !Ref PublicEcrImageUri
+      PlatformOverride: Linux
+      TargetRepository:
+        Service: ECR
+        RepositoryName: !Ref PrivateEcrRepository
+      DockerfileTemplateData: 'FROM {{{ imagebuilder:parentImage }}}'
+      WorkingDirectory: '/tmp'
+
+  EcrImage:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::ImageBuilder::Image
+    Properties:
+      ContainerRecipeArn: !Ref EcrImageRecipe
+      EnhancedImageMetadataEnabled: true
+      InfrastructureConfigurationArn: !Ref InfrastructureConfiguration
+      ImageTestsConfiguration:
+        ImageTestsEnabled: false
+
+
+Outputs:
+  ParallelClusterLambdaArn:
+    Description: 'ARN of the ParallelCluster Lambda function'
+    Value: !GetAtt ParallelClusterFunction.Arn
+
+  ParallelClusterApiInvokeUrl:
+    Description: 'Url to reach the API endpoint'
+    Value: !If
+      - UseCustomDomain
+      - !Sub
+        - https://${CustomDomain}
+        - { CustomDomain: !Ref CustomDomainName }
+      - !Sub
+        - https://${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
+        - Api: !Ref ApiGatewayApiWithoutCustomDomain
+          StageName: !FindInMap [ParallelCluster, Constants, Stage]
+
+  UriOfCopyOfPublicEcrImage:
+    Condition: DoNotUseCustomEcrImageUri
+    Description: 'Uri of the copy of the Public ParallelCluster API Lambda Container image'
+    Value: !Sub
+      - ${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${Repository}:${Version}
+      - Repository: !Ref PrivateEcrRepository
+        Version: !Join
+          - '-'
+          - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]

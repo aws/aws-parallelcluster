@@ -31,7 +31,8 @@ jobs:
           - Python 3.9 Tests
           - Python 3.8 Tests Coverage
           - Code Checks
-          - CloudFormation Templates Checks
+          - CLI CloudFormation Templates Checks
+          - API CloudFormation Templates Checks
           - Integration Tests Config Checks
         include:
           - name: Python 3.6 Tests
@@ -58,10 +59,14 @@ jobs:
             python: 3.6
             toxdir: cli
             toxenv: code-linters
-          - name: CloudFormation Templates Checks
+          - name: CLI CloudFormation Templates Checks
             python: 3.6
             toxdir: cli
             toxenv: cfn-format-check,cfn-lint,cfn-tests
+          - name: API CloudFormation Templates Checks
+            python: 3.6
+            toxdir: api
+            toxenv: cfn-lint
           - name: Integration Tests Config Checks
             python: 3.6
             toxdir: tests/integration-tests
