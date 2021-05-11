@@ -44,6 +44,7 @@ from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ComputeResourceLaunchTemplateValidator,
     ComputeResourceSizeValidator,
+    CustomAmiTagValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateInstanceTypeValidator,
@@ -658,6 +659,10 @@ class Image(Resource):
         super().__init__()
         self.os = Resource.init_param(os)
         self.custom_ami = Resource.init_param(custom_ami)
+
+    def _validate(self):
+        if self.custom_ami:
+            self._execute_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
 
 
 class CustomAction(Resource):
