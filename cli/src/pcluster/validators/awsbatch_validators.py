@@ -10,6 +10,7 @@
 # limitations under the License.
 import logging
 import re
+from typing import List
 
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
@@ -74,11 +75,11 @@ class AwsBatchComputeInstanceTypeValidator(Validator):
     Validate instance types and max vCPUs combination.
     """
 
-    def _validate(self, instance_types, max_vcpus):
+    def _validate(self, instance_types: List[str], max_vcpus: int):
         supported_instances = _get_supported_batch_instance_types()
-        if supported_instances and instance_types:
-            for instance_type in instance_types.split(","):
-                if not instance_type.strip() in supported_instances:
+        if supported_instances:
+            for instance_type in instance_types:
+                if instance_type not in supported_instances:
                     self._add_failure(
                         f"Compute instance type '{instance_type}' is not supported"
                         f" by AWS Batch in region '{get_region()}'.",
@@ -90,13 +91,13 @@ class AwsBatchComputeInstanceTypeValidator(Validator):
                 FailureLevel.WARNING,
             )
 
-        if "," not in instance_types and "." in instance_types:
+        if len(instance_types) == 1 and "." in instance_types[0]:
             # if the type is not a list, and contains dot (nor optimal, nor a family)
             # validate instance type against max vcpus limit
-            vcpus = AWSApi.instance().ec2.get_instance_type_info(instance_types).vcpus_count()
+            vcpus = AWSApi.instance().ec2.get_instance_type_info(instance_types[0]).vcpus_count()
             if vcpus <= 0:
                 self._add_failure(
-                    f"Unable to get the number of vCPUs for the compute instance type '{instance_types}'. "
+                    f"Unable to get the number of vCPUs for the compute instance type '{instance_types[0]}'. "
                     "Skipping instance type against max vCPUs validation.",
                     FailureLevel.WARNING,
                 )
@@ -104,7 +105,7 @@ class AwsBatchComputeInstanceTypeValidator(Validator):
                 if max_vcpus < vcpus:
                     self._add_failure(
                         f"Max vCPUs must be greater than or equal to {vcpus}, that is the number of vCPUs "
-                        f"available for the {instance_types} that you selected as compute instance type.",
+                        f"available for the {instance_types[0]} that you selected as compute instance type.",
                         FailureLevel.ERROR,
                     )
 
@@ -233,27 +234,26 @@ class AwsBatchInstancesArchitectureCompatibilityValidator(Validator):
     With AWS Batch, compute instance type can contain a CSV list.
     """
 
-    def _validate(self, instance_types, architecture: str):
-        if instance_types:
-            for instance_type in instance_types.split(","):
-                # When awsbatch is used as the scheduler instance families can be used.
-                # Don't attempt to validate architectures for instance families, as it would require
-                # guessing a valid instance type from within the family.
-                if not self._is_instance_type_format(instance_type) and instance_type != "optimal":
-                    self._add_failure(
-                        f"Not validating architecture compatibility for compute instance type {instance_type} "
-                        "because it does not have the expected format.",
-                        FailureLevel.INFO,
-                    )
-                    continue
-                compute_architectures = self._get_supported_architectures_for_instance_type(instance_type)
-                if architecture not in compute_architectures:
-                    self._add_failure(
-                        f"The specified compute instance type ({instance_type}) supports"
-                        f" the architectures {compute_architectures}, none of which is "
-                        f"compatible with the architecture ({architecture}) supported by the head node instance type.",
-                        FailureLevel.ERROR,
-                    )
+    def _validate(self, instance_types: List[str], architecture: str):
+        for instance_type in instance_types:
+            # When awsbatch is used as the scheduler instance families can be used.
+            # Don't attempt to validate architectures for instance families, as it would require
+            # guessing a valid instance type from within the family.
+            if not self._is_instance_type_format(instance_type) and instance_type != "optimal":
+                self._add_failure(
+                    f"Not validating architecture compatibility for compute instance type {instance_type} "
+                    "because it does not have the expected format.",
+                    FailureLevel.INFO,
+                )
+                continue
+            compute_architectures = self._get_supported_architectures_for_instance_type(instance_type)
+            if architecture not in compute_architectures:
+                self._add_failure(
+                    f"The specified compute instance type ({instance_type}) supports"
+                    f" the architectures {compute_architectures}, none of which is "
+                    f"compatible with the architecture ({architecture}) supported by the head node instance type.",
+                    FailureLevel.ERROR,
+                )
 
     @staticmethod
     def _get_supported_architectures_for_instance_type(instance_type):

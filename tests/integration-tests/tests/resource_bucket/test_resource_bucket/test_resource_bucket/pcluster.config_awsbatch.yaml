@@ -13,7 +13,8 @@ Scheduling:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
-          InstanceTypes: {{ instance }}
+          InstanceTypes:
+            - {{ instance }}
           MinvCpus: 1
       Networking:
         SubnetIds:

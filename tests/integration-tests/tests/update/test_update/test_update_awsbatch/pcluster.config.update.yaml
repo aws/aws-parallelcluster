@@ -21,7 +21,8 @@ Scheduling:
           - {{ public_subnet_id }}
       ComputeResources:
         - Name: compute-resource-0
-          InstanceTypes: {{ instance }}
+          InstanceTypes:
+            - {{ instance }}
           MinvCpus: 8
           MaxvCpus: 16
           DesiredvCpus: 12

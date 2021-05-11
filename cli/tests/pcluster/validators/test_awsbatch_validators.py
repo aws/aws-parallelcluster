@@ -73,7 +73,7 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
             }
         ),
     )
-    actual_failures = AwsBatchComputeInstanceTypeValidator().execute(instance_type, max_vcpus)
+    actual_failures = AwsBatchComputeInstanceTypeValidator().execute([instance_type], max_vcpus)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -94,17 +94,17 @@ def test_awsbatch_compute_resource_size_validator(min_vcpus, desired_vcpus, max_
 @pytest.mark.parametrize(
     "head_node_architecture, compute_architecture, compute_instance_types, expected_message",
     [
-        ("x86_64", "x86_64", "optimal", None),
+        ("x86_64", "x86_64", ["optimal"], None),
         # Function to get supported architectures shouldn't be called because compute instance types arg
         # are instance families.
-        ("x86_64", None, "m6g", "Not validating architecture"),
-        ("x86_64", None, "c5", "Not validating architecture"),
+        ("x86_64", None, ["m6g"], "Not validating architecture"),
+        ("x86_64", None, ["c5"], "Not validating architecture"),
         # The validator must handle the case where compute instance type is a CSV list
-        ("arm64", "arm64", "m6g.xlarge,r6g.xlarge", None),
+        ("arm64", "arm64", ["m6g.xlarge", "r6g.xlarge"], None),
         (
             "x86_64",
             "arm64",
-            "m6g.xlarge,r6g.xlarge",
+            ["m6g.xlarge", "r6g.xlarge"],
             "none of which is compatible with the architecture.*supported by the head node instance type",
         ),
     ],
@@ -125,20 +125,18 @@ def test_awsbatch_instances_architecture_compatibility_validator(
         side_effect=_internal_is_instance_type,
     )
 
-    instance_types = compute_instance_types.split(",")
-
     actual_failures = AwsBatchInstancesArchitectureCompatibilityValidator().execute(
         compute_instance_types, head_node_architecture
     )
     assert_failure_messages(actual_failures, expected_message)
     if expected_message:
-        assert_that(len(actual_failures)).is_equal_to(len(instance_types))
+        assert_that(len(actual_failures)).is_equal_to(len(compute_instance_types))
 
     non_instance_families = [
-        instance_type for instance_type in instance_types if _internal_is_instance_type(instance_type)
+        instance_type for instance_type in compute_instance_types if _internal_is_instance_type(instance_type)
     ]
     assert_that(supported_architectures_patch.call_count).is_equal_to(len(non_instance_families))
-    assert_that(is_instance_type_patch.call_count).is_equal_to(len(instance_types))
+    assert_that(is_instance_type_patch.call_count).is_equal_to(len(compute_instance_types))
 
 
 @pytest.mark.parametrize(

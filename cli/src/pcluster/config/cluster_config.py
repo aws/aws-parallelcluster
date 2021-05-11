@@ -1087,7 +1087,7 @@ class AwsBatchComputeResource(BaseComputeResource):
 
     def __init__(
         self,
-        instance_types: str = None,
+        instance_types: List[str] = None,
         max_vcpus: int = None,
         min_vcpus: int = None,
         desired_vcpus: int = None,

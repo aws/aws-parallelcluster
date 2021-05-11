@@ -13,7 +13,8 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}
-          InstanceTypes: {{ instance }}
+          InstanceTypes:
+            - {{ instance }}
           {% else %}
           InstanceType: {{ instance }}
           {% endif %}

@@ -12,7 +12,12 @@ Scheduling:
     - Name: compute
       ComputeResources:
         - Name: compute-i1
-          {% if scheduler == "awsbatch" %}InstanceTypes:{% else %}InstanceType:{% endif %} {{ instance }}
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          {% endif %}
           {% if scheduler == "awsbatch" %}DesiredvCpus:{% else %}MinCount:{% endif %} {{ queue_size }}
       Networking:
         SubnetIds:
