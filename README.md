@@ -128,7 +128,7 @@ Issues
 ------
 
 [![GitHub issues](https://img.shields.io/github/issues/aws/aws-parallelcluster.svg)](https://github.com/aws/aws-parallelcluster/issues)
-[![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/aws/aws-parallelcluster.svg)](https://github.com/aws-parallelcluster/issues?q=is%3Aissue+is%3Aclosed)
+[![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/aws/aws-parallelcluster.svg)](https://github.com/aws/aws-parallelcluster/issues?q=is%3Aissue+is%3Aclosed)
 
 Please open a GitHub issue for any feedback or issues:
 https://github.com/aws/aws-parallelcluster/issues.  There is also an active AWS
