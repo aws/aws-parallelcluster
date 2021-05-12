@@ -66,7 +66,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InfrastructureConfiguration": {},
                     "UpdateOSComponent": {},
                     "ParallelClusterComponent": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
@@ -74,6 +74,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -112,12 +113,13 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -157,12 +159,13 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -204,11 +207,12 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -245,7 +249,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InstanceRole": {},
                     "InstanceProfile": {},
                     "InfrastructureConfiguration": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
@@ -253,6 +257,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -291,7 +296,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InstanceRole": {},
                     "InstanceProfile": {},
                     "InfrastructureConfiguration": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterComponent": {},
@@ -300,6 +305,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -336,7 +342,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InstanceRole": {},
                     "InstanceProfile": {},
                     "InfrastructureConfiguration": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterComponent": {},
@@ -345,6 +351,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                     "ScriptComponent0": {},
                 },
             },
@@ -389,7 +396,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InstanceRole": {},
                     "InstanceProfile": {},
                     "InfrastructureConfiguration": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterComponent": {},
@@ -398,6 +405,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                     "ScriptComponent0": {},
                     "ScriptComponent1": {},
                 },
@@ -436,7 +444,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InstanceProfile": {},
                     "InfrastructureConfiguration": {},
                     "ParallelClusterComponent": {},
-                    "TagComponent": {},
+                    "ParallelClusterTagComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
@@ -444,6 +452,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
                 },
             },
         ),
@@ -854,6 +863,26 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Region"},
                                                     ":",
                                                     {"Ref": "AWS::AccountId"},
+                                                    ":component/parallelclusterimage-tag-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                                                    "/*",
+                                                ],
+                                            ]
+                                        },
+                                    },
+                                    {
+                                        "Action": "imagebuilder:DeleteComponent",
+                                        "Effect": "Allow",
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":imagebuilder:",
+                                                    {"Ref": "AWS::Region"},
+                                                    ":",
+                                                    {"Ref": "AWS::AccountId"},
                                                     ":component/parallelclusterimage-script-0-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                     "/*",
@@ -875,26 +904,6 @@ def test_imagebuilder_instance_role(
                                                     ":",
                                                     {"Ref": "AWS::AccountId"},
                                                     ":component/parallelclusterimage-script-1-",
-                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
-                                                    "/*",
-                                                ],
-                                            ]
-                                        },
-                                    },
-                                    {
-                                        "Action": "imagebuilder:DeleteComponent",
-                                        "Effect": "Allow",
-                                        "Resource": {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    "arn:",
-                                                    {"Ref": "AWS::Partition"},
-                                                    ":imagebuilder:",
-                                                    {"Ref": "AWS::Region"},
-                                                    ":",
-                                                    {"Ref": "AWS::AccountId"},
-                                                    ":component/parallelclusterimage-tag-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                     "/*",
                                                 ],
@@ -1028,6 +1037,26 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::AccountId"},
                                                     ":function:ParallelClusterImage-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                                                ],
+                                            ]
+                                        },
+                                    },
+                                    {
+                                        "Action": "logs:DeleteLogGroup",
+                                        "Effect": "Allow",
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":logs:",
+                                                    {"Ref": "AWS::Region"},
+                                                    ":",
+                                                    {"Ref": "AWS::AccountId"},
+                                                    ":log-group:/aws/lambda/ParallelClusterImage-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                                                    ":*",
                                                 ],
                                             ]
                                         },
@@ -1197,9 +1226,9 @@ def test_imagebuilder_lambda_execution_role(
             },
             [
                 {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
-                {"ComponentArn": {"Ref": "TagComponent"}},
             ],
         ),
         (
@@ -1237,9 +1266,9 @@ def test_imagebuilder_lambda_execution_role(
             [
                 {"ComponentArn": {"Ref": "UpdateOSComponent"}},
                 {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
-                {"ComponentArn": {"Ref": "TagComponent"}},
             ],
         ),
         (
@@ -1275,10 +1304,10 @@ def test_imagebuilder_lambda_execution_role(
             },
             [
                 {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": {"Ref": "ScriptComponent0"}},
                 {"ComponentArn": {"Ref": "ScriptComponent1"}},
-                {"ComponentArn": {"Ref": "TagComponent"}},
             ],
         ),
     ],
@@ -1620,8 +1649,12 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         imagebuild, "Pcluster", dummy_imagebuilder_bucket()
     )
     for resource_name, resource in generated_template.get("Resources").items():
-        if resource_name == "InstanceProfile" or resource_name == "DeleteStackFunctionPermission":
-            # InstanceProfile and DeleteStackFunctionPermission have no tags
+        if (
+            resource_name == "InstanceProfile"
+            or resource_name == "DeleteStackFunctionPermission"
+            or resource_name == "DeleteStackFunctionLog"
+        ):
+            # InstanceProfile, DeleteStackFunctionPermission and DeleteStackFunctionLog have no tags
             continue
         elif (
             resource_name == "InstanceRole"

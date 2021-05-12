@@ -23,6 +23,7 @@ import yaml
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_imagebuilder as imagebuilder
 from aws_cdk import aws_lambda as awslambda
+from aws_cdk import aws_logs as logs
 from aws_cdk import aws_sns as sns
 from aws_cdk.core import CfnParameter, CfnTag, Construct, Fn, Stack
 
@@ -204,14 +205,14 @@ class ImageBuilderCdkStack(Stack):
         ami_tags = self._get_image_tags()
 
         lambda_cleanup_policy_statements = []
-        resources_dependency_list = []
+        resource_dependency_list = []
 
         # InstanceRole and InstanceProfile
         instance_profile_name = None
         if self.custom_instance_role:
             instance_role_type = self._get_instance_role_type()
             if instance_role_type == InstanceRole.ROLE:
-                resources_dependency_list.append(
+                resource_dependency_list.append(
                     self._add_instance_profile(
                         instance_role=self.custom_instance_role,
                         cleanup_policy_statements=lambda_cleanup_policy_statements,
@@ -220,26 +221,26 @@ class ImageBuilderCdkStack(Stack):
             else:
                 instance_profile_name = self.custom_instance_role
         else:
-            resources_dependency_list.append(
+            resource_dependency_list.append(
                 self._add_default_instance_role(lambda_cleanup_policy_statements, build_tags_list)
             )
-            resources_dependency_list.append(
+            resource_dependency_list.append(
                 self._add_instance_profile(cleanup_policy_statements=lambda_cleanup_policy_statements)
             )
 
         self._add_imagebuilder_resources(
-            build_tags_map, ami_tags, instance_profile_name, lambda_cleanup_policy_statements, resources_dependency_list
+            build_tags_map, ami_tags, instance_profile_name, lambda_cleanup_policy_statements, resource_dependency_list
         )
 
-        lambda_cleanup, permission, lambda_cleanup_execution_role = self._add_lambda_cleanup(
+        lambda_cleanup, permission, lambda_cleanup_execution_role, lambda_log = self._add_lambda_cleanup(
             lambda_cleanup_policy_statements, build_tags_list
         )
-        resources_dependency_list.extend([lambda_cleanup, permission])
+        resource_dependency_list.extend([lambda_cleanup, permission, lambda_log])
 
-        resources_dependency_list.append(self._add_sns_topic(lambda_cleanup, build_tags_list))
+        resource_dependency_list.append(self._add_sns_topic(lambda_cleanup, build_tags_list))
 
         if lambda_cleanup_execution_role:
-            for resource in resources_dependency_list:
+            for resource in resource_dependency_list:
                 resource.add_depends_on(lambda_cleanup_execution_role)
 
     def _add_imagebuilder_resources(
@@ -441,38 +442,39 @@ class ImageBuilderCdkStack(Stack):
                     ],
                 )
 
+        tag_component_resource = imagebuilder.CfnComponent(
+            self,
+            id="ParallelClusterTagComponent",
+            name=self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag"),
+            version=utils.get_installed_version(),
+            tags=build_tags,
+            description="Tag ParallelCluster AMI",
+            platform="Linux",
+            data=_load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
+        )
+        components.append(
+            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                component_arn=Fn.ref("ParallelClusterTagComponent")
+            )
+        )
+        components_resources.append(tag_component_resource)
+        if not self.custom_cleanup_lambda_role:
+            self._add_resource_delete_policy(
+                lambda_cleanup_policy_statements,
+                ["imagebuilder:DeleteComponent"],
+                [
+                    self.format_arn(
+                        service="imagebuilder",
+                        resource="component",
+                        resource_name="{0}/*".format(
+                            self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag", to_lower=True)
+                        ),
+                    )
+                ],
+            )
+
         if self.config.build.components:
             self._add_custom_components(components, lambda_cleanup_policy_statements, components_resources)
-
-        if not disable_pcluster_component:
-            tag_component_resource = imagebuilder.CfnComponent(
-                self,
-                id="TagComponent",
-                name=self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag"),
-                version=utils.get_installed_version(),
-                tags=build_tags,
-                description="Tag ParallelCluster AMI",
-                platform="Linux",
-                data=_load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
-            )
-            components.append(
-                imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref("TagComponent"))
-            )
-            components_resources.append(tag_component_resource)
-            if not self.custom_cleanup_lambda_role:
-                self._add_resource_delete_policy(
-                    lambda_cleanup_policy_statements,
-                    ["imagebuilder:DeleteComponent"],
-                    [
-                        self.format_arn(
-                            service="imagebuilder",
-                            resource="component",
-                            resource_name="{0}/*".format(
-                                self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag", to_lower=True)
-                            ),
-                        )
-                    ],
-                )
 
         return components, components_resources
 
@@ -578,6 +580,19 @@ class ImageBuilderCdkStack(Stack):
 
             self._add_resource_delete_policy(
                 policy_statements,
+                ["logs:DeleteLogGroup"],
+                [
+                    self.format_arn(
+                        service="logs",
+                        resource="log-group",
+                        sep=":",
+                        resource_name="/aws/lambda/{0}:*".format(self._build_resource_name(RESOURCE_NAME_PREFIX)),
+                    )
+                ],
+            )
+
+            self._add_resource_delete_policy(
+                policy_statements,
                 ["iam:RemoveRoleFromInstanceProfile"],
                 [
                     self.format_arn(
@@ -644,6 +659,13 @@ class ImageBuilderCdkStack(Stack):
         # LambdaCleanupEnv
         lambda_env = awslambda.CfnFunction.EnvironmentProperty(variables={"IMAGE_STACK_ARN": self.stack_id})
 
+        # LambdaCWLogGroup
+        lambda_log = logs.CfnLogGroup(
+            self,
+            id="DeleteStackFunctionLog",
+            log_group_name="/aws/lambda/{0}".format(self._build_resource_name(RESOURCE_NAME_PREFIX)),
+        )
+
         # LambdaCleanupFunction
         lambda_cleanup = awslambda.CfnFunction(
             scope=self,
@@ -670,8 +692,9 @@ class ImageBuilderCdkStack(Stack):
             function_name=lambda_cleanup.attr_arn,
             source_arn=Fn.ref("BuildNotificationTopic"),
         )
+        lambda_cleanup.add_depends_on(lambda_log)
 
-        return lambda_cleanup, permission, lambda_cleanup_execution_role
+        return lambda_cleanup, permission, lambda_cleanup_execution_role, lambda_log
 
     def _add_sns_topic(self, lambda_cleanup, build_tags):
         # SNSTopic

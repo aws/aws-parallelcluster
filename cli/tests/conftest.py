@@ -3,16 +3,19 @@ This module loads pytest fixtures and plugins needed by all tests.
 
 It's very useful for fixtures that need to be shared among all tests.
 """
-
+import logging
 import os
+import sys
 
 import boto3
 import pytest
+from assertpy import assert_that, soft_assertions
 from botocore.stub import Stubber
 from flask.testing import FlaskClient
 from jinja2 import Environment, FileSystemLoader
 
 from pcluster.api.flask_app import ParallelClusterFlaskApp
+from pcluster.cli.entrypoint import ParallelClusterCli
 
 
 @pytest.fixture(autouse=True)
@@ -220,3 +223,36 @@ def unset_env():
     yield _unset_env_var
     os.environ.clear()
     os.environ.update(old_environ)
+
+
+@pytest.fixture()
+def run_cli(mocker, capsys):
+    def _run_cli(command, expect_failure=False):
+        mocker.patch.object(sys, "argv", command)
+        with pytest.raises(SystemExit) as sysexit:
+            ParallelClusterCli().handle_command()
+        if expect_failure:
+            assert_that(sysexit.value.code).is_greater_than(0)
+        else:
+            assert_that(sysexit.value.code).is_equal_to(0)
+
+    return _run_cli
+
+
+@pytest.fixture()
+def assert_out_err(capsys):
+    def _assert_out_err(expected_out, expected_err):
+        out_err = capsys.readouterr()
+        with soft_assertions():
+            assert_that(out_err.out.strip()).is_equal_to(expected_out)
+            assert_that(out_err.err.strip()).is_equal_to(expected_err)
+
+    return _assert_out_err
+
+
+@pytest.fixture(autouse=True)
+def enable_logging_propagation():
+    # pytest caplog fixture captures logs propagated to the root logger.
+    # Since we disabled propagation by default we have to enable it in order to enable
+    # unit tests to verify logging output.
+    logging.getLogger("pcluster").propagate = True
