@@ -439,38 +439,39 @@ class ImageBuilderCdkStack(Stack):
                     ],
                 )
 
+        tag_component_resource = imagebuilder.CfnComponent(
+            self,
+            id="ParallelClusterTagComponent",
+            name=self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag"),
+            version=utils.get_installed_version(),
+            tags=build_tags,
+            description="Tag ParallelCluster AMI",
+            platform="Linux",
+            data=_load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
+        )
+        components.append(
+            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                component_arn=Fn.ref("ParallelClusterTagComponent")
+            )
+        )
+        components_resources.append(tag_component_resource)
+        if not self.custom_cleanup_lambda_role:
+            self._add_resource_delete_policy(
+                lambda_cleanup_policy_statements,
+                ["imagebuilder:DeleteComponent"],
+                [
+                    self.format_arn(
+                        service="imagebuilder",
+                        resource="component",
+                        resource_name="{0}/*".format(
+                            self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag", to_lower=True)
+                        ),
+                    )
+                ],
+            )
+
         if self.config.build.components:
             self._add_custom_components(components, lambda_cleanup_policy_statements, components_resources)
-
-        if not disable_pcluster_component:
-            tag_component_resource = imagebuilder.CfnComponent(
-                self,
-                id="TagComponent",
-                name=self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag"),
-                version=utils.get_installed_version(),
-                tags=build_tags,
-                description="Tag ParallelCluster AMI",
-                platform="Linux",
-                data=_load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
-            )
-            components.append(
-                imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=Fn.ref("TagComponent"))
-            )
-            components_resources.append(tag_component_resource)
-            if not self.custom_cleanup_lambda_role:
-                self._add_resource_delete_policy(
-                    lambda_cleanup_policy_statements,
-                    ["imagebuilder:DeleteComponent"],
-                    [
-                        self.format_arn(
-                            service="imagebuilder",
-                            resource="component",
-                            resource_name="{0}/*".format(
-                                self._build_resource_name(RESOURCE_NAME_PREFIX + "-Tag", to_lower=True)
-                            ),
-                        )
-                    ],
-                )
 
         return components, components_resources
 
