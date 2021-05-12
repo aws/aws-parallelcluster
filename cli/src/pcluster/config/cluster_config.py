@@ -482,11 +482,8 @@ class CloudWatchLogs(Resource):
 class CloudWatchDashboards(Resource):
     """Represent the CloudWatch Dashboard."""
 
-    def __init__(
-        self,
-        enabled: bool = None,
-    ):
-        super().__init__()
+    def __init__(self, enabled: bool = None, **kwargs):
+        super().__init__(**kwargs)
         self.enabled = Resource.init_param(enabled, default=CW_DASHBOARD_ENABLED_DEFAULT)
 
 
@@ -503,7 +500,7 @@ class Dashboards(Resource):
 
     def __init__(self, cloud_watch: CloudWatchDashboards = None, **kwargs):
         super().__init__(**kwargs)
-        self.cloud_watch = cloud_watch
+        self.cloud_watch = cloud_watch or CloudWatchDashboards(implied=True)
 
 
 class Monitoring(Resource):
