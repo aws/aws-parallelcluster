@@ -684,7 +684,7 @@ class ImageBuilderCdkStack(Stack):
             code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=self.config.custom_s3_bucket
                 or S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), utils.get_region()),
-                s3_key=self.bucket.get_object_key(S3FileType.CUSTOM_RESOURCES.value, "artifacts.zip"),
+                s3_key=self.bucket.get_object_key(S3FileType.CUSTOM_RESOURCES, "artifacts.zip"),
             ),
             handler="delete_image_stack.handler",
             memory_size=128,

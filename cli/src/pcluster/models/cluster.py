@@ -23,7 +23,7 @@ import yaml
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError, StackNotFoundError
+from pcluster.aws.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.config_patch import ConfigPatch
@@ -106,12 +106,7 @@ class Cluster:
     def stack(self):
         """Return the ClusterStack object."""
         if not self.__stack:
-            try:
-                self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
-            except StackNotFoundError:
-                raise ClusterActionError(f"Cluster {self.name} doesn't exist.")
-            except AWSClientError as e:
-                raise ClusterActionError(f"Unable to find cluster {self.name}. {e}")
+            self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
         return self.__stack
 
     @property
@@ -192,6 +187,29 @@ class Cluster:
     @config.setter
     def config(self, value):
         self.__config = value
+
+    @property
+    def config_presigned_url(self) -> str:
+        """Return a pre-signed Url to download the config from the S3 bucket."""
+        return self.bucket.get_config_presigned_url(config_name=self._s3_artifacts_dict.get("source_config_name"))
+
+    @property
+    def compute_fleet_status(self) -> ComputeFleetStatus:
+        """Status of the cluster compute fleet."""
+        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+        status = compute_fleet_status_manager.get_status()
+        if status == ComputeFleetStatus.UNKNOWN:
+            stack_status_to_fleet_status = {
+                "CREATE_IN_PROGRESS": ComputeFleetStatus.STARTING,
+                "DELETE_IN_PROGRESS": ComputeFleetStatus.STOPPING,
+                "CREATE_FAILED": ComputeFleetStatus.STOPPED,
+                "ROLLBACK_IN_PROGRESS": ComputeFleetStatus.STOPPING,
+                "ROLLBACK_FAILED": ComputeFleetStatus.STOPPED,
+                "ROLLBACK_COMPLETE": ComputeFleetStatus.STOPPED,
+                "DELETE_FAILED": ComputeFleetStatus.STOPPING,
+            }
+            return stack_status_to_fleet_status.get(self.status, status)
+        return status
 
     @property
     def stack_name(self):
@@ -469,11 +487,11 @@ class Cluster:
     @property
     def head_node_instance(self) -> ClusterInstance:
         """Get head node instance."""
-        try:
-            instance_data = self._describe_instances(node_type=NodeType.HEAD_NODE)[0]
-            return ClusterInstance(instance_data)
-        except Exception as e:
-            raise ClusterActionError(f"Unable to retrieve head node information. {e}")
+        instances = self._describe_instances(node_type=NodeType.HEAD_NODE)
+        if instances:
+            return ClusterInstance(instances[0])
+        else:
+            raise ClusterActionError("Unable to retrieve head node information.")
 
     def _get_instance_filters(self, node_type: NodeType):
         return [
