@@ -16,6 +16,7 @@ import logging
 import os
 
 from flask import request
+from pkg_resources import packaging
 
 from pcluster.api.errors import BadRequestException
 from pcluster.constants import SUPPORTED_REGIONS
@@ -54,3 +55,9 @@ def configure_aws_region(is_query_string_arg: bool = True):
         return _wrapper_validate_region
 
     return _decorator_validate_region
+
+
+def check_cluster_version(cluster):
+    return cluster.stack.version and packaging.version.parse("4.0.0") > packaging.version.parse(
+        cluster.stack.version
+    ) >= packaging.version.parse("3.0.0")

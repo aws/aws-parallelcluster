@@ -7,18 +7,22 @@
 # limitations under the License.
 
 # pylint: disable=W0613
+import logging
 import os
-from datetime import datetime
 from typing import Dict, List
 
-from pcluster.api.controllers.common import configure_aws_region
+from pcluster.api.controllers.common import check_cluster_version, configure_aws_region
 from pcluster.api.converters import cloud_formation_status_to_cluster_status
-from pcluster.api.errors import CreateClusterBadRequestException
+from pcluster.api.errors import (
+    BadRequestException,
+    CreateClusterBadRequestException,
+    InternalServiceException,
+    NotFoundException,
+)
 from pcluster.api.models import (
     CloudFormationStatus,
     ClusterConfigurationStructure,
     ClusterInfoSummary,
-    ComputeFleetStatus,
     CreateClusterBadRequestExceptionResponseContent,
     CreateClusterRequestContent,
     CreateClusterResponseContent,
@@ -27,12 +31,18 @@ from pcluster.api.models import (
     EC2Instance,
     InstanceState,
     ListClustersResponseContent,
+    Tag,
     UpdateClusterRequestContent,
     UpdateClusterResponseContent,
 )
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import StackNotFoundError
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
+from pcluster.models.cluster import Cluster, ClusterActionError
 from pcluster.models.cluster_resources import ClusterStack
+
+LOGGER = logging.getLogger(__name__)
 
 
 @configure_aws_region(is_query_string_arg=False)
@@ -118,27 +128,57 @@ def describe_cluster(cluster_name, region=None):
 
     :rtype: DescribeClusterResponseContent
     """
-    return DescribeClusterResponseContent(
-        creation_time=datetime.now(),
-        headnode=EC2Instance(
-            instance_id="id2",
-            launch_time=datetime.now(),
-            public_ip_address="1.2.3.5",
-            instance_type="c5.xlarge",
-            state=InstanceState.RUNNING,
-            private_ip_address="1.2.3.4",
-        ),
-        version="3.0.0",
-        cluster_configuration=ClusterConfigurationStructure(s3_url="s3"),
-        tags=[],
-        cloud_formation_status=CloudFormationStatus.CREATE_COMPLETE,
-        cluster_name="clustername",
-        compute_fleet_status=ComputeFleetStatus.RUNNING,
-        cloudformation_stack_arn="arn",
-        last_updated_time=datetime.now(),
-        region="region",
-        cluster_status=ClusterStatus.CREATE_COMPLETE,
+    try:
+        cluster = Cluster(cluster_name)
+        cfn_stack = cluster.stack
+    except StackNotFoundError:
+        raise NotFoundException(
+            f"cluster {cluster_name} does not exist or belongs to an incompatible ParallelCluster " "major version."
+        )
+
+    if not check_cluster_version(cluster):
+        raise BadRequestException(f"cluster {cluster_name} belongs to an incompatible ParallelCluster major version.")
+
+    fleet_status = cluster.compute_fleet_status  # TODO: use Dynamodb client
+    if fleet_status == ComputeFleetStatus.UNKNOWN:
+        raise InternalServiceException("could not retrieve compute fleet status.")
+
+    config_url = "NOT_AVAILABLE"
+    try:
+        config_url = cluster.config_presigned_url  # TODO: add config retrieval by version
+    except ClusterActionError as e:
+        # Do not fail request when S3 bucket is not available
+        LOGGER.error(e)
+
+    response = DescribeClusterResponseContent(
+        creation_time=cfn_stack.creation_time,
+        version=cfn_stack.version,
+        cluster_configuration=ClusterConfigurationStructure(s3_url=config_url),  # TODO: add config version
+        tags=[Tag(value=tag.get("Value"), key=tag.get("Key")) for tag in cfn_stack.tags],
+        cloud_formation_status=cfn_stack.status,
+        cluster_name=cluster_name,
+        compute_fleet_status=fleet_status.value,
+        cloudformation_stack_arn=cfn_stack.id,
+        last_updated_time=cfn_stack.last_updated_time,
+        region=os.environ.get("AWS_DEFAULT_REGION"),
+        cluster_status=cloud_formation_status_to_cluster_status(cfn_stack.status),
     )
+
+    try:
+        head_node = cluster.head_node_instance
+        response.headnode = EC2Instance(
+            instance_id=head_node.id,
+            launch_time=head_node.launch_time,
+            public_ip_address=head_node.public_ip,
+            instance_type=head_node.instance_type,
+            state=InstanceState.from_dict(head_node.state),
+            private_ip_address=head_node.private_ip,
+        )
+    except ClusterActionError as e:
+        # This should not be treated as a failure cause head node might not be running in some cases
+        LOGGER.info(e)
+
+    return response
 
 
 @configure_aws_region()

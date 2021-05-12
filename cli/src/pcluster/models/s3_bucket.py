@@ -154,9 +154,9 @@ class S3Bucket:
 
     # --------------------------------------- S3 objects utils --------------------------------------- #
 
-    def get_object_key(self, object_type, object_name):
+    def get_object_key(self, object_type: S3FileType, object_name):
         """Get object key of an artifact."""
-        return "/".join([self.artifact_directory, object_type, object_name])
+        return "/".join([self.artifact_directory, object_type.value, object_name])
 
     def delete_s3_artifacts(self):
         """Cleanup S3 bucket artifact directory."""
@@ -197,14 +197,12 @@ class S3Bucket:
 
     def upload_config(self, config, config_name, format=S3FileFormat.YAML):
         """Upload config file to S3 bucket."""
-        return self._upload_file(
-            file_type=S3FileType.CONFIGS.value, content=config, file_name=config_name, format=format
-        )
+        return self._upload_file(file_type=S3FileType.CONFIGS, content=config, file_name=config_name, format=format)
 
     def upload_cfn_template(self, template_body, template_name, format=S3FileFormat.YAML):
         """Upload cloudformation template to S3 bucket."""
         return self._upload_file(
-            file_type=S3FileType.TEMPLATES.value, content=template_body, file_name=template_name, format=format
+            file_type=S3FileType.TEMPLATES, content=template_body, file_name=template_name, format=format
         )
 
     def upload_resources(self, resource_dir, custom_artifacts_name):
@@ -220,42 +218,46 @@ class S3Bucket:
                 AWSApi.instance().s3.upload_fileobj(
                     file_obj=zip_dir(os.path.join(resource_dir, res)),
                     bucket_name=self.name,
-                    key=self.get_object_key(S3FileType.CUSTOM_RESOURCES.value, custom_artifacts_name),
+                    key=self.get_object_key(S3FileType.CUSTOM_RESOURCES, custom_artifacts_name),
                 )
             elif os.path.isfile(path):
                 AWSApi.instance().s3.upload_file(
                     file_path=os.path.join(resource_dir, res),
                     bucket_name=self.name,
-                    key=self.get_object_key(S3FileType.CUSTOM_RESOURCES.value, res),
+                    key=self.get_object_key(S3FileType.CUSTOM_RESOURCES, res),
                 )
 
     def get_config(self, config_name, version_id=None, format=S3FileFormat.YAML):
         """Get config file from S3 bucket."""
-        return self._get_file(
-            file_type=S3FileType.CONFIGS.value, file_name=config_name, version_id=version_id, format=format
+        return self._get_file(file_type=S3FileType.CONFIGS, file_name=config_name, version_id=version_id, format=format)
+
+    def get_config_presigned_url(self, config_name: str):
+        """Get an S3 presigned URL for the config file."""
+        return AWSApi.instance().s3.create_presigned_url(
+            self.name, self.get_object_key(S3FileType.CONFIGS, config_name)
         )
 
     def get_config_url(self, config_name):
         """Get config file http url from S3 bucket."""
-        return self._get_file_url(file_name=config_name, file_type=S3FileType.CONFIGS.value)
+        return self._get_file_url(file_name=config_name, file_type=S3FileType.CONFIGS)
 
     def get_config_s3_url(self, config_name):
         """Get config file s3 url path in S3 bucket."""
-        return self._get_file_s3_url(file_name=config_name, file_type=S3FileType.CONFIGS.value)
+        return self._get_file_s3_url(file_name=config_name, file_type=S3FileType.CONFIGS)
 
     def get_cfn_template(self, template_name, version_id=None, format=S3FileFormat.YAML):
         """Get cfn template from S3 bucket."""
         return self._get_file(
-            file_type=S3FileType.TEMPLATES.value, file_name=template_name, version_id=version_id, format=format
+            file_type=S3FileType.TEMPLATES, file_name=template_name, version_id=version_id, format=format
         )
 
     def get_cfn_template_url(self, template_name):
         """Get cfn template http url from S3 bucket."""
-        return self._get_file_url(file_type=S3FileType.TEMPLATES.value, file_name=template_name)
+        return self._get_file_url(file_type=S3FileType.TEMPLATES, file_name=template_name)
 
     def get_resource_url(self, resource_name):
         """Get custom resource http url from S3 bucket."""
-        return self._get_file_url(file_type=S3FileType.CUSTOM_RESOURCES.value, file_name=resource_name)
+        return self._get_file_url(file_type=S3FileType.CUSTOM_RESOURCES, file_name=resource_name)
 
     # --------------------------------------- S3 private functions --------------------------------------- #
 
