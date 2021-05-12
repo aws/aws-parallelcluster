@@ -4,6 +4,7 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
+    ElasticIp: true
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
@@ -13,7 +14,7 @@ Scheduling:
       ComputeResources:
         - Name: ondemand-i1
           InstanceType: c5.large
-        - Name: ondemand-i1
+        - Name: ondemand-i2
           InstanceType: {{ instance }}
           MinCount: 2
       Networking:
