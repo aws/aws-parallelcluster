@@ -179,7 +179,7 @@ class CloudWatchLoggingClusterState:
                 continue
             elif tags.get("Name", "") == "HeadNode":
                 self._set_head_node_instance(instance)
-            else:
+            elif self.scheduler != "awsbatch":  # AWS Batch Compute instances do not use CloudWatch
                 self._add_compute_instance(instance)
         LOGGER.debug("After getting initial cluster state:\n{0}".format(self._dump_cluster_log_state()))
 
