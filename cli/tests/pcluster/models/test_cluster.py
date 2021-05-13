@@ -80,7 +80,6 @@ class TestCluster:
 
         # Expected tags:
         installed_version = "FakeInstalledVersion"
-        bucket_name = "FakeBucketName"
         tags = existing_tags
         tags["Version"] = installed_version
         expected_tags_list = self._sort_tags(
@@ -104,13 +103,8 @@ class TestCluster:
         ).is_true()
 
         # Test method to retrieve CFN tags
-        tags.update({"parallelcluster:s3_bucket": bucket_name, "parallelcluster:cluster_dir": ARTIFACT_DIRECTORY})
         expected_cfn_tags = self._sort_cfn_tags(
             [{"Key": tag_name, "Value": tag_value} for tag_name, tag_value in tags.items()]
-        )
-        mocker.patch(
-            "pcluster.models.s3_bucket.S3Bucket.name",
-            new_callable=PropertyMock(return_value=bucket_name),
         )
         cfn_tags = self._sort_cfn_tags(cluster._get_cfn_tags())
         assert_that(len(cfn_tags)).is_equal_to(len(expected_cfn_tags))

@@ -10,13 +10,7 @@
 # limitations under the License.
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.constants import (
-    OS_MAPPING,
-    PCLUSTER_CLUSTER_VERSION_TAG,
-    PCLUSTER_S3_BUCKET_TAG,
-    PCLUSTER_S3_CLUSTER_DIR_TAG,
-    PCLUSTER_STACK_PREFIX,
-)
+from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_STACK_PREFIX
 
 
 class ClusterStack(StackInfo):
@@ -41,17 +35,17 @@ class ClusterStack(StackInfo):
     @property
     def s3_bucket_name(self):
         """Return the name of the bucket used to store cluster information."""
-        return self.get_tag(PCLUSTER_S3_BUCKET_TAG)
+        return self._get_param("ResourcesS3Bucket")
 
     @property
     def s3_artifact_directory(self):
         """Return the artifact directory of the bucket used to store cluster information."""
-        return self.get_tag(PCLUSTER_S3_CLUSTER_DIR_TAG)
+        return self._get_param("ArtifactS3RootDirectory")
 
     @property
     def head_node_user(self):
         """Return the output storing cluster user."""
-        return self._get_output("ClusterUser")
+        return self._get_param("ClusterUser")
 
     @property
     def head_node_ip(self):
@@ -61,12 +55,12 @@ class ClusterStack(StackInfo):
     @property
     def scheduler(self):
         """Return the scheduler used in the cluster."""
-        return self._get_output("Scheduler")
+        return self._get_param("Scheduler")
 
     @property
     def log_group_name(self):
         """Return the log group name used in the cluster."""
-        return self._get_output("ClusterCWLogGroup")
+        return self._get_param("ClusterCWLogGroup")
 
     @property
     def original_config_version(self):

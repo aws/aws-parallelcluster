@@ -17,7 +17,13 @@ import time
 import boto3
 import yaml
 from retrying import retry
-from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subprocess_error, run_command
+from utils import (
+    retrieve_cfn_outputs,
+    retrieve_cfn_parameters,
+    retrieve_cfn_resources,
+    retry_if_subprocess_error,
+    run_command,
+)
 
 
 class Cluster:
@@ -32,6 +38,7 @@ class Cluster:
             self.config = yaml.load(conf_file, Loader=yaml.SafeLoader)
         self.has_been_deleted = False
         self.create_complete = False
+        self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
@@ -169,6 +176,16 @@ class Cluster:
         return self.config["Image"]["Os"]
 
     @property
+    def cfn_parameters(self):
+        """
+        Return the CloudFormation stack parameters for the cluster.
+        Parameters are retrieved only once and then cached.
+        """
+        if not self.__cfn_parameters:
+            self.__cfn_parameters = retrieve_cfn_parameters(self.cfn_name, self.region)
+        return self.__cfn_parameters
+
+    @property
     def cfn_outputs(self):
         """
         Return the CloudFormation stack outputs for the cluster.
@@ -190,6 +207,7 @@ class Cluster:
 
     def _reset_cached_properties(self):
         """Discard cached data."""
+        self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
