@@ -95,14 +95,6 @@ create:
         oss: ["alinux"]
         schedulers: ["slurm"]
 createami:
-  test_createami.py::test_createami:
-    dimensions:
-      - regions: ["eu-west-3"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
-      - regions: ["us-gov-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1604", "ubuntu1804"] # alinux2 temporarily disabled due to incompatible device name
   test_createami.py::test_createami_post_install:
     dimensions:
       - regions: ["ap-southeast-2"]
