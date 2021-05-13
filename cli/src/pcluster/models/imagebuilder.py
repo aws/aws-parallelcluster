@@ -461,7 +461,7 @@ class ImageBuilder:
             {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
             {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.s3_artifact_dir},
             {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
-            {"Key": PCLUSTER_IMAGE_CONFIG_TAG, "value": self.config_url},
+            {"key": PCLUSTER_IMAGE_CONFIG_TAG, "value": self.config_url},
         ]
         for tag in tag_list:
             cfn_tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
