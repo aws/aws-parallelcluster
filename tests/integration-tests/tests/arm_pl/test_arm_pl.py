@@ -19,7 +19,7 @@ from remote_command_executor import RemoteCommandExecutor
 
 @pytest.mark.regions(["ap-northeast-1"])
 @pytest.mark.instances(["m6g.xlarge"])
-@pytest.mark.oss(["ubuntu1804", "alinux2", "centos8"])
+@pytest.mark.oss(["ubuntu1804", "alinux2", "centos7", "centos8"])
 @pytest.mark.schedulers(["slurm"])
 def test_arm_pl(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Arm Performance Library"""
@@ -37,6 +37,7 @@ def test_arm_pl(region, scheduler, instance, os, pcluster_config_reader, cluster
     armpl_module_name = f"armpl/{armpl_version}_gcc-{gcc_version}"
     gcc_module_name = f"armpl/gcc-{gcc_version}"
     _test_armpl_examples(
+        os,
         remote_command_executor,
         armpl_module_general_name,
         armpl_module_name,
@@ -47,7 +48,13 @@ def test_arm_pl(region, scheduler, instance, os, pcluster_config_reader, cluster
 
 
 def _test_armpl_examples(
-    remote_command_executor, armpl_module_general_name, armpl_module_name, gcc_module_name, armpl_version, gcc_version
+    os,
+    remote_command_executor,
+    armpl_module_general_name,
+    armpl_module_name,
+    gcc_module_name,
+    armpl_version,
+    gcc_version,
 ):
     armpl_major_minor_version = armpl_version[0:-2]
 
@@ -69,6 +76,9 @@ def _test_armpl_examples(
     assert_that(eula_path_result).contains("license_agreement.txt")
     assert_that(eula_path_result).contains("third_party_licenses.txt")
 
+    # On centos7 we need to use binutils v2.30 for proper architecture detection
+    scl_centos7 = "scl enable devtoolset-8" if os == "centos7" else ""
+
     # Assert pass the example tests
     remote_command_executor.run_remote_command(
         f"sudo chmod 777 /opt/arm/armpl/{armpl_version}/armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples"
@@ -76,7 +86,7 @@ def _test_armpl_examples(
     test_result = remote_command_executor.run_remote_command(
         f"module load {armpl_module_general_name} && "
         f"cd /opt/arm/armpl/{armpl_version}/"
-        f"armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples && make clean && make"
+        f"armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples && make clean && ${scl_centos7} make"
     ).stdout.lower()
     assert_that(test_result).contains("testing: no example difference files were generated")
     assert_that(test_result).contains("test passed ok")
