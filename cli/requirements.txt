@@ -21,3 +21,6 @@ aws-cdk.aws-logs==1.103
 aws-cdk.aws-route53==1.103
 aws-cdk.aws-ssm==1.103
 aws-cdk.aws-sqs==1.103
+werkzeug~=2.0
+connexion~=2.7
+flask~=2.0
