@@ -46,8 +46,9 @@ REQUIRES = [
     "aws-cdk.aws-route53==" + CDK_VERSION,
     "aws-cdk.aws-ssm==" + CDK_VERSION,
     "aws-cdk.aws-sqs==" + CDK_VERSION,
-    "werkzeug~=1.0",
+    "werkzeug~=2.0",
     "connexion~=2.7",
+    "flask~=2.0",
 ]
 
 LAMBDA_REQUIRES = [
