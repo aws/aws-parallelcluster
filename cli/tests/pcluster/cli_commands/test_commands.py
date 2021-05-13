@@ -30,14 +30,10 @@ def _mock_cluster(
 ):
     if bucket_name:
         stack_data = {
-            "Outputs": [
-                {"OutputKey": "ArtifactS3RootDirectory", "OutputValue": artifact_directory},
-                {"OutputKey": "ResourcesS3Bucket", "OutputValue": bucket_name},
-            ],
-            "Tags": [
-                {"Key": "parallelcluster:cluster_dir", "Value": artifact_directory},
-                {"Key": "parallelcluster:s3_bucket", "Value": bucket_name},
-            ],
+            "Parameters": [
+                {"ParameterKey": "ArtifactS3RootDirectory", "ParameterValue": artifact_directory},
+                {"ParameterKey": "ResourcesS3Bucket", "ParameterValue": bucket_name},
+            ]
         }
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
         cluster = dummy_cluster(stack=ClusterStack(stack_data))

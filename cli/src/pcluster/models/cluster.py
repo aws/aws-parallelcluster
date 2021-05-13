@@ -27,12 +27,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.config_patch import ConfigPatch
-from pcluster.constants import (
-    PCLUSTER_CLUSTER_VERSION_TAG,
-    PCLUSTER_S3_BUCKET_TAG,
-    PCLUSTER_S3_CLUSTER_DIR_TAG,
-    PCLUSTER_STACK_PREFIX,
-)
+from pcluster.constants import PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_STACK_PREFIX
 from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -677,7 +672,4 @@ class Cluster:
 
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
-        return [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags] + [
-            {"Key": PCLUSTER_S3_BUCKET_TAG, "Value": self.bucket.name},
-            {"Key": PCLUSTER_S3_CLUSTER_DIR_TAG, "Value": self.bucket.artifact_directory},
-        ]
+        return [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]

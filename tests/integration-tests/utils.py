@@ -78,19 +78,28 @@ def random_alphanumeric(size=16):
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))
 
 
-@retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
+def retrieve_cfn_parameters(stack_name, region):
+    """Retrieve CloudFormation Stack Parameters from a given stack."""
+    return _retrieve_cfn_data(stack_name, region, "Parameter")
+
+
 def retrieve_cfn_outputs(stack_name, region):
     """Retrieve CloudFormation Stack Outputs from a given stack."""
-    logging.debug("Retrieving stack outputs for stack {}".format(stack_name))
+    return _retrieve_cfn_data(stack_name, region, "Output")
+
+
+@retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
+def _retrieve_cfn_data(stack_name, region, data_type):
+    logging.debug("Retrieving stack %s for stack %s", data_type, stack_name)
     try:
         cfn = boto3.client("cloudformation", region_name=region)
         stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
-        outputs = {}
-        for output in stack.get("Outputs", []):
-            outputs[output.get("OutputKey")] = output.get("OutputValue")
-        return outputs
+        result = {}
+        for output in stack.get(f"{data_type}s", []):
+            result[output.get(f"{data_type}Key")] = output.get(f"{data_type}Value")
+        return result
     except Exception as e:
-        logging.warning("Failed retrieving stack outputs for stack {} with exception: {}".format(stack_name, e))
+        logging.warning("Failed retrieving stack %s for stack %s with exception: %s", data_type, stack_name, e)
         raise
 
 

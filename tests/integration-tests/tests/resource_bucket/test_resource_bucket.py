@@ -20,8 +20,8 @@ def test_resource_bucket(region, scheduler, pcluster_config_reader, clusters_fac
         config_file="pcluster.config_{0}.yaml".format(scheduler), resource_bucket=bucket_name
     )
     cluster = clusters_factory(cluster_config)
-    assert_that(cluster.cfn_outputs.get("ResourcesS3Bucket")).is_equal_to(bucket_name)
-    artifact_directory = cluster.cfn_outputs.get("ArtifactS3RootDirectory")
+    assert_that(cluster.cfn_parameters.get("ResourcesS3Bucket")).is_equal_to(bucket_name)
+    artifact_directory = cluster.cfn_parameters.get("ArtifactS3RootDirectory")
     assert_that(artifact_directory).is_not_none()
     # Update cluster with a new resource bucket
     # We need to make sure the bucket name in cfn NEVER gets updated
@@ -31,8 +31,8 @@ def test_resource_bucket(region, scheduler, pcluster_config_reader, clusters_fac
     )
     cluster.config_file = str(updated_config_file)
     cluster.update()
-    assert_that(cluster.cfn_outputs.get("ResourcesS3Bucket")).is_equal_to(bucket_name)
-    assert_that(cluster.cfn_outputs.get("ArtifactS3RootDirectory")).is_equal_to(artifact_directory)
+    assert_that(cluster.cfn_parameters.get("ResourcesS3Bucket")).is_equal_to(bucket_name)
+    assert_that(cluster.cfn_parameters.get("ArtifactS3RootDirectory")).is_equal_to(artifact_directory)
 
     cluster.delete()
     _check_delete_behavior(region, bucket_name, artifact_directory)

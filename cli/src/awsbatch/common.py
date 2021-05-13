@@ -254,11 +254,7 @@ class AWSBatchCliConfig:
                 for output in stack.get("Outputs", []):
                     output_key = output.get("OutputKey")
                     output_value = output.get("OutputValue")
-                    if output_key == "ResourcesS3Bucket":
-                        self.s3_bucket = output_value
-                    elif output_key == "ArtifactS3RootDirectory":
-                        self.artifact_directory = output_value
-                    elif output_key == "BatchComputeEnvironmentArn":
+                    if output_key == "BatchComputeEnvironmentArn":
                         self.compute_environment = output_value
                     elif output_key == "BatchJobQueueArn":
                         self.job_queue = output_value
@@ -270,11 +266,16 @@ class AWSBatchCliConfig:
                         self.job_definition_mnp = output_value
 
                 for parameter in stack.get("Parameters", []):
-                    if parameter.get("OutputKey") == "ProxyServer":
-                        self.proxy = parameter.get("OutputValue")
-                        if not self.proxy == "NONE":
+                    parameter_key = parameter.get("ParameterKey")
+                    parameter_value = parameter.get("ParameterValue")
+                    if parameter_key == "ProxyServer":
+                        self.proxy = parameter_value
+                        if self.proxy != "NONE":
                             log.info("Configured proxy is: %s" % self.proxy)
-                        break
+                    elif parameter_key == "ResourcesS3Bucket":
+                        self.s3_bucket = parameter_value
+                    elif parameter_key == "ArtifactS3RootDirectory":
+                        self.artifact_directory = parameter_value
             else:
                 fail("The cluster is in the (%s) status." % stack_status)
 
