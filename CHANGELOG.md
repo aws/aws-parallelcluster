@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+2.10.4
+------
+
+**CHANGES**
+
+- Upgrade Slurm to version 20.02.7.
+
 2.10.3
 ------
 **ENHANCEMENTS**
