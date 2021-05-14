@@ -314,6 +314,7 @@ Returns an ssh command with the cluster username and IP address pre-populated::
             description=self.description,
             epilog=self.epilog,
             formatter_class=argparse.RawDescriptionHelpFormatter,
+            expects_extra_args=True,
         )
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
