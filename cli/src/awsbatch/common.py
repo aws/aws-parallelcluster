@@ -320,8 +320,8 @@ class AWSBatchCliConfig(object):
                         self.job_definition_mnp = output_value
 
                 for parameter in stack.get("Parameters", []):
-                    if parameter.get("OutputKey") == "ProxyServer":
-                        self.proxy = parameter.get("OutputValue")
+                    if parameter.get("ParameterKey") == "ProxyServer":
+                        self.proxy = parameter.get("ParameterValue")
                         if not self.proxy == "NONE":
                             log.info("Configured proxy is: %s" % self.proxy)
                         break
