@@ -23,6 +23,7 @@ from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
+    IMAGEBUILDER_RESOURCE_NAME_PREFIX,
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_REGEX,
@@ -36,7 +37,6 @@ from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistin
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.templates.imagebuilder_stack import RESOURCE_NAME_PREFIX
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, get_region
 from pcluster.validators.common import FailureLevel
 
@@ -469,7 +469,7 @@ class ImageBuilder:
 
     def _get_log_group_arn(self):
         """Get log group arn."""
-        image_recipe_name = "{0}-{1}".format(RESOURCE_NAME_PREFIX, self.image_id)
+        image_recipe_name = "{0}-{1}".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX, self.image_id)
         return "arn:{0}:logs:{1}:{2}:log-group:/aws/imagebuilder/{3}".format(
             get_partition(), get_region(), AWSApi.instance().sts.get_account_id(), image_recipe_name
         )
