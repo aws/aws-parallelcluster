@@ -13,6 +13,7 @@ operation UpdateCluster {
         UnauthorizedClientError,
         NotFoundException,
         LimitExceededException,
+        DryrunOperationException,
     ]
 }
 

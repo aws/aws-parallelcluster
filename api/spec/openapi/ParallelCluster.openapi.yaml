@@ -143,6 +143,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
+        "412":
+          description: DryrunOperationException 412 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -404,6 +410,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
+        "412":
+          description: DryrunOperationException 412 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -854,6 +866,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
+        "412":
+          description: DryrunOperationException 412 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -1478,6 +1496,12 @@ components:
             $ref: '#/components/schemas/AmiInfo'
       required:
         - items
+    DryrunOperationExceptionResponseContent:
+      type: object
+      description: Communicates that the operation would have succeeded without the dryrun flag.
+      properties:
+        message:
+          type: string
     EC2Instance:
       type: object
       properties:
