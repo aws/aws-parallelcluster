@@ -26,6 +26,12 @@ CHANGELOG
 - Change instance IAM policies to restrict run-instance API to only launching instances in the compute subnet.
 
 
+2.10.4
+------
+**CHANGES**
+
+- Upgrade Slurm to version 20.02.7.
+
 2.10.3
 ------
 **ENHANCEMENTS**
