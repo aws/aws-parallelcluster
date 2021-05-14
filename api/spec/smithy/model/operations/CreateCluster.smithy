@@ -13,6 +13,7 @@ operation CreateCluster {
       ConflictException,
       UnauthorizedClientError,
       LimitExceededException,
+      DryrunOperationException,
     ]
 }
 
