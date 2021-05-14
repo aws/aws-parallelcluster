@@ -113,6 +113,19 @@ class TestComputeFleetStatusManager:
                 True,
             ),
             (
+                ComputeFleetStatus.STOP_REQUESTED,
+                [
+                    ComputeFleetStatus.PROTECTED,
+                    ComputeFleetStatus.STOP_REQUESTED,
+                    ComputeFleetStatus.STOPPING,
+                    ComputeFleetStatus.STOPPED,
+                ],
+                [None],
+                None,
+                None,
+                True,
+            ),
+            (
                 ComputeFleetStatus.START_REQUESTED,
                 [
                     ComputeFleetStatus.STOPPED,
