@@ -236,7 +236,7 @@ def ssh(args, extra_args):
             else:
                 LOGGER.info(log_message)
         else:
-            utils.error(f"Unable to connect to the cluster.\n{result.message}")
+            utils.error(f"Unable to connect to the cluster {args.cluster_name}.\n{result.message}")
 
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
