@@ -821,35 +821,35 @@
     "AWSRegionOS2AMIarm64": {
       "af-south-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0a3b5308c1ce9cc86",
+        "alinux2": "ami-0ae8652bd168684f3",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0f0ef4b874984d859",
+        "centos8": "ami-0d8410c47fc3112e0",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0f0ad05b8452217e3"
+        "ubuntu1804": "ami-09037fe1c42341264"
       },
       "ap-east-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-033ebb4a13a6cb8c7",
+        "alinux2": "ami-05f622f2fa7c4c305",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0967f1b75193b9ef8",
+        "centos8": "ami-0bce52242167b32ff",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0c8359beaf4218280"
+        "ubuntu1804": "ami-0c96ab82a56224d70"
       },
       "ap-northeast-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-09a610daddf0bcb7c",
+        "alinux2": "ami-054390b522f9d6b55",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-043f80ff53727822b",
+        "centos8": "ami-0326091ad900b6ae6",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0a32bdc0015b938fa"
+        "ubuntu1804": "ami-085bea02e79a275e7"
       },
       "ap-northeast-2": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-033bf89c9ba049f3c",
+        "alinux2": "ami-05ca3f3af04970c7b",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-01550d1184a9415ac",
+        "centos8": "ami-0cbf14503529037ac",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-049500f3d9c6e9503"
+        "ubuntu1804": "ami-0442d4cfe553d6bd5"
       },
       "ap-northeast-3": {
         "alinux": "UNSUPPORTED",
@@ -861,197 +861,197 @@
       },
       "ap-south-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0abfa15f22cd87d63",
+        "alinux2": "ami-0b25ef945709f5579",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-040524979cf5f9779",
+        "centos8": "ami-01600e672cfee57ee",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0f450123367db6d88"
+        "ubuntu1804": "ami-06818818b274d154f"
       },
       "ap-southeast-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-00bc9877df67c41eb",
+        "alinux2": "ami-01876b73270099d01",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-01f462a53c6b81081",
+        "centos8": "ami-017fd95ac6d2eb895",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-00dcdfb3223769232"
+        "ubuntu1804": "ami-08a6fcbc9c129dee7"
       },
       "ap-southeast-2": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0f546c6041ea315af",
+        "alinux2": "ami-021c97acdaeefa550",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-015b54c953a0a8604",
+        "centos8": "ami-0fb175eb0fb41f248",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0f0d7e2cac93525dd"
+        "ubuntu1804": "ami-071157ca383286292"
       },
       "ca-central-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-062f4994eb93f639a",
+        "alinux2": "ami-01cc5030fd1239fe7",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-040c4773421c61c23",
+        "centos8": "ami-085b789a3061fab78",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0d4e6f1370a8b43ea"
+        "ubuntu1804": "ami-06207e8ed2e97394c"
       },
       "cn-north-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-093d3fa3b75d957b6",
+        "alinux2": "ami-0a4381163ee1f004f",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-084be3a6513848932"
+        "ubuntu1804": "ami-0582fcf140044dcd7"
       },
       "cn-northwest-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0f9aa118009347ec2",
+        "alinux2": "ami-04edf9397d06b1b98",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0fe0d0ee2b57516de"
+        "ubuntu1804": "ami-0cc92afadad348a45"
       },
       "eu-central-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0b55ad746521385d4",
+        "alinux2": "ami-046f617a9c90130fd",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-057c9f9ed7e804474",
+        "centos8": "ami-062219530533a937e",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0af37b0d5d1bcb5e6"
+        "ubuntu1804": "ami-0390471e8a95dccbc"
       },
       "eu-north-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0da512daf61ac9842",
+        "alinux2": "ami-03dba52d81e513071",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-06736aeafffeaa76f",
+        "centos8": "ami-09daecf523450087f",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0496af70c81333362"
+        "ubuntu1804": "ami-0dac54546a6b8239a"
       },
       "eu-south-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0d9544cb99ee97674",
+        "alinux2": "ami-06cbdc297c2b3c597",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0dc01b22b7cd63bca",
+        "centos8": "ami-06c7f17ecf0d1912d",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0619da301c84889d2"
+        "ubuntu1804": "ami-0fa57e8469cfbc71e"
       },
       "eu-west-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-024f1e989cb9b5178",
+        "alinux2": "ami-00c2aad506cc966c2",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-02297e4ab74e9574a",
+        "centos8": "ami-0bfc1302346fc0bdd",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-074234d97b292ebe5"
+        "ubuntu1804": "ami-022355730feadc8ed"
       },
       "eu-west-2": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0101d06f18beeefa2",
+        "alinux2": "ami-01c1c956ab6b1a5e2",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0af6b221ba980e820",
+        "centos8": "ami-0a554cfbc6f493b8b",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0954d42d4d3eaebc0"
+        "ubuntu1804": "ami-0df11f238c365de84"
       },
       "eu-west-3": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0310b3a72933ed09b",
+        "alinux2": "ami-0edaa940720047009",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0427c956bf1557828",
+        "centos8": "ami-07f9ee48b3275134d",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0160709e63695ca25"
+        "ubuntu1804": "ami-074e3d19d16a792e8"
       },
       "me-south-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0e05a252e991c861c",
+        "alinux2": "ami-0cd0a5dea72889081",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0ca4b3dcc2ecb5c85",
+        "centos8": "ami-02d5107f066b0b734",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0f141ed01a8a5cfbc"
+        "ubuntu1804": "ami-0c554b35d53ad3ebf"
       },
       "sa-east-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-08f09bf64cd83d8d6",
+        "alinux2": "ami-02c01e930efc305fb",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0410b830e12af1014",
+        "centos8": "ami-043cee8474e331f15",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-00d16b596d67fc750"
+        "ubuntu1804": "ami-0a76484b50f285c87"
       },
       "us-east-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-03d2ff9d625035910",
+        "alinux2": "ami-00c32efc4e86df429",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-08683f44da1ee1bb1",
+        "centos8": "ami-0012b0e32aeeb20bc",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-06efe6e4450687726"
+        "ubuntu1804": "ami-0c39beb7642835b23"
       },
       "us-east-2": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-02de423989d59d02d",
+        "alinux2": "ami-0d0b42c26da3de35e",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0f58bac76dca084c1",
+        "centos8": "ami-0b4fa48a1683f863f",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-08277c4b8f7d9c5c5"
+        "ubuntu1804": "ami-08c3a90b143349b7d"
       },
       "us-gov-east-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-03d2799fe365e57bf",
+        "alinux2": "ami-0159e9d1b85f662a9",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0aa050c6a04f26eea"
+        "ubuntu1804": "ami-0dfa1a7bd99115541"
       },
       "us-gov-west-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-09b09aa7411694636",
+        "alinux2": "ami-0c45b37651d914887",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0db90dbbd99e1be63"
+        "ubuntu1804": "ami-08c53d6c71a0a7a86"
       },
       "us-west-1": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-0332da77d450a5210",
+        "alinux2": "ami-09095fb50533f8bac",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-036c99570c062a562",
+        "centos8": "ami-0c56f4d1503d0eac6",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0a2be69bcc894dc03"
+        "ubuntu1804": "ami-032452eb8eab63a5d"
       },
       "us-west-2": {
         "alinux": "UNSUPPORTED",
-        "alinux2": "ami-03a4ee3228227fa5b",
+        "alinux2": "ami-0b98e2b1f524778dc",
         "centos7": "UNSUPPORTED",
-        "centos8": "ami-0f5fa32ffd795839a",
+        "centos8": "ami-08f28b0c18a48620c",
         "ubuntu1604": "UNSUPPORTED",
-        "ubuntu1804": "ami-0f7d62a5bb5d39717"
+        "ubuntu1804": "ami-06733b488c5ca2d78"
       }
     },
     "AWSRegionOS2AMIx86": {
       "af-south-1": {
-        "alinux": "ami-0a751c644e7ae5009",
-        "alinux2": "ami-0d2ec8a7130be85ea",
-        "centos7": "ami-0b4a93674c318adc9",
-        "centos8": "ami-0a9cc4721bcc58748",
-        "ubuntu1604": "ami-03483d82f8b19ec72",
-        "ubuntu1804": "ami-0bd52f7a810123dd4"
+        "alinux": "ami-0a53ef220d6e020eb",
+        "alinux2": "ami-0492363e938a0a97e",
+        "centos7": "ami-0ac62a0e823c8c42e",
+        "centos8": "ami-004fa354de5065c5b",
+        "ubuntu1604": "ami-0bf4227db045f7bf9",
+        "ubuntu1804": "ami-0ae93c07553adfc4f"
       },
       "ap-east-1": {
-        "alinux": "ami-053c854ee740648a8",
-        "alinux2": "ami-053d88beddcadc743",
-        "centos7": "ami-0ce7279e7ab0788f0",
-        "centos8": "ami-03dbdc24f67f224f0",
-        "ubuntu1604": "ami-066fed9b1b0823101",
-        "ubuntu1804": "ami-0bacf8a6303e162c2"
+        "alinux": "ami-02b3d3b35592f1e7d",
+        "alinux2": "ami-06f42bcea8114c8be",
+        "centos7": "ami-0d9a73d7e905cdf92",
+        "centos8": "ami-03a80478bb498d067",
+        "ubuntu1604": "ami-0a5db2994079e8e7d",
+        "ubuntu1804": "ami-06127ee6e8c5aead8"
       },
       "ap-northeast-1": {
-        "alinux": "ami-03cd079b975ff3f23",
-        "alinux2": "ami-09963736d2168ec73",
-        "centos7": "ami-0a7684760aa62c79f",
-        "centos8": "ami-0166944ed3705f42e",
-        "ubuntu1604": "ami-0881f39ea6aac4fb1",
-        "ubuntu1804": "ami-0bbc8acb6d015031c"
+        "alinux": "ami-0154c0ccadf30afd7",
+        "alinux2": "ami-0833248af2d826f84",
+        "centos7": "ami-0ddd78201f66fed77",
+        "centos8": "ami-0333dc86fb0a479d3",
+        "ubuntu1604": "ami-0c8e2a3614ba3143b",
+        "ubuntu1804": "ami-055b5f7c8b888d85e"
       },
       "ap-northeast-2": {
-        "alinux": "ami-0800653c902742487",
-        "alinux2": "ami-000bba6edee9baad6",
-        "centos7": "ami-0d4dfa7e5d7ec9c09",
-        "centos8": "ami-0cf87127aed3d2743",
-        "ubuntu1604": "ami-0a3de1e67dfffc2e5",
-        "ubuntu1804": "ami-0136460ad4d11e79e"
+        "alinux": "ami-0e0af02cc03e9ff4c",
+        "alinux2": "ami-04b65ff2bb5f7c167",
+        "centos7": "ami-0e03b07c86087b7c3",
+        "centos8": "ami-056c2362d29850c83",
+        "ubuntu1604": "ami-04c3a71ad066bd883",
+        "ubuntu1804": "ami-02fa29a113072f4bd"
       },
       "ap-northeast-3": {
         "alinux": "UNSUPPORTED",
@@ -1062,164 +1062,164 @@
         "ubuntu1804": "UNSUPPORTED"
       },
       "ap-south-1": {
-        "alinux": "ami-0fa6f71af2f0c58e3",
-        "alinux2": "ami-068e91f2c4123d0c4",
-        "centos7": "ami-0d7b3d22982242150",
-        "centos8": "ami-00d7fb17c81f6a970",
-        "ubuntu1604": "ami-0e3f3dc8e18e27cca",
-        "ubuntu1804": "ami-03bc31168d4b1e042"
+        "alinux": "ami-08384febe2d8595d9",
+        "alinux2": "ami-076df33ecf633c513",
+        "centos7": "ami-00a32cadcf734d224",
+        "centos8": "ami-066d1ec3742f0d145",
+        "ubuntu1604": "ami-0fe2e6b3379bb6d4f",
+        "ubuntu1804": "ami-0eeb4441d3cb369ae"
       },
       "ap-southeast-1": {
-        "alinux": "ami-0c901625b641e72cb",
-        "alinux2": "ami-0d48f85576843313a",
-        "centos7": "ami-0c8386a2dd6007a0d",
-        "centos8": "ami-0fd89639a6d4f1e1b",
-        "ubuntu1604": "ami-0a78ba13dc9ea8d83",
-        "ubuntu1804": "ami-089fe7d1d6c16f83a"
+        "alinux": "ami-0d88220b1efb5fdc6",
+        "alinux2": "ami-003ba8880edd465a4",
+        "centos7": "ami-04d26a15b5364c9bb",
+        "centos8": "ami-09cb42c339f5a5586",
+        "ubuntu1604": "ami-0234750b4c15a52f3",
+        "ubuntu1804": "ami-0c19691fd10c9450e"
       },
       "ap-southeast-2": {
-        "alinux": "ami-0282f61025b8bac08",
-        "alinux2": "ami-04723583096b4a083",
-        "centos7": "ami-0308662518ac647a7",
-        "centos8": "ami-0ee52e0f755fd9afb",
-        "ubuntu1604": "ami-04c2582f60fd3bca3",
-        "ubuntu1804": "ami-011576fe0a9f751f4"
+        "alinux": "ami-0f17ce5da91bdc3c1",
+        "alinux2": "ami-0aed9829b5a29d091",
+        "centos7": "ami-0698b03d06ab04975",
+        "centos8": "ami-00290ba14fbcfe206",
+        "ubuntu1604": "ami-0f2f838f5fe2c2e21",
+        "ubuntu1804": "ami-04308f8c46c0369f5"
       },
       "ca-central-1": {
-        "alinux": "ami-02d4aeb0182e8ee47",
-        "alinux2": "ami-07077c769c80f8f6c",
-        "centos7": "ami-07b7f309dd2f071c2",
-        "centos8": "ami-0373008886a438a7e",
-        "ubuntu1604": "ami-041cccf519256061d",
-        "ubuntu1804": "ami-0110f75ebb43e7af3"
+        "alinux": "ami-036c9a4309b50d8b4",
+        "alinux2": "ami-0df96d96b03f3db26",
+        "centos7": "ami-041055ac2346e5299",
+        "centos8": "ami-0fdaf3ffdc422f7ce",
+        "ubuntu1604": "ami-00c4386fcaf0c77bb",
+        "ubuntu1804": "ami-04fcfce08c6273e21"
       },
       "cn-north-1": {
-        "alinux": "ami-0f87740ccb160c6cb",
-        "alinux2": "ami-0a85abd19e8dbde8f",
+        "alinux": "ami-01e659e881f4a98b4",
+        "alinux2": "ami-0101f31fbdcd7a97b",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
-        "ubuntu1604": "ami-00a5e4fee535213f9",
-        "ubuntu1804": "ami-00e26a31e421ff799"
+        "ubuntu1604": "ami-0f060d8796a7011b3",
+        "ubuntu1804": "ami-04411bc152945662d"
       },
       "cn-northwest-1": {
-        "alinux": "ami-0eccfed26651d3133",
-        "alinux2": "ami-0e39b98621a12b45f",
+        "alinux": "ami-0a039c40808365e85",
+        "alinux2": "ami-01d3295801c18a7ca",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
-        "ubuntu1604": "ami-0c76acb7da87ec2b3",
-        "ubuntu1804": "ami-013f462376685a98f"
+        "ubuntu1604": "ami-05631e17932566529",
+        "ubuntu1804": "ami-08a54b16a0bae581e"
       },
       "eu-central-1": {
-        "alinux": "ami-0b801c8e3cd365f0f",
-        "alinux2": "ami-09f888397707bf4e1",
-        "centos7": "ami-0986e5f693b64b298",
-        "centos8": "ami-0b5b7e9492242e844",
-        "ubuntu1604": "ami-099fe034aacb71046",
-        "ubuntu1804": "ami-0dcd3b22a105abc4e"
+        "alinux": "ami-0d4d68482924b64c3",
+        "alinux2": "ami-0edca376e1abcee1e",
+        "centos7": "ami-0213a3307c0c4e08c",
+        "centos8": "ami-0448393d2a0ed6691",
+        "ubuntu1604": "ami-05073129be59c7395",
+        "ubuntu1804": "ami-0b25399c43b1e6073"
       },
       "eu-north-1": {
-        "alinux": "ami-0959f1e55a82529e6",
-        "alinux2": "ami-08e1f388e399be752",
-        "centos7": "ami-0332f7dbd92251065",
-        "centos8": "ami-02a949cd51957ce3b",
-        "ubuntu1604": "ami-0f9236963e99f06d1",
-        "ubuntu1804": "ami-0dc23990192b498d5"
+        "alinux": "ami-026973b96d4f225be",
+        "alinux2": "ami-0f20bc4f0a2e53704",
+        "centos7": "ami-0ac31d064f0e20a24",
+        "centos8": "ami-001aa7910f00c9118",
+        "ubuntu1604": "ami-09660e79ad3f6bcd7",
+        "ubuntu1804": "ami-04cefe480409bb100"
       },
       "eu-south-1": {
-        "alinux": "ami-0d2d65a9ac74bb343",
-        "alinux2": "ami-09d5bf5682e81a588",
-        "centos7": "ami-0d43035af304608cb",
-        "centos8": "ami-0c6f3bc1f245fc907",
-        "ubuntu1604": "ami-0dfeafef45a405ead",
-        "ubuntu1804": "ami-067043f38f96304d5"
+        "alinux": "ami-0f515279c7e93938d",
+        "alinux2": "ami-0999ab2b50fe268e8",
+        "centos7": "ami-06932fae07d685394",
+        "centos8": "ami-0dc8f9bab39e1c030",
+        "ubuntu1604": "ami-0f86557825872192c",
+        "ubuntu1804": "ami-01017e46f294de104"
       },
       "eu-west-1": {
-        "alinux": "ami-07b3deaeb0b8db336",
-        "alinux2": "ami-0ec8f82c7c10f1b32",
-        "centos7": "ami-09cb82b6fa49604ca",
-        "centos8": "ami-09889c378257de39b",
-        "ubuntu1604": "ami-033ed53321a27538b",
-        "ubuntu1804": "ami-039baba38e132f27b"
+        "alinux": "ami-00fe67c3a9eba766e",
+        "alinux2": "ami-0960a2b2bc3354e21",
+        "centos7": "ami-01725f8a02a13db16",
+        "centos8": "ami-0be7ce1b2009c48d7",
+        "ubuntu1604": "ami-0c7cb5d254e8d0a14",
+        "ubuntu1804": "ami-082fc76bae38d94f6"
       },
       "eu-west-2": {
-        "alinux": "ami-0c1577ef887aa1342",
-        "alinux2": "ami-046602fa0f5b150d3",
-        "centos7": "ami-0a2f789f5026a44f7",
-        "centos8": "ami-056987c99e6ceab63",
-        "ubuntu1604": "ami-01410c2a94cdda8cc",
-        "ubuntu1804": "ami-01c78309dd1b591d3"
+        "alinux": "ami-0078c127644006789",
+        "alinux2": "ami-09af88b3c29693ebb",
+        "centos7": "ami-076656441e97a8b14",
+        "centos8": "ami-0fb02cfe2b0393700",
+        "ubuntu1604": "ami-075a4ffec27a04987",
+        "ubuntu1804": "ami-07fe00ff90675f471"
       },
       "eu-west-3": {
-        "alinux": "ami-0192576ad59646274",
-        "alinux2": "ami-0829f83dcf9b3932a",
-        "centos7": "ami-01d0ec05c16bc0f93",
-        "centos8": "ami-0335c6c67edfa6e46",
-        "ubuntu1604": "ami-014ef15accfae3aee",
-        "ubuntu1804": "ami-0e347ffda7a61a10f"
+        "alinux": "ami-0e73d12ef4e09f205",
+        "alinux2": "ami-0d189c087b57e2f34",
+        "centos7": "ami-00dd73ecac5423335",
+        "centos8": "ami-09f9f4c17a08a121a",
+        "ubuntu1604": "ami-0f78f4a82591123f7",
+        "ubuntu1804": "ami-03ecd5d0bbc65018f"
       },
       "me-south-1": {
-        "alinux": "ami-05eb2a216a89414aa",
-        "alinux2": "ami-03d661f23afbb0689",
-        "centos7": "ami-0ecece0d44861deac",
-        "centos8": "ami-0df056c7eb2d3d66d",
-        "ubuntu1604": "ami-0ea4ac18ebdd65bbb",
-        "ubuntu1804": "ami-079c5da3557d967ab"
+        "alinux": "ami-03124ec55fbe2b71f",
+        "alinux2": "ami-0902401acd7fdea89",
+        "centos7": "ami-05ffbe7bd5e3095d6",
+        "centos8": "ami-0acce2ed315358503",
+        "ubuntu1604": "ami-023652d8e8f97906f",
+        "ubuntu1804": "ami-0a811b7ac2b870ef4"
       },
       "sa-east-1": {
-        "alinux": "ami-0f9b906ae9fbb4125",
-        "alinux2": "ami-00af22770d610e27b",
-        "centos7": "ami-03de380f8612dfed1",
-        "centos8": "ami-05509d3ac09edb280",
-        "ubuntu1604": "ami-0ec71028409a4637d",
-        "ubuntu1804": "ami-09d8c02d3f6210625"
+        "alinux": "ami-03a734c34dec94219",
+        "alinux2": "ami-0f1b13c34f777b326",
+        "centos7": "ami-044e0736104925db7",
+        "centos8": "ami-041c1a1cd3afea1ba",
+        "ubuntu1604": "ami-007091442749b9000",
+        "ubuntu1804": "ami-0351cb8e2c34772ec"
       },
       "us-east-1": {
-        "alinux": "ami-05292e4eceb936135",
-        "alinux2": "ami-09b71f2059826c356",
-        "centos7": "ami-0ba5dd09f3098afe1",
-        "centos8": "ami-0e84c4b8ef8a22327",
-        "ubuntu1604": "ami-0b73bf704c7be8d4b",
-        "ubuntu1804": "ami-0dea796ee47cbf9fe"
+        "alinux": "ami-0761b5ca646968a27",
+        "alinux2": "ami-043bed31bde73d741",
+        "centos7": "ami-0dd5f4f618a061968",
+        "centos8": "ami-0598a2f18554d1972",
+        "ubuntu1604": "ami-0a83bf2ed4a0bbb1c",
+        "ubuntu1804": "ami-095348d25d5081d12"
       },
       "us-east-2": {
-        "alinux": "ami-09aa98df46de2d5f3",
-        "alinux2": "ami-07d6aeb301571f155",
-        "centos7": "ami-046c036297c0c499c",
-        "centos8": "ami-0939b61a8fcea2c15",
-        "ubuntu1604": "ami-059c5cdd3074c8ce3",
-        "ubuntu1804": "ami-095471c591db6d16a"
+        "alinux": "ami-0b095bd9790540323",
+        "alinux2": "ami-00d8bdc53d410b012",
+        "centos7": "ami-05690d4a043d92860",
+        "centos8": "ami-0346552e1584e526e",
+        "ubuntu1604": "ami-0731dc3dd86271633",
+        "ubuntu1804": "ami-00c145829972fe4f8"
       },
       "us-gov-east-1": {
-        "alinux": "ami-0c406d1163178d4f7",
-        "alinux2": "ami-03f2037d804bf600e",
+        "alinux": "ami-0234ba6c0af57c46c",
+        "alinux2": "ami-0e25153391dbabb76",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
-        "ubuntu1604": "ami-0c9c0f1a74386ec86",
-        "ubuntu1804": "ami-0cdb3535d9b514717"
+        "ubuntu1604": "ami-06ed5e2a9c9732d07",
+        "ubuntu1804": "ami-0328268dd2788cdd3"
       },
       "us-gov-west-1": {
-        "alinux": "ami-0fd617ef015f64f00",
-        "alinux2": "ami-0c396dd94088b8c5e",
+        "alinux": "ami-0dfd6517b5ae6df39",
+        "alinux2": "ami-0576f9d3f2f7fd25d",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
-        "ubuntu1604": "ami-03710db27ad2457ac",
-        "ubuntu1804": "ami-032755552a2ac3b8f"
+        "ubuntu1604": "ami-010980bebcc2983a0",
+        "ubuntu1804": "ami-01c024579c1ee8aa8"
       },
       "us-west-1": {
-        "alinux": "ami-0066ad831fe1a0ae7",
-        "alinux2": "ami-08cfc88eaccdb7526",
-        "centos7": "ami-0ea4d0c37f8251a97",
-        "centos8": "ami-0c018efad56753651",
-        "ubuntu1604": "ami-082049eae45244648",
-        "ubuntu1804": "ami-05186dd723dceecd4"
+        "alinux": "ami-067dc7804ecbadaca",
+        "alinux2": "ami-0f1328eb1e03d7fb2",
+        "centos7": "ami-04ce60aea4137705b",
+        "centos8": "ami-030eb79b692fdfd0a",
+        "ubuntu1604": "ami-06b8db5967945c599",
+        "ubuntu1804": "ami-071d4e66f7384c51a"
       },
       "us-west-2": {
-        "alinux": "ami-012e2b24ff138febd",
-        "alinux2": "ami-02d7cf7707721a19b",
-        "centos7": "ami-09c7a57de155645c4",
-        "centos8": "ami-09e817cdc0b4f6306",
-        "ubuntu1604": "ami-0d3e265b398c34e07",
-        "ubuntu1804": "ami-0e99bcef3ed1d7df2"
+        "alinux": "ami-0bfddf30f9782d0ff",
+        "alinux2": "ami-0810fa0629dfa72aa",
+        "centos7": "ami-002aec2dda2fa4123",
+        "centos8": "ami-0b3c4ad599894cef9",
+        "ubuntu1604": "ami-0a84f0aa665fd2f0c",
+        "ubuntu1804": "ami-060036528b540166e"
       }
     },
     "OSFeatures": {
