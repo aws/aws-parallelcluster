@@ -108,12 +108,12 @@ Scheduling:
           Args:
             - DEF
       ComputeResources:
-        - Name: compute-resource-31
+        - Name: queue3-i1
           InstanceType: c5n.18xlarge
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
-        - Name: compute-resource-32
+        - Name: queue3-i2
           InstanceType: t2.xlarge
           DisableSimultaneousMultithreading: true
           Efa:
