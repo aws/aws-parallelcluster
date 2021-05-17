@@ -21,7 +21,7 @@ def readme():
 
 
 VERSION = "3.0.0"
-CDK_VERSION = "1.94"
+CDK_VERSION = "1.103"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
@@ -30,22 +30,22 @@ REQUIRES = [
     "PyYAML>=5.3.1",
     "jinja2>=2.11.0",
     "marshmallow~=3.10",
-    "aws-cdk.core~=" + CDK_VERSION,
-    "aws-cdk.aws-batch~=" + CDK_VERSION,
-    "aws_cdk.aws-cloudwatch~=" + CDK_VERSION,
-    "aws-cdk.aws-codebuild~=" + CDK_VERSION,
-    "aws-cdk.aws-dynamodb~=" + CDK_VERSION,
-    "aws-cdk.aws-ec2~=" + CDK_VERSION,
-    "aws-cdk.aws-efs~=" + CDK_VERSION,
-    "aws-cdk.aws-events~=" + CDK_VERSION,
-    "aws-cdk.aws-fsx~=" + CDK_VERSION,
-    "aws-cdk.aws-imagebuilder~=" + CDK_VERSION,
-    "aws-cdk.aws-iam~=" + CDK_VERSION,
-    "aws_cdk.aws-lambda~=" + CDK_VERSION,
-    "aws-cdk.aws-logs~=" + CDK_VERSION,
-    "aws-cdk.aws-route53~=" + CDK_VERSION,
-    "aws-cdk.aws-ssm~=" + CDK_VERSION,
-    "aws-cdk.aws-sqs~=" + CDK_VERSION,
+    "aws-cdk.core==" + CDK_VERSION,
+    "aws-cdk.aws-batch==" + CDK_VERSION,
+    "aws_cdk.aws-cloudwatch==" + CDK_VERSION,
+    "aws-cdk.aws-codebuild==" + CDK_VERSION,
+    "aws-cdk.aws-dynamodb==" + CDK_VERSION,
+    "aws-cdk.aws-ec2==" + CDK_VERSION,
+    "aws-cdk.aws-efs==" + CDK_VERSION,
+    "aws-cdk.aws-events==" + CDK_VERSION,
+    "aws-cdk.aws-fsx==" + CDK_VERSION,
+    "aws-cdk.aws-imagebuilder==" + CDK_VERSION,
+    "aws-cdk.aws-iam==" + CDK_VERSION,
+    "aws_cdk.aws-lambda==" + CDK_VERSION,
+    "aws-cdk.aws-logs==" + CDK_VERSION,
+    "aws-cdk.aws-route53==" + CDK_VERSION,
+    "aws-cdk.aws-ssm==" + CDK_VERSION,
+    "aws-cdk.aws-sqs==" + CDK_VERSION,
     "werkzeug~=1.0",
     "connexion~=2.7",
 ]
