@@ -1,0 +1,508 @@
+name: ParallelClusterValidate
+description: Validate ParallelCluster AMI
+schemaVersion: 1.0
+
+constants:
+  - CookbookDefaultFile:
+      type: string
+      value: /etc/chef/cookbooks/aws-parallelcluster/attributes/default.rb
+
+phases:
+  - name: validate
+    steps:
+      ### basic ###
+      - name: OperatingSystemRelease
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              FILE=/etc/os-release
+              if [ -e ${FILE} ]; then
+                . ${FILE}
+                echo "${ID}${VERSION_ID:+.${VERSION_ID}}"
+              else
+                echo "The file '${FILE}' does not exist. Failing build."
+                exit 1
+              fi
+
+      # Get uniformed OS name
+      - name: OperatingSystemName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              RELEASE='{{ validate.OperatingSystemRelease.outputs.stdout }}'
+
+              if [ `echo "${RELEASE}" | grep -w '^amzn\.2'` ]; then
+                OS='alinux2'
+              elif [ `echo "${RELEASE}" | grep '^centos\.7'` ]; then
+                OS='centos7'
+              elif [ `echo "${RELEASE}" | grep '^centos\.8'` ]; then
+                OS='centos8'
+              elif [ `echo "${RELEASE}" | grep '^ubuntu\.18'` ]; then
+                OS='ubuntu1804'
+              elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
+                OS='ubuntu2004'
+              else
+                echo "Operating System '${RELEASE}' is not supported. Failing build."
+                exit 1
+              fi
+
+              echo ${OS}
+
+      # Get input base AMI Architecture
+      - name: OperatingSystemArchitecture
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              ARCH=$(uname -m)
+              case ${ARCH} in
+                'x86_64')
+                  echo 'x86_64'
+                  ;;
+                'aarch64')
+                  echo 'arm64'
+                  ;;
+                *)
+                  echo "The '${ARCH}' architecture is not supported. Failing build."
+                  exit 1
+                  ;;
+              esac
+
+      # Get platform name
+      - name: PlatformName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              OS='{{ validate.OperatingSystemName.outputs.stdout }}'
+
+              if [ `echo "${OS}" | grep -E '^(alinux|centos)'` ]; then
+                PLATFORM='RHEL'
+              elif [ `echo "${OS}" | grep -E '^ubuntu'` ]; then
+                PLATFORM='DEBIAN'
+              fi
+
+              echo ${PLATFORM}
+
+      # Get AWS region
+      - name: AWSRegion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              IMDS_TOKEN=$(curl --retry 3 --retry-delay 0 -s --fail -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+              AVAIL_ZONE=$(curl --retry 3 --retry-delay 0 -s --fail -H "X-aws-ec2-metadata-token: ${IMDS_TOKEN}" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+              AWS_REGION=${AVAIL_ZONE::-1}
+              echo ${AWS_REGION}
+
+      ### condition ###
+      - name: IntelMPISupported
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              if [ {{ validate.OperatingSystemArchitecture.outputs.stdout }} != 'arm64' ]; then
+                echo "true"
+              else
+                echo "false"
+              fi
+
+      - name: ArmPLSupported
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              if [ {{ validate.OperatingSystemArchitecture.outputs.stdout }} == 'arm64' ]; then
+                echo "true"
+              else
+                echo "false"
+              fi
+
+      - name: LustreSupported
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              ARCHITECTURE='{{ validate.OperatingSystemArchitecture.outputs.stdout }}'
+              OS='{{ validate.OperatingSystemName.outputs.stdout }}'
+              if [ ${ARCHITECTURE} == 'arm64' ] && [[ ${OS} =~ ^(ubuntu(18|20)04|centos8|alinux2)$ ]] || [ ${ARCHITECTURE} == 'x86_64' ]; then
+                echo "true"
+              else
+                echo "false"
+              fi
+
+      ### version ###
+      - name: PythonVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['python-version']" {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: MungeVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['munge']['munge_version']" {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: NvidiaDriverVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['nvidia']['driver_version']" {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: CudaVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['nvidia']['cuda_version']" {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: ArmPLVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['armpl']['major_minor_version']" {{ CookbookDefaultFile }})
+              MAJOR_MINOR_VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              VERSION+="${MAJOR_MINOR_VERSION}."
+              PATTERN=$(grep -F "default['cluster']['armpl']['patch_version'] = '0'" {{ CookbookDefaultFile }})
+              PATCH_VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              VERSION+="${PATCH_VERSION}"
+              echo ${VERSION}
+
+      - name: ArmPLGCCVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['armpl']['gcc']['major_minor_version']" {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      ### utils ###
+      - name: NvSwitches
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              nvswitches=$(lspci -d 10de:1af1 | wc -l)
+              echo "$nvswitches"
+
+      ### path ###
+      - name: SystemPyenvRoot
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['base_dir']" {{ CookbookDefaultFile }})
+              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              PYENV_ROOT+="${BASE_DIR}/pyenv"
+              echo ${PYENV_ROOT}
+
+      - name: CookbookVirtualenvPath
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              echo "{{ validate.SystemPyenvRoot.outputs.stdout }}/versions/{{ validate.PythonVersion.outputs.stdout }}/envs/cookbook_virtualenv"
+
+      - name: NodeVirtualenvPath
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              echo "{{ validate.SystemPyenvRoot.outputs.stdout }}/versions/{{ validate.PythonVersion.outputs.stdout }}/envs/node_virtualenv"
+
+      ### validate && test ###
+      # AWS CLI
+      - name: AWSCli
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              OS="{{ validate.CookbookVirtualenvPath.outputs.stdout }}"
+              if [[ ${OS} =~ ^alinux ]]; then
+                username="ec2-user"
+              elif [[ ${OS} =~ ^centos ]]; then
+                username="centos"
+              elif [[ ${OS} =~ ^ubuntu ]]; then
+                username="ubuntu"
+              fi
+              export PATH="/usr/local/bin:/usr/bin/:${PATH}"
+
+              echo "execute awscli as user"
+              su - ${username} -c "aws --version"
+
+              echo "execute awscli as root"
+              aws --version
+              [[ $? -ne 0 ]] && echo "fail to execute awscli as root" && exit 1
+
+              echo "execute awscli as root in cookbook virtualenv"
+              {{ validate.CookbookVirtualenvPath.outputs.stdout }}/bin/aws --version
+              [[ $? -ne 0 ]] && echo "fail to execute awscli as root in cookbook virtualenv" && exit 1
+
+              echo "check virtualenv python version"
+              {{ validate.CookbookVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ validate.PythonVersion.outputs.stdout }}
+              [[ $? -ne 0 ]] && echo "check cookbook virtualenv python version failed" && exit 1
+
+              {{ validate.NodeVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ validate.PythonVersion.outputs.stdout }}
+              [[ $? -ne 0 ]] && echo "check node virtualenv python version failed" && exit 1
+
+              echo "pass awscli test"
+
+      # Munge
+      - name: Munge
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "check munge installed"
+              munge --version | grep {{ validate.MungeVersion.outputs.stdout }}
+              [[ $? -ne 0 ]] && echo "check munge version failed" && exit 1
+
+              echo "pass munge test"
+
+      # EFA - Intel MPI
+      - name: EFAIntelMPI
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              PLATFORM='{{ validate.PlatformName.outputs.stdout }}'
+
+              if [ {{ validate.IntelMPISupported.outputs.stdout }} == true ]; then
+                if [ ${PLATFORM} == RHEL ]; then
+                  echo "check efa rpm installed"
+                  rpm -qa | grep libfabric && rpm -qa | grep efa-
+                  [[ $? -ne 0 ]] && echo "check efa rpm failed" && exit 1
+
+                  echo "check intel mpi installed"
+                  rpm -qa | grep intel-mpi
+                  [[ $? -ne 0 ]] && echo "check intel mpi failed" && exit 1
+                else
+                  echo "check efa rpm installed"
+                  dpkg -l | grep libfabric && dpkg -l | grep 'efa '
+                  [[ $? -ne 0 ]] && echo "check efa rpm failed" && exit 1
+                fi
+              fi
+
+              echo "pass EFA test"
+
+      # NVIDIA
+      - name: Nvidia
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              has_gpu=$(lspci | grep -o "NVIDIA") || has_gpu="false"
+              if [ ${has_gpu} == false ]; then
+                echo "No GPU detected, no test needed."
+                exit 0
+              fi
+
+              driver_ver="{{ validate.NvidiaDriverVersion.outputs.stdout }}"
+              export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin"
+
+              # Test NVIDIA Driver installation
+              echo "Testing NVIDIA driver install..."
+              # grep driver version from nvidia-smi output. If driver is not installed nvidia-smi command will fail
+              driver_output=$(nvidia-smi | grep -E -o "Driver Version: [0-9.]+")
+              if [ "${driver_output}" = "Driver Version: ${driver_ver}" ]; then
+                echo "NVIDIA driver installed incorrectly! Installed ${driver_output} but expected version ${driver_ver}"
+                exit 1
+              else
+                echo "Correctly installed NVIDIA ${driver_output}"
+              fi
+
+      # CUDA
+      - name: Cuda
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              OS='{{ validate.OperatingSystemName.outputs.stdout }}'
+
+              if [ ${OS} != "alinux2" ] || [ {{ validate.NvSwitches.outputs.stdout }} -lt 1 ]; then
+                has_gpu=$(lspci | grep -o "NVIDIA") || has_gpu="false"
+                if [ "${has_gpu}" == false ]; then
+                  echo "No GPU detected, no test needed."
+                  exit 0
+                fi
+
+                cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
+                # Test CUDA installation
+                echo "Testing CUDA install with nvcc..."
+                export PATH=/usr/local/cuda-${cuda_ver}/bin:${PATH}
+                export LD_LIBRARY_PATH=/usr/local/cuda-${cuda_ver}/lib64:${LD_LIBRARY_PATH}
+                # grep CUDA version from nvcc output. If CUDA is not installed nvcc command will fail
+                cuda_output=$(nvcc -V | grep -E -o "release [0-9]+.[0-9]+")
+                if [ "${cuda_output}" != "release ${cuda_ver}" ]; then
+                  echo "CUDA installed incorrectly! Installed ${cuda_output} but expected ${cuda_ver}"
+                  exit 1
+                else
+                  echo "CUDA nvcc test passed, $cuda_output"
+                fi
+
+                # Test deviceQuery
+                echo "Testing CUDA install with deviceQuery..."
+                /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
+                [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+                echo "CUDA deviceQuery test passed"
+                echo "Correctly installed CUDA ${cuda_output}"
+              fi
+
+      # CloudWatch
+      - name: CloudWatch
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status | grep status | grep stopped
+              [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
+
+              echo "pass CloudWatch test"
+
+      # FSx Lustre
+      - name: FSxLustre
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              OS='{{ validate.OperatingSystemName.outputs.stdout }}'
+
+              if [ {{ validate.LustreSupported.outputs.stdout }} == true ]; then
+                if [ ${OS} == centos7 ]; then
+                  echo "check for lustre libraries"
+                  rpm -qa | grep lustre-client
+                elif [ ${OS} == ubuntu1804 ]; then
+                  echo "check for lustre libraries"
+                  dpkg -l | grep lustre
+                fi
+              fi
+              [[ $? -ne 0 ]] && echo "check lustre libraries failed" && exit 1
+
+              echo "pass FSx test"
+
+      # PIP
+      - name: PIP
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              COOKBOOK_PIP_VERSION=$({{ validate.CookbookVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
+              NODE_PIP_VERSION=$({{ validate.NodeVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
+
+              compare_version(){
+                CURRENT_VERSION="$1"
+                PEQUIRED_VERSION="19.3"
+                if (( ${CURRENT_VERSION%%.*} < ${PEQUIRED_VERSION%%.*} || ( ${CURRENT_VERSION%%.*} == ${PEQUIRED_VERSION%%.*} && ${CURRENT_VERSION##*.} < ${PEQUIRED_VERSION##*.} ) )) ; then
+                    echo "true"
+                else
+                    echo "false"
+                fi
+              }
+              # pip versions >= 19.3 is required to enable installation of python wheel binaries on Graviton
+              if [ $(compare_version "${COOKBOOK_PIP_VERSION}") == true ]; then
+                echo "pip version in cookbook virtualenv must be greater than 19.3" && exit 1
+              fi
+
+              if [ $(compare_version "${NODE_PIP_VERSION}") == true ]; then
+                echo "pip version in node virtualenv must be greater than 19.3" && exit 1
+              fi
+
+              echo "pass PIP test"
+
+      # ARM - PL
+      - name: ArmPL
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              if [ {{ validate.ArmPLSupported.outputs.stdout }} == true ]; then
+                echo "check gcc version and module loaded"
+                # Initialize module
+                unset MODULEPATH
+                source /etc/profile.d/modules.sh
+                (module avail)2>&1 | grep armpl/{{ validate.ArmPLVersion.outputs.stdout }}
+                [[ $? -ne 0 ]] && echo "check armpl version failed" && exit 1
+                module load armpl/{{ validate.ArmPLVersion.outputs.stdout }}
+                gcc --version | grep {{ validate.ArmPLGCCVersion.outputs.stdout }}
+                [[ $? -ne 0 ]] && echo "check gcc version for armpl failed" && exit 1
+                (module list)2>&1 | grep armpl/{{ validate.ArmPLVersion.outputs.stdout }}_gcc-{{ validate.ArmPLGCCVersion.outputs.stdout }}
+                [[ $? -ne 0 ]] && echo "check armpl module failed" && exit 1
+                (module list)2>&1 | grep armpl/gcc-{{ validate.ArmPLGCCVersion.outputs.stdout }}
+                [[ $? -ne 0 ]] && echo "check gcc module failed" && exit 1
+              fi
+
+              echo "pass ArmPL test"
+
+      # Python
+      - name: Python
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              echo "check python3 installed"
+              which python3
+              [[ $? -ne 0 ]] && echo "Python3 is not installed" && exit 1
+
+              echo "pass Python test"
+
+      # DPKG
+      - name: DPKG
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              PLATFORM='{{ validate.PlatformName.outputs.stdout }}'
+              echo "check dpkg is not installed on non-debian OS"
+              if [ ${PLATFORM} != DEBIAN ]; then
+                if command -v dpkg &> /dev/null; then
+                  echo "ERROR: dpkg found on non-Debian system"
+                  exit 1
+                fi
+              fi
+
+              echo "pass DPKG test"
