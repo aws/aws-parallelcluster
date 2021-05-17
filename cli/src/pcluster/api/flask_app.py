@@ -5,13 +5,14 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import json
+import functools
 import logging
+import shutil
 
 import connexion
 from connexion import ProblemException
 from connexion.decorators.validation import ParameterValidator
-from flask import Response, request
+from flask import Response, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 from pcluster.api import encoder
@@ -48,10 +49,27 @@ class CustomParameterValidator(ParameterValidator):
         return error
 
 
+def log_response_error(func):
+    @functools.wraps(func)
+    def _log_response_error(*args, **kwargs):
+        response = func(*args, **kwargs)
+        LOGGER.log(
+            logging.ERROR if response.status_code >= 500 else logging.INFO,
+            "Handling exception (status code %s): %s",
+            response.status_code,
+            response.get_json(),
+            exc_info=response.status_code >= 500,
+        )
+        return response
+
+    return _log_response_error
+
+
 class ParallelClusterFlaskApp:
     """Flask app that implements the ParallelCluster API."""
 
     def __init__(self, swagger_ui: bool = False, validate_responses=False):
+        self._assert_node_executable()
         options = {"swagger_ui": swagger_ui}
 
         self.app = connexion.FlaskApp(__name__, specification_dir="openapi/", skip_error_handlers=True)
@@ -91,48 +109,54 @@ class ParallelClusterFlaskApp:
             return response
 
     @staticmethod
-    def _handle_http_exception(exception: HTTPException):
-        """Render a HTTPException according to ParallelCluster API specs."""
-        ParallelClusterFlaskApp._log_exception(exception.code, exception.description)
-        return Response(
-            response=json.dumps({"message": exception.description}), status=exception.code, mimetype="application/json"
-        )
+    def _assert_node_executable():
+        node_exe = shutil.which("node")
+        LOGGER.debug("Found nodejs executable in %s", node_exe)
+        if not node_exe:
+            message = "You must install nodejs in order to use ParallelCluster"
+            LOGGER.critical(message)
+            raise Exception(message)
 
     @staticmethod
+    @log_response_error
+    def _handle_http_exception(exception: HTTPException):
+        """Render a HTTPException according to ParallelCluster API specs."""
+        response = jsonify({"message": exception.description})
+        response.status_code = exception.code
+        return response
+
+    @staticmethod
+    @log_response_error
     def _handle_problem_exception(exception: ProblemException):
         """Render a ProblemException according to ParallelCluster API specs."""
         # Connexion does not return a clear error message on missing request body
         if "None is not of type 'object'" in exception.detail:
             exception.detail = "request body is required"
         message = f"{exception.title}: {exception.detail}"
-        ParallelClusterFlaskApp._log_exception(exception.status, message)
-        return Response(
-            response=json.dumps({"message": message}),
-            status=exception.status,
-            mimetype="application/json",
-        )
+        response = jsonify({"message": message})
+        response.status_code = exception.status
+        return response
 
     @staticmethod
+    @log_response_error
     def _handle_parallel_cluster_api_exception(exception: ParallelClusterApiException):
         """Render a ParallelClusterApiException according to ParallelCluster API specs."""
-        message = json.dumps(exception.content.to_dict())
-        ParallelClusterFlaskApp._log_exception(exception.code, message)
-        return Response(response=message, status=exception.code, mimetype="application/json")
+        response = jsonify(exception.content)
+        response.status_code = exception.code
+        return response
 
     @staticmethod
     def _handle_unexpected_exception(exception: Exception):
         """Handle an unexpected exception."""
         LOGGER.critical("Unexpected exception: %s", exception, exc_info=True)
-        return Response(
-            response=json.dumps(
-                {
-                    "message": "Unexpected fatal exception. "
-                    "Please look at the application logs for details on the encountered failure."
-                }
-            ),
-            status=500,
-            mimetype="application/json",
+        response = jsonify(
+            {
+                "message": "Unexpected fatal exception. "
+                "Please look at the application logs for details on the encountered failure."
+            }
         )
+        response.status_code = 500
+        return response
 
     @staticmethod
     def _handle_aws_client_error(exception: AWSClientError):
@@ -145,16 +169,6 @@ class ParallelClusterFlaskApp:
             )
         return ParallelClusterFlaskApp._handle_parallel_cluster_api_exception(
             InternalServiceException(f"Failed when calling AWS service in {exception.function_name}: {exception}")
-        )
-
-    @staticmethod
-    def _log_exception(code, message):
-        LOGGER.log(
-            logging.ERROR if code >= 500 else logging.INFO,
-            "Handling exception (status code %s): %s",
-            code,
-            message,
-            exc_info=code >= 500,
         )
 
     def start_local_server(self, port: int = 8080, debug: bool = False):

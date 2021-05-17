@@ -60,7 +60,7 @@ class TestParallelClusterFlaskApp:
         self._assert_log_message(
             caplog,
             logging.INFO,
-            "Handling exception (status code 405): The method is not allowed for the requested URL.",
+            "Handling exception (status code 405): {'message': 'The method is not allowed for the requested URL.'}",
         )
 
         caplog.clear()
@@ -76,7 +76,11 @@ class TestParallelClusterFlaskApp:
             code=500,
         )
         self._assert_log_message(
-            caplog, logging.ERROR, "Handling exception (status code 500): The server encountered an internal error"
+            caplog,
+            logging.ERROR,
+            "Handling exception (status code 500): {'message': 'The server encountered an "
+            "internal error and was unable to complete your request. Either the server is "
+            "overloaded or there is an error in the application.'}",
         )
 
     def test_handle_parallel_cluster_api_exception(self, caplog, flask_app_with_error_route):
@@ -87,7 +91,7 @@ class TestParallelClusterFlaskApp:
         self._assert_log_message(
             caplog,
             logging.INFO,
-            'Handling exception (status code 400): {"message": "Bad Request: invalid request"}',
+            "Handling exception (status code 400): {'message': 'Bad Request: invalid request'}",
         )
 
         caplog.clear()
@@ -99,7 +103,7 @@ class TestParallelClusterFlaskApp:
             body={"message": "failure"},
             code=500,
         )
-        self._assert_log_message(caplog, logging.ERROR, 'Handling exception (status code 500): {"message": "failure"}')
+        self._assert_log_message(caplog, logging.ERROR, "Handling exception (status code 500): {'message': 'failure'}")
 
     def test_handle_unexpected_exception(self, caplog, flask_app_with_error_route):
         with flask_app_with_error_route(Exception("error")).test_client() as client:
@@ -126,7 +130,7 @@ class TestParallelClusterFlaskApp:
         self._assert_log_message(
             caplog,
             logging.INFO,
-            "Handling exception (status code 400): Bad Request: malformed",
+            "Handling exception (status code 400): {'message': 'Bad Request: malformed'}",
         )
 
     @pytest.mark.parametrize(
