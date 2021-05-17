@@ -238,10 +238,9 @@ def _assert_cluster_initial_conditions(
     c5l_nodes, instance_nodes, static_nodes = [], [], []
     logging.info(cluster_node_states)
     for nodename, node_states in cluster_node_states.items():
-        if "c5l" in nodename:
+        if "dummy" in nodename:
             c5l_nodes.append(nodename)
-        # "c5.xlarge"[: "c5.xlarge".index(".")+2].replace(".", "") = c5x
-        if instance[: instance.index(".") + 2].replace(".", "") in nodename:
+        if "ondemand" in nodename:
             instance_nodes.append(nodename)
         if node_states == "idle":
             if "-st-" in nodename:

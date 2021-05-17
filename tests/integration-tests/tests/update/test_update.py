@@ -54,14 +54,14 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
     initial_queues_config = {
         "queue1": {
             "compute_resources": {
-                "queue1_i1": {
+                "queue1-i1": {
                     "instance_type": "c5.xlarge",
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 1,
                     "enable_efa": False,
                     "disable_hyperthreading": False,
                 },
-                "queue1_i2": {
+                "queue1-i2": {
                     "instance_type": "t2.micro",
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 9,
@@ -73,7 +73,7 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         },
         "queue2": {
             "compute_resources": {
-                "queue2_i1": {
+                "queue2-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -112,21 +112,21 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
     updated_queues_config = {
         "queue1": {
             "compute_resources": {
-                "queue1_i1": {
+                "queue1-i1": {
                     "instance_type": "c5.xlarge",
                     "expected_running_instances": 2,
                     "expected_power_saved_instances": 2,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
-                "queue1_i2": {
+                "queue1-i2": {
                     "instance_type": "c5.2xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
-                "queue1_i3": {
+                "queue1-i3": {
                     "instance_type": "t2.micro",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -138,7 +138,7 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         },
         "queue2": {
             "compute_resources": {
-                "queue2_i1": {
+                "queue2-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 1,
@@ -150,14 +150,14 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         },
         "queue3": {
             "compute_resources": {
-                "queue3_i1": {
+                "queue3-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": True,
                     "enable_efa": True,
                 },
-                "queue3_i2": {
+                "queue3-i2": {
                     "instance_type": "t2.xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -227,13 +227,13 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
     for node, state in slurm_nodes.items():
         slurm_nodes_str += f"{node} {state}\n"
     for queue, queue_config in queues_config.items():
-        for compute_resource_config in queue_config["compute_resources"].values():
-            instance_type = compute_resource_config["instance_type"].replace(".", "")
+        for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
+            sanitized_name = re.sub(r"[^A-Za-z0-9]", "", compute_resource_name)
             running_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
             )
             power_saved_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle~\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ idle~\n").findall(slurm_nodes_str)
             )
             assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
