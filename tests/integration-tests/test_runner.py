@@ -13,12 +13,14 @@ import datetime
 import logging
 import multiprocessing
 import os
+import re
 import sys
 import time
 import urllib.request
 from tempfile import TemporaryDirectory
 
 import argparse
+import boto3
 import pytest
 from assertpy import assert_that
 from framework.tests_configuration.config_renderer import dump_rendered_config_file, read_config_file
@@ -329,11 +331,23 @@ def _is_file(value):
 
 @retry(stop_max_attempt_number=6, wait_fixed=5000)
 def _is_url(value):
-    try:
-        urllib.request.urlopen(value)
-    except Exception:
+    scheme = urllib.request.urlparse(value).scheme
+    if scheme in ["https", "s3", "file"]:
+        try:
+            if scheme == "s3":
+                match = re.match(r"s3://(.*?)/(.*)", value)
+                if not match or len(match.groups()) < 2:
+                    raise argparse.ArgumentTypeError(f"'{value}' is not a valid S3url")
+                else:
+                    bucket_name, object_name = match.group(1), match.group(2)
+                    boto3.client("s3").head_object(Bucket=bucket_name, Key=object_name)
+            else:
+                urllib.request.urlopen(value)
+            return value
+        except Exception as e:
+            raise argparse.ArgumentTypeError(f"'{value}' is not a valid url:{e}")
+    else:
         raise argparse.ArgumentTypeError("'{0}' is not a valid url".format(value))
-    return value
 
 
 def _test_config_file(value):
