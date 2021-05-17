@@ -57,7 +57,7 @@ phases:
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
               echo "${!CINC_URL}"
 
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04 | ubuntu.20.04
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:

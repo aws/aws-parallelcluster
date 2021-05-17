@@ -183,6 +183,7 @@ class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
     disable_pcluster_component = fields.Bool()
     distribution_configuration = fields.Nested(DistributionConfigurationSchema)
     terminate_instance_on_failure = fields.Bool()
+    disable_validate_and_test = fields.Bool()
 
     @post_load
     def make_resource(self, data, **kwargs):
