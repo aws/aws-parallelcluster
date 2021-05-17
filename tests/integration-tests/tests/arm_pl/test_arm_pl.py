@@ -86,7 +86,7 @@ def _test_armpl_examples(
     test_result = remote_command_executor.run_remote_command(
         f"module load {armpl_module_general_name} && "
         f"cd /opt/arm/armpl/{armpl_version}/"
-        f"armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples && make clean && ${scl_centos7} make"
+        f"armpl_{armpl_major_minor_version}_gcc-{gcc_version}/examples && make clean && {scl_centos7} make"
     ).stdout.lower()
     assert_that(test_result).contains("testing: no example difference files were generated")
     assert_that(test_result).contains("test passed ok")
