@@ -80,7 +80,7 @@ class TestComputeFleetStatusManager:
         [
             (
                 ComputeFleetStatus.START_REQUESTED,
-                [None],
+                [ComputeFleetStatus.UNKNOWN],
                 [],
                 Exception,
                 "Could not retrieve compute fleet status",

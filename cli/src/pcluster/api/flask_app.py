@@ -22,6 +22,7 @@ from pcluster.api.errors import (
     ParallelClusterApiException,
 )
 from pcluster.aws.common import AWSClientError
+from pcluster.utils import Cache
 
 LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +71,11 @@ class ParallelClusterFlaskApp:
         self.app.add_error_handler(ParallelClusterApiException, self._handle_parallel_cluster_api_exception)
         self.app.add_error_handler(AWSClientError, self._handle_aws_client_error)
         self.app.add_error_handler(Exception, self._handle_unexpected_exception)
+
+        @self.flask_app.before_request
+        def _clear_cache():
+            # Cache is meant to be reused only within a single request
+            Cache.clear_all()
 
         @self.flask_app.before_request
         def _log_request():  # pylint: disable=unused-variable

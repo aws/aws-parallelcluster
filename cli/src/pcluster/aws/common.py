@@ -83,11 +83,21 @@ class AWSExceptionHandler:
         return wrapper
 
 
+def _log_boto3_calls(params, **kwargs):
+    service = kwargs["event_name"].split(".")[-2]
+    operation = kwargs["event_name"].split(".")[-1]
+    region = kwargs["context"].get("client_region", boto3.session.Session().region_name)
+    LOGGER.debug(  # TODO: change this to info level once we disable printing logging output to stdout
+        "Executing boto3 call: region=%s, service=%s, operation=%s, params=%s", region, service, operation, params
+    )
+
+
 class Boto3Client(ABC):
     """Abstract Boto3 client."""
 
     def __init__(self, client_name: str):
         self._client = boto3.client(client_name)
+        self._client.meta.events.register("provide-client-params.*.*", _log_boto3_calls)
 
     def _paginate_results(self, method, **kwargs):
         """
@@ -108,3 +118,4 @@ class Boto3Resource(ABC):
 
     def __init__(self, resource_name: str):
         self._resource = boto3.resource(resource_name)
+        self._resource.meta.client.meta.events.register("provide-client-params.*.*", _log_boto3_calls)
