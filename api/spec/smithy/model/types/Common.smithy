@@ -38,7 +38,6 @@ list ValidationMessages {
     {name: "INFO", value: "INFO"},
     {name: "WARNING", value: "WARNING"},
     {name: "ERROR", value: "ERROR"},
-    {name: "CRITICAL", value: "CRITICAL"},
 ])
 string ValidationLevel
 

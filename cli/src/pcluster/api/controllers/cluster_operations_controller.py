@@ -58,8 +58,8 @@ def create_cluster(
     Create a ParallelCluster managed cluster in a given region.
 
     :param create_cluster_request_content:
-    :param suppress_validators: Identifies one or more config validators to suppress. Format:
-    ALL|id:$value|level:(info|error|warning)|type:$value
+    :param suppress_validators: Identifies one or more config validators to suppress.
+    Format: (ALL|type:[A-Za-z0-9]+)
     :param validation_failure_level: Min validation level that will cause the cluster creation to fail.
     Defaults to &#39;ERROR&#39;.
     :param dryrun: Only perform request validation without creating any resource. It can be used to validate the cluster
@@ -233,7 +233,7 @@ def update_cluster(
     :param cluster_name: Name of the cluster
     :type cluster_name: str
     :param suppress_validators: Identifies one or more config validators to suppress.
-    Format: ALL|id:$value|level:(info|error|warning)|type:$value
+    Format: (ALL|type:[A-Za-z0-9]+)
     :type suppress_validators: List[str]
     :param validation_failure_level: Min validation level that will cause the update to fail.
     Defaults to &#39;error&#39;.
