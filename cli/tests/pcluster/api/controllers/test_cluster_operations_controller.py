@@ -48,7 +48,7 @@ class TestCreateCluster:
             "clusterConfiguration": "clusterConfiguration",
         }
         query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
+            ("suppressValidators", "ALL"),
             ("validationFailureLevel", ValidationLevel.INFO),
             ("dryrun", True),
             ("rollbackOnFailure", True),
@@ -559,7 +559,7 @@ class TestUpdateCluster:
     def test_update_cluster(self, client):
         update_cluster_request_content = {"clusterConfiguration": "clusterConfiguration"}
         query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
+            ("suppressValidators", "ALL"),
             ["validationFailureLevel", ValidationLevel.INFO],
             ("region", "eu-west-1"),
             ("dryrun", True),

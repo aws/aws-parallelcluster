@@ -85,13 +85,15 @@ paths:
       parameters:
         - name: suppressValidators
           in: query
-          description: 'Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value'
+          description: 'Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)'
           style: form
           schema:
             type: array
             items:
               type: string
-            description: 'Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value'
+              pattern: ^(ALL|type:[A-Za-z0-9]+)$
+            uniqueItems: true
+            description: 'Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)'
           explode: true
         - name: validationFailureLevel
           in: query
@@ -340,13 +342,15 @@ paths:
           required: true
         - name: suppressValidators
           in: query
-          description: 'Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value'
+          description: 'Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)'
           style: form
           schema:
             type: array
             items:
               type: string
-            description: 'Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value'
+              pattern: ^(ALL|type:[A-Za-z0-9]+)$
+            uniqueItems: true
+            description: 'Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)'
           explode: true
         - name: validationFailureLevel
           in: query
@@ -808,13 +812,15 @@ paths:
       parameters:
         - name: suppressValidators
           in: query
-          description: 'Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value'
+          description: 'Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)'
           style: form
           schema:
             type: array
             items:
               type: string
-            description: 'Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value'
+              pattern: ^(ALL|type:[A-Za-z0-9]+)$
+            uniqueItems: true
+            description: 'Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)'
           explode: true
         - name: validationFailureLevel
           in: query
@@ -1773,7 +1779,6 @@ components:
         - INFO
         - WARNING
         - ERROR
-        - CRITICAL
   securitySchemes:
     aws.auth.sigv4:
       type: apiKey

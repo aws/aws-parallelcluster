@@ -24,7 +24,7 @@ class TestImageOperationsController:
             "region": "eu-west-1",
         }
         query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
+            ("suppressValidators", "ALL"),
             ("validationFailureLevel", ValidationLevel.INFO),
             ("dryrun", True),
             ("rollbackOnFailure", True),
