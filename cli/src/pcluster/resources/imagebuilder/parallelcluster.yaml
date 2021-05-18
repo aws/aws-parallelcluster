@@ -55,8 +55,8 @@ phases:
           commands:
             - |
               set -v
-              COOKBOOK_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz
-              [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL=${CfnParamChefCookbook}
+              COOKBOOK_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz"
+              [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL="${CfnParamChefCookbook}"
               echo "${!COOKBOOK_URL}"
 
       # Get Cinc Url
@@ -66,8 +66,8 @@ phases:
           commands:
             - |
               set -v
-              CINC_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install.sh
-              [ -n "${CfnParamCincInstaller}" ] && CINC_URL=${CfnParamCincInstaller}
+              CINC_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/archives/cinc/cinc-install.sh"
+              [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
               echo "${!CINC_URL}"
 
       # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04
@@ -246,9 +246,7 @@ phases:
             - |
               set -v
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz {{ build.CookbookUrl.outputs.stdout }}
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date {{ build.CookbookUrl.outputs.stdout }}.date
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 {{ build.CookbookUrl.outputs.stdout }}.md5
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz "{{ build.CookbookUrl.outputs.stdout }}"
 
               mkdir /tmp/cookbooks
               cd /tmp/cookbooks
