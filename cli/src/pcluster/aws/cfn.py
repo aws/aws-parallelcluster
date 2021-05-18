@@ -124,10 +124,14 @@ class CfnClient(Boto3Client):
                 stack_list.append(stack)
         return stack_list, result.get("NextToken")
 
-    @AWSExceptionHandler.handle_client_exception
     def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
         """Get stack resource information."""
-        return self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
+        try:
+            return self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
+        except Exception:
+            raise AWSClientError(
+                function_name="describe_stack_resource", message=f"No resource {logic_resource_id} found."
+            )
 
     @AWSExceptionHandler.handle_client_exception
     def get_imagebuilder_stacks(self):
