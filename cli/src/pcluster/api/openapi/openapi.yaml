@@ -91,17 +91,19 @@ paths:
       operationId: create_cluster
       parameters:
       - description: "Identifies one or more config validators to suppress. Format:\
-          \ ALL|id:$value|level:(info|error|warning)|type:$value"
+          \ (ALL|type:[A-Za-z0-9]+)"
         explode: true
         in: query
         name: suppressValidators
         required: false
         schema:
           description: "Identifies one or more config validators to suppress. Format:\
-            \ ALL|id:$value|level:(info|error|warning)|type:$value"
+            \ (ALL|type:[A-Za-z0-9]+)"
           items:
+            pattern: "^(ALL|type:[A-Za-z0-9]+)$"
             type: string
           type: array
+          uniqueItems: true
         style: form
       - description: Min validation level that will cause the creation to fail. Defaults
           to 'ERROR'.
@@ -393,17 +395,19 @@ paths:
           type: string
         style: simple
       - description: "Identifies one or more config validators to suppress. Format:\
-          \ ALL|id:$value|level:(info|error|warning)|type:$value"
+          \ (ALL|type:[A-Za-z0-9]+)"
         explode: true
         in: query
         name: suppressValidators
         required: false
         schema:
           description: "Identifies one or more config validators to suppress. Format:\
-            \ ALL|id:$value|level:(info|error|warning)|type:$value"
+            \ (ALL|type:[A-Za-z0-9]+)"
           items:
+            pattern: "^(ALL|type:[A-Za-z0-9]+)$"
             type: string
           type: array
+          uniqueItems: true
         style: form
       - description: Min validation level that will cause the update to fail. Defaults
           to 'error'.
@@ -933,17 +937,19 @@ paths:
       operationId: build_image
       parameters:
       - description: "Identifies one or more config validators to suppress. Format:\
-          \ ALL|id:$value|level:(info|error|warning)|type:$value"
+          \ (ALL|type:[A-Za-z0-9]+)"
         explode: true
         in: query
         name: suppressValidators
         required: false
         schema:
           description: "Identifies one or more config validators to suppress. Format:\
-            \ ALL|id:$value|level:(info|error|warning)|type:$value"
+            \ (ALL|type:[A-Za-z0-9]+)"
           items:
+            pattern: "^(ALL|type:[A-Za-z0-9]+)$"
             type: string
           type: array
+          uniqueItems: true
         style: form
       - description: Min validation level that will cause the creation to fail. Defaults
           to 'error'.
@@ -2328,6 +2334,5 @@ components:
       - INFO
       - WARNING
       - ERROR
-      - CRITICAL
       title: ValidationLevel
       type: string

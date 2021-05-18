@@ -112,7 +112,7 @@ def build_image(
 
     :param build_image_request_content:
     :param suppress_validators: Identifies one or more config validators to suppress.
-    Format: ALL|id:$value|level:(info|error|warning)|type:$value
+    Format: (ALL|type:[A-Za-z0-9]+)
     :type suppress_validators: List[str]
     :param validation_failure_level: Min validation level that will cause the image creation to fail.
     Defaults to &#39;error&#39;.

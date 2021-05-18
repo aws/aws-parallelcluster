@@ -23,7 +23,7 @@ structure UpdateClusterRequest {
     clusterName: ClusterName,
 
     @httpQuery("suppressValidators")
-    @documentation("Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value")
+    @documentation("Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)")
     suppressValidators: SuppressValidatorsList,
     @httpQuery("validationFailureLevel")
     @documentation("Min validation level that will cause the update to fail. Defaults to 'error'.")
