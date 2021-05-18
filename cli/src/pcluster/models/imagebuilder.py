@@ -373,7 +373,7 @@ class ImageBuilder:
                 f"Unable to upload imagebuilder cfn template to the S3 bucket {self.bucket.name} due to exception: {e}"
             )
 
-    def delete(self, force=False):
+    def delete(self, force=False):  # noqa: C901
         """Delete CFN Stack and associate resources and deregister the image."""
         if force or (not self._check_instance_using_image() and not self._check_image_is_shared()):
             try:
@@ -398,6 +398,12 @@ class ImageBuilder:
                     self.bucket.delete_s3_artifacts()
                 except AWSClientError:
                     logging.warning("S3 bucket %s does not exist, skip image s3 artifacts deletion.", self.bucket.name)
+
+                # Delete log group
+                try:
+                    AWSApi.instance().logs.delete_log_group(self._log_group_name())
+                except AWSClientError:
+                    logging.warning("Unable to delete log group %s.", self._log_group_name())
 
             except (AWSClientError, ImageError) as e:
                 raise ImageBuilderActionError(f"Unable to delete image and stack, due to {str(e)}")
@@ -469,7 +475,11 @@ class ImageBuilder:
 
     def _get_log_group_arn(self):
         """Get log group arn."""
-        image_recipe_name = "{0}-{1}".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX, self.image_id)
-        return "arn:{0}:logs:{1}:{2}:log-group:/aws/imagebuilder/{3}".format(
-            get_partition(), get_region(), AWSApi.instance().sts.get_account_id(), image_recipe_name
+        return "arn:{0}:logs:{1}:{2}:log-group:{3}".format(
+            get_partition(), get_region(), AWSApi.instance().sts.get_account_id(), self._log_group_name()
         )
+
+    def _log_group_name(self):
+        """Get log group name."""
+        image_recipe_name = "{0}-{1}".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX, self.image_id)
+        return "/aws/imagebuilder/{0}".format(image_recipe_name)
