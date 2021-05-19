@@ -61,3 +61,22 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["slurm"]
+  dcv:
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        - regions: ["sa-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  update:
+    test_update.py::test_update_awsbatch:
+      dimensions:
+        - regions: ["eu-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+    test_update.py::test_update_slurm:
+      dimensions:
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos8"]
