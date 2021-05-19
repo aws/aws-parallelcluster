@@ -1780,7 +1780,7 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
         ("alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
         ("ubuntu1804", "m6g.xlarge", None, None, None),
         ("alinux2", "m6g.xlarge", None, None, None),
-        ("centos7", "m6g.xlarge", None, "Please double check the 'base_os' configuration parameter", None),
+        ("centos7", "m6g.xlarge", None, None, None),
         ("centos8", "m6g.xlarge", None, None, None),
     ],
 )
@@ -1799,7 +1799,6 @@ def test_dcv_enabled_validator(
         "pcluster.config.validators.get_supported_instance_types": ["t2.nano", "t2.micro", "t2.medium", "m6g.xlarge"],
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.validators.get_supported_os_for_architecture": [base_os],
     }
     utils.assert_param_validator(
         mocker, config_parser_dict, expected_error, capsys, expected_warning, extra_patches=extra_patches
@@ -1818,6 +1817,7 @@ def test_dcv_enabled_validator(
         ("x86_64", "ubuntu1804", None),
         ("arm64", "ubuntu1804", None),
         ("arm64", "alinux2", None),
+        ("arm64", "centos7", None),
         ("arm64", "centos8", None),
         # Unsupported combinations
         (
@@ -1825,13 +1825,6 @@ def test_dcv_enabled_validator(
             "alinux2",
             FSX_MESSAGES["errors"]["unsupported_architecture"].format(
                 supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
-            ),
-        ),
-        (
-            "arm64",
-            "centos7",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),
         ),
     ],
@@ -1845,7 +1838,6 @@ def test_fsx_architecture_os_validator(mocker, architecture, base_os, expected_m
     extra_patches = {
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": [architecture],
         "pcluster.config.validators.get_supported_architectures_for_instance_type": [architecture],
-        "pcluster.config.validators.get_supported_os_for_architecture": [base_os],
     }
     utils.assert_param_validator(mocker, config_parser_dict, expected_message, extra_patches=extra_patches)
 
@@ -2249,7 +2241,8 @@ def run_architecture_validator_test(
     param_name,
     param_val,
     validator,
-    expected_messages,
+    expected_warnings,
+    expected_errors,
 ):
     """Run a test for a validator that's concerned with the architecture param."""
     mocked_pcluster_config = make_pcluster_config_mock(mocker, config)
@@ -2259,14 +2252,17 @@ def run_architecture_validator_test(
     mocked_pcluster_config.get_section.side_effect(constrained_param_section).get_param_value.assert_called_with(
         constrained_param_name
     )
-    assert_that(len(warnings)).is_equal_to(0)
-    assert_that(len(errors)).is_equal_to(len(expected_messages))
-    for error, expected_message in zip(errors, expected_messages):
-        assert_that(error).matches(re.escape(expected_message))
+    assert_that(len(warnings)).is_equal_to(len(expected_warnings))
+    for warnings, expected_warnings in zip(warnings, expected_warnings):
+        assert_that(warnings).matches(re.escape(expected_warnings))
+
+    assert_that(len(errors)).is_equal_to(len(expected_errors))
+    for errors, expected_errors in zip(errors, expected_errors):
+        assert_that(errors).matches(re.escape(expected_errors))
 
 
 @pytest.mark.parametrize(
-    "enabled, architecture, expected_message",
+    "enabled, architecture, expected_errors",
     [
         (True, "x86_64", []),
         (True, "arm64", ["instance types and an AMI that support these architectures"]),
@@ -2274,7 +2270,7 @@ def run_architecture_validator_test(
         (False, "arm64", []),
     ],
 )
-def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expected_message):
+def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expected_errors):
     """Verify that setting enable_intel_hpc_platform is invalid when architecture != x86_64."""
     config_dict = {"cluster": {"enable_intel_hpc_platform": enabled, "architecture": architecture}}
     run_architecture_validator_test(
@@ -2285,35 +2281,53 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         "enable_intel_hpc_platform",
         enabled,
         intel_hpc_architecture_validator,
-        expected_message,
+        [],
+        expected_errors,
     )
 
 
 @pytest.mark.parametrize(
-    "base_os, architecture, expected_message",
+    "base_os, architecture, expected_warnings, expected_errors",
     [
         # All OSes supported for x86_64
-        ("alinux2", "x86_64", []),
-        ("centos7", "x86_64", []),
-        ("centos8", "x86_64", []),
-        ("ubuntu1804", "x86_64", []),
+        ("alinux2", "x86_64", [], []),
+        ("centos7", "x86_64", [], []),
+        ("centos8", "x86_64", [], []),
+        ("ubuntu1804", "x86_64", [], []),
         # Only a subset of OSes supported for arm64
-        ("alinux2", "arm64", []),
-        ("centos7", "arm64", ["arm64 is only supported for the following operating systems"]),
-        ("centos8", "arm64", []),
-        ("ubuntu1804", "arm64", []),
+        ("alinux2", "arm64", [], []),
+        (
+            "centos7",
+            "arm64",
+            [
+                "Warning: The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
+                "(M6g, C6g, etc.). To proceed please provide a custom_ami, "
+                "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes"
+            ],
+            [],
+        ),
+        ("centos8", "arm64", [], []),
+        ("ubuntu1804", "arm64", [], []),
     ],
 )
-def test_architecture_os_validator(mocker, base_os, architecture, expected_message):
+def test_architecture_os_validator(mocker, base_os, architecture, expected_warnings, expected_errors):
     """Verify that the correct set of OSes is supported for each supported architecture."""
     config_dict = {"cluster": {"base_os": base_os, "architecture": architecture}}
     run_architecture_validator_test(
-        mocker, config_dict, "cluster", "architecture", "base_os", base_os, architecture_os_validator, expected_message
+        mocker,
+        config_dict,
+        "cluster",
+        "architecture",
+        "base_os",
+        base_os,
+        architecture_os_validator,
+        expected_warnings,
+        expected_errors,
     )
 
 
 @pytest.mark.parametrize(
-    "disable_hyperthreading, architecture, expected_message",
+    "disable_hyperthreading, architecture, expected_errors",
     [
         (True, "x86_64", []),
         (False, "x86_64", []),
@@ -2325,7 +2339,7 @@ def test_architecture_os_validator(mocker, base_os, architecture, expected_messa
         (False, "arm64", []),
     ],
 )
-def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthreading, architecture, expected_message):
+def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthreading, architecture, expected_errors):
     config_dict = {"cluster": {"architecture": architecture, "disable_hyperthreading": disable_hyperthreading}}
     run_architecture_validator_test(
         mocker,
@@ -2335,12 +2349,13 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
         "disable_hyperthreading",
         disable_hyperthreading,
         disable_hyperthreading_architecture_validator,
-        expected_message,
+        [],
+        expected_errors,
     )
 
 
 @pytest.mark.parametrize(
-    "head_node_architecture, compute_architecture, compute_instance_type, expected_message",
+    "head_node_architecture, compute_architecture, compute_instance_type, expected_errors",
     [
         # Single compute_instance_type
         ("x86_64", "x86_64", "c5.xlarge", []),
@@ -2373,7 +2388,7 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
     ],
 )
 def test_instances_architecture_compatibility_validator(
-    mocker, caplog, head_node_architecture, compute_architecture, compute_instance_type, expected_message
+    mocker, caplog, head_node_architecture, compute_architecture, compute_instance_type, expected_errors
 ):
     def internal_is_instance_type(itype):
         return "." in itype or itype == "optimal"
@@ -2393,7 +2408,8 @@ def test_instances_architecture_compatibility_validator(
         "compute_instance_type",
         compute_instance_type,
         instances_architecture_compatibility_validator,
-        expected_message,
+        [],
+        expected_errors,
     )
     compute_instance_types = compute_instance_type.split(",")
     non_instance_families = [

@@ -1,6 +1,7 @@
 {%- import 'common.jinja2' as common -%}
 ---
 test-suites:
+{{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
 {% filter indent(2) %}
 {% include 'common/common.yaml' %}
 {% endfilter %}

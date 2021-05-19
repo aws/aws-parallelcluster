@@ -42,7 +42,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
 }
 
 # Get official pcluster AMIs or get from dev account
-PCLUSTER_AMI_OWNERS = ["amazon", "self"]
+PCLUSTER_AMI_OWNERS = ["amazon"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
@@ -55,17 +55,14 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
 AMI_TYPE_DICT = {
     "official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP,
     "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP,
-    "pcluster": OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP,
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
+def retrieve_latest_ami(region, os, amis_dict, ami_type="official", architecture="x86_64"):
     try:
         if ami_type == "pcluster":
-            ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
-                version=get_installed_parallelcluster_version(),
-                ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name"),
-            )
+            LOGGER.debug(f"CFN template amis_dict: {amis_dict}")
+            return amis_dict.get(os, "UNSUPPORTED")
         else:
             ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
         response = boto3.client("ec2", region_name=region).describe_images(

@@ -31,7 +31,6 @@ from pcluster.utils import (
     get_supported_architectures_for_instance_type,
     get_supported_compute_instance_types,
     get_supported_instance_types,
-    get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
     is_instance_type_format,
     paginate_boto3,
@@ -90,14 +89,14 @@ FSX_MESSAGES = {
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSS,
-    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2", "centos8"],
+    "arm64": SUPPORTED_OSS,
 }
 
 FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],
-    "arm64": ["centos8"],
+    "arm64": ["centos7", "centos8"],
 }
 
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
@@ -1125,12 +1124,11 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    allowed_oses = get_supported_os_for_architecture(architecture)
-    if param_value not in allowed_oses:
-        errors.append(
-            "The architecture {0} is only supported for the following operating systems: {1}".format(
-                architecture, allowed_oses
-            )
+    if param_value == "centos7" and architecture == "arm64":
+        warnings.append(
+            "Warning: The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
+            "(M6g, C6g, etc.). To proceed please provide a custom_ami, "
+            "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes"
         )
 
     return errors, warnings
