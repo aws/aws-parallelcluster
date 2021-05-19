@@ -25,6 +25,7 @@ from framework.tests_configuration.config_renderer import dump_rendered_config_f
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
 from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
+from utils import InstanceTypesData
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
@@ -122,7 +123,6 @@ def _init_argparser():
         "Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. "
         "Refer to the docs for further details on the config format: "
         "https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md",
-        type=_test_config_file,
     )
     dimensions_group.add_argument(
         "-i",
@@ -559,6 +559,7 @@ def _check_args(args):
         assert_that(args.schedulers).described_as("--schedulers cannot be empty").is_not_empty()
     else:
         try:
+            args.tests_config = _test_config_file(args.tests_config)
             assert_valid_config(args.tests_config, args.tests_root_dir)
             logger.info("Found valid config file:\n%s", dump_rendered_config_file(args.tests_config))
         except Exception:
@@ -582,6 +583,12 @@ def main():
         exit(1)
 
     args = _init_argparser().parse_args()
+
+    # Load additional instance types data, if provided.
+    # This step must be done before loading test config files in order to resolve instance type placeholders.
+    if args.instance_types_data:
+        InstanceTypesData.load_additional_instance_types_data(args.instance_types_data)
+
     _check_args(args)
     logger.info("Parsed test_runner parameters {0}".format(args))
 

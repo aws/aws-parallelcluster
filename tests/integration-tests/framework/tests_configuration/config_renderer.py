@@ -15,6 +15,7 @@ from functools import lru_cache
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
+from utils import InstanceTypesData
 
 
 def read_config_file(config_file, print_rendered=False):
@@ -56,7 +57,11 @@ def _render_config_file(config_file):
         config_dir = os.path.dirname(config_file)
         config_name = os.path.basename(config_file)
         file_loader = FileSystemLoader(config_dir)
-        return Environment(loader=file_loader).get_template(config_name).render()
+        return (
+            Environment(loader=file_loader)
+            .get_template(config_name)
+            .render(additional_instance_types_map=InstanceTypesData.additional_instance_types_map)
+        )
     except Exception:
         logging.error("Failed when rendering config file %s", config_file)
         raise
