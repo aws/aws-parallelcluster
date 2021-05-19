@@ -46,6 +46,11 @@ Parameters:
     Type: String
     Default: '' # TODO change with actual URI
 
+  VpcEndpointId:
+    Description: When specified, configure a private API with the specified endpoint
+    Type: String
+    Default: ''
+
 
 Mappings:
   ParallelCluster:
@@ -80,13 +85,18 @@ Conditions:
   UseCustomDomainAndRoute53Configuration: !And
     - !Condition UseCustomDomain
     - !Condition UseRoute53Configuration
-  DoNotUseCustomDomain: !Not [!Condition UseCustomDomain]
   IsMultiRegion: !Equals [!Ref EnableMultiRegionSupport, true]
+  UsePrivateVpcEndpoint: !And
+    - !Not [!Condition UseCustomDomainAndRoute53Configuration]
+    - !Not [!Equals [!Ref VpcEndpointId, '']]
+  DoNotUseCustomDomain: !And
+    - !Not [!Condition UsePrivateVpcEndpoint]
+    - !Not [!Condition UseCustomDomain]
 
 
 Resources:
 
-  # We need to define two AWS::Serverless::Api due to an issue with the handling of AWS::NoValue
+  # We need to define three AWS::Serverless::Api due to an issue with the handling of AWS::NoValue
   # See related GitHub issue: https://github.com/aws/serverless-application-model/issues/1435
   ApiGatewayApiWithCustomDomainAndRoute53Configuration:
     Condition: UseCustomDomainAndRoute53Configuration
@@ -118,6 +128,26 @@ Resources:
           Name: AWS::Include
           Parameters:
             Location: !Ref ApiDefinitionS3Uri
+
+  ApiGatewayApiWithPrivateVpcEndpoint:
+    Condition: UsePrivateVpcEndpoint
+    Type: AWS::Serverless::Api
+    Properties:
+      Tags:
+        'parallelcluster:version': !FindInMap [ParallelCluster, Constants, Version]
+      StageName: !FindInMap [ParallelCluster, Constants, Stage]
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: !Ref ApiDefinitionS3Uri
+      EndpointConfiguration:
+        Type: PRIVATE
+        VPCEndpointIds: [!Ref VpcEndpointId]
+      Auth:
+        DefaultAuthorizer: AWS_IAM
+        ResourcePolicy:
+          IntrinsicVpceWhitelist: [!Ref VpcEndpointId]
 
   # Note that even for Chinese regions here we need to use apigateway.amazonaws.com instead of apigateway.amazonaws.com.cn
   APIGatewayExecutionRole:
@@ -761,7 +791,12 @@ Outputs:
         - { CustomDomain: !Ref CustomDomainName }
       - !Sub
         - https://${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
-        - Api: !Ref ApiGatewayApiWithoutCustomDomain
+        - Api: !If
+            - UsePrivateVpcEndpoint
+            - !Sub
+              - '${restApiId}-${vpceId}'
+              - { restApiId: !Ref ApiGatewayApiWithPrivateVpcEndpoint, vpceId: !Ref VpcEndpointId }
+            - !Ref ApiGatewayApiWithoutCustomDomain
           StageName: !FindInMap [ParallelCluster, Constants, Stage]
 
   UriOfCopyOfPublicEcrImage:
