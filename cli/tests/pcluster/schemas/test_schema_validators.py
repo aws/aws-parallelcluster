@@ -17,6 +17,7 @@ from pcluster.schemas.cluster_schema import (
     AwsBatchComputeResourceSchema,
     AwsBatchQueueSchema,
     CloudWatchLogsSchema,
+    ClusterSchema,
     DcvSchema,
     EbsSchema,
     EfsSchema,
@@ -545,6 +546,17 @@ def test_subnet_id_validator(subnet_id, expected_message):
     """Verify that cw_log behaves as expected when parsed in a config file."""
     _validate_and_assert_error(HeadNodeNetworkingSchema(), {"SubnetId": subnet_id}, expected_message)
     _validate_and_assert_error(QueueNetworkingSchema(), {"SubnetIds": [subnet_id]}, expected_message)
+
+
+@pytest.mark.parametrize(
+    "key, expected_message",
+    [
+        ("key1", None),
+        ("parallelcluster:version", "The tag key prefix 'parallelcluster:' is reserved and cannot be used."),
+    ],
+)
+def test_tags_validator(key, expected_message):
+    _validate_and_assert_error(ClusterSchema(), {"Tags": [{"Key": key, "Value": "test_value"}]}, expected_message)
 
 
 def _validate_and_assert_error(schema, section_dict, expected_message, partial=True):

@@ -10,7 +10,7 @@
 # limitations under the License.
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_STACK_PREFIX
+from pcluster.constants import OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_STACK_PREFIX, PCLUSTER_VERSION_TAG
 
 
 class ClusterStack(StackInfo):
@@ -30,7 +30,7 @@ class ClusterStack(StackInfo):
     @property
     def version(self):
         """Return the version of ParallelCluster used to create the stack."""
-        return self.get_tag(PCLUSTER_CLUSTER_VERSION_TAG)
+        return self.get_tag(PCLUSTER_VERSION_TAG)
 
     @property
     def s3_bucket_name(self):
@@ -101,7 +101,7 @@ class ClusterInstance(InstanceInfo):
     @property
     def node_type(self) -> str:
         """Return os of the instance."""
-        return self._get_tag("parallelcluster:node-type")
+        return self._get_tag(PCLUSTER_NODE_TYPE_TAG)
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)

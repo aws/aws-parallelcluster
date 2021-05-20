@@ -18,10 +18,10 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
-    PCLUSTER_CLUSTER_VERSION_TAG,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
+    PCLUSTER_VERSION_TAG,
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
 )
@@ -642,18 +642,6 @@ class IntelHpcArchitectureValidator(Validator):
 
 
 # --------------- Other validators --------------- #
-
-
-class TagKeyValidator(Validator):
-    """
-    Tag key validator.
-
-    Validate the tag key is not a reserved one.
-    """
-
-    def _validate(self, key):
-        if key == PCLUSTER_CLUSTER_VERSION_TAG:
-            self._add_failure(f"The tag key '{PCLUSTER_CLUSTER_VERSION_TAG}' is a reserved one.", FailureLevel.ERROR)
 
 
 class DuplicateNameValidator(Validator):

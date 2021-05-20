@@ -99,7 +99,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterIG"
+            "Value": "parallelcluster:internet-gateway"
           },
           {
             "Key": "Stack",
@@ -123,7 +123,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterPublicSubnet"
+            "Value": "parallelcluster:public-subnet"
           },
           {
             "Key": "Stack",
@@ -154,7 +154,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterRouteTablePublic"
+            "Value": "parallelcluster:route-table-public"
           },
           {
             "Key": "Stack",

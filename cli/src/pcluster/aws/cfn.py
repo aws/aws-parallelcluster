@@ -15,7 +15,7 @@ from botocore.exceptions import ClientError
 
 from pcluster.aws.aws_resources import StackInfo
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, StackNotFoundError
-from pcluster.constants import PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_IMAGE_ID_TAG
+from pcluster.constants import PCLUSTER_IMAGE_ID_TAG, PCLUSTER_VERSION_TAG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ class CfnClient(Boto3Client):
         result = self._client.describe_stacks(**describe_stacks_kwargs)
         stack_list = []
         for stack in result.get("Stacks", []):
-            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_CLUSTER_VERSION_TAG):
+            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_VERSION_TAG):
                 stack_list.append(stack)
         return stack_list, result.get("NextToken")
 

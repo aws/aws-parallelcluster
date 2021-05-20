@@ -140,25 +140,22 @@ def test_setup_bucket_with_resources_success(
             mocker, scheduler, bucket_name=mock_generated_bucket_name, artifact_directory=artifact_dir
         )
 
-    cluster.bucket.upload_config(expected_config, cluster._s3_artifacts_dict.get("config_name"))
-    cluster.bucket.upload_cfn_template(expected_template, cluster._s3_artifacts_dict.get("template_name"))
+    cluster.bucket.upload_config(expected_config, "fake_config_name")
+    cluster.bucket.upload_cfn_template(expected_template, "fake_template_name")
     for dir in expected_dirs:
         cluster.bucket.upload_resources(dir)
 
     check_bucket_mock.assert_called_with()
 
     # assert upload has been called
-    upload_config_mock.assert_called_with(expected_config, cluster._s3_artifacts_dict.get("config_name"))
-    upload_template_mock.assert_called_with(expected_template, cluster._s3_artifacts_dict.get("template_name"))
+    upload_config_mock.assert_called_with(expected_config, "fake_config_name")
+    upload_template_mock.assert_called_with(expected_template, "fake_template_name")
     upload_custom_resources_mock.assert_has_calls([mocker.call(dir) for dir in expected_dirs])
 
     # assert bucket properties
     assert_that(cluster.bucket.name).is_equal_to(expected_bucket_name)
     assert_that(cluster.bucket.artifact_directory).is_equal_to(artifact_dir)
-    assert_that(cluster._s3_artifacts_dict.get("template_name")).is_equal_to("aws-parallelcluster.cfn.yaml")
-    assert_that(cluster._s3_artifacts_dict.get("config_name")).is_equal_to("cluster-config.yaml")
     assert_that(cluster.bucket._root_directory).is_equal_to("parallelcluster")
-    assert_that(cluster._s3_artifacts_dict.get("root_cluster_directory")).is_equal_to("clusters")
 
 
 @pytest.mark.parametrize(

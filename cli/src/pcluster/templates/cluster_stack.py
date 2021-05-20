@@ -48,7 +48,7 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.constants import OS_MAPPING
+from pcluster.constants import OS_MAPPING, PCLUSTER_S3_ARTIFACTS_DICT
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
@@ -1037,7 +1037,9 @@ class ClusterCdkStack(Stack):
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
                     "cluster_s3_bucket": self.bucket.name,
-                    "cluster_config_s3_key": f"{self.bucket.artifact_directory}/configs/cluster-config.yaml",
+                    "cluster_config_s3_key": "{0}/configs/{1}".format(
+                        self.bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
+                    ),
                     "cluster_config_version": self.config.config_version,
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/instance-types-data.json",
                     "custom_node_package": self.config.custom_node_package or "",

@@ -18,7 +18,7 @@ from aws_cdk import aws_route53 as route53
 from aws_cdk.core import CfnOutput, CfnParameter, CfnTag, Construct, CustomResource, Fn, Stack
 
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
-from pcluster.constants import OS_MAPPING
+from pcluster.constants import OS_MAPPING, PCLUSTER_APPLICATION_TAG
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -135,7 +135,7 @@ class SlurmConstruct(Construct):
                         effect=iam.Effect.ALLOW,
                         actions=["ec2:TerminateInstances"],
                         resources=["*"],
-                        conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
+                        conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_APPLICATION_TAG}": self.stack_name}},
                     ),
                     iam.PolicyStatement(
                         sid="EC2RunInstances",
@@ -207,7 +207,7 @@ class SlurmConstruct(Construct):
                 actions=["ec2:TerminateInstances"],
                 resources=["*"],
                 effect=iam.Effect.ALLOW,
-                conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
+                conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_APPLICATION_TAG}": self.stack_name}},
                 sid="FleetTerminatePolicy",
             ),
         )

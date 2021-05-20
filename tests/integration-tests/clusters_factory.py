@@ -161,9 +161,9 @@ class Cluster:
         else:
             ec2 = boto3.client("ec2")
             filters = [
-                {"Name": "tag:Application", "Values": [self.cfn_name]},
+                {"Name": "tag:parallelcluster:application", "Values": [self.cfn_name]},
                 {"Name": "instance-state-name", "Values": ["running"]},
-                {"Name": "tag:Name", "Values": ["HeadNode"]},
+                {"Name": "tag:parallelcluster:node-type", "Values": ["HeadNode"]},
             ]
             instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
             return (

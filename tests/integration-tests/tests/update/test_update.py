@@ -270,7 +270,7 @@ def _get_instance(region, stack_name, host, none_expected=False):
         iter(
             ec2_resource.instances.filter(
                 Filters=[
-                    {"Name": "tag:Application", "Values": [stack_name]},
+                    {"Name": "tag:parallelcluster:application", "Values": [stack_name]},
                     {"Name": "private-dns-name", "Values": [hostname]},
                 ]
             )

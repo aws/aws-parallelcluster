@@ -38,10 +38,10 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     - shared EBS volume
     """
     config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
-    version_tags = {"Version": get_pcluster_version()}
+    version_tags = {"parallelcluster:version": get_pcluster_version()}
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
-    cluster_name_tags = {"ClusterName": cluster.name}
+    cluster_name_tags = {"parallelcluster:cluster-name": cluster.name}
 
     test_cases = [
         {
@@ -52,7 +52,10 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
         {
             "resource": "Head Node",
             "tag_getter": get_head_node_tags,
-            "expected_tags": (cluster_name_tags, {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"}),
+            "expected_tags": (
+                cluster_name_tags,
+                {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"},
+            ),
         },
         {
             "resource": "Head Node Root Volume",
