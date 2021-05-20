@@ -35,7 +35,6 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     RegionValidator,
     SchedulerOsValidator,
-    TagKeyValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -763,19 +762,4 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
 )
 def test_intel_hpc_os_validator(os, expected_message):
     actual_failures = IntelHpcOsValidator().execute(os)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-# -------------- Other validators -------------- #
-
-
-@pytest.mark.parametrize(
-    "key, expected_message",
-    [
-        ("key1", None),
-        ("Version", "The tag key 'Version' is a reserved one"),
-    ],
-)
-def test_tags_validator(key, expected_message):
-    actual_failures = TagKeyValidator().execute(key)
     assert_failure_messages(actual_failures, expected_message)

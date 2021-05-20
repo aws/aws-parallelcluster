@@ -109,7 +109,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterIG"
+            "Value": "parallelcluster:internet-gateway"
           },
           {
             "Key": "Stack",
@@ -165,7 +165,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterPrivateSubnet"
+            "Value": "parallelcluster:private-subnet"
           },
           {
             "Key": "Stack",
@@ -192,7 +192,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterPublicSubnet"
+            "Value": "parallelcluster::public-subnet"
           },
           {
             "Key": "Stack",
@@ -234,7 +234,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterRouteTablePrivate"
+            "Value": "parallelcluster:route-table-private"
           },
           {
             "Key": "Stack",
@@ -254,7 +254,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "ParallelClusterRouteTablePublic"
+            "Value": "parallelcluster:route-table-public"
           },
           {
             "Key": "Stack",

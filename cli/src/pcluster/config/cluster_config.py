@@ -65,7 +65,6 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     RegionValidator,
     SchedulerOsValidator,
-    TagKeyValidator,
 )
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
@@ -526,9 +525,6 @@ class Tag(BaseTag):
         value: str = None,
     ):
         super().__init__(key, value)
-
-    def _validate(self):
-        self._execute_validator(TagKeyValidator, key=self.key)
 
 
 class Roles(Resource):

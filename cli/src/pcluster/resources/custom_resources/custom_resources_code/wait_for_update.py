@@ -36,7 +36,9 @@ def update(event, _):
     while updated_config_version != current_config_version:
         try:
             logging.info("Waiting for config version to be updated")
-            cluster_config_item = dynamodb_table.get_item(ConsistentRead=True, Key={"Id": "CLUSTER_CONFIG"})
+            cluster_config_item = dynamodb_table.get_item(
+                ConsistentRead=True, Key={"Id": "CLUSTER_CONFIG_WITH_IMPLIED_VALUES"}
+            )
             if cluster_config_item and "Item" in cluster_config_item:
                 current_config_version = cluster_config_item["Item"].get("Version")
                 logger.info("Current config version: %s", current_config_version)

@@ -36,6 +36,7 @@ from pcluster.schemas.common_schema import (
     TagSchema,
     get_field_validator,
     validate_json_format,
+    validate_no_reserved_tag,
 )
 from pcluster.utils import get_url_scheme
 
@@ -71,15 +72,9 @@ class ImageSchema(BaseSchema):
         return Image(**data)
 
     @validates("tags")
-    def validate_reserved_tag(self, value):
-        """Validate reserved tag in tags."""
-        if value:
-            for tag in value:
-                match = re.match(r"^parallelcluster:*", tag.key)
-                if match:
-                    raise ValidationError(
-                        message="The tag key prefix 'parallelcluster:' is reserved and cannot be used."
-                    )
+    def validate_tags(self, tags):
+        """Validate tags."""
+        validate_no_reserved_tag(tags)
 
 
 # ---------------------- Build Schema---------------------- #

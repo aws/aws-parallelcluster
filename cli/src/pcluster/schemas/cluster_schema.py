@@ -79,7 +79,13 @@ from pcluster.config.cluster_config import (
 )
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
-from pcluster.schemas.common_schema import BaseDevSettingsSchema, BaseSchema, TagSchema, get_field_validator
+from pcluster.schemas.common_schema import (
+    BaseDevSettingsSchema,
+    BaseSchema,
+    TagSchema,
+    get_field_validator,
+    validate_no_reserved_tag,
+)
 from pcluster.validators.cluster_validators import FSX_MESSAGES
 
 # pylint: disable=C0302
@@ -1127,6 +1133,11 @@ class ClusterSchema(BaseSchema):
     custom_s3_bucket = fields.Str(metadata={"update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET})
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @validates("tags")
+    def validate_tags(self, tags):
+        """Validate tags."""
+        validate_no_reserved_tag(tags)
 
     @post_load(pass_original=True)
     def make_resource(self, data, original_data, **kwargs):

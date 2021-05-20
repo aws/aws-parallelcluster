@@ -27,7 +27,7 @@ def cfn_describe_stack_mock_response(edits=None):
         "StackStatus": "CREATE_COMPLETE",
         "Outputs": [],
         "Tags": [
-            {"Key": "Version", "Value": "3.0.0"},
+            {"Key": "parallelcluster:version", "Value": "3.0.0"},
             {"Key": "parallelcluster:s3_bucket", "Value": "bucket_name"},
             {
                 "Key": "parallelcluster:cluster_dir",
@@ -124,7 +124,7 @@ class TestDescribeCluster:
                     "lastUpdatedTime": "2021-04-30 00:00:00",
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "Version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": "3.0.0"},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
@@ -157,7 +157,7 @@ class TestDescribeCluster:
                     "lastUpdatedTime": "2021-04-30 00:00:00",
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "Version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": "3.0.0"},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
@@ -182,7 +182,7 @@ class TestDescribeCluster:
                     "lastUpdatedTime": "2021-04-30 00:00:00",
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "Version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": "3.0.0"},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
@@ -209,7 +209,7 @@ class TestDescribeCluster:
                     "lastUpdatedTime": "2021-05-30 00:00:00",
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "Version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": "3.0.0"},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
@@ -240,7 +240,7 @@ class TestDescribeCluster:
                     "lastUpdatedTime": "2021-04-30 00:00:00",
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "Version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": "3.0.0"},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
@@ -330,7 +330,9 @@ class TestDescribeCluster:
     def test_incompatible_version(self, client, mocker):
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=cfn_describe_stack_mock_response({"Tags": [{"Key": "Version", "Value": "2.0.0"}]}),
+            return_value=cfn_describe_stack_mock_response(
+                {"Tags": [{"Key": "parallelcluster:version", "Value": "2.0.0"}]}
+            ),
         )
 
         response = self._send_test_request(client)
@@ -375,14 +377,14 @@ class TestListClusters:
                         "StackId": "arn:id",
                         "CreationTime": datetime(2021, 4, 30),
                         "StackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
-                        "Tags": [{"Key": "Version", "Value": "3.0.0"}],
+                        "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
                     },
                     {
                         "StackName": "name2",
                         "StackId": "arn:id2",
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
-                        "Tags": [{"Key": "Version", "Value": "3.1.0"}],
+                        "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                 ],
                 {
@@ -416,21 +418,21 @@ class TestListClusters:
                         "StackId": "arn:id",
                         "CreationTime": datetime(2021, 4, 30),
                         "StackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
-                        "Tags": [{"Key": "Version", "Value": "3.0.0"}],
+                        "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
                     },
                     {
                         "StackName": "name2",
                         "StackId": "arn:id2",
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
-                        "Tags": [{"Key": "Version", "Value": "3.1.0"}],
+                        "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                     {
                         "StackName": "name3",
                         "StackId": "arn:id3",
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStatus.DELETE_IN_PROGRESS,
-                        "Tags": [{"Key": "Version", "Value": "3.1.0"}],
+                        "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                 ],
                 {
@@ -464,14 +466,14 @@ class TestListClusters:
                         "StackId": "arn:id",
                         "CreationTime": datetime(2021, 4, 30),
                         "StackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
-                        "Tags": [{"Key": "Version", "Value": "3.0.0"}],
+                        "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
                     },
                     {
                         "StackName": "name2",
                         "StackId": "arn:id2",
                         "CreationTime": datetime(2021, 5, 30),
                         "StackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
-                        "Tags": [{"Key": "Version", "Value": "3.1.0"}],
+                        "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                 ],
                 {

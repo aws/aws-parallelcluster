@@ -27,7 +27,13 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.config_patch import ConfigPatch
-from pcluster.constants import PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_STACK_PREFIX
+from pcluster.constants import (
+    PCLUSTER_APPLICATION_TAG,
+    PCLUSTER_NODE_TYPE_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
+    PCLUSTER_STACK_PREFIX,
+    PCLUSTER_VERSION_TAG,
+)
 from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -82,16 +88,6 @@ class Cluster:
         self.__bucket = None
         self.template_body = None
         self.__config = None
-        self._s3_artifacts_dict = {
-            "root_directory": "parallelcluster",
-            "root_cluster_directory": "clusters",
-            "source_config_name": "cluster-config-original.yaml",
-            "config_name": "cluster-config.yaml",
-            "template_name": "aws-parallelcluster.cfn.yaml",
-            "instance_types_data_name": "instance-types-data.json",
-            "custom_artifacts_name": "artifacts.zip",
-            "scheduler_resources_name": "scheduler_resources.zip",
-        }
         self.__s3_artifact_dir = None
 
         self.__has_running_capacity = None
@@ -141,9 +137,9 @@ class Cluster:
         service_directory = generate_random_name_with_prefix(self.name)
         self.__s3_artifact_dir = "/".join(
             [
-                self._s3_artifacts_dict.get("root_directory"),
+                PCLUSTER_S3_ARTIFACTS_DICT.get("root_directory"),
                 get_installed_version(),
-                self._s3_artifacts_dict.get("root_cluster_directory"),
+                PCLUSTER_S3_ARTIFACTS_DICT.get("root_cluster_directory"),
                 service_directory,
             ]
         )
@@ -153,7 +149,7 @@ class Cluster:
         config_version = self.stack.original_config_version
         try:
             return self.bucket.get_config(
-                version_id=config_version, config_name=self._s3_artifacts_dict.get("source_config_name")
+                version_id=config_version, config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name")
             )
         except Exception as e:
             raise ClusterActionError(
@@ -273,7 +269,7 @@ class Cluster:
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
                 stack_name=self.stack_name,
                 template_url=self.bucket.get_cfn_template_url(
-                    template_name=self._s3_artifacts_dict.get("template_name")
+                    template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("template_name")
                 ),
                 disable_rollback=disable_rollback,
                 tags=self._get_cfn_tags(),
@@ -327,7 +323,7 @@ class Cluster:
             if self.config:
                 result = self.bucket.upload_config(
                     config=ClusterSchema().dump(deepcopy(self.config)),
-                    config_name=self._s3_artifacts_dict.get("config_name"),
+                    config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("config_name"),
                 )
 
                 # config version will be stored in DB by the cookbook
@@ -335,7 +331,7 @@ class Cluster:
 
                 # Upload original config
                 result = self.bucket.upload_config(
-                    config=self.config.source_config, config_name=self._s3_artifacts_dict.get("source_config_name")
+                    config=self.config.source_config, config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name")
                 )
 
                 # original config version will be stored in CloudFormation Parameters
@@ -358,23 +354,23 @@ class Cluster:
         try:
             resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
             self.bucket.upload_resources(
-                resource_dir=resources, custom_artifacts_name=self._s3_artifacts_dict.get("custom_artifacts_name")
+                resource_dir=resources, custom_artifacts_name=PCLUSTER_S3_ARTIFACTS_DICT.get("custom_artifacts_name")
             )
             if self.config.scheduler_resources:
                 self.bucket.upload_resources(
                     resource_dir=self.config.scheduler_resources,
-                    custom_artifacts_name=self._s3_artifacts_dict.get("scheduler_resources_name"),
+                    custom_artifacts_name=PCLUSTER_S3_ARTIFACTS_DICT.get("scheduler_resources_name"),
                 )
 
             # Upload template
             if self.template_body:
-                self.bucket.upload_cfn_template(self.template_body, self._s3_artifacts_dict.get("template_name"))
+                self.bucket.upload_cfn_template(self.template_body, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
 
             if isinstance(self.config.scheduling, SlurmScheduling):
                 # upload instance types data
                 self.bucket.upload_config(
                     self.config.get_instance_types_data(),
-                    self._s3_artifacts_dict.get("instance_types_data_name"),
+                    PCLUSTER_S3_ARTIFACTS_DICT.get("instance_types_data_name"),
                     format=S3FileFormat.JSON,
                 )
         except Exception as e:
@@ -415,8 +411,10 @@ class Cluster:
         for key in keys:
             template["Resources"][key]["DeletionPolicy"] = "Retain"
         try:
-            self.bucket.upload_cfn_template(template, self._s3_artifacts_dict.get("template_name"))
-            self._update_stack_template(self.bucket.get_cfn_template_url(self._s3_artifacts_dict.get("template_name")))
+            self.bucket.upload_cfn_template(template, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
+            self._update_stack_template(
+                self.bucket.get_cfn_template_url(PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
+            )
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
 
@@ -484,9 +482,9 @@ class Cluster:
 
     def _get_instance_filters(self, node_type: NodeType):
         return [
-            {"Name": "tag:Application", "Values": [self.stack_name]},
+            {"Name": f"tag:{PCLUSTER_APPLICATION_TAG}", "Values": [self.stack_name]},
             {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
-            {"Name": "tag:parallelcluster:node-type", "Values": [node_type.value]},
+            {"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": [node_type.value]},
         ]
 
     def _describe_instances(self, node_type: NodeType):
@@ -645,7 +643,7 @@ class Cluster:
             AWSApi.instance().cfn.update_stack_from_url(
                 stack_name=self.stack_name,
                 template_url=self.bucket.get_cfn_template_url(
-                    template_name=self._s3_artifacts_dict.get("template_name")
+                    template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("template_name")
                 ),
                 tags=self._get_cfn_tags(),
             )
@@ -665,10 +663,10 @@ class Cluster:
         """Add version tag to the stack."""
         if self.config.tags is None:
             self.config.tags = []
-        # Remove PCLUSTER_CLUSTER_VERSION_TAG if already exists
-        self.config.tags = [tag for tag in self.config.tags if tag.key != PCLUSTER_CLUSTER_VERSION_TAG]
-        # Add PCLUSTER_CLUSTER_VERSION_TAG
-        self.config.tags.append(Tag(key=PCLUSTER_CLUSTER_VERSION_TAG, value=get_installed_version()))
+        # Remove PCLUSTER_VERSION_TAG if already exists
+        self.config.tags = [tag for tag in self.config.tags if tag.key != PCLUSTER_VERSION_TAG]
+        # Add PCLUSTER_VERSION_TAG
+        self.config.tags.append(Tag(key=PCLUSTER_VERSION_TAG, value=get_installed_version()))
 
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
