@@ -57,6 +57,6 @@ def _render_config_file(config_file):
         config_name = os.path.basename(config_file)
         file_loader = FileSystemLoader(config_dir)
         return Environment(loader=file_loader).get_template(config_name).render()
-    except Exception:
-        logging.error("Failed when rendering config file %s", config_file)
+    except Exception as e:
+        logging.error("Failed when rendering config file %s with error: %s", config_file, e)
         raise

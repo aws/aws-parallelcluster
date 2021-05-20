@@ -153,11 +153,15 @@ class ImageBuilderCdkStack(Stack):
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_cfn_parameters(self):
-        custom_chef_cookbook = (
-            self.config.dev_settings.cookbook.chef_cookbook
-            if self.config.dev_settings and self.config.dev_settings.cookbook
-            else ""
-        )
+        if self.config.dev_settings and self.config.dev_settings.cookbook:
+            dev_settings_cookbook_value = self.config.dev_settings.cookbook.chef_cookbook
+            custom_chef_cookbook = (
+                create_s3_presigned_url(dev_settings_cookbook_value)
+                if dev_settings_cookbook_value.startswith("s3://")
+                else dev_settings_cookbook_value
+            )
+        else:
+            custom_chef_cookbook = ""
 
         CfnParameter(
             self,
@@ -937,6 +941,17 @@ def parse_bucket_url(url):
         raise URLError("Invalid s3 url: {0}".format(url))
 
     return {"bucket_name": bucket_name, "object_key": object_key, "object_name": object_name}
+
+
+def create_s3_presigned_url(s3_uri, expiration=3600):
+    """Generate a presigned URL to share an S3 object.
+
+    :param s3_uri: s3 uri, e.g. s3://my.bucket/my.object
+    :param expiration: Time in seconds for the presigned URL to remain valid
+    :return: Presigned URL as string
+    """
+    s3_uri_info = parse_bucket_url(s3_uri)
+    return AWSApi.instance().s3.create_presigned_url(s3_uri_info["bucket_name"], s3_uri_info["object_key"], expiration)
 
 
 def _load_yaml(source_dir, file_name):
