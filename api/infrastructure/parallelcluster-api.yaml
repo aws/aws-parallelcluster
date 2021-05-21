@@ -603,8 +603,8 @@ Resources:
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
       Name: !Sub
-        - ParallelClusterImageBuilderInfrastructureConfiguration-${StackIdSuffix}
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - ParallelClusterImageBuilderInfrastructureConfiguration-${Version}-${StackIdSuffix}
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
       TerminateInstanceOnFailure: true
 
@@ -613,8 +613,11 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub
-        - 'aws-parallelcluster-${Version}-${StackIdSuffix}'
-        - { Version: !FindInMap [ParallelCluster, Constants, Version], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - 'aws-parallelcluster-${StackIdSuffix}'
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      Tags:
+        - Key: 'parallelcluster:version'
+          Value: !FindInMap [ParallelCluster, Constants, Version]
 
   EcrImageRecipe:
     Condition: DoNotUseCustomEcrImageUri
@@ -624,8 +627,8 @@ Resources:
         - ComponentArn: !Sub arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:component/update-linux/x.x.x
       ContainerType: DOCKER
       Name: !Sub
-        - 'ImportPublicEcrImage-${StackIdSuffix}'
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - 'ImportPublicEcrImage-${Version}-${StackIdSuffix}'
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
       Version: !FindInMap [ParallelCluster, Constants, Version]
       ParentImage: !Ref PublicEcrImageUri
       PlatformOverride: Linux
