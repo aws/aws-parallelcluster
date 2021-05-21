@@ -76,7 +76,7 @@ Scheduling:
           - BucketName: String
             EnableWriteAccess: False
         AdditionalIamPolicies:
-          - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+          - Policy: arn:aws:iam::aws:policy/AdministratorAccess
     - Name: queue2
       ComputeSettings:
         LocalStorage:

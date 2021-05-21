@@ -19,6 +19,7 @@ from pcluster.validators import (
     ebs_validators,
     ec2_validators,
     fsx_validators,
+    iam_validators,
     kms_validators,
     networking_validators,
     s3_validators,
@@ -34,6 +35,7 @@ def _mock_all_validators(mocker, mockers):
         ec2_validators,
         fsx_validators,
         kms_validators,
+        iam_validators,
         networking_validators,
         s3_validators,
     ]:
@@ -86,7 +88,7 @@ def test_all_validators_are_called(test_datadir, mocker):
 
     # Assert validators are called
     for m in mockers:
-        if m["name"] in ["TagKeyValidator", "ClusterNameValidator"]:
+        if m["name"] in ["TagKeyValidator", "ClusterNameValidator", "InstanceProfileValidator", "RoleValidator"]:
             # ToDo: Reserved tag keys to be aligned between cluster and image builder
             continue
         print("Checking " + m["name"] + " is called")

@@ -728,6 +728,9 @@ class ImageBuilderCdkStack(Stack):
             Fn.sub("arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"),
             Fn.sub("arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"),
         ]
+        if self.config.build.iam and self.config.build.iam.additional_iam_policies:
+            for policy in self.config.build.iam.additional_iam_policy_arns:
+                managed_policy_arns.append(policy)
 
         instancerole_policy_document = iam.PolicyDocument(
             statements=[

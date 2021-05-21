@@ -30,7 +30,6 @@ from marshmallow import (
 )
 
 from pcluster.config.cluster_config import (
-    AdditionalIamPolicy,
     AdditionalPackages,
     AmiSearchFilters,
     AwsBatchClusterConfig,
@@ -80,6 +79,7 @@ from pcluster.config.cluster_config import (
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.schemas.common_schema import (
+    AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
     BaseSchema,
     TagSchema,
@@ -679,17 +679,6 @@ class S3AccessSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return S3Access(**data)
-
-
-class AdditionalIamPolicySchema(BaseSchema):
-    """Represent the schema of Additional IAM policy."""
-
-    policy = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AdditionalIamPolicy(**data)
 
 
 class ClusterIamSchema(BaseSchema):

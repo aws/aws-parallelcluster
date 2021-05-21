@@ -693,6 +693,115 @@ def _test_resources(generated_resources, expected_resources):
             {
                 "imagebuilder": {
                     "build": {
+                        "iam": {
+                            "additional_iam_policies": [{"policy": "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"}]
+                        },
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            {
+                "Type": "AWS::IAM::Role",
+                "DependsOn": ["DeleteStackFunctionExecutionRole"],
+                "Properties": {
+                    "RoleName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImage-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
+                    "AssumeRolePolicyDocument": {
+                        "Statement": [
+                            {
+                                "Action": "sts:AssumeRole",
+                                "Effect": "Allow",
+                                "Principal": {"Service": {"Fn::Join": ["", ["ec2.", {"Ref": "AWS::URLSuffix"}]]}},
+                            }
+                        ],
+                        "Version": "2012-10-17",
+                    },
+                    "ManagedPolicyArns": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"},
+                        "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess",
+                    ],
+                    "Path": "/ParallelClusterImage/",
+                    "Policies": [
+                        {
+                            "PolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Effect": "Allow",
+                                        "Action": ["ec2:CreateTags", "ec2:ModifyImageAttribute"],
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":ec2:",
+                                                    {"Ref": "AWS::Region"},
+                                                    "::image/*",
+                                                ],
+                                            ]
+                                        },
+                                    }
+                                ],
+                            },
+                            "PolicyName": "InstanceRoleInlinePolicy",
+                        }
+                    ],
+                    "Tags": [
+                        {
+                            "Key": "parallelcluster:image_id",
+                            "Value": "Pcluster",
+                        },
+                        {
+                            "Key": "parallelcluster:image_name",
+                            "Value": "Pcluster",
+                        },
+                    ],
+                },
+            },
+            {
+                "Type": "AWS::IAM::InstanceProfile",
+                "DependsOn": ["DeleteStackFunctionExecutionRole"],
+                "Properties": {
+                    "Roles": [{"Ref": "InstanceRole"}],
+                    "Path": "/ParallelClusterImage/",
+                    "InstanceProfileName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImage-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
+                },
+            },
+            {"Ref": "InstanceProfile"},
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
                         "iam": {
