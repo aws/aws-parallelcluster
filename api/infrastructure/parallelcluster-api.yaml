@@ -693,7 +693,7 @@ Resources:
                   except ecr.exceptions.RepositoryNotFoundException:
                       response_data['Message'] = 'Repository was not found, considering image deletion successfull'
                   except Exception as exception:
-                      response_status = cfnresponse.FAILURE
+                      response_status = cfnresponse.FAILED
                       response_data['Message'] = 'Failed resource deletion with error: {}'.format(exception)
 
               cfnresponse.send(event, context, response_status, response_data)
