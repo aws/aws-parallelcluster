@@ -15,7 +15,7 @@
 
 from typing import List
 
-from pcluster.config.common import BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
 from pcluster.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster.utils import get_region
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
@@ -82,10 +82,24 @@ class DistributionConfiguration(Resource):
 class Iam(Resource):
     """Represent the IAM configuration for the ImageBuilder."""
 
-    def __init__(self, instance_role: str = None, cleanup_lambda_role: str = None):
+    def __init__(
+        self,
+        instance_role: str = None,
+        cleanup_lambda_role: str = None,
+        additional_iam_policies: List[AdditionalIamPolicy] = (),
+    ):
         super().__init__()
         self.instance_role = Resource.init_param(instance_role)
         self.cleanup_lambda_role = Resource.init_param(cleanup_lambda_role)
+        self.additional_iam_policies = additional_iam_policies
+
+    @property
+    def additional_iam_policy_arns(self) -> List[str]:
+        """Get list of arn strings from the list of policy objects."""
+        arns = []
+        for policy in self.additional_iam_policies:
+            arns.append(policy.policy)
+        return arns
 
     def _validate(self):
         if self.instance_role:

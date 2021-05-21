@@ -20,7 +20,7 @@ import json
 from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
 from pcluster.config.cluster_config import BaseTag
-from pcluster.config.common import Cookbook
+from pcluster.config.common import AdditionalIamPolicy, Cookbook
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
 from pcluster.utils import camelcase
@@ -146,6 +146,19 @@ class TagSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return BaseTag(**data)
+
+
+class AdditionalIamPolicySchema(BaseSchema):
+    """Represent the schema of Additional IAM policy."""
+
+    policy = fields.Str(
+        required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AdditionalIamPolicy(**data)
 
 
 class CookbookSchema(BaseSchema):
