@@ -18,6 +18,7 @@ from pkg_resources import packaging
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
+from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.models.cluster import (
     Cluster,
     ClusterActionError,
@@ -165,7 +166,13 @@ class PclusterApi:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
             cluster = Cluster(cluster_name, cluster_config)
-            cluster.create(disable_rollback, suppress_validators, validation_failure_level)
+            validator_suppressors = set()
+            if suppress_validators:
+                validator_suppressors.add(AllValidatorsSuppressor())
+            # check cluster existence
+            if AWSApi.instance().cfn.stack_exists(cluster.stack_name):
+                raise Exception(f"Cluster {cluster.name} already exists")
+            cluster.create(disable_rollback, validator_suppressors, validation_failure_level)
             return ClusterInfo(cluster.stack)
         except ConfigValidationError as e:
             return ApiFailure(str(e), validation_failures=e.validation_failures)
@@ -230,8 +237,10 @@ class PclusterApi:
                     "This operation may only be performed using the same ParallelCluster "
                     "version used to create the cluster."
                 )
-
-            cluster.update(cluster_config, suppress_validators, validation_failure_level, force)  # TODO add dryrun
+            validator_suppressors = set()
+            if suppress_validators:
+                validator_suppressors.add(AllValidatorsSuppressor())
+            cluster.update(cluster_config, validator_suppressors, validation_failure_level, force)  # TODO add dryrun
             return ClusterInfo(cluster.stack)
         except ConfigValidationError as e:
             return ApiFailure(str(e), validation_failures=e.validation_failures)

@@ -10,7 +10,6 @@
 # limitations under the License.
 from typing import List
 
-from pcluster import utils
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError
 from pcluster.constants import PCLUSTER_IMAGE_BUILD_STATUS_TAG, PCLUSTER_IMAGE_ID_TAG, SUPPORTED_ARCHITECTURES
@@ -226,6 +225,8 @@ class Ec2Client(Boto3Client):
     @staticmethod
     def _get_official_image_name_prefix(os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
+        from pcluster.utils import get_installed_version  # pylint:disable=import-outside-toplevel
+
         suffixes = {
             "alinux2": "amzn2-hvm",
             "centos7": "centos7-hvm",
@@ -234,7 +235,7 @@ class Ec2Client(Boto3Client):
             "ubuntu2004": "ubuntu-2004-lts-hvm",
         }
         return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
-            version=utils.get_installed_version(), suffix=suffixes[os], arch=architecture
+            version=get_installed_version(), suffix=suffixes[os], arch=architecture
         )
 
     @AWSExceptionHandler.handle_client_exception

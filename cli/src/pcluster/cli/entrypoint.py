@@ -36,7 +36,9 @@ class VersionCommand(CliCommand):
     def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
         pass
 
-    def execute(self, args: argparse.Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(  # noqa: D102
+        self, args: argparse.Namespace, extra_args: List[str]  # pylint: disable=unused-argument
+    ) -> None:
         print(get_installed_version())
 
 

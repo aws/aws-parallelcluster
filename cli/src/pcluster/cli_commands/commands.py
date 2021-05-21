@@ -31,7 +31,7 @@ from pcluster.utils import load_yaml_dict
 LOGGER = logging.getLogger(__name__)
 
 
-def _parse_config_file(config_file, fail_on_config_file_absence=True):
+def _parse_config_file(config_file, fail_on_config_file_absence=True):  # pylint:disable=inconsistent-return-statements
     """
     Parse the config file and initialize config_file and config_parser attributes.
 
