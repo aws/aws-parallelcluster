@@ -668,13 +668,6 @@ Resources:
               build_number = parts[-1]
               return '{}-{}'.format(version, build_number)
 
-          def handle_deletion_event(event):
-              """ Handle deletion event by removing the created Docker image from the ECR repository
-              """
-              ecr_repository_name = event['ResourceProperties']['EcrRepositoryName']
-              tag = get_tag_from_image_arn(event['ResourceProperties']['ImageToDeleteArn'])
-              return ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=[{'imageTag': tag}])
-
           def handler(event, context):
               print(event)
               print('boto version {}'.format(boto3.__version__))
@@ -684,17 +677,21 @@ Resources:
 
               if event['RequestType'] == 'Create':
                   response_data['Message'] = 'Resource creation successful!'
-              elif event['RequestType'] == 'Update':
-                  response_data['Message'] = 'Resource update successful!'
-              elif event['RequestType'] == 'Delete':
+              elif event['RequestType'] == 'Update' or event['RequestType'] == 'Delete':
                   try:
-                      handle_deletion_event(event)
-                      response_data['Message'] = 'Resource deletion successful!'
+                      resource_key = 'OldResourceProperties' if 'OldResourceProperties' in event else 'ResourceProperties'
+
+                      ecr_repository_name = event[resource_key]['EcrRepositoryName']
+                      tag = get_tag_from_image_arn(event[resource_key]['ImageToDeleteArn'])
+
+                      ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=[{'imageTag': tag}])
+
+                      response_data['Message'] = 'Image deletion successful!'
                   except ecr.exceptions.RepositoryNotFoundException:
                       response_data['Message'] = 'Repository was not found, considering image deletion successfull'
                   except Exception as exception:
                       response_status = cfnresponse.FAILED
-                      response_data['Message'] = 'Failed resource deletion with error: {}'.format(exception)
+                      response_data['Message'] = 'Failed image deletion with error: {}'.format(exception)
 
               cfnresponse.send(event, context, response_status, response_data)
 
