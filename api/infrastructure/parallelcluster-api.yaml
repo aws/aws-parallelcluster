@@ -729,7 +729,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
-        - PolicyName: S3Policy
+        - PolicyName: BatchDeletePolicy
           PolicyDocument:
             Version: 2012-10-17
             Statement:
