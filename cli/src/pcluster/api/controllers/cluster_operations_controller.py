@@ -145,7 +145,7 @@ def describe_cluster(cluster_name, region=None):
 
     config_url = "NOT_AVAILABLE"
     try:
-        config_url = cluster.config_presigned_url  # TODO: add config retrieval by version
+        config_url = cluster.config_presigned_url
     except ClusterActionError as e:
         # Do not fail request when S3 bucket is not available
         LOGGER.error(e)
@@ -153,7 +153,7 @@ def describe_cluster(cluster_name, region=None):
     response = DescribeClusterResponseContent(
         creation_time=cfn_stack.creation_time,
         version=cfn_stack.version,
-        cluster_configuration=ClusterConfigurationStructure(s3_url=config_url),  # TODO: add config version
+        cluster_configuration=ClusterConfigurationStructure(s3_url=config_url),
         tags=[Tag(value=tag.get("Value"), key=tag.get("Key")) for tag in cfn_stack.tags],
         cloud_formation_status=cfn_stack.status,
         cluster_name=cluster_name,

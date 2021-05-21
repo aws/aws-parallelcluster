@@ -184,7 +184,10 @@ class Cluster:
     @property
     def config_presigned_url(self) -> str:
         """Return a pre-signed Url to download the config from the S3 bucket."""
-        return self.bucket.get_config_presigned_url(config_name=self._s3_artifacts_dict.get("source_config_name"))
+        return self.bucket.get_config_presigned_url(
+            config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name"),
+            version_id=self.stack.original_config_version,
+        )
 
     @property
     def compute_fleet_status(self) -> ComputeFleetStatus:
