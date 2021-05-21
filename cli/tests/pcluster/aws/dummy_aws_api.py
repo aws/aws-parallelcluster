@@ -13,6 +13,7 @@ import os
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.cfn import CfnClient
+from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.fsx import FSxClient
 from pcluster.aws.iam import IamClient
@@ -82,6 +83,7 @@ class _DummyAWSApi(AWSApi):
         self._sts = _DummyStsClient()
         self._s3_resource = _DummyS3Resource()
         self._iam = _DummyIamClient()
+        self._ddb_resource = _DummyDynamoResource()
         # TODO: mock all clients
 
 
@@ -179,6 +181,12 @@ class _DummyS3Resource(S3Resource):
 
 
 class _DummyIamClient(IamClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+
+class _DummyDynamoResource(DynamoResource):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
