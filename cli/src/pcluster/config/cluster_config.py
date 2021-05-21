@@ -125,20 +125,20 @@ class Ebs(Resource):
         self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
-    def _validate(self):
-        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
-        self._execute_validator(
+    def _register_validators(self):
+        self._register_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
+        self._register_validator(
             EbsVolumeIopsValidator,
             volume_type=self.volume_type,
             volume_size=self.size,
             volume_iops=self.iops,
         )
-        self._execute_validator(
+        self._register_validator(
             EbsVolumeThroughputValidator,
             volume_type=self.volume_type,
             volume_throughput=self.throughput,
         )
-        self._execute_validator(
+        self._register_validator(
             EbsVolumeThroughputIopsValidator,
             volume_type=self.volume_type,
             volume_iops=self.iops,
@@ -204,14 +204,14 @@ class SharedEbs(Ebs):
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(NameValidator, name=self.name)
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(NameValidator, name=self.name)
         if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
-        self._execute_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
-        self._execute_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
+            self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
+        self._register_validator(SharedEbsVolumeIdValidator, volume_id=self.volume_id)
+        self._register_validator(EbsVolumeSizeSnapshotValidator, snapshot_id=self.snapshot_id, volume_size=self.size)
 
 
 class SharedEfs(Resource):
@@ -239,11 +239,11 @@ class SharedEfs(Resource):
         self.provisioned_throughput = Resource.init_param(provisioned_throughput)
         self.file_system_id = Resource.init_param(file_system_id)
 
-    def _validate(self):
-        self._execute_validator(NameValidator, name=self.name)
+    def _register_validators(self):
+        self._register_validator(NameValidator, name=self.name)
         if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
-            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
+            self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
 
 
 class SharedFsx(Resource):
@@ -293,22 +293,22 @@ class SharedFsx(Resource):
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
         self.__file_system_data = None
 
-    def _validate(self):
-        self._execute_validator(NameValidator, name=self.name)
-        self._execute_validator(
+    def _register_validators(self):
+        self._register_validator(NameValidator, name=self.name)
+        self._register_validator(
             FsxS3Validator,
             import_path=self.import_path,
             imported_file_chunk_size=self.imported_file_chunk_size,
             export_path=self.export_path,
             auto_import_policy=self.auto_import_policy,
         )
-        self._execute_validator(
+        self._register_validator(
             FsxPersistentOptionsValidator,
             deployment_type=self.deployment_type,
             kms_key_id=self.kms_key_id,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
         )
-        self._execute_validator(
+        self._register_validator(
             FsxBackupOptionsValidator,
             automatic_backup_retention_days=self.automatic_backup_retention_days,
             daily_automatic_backup_start_time=self.daily_automatic_backup_start_time,
@@ -319,14 +319,14 @@ class SharedFsx(Resource):
             export_path=self.export_path,
             auto_import_policy=self.auto_import_policy,
         )
-        self._execute_validator(
+        self._register_validator(
             FsxStorageTypeOptionsValidator,
             fsx_storage_type=self.fsx_storage_type,
             deployment_type=self.deployment_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             drive_cache_type=self.drive_cache_type,
         )
-        self._execute_validator(
+        self._register_validator(
             FsxStorageCapacityValidator,
             storage_capacity=self.storage_capacity,
             deployment_type=self.deployment_type,
@@ -335,16 +335,16 @@ class SharedFsx(Resource):
             file_system_id=self.file_system_id,
             backup_id=self.backup_id,
         )
-        self._execute_validator(FsxBackupIdValidator, backup_id=self.backup_id)
+        self._register_validator(FsxBackupIdValidator, backup_id=self.backup_id)
 
         if self.import_path:
-            self._execute_validator(S3BucketUriValidator, url=self.import_path)
+            self._register_validator(S3BucketUriValidator, url=self.import_path)
         if self.export_path:
-            self._execute_validator(S3BucketUriValidator, url=self.export_path)
+            self._register_validator(S3BucketUriValidator, url=self.export_path)
         if self.kms_key_id:
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
         if self.auto_import_policy:
-            self._execute_validator(
+            self._register_validator(
                 FsxAutoImportValidator, auto_import_policy=self.auto_import_policy, import_path=self.import_path
             )
 
@@ -393,9 +393,9 @@ class _BaseNetworking(Resource):
         self.additional_security_groups = Resource.init_param(additional_security_groups)
         self.proxy = proxy
 
-    def _validate(self):
-        self._execute_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
-        self._execute_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
+    def _register_validators(self):
+        self._register_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
+        self._register_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
 
 class HeadNodeNetworking(_BaseNetworking):
@@ -406,9 +406,9 @@ class HeadNodeNetworking(_BaseNetworking):
         self.subnet_id = Resource.init_param(subnet_id)
         self.elastic_ip = Resource.init_param(elastic_ip)
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(ElasticIpValidator, elastic_ip=self.elastic_ip)
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(ElasticIpValidator, elastic_ip=self.elastic_ip)
 
     @property
     def availability_zone(self):
@@ -424,8 +424,8 @@ class PlacementGroup(Resource):
         self.enabled = Resource.init_param(enabled, default=False)
         self.id = Resource.init_param(id)
 
-    def _validate(self):
-        self._execute_validator(PlacementGroupIdValidator, placement_group_id=self.id)
+    def _register_validators(self):
+        self._register_validator(PlacementGroupIdValidator, placement_group_id=self.id)
 
 
 class QueueNetworking(_BaseNetworking):
@@ -445,8 +445,8 @@ class Ssh(Resource):
         self.key_name = Resource.init_param(key_name)
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
-    def _validate(self):
-        self._execute_validator(KeyPairValidator, key_name=self.key_name)
+    def _register_validators(self):
+        self._register_validator(KeyPairValidator, key_name=self.key_name)
 
 
 class Dcv(Resource):
@@ -644,10 +644,10 @@ class ClusterDevSettings(BaseDevSettings):
         self.ami_search_filters = Resource.init_param(ami_search_filters)
         self.instance_types_data = Resource.init_param(instance_types_data)
 
-    def _validate(self):
-        super()._validate()
+    def _register_validators(self):
+        super()._register_validators()
         if self.cluster_template:
-            self._execute_validator(UrlValidator, url=self.cluster_template)
+            self._register_validator(UrlValidator, url=self.cluster_template)
 
 
 # ---------------------- Nodes and Cluster ---------------------- #
@@ -661,9 +661,9 @@ class Image(Resource):
         self.os = Resource.init_param(os)
         self.custom_ami = Resource.init_param(custom_ami)
 
-    def _validate(self):
+    def _register_validators(self):
         if self.custom_ami:
-            self._execute_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
+            self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
 
 
 class CustomAction(Resource):
@@ -674,8 +674,8 @@ class CustomAction(Resource):
         self.script = Resource.init_param(script)
         self.args = Resource.init_param(args)
 
-    def _validate(self):
-        self._execute_validator(UrlValidator, url=self.script)
+    def _register_validators(self):
+        self._register_validator(UrlValidator, url=self.script)
 
 
 class CustomActions(Resource):
@@ -714,9 +714,9 @@ class HeadNode(Resource):
         self.iam = iam or Iam(implied=True)
         self.__instance_type_info = None
 
-    def _validate(self):
-        self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._execute_validator(
+    def _register_validators(self):
+        self._register_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        self._register_validator(
             DisableSimultaneousMultithreadingArchitectureValidator,
             disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
             architecture=self.architecture,
@@ -790,8 +790,8 @@ class BaseComputeResource(Resource):
             disable_simultaneous_multithreading, default=False
         )
 
-    def _validate(self):
-        self._execute_validator(NameValidator, name=self.name)
+    def _register_validators(self):
+        self._register_validator(NameValidator, name=self.name)
 
 
 class CapacityType(Enum):
@@ -828,8 +828,8 @@ class BaseQueue(Resource):
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
-    def _validate(self):
-        self._execute_validator(NameValidator, name=self.name)
+    def _register_validators(self):
+        self._register_validator(NameValidator, name=self.name)
 
 
 class BaseClusterConfig(Resource):
@@ -866,23 +866,23 @@ class BaseClusterConfig(Resource):
         self.config_version = ""
         self.original_config_version = ""
 
-    def _validate(self):
-        self._execute_validator(RegionValidator, region=self.region)
-        self._execute_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
+    def _register_validators(self):
+        self._register_validator(RegionValidator, region=self.region)
+        self._register_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
         if self.ami_id:
-            self._execute_validator(
+            self._register_validator(
                 InstanceTypeBaseAMICompatibleValidator,
                 instance_type=self.head_node.instance_type,
                 image=self.ami_id,
             )
-        self._execute_validator(
+        self._register_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         self._register_storage_validators()
-        self._execute_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.ami_id)
+        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.ami_id)
 
         if self.head_node.dcv:
-            self._execute_validator(
+            self._register_validator(
                 DcvValidator,
                 instance_type=self.head_node.instance_type,
                 dcv_enabled=self.head_node.dcv.enabled,
@@ -896,19 +896,19 @@ class BaseClusterConfig(Resource):
             and self.additional_packages.intel_select_solutions
             and self.additional_packages.intel_select_solutions.install_intel_software
         ):
-            self._execute_validator(IntelHpcOsValidator, os=self.image.os)
-            self._execute_validator(
+            self._register_validator(IntelHpcOsValidator, os=self.image.os)
+            self._register_validator(
                 IntelHpcArchitectureValidator,
                 architecture=self.head_node.architecture,
             )
         if self.custom_s3_bucket:
-            self._execute_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
-            self._execute_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
+            self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
+            self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
 
     def _register_storage_validators(self):
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0, "raid": 0}
         if self.shared_storage:
-            self._execute_validator(
+            self._register_validator(
                 DuplicateNameValidator,
                 name_list=[storage.name for storage in self.shared_storage],
                 resource_name="Shared Storage",
@@ -917,12 +917,12 @@ class BaseClusterConfig(Resource):
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
                     if storage.file_system_id:
-                        self._execute_validator(
+                        self._register_validator(
                             FsxNetworkingValidator,
                             file_system_id=storage.file_system_id,
                             head_node_subnet_id=self.head_node.networking.subnet_id,
                         )
-                    self._execute_validator(
+                    self._register_validator(
                         FsxArchitectureOsValidator,
                         architecture=self.head_node.architecture,
                         os=self.image.os,
@@ -935,21 +935,21 @@ class BaseClusterConfig(Resource):
                 if isinstance(storage, SharedEfs):
                     storage_count["efs"] += 1
                     if storage.file_system_id:
-                        self._execute_validator(
+                        self._register_validator(
                             EfsIdValidator,
                             efs_id=storage.file_system_id,
                             head_node_avail_zone=self.head_node.networking.availability_zone,
                         )
 
             for storage_type in ["ebs", "efs", "fsx", "raid"]:
-                self._execute_validator(
+                self._register_validator(
                     NumberOfStorageValidator,
                     storage_type=storage_type.upper(),
                     max_number=MAX_STORAGE_COUNT.get(storage_type),
                     storage_count=storage_count[storage_type],
                 )
 
-        self._execute_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
+        self._register_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
 
     @property
     def region(self):
@@ -1105,12 +1105,12 @@ class AwsBatchComputeResource(BaseComputeResource):
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=self.min_vcpus)
         self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(
             AwsBatchComputeInstanceTypeValidator, instance_types=self.instance_types, max_vcpus=self.max_vcpus
         )
-        self._execute_validator(
+        self._register_validator(
             AwsBatchComputeResourceSizeValidator,
             min_vcpus=self.min_vcpus,
             max_vcpus=self.max_vcpus,
@@ -1125,9 +1125,9 @@ class AwsBatchQueue(BaseQueue):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
@@ -1149,8 +1149,8 @@ class AwsBatchScheduling(Resource):
         self.queues = queues
         self.settings = settings
 
-    def _validate(self):
-        self._execute_validator(
+    def _register_validators(self):
+        self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
 
@@ -1162,15 +1162,15 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         super().__init__(**kwargs)
         self.scheduling = scheduling
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(AwsBatchRegionValidator, region=self.region)
-        self._execute_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(AwsBatchRegionValidator, region=self.region)
+        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
-                self._execute_validator(
+                self._register_validator(
                     AwsBatchInstancesArchitectureCompatibilityValidator,
                     instance_types=compute_resource.instance_types,
                     architecture=self.head_node.architecture,
@@ -1208,19 +1208,19 @@ class SlurmComputeResource(BaseComputeResource):
         """Return instance type information."""
         return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(
             ComputeResourceSizeValidator,
             min_count=self.min_count,
             max_count=self.max_count,
         )
-        self._execute_validator(
+        self._register_validator(
             DisableSimultaneousMultithreadingArchitectureValidator,
             disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
             architecture=self.architecture,
         )
-        self._execute_validator(
+        self._register_validator(
             EfaValidator,
             instance_type=self.instance_type,
             efa_enabled=self.efa.enabled,
@@ -1293,26 +1293,26 @@ class SlurmQueue(BaseQueue):
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
-        self._execute_validator(
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
+        self._register_validator(
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
         )
         for compute_resource in self.compute_resources:
-            self._execute_validator(
+            self._register_validator(
                 CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
             )
-            self._execute_validator(
+            self._register_validator(
                 EfaSecurityGroupValidator,
                 efa_enabled=compute_resource.efa.enabled,
                 security_groups=self.networking.security_groups,
                 additional_security_groups=self.networking.additional_security_groups,
             )
             if self.networking.placement_group:
-                self._execute_validator(
+                self._register_validator(
                     EfaPlacementGroupValidator,
                     efa_enabled=compute_resource.efa.enabled,
                     placement_group_id=self.networking.placement_group.id,
@@ -1356,8 +1356,8 @@ class SlurmScheduling(Resource):
         self.queues = queues
         self.settings = settings or SlurmSettings(implied=True)
 
-    def _validate(self):
-        self._execute_validator(
+    def _register_validators(self):
+        self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
 
@@ -1380,25 +1380,25 @@ class SlurmClusterConfig(BaseClusterConfig):
                 result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
         return result
 
-    def _validate(self):
-        super()._validate()
-        self._execute_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
 
         for queue in self.scheduling.queues:
-            self._execute_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)
+            self._register_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)
             for compute_resource in queue.compute_resources:
                 if self.ami_id:
-                    self._execute_validator(
+                    self._register_validator(
                         InstanceTypeBaseAMICompatibleValidator,
                         instance_type=compute_resource.instance_type,
                         image=self.ami_id,
                     )
-                self._execute_validator(
+                self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
                     instance_type=compute_resource.instance_type,
                     architecture=self.head_node.architecture,
                 )
-                self._execute_validator(
+                self._register_validator(
                     EfaOsArchitectureValidator,
                     efa_enabled=compute_resource.efa.enabled,
                     os=self.image.os,

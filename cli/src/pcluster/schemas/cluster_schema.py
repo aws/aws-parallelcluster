@@ -1171,8 +1171,9 @@ class ClusterSchema(BaseSchema):
         error_message = validation_error.args[0]
         if "Scheduling" in error_message:
             scheduling = error_message["Scheduling"]
-            for scheduler in SUPPORTED_SCHEDULERS:
-                scheduler_settings = scheduling.get(scheduler.capitalize())
-                if scheduler_settings:
-                    error_message["Scheduling"] = scheduler_settings
-                    break
+            if isinstance(scheduling, dict):
+                for scheduler in SUPPORTED_SCHEDULERS:
+                    scheduler_settings = scheduling.get(scheduler.capitalize())
+                    if scheduler_settings:
+                        error_message["Scheduling"] = scheduler_settings
+                        break

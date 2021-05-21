@@ -62,14 +62,14 @@ def test_resource_validate():
             self.fake_attribute = "fake-value"
             self.other_attribute = "other-value"
 
-        def _validate(self):
-            self._execute_validator(FakeErrorValidator, param=self.fake_attribute)
-            self._execute_validator(
+        def _register_validators(self):
+            self._register_validator(FakeErrorValidator, param=self.fake_attribute)
+            self._register_validator(
                 FakeComplexValidator,
                 fake_attribute=self.fake_attribute,
                 other_attribute=self.other_attribute,
             )
-            self._execute_validator(FakeInfoValidator, param=self.other_attribute)
+            self._register_validator(FakeInfoValidator, param=self.other_attribute)
 
     fake_resource = FakeResource()
     validation_failures = fake_resource.validate()
@@ -90,8 +90,8 @@ def test_dynamic_property_validate():
             super().__init__()
             self.deps_value = ""
 
-        def _validate(self):
-            self._execute_validator(FakePropertyValidator, property_value=self.dynamic_attribute)
+        def _register_validators(self):
+            self._register_validator(FakePropertyValidator, property_value=self.dynamic_attribute)
 
         @property
         def dynamic_attribute(self):
@@ -126,8 +126,8 @@ def test_nested_resource_validate():
             super().__init__()
             self.fake_attribute = fake_value
 
-        def _validate(self):
-            self._execute_validator(FakeErrorValidator, param=self.fake_attribute)
+        def _register_validators(self):
+            self._register_validator(FakeErrorValidator, param=self.fake_attribute)
 
     class FakeParentResource(Resource):
         """Fake resource class to test validators."""
@@ -138,8 +138,8 @@ def test_nested_resource_validate():
             self.other_attribute = "other-value"
             self.list_of_resources = list_of_resources
 
-        def _validate(self):
-            self._execute_validator(FakeInfoValidator, param=self.other_attribute)
+        def _register_validators(self):
+            self._register_validator(FakeInfoValidator, param=self.other_attribute)
 
     fake_resource = FakeParentResource(FakeNestedResource("value1"), [FakeNestedResource("value2")])
     validation_failures = fake_resource.validate()

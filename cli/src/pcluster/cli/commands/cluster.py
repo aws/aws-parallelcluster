@@ -76,7 +76,7 @@ class CreateClusterCommand(CliCommand):
             help="Specifies the URL for a custom CloudFormation template, if it was used at creation time.",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import create
 
         create(args)
@@ -118,7 +118,7 @@ class UpdateClusterCommand(CliCommand):
             "-f", "--force", action="store_true", help="Forces the update skipping security checks. Not recommended."
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands import update
 
         update.execute(args)
@@ -144,7 +144,7 @@ class DeleteClusterCommand(CliCommand):
             "deleted manually, but log events will still expire based on the previously configured retention time",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import delete
 
         delete(args)
@@ -164,7 +164,7 @@ class StartClusterCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Starts the compute fleet of the cluster name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import start
 
         start(args)
@@ -184,7 +184,7 @@ class StopClusterCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Stops the compute fleet of the cluster name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import stop
 
         stop(args)
@@ -204,7 +204,7 @@ class ClusterStatusCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Shows the status of the cluster with the name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import status
 
         status(args)
@@ -225,7 +225,7 @@ class ListClustersCommandV2(CliCommand):  # TODO: to be removed
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("--color", action="store_true", default=False, help="Display the cluster status in color.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import list_clusters
 
         list_clusters(args)
@@ -255,7 +255,7 @@ class ListClustersCommand(CliCommandV3):
             help=f"Comma separated status values to filter by. Available values are {cluster_status_values}",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         query_string = [
             ("region", args.region),
             ("nextToken", args.next_token),
@@ -282,7 +282,7 @@ class InstancesCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Display the instances for the cluster with the name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import instances
 
         instances(args)
@@ -343,7 +343,7 @@ class ConfigureCommand(CliCommand):
     def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("-c", "--config", help="Path of the output config file.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.configure.easyconfig import configure
 
         configure(args)
@@ -367,7 +367,7 @@ class DcvConnectCommand(DcvCommand):
         )
         parser.add_argument("--show-url", "-s", action="store_true", default=False, help="Print URL and exit")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.dcv.connect import dcv_connect
 
         dcv_connect(args)

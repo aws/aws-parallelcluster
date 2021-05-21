@@ -37,10 +37,10 @@ class Volume(Resource):
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
 
-    def _validate(self):
+    def _register_validators(self):
         if self.kms_key_id:
-            self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
-            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
+            self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class Image(Resource):
@@ -101,15 +101,15 @@ class Iam(Resource):
             arns.append(policy.policy)
         return arns
 
-    def _validate(self):
+    def _register_validators(self):
         if self.instance_role:
             if self.instance_role.split("/", 1)[0].endswith("instance-profile"):
-                self._execute_validator(InstanceProfileValidator, instance_profile_arn=self.instance_role)
+                self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_role)
             else:
-                self._execute_validator(RoleValidator, role_arn=self.instance_role)
+                self._register_validator(RoleValidator, role_arn=self.instance_role)
 
         if self.cleanup_lambda_role:
-            self._execute_validator(RoleValidator, role_arn=self.cleanup_lambda_role)
+            self._register_validator(RoleValidator, role_arn=self.cleanup_lambda_role)
 
 
 class Build(Resource):
@@ -134,13 +134,13 @@ class Build(Resource):
         self.security_group_ids = security_group_ids
         self.components = components
 
-    def _validate(self):
-        self._execute_validator(
+    def _register_validators(self):
+        self._register_validator(
             InstanceTypeBaseAMICompatibleValidator,
             instance_type=self.instance_type,
             image=self.parent_image,
         )
-        self._execute_validator(
+        self._register_validator(
             ComponentsValidator,
             components=self.components,
         )
@@ -190,23 +190,23 @@ class ImageBuilderConfig(Resource):
         self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
         self.source_config = source_config
 
-    def _validate(self):
+    def _register_validators(self):
         # Volume size validator only validates specified volume size
         if self.image and self.image.root_volume and self.image.root_volume.size:
-            self._execute_validator(
+            self._register_validator(
                 EbsVolumeTypeSizeValidator,
                 volume_type=ROOT_VOLUME_TYPE,
                 volume_size=self.image.root_volume.size,
             )
-            self._execute_validator(
+            self._register_validator(
                 AMIVolumeSizeValidator,
                 volume_size=self.image.root_volume.size,
                 image=self.build.parent_image,
             )
 
         if self.custom_s3_bucket:
-            self._execute_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
-            self._execute_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=get_region())
+            self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
+            self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=get_region())
 
 
 # ------------ Attributes class used in imagebuilder resources ----------- #

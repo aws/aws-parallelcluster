@@ -38,7 +38,7 @@ class BuildImageCommand(CliCommand):
             help="Specifies the id to use for building the AWS ParallelCluster Image.",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import build_image
 
         build_image(args)
@@ -66,7 +66,7 @@ class DeleteImageCommand(CliCommand):
             help="Force EC2 AMI deletion even if AMI is shared or instance is using it.",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import delete_image
 
         delete_image(args)
@@ -88,7 +88,7 @@ class DescribeImageCommand(CliCommand):
             "-i", "--id", dest="id", required=True, help="Id of the AWS ParallelCluster Image to describe."
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import describe_image
 
         describe_image(args)
@@ -115,7 +115,7 @@ class ListImagesCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("--color", action="store_true", default=False, help="Display the image status in color.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import list_images
 
         list_images(args)

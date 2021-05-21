@@ -94,7 +94,7 @@ class CfnClient(Boto3Client):
             return self._client.describe_stacks(StackName=stack_name).get("Stacks")[0]
         except ClientError as e:
             if e.response["Error"]["Code"] == AWSClientError.ErrorCode.VALIDATION_ERROR.value:
-                LOGGER.error("Could not describe CloudFormation stack %s: %s", stack_name, e)
+                LOGGER.info("Could not describe CloudFormation stack %s: %s", stack_name, e)
                 raise StackNotFoundError(function_name="describe_stack", stack_name=stack_name)
             raise
 

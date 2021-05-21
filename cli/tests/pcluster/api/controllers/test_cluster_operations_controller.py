@@ -11,12 +11,15 @@ from datetime import datetime
 import pytest
 from assertpy import assert_that, soft_assertions
 
+from pcluster.api.controllers.cluster_operations_controller import _get_validator_suppressors
 from pcluster.api.models import CloudFormationStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.common import AWSClientError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
+from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor
 from pcluster.models.cluster import ClusterActionError
+from pcluster.validators.common import FailureLevel, ValidationResult
 
 
 def cfn_describe_stack_mock_response(edits=None):
@@ -41,32 +44,362 @@ def cfn_describe_stack_mock_response(edits=None):
 
 
 class TestCreateCluster:
-    def test_create_cluster(self, client):
-        create_cluster_request_content = {
-            "name": "clustername",
-            "region": "eu-west-1",
-            "clusterConfiguration": "clusterConfiguration",
-        }
-        query_string = [
-            ("suppressValidators", "ALL"),
-            ("validationFailureLevel", ValidationLevel.INFO),
-            ("dryrun", True),
-            ("rollbackOnFailure", True),
-            ("clientToken", "client_token_example"),
-        ]
+    url = "/v3/clusters"
+    method = "POST"
+
+    BASE64_ENCODED_CONFIG = "SW1hZ2U6CiAgT3M6IGFsaW51eDIKSGVhZE5vZGU6CiAgSW5zdGFuY2VUeXBlOiB0Mi5taWNybw=="
+
+    def _send_test_request(
+        self,
+        client,
+        create_cluster_request_content=None,
+        suppress_validators=None,
+        validation_failure_level=None,
+        dryrun=None,
+        rollback_on_failure=None,
+        client_token=None,
+    ):
+        query_string = []
+        if suppress_validators:
+            query_string.extend([("suppressValidators", validator) for validator in suppress_validators])
+        if validation_failure_level:
+            query_string.append(("validationFailureLevel", validation_failure_level))
+        if dryrun is not None:
+            query_string.append(("dryrun", dryrun))
+        if rollback_on_failure is not None:
+            query_string.append(("rollbackOnFailure", rollback_on_failure))
+        if client_token:
+            query_string.append(("clientToken", client_token))
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        response = client.open(
-            "/v3/clusters",
-            method="POST",
+        return client.open(
+            self.url,
+            method=self.method,
             headers=headers,
-            data=json.dumps(create_cluster_request_content),
-            content_type="application/json",
             query_string=query_string,
+            data=json.dumps(create_cluster_request_content) if create_cluster_request_content else None,
         )
-        assert_that(response.status_code).is_equal_to(200)
+
+    @pytest.mark.parametrize(
+        "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, rollback_on_failure",
+        [
+            (
+                {
+                    "region": "us-east-1",
+                    "name": "cluster",
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                None,
+                None,
+                None,
+                None,
+            ),
+            (
+                {
+                    "region": "us-east-1",
+                    "name": "cluster",
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                None,
+                None,
+                True,
+                None,
+            ),
+            (
+                {
+                    "region": "us-east-1",
+                    "name": "cluster",
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                ["type:type1", "type:type2"],
+                ValidationLevel.WARNING,
+                False,
+                False,
+            ),
+        ],
+        ids=["required", "dryrun", "all"],
+    )
+    def test_successful_request(
+        self,
+        client,
+        mocker,
+        create_cluster_request_content,
+        suppress_validators,
+        validation_failure_level,
+        dryrun,
+        rollback_on_failure,
+    ):
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        cluster_create_mock = mocker.patch(
+            "pcluster.models.cluster.Cluster.create",
+            auto_spec=True,
+            return_value=("id", [ValidationResult("message", FailureLevel.WARNING, "type")]),
+        )
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content,
+            suppress_validators,
+            validation_failure_level,
+            dryrun,
+            rollback_on_failure,
+        )
+
+        if not dryrun:
+            expected_response = {
+                "cluster": {
+                    "cloudformationStackArn": "id",
+                    "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+                    "clusterName": create_cluster_request_content["name"],
+                    "clusterStatus": "CREATE_IN_PROGRESS",
+                    "region": create_cluster_request_content["region"],
+                    "version": "3.0.0",
+                },
+                "validationMessages": [{"level": "WARNING", "message": "message", "type": "type"}],
+            }
+        else:
+            expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200 if not dryrun else 412)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+        cluster_create_mock.assert_called_with(
+            disable_rollback=not (rollback_on_failure or True),
+            validator_suppressors=mocker.ANY,
+            validation_failure_level=FailureLevel[validation_failure_level or ValidationLevel.ERROR],
+            dryrun=dryrun or False,
+        )
+        cluster_create_mock.assert_called_once()
+        if suppress_validators:
+            _, kwargs = cluster_create_mock.call_args
+            assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
+
+    @pytest.mark.parametrize(
+        "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, rollback_on_failure, "
+        "client_token, expected_response",
+        [
+            (None, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            ({}, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            (
+                {"region": "us-east-1", "name": "cluster"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'clusterConfiguration' is a required property"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "invalid"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: invalid or unsupported region 'invalid'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'name' is a required property"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                ["ALL", "ALLL"],
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'ALLL' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                ["type:"],
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'type:' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                "CRITICAL",
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'CRITICAL' is not one of ['INFO', 'WARNING', 'ERROR']"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                "NO",
+                None,
+                None,
+                {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'dryrun'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                "NO",
+                None,
+                {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'rollbackOnFailure'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: invalid configuration. " "Please make sure the string is base64 encoded."},
+            ),
+            (
+                {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: configuration must be a valid base64-encoded YAML document"},
+            ),
+            (
+                {
+                    "clusterConfiguration": "SW1hZ2U6CiAgSW52YWxpZEtleTogdGVzdA==",
+                    "name": "cluster",
+                    "region": "us-east-1",
+                },
+                None,
+                None,
+                None,
+                None,
+                None,
+                {
+                    "configurationValidationErrors": [
+                        {
+                            "level": "ERROR",
+                            "message": "[('HeadNode', ['Missing data for required field.']), "
+                            "('Image', {'Os': ['Missing data for required field.'], 'InvalidKey': "
+                            "['Unknown field.']}), ('Scheduling', ['Missing data for required field.'])]",
+                            "type": "ConfigSchemaValidator",
+                        }
+                    ],
+                    "message": "Invalid cluster configuration",
+                },
+            ),
+            (
+                {"clusterConfiguration": "", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: configuration is required and cannot be empty"},
+            ),
+            (
+                {"clusterConfiguration": "", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                "token",
+                {"message": "Bad Request: clientToken is currently not supported for this operation"},
+            ),
+        ],
+        ids=[
+            "no_body",
+            "empty_body",
+            "missing_config",
+            "invalid_region",
+            "missing_name",
+            "invalid_suppress_validators",
+            "invalid_suppress_validators",
+            "invalid_failure_level",
+            "invalid_dryrun",
+            "invalid_rollback",
+            "invalid_config_encoding",
+            "invalid_config_format",
+            "invalid_config_schema",
+            "empty_config",
+            "client_token",
+        ],
+    )
+    def test_malformed_request(
+        self,
+        client,
+        mocker,
+        create_cluster_request_content,
+        suppress_validators,
+        validation_failure_level,
+        dryrun,
+        rollback_on_failure,
+        client_token,
+        expected_response,
+    ):
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content,
+            suppress_validators,
+            validation_failure_level,
+            dryrun,
+            rollback_on_failure,
+            client_token,
+        )
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_existing_cluster_error(self, client, mocker):
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content={
+                "region": "us-east-1",
+                "name": "clustername",
+                "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+            },
+        )
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(409)
+            assert_that(response.get_json()).is_equal_to({"message": "cluster clustername already exists"})
+
+    def test_cluster_action_error(self, client, mocker):
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.create",
+            auto_spec=True,
+            side_effect=ClusterActionError("error message"),
+        )
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content={
+                "region": "us-east-1",
+                "name": "clustername",
+                "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+            },
+        )
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(500)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Failed when creating cluster due to: error message. "
+                    "If you suppressed config validators this might be due to an invalid configuration file"
+                }
+            )
 
 
 class TestDeleteCluster:
@@ -579,3 +912,18 @@ class TestUpdateCluster:
             query_string=query_string,
         )
         assert_that(response.status_code).is_equal_to(200)
+
+
+@pytest.mark.parametrize(
+    "suppress_validators_list, expected_suppressors",
+    [
+        (None, set()),
+        ([], set()),
+        (["ALL"], {AllValidatorsSuppressor()}),
+        (["type:type1", "type:type2"], {TypeMatchValidatorsSuppressor({"type1", "type2"})}),
+        (["type:type1", "ALL"], {AllValidatorsSuppressor(), TypeMatchValidatorsSuppressor({"type1"})}),
+    ],
+)
+def test_get_validator_suppressors(suppress_validators_list, expected_suppressors):
+    result = _get_validator_suppressors(suppress_validators_list)
+    assert_that(result).is_equal_to(expected_suppressors)

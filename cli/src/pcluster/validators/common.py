@@ -47,6 +47,11 @@ class Validator(ABC):
         result = ValidationResult(message, level, self.type)
         self._failures.append(result)
 
+    @property
+    def type(self):
+        """Identify the type of validator."""
+        return self.__class__.__name__
+
     def execute(self, *arg, **kwargs):
         """Entry point of all validators to verify all input params are valid."""
         self._validate(*arg, **kwargs)
