@@ -139,7 +139,7 @@ def describe_cluster(cluster_name, region=None):
     if not check_cluster_version(cluster):
         raise BadRequestException(f"cluster {cluster_name} belongs to an incompatible ParallelCluster major version.")
 
-    fleet_status = cluster.compute_fleet_status  # TODO: use Dynamodb client
+    fleet_status = cluster.compute_fleet_status
     if fleet_status == ComputeFleetStatus.UNKNOWN:
         raise InternalServiceException("could not retrieve compute fleet status.")
 

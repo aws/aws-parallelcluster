@@ -31,6 +31,7 @@ class AWSClientError(Exception):
         VALIDATION_ERROR = "ValidationError"
         REQUEST_LIMIT_EXCEEDED = "RequestLimitExceeded"
         THROTTLING_EXCEPTION = "ThrottlingException"
+        CONDITIONAL_CHECK_FAILED_EXCEPTION = "ConditionalCheckFailedException"
 
         @classmethod
         def throttling_error_codes(cls):
