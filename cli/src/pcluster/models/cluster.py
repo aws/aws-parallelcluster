@@ -22,7 +22,7 @@ import time
 from copy import deepcopy
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import List, Optional, Set, Tuple
 
 import pkg_resources
 import yaml
@@ -32,6 +32,7 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
+from pcluster.config.common import ValidatorSuppressor
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
     PCLUSTER_CLUSTER_NAME_TAG,
@@ -248,9 +249,10 @@ class Cluster:
     def create(
         self,
         disable_rollback: bool = False,
-        suppress_validators: bool = False,
+        validator_suppressors: Set[ValidatorSuppressor] = None,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
-    ):
+        dryrun: bool = False,
+    ) -> Tuple[Optional[str], List]:
         """
         Create cluster.
 
@@ -258,15 +260,17 @@ class Cluster:
         raises ConfigValidationError: if configuration is invalid
         """
         creation_result = None
-        artifacts_uploaded = False
+        artifact_dir_generated = False
         try:
-            # check cluster existence
-            if AWSApi.instance().cfn.stack_exists(self.stack_name):
-                raise ClusterActionError(f"Cluster {self.name} already exists")
-            self.config = self._validate_and_parse_config(suppress_validators, validation_failure_level)
+            self.config, ignored_validation_failures = self._validate_and_parse_config(
+                validator_suppressors, validation_failure_level
+            )
+            if dryrun:
+                return None, ignored_validation_failures
 
-            self._generate_artifact_dir()
             self._add_version_tag()
+            self._generate_artifact_dir()
+            artifact_dir_generated = True
             self._upload_config()
 
             # Create template if not provided by the user
@@ -277,7 +281,6 @@ class Cluster:
 
             # upload cluster artifacts and generated template
             self._upload_artifacts()
-            artifacts_uploaded = True
 
             LOGGER.info("Creating stack named: %s", self.stack_name)
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
@@ -289,21 +292,17 @@ class Cluster:
                 tags=self._get_cfn_tags(),
             )
 
-            self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
-            LOGGER.debug("StackId: %s", self.stack.id)
-            LOGGER.info("Status: %s", self.stack.status)
+            return creation_result.get("StackId"), ignored_validation_failures
 
         except ConfigValidationError as e:
             raise e
         except Exception as e:
-            if not creation_result and artifacts_uploaded:
+            if not creation_result and artifact_dir_generated:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete_s3_artifacts()
-            raise ClusterActionError(f"Cluster creation failed.\n{e}")
+            raise ClusterActionError(str(e))
 
-    def _validate_and_parse_config(
-        self, suppress_validators, validation_failure_level, config_text=None
-    ) -> BaseClusterConfig:
+    def _validate_and_parse_config(self, validator_suppressors, validation_failure_level, config_text=None):
         """
         Perform syntactic and semantic validation and return parsed config.
 
@@ -322,26 +321,28 @@ class Cluster:
             config = ClusterSchema().load(cluster_config_dict)
 
             # semantic validation
-            if not suppress_validators:
-                validation_failures = ClusterNameValidator().execute(name=self.name)
-                validation_failures += config.validate()
-                for failure in validation_failures:
-                    if failure.level.value >= FailureLevel(validation_failure_level).value:
-                        # Raise the exception if there is a failure with a level greater than the specified one
-                        raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
+            validation_failures = ClusterNameValidator().execute(name=self.name)
+            validation_failures += config.validate(validator_suppressors)
+            for failure in validation_failures:
+                if failure.level.value >= FailureLevel(validation_failure_level).value:
+                    # Raise the exception if there is a failure with a level greater than the specified one
+                    raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
             LOGGER.info("Validation succeeded.")
-
         except ValidationError as e:
             # syntactic failure
             ClusterSchema.process_validation_message(e)
-            validation_failures = [ValidationResult(str(e), FailureLevel.ERROR, validator_type="ConfigSchemaValidator")]
+            validation_failures = [
+                ValidationResult(
+                    str(sorted(e.messages.items())), FailureLevel.ERROR, validator_type="ConfigSchemaValidator"
+                )
+            ]
             raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
         except ConfigValidationError as e:
             raise e
         except Exception as e:
             raise ConfigValidationError(f"Configuration is invalid: {e}")
 
-        return config
+        return config, validation_failures
 
     def _upload_config(self):
         """Upload source config and save config version."""
@@ -620,7 +621,7 @@ class Cluster:
     def update(
         self,
         target_source_config: str,
-        suppress_validators: bool = False,
+        validator_suppressors: Set[ValidatorSuppressor] = None,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
         force: bool = False,
     ):
@@ -640,8 +641,8 @@ class Cluster:
                 raise ClusterActionError(f"Cannot execute update while stack is in {self.stack.status} status.")
 
             # validate target config
-            target_config = self._validate_and_parse_config(
-                suppress_validators, validation_failure_level, target_source_config
+            target_config, _ = self._validate_and_parse_config(
+                validator_suppressors, validation_failure_level, target_source_config
             )
 
             # verify changes

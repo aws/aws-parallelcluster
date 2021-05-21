@@ -133,7 +133,7 @@ class AWSApi:
 
     @property
     def ddb_resource(self):
-        """S3Resource client."""
+        """DynamoResource client."""  # noqa: D403
         if not self._ddb_resource:
             self._ddb_resource = DynamoResource()
         return self._ddb_resource
