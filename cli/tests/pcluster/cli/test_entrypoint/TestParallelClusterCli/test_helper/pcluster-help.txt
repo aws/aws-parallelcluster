@@ -16,7 +16,7 @@ positional arguments:
     stop                Stops the compute fleet, leaving the head node
                         running.
     status              Displays the current status of the cluster.
-    list                Displays a list of stacks associated with AWS
+    list                Displays a list of stacks created by AWS
                         ParallelCluster.
     instances           Displays a list of all instances in a cluster.
     ssh                 Connects to the head node instance using SSH.

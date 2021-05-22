@@ -54,7 +54,6 @@ from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
-    cluster_name,
     create_hash_suffix,
     get_assume_role_policy_document,
     get_block_device_mappings,
@@ -100,7 +99,7 @@ class ClusterCdkStack(Stack):
             else:
                 # pcluster create create a log group with timestamp suffix
                 timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
-                self.log_group_name = f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}"
+                self.log_group_name = f"/aws/parallelcluster/{self.stack_name}-{timestamp}"
 
         self.instance_roles = {}
         self.instance_profiles = {}
@@ -117,6 +116,9 @@ class ClusterCdkStack(Stack):
 
     def _stack_unique_id(self):
         return Fn.select(2, Fn.split("/", self.stack_id))
+
+    def _build_resource_path(self):
+        return self.stack_id
 
     def _get_head_node_security_groups(self):
         """Return the security groups to be used for the head node, created by us OR provided by the user."""
@@ -527,7 +529,7 @@ class ClusterCdkStack(Stack):
             name,
             managed_policy_arns=additional_iam_policies,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
-            path="/",
+            path=f"/{self._build_resource_path()}/",
         ).ref
 
     def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
@@ -558,7 +560,11 @@ class ClusterCdkStack(Stack):
                             "cloudformation:SignalResource",
                         ],
                         effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="cloudformation", resource="stack/parallelcluster-*/*")],
+                        resources=[
+                            self.format_arn(service="cloudformation", resource=f"stack/{self._stack_name}/*"),
+                            # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                            self.format_arn(service="cloudformation", resource=f"stack/{self._stack_name}-*/*"),
+                        ],
                     ),
                     iam.PolicyStatement(
                         sid="DynamoDBTable",
@@ -605,7 +611,13 @@ class ClusterCdkStack(Stack):
                         sid="BatchJobPassRole",
                         actions=["iam:PassRole"],
                         effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="iam", region="", resource="role/parallelcluster-*")],
+                        resources=[
+                            self.format_arn(
+                                service="iam",
+                                region="",
+                                resource=f"role/{self._build_resource_path()}/*",
+                            )
+                        ],
                     ),
                     iam.PolicyStatement(
                         sid="DcvLicense",

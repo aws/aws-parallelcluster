@@ -31,7 +31,7 @@ import yaml
 from botocore.exceptions import ClientError
 from pkg_resources import packaging
 
-from pcluster.constants import PCLUSTER_STACK_PREFIX, SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
+from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
 
 LOGGER = logging.getLogger(__name__)
 
@@ -223,9 +223,7 @@ def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
                 # parallelcluster-fsx-fail-FSXSubstack-65ITLJEZJ0DQ/
                 # 3a4ecf00-51e7-11ea-8e3e-022fd555c652 was not successfully created:
                 # The following resource(s) failed to create: [FileSystem]."
-                substack_error = re.search(
-                    ".+/({0}.+)/".format(PCLUSTER_STACK_PREFIX), event.get("ResourceStatusReason")
-                )
+                substack_error = re.search(".+ (arn:aws:cloudformation[^ ]+) ", event.get("ResourceStatusReason"))
                 substack_name = substack_error.group(1) if substack_error else None
                 if substack_name:
                     log_stack_failure_recursive(substack_name, indent=indent + 2)

@@ -31,7 +31,6 @@ from pcluster.constants import (
     PCLUSTER_APPLICATION_TAG,
     PCLUSTER_NODE_TYPE_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
-    PCLUSTER_STACK_PREFIX,
     PCLUSTER_VERSION_TAG,
 )
 from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
@@ -196,7 +195,7 @@ class Cluster:
     @property
     def stack_name(self):
         """Return stack name."""
-        return PCLUSTER_STACK_PREFIX + self.name
+        return self.name
 
     @property
     def status(self):
