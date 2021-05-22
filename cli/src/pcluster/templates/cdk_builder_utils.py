@@ -35,7 +35,6 @@ from pcluster.constants import (
     PCLUSTER_APPLICATION_TAG,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
-    PCLUSTER_STACK_PREFIX,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.utils import get_installed_version
@@ -108,11 +107,6 @@ def get_common_user_data_env(node: Union[HeadNode, BaseQueue], config: BaseClust
     }
 
 
-def cluster_name(stack_name: str):
-    """Return cluster name from stack name."""
-    return stack_name.split(PCLUSTER_STACK_PREFIX)[1]
-
-
 def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
     """Return shared storage ids from the given list for the given type."""
     return (
@@ -169,7 +163,7 @@ def get_default_instance_tags(
     """Return a list of default tags to be used for instances."""
     tags = {
         "Name": node_type,
-        PCLUSTER_CLUSTER_NAME_TAG: cluster_name(stack_name),
+        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
         PCLUSTER_APPLICATION_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
         "parallelcluster:attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
@@ -196,7 +190,7 @@ def get_default_instance_tags(
 def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = False):
     """Return a list of default tags to be used for volumes."""
     tags = {
-        PCLUSTER_CLUSTER_NAME_TAG: cluster_name(stack_name),
+        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
         PCLUSTER_APPLICATION_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
     }

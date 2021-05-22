@@ -10,7 +10,7 @@
 # limitations under the License.
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.constants import OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_STACK_PREFIX, PCLUSTER_VERSION_TAG
+from pcluster.constants import OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
 
 
 class ClusterStack(StackInfo):
@@ -23,8 +23,6 @@ class ClusterStack(StackInfo):
     @property
     def cluster_name(self):
         """Return cluster name associated to this cluster."""
-        if self.name.startswith(PCLUSTER_STACK_PREFIX):
-            return self.name[len(PCLUSTER_STACK_PREFIX) :]  # noqa: E203
         return self.name
 
     @property

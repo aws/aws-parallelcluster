@@ -24,7 +24,7 @@ from pcluster.cli.commands.common import (
     csv_type,
     print_json,
 )
-from pcluster.constants import PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_VERSION_TAG
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -44,11 +44,7 @@ class CreateClusterCommand(CliCommand):
         )
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument(
-            "cluster_name",
-            help="Defines the name of the cluster. The CloudFormation stack name will be "
-            f"{PCLUSTER_STACK_PREFIX}[cluster_name]",
-        )
+        parser.add_argument("cluster_name", help="Defines the name of the cluster")
         parser.add_argument(
             "--disable-update-check",
             action="store_true",
@@ -213,9 +209,9 @@ class ListClustersCommandV2(CliCommand):  # TODO: to be removed
 
     # CLI
     name = "list"
-    help = "Displays a list of stacks associated with AWS ParallelCluster."
+    help = "Displays a list of stacks created by AWS ParallelCluster."
     description = help
-    epilog = f"This command lists the names of any CloudFormation stacks named {PCLUSTER_STACK_PREFIX}*"
+    epilog = f"This command lists the names of any CloudFormation stacks with tag {PCLUSTER_VERSION_TAG}"
 
     def __init__(self, subparsers):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description, epilog=self.epilog)

@@ -23,7 +23,6 @@ from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
-    cluster_name,
     create_hash_suffix,
     get_block_device_mappings,
     get_cloud_watch_logs_policy_statement,
@@ -103,7 +102,7 @@ class SlurmConstruct(Construct):
             self.stack_scope,
             "ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
-            default=f"{cluster_name(self.stack_name)}.pcluster",
+            default=f"{self.stack_name}.pcluster",
         )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -451,7 +450,7 @@ class SlurmConstruct(Construct):
         ec2.CfnLaunchTemplate(
             self.stack_scope,
             f"ComputeServerLaunchTemplate{create_hash_suffix(queue.name + instance_type)}",
-            launch_template_name=f"{cluster_name(self.stack_name)}-{queue.name}-{instance_type}",
+            launch_template_name=f"{self.stack_name}-{queue.name}-{instance_type}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=instance_type,
                 cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(
