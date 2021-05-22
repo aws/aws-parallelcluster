@@ -19,7 +19,7 @@ import utils
 import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_bucket_name
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
@@ -177,8 +177,8 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         updated_config = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     # Check new S3 resources
-    check_s3_read_resource(region, cluster, get_bucket_name(updated_config, enable_write_access=False))
-    check_s3_read_write_resource(region, cluster, get_bucket_name(updated_config, enable_write_access=True))
+    check_s3_read_resource(region, cluster, get_policy_resources(updated_config, enable_write_access=False))
+    check_s3_read_write_resource(region, cluster, get_policy_resources(updated_config, enable_write_access=True))
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, additional_policy_arn)
@@ -270,7 +270,7 @@ def _get_instance(region, stack_name, host, none_expected=False):
         iter(
             ec2_resource.instances.filter(
                 Filters=[
-                    {"Name": "tag:parallelcluster:application", "Values": [stack_name]},
+                    {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
                     {"Name": "private-dns-name", "Values": [hostname]},
                 ]
             )

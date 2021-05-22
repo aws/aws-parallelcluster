@@ -543,11 +543,21 @@ class S3Access(Resource):
     def __init__(
         self,
         bucket_name: str,
+        key_name: str = None,
         enable_write_access: bool = None,
     ):
         super().__init__()
         self.bucket_name = Resource.init_param(bucket_name)
+        self.key_name = Resource.init_param(key_name)
         self.enable_write_access = Resource.init_param(enable_write_access, default=False)
+
+    @property
+    def resource_regex(self):
+        """Resource regex to be added in IAM policies."""
+        if self.key_name:  # If bucket name and key name are specified, we combine them directly
+            return [f"{self.bucket_name}/{self.key_name}"]
+        else:  # If only bucket name is specified, we add two resources (the bucket and the contents in the bucket).
+            return [self.bucket_name, f"{self.bucket_name}/*"]
 
 
 class Iam(Resource):
