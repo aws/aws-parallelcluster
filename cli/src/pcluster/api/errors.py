@@ -11,6 +11,7 @@ from pcluster.api.models import (
     BadRequestExceptionResponseContent,
     InternalServiceExceptionResponseContent,
     LimitExceededExceptionResponseContent,
+    NotFoundExceptionResponseContent,
 )
 from pcluster.api.models.base_model_ import Model
 from pcluster.api.models.build_image_bad_request_exception_response_content import (
@@ -87,3 +88,12 @@ class LimitExceededException(ParallelClusterApiException):
 
     def __init__(self, content: str):
         super().__init__(LimitExceededExceptionResponseContent(content))
+
+
+class NotFoundException(ParallelClusterApiException):
+    """Exception raised when the queried resource does not exist."""
+
+    code = 404
+
+    def __init__(self, content: str):
+        super().__init__(NotFoundExceptionResponseContent(content))

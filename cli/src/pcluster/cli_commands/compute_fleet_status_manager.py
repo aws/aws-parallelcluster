@@ -27,6 +27,7 @@ class ComputeFleetStatus(Enum):
     STARTING = "STARTING"  # clustermgtd is handling the start request.
     STOP_REQUESTED = "STOP_REQUESTED"  # A request to stop the fleet has been submitted.
     START_REQUESTED = "START_REQUESTED"  # A request to start the fleet has been submitted.
+    UNKNOWN = "UNKNOWN"  # Cannot determine fleet status
 
     def __str__(self):
         return str(self.value)
@@ -68,7 +69,7 @@ class ComputeFleetStatusManager:
         self._ddb_resource = boto3.resource("dynamodb")
         self._table = self._ddb_resource.Table(self._table_name)
 
-    def get_status(self, fallback=None):
+    def get_status(self, fallback=ComputeFleetStatus.UNKNOWN):
         """Get compute fleet status."""
         try:
             compute_fleet_status = self._table.get_item(ConsistentRead=True, Key={"Id": self.COMPUTE_FLEET_STATUS_KEY})
@@ -76,7 +77,11 @@ class ComputeFleetStatusManager:
                 raise Exception("COMPUTE_FLEET status not found in db table")
             return ComputeFleetStatus(compute_fleet_status["Item"][self.COMPUTE_FLEET_STATUS_ATTRIBUTE])
         except Exception as e:
-            LOGGER.error("Failed when retrieving fleet status from DynamoDB with error %s", e)
+            LOGGER.warning(
+                "Failed when retrieving fleet status from DynamoDB with error %s. "
+                "This is expected if cluster creation/deletion is in progress",
+                e,
+            )
             return fallback
 
     def put_status(self, current_status, next_status):
@@ -97,7 +102,7 @@ class ComputeFleetStatusManager:
         by eventually transitioning through in_progress_status
         """
         compute_fleet_status = self.get_status()
-        if not compute_fleet_status:
+        if compute_fleet_status == ComputeFleetStatus.UNKNOWN:
             raise Exception("Could not retrieve compute fleet status.")
 
         if compute_fleet_status == final_status:

@@ -19,7 +19,6 @@ from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
 
 from pcluster.api.awslambda.serverless_wsgi import handle_request
 from pcluster.api.flask_app import ParallelClusterFlaskApp
-from pcluster.utils import Cache
 
 logger = Logger(service="pcluster", location="%(filename)s:%(lineno)s:%(funcName)s()")
 tracer = Tracer(service="pcluster")
@@ -52,8 +51,6 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             # Instrument X-Ray recorder to trace requests served by the Flask application
             xray_recorder.configure(service="ParallelCluster Flask App")
             XRayMiddleware(pcluster_api.flask_app, xray_recorder)
-        # Clearing cache since the same ParallelClusterFlaskApp is reused
-        Cache.clear_all()
         # Setting default region to region where lambda function is executed
         os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
         return handle_request(pcluster_api.app, event, context)

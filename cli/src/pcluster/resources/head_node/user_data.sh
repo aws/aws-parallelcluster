@@ -60,31 +60,6 @@ function vendor_cookbook
   done;
   export HOME="${!HOME_BAK}"
 }
-function bootstrap_instance
-{
-  which dnf 2>/dev/null; dnf=$?
-  which yum 2>/dev/null; yum=$?
-  which apt-get 2>/dev/null; apt=$?
-  if [ "${!dnf}" == "0" ]; then
-    dnf -y groupinstall development && dnf -y install curl wget jq python3-pip
-    pip3 install awscli --upgrade --user
-  elif [ "${!yum}" == "0" ]; then
-    yum -y groupinstall development && yum -y install curl wget jq awscli python3-pip
-  fi
-  if [ "${!apt}" == "0" ]; then
-    apt-cache search build-essential; apt-get clean; apt update -y; apt-get -y install build-essential curl wget jq python-setuptools awscli python3-pip
-  fi
-  [[ ${!_region} =~ ^cn- ]] && s3_url="cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
-  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-py3-latest.tar.gz https://s3.${!s3_url}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz; pip3 install -U /tmp/aws-cfn-bootstrap-py3-latest.tar.gz)
-  mkdir -p /etc/chef && chown -R root:root /etc/chef
-  curl --retry 3 -L https://${!_region}-aws-parallelcluster.s3.${!_region}.amazonaws.com$([ "${!_region}" != "${!_region#cn-*}" ] && echo ".cn" || exit 0)/archives/cinc/cinc-install.sh | bash -s -- -v ${!chef_version}
-  /opt/cinc/embedded/bin/gem install --no-document berkshelf:${!berkshelf_version}
-  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
-  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${!cookbook_url}.date
-  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${!cookbook_url}.md5
-  vendor_cookbook
-  mkdir /opt/parallelcluster
-}
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
 custom_cookbook=${CustomChefCookbook}
 export _region=${AWS::Region}
@@ -109,7 +84,7 @@ if [ -f /opt/parallelcluster/.bootstrapped ]; then
     error_exit "This AMI was created with ${!installed_version}, but is trying to be used with ${!cookbook_version}. Please either use an AMI created with ${!cookbook_version} or change your ParallelCluster to ${!installed_version}"
   fi
 else
-  bootstrap_instance
+  error_exit "This AMI was not baked by ParallelCluster. Please use pcluster createami command to create an AMI by providing your AMI as parent image."
 fi
 if [ "${!custom_cookbook}" != "NONE" ]; then
   curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z "$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)" ${!cookbook_url}

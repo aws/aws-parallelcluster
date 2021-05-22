@@ -38,6 +38,15 @@ list ImageInfoSummaries {
     member: ImageInfoSummary
 }
 
+@enum([
+    {name: "BUILD_IN_PROGRESS", value: "BUILD_IN_PROGRESS"},
+    {name: "BUILD_FAILED", value: "BUILD_FAILED"},
+    {name: "BUILD_COMPLETE", value: "BUILD_COMPLETE"},
+    {name: "DELETE_IN_PROGRESS", value: "DELETE_IN_PROGRESS"},
+    {name: "DELETE_FAILED", value: "DELETE_FAILED"},
+])
+string ImageStatusFilteringOption
+
 set ImageStatusFilteringOptions {
-    member: ImageBuildStatus
+    member: ImageStatusFilteringOption
 }

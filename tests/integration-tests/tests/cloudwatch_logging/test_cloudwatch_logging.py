@@ -175,11 +175,11 @@ class CloudWatchLoggingClusterState:
         """Get EC2 instances belonging to this cluster. Figure out their roles in the cluster."""
         for instance in cw_logs_utils.get_ec2_instances():
             tags = {tag.get("Key"): tag.get("Value") for tag in instance.get("Tags", [])}
-            if tags.get("ClusterName", "") != self.cluster.name:
+            if tags.get("parallelcluster:cluster-name", "") != self.cluster.name:
                 continue
             elif tags.get("Name", "") == "HeadNode":
                 self._set_head_node_instance(instance)
-            else:
+            elif self.scheduler != "awsbatch":  # AWS Batch Compute instances do not use CloudWatch
                 self._add_compute_instance(instance)
         LOGGER.debug("After getting initial cluster state:\n{0}".format(self._dump_cluster_log_state()))
 

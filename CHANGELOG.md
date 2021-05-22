@@ -43,6 +43,8 @@ per cluster.
   Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
 - Change tags prefix from `aws-parallelcluster-` to `parallelcluster:`.
 - Enable EFA for a compute resource by default if the instance type supports EFA.
+- Use tags prefix `parallelcluster:`.
+- Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
 
 2.x.x
 ------

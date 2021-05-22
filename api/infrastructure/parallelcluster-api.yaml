@@ -3,8 +3,21 @@ Transform: AWS::Serverless-2016-10-31
 Description: 'Template for the ParallelCluster API'
 
 Parameters:
+  EnableMultiRegionSupport:
+    Description: When set to true it enables the API to control clusters in all regions
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+
   EcrImageUri:
     Description: When specified use this image for the Lambda function and skip the import phase
+    Type: String
+    Default: ''
+
+  ParallelClusterFunctionRole:
+    Description: When specified, the ARN of the execution role for the Lambda function
     Type: String
     Default: ''
 
@@ -59,6 +72,8 @@ Globals:
 
 Conditions:
   UseCustomEcrImageUri: !Not [!Equals [!Ref EcrImageUri, '']]
+  UseCustomParallelClusterFunctionRole: !Not [!Equals [!Ref ParallelClusterFunctionRole, '']]
+  DoNotUseCustomParallelClusterFunctionRole: !Not [!Condition UseCustomParallelClusterFunctionRole]
   DoNotUseCustomEcrImageUri: !Not [!Condition UseCustomEcrImageUri]
   UseCustomDomain: !Not [!Equals [!Ref CustomDomainName, '']]
   UseRoute53Configuration: !Not [!Equals [!Ref CustomDomainHostedZoneId, '']]
@@ -66,6 +81,7 @@ Conditions:
     - !Condition UseCustomDomain
     - !Condition UseRoute53Configuration
   DoNotUseCustomDomain: !Not [!Condition UseCustomDomain]
+  IsMultiRegion: !Equals [!Ref EnableMultiRegionSupport, true]
 
 
 Resources:
@@ -128,10 +144,9 @@ Resources:
   ParallelClusterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Policies:
-        - AdministratorAccess
       Tracing: Active
       PackageType: Image
+      Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt DefaultParallelClusterFunctionRole.Arn]
       ImageUri: !If
         - UseCustomEcrImageUri
         - !Ref EcrImageUri
@@ -141,6 +156,415 @@ Resources:
             Version: !Join
               - '-'
               - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
+
+  DefaultParallelClusterFunctionRole:
+    Condition: DoNotUseCustomParallelClusterFunctionRole
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ParallelClusterFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Action:
+              - ec2:DescribeKeyPairs
+              - ec2:DescribeRegions
+              - ec2:DescribeVpcs
+              - ec2:DescribeSubnets
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribePlacementGroups
+              - ec2:DescribeImages
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeInstanceTypes
+              - ec2:DescribeInstanceTypeOfferings
+              - ec2:DescribeSnapshots
+              - ec2:DescribeVolumes
+              - ec2:DescribeVpcAttribute
+              - ec2:DescribeAddresses
+              - ec2:CreateTags
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeAvailabilityZones
+              - ec2:DescribeNetworkInterfaceAttribute
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: EC2Describe
+            - Action:
+              - ec2:CreateLaunchTemplate
+              - ec2:CreateLaunchTemplateVersion
+              - ec2:ModifyLaunchTemplate
+              - ec2:DeleteLaunchTemplate
+              - ec2:DescribeLaunchTemplates
+              - ec2:DescribeLaunchTemplateVersions
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: LaunchTemplates
+            - Action:
+              - ec2:CreateVpc
+              - ec2:ModifyVpcAttribute
+              - ec2:DescribeNatGateways
+              - ec2:CreateNatGateway
+              - ec2:DescribeInternetGateways
+              - ec2:CreateInternetGateway
+              - ec2:AttachInternetGateway
+              - ec2:DescribeRouteTables
+              - ec2:CreateRoute
+              - ec2:CreateRouteTable
+              - ec2:AssociateRouteTable
+              - ec2:CreateSubnet
+              - ec2:ModifySubnetAttribute
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: NetworkingEasyConfig
+            - Action:
+              - ec2:CreateVolume
+              - ec2:RunInstances
+              - ec2:AllocateAddress
+              - ec2:AssociateAddress
+              - ec2:AttachNetworkInterface
+              - ec2:AuthorizeSecurityGroupEgress
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:CreateNetworkInterface
+              - ec2:CreateSecurityGroup
+              - ec2:ModifyVolumeAttribute
+              - ec2:ModifyNetworkInterfaceAttribute
+              - ec2:DeleteNetworkInterface
+              - ec2:DeleteVolume
+              - ec2:TerminateInstances
+              - ec2:DeleteSecurityGroup
+              - ec2:DisassociateAddress
+              - ec2:RevokeSecurityGroupIngress
+              - ec2:RevokeSecurityGroupEgress
+              - ec2:ReleaseAddress
+              - ec2:CreatePlacementGroup
+              - ec2:DeletePlacementGroup
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: EC2Modify
+            - Action:
+              - dynamodb:DescribeTable
+              - dynamodb:ListTagsOfResource
+              - dynamodb:CreateTable
+              - dynamodb:DeleteTable
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:TagResource
+              Resource: !Sub
+              - arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*
+              - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: DynamoDB
+            - Action:
+              - route53:ChangeResourceRecordSets
+              - route53:ChangeTagsForResource
+              - route53:CreateHostedZone
+              - route53:DeleteHostedZone
+              - route53:GetChange
+              - route53:GetHostedZone
+              - route53:ListResourceRecordSets
+              - route53:ListQueryLoggingConfigs
+              Resource: !Sub arn:${AWS::Partition}:route53:::hostedzone/*
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: Route53HostedZones
+            - Action:
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DescribeStackResource
+              - cloudformation:DescribeStackResources
+              - cloudformation:DescribeStacks
+              - cloudformation:ListStacks
+              - cloudformation:GetTemplate
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:UpdateStack
+              Resource: !Sub
+              - arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*
+              - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: CloudFormation
+            - Action:
+              - cloudwatch:PutDashboard
+              - cloudwatch:ListDashboards
+              - cloudwatch:DeleteDashboards
+              - cloudwatch:GetDashboard
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: CloudWatch
+            # TODO: review and scope down IAM policies
+            - Action:
+              - iam:PassRole
+              - iam:CreateRole
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteRole
+              - iam:GetRole
+              - iam:TagRole
+              - iam:SimulatePrincipalPolicy
+              Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: IAMModify
+            # TODO: review and scope down IAM policies
+            - Action:
+              - iam:AddRoleToInstanceProfile
+              - iam:RemoveRoleFromInstanceProfile
+              - iam:GetRolePolicy
+              - iam:GetPolicy
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: IAM
+            # TODO: review and scope down IAM policies
+            - Action:
+              - iam:CreateInstanceProfile
+              - iam:DeleteInstanceProfile
+              - iam:GetInstanceProfile
+              - iam:PassRole
+              Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: IAMInstanceProfile
+            - Action:
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:GetFunctionConfiguration
+              - lambda:GetFunction
+              - lambda:InvokeFunction
+              - lambda:AddPermission
+              - lambda:RemovePermission
+              Resource:
+              - !Sub
+                - arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:parallelcluster-*
+                - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
+              - !Sub
+                - arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:pcluster-*
+                - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: Lambda
+            - Action:
+              - codebuild:*
+              Resource: !Sub
+              - arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/parallelcluster-*
+              - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: CodeBuild
+            - Action:
+              - s3:*
+              Resource: !Sub arn:${AWS::Partition}:s3:::parallelcluster-*
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: S3ResourcesBucket
+            - Action:
+              - s3:Get*
+              - s3:List*
+              Resource: !Sub
+              - arn:${AWS::Partition}:s3:::${Region}-aws-parallelcluster*
+              - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: S3ParallelClusterReadOnly
+            - Action:
+              - fsx:*
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: FSx
+            - Action:
+              - ecr:*
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: ECR
+            - Action:
+              - batch:*
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: Batch
+            - Action:
+              - events:*
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Resource: '*'
+              Sid: AmazonCloudWatchEvents
+            - Action:
+              - ssm:GetParametersByPath
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: SSMDescribe
+            - Action:
+              - ecs:DescribeContainerInstances
+              - ecs:ListContainerInstances
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: ECS
+            - Action:
+              - elasticfilesystem:*
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: EFS
+            - Action:
+              - imagebuilder:*
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: ImageBuilder
+            - Action:
+              - logs:DeleteLogGroup
+              - logs:PutRetentionPolicy
+              - logs:DescribeLogGroups
+              - logs:CreateLogGroup
+              Resource: '*'
+              Effect: Allow
+              Condition: !If
+                - IsMultiRegion
+                - StringEquals:
+                    aws:RequestedRegion:
+                      - !Ref AWS::Region
+                - !Ref AWS::NoValue
+              Sid: CloudWatchLogs
 
   ParallelClusterFunctionLogGroup:
     DependsOn: ParallelClusterFunction
@@ -179,8 +603,8 @@ Resources:
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
       Name: !Sub
-        - ParallelClusterImageBuilderInfrastructureConfiguration-${StackIdSuffix}
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - ParallelClusterImageBuilderInfrastructureConfiguration-${Version}-${StackIdSuffix}
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
       TerminateInstanceOnFailure: true
 
@@ -189,8 +613,11 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub
-        - 'aws-parallelcluster-${Version}-${StackIdSuffix}'
-        - { Version: !FindInMap [ParallelCluster, Constants, Version], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - 'aws-parallelcluster-${StackIdSuffix}'
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      Tags:
+        - Key: 'parallelcluster:version'
+          Value: !FindInMap [ParallelCluster, Constants, Version]
 
   EcrImageRecipe:
     Condition: DoNotUseCustomEcrImageUri
@@ -200,8 +627,8 @@ Resources:
         - ComponentArn: !Sub arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:component/update-linux/x.x.x
       ContainerType: DOCKER
       Name: !Sub
-        - 'ImportPublicEcrImage-${StackIdSuffix}'
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - 'ImportPublicEcrImage-${Version}-${StackIdSuffix}'
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
       Version: !FindInMap [ParallelCluster, Constants, Version]
       ParentImage: !Ref PublicEcrImageUri
       PlatformOverride: Linux
@@ -220,6 +647,104 @@ Resources:
       InfrastructureConfigurationArn: !Ref InfrastructureConfiguration
       ImageTestsConfiguration:
         ImageTestsEnabled: false
+
+  EcrImageDeletionLambda:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import boto3
+
+          # Suggestion is to instantiate clients in global context to reuse them across Lambda invocations
+          ecr = boto3.client('ecr')
+
+          def get_tag_from_image_arn(image_arn):
+              """ Returns the Docker image tag given an ImageBuilder image ARN
+
+              Arn format: arn:aws:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/.../${Version}/${BuildNumber}
+              Tag format: ${Version}-${BuildNumber}
+              """
+              parts = image_arn.split('/')
+              version = parts[-2]
+              build_number = parts[-1]
+              return '{}-{}'.format(version, build_number)
+
+          def handler(event, context):
+              print(event)
+              print('boto version {}'.format(boto3.__version__))
+
+              response_data = {}
+              response_status = cfnresponse.SUCCESS
+
+              if event['RequestType'] == 'Create':
+                  response_data['Message'] = 'Resource creation successful!'
+              elif event['RequestType'] == 'Update' or event['RequestType'] == 'Delete':
+                  try:
+                      resource_key = 'OldResourceProperties' if 'OldResourceProperties' in event else 'ResourceProperties'
+
+                      ecr_repository_name = event[resource_key]['EcrRepositoryName']
+                      tag = get_tag_from_image_arn(event[resource_key]['ImageToDeleteArn'])
+
+                      ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=[{'imageTag': tag}])
+
+                      response_data['Message'] = 'Image deletion successful!'
+                  except ecr.exceptions.RepositoryNotFoundException:
+                      response_data['Message'] = 'Repository was not found, considering image deletion successfull'
+                  except Exception as exception:
+                      response_status = cfnresponse.FAILED
+                      response_data['Message'] = 'Failed image deletion with error: {}'.format(exception)
+
+              cfnresponse.send(event, context, response_status, response_data)
+
+      Handler: index.handler
+      Runtime: python3.7
+      Role: !GetAtt EcrImageDeletionLambdaRole.Arn
+
+  EcrImageDeletionLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${EcrImageDeletionLambda}
+
+  EcrImageDeletionLambdaRole:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: LoggingPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+        - PolicyName: BatchDeletePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchDeleteImage
+                Resource: !GetAtt PrivateEcrRepository.Arn
+
+  EcrImagesRemover:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: Custom::EcrImagesRemover
+    Properties:
+      ServiceToken: !GetAtt EcrImageDeletionLambda.Arn
+      EcrRepositoryName: !Ref PrivateEcrRepository
+      ImageToDeleteArn: !Ref EcrImage
 
 
 Outputs:

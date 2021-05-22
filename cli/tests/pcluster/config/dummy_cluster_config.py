@@ -144,7 +144,7 @@ def dummy_awsbatch_cluster_config(mocker):
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
     compute_resources = [
-        AwsBatchComputeResource(name="dummy_compute_resource1", instance_types="dummyc5.xlarge,optimal")
+        AwsBatchComputeResource(name="dummy_compute_resource1", instance_types=["dummyc5.xlarge", "optimal"])
     ]
     queue_networking = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
     queues = [AwsBatchQueue(name="queue1", networking=queue_networking, compute_resources=compute_resources)]

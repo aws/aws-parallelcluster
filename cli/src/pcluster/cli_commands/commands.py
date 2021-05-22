@@ -126,7 +126,7 @@ def _print_compute_fleet_status(cluster_name, stack_outputs):
     if utils.get_stack_output_value(stack_outputs, "Scheduler") == "slurm":
         status_manager = ComputeFleetStatusManager(cluster_name)
         compute_fleet_status = status_manager.get_status()
-        if compute_fleet_status:
+        if compute_fleet_status != ComputeFleetStatus.UNKNOWN:
             LOGGER.info("ComputeFleetStatus: %s", compute_fleet_status)
 
 

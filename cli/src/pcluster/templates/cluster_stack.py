@@ -29,6 +29,7 @@ from aws_cdk.core import (
     CfnCreationPolicy,
     CfnDeletionPolicy,
     CfnOutput,
+    CfnParameter,
     CfnResourceSignal,
     CfnStack,
     Construct,
@@ -47,7 +48,7 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.constants import OS_MAPPING
+from pcluster.constants import OS_MAPPING, PCLUSTER_S3_ARTIFACTS_DICT
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
@@ -84,12 +85,22 @@ class ClusterCdkStack(Stack):
         stack_name: str,
         cluster_config: SlurmClusterConfig,
         bucket: S3Bucket,
+        log_group_name=None,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self._stack_name = stack_name
         self.config = cluster_config
         self.bucket = bucket
+        if self.config.is_cw_logging_enabled:
+            if log_group_name:
+                # pcluster update keep the log group, I
+                # It has to be passed in to avoid the change of log group name because of the surffix.
+                self.log_group_name = log_group_name
+            else:
+                # pcluster create create a log group with timestamp suffix
+                timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
+                self.log_group_name = f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}"
 
         self.instance_roles = {}
         self.instance_profiles = {}
@@ -98,6 +109,7 @@ class ClusterCdkStack(Stack):
         self.shared_storage_options = {storage_type: "" for storage_type in SharedStorageType}
         self.shared_storage_attributes = {storage_type: {} for storage_type in SharedStorageType}
 
+        self._add_parameters()
         self._add_resources()
         self._add_outputs()
 
@@ -126,6 +138,42 @@ class ClusterCdkStack(Stack):
             compute_group_set.append(self._compute_security_group.ref)
 
         return compute_group_set
+
+    # -- Parameters -------------------------------------------------------------------------------------------------- #
+
+    def _add_parameters(self):
+        CfnParameter(
+            scope=self,
+            id="ClusterUser",
+            description="Username to login to head node",
+            default=OS_MAPPING[self.config.image.os]["user"],
+        )
+        CfnParameter(
+            scope=self,
+            id="ResourcesS3Bucket",
+            description="S3 user bucket where AWS ParallelCluster resources are stored",
+            default=self.bucket.name,
+        )
+        CfnParameter(
+            scope=self,
+            id="ArtifactS3RootDirectory",
+            description="Root directory in S3 bucket where cluster artifacts are stored",
+            default=self.bucket.artifact_directory,
+        )
+        CfnParameter(id="Scheduler", scope=self, default=self.config.scheduling.scheduler)
+        CfnParameter(
+            scope=self,
+            id="ConfigVersion",
+            description="Version of the original config used to generate the stack",
+            default=self.config.original_config_version,
+        )
+        if self.config.is_cw_logging_enabled:
+            CfnParameter(
+                scope=self,
+                id="ClusterCWLogGroup",
+                description="CloudWatch Log Group associated to the cluster",
+                default=self.log_group_name,
+            )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -216,11 +264,10 @@ class ClusterCdkStack(Stack):
             )
 
     def _add_cluster_log_group(self):
-        timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
         log_group = logs.CfnLogGroup(
             scope=self,
             id="CloudWatchLogGroup",
-            log_group_name=f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}",
+            log_group_name=self.log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
         return log_group
@@ -990,7 +1037,9 @@ class ClusterCdkStack(Stack):
                     "enable_intel_hpc_platform": "true" if self.config.is_intel_hpc_platform_enabled else "false",
                     "cw_logging_enabled": "true" if self.config.is_cw_logging_enabled else "false",
                     "cluster_s3_bucket": self.bucket.name,
-                    "cluster_config_s3_key": f"{self.bucket.artifact_directory}/configs/cluster-config.yaml",
+                    "cluster_config_s3_key": "{0}/configs/{1}".format(
+                        self.bucket.artifact_directory, PCLUSTER_S3_ARTIFACTS_DICT.get("config_name")
+                    ),
                     "cluster_config_version": self.config.config_version,
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/instance-types-data.json",
                     "custom_node_package": self.config.custom_node_package or "",
@@ -1203,13 +1252,6 @@ class ClusterCdkStack(Stack):
 
         CfnOutput(
             scope=self,
-            id="ClusterUser",
-            description="Username to login to head node",
-            value=OS_MAPPING[self.config.image.os]["user"],
-        )
-
-        CfnOutput(
-            scope=self,
             id="HeadNodeInstanceID",
             description="ID of the head node instance",
             value=self.head_node_instance.ref,
@@ -1235,28 +1277,4 @@ class ClusterCdkStack(Stack):
                 id="HeadNodePublicIP",
                 description="Public IP Address of the head node",
                 value=self.head_node_instance.attr_public_ip,
-            )
-
-        CfnOutput(
-            scope=self,
-            id="ResourcesS3Bucket",
-            description="S3 user bucket where AWS ParallelCluster resources are stored",
-            value=self.bucket.name,
-        )
-
-        CfnOutput(
-            scope=self,
-            id="ArtifactS3RootDirectory",
-            description="Root directory in S3 bucket where cluster artifacts are stored",
-            value=self.bucket.artifact_directory,
-        )
-
-        CfnOutput(id="Scheduler", scope=self, value=self.config.scheduling.scheduler)
-
-        if self.log_group:
-            CfnOutput(
-                scope=self,
-                id="ClusterCWLogGroup",
-                description="CloudWatch Log Group associated to the cluster",
-                value=self.log_group.log_group_name,
             )

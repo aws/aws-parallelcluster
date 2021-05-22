@@ -44,6 +44,7 @@ from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ComputeResourceLaunchTemplateValidator,
     ComputeResourceSizeValidator,
+    CustomAmiTagValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateInstanceTypeValidator,
@@ -64,7 +65,6 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     RegionValidator,
     SchedulerOsValidator,
-    TagKeyValidator,
 )
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
@@ -482,11 +482,8 @@ class CloudWatchLogs(Resource):
 class CloudWatchDashboards(Resource):
     """Represent the CloudWatch Dashboard."""
 
-    def __init__(
-        self,
-        enabled: bool = None,
-    ):
-        super().__init__()
+    def __init__(self, enabled: bool = None, **kwargs):
+        super().__init__(**kwargs)
         self.enabled = Resource.init_param(enabled, default=CW_DASHBOARD_ENABLED_DEFAULT)
 
 
@@ -503,7 +500,7 @@ class Dashboards(Resource):
 
     def __init__(self, cloud_watch: CloudWatchDashboards = None, **kwargs):
         super().__init__(**kwargs)
-        self.cloud_watch = cloud_watch
+        self.cloud_watch = cloud_watch or CloudWatchDashboards(implied=True)
 
 
 class Monitoring(Resource):
@@ -528,9 +525,6 @@ class Tag(BaseTag):
         value: str = None,
     ):
         super().__init__(key, value)
-
-    def _validate(self):
-        self._execute_validator(TagKeyValidator, key=self.key)
 
 
 class Roles(Resource):
@@ -661,6 +655,10 @@ class Image(Resource):
         super().__init__()
         self.os = Resource.init_param(os)
         self.custom_ami = Resource.init_param(custom_ami)
+
+    def _validate(self):
+        if self.custom_ami:
+            self._execute_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
 
 
 class CustomAction(Resource):
@@ -860,6 +858,7 @@ class BaseClusterConfig(Resource):
         self.cluster_template_body = None
         self.source_config = None
         self.config_version = ""
+        self.original_config_version = ""
 
     def _validate(self):
         self._execute_validator(RegionValidator, region=self.region)
@@ -1086,7 +1085,7 @@ class AwsBatchComputeResource(BaseComputeResource):
 
     def __init__(
         self,
-        instance_types: str = None,
+        instance_types: List[str] = None,
         max_vcpus: int = None,
         min_vcpus: int = None,
         desired_vcpus: int = None,

@@ -17,6 +17,7 @@ from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
+from pcluster.constants import PCLUSTER_APPLICATION_TAG
 from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket
@@ -57,7 +58,7 @@ class TestCluster:
             "pcluster.aws.ec2.Ec2Client.describe_instances",
             return_value=expected_response,
             expected_params=[
-                {"Name": "tag:Application", "Values": ["test-cluster"]},
+                {"Name": f"tag:{PCLUSTER_APPLICATION_TAG}", "Values": ["test-cluster"]},
                 {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
                 {"Name": "tag:parallelcluster:node-type", "Values": [node_type.value]},
             ],
@@ -80,9 +81,8 @@ class TestCluster:
 
         # Expected tags:
         installed_version = "FakeInstalledVersion"
-        bucket_name = "FakeBucketName"
         tags = existing_tags
-        tags["Version"] = installed_version
+        tags["parallelcluster:version"] = installed_version
         expected_tags_list = self._sort_tags(
             [Tag(key=tag_name, value=tag_value) for tag_name, tag_value in tags.items()]
         )
@@ -104,13 +104,8 @@ class TestCluster:
         ).is_true()
 
         # Test method to retrieve CFN tags
-        tags.update({"parallelcluster:s3_bucket": bucket_name, "parallelcluster:cluster_dir": ARTIFACT_DIRECTORY})
         expected_cfn_tags = self._sort_cfn_tags(
             [{"Key": tag_name, "Value": tag_value} for tag_name, tag_value in tags.items()]
-        )
-        mocker.patch(
-            "pcluster.models.s3_bucket.S3Bucket.name",
-            new_callable=PropertyMock(return_value=bucket_name),
         )
         cfn_tags = self._sort_cfn_tags(cluster._get_cfn_tags())
         assert_that(len(cfn_tags)).is_equal_to(len(expected_cfn_tags))

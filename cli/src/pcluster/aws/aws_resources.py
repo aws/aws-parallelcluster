@@ -58,6 +58,11 @@ class StackInfo:
         return str(self._stack_data.get("CreationTime"))
 
     @property
+    def last_updated_time(self):
+        """Return last updated time of the stack."""
+        return str(self._stack_data.get("LastUpdatedTime", self.creation_time))
+
+    @property
     def is_working_status(self):
         """Return true if the stack is in a working status."""
         return self.status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]

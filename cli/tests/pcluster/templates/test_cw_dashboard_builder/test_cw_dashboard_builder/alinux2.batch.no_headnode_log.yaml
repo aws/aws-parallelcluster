@@ -15,7 +15,8 @@ Scheduling:
           - subnet-12345678
       ComputeResources:
         - Name: compute_resource1
-          InstanceTypes: c4.xlarge
+          InstanceTypes:
+            - c4.xlarge
           MaxvCpus: 10
 SharedStorage:
   - MountDir: /my/mount/ebs1

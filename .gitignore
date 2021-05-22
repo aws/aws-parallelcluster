@@ -11,6 +11,7 @@ build/
 .tox/
 *.iml
 .coverage
+coverage.xml
 assets/
 report.html
 tests_outputs/

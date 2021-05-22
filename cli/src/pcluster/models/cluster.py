@@ -23,15 +23,16 @@ import yaml
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError, StackNotFoundError
+from pcluster.aws.common import AWSClientError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
-    PCLUSTER_CLUSTER_VERSION_TAG,
-    PCLUSTER_S3_BUCKET_TAG,
-    PCLUSTER_S3_CLUSTER_DIR_TAG,
+    PCLUSTER_APPLICATION_TAG,
+    PCLUSTER_NODE_TYPE_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_STACK_PREFIX,
+    PCLUSTER_VERSION_TAG,
 )
 from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
@@ -87,16 +88,6 @@ class Cluster:
         self.__bucket = None
         self.template_body = None
         self.__config = None
-        self._s3_artifacts_dict = {
-            "root_directory": "parallelcluster",
-            "root_cluster_directory": "clusters",
-            "source_config_name": "cluster-config-original.yaml",
-            "config_name": "cluster-config.yaml",
-            "template_name": "aws-parallelcluster.cfn.yaml",
-            "instance_types_data_name": "instance-types-data.json",
-            "custom_artifacts_name": "artifacts.zip",
-            "scheduler_resources_name": "scheduler_resources.zip",
-        }
         self.__s3_artifact_dir = None
 
         self.__has_running_capacity = None
@@ -106,12 +97,7 @@ class Cluster:
     def stack(self):
         """Return the ClusterStack object."""
         if not self.__stack:
-            try:
-                self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
-            except StackNotFoundError:
-                raise ClusterActionError(f"Cluster {self.name} doesn't exist.")
-            except AWSClientError as e:
-                raise ClusterActionError(f"Unable to find cluster {self.name}. {e}")
+            self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
         return self.__stack
 
     @property
@@ -151,28 +137,19 @@ class Cluster:
         service_directory = generate_random_name_with_prefix(self.name)
         self.__s3_artifact_dir = "/".join(
             [
-                self._s3_artifacts_dict.get("root_directory"),
+                PCLUSTER_S3_ARTIFACTS_DICT.get("root_directory"),
                 get_installed_version(),
-                self._s3_artifacts_dict.get("root_cluster_directory"),
+                PCLUSTER_S3_ARTIFACTS_DICT.get("root_cluster_directory"),
                 service_directory,
             ]
         )
 
     def _get_cluster_config_dict(self):
         """Retrieve cluster config content."""
-        table_name = self.stack.name
-        config_version = None
-        try:
-            config_version_item = AWSApi.instance().dynamodb.get_item(table_name=table_name, key="CLUSTER_CONFIG")
-            if config_version_item or "Item" in config_version_item:
-                config_version = config_version_item["Item"].get("Version")
-        except Exception:  # nosec
-            # Use latest if not found
-            pass
-
+        config_version = self.stack.original_config_version
         try:
             return self.bucket.get_config(
-                version_id=config_version, config_name=self._s3_artifacts_dict.get("source_config_name")
+                version_id=config_version, config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name")
             )
         except Exception as e:
             raise ClusterActionError(
@@ -192,6 +169,29 @@ class Cluster:
     @config.setter
     def config(self, value):
         self.__config = value
+
+    @property
+    def config_presigned_url(self) -> str:
+        """Return a pre-signed Url to download the config from the S3 bucket."""
+        return self.bucket.get_config_presigned_url(config_name=self._s3_artifacts_dict.get("source_config_name"))
+
+    @property
+    def compute_fleet_status(self) -> ComputeFleetStatus:
+        """Status of the cluster compute fleet."""
+        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+        status = compute_fleet_status_manager.get_status()
+        if status == ComputeFleetStatus.UNKNOWN:
+            stack_status_to_fleet_status = {
+                "CREATE_IN_PROGRESS": ComputeFleetStatus.STARTING,
+                "DELETE_IN_PROGRESS": ComputeFleetStatus.STOPPING,
+                "CREATE_FAILED": ComputeFleetStatus.STOPPED,
+                "ROLLBACK_IN_PROGRESS": ComputeFleetStatus.STOPPING,
+                "ROLLBACK_FAILED": ComputeFleetStatus.STOPPED,
+                "ROLLBACK_COMPLETE": ComputeFleetStatus.STOPPED,
+                "DELETE_FAILED": ComputeFleetStatus.STOPPING,
+            }
+            return stack_status_to_fleet_status.get(self.status, status)
+        return status
 
     @property
     def stack_name(self):
@@ -269,7 +269,7 @@ class Cluster:
             creation_result = AWSApi.instance().cfn.create_stack_from_url(
                 stack_name=self.stack_name,
                 template_url=self.bucket.get_cfn_template_url(
-                    template_name=self._s3_artifacts_dict.get("template_name")
+                    template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("template_name")
                 ),
                 disable_rollback=disable_rollback,
                 tags=self._get_cfn_tags(),
@@ -323,16 +323,19 @@ class Cluster:
             if self.config:
                 result = self.bucket.upload_config(
                     config=ClusterSchema().dump(deepcopy(self.config)),
-                    config_name=self._s3_artifacts_dict.get("config_name"),
+                    config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("config_name"),
                 )
 
-                # config version will be stored in DB by the cookbook at the first update
+                # config version will be stored in DB by the cookbook
                 self.config.config_version = result.get("VersionId")
 
                 # Upload original config
-                self.bucket.upload_config(
-                    config=self.config.source_config, config_name=self._s3_artifacts_dict.get("source_config_name")
+                result = self.bucket.upload_config(
+                    config=self.config.source_config, config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name")
                 )
+
+                # original config version will be stored in CloudFormation Parameters
+                self.config.original_config_version = result.get("VersionId")
 
         except Exception as e:
             raise ClusterActionError(
@@ -351,23 +354,23 @@ class Cluster:
         try:
             resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
             self.bucket.upload_resources(
-                resource_dir=resources, custom_artifacts_name=self._s3_artifacts_dict.get("custom_artifacts_name")
+                resource_dir=resources, custom_artifacts_name=PCLUSTER_S3_ARTIFACTS_DICT.get("custom_artifacts_name")
             )
             if self.config.scheduler_resources:
                 self.bucket.upload_resources(
                     resource_dir=self.config.scheduler_resources,
-                    custom_artifacts_name=self._s3_artifacts_dict.get("scheduler_resources_name"),
+                    custom_artifacts_name=PCLUSTER_S3_ARTIFACTS_DICT.get("scheduler_resources_name"),
                 )
 
             # Upload template
             if self.template_body:
-                self.bucket.upload_cfn_template(self.template_body, self._s3_artifacts_dict.get("template_name"))
+                self.bucket.upload_cfn_template(self.template_body, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
 
             if isinstance(self.config.scheduling, SlurmScheduling):
                 # upload instance types data
                 self.bucket.upload_config(
                     self.config.get_instance_types_data(),
-                    self._s3_artifacts_dict.get("instance_types_data_name"),
+                    PCLUSTER_S3_ARTIFACTS_DICT.get("instance_types_data_name"),
                     format=S3FileFormat.JSON,
                 )
         except Exception as e:
@@ -408,8 +411,10 @@ class Cluster:
         for key in keys:
             template["Resources"][key]["DeletionPolicy"] = "Retain"
         try:
-            self.bucket.upload_cfn_template(template, self._s3_artifacts_dict.get("template_name"))
-            self._update_stack_template(self.bucket.get_cfn_template_url(self._s3_artifacts_dict.get("template_name")))
+            self.bucket.upload_cfn_template(template, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
+            self._update_stack_template(
+                self.bucket.get_cfn_template_url(PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
+            )
         except AWSClientError as e:
             raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
 
@@ -469,17 +474,17 @@ class Cluster:
     @property
     def head_node_instance(self) -> ClusterInstance:
         """Get head node instance."""
-        try:
-            instance_data = self._describe_instances(node_type=NodeType.HEAD_NODE)[0]
-            return ClusterInstance(instance_data)
-        except Exception as e:
-            raise ClusterActionError(f"Unable to retrieve head node information. {e}")
+        instances = self._describe_instances(node_type=NodeType.HEAD_NODE)
+        if instances:
+            return ClusterInstance(instances[0])
+        else:
+            raise ClusterActionError("Unable to retrieve head node information.")
 
     def _get_instance_filters(self, node_type: NodeType):
         return [
-            {"Name": "tag:Application", "Values": [self.stack_name]},
+            {"Name": f"tag:{PCLUSTER_APPLICATION_TAG}", "Values": [self.stack_name]},
             {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
-            {"Name": "tag:parallelcluster:node-type", "Values": [node_type.value]},
+            {"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": [node_type.value]},
         ]
 
     def _describe_instances(self, node_type: NodeType):
@@ -625,7 +630,10 @@ class Cluster:
             # Create template if not provided by the user
             if not (self.config.dev_settings and self.config.dev_settings.cluster_template):
                 self.template_body = CDKTemplateBuilder().build_cluster_template(
-                    cluster_config=self.config, bucket=self.bucket, stack_name=self.stack_name
+                    cluster_config=self.config,
+                    bucket=self.bucket,
+                    stack_name=self.stack_name,
+                    log_group_name=self.stack.log_group_name,
                 )
 
             # upload cluster artifacts and generated template
@@ -635,7 +643,7 @@ class Cluster:
             AWSApi.instance().cfn.update_stack_from_url(
                 stack_name=self.stack_name,
                 template_url=self.bucket.get_cfn_template_url(
-                    template_name=self._s3_artifacts_dict.get("template_name")
+                    template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("template_name")
                 ),
                 tags=self._get_cfn_tags(),
             )
@@ -655,14 +663,11 @@ class Cluster:
         """Add version tag to the stack."""
         if self.config.tags is None:
             self.config.tags = []
-        # Remove PCLUSTER_CLUSTER_VERSION_TAG if already exists
-        self.config.tags = [tag for tag in self.config.tags if tag.key != PCLUSTER_CLUSTER_VERSION_TAG]
-        # Add PCLUSTER_CLUSTER_VERSION_TAG
-        self.config.tags.append(Tag(key=PCLUSTER_CLUSTER_VERSION_TAG, value=get_installed_version()))
+        # Remove PCLUSTER_VERSION_TAG if already exists
+        self.config.tags = [tag for tag in self.config.tags if tag.key != PCLUSTER_VERSION_TAG]
+        # Add PCLUSTER_VERSION_TAG
+        self.config.tags.append(Tag(key=PCLUSTER_VERSION_TAG, value=get_installed_version()))
 
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
-        return [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags] + [
-            {"Key": PCLUSTER_S3_BUCKET_TAG, "Value": self.bucket.name},
-            {"Key": PCLUSTER_S3_CLUSTER_DIR_TAG, "Value": self.bucket.artifact_directory},
-        ]
+        return [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]

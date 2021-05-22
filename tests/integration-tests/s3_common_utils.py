@@ -9,6 +9,8 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
+
 import boto3
 from assertpy import assert_that
 
@@ -30,3 +32,14 @@ def check_role_inline_policy(region, cluster, enable_write_access, policy_statem
         if stm["Sid"] == sid:
             assert_that(policy_statement in stm["Resource"]).is_true()
             return
+
+
+def get_bucket_name(config, enable_write_access):
+    s3_access = config["HeadNode"]["Iam"]["S3Access"]
+    bucket_name = next(
+        (access["BucketName"] for access in s3_access if access["EnableWriteAccess"] == enable_write_access), None
+    )
+    if not bucket_name:
+        logging.error("Bucket name couldn't be found in the configuration file.")
+    else:
+        return bucket_name

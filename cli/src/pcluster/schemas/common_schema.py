@@ -22,7 +22,7 @@ from marshmallow import Schema, ValidationError, fields, post_dump, post_load, p
 from pcluster.config.cluster_config import BaseTag
 from pcluster.config.common import Cookbook
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import SUPPORTED_ARCHITECTURES
+from pcluster.constants import PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
 from pcluster.utils import camelcase
 
 ALLOWED_VALUES = {
@@ -44,6 +44,14 @@ def validate_json_format(data):
     except ValueError:
         return False
     return True
+
+
+def validate_no_reserved_tag(tags):
+    """Validate there is no tag with reserved prefix."""
+    if tags:
+        for tag in tags:
+            if tag.key.startswith(PCLUSTER_PREFIX):
+                raise ValidationError(message=f"The tag key prefix '{PCLUSTER_PREFIX}' is reserved and cannot be used.")
 
 
 def get_field_validator(field_name):

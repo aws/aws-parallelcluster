@@ -17,7 +17,13 @@ import time
 import boto3
 import yaml
 from retrying import retry
-from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subprocess_error, run_command
+from utils import (
+    retrieve_cfn_outputs,
+    retrieve_cfn_parameters,
+    retrieve_cfn_resources,
+    retry_if_subprocess_error,
+    run_command,
+)
 
 
 class Cluster:
@@ -32,6 +38,7 @@ class Cluster:
             self.config = yaml.load(conf_file, Loader=yaml.SafeLoader)
         self.has_been_deleted = False
         self.create_complete = False
+        self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
@@ -154,9 +161,9 @@ class Cluster:
         else:
             ec2 = boto3.client("ec2")
             filters = [
-                {"Name": "tag:Application", "Values": [self.cfn_name]},
+                {"Name": "tag:parallelcluster:application", "Values": [self.cfn_name]},
                 {"Name": "instance-state-name", "Values": ["running"]},
-                {"Name": "tag:Name", "Values": ["HeadNode"]},
+                {"Name": "tag:parallelcluster:node-type", "Values": ["HeadNode"]},
             ]
             instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
             return (
@@ -167,6 +174,16 @@ class Cluster:
     def os(self):
         """Return the os used for the cluster."""
         return self.config["Image"]["Os"]
+
+    @property
+    def cfn_parameters(self):
+        """
+        Return the CloudFormation stack parameters for the cluster.
+        Parameters are retrieved only once and then cached.
+        """
+        if not self.__cfn_parameters:
+            self.__cfn_parameters = retrieve_cfn_parameters(self.cfn_name, self.region)
+        return self.__cfn_parameters
 
     @property
     def cfn_outputs(self):
@@ -190,6 +207,7 @@ class Cluster:
 
     def _reset_cached_properties(self):
         """Discard cached data."""
+        self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
 

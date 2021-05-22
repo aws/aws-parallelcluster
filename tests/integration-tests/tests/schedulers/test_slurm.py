@@ -238,10 +238,9 @@ def _assert_cluster_initial_conditions(
     c5l_nodes, instance_nodes, static_nodes = [], [], []
     logging.info(cluster_node_states)
     for nodename, node_states in cluster_node_states.items():
-        if "c5l" in nodename:
+        if "dummy" in nodename:
             c5l_nodes.append(nodename)
-        # "c5.xlarge"[: "c5.xlarge".index(".")+2].replace(".", "") = c5x
-        if instance[: instance.index(".") + 2].replace(".", "") in nodename:
+        if "ondemand" in nodename:
             instance_nodes.append(nodename)
         if node_states == "idle":
             if "-st-" in nodename:
@@ -791,7 +790,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 20.11.5")
+    assert_that(version).is_equal_to("slurm 20.11.7")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):

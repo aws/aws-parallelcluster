@@ -17,7 +17,7 @@ HeadNode:
       - BucketName: {{ resource_bucket }}
         EnableWriteAccess: true
     AdditionalIamPolicies:
-      - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+      - Policy: {{ additional_policy_arn }}
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
@@ -53,7 +53,7 @@ Scheduling:
           - BucketName: {{ resource_bucket }}
             EnableWriteAccess: true
         AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+          - Policy: {{ additional_policy_arn }}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -63,7 +63,7 @@ Scheduling:
           - BucketName: {{ resource_bucket }}
             EnableWriteAccess: true
         AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+          - Policy: {{ additional_policy_arn }}
       ComputeSettings:
         LocalStorage:
           RootVolume:
@@ -93,7 +93,7 @@ Scheduling:
           - BucketName: {{ resource_bucket }}
             EnableWriteAccess: true
         AdditionalIamPolicies:
-          - Policy: arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess
+          - Policy: {{ additional_policy_arn }}
       ComputeSettings:
         LocalStorage:
           RootVolume:
@@ -108,12 +108,12 @@ Scheduling:
           Args:
             - DEF
       ComputeResources:
-        - Name: compute-resource-31
+        - Name: queue3-i1
           InstanceType: c5n.18xlarge
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
-        - Name: compute-resource-32
+        - Name: queue3-i2
           InstanceType: t2.xlarge
           DisableSimultaneousMultithreading: true
           Efa:
@@ -155,7 +155,3 @@ Monitoring:
     CloudWatch:
       Enabled: true
       RetentionInDays: 1
-DevSettings:
-  Cookbook:
-    ExtraChefAttributes: |
-      {"test_key" : "test_value_2"}

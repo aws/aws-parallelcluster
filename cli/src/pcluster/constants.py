@@ -64,16 +64,32 @@ CW_LOGS_ENABLED_DEFAULT = True
 PCLUSTER_IMAGE_NAME_REGEX = r"^[-_A-Za-z0-9{][-_A-Za-z0-9\s:{}\.]+[-_A-Za-z0-9}]$"
 PCLUSTER_IMAGE_ID_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,127})$"
 
-PCLUSTER_IMAGE_NAME_TAG = "parallelcluster:image_name"
-PCLUSTER_IMAGE_ID_TAG = "parallelcluster:image_id"
-PCLUSTER_IMAGE_BUILD_STATUS_TAG = "parallelcluster:build_status"
-PCLUSTER_IMAGE_CONFIG_TAG = "parallelcluster:build_config"
-PCLUSTER_S3_IMAGE_DIR_TAG = "parallelcluster:s3_image_dir"
-PCLUSTER_S3_CLUSTER_DIR_TAG = "parallelcluster:cluster_dir"
-PCLUSTER_S3_BUCKET_TAG = "parallelcluster:s3_bucket"
-PCLUSTER_IMAGE_BUILD_LOG_TAG = "parallelcluster:build_log"
-PCLUSTER_VERSION_TAG = "parallelcluster:version"
-PCLUSTER_CLUSTER_VERSION_TAG = "Version"  # TODO: migrate to PCLUSTER_VERSION_TAG
+PCLUSTER_PREFIX = "parallelcluster:"
+PCLUSTER_IMAGE_NAME_TAG = f"{PCLUSTER_PREFIX}image_name"
+PCLUSTER_IMAGE_ID_TAG = f"{PCLUSTER_PREFIX}image_id"
+PCLUSTER_IMAGE_BUILD_STATUS_TAG = f"{PCLUSTER_PREFIX}build_status"
+PCLUSTER_IMAGE_CONFIG_TAG = f"{PCLUSTER_PREFIX}build_config"
+PCLUSTER_S3_IMAGE_DIR_TAG = f"{PCLUSTER_PREFIX}s3_image_dir"
+PCLUSTER_S3_CLUSTER_DIR_TAG = f"{PCLUSTER_PREFIX}cluster_dir"
+PCLUSTER_S3_BUCKET_TAG = f"{PCLUSTER_PREFIX}s3_bucket"
+PCLUSTER_IMAGE_BUILD_LOG_TAG = f"{PCLUSTER_PREFIX}build_log"
+PCLUSTER_VERSION_TAG = f"{PCLUSTER_PREFIX}version"
+# PCLUSTER_APPLICATION_TAG needs to be the same as the hard coded strings in cleanup_resource.py used by Lambda function
+PCLUSTER_APPLICATION_TAG = f"{PCLUSTER_PREFIX}application"
+# PCLUSTER_CLUSTER_NAME_TAG needs to be the same as the hard coded strings in node package
+PCLUSTER_CLUSTER_NAME_TAG = f"{PCLUSTER_PREFIX}cluster-name"
+# PCLUSTER_NODE_TYPE_TAG needs to be the same as the hard coded strings in node package
+PCLUSTER_NODE_TYPE_TAG = f"{PCLUSTER_PREFIX}node-type"
+PCLUSTER_S3_ARTIFACTS_DICT = {
+    "root_directory": "parallelcluster",
+    "root_cluster_directory": "clusters",
+    "source_config_name": "cluster-config.yaml",
+    "config_name": "cluster-config-with-implied-values.yaml",
+    "template_name": "aws-parallelcluster.cfn.yaml",
+    "instance_types_data_name": "instance-types-data.json",
+    "custom_artifacts_name": "artifacts.zip",
+    "scheduler_resources_name": "scheduler_resources.zip",
+}
 
 IMAGEBUILDER_RESOURCE_NAME_PREFIX = "ParallelClusterImage"
 

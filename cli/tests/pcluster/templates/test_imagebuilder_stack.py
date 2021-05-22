@@ -456,6 +456,98 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                 },
             },
         ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {"cookbook": {"chef_cookbook": "s3://bucket_name/path/to/custom/cookbook"}},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            {
+                "Parameters": {
+                    "CfnParamChefDnaJson": {},
+                    "CfnParamChefCookbook": {"Default": "https://presigned.url"},
+                    "CfnParamCincInstaller": {},
+                    "CfnParamCookbookVersion": {},
+                    "CfnParamUpdateOsAndReboot": {},
+                },
+                "Resources": {
+                    "InstanceRole": {},
+                    "InstanceProfile": {},
+                    "InfrastructureConfiguration": {},
+                    "ParallelClusterComponent": {},
+                    "ParallelClusterTagComponent": {},
+                    "ImageRecipe": {},
+                    "ParallelClusterImage": {},
+                    "BuildNotificationTopic": {},
+                    "DistributionConfiguration": {},
+                    "DeleteStackFunctionExecutionRole": {},
+                    "DeleteStackFunction": {},
+                    "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
+                },
+            },
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {"cookbook": {"chef_cookbook": "https://custom.cookbook.url"}},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            {
+                "Parameters": {
+                    "CfnParamChefDnaJson": {},
+                    "CfnParamChefCookbook": {"Default": "https://custom.cookbook.url"},
+                    "CfnParamCincInstaller": {},
+                    "CfnParamCookbookVersion": {},
+                    "CfnParamUpdateOsAndReboot": {},
+                },
+                "Resources": {
+                    "InstanceRole": {},
+                    "InstanceProfile": {},
+                    "InfrastructureConfiguration": {},
+                    "ParallelClusterComponent": {},
+                    "ParallelClusterTagComponent": {},
+                    "ImageRecipe": {},
+                    "ParallelClusterImage": {},
+                    "BuildNotificationTopic": {},
+                    "DistributionConfiguration": {},
+                    "DeleteStackFunctionExecutionRole": {},
+                    "DeleteStackFunction": {},
+                    "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
+                },
+            },
+        ),
     ],
 )
 def test_imagebuilder_parameters_and_resources(mocker, resource, response, expected_template):
@@ -465,6 +557,7 @@ def test_imagebuilder_parameters_and_resources(mocker, resource, response, expec
         "pcluster.aws.ec2.Ec2Client.describe_image",
         return_value=ImageInfo(response),
     )
+    mocker.patch("pcluster.aws.s3.S3Client.create_presigned_url", return_value="https://presigned.url")
     # mock bucket initialization parameters
     mock_bucket(mocker)
 

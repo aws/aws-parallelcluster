@@ -14,7 +14,8 @@ Scheduling:
       ComputeResources:
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}
-          InstanceTypes: {{ instance }}
+          InstanceTypes:
+            - {{ instance }}
           MinVcpus: 4
           {% else %}
           InstanceType: {{ instance }}

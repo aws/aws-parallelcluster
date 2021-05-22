@@ -10,13 +10,7 @@
 # limitations under the License.
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.constants import (
-    OS_MAPPING,
-    PCLUSTER_CLUSTER_VERSION_TAG,
-    PCLUSTER_S3_BUCKET_TAG,
-    PCLUSTER_S3_CLUSTER_DIR_TAG,
-    PCLUSTER_STACK_PREFIX,
-)
+from pcluster.constants import OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_STACK_PREFIX, PCLUSTER_VERSION_TAG
 
 
 class ClusterStack(StackInfo):
@@ -36,22 +30,22 @@ class ClusterStack(StackInfo):
     @property
     def version(self):
         """Return the version of ParallelCluster used to create the stack."""
-        return self.get_tag(PCLUSTER_CLUSTER_VERSION_TAG)
+        return self.get_tag(PCLUSTER_VERSION_TAG)
 
     @property
     def s3_bucket_name(self):
         """Return the name of the bucket used to store cluster information."""
-        return self.get_tag(PCLUSTER_S3_BUCKET_TAG)
+        return self._get_param("ResourcesS3Bucket")
 
     @property
     def s3_artifact_directory(self):
         """Return the artifact directory of the bucket used to store cluster information."""
-        return self.get_tag(PCLUSTER_S3_CLUSTER_DIR_TAG)
+        return self._get_param("ArtifactS3RootDirectory")
 
     @property
     def head_node_user(self):
         """Return the output storing cluster user."""
-        return self._get_output("ClusterUser")
+        return self._get_param("ClusterUser")
 
     @property
     def head_node_ip(self):
@@ -61,7 +55,17 @@ class ClusterStack(StackInfo):
     @property
     def scheduler(self):
         """Return the scheduler used in the cluster."""
-        return self._get_output("Scheduler")
+        return self._get_param("Scheduler")
+
+    @property
+    def log_group_name(self):
+        """Return the log group name used in the cluster."""
+        return self._get_param("ClusterCWLogGroup")
+
+    @property
+    def original_config_version(self):
+        """Return the log group name used in the cluster."""
+        return self._get_param("ConfigVersion")
 
     def delete(self):
         """Delete stack."""
@@ -97,7 +101,7 @@ class ClusterInstance(InstanceInfo):
     @property
     def node_type(self) -> str:
         """Return os of the instance."""
-        return self._get_tag("parallelcluster:node-type")
+        return self._get_tag(PCLUSTER_NODE_TYPE_TAG)
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)

@@ -15,10 +15,10 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
-from aws_cdk.core import CfnOutput, CfnTag, Construct, CustomResource, Fn, Stack
+from aws_cdk.core import CfnOutput, CfnParameter, CfnTag, Construct, CustomResource, Fn, Stack
 
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
-from pcluster.constants import OS_MAPPING
+from pcluster.constants import OS_MAPPING, PCLUSTER_APPLICATION_TAG
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -77,6 +77,7 @@ class SlurmConstruct(Construct):
         self.shared_storage_options = shared_storage_options
         self.shared_storage_attributes = shared_storage_attributes
 
+        self._add_parameters()
         self._add_resources()
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
@@ -94,6 +95,16 @@ class SlurmConstruct(Construct):
 
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
+
+    # -- Parameters -------------------------------------------------------------------------------------------------- #
+
+    def _add_parameters(self):
+        self.cluster_dns_domain = CfnParameter(
+            scope=self.stack_scope,
+            id="ClusterDNSDomain",
+            description="DNS Domain of the private hosted zone created within the cluster",
+            default=f"{cluster_name(self.stack_name)}.pcluster",
+        )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
@@ -124,7 +135,7 @@ class SlurmConstruct(Construct):
                         effect=iam.Effect.ALLOW,
                         actions=["ec2:TerminateInstances"],
                         resources=["*"],
-                        conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
+                        conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_APPLICATION_TAG}": self.stack_name}},
                     ),
                     iam.PolicyStatement(
                         sid="EC2RunInstances",
@@ -196,7 +207,7 @@ class SlurmConstruct(Construct):
                 actions=["ec2:TerminateInstances"],
                 resources=["*"],
                 effect=iam.Effect.ALLOW,
-                conditions={"StringEquals": {"ec2:ResourceTag/Application": self.stack_name}},
+                conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_APPLICATION_TAG}": self.stack_name}},
                 sid="FleetTerminatePolicy",
             ),
         )
@@ -247,18 +258,11 @@ class SlurmConstruct(Construct):
         # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
         # terminate_compute_fleet_custom_resource.add_depends_on()
 
-        CfnOutput(
-            scope=self.stack_scope,
-            id="ConfigVersion",
-            description="Version of the config used to generate the stack",
-            value=self.config.config_version,
-        )
-
     def _add_private_hosted_zone(self):
         cluster_hosted_zone = route53.CfnHostedZone(
             scope=self.stack_scope,
             id="Route53HostedZone",
-            name=f"{cluster_name(self.stack_name)}.pcluster",
+            name=self.cluster_dns_domain.value_as_string,
             vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
         )
 
@@ -342,12 +346,6 @@ class SlurmConstruct(Construct):
             id="ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
             value=cluster_hosted_zone.ref,
-        )
-        CfnOutput(
-            scope=self.stack_scope,
-            id="ClusterDNSDomain",
-            description="DNS Domain of the private hosted zone created within the cluster",
-            value=cluster_hosted_zone.name,
         )
 
         return cluster_hosted_zone

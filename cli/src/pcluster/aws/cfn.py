@@ -9,10 +9,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import logging
+
+from botocore.exceptions import ClientError
 
 from pcluster.aws.aws_resources import StackInfo
-from pcluster.aws.common import AWSExceptionHandler, Boto3Client, StackNotFoundError
-from pcluster.constants import PCLUSTER_CLUSTER_VERSION_TAG, PCLUSTER_IMAGE_ID_TAG
+from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, StackNotFoundError
+from pcluster.constants import PCLUSTER_IMAGE_ID_TAG, PCLUSTER_VERSION_TAG
+
+LOGGER = logging.getLogger(__name__)
 
 
 class CfnClient(Boto3Client):
@@ -86,8 +91,9 @@ class CfnClient(Boto3Client):
         """Get information for the given stack."""
         try:
             return self._client.describe_stacks(StackName=stack_name).get("Stacks")[0]
-        except Exception as e:
-            if f"Stack with id {stack_name} does not exist" in str(e):
+        except ClientError as e:
+            if e.response["Error"]["Code"] == AWSClientError.ErrorCode.VALIDATION_ERROR.value:
+                LOGGER.error("Could not describe CloudFormation stack %s: %s", stack_name, e)
                 raise StackNotFoundError(function_name="describe_stack", stack_name=stack_name)
             raise
 
@@ -114,7 +120,7 @@ class CfnClient(Boto3Client):
         result = self._client.describe_stacks(**describe_stacks_kwargs)
         stack_list = []
         for stack in result.get("Stacks", []):
-            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_CLUSTER_VERSION_TAG):
+            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_VERSION_TAG):
                 stack_list.append(stack)
         return stack_list, result.get("NextToken")
 

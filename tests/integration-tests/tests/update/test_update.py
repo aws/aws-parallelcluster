@@ -19,7 +19,7 @@ import utils
 import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_bucket_name
 
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
@@ -54,14 +54,14 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
     initial_queues_config = {
         "queue1": {
             "compute_resources": {
-                "queue1_i1": {
+                "queue1-i1": {
                     "instance_type": "c5.xlarge",
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 1,
                     "enable_efa": False,
                     "disable_hyperthreading": False,
                 },
-                "queue1_i2": {
+                "queue1-i2": {
                     "instance_type": "t2.micro",
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 9,
@@ -73,7 +73,7 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         },
         "queue2": {
             "compute_resources": {
-                "queue2_i1": {
+                "queue2-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -89,44 +89,47 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
     _assert_launch_templates_config(queues_config=initial_queues_config, cluster_name=cluster.name, region=region)
 
     # Submit a job in order to verify that jobs are not affected by an update of the queue size
-    result = slurm_commands.submit_command("sleep infinity", constraint="static")
+    result = slurm_commands.submit_command("sleep infinity", constraint="static&c5.xlarge")
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Update cluster with new configuration
+    additional_policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml", bucket=bucket_name, resource_bucket=bucket_name
+        config_file="pcluster.config.update.yaml",
+        bucket=bucket_name,
+        resource_bucket=bucket_name,
+        additional_policy_arn=additional_policy_arn,
     )
     cluster.config_file = str(updated_config_file)
     cluster.update()
 
-    # Here is the expected list of nodes. Note that queue1-dy-t2micro-1 comes from the initial_count set when creating
+    # Here is the expected list of nodes.
     # the cluster:
-    # queue1-dy-t2micro-1
     # queue1-st-c5xlarge-1
     # queue1-st-c5xlarge-2
-    assert_initial_conditions(slurm_commands, 2, 1, partition="queue1")
+    assert_initial_conditions(slurm_commands, 2, 0, partition="queue1")
 
     updated_queues_config = {
         "queue1": {
             "compute_resources": {
-                "queue1_i1": {
+                "queue1-i1": {
                     "instance_type": "c5.xlarge",
                     "expected_running_instances": 2,
                     "expected_power_saved_instances": 2,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
-                "queue1_i2": {
+                "queue1-i2": {
                     "instance_type": "c5.2xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
-                "queue1_i3": {
+                "queue1-i3": {
                     "instance_type": "t2.micro",
-                    "expected_running_instances": 1,  # This comes from initial_count before update
-                    "expected_power_saved_instances": 9,
+                    "expected_running_instances": 0,
+                    "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
@@ -135,7 +138,7 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         },
         "queue2": {
             "compute_resources": {
-                "queue2_i1": {
+                "queue2-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 1,
@@ -147,14 +150,14 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         },
         "queue3": {
             "compute_resources": {
-                "queue3_i1": {
+                "queue3-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": True,
                     "enable_efa": True,
                 },
-                "queue3_i2": {
+                "queue3-i2": {
                     "instance_type": "t2.xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -174,11 +177,11 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         updated_config = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     # Check new S3 resources
-    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, get_bucket_name(updated_config, enable_write_access=False))
+    check_s3_read_write_resource(region, cluster, get_bucket_name(updated_config, enable_write_access=True))
 
     # Check new Additional IAM policies
-    _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
+    _check_role_attached_policy(region, cluster, additional_policy_arn)
 
     # Assert that the job submitted before the update is still running
     assert_that(slurm_commands.get_job_info(job_id)).contains("JobState=RUNNING")
@@ -224,13 +227,13 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
     for node, state in slurm_nodes.items():
         slurm_nodes_str += f"{node} {state}\n"
     for queue, queue_config in queues_config.items():
-        for compute_resource_config in queue_config["compute_resources"].values():
-            instance_type = compute_resource_config["instance_type"].replace(".", "")
+        for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
+            sanitized_name = re.sub(r"[^A-Za-z0-9]", "", compute_resource_name)
             running_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
             )
             power_saved_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle~\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ idle~\n").findall(slurm_nodes_str)
             )
             assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
@@ -267,7 +270,7 @@ def _get_instance(region, stack_name, host, none_expected=False):
         iter(
             ec2_resource.instances.filter(
                 Filters=[
-                    {"Name": "tag:Application", "Values": [stack_name]},
+                    {"Name": "tag:parallelcluster:application", "Values": [stack_name]},
                     {"Name": "private-dns-name", "Values": [hostname]},
                 ]
             )
@@ -343,12 +346,14 @@ def _check_extra_json(command_executor, scheduler_commands, host, expected_value
 
 def _check_role_attached_policy(region, cluster, policy_arn):
     iam_client = boto3.client("iam", region_name=region)
-    root_role = cluster.cfn_resources.get("RootRole")
-
-    result = iam_client.list_attached_role_policies(RoleName=root_role)
-
-    policies = [p["PolicyArn"] for p in result["AttachedPolicies"]]
-    assert policy_arn in policies
+    cfn_resources = cluster.cfn_resources
+    for resource in cfn_resources:
+        if resource.startswith("Role"):
+            logging.info("checking role %s", resource)
+            role = cluster.cfn_resources.get(resource)
+            result = iam_client.list_attached_role_policies(RoleName=role)
+            policies = [p["PolicyArn"] for p in result["AttachedPolicies"]]
+            assert_that(policy_arn in policies).is_true()
 
 
 def get_cfn_ebs_volume_ids(cluster, region):
