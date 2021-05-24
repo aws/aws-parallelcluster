@@ -65,6 +65,8 @@ TEST_DEFAULTS = {
     "post_install": None,
     "vpc_stack": None,
     "cluster": None,
+    "api_definition_s3_uri": None,
+    "public_ecr_image_uri": None,
     "no_delete": False,
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
@@ -282,6 +284,16 @@ def _init_argparser():
         "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
     )
     debug_group.add_argument(
+        "--api-definition-s3-uri",
+        help="URI of the Docker image for the Lambda of the ParallelCluster API",
+        default=TEST_DEFAULTS.get("api_definition_s3_uri"),
+    )
+    debug_group.add_argument(
+        "--public-ecr-image-uri",
+        help="S3 URI of the ParallelCluster API spec",
+        default=TEST_DEFAULTS.get("public_ecr_image_uri"),
+    )
+    debug_group.add_argument(
         "--no-delete",
         action="store_true",
         help="Don't delete stacks after tests are complete.",
@@ -481,6 +493,12 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.cluster:
         pytest_args.extend(["--cluster", args.cluster])
+
+    if args.api_definition_s3_uri:
+        pytest_args.extend(["--api-definition-s3-uri", args.api_definition_s3_uri])
+
+    if args.public_ecr_image_uri:
+        pytest_args.extend(["--public-ecr-image-uri", args.public_ecr_image_uri])
 
     if args.no_delete:
         pytest_args.append("--no-delete")
