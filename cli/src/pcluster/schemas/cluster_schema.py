@@ -137,6 +137,9 @@ class QueueRootVolumeSchema(BaseSchema):
 
     size = fields.Int(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    volume_type = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    iops = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

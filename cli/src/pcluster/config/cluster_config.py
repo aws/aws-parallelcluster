@@ -113,10 +113,36 @@ class Ebs(Resource):
         self,
         size: int = None,
         encrypted: bool = None,
+        volume_type: str = None,
+        iops: int = None,
+        throughput: int = None,
     ):
         super().__init__()
         self.size = Resource.init_param(size, default=EBS_VOLUME_SIZE_DEFAULT)
         self.encrypted = Resource.init_param(encrypted, default=True)
+        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
+        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
+        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
+
+    def _validate(self):
+        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
+        self._execute_validator(
+            EbsVolumeIopsValidator,
+            volume_type=self.volume_type,
+            volume_size=self.size,
+            volume_iops=self.iops,
+        )
+        self._execute_validator(
+            EbsVolumeThroughputValidator,
+            volume_type=self.volume_type,
+            volume_throughput=self.throughput,
+        )
+        self._execute_validator(
+            EbsVolumeThroughputIopsValidator,
+            volume_type=self.volume_type,
+            volume_iops=self.iops,
+            volume_throughput=self.throughput,
+        )
 
 
 class Raid(Resource):
@@ -140,8 +166,8 @@ class EphemeralVolume(Resource):
 class LocalStorage(Resource):
     """Represent the entire node storage configuration."""
 
-    def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
-        super().__init__()
+    def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None, **kwargs):
+        super().__init__(**kwargs)
         self.root_volume = root_volume
         self.ephemeral_volume = ephemeral_volume
 
@@ -162,21 +188,14 @@ class SharedEbs(Ebs):
         self,
         mount_dir: str,
         name: str,
-        volume_type: str = None,
-        iops: int = None,
-        size: int = None,
-        encrypted: bool = None,
         kms_key_id: str = None,
-        throughput: int = None,
         snapshot_id: str = None,
         volume_id: str = None,
         raid: Raid = None,
+        **kwargs,
     ):
-        super().__init__(size=size, encrypted=encrypted)
-        self.volume_type = Resource.init_param(volume_type, default=EBS_VOLUME_TYPE_DEFAULT)
-        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
+        super().__init__(**kwargs)
         self.kms_key_id = Resource.init_param(kms_key_id)
-        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
         self.mount_dir = Resource.init_param(mount_dir)
         self.name = Resource.init_param(name)
         self.shared_storage_type = SharedStorageType.RAID if raid else SharedStorageType.EBS
@@ -187,24 +206,6 @@ class SharedEbs(Ebs):
     def _validate(self):
         super()._validate()
         self._execute_validator(NameValidator, name=self.name)
-        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
-        self._execute_validator(
-            EbsVolumeIopsValidator,
-            volume_type=self.volume_type,
-            volume_size=self.size,
-            volume_iops=self.iops,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_throughput=self.throughput,
-        )
-        self._execute_validator(
-            EbsVolumeThroughputIopsValidator,
-            volume_type=self.volume_type,
-            volume_iops=self.iops,
-            volume_throughput=self.throughput,
-        )
         if self.kms_key_id:
             self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._execute_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
@@ -698,7 +699,7 @@ class HeadNode(Resource):
         )
         self.networking = networking
         self.ssh = ssh or Ssh(implied=True)
-        self.local_storage = local_storage
+        self.local_storage = local_storage or LocalStorage(implied=True)
         self.dcv = dcv
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
@@ -797,9 +798,10 @@ class ComputeSettings(Resource):
     def __init__(
         self,
         local_storage: LocalStorage = None,
+        **kwargs,
     ):
-        super().__init__()
-        self.local_storage = local_storage
+        super().__init__(**kwargs)
+        self.local_storage = local_storage or LocalStorage(implied=True)
 
 
 class BaseQueue(Resource):
@@ -964,7 +966,7 @@ class BaseClusterConfig(Resource):
             for storage in self.shared_storage:
                 mount_dir_list.append(storage.mount_dir)
 
-        if self.head_node.local_storage and self.head_node.local_storage.ephemeral_volume:
+        if self.head_node.local_storage.ephemeral_volume:
             mount_dir_list.append(self.head_node.local_storage.ephemeral_volume.mount_dir)
 
         return mount_dir_list
@@ -1278,7 +1280,7 @@ class SlurmQueue(BaseQueue):
     ):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
-        self.compute_settings = compute_settings
+        self.compute_settings = compute_settings or ComputeSettings(implied=True)
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
 

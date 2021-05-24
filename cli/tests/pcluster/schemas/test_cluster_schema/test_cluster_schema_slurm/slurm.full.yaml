@@ -20,6 +20,8 @@ HeadNode:
     RootVolume:
       Size: 40
       Encrypted: true
+      VolumeType: gp2
+      Iops: 100
     EphemeralVolume:
       Encrypted: true
       MountDir: /test
@@ -84,6 +86,8 @@ Scheduling:
           RootVolume:
             Size: 35
             Encrypted: true
+            VolumeType: gp2
+            Iops: 100
           EphemeralVolume:
             Encrypted: true
             MountDir: /scratch
