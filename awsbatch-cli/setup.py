@@ -24,8 +24,7 @@ VERSION = "1.0.0"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "tabulate>=0.8.2,<0.8.10",
-    "configparser>=3.5.0",
+    "tabulate~=0.8",
 ]
 
 setup(
@@ -73,7 +72,7 @@ setup(
         "License :: OSI Approved :: Apache Software License",
     ],
     project_urls={
-        "Changelog": "https://github.com/aws/aws-parallelcluster/blob/develop/CHANGELOG.md",
+        "Changelog": "https://github.com/aws/aws-parallelcluster/blob/develop/awsbatch-cli/CHANGELOG.md",
         "Issue Tracker": "https://github.com/aws/aws-parallelcluster/issues",
         "Documentation": "https://docs.aws.amazon.com/parallelcluster/",
     },
