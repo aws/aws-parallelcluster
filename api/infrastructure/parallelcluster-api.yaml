@@ -597,9 +597,9 @@ Resources:
               Sid: CloudWatchLogs
 
   ParallelClusterFunctionLogGroup:
-    DependsOn: ParallelClusterFunction
     Type: AWS::Logs::LogGroup
     Properties:
+      LogGroupName: !Sub /aws/lambda/${ParallelClusterFunction}
       RetentionInDays: 30
 
   ImageBuilderInstanceRole:
