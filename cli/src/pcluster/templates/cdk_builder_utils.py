@@ -15,6 +15,7 @@ from typing import List, Union
 
 import pkg_resources
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_events as events
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
@@ -281,10 +282,18 @@ class PclusterLambdaConstruct(Construct):
         execution_role: iam.CfnRole,
         handler_func: str,
         timeout: int = 900,
+        memory_size: int = 128,
+        environment=None,
+        event_pattern=None,
+        schedule_expression: str = None,
+        schedule_enabled: bool = False,
     ):
         super().__init__(scope, id)
 
         function_name = f"pcluster-{function_id}-{self._stack_unique_id()}"
+
+        if environment is None:
+            environment = {}
 
         self.log_group = logs.CfnLogGroup(
             scope,
@@ -302,11 +311,37 @@ class PclusterLambdaConstruct(Construct):
                 s3_key=f"{bucket.artifact_directory}/custom_resources/artifacts.zip",
             ),
             handler=f"{handler_func}.handler",
-            memory_size=128,
+            memory_size=memory_size,
             role=execution_role,
             runtime="python3.8",
             timeout=timeout,
+            environment=awslambda.CfnFunction.EnvironmentProperty(variables=environment),
         )
+
+        if schedule_expression is not None:
+            self.lambda_rule = events.CfnRule(
+                scope=scope,
+                id=f"{function_id}Rule",
+                name=f"{self.lambda_func.function_name}Rule",
+                event_pattern=event_pattern,
+                schedule_expression=schedule_expression,
+                state="ENABLED" if schedule_enabled else "DISABLED",
+                targets=[
+                    events.CfnRule.TargetProperty(
+                        id=function_id,
+                        arn=self.lambda_func.attr_arn,
+                    )
+                ],
+            )
+
+            self.lambda_rule_permission = awslambda.CfnPermission(
+                scope=scope,
+                id=f"{function_id}FunctionInvokePermission",
+                principal="events.amazonaws.com",
+                action="lambda:InvokeFunction",
+                function_name=self.lambda_func.attr_arn,
+                source_arn=self.lambda_rule.attr_arn,
+            )
 
     def _stack_unique_id(self):
         return Fn.select(2, Fn.split("/", Stack.of(self).stack_id))

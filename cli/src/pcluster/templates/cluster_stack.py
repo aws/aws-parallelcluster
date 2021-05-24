@@ -185,6 +185,7 @@ class ClusterCdkStack(Stack):
 
         # Head Node EC2 Iam Role
         self._add_role_and_policies(self.config.head_node, "HeadNode")
+        self.cluster_admin_role = self._add_cluster_admin_role()
 
         if self._condition_is_slurm():
             # Compute Nodes EC2 Iam Roles
@@ -263,6 +264,9 @@ class ClusterCdkStack(Stack):
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
             )
 
+        # Lambda Functions
+        self._add_aws_credentials_lambda()
+
     def _add_cluster_log_group(self):
         log_group = logs.CfnLogGroup(
             self,
@@ -271,6 +275,33 @@ class ClusterCdkStack(Stack):
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
         return log_group
+
+    def _add_cluster_admin_role(self):
+        name = "ClusterAdminRole"
+        policy_suffix = create_hash_suffix(name)
+
+        # Managed policies
+        # TODO code duplication here. Need to refactor
+        managed_policies = []
+        if self.config.monitoring.logs.cloud_watch.enabled:
+            managed_policies.append(policy_name_to_arn("CloudWatchAgentServerPolicy"))
+        if self.config.scheduling.scheduler == "awsbatch":
+            managed_policies.append(policy_name_to_arn("AWSBatchFullAccess"))
+
+        role = iam.CfnRole(
+            scope=self,
+            id=name,
+            managed_policy_arns=managed_policies,
+            assume_role_policy_document=get_assume_role_policy_document(f"lambda.{self.url_suffix}"),
+        )
+
+        # Inline Policies
+        # TODO code duplication here. Need to refactor
+        self._add_pcluster_policies_to_role(role.ref, f"ParallelClusterPolicies{policy_suffix}")
+        if self._condition_create_s3_access_policies(self.config.head_node):
+            self._add_s3_access_policies_to_role(self.config.head_node, role.ref, f"S3AccessPolicies{policy_suffix}")
+
+        return role
 
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
         """Create role and policies for the given node/queue."""
@@ -353,6 +384,113 @@ class ClusterCdkStack(Stack):
         )
 
         return cleanup_resources_lambda_role, cleanup_resources_lambda
+
+    def _add_aws_credentials_lambda(self):
+        function_id = "AwsCredentials"
+        _cluster_name = cluster_name(self.stack_name)
+        policy_suffix = create_hash_suffix(function_id)
+
+        execution_role = iam.CfnRole(
+            scope=self,
+            id=f"{function_id}FunctionExecutionRole",
+            assume_role_policy_document=get_assume_role_policy_document(f"lambda.{self.url_suffix}"),
+        )
+
+        iam.CfnPolicy(
+            scope=self,
+            id=f"{function_id}{policy_suffix}",
+            policy_name=f"{function_id}FunctionPolicy",
+            policy_document=iam.PolicyDocument(
+                statements=[
+                    iam.PolicyStatement(
+                        sid="EC2Policy",
+                        effect=iam.Effect.ALLOW,
+                        actions=["ec2:DescribeInstances", "ec2:DescribeInstanceStatus"],
+                        resources=["*"],
+                    ),
+                    iam.PolicyStatement(
+                        sid="STSAssumeClusterAdminRolePolicy",
+                        effect=iam.Effect.ALLOW,
+                        actions=["sts:AssumeRole"],
+                        resources=[self.cluster_admin_role.attr_arn],
+                    ),
+                    iam.PolicyStatement(
+                        sid="SSMSendCommandDocumentPolicy",
+                        effect=iam.Effect.ALLOW,
+                        actions=["ssm:SendCommand"],
+                        resources=[
+                            self.format_arn(
+                                service="ssm", region=self.region, account="", resource="document/AWS-RunShellScript"
+                            ),
+                        ],
+                    ),
+                    iam.PolicyStatement(
+                        sid="SSMSendCommandTargetPolicy",
+                        effect=iam.Effect.ALLOW,
+                        actions=["ssm:SendCommand"],
+                        resources=[
+                            self.format_arn(
+                                service="ec2", account=self.account, region=self.region, resource="instance/*"
+                            ),
+                        ],
+                        # TODO Must restrict permission to target only the head node of the cluster.
+                        # The best approach would be tag-based, but the below conditions cause access denied errors.
+                        # conditions={
+                        #    "StringEquals": {
+                        #        "ec2:ResourceTag/parallelcluster:cluster-name": _cluster_name,
+                        #        "ec2:ResourceTag/parallelcluster:node-type": "HeadNode",
+                        #    },
+                        # }
+                    ),
+                    iam.PolicyStatement(
+                        sid="SSMGetCommandInvocationPolicy",
+                        effect=iam.Effect.ALLOW,
+                        actions=["ssm:GetCommandInvocation"],
+                        resources=[
+                            self.format_arn(service="ssm", account=self.account, region=self.region, resource="*"),
+                        ],
+                    ),
+                    get_cloud_watch_logs_policy_statement(
+                        resource=self.format_arn(service="logs", account="*", region="*", resource="*")
+                    ),
+                ]
+            ),
+            roles=[execution_role.ref],
+        )
+
+        self.cluster_admin_role.assume_role_policy_document.add_statements(
+            iam.PolicyStatement(
+                sid="TrustLambdaExecutionRolePolicy",
+                effect=iam.Effect.ALLOW,
+                actions=["sts:AssumeRole"],
+                principals=[iam.ArnPrincipal(execution_role.attr_arn)],
+            )
+        )
+
+        PclusterLambdaConstruct(
+            scope=self,
+            id=f"{function_id}FunctionConstruct",
+            function_id=function_id,
+            bucket=self.bucket,
+            config=self.config,
+            execution_role=execution_role.attr_arn,
+            handler_func="write_aws_credentials",
+            timeout=300,
+            memory_size=256,
+            environment={
+                "CLUSTER_NAME": _cluster_name,
+                "ROLE_ARN": self.cluster_admin_role.attr_arn,
+                "SSM_CW_LOG_GROUP_ENABLED": str(self.config.is_cw_logging_enabled),
+                "SSM_CW_LOG_GROUP_NAME": f"/aws/ssm/{_cluster_name}",
+            },
+            event_pattern={
+                "source": ["aws.ec2"],
+                "detail-type": ["EC2 Instance State-change Notification"],
+                "detail": {"state": ["running"], "instance-id": [self.head_node_instance.ref]},
+            },
+            schedule_expression="rate(15 minutes)",
+            schedule_enabled=True,
+        )
 
     def _add_head_eni(self):
         """Create Head Node Elastic Network Interface."""
@@ -523,6 +661,9 @@ class ClusterCdkStack(Stack):
             awsbatch_full_access_arn = policy_name_to_arn("AWSBatchFullAccess")
             if awsbatch_full_access_arn not in additional_iam_policies:
                 additional_iam_policies.append(awsbatch_full_access_arn)
+        ssm_policy_arn = policy_name_to_arn("AmazonSSMManagedInstanceCore")
+        if ssm_policy_arn not in additional_iam_policies:
+            additional_iam_policies.append(ssm_policy_arn)
         return iam.CfnRole(
             self,
             name,
