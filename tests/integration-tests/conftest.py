@@ -91,6 +91,10 @@ def pytest_addoption(parser):
     parser.addoption("--post-install", help="url to post install script")
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
+    parser.addoption("--public-ecr-image-uri", help="S3 URI of the ParallelCluster API spec")
+    parser.addoption(
+        "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
+    )
     parser.addoption(
         "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
     )
@@ -778,6 +782,16 @@ def _create_iam_policies(iam_policy_name, region, policy_filename):
 @pytest.fixture(scope="class")
 def vpc_stack(vpc_stacks, region):
     return vpc_stacks[region]
+
+
+@pytest.fixture(scope="class")
+def public_ecr_image_uri(request):
+    return request.config.getoption("public_ecr_image_uri")
+
+
+@pytest.fixture(scope="class")
+def api_definition_s3_uri(request):
+    return request.config.getoption("api_definition_s3_uri")
 
 
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources

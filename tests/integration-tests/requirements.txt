@@ -17,3 +17,4 @@ PyYAML
 retrying
 troposphere
 untangle
+requests
