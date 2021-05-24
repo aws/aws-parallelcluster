@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 from hashlib import sha1
 from typing import List, Union
 
@@ -26,6 +25,7 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     Ebs,
     HeadNode,
+    LocalStorage,
     SharedStorageType,
 )
 from pcluster.constants import (
@@ -40,7 +40,7 @@ from pcluster.models.s3_bucket import S3Bucket
 from pcluster.utils import get_installed_version
 
 
-def get_block_device_mappings(node_config: Union[HeadNode, BaseQueue], os: str):
+def get_block_device_mappings(local_storage: LocalStorage, os: str):
     """Return block device mapping."""
     block_device_mappings = []
     for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
@@ -50,26 +50,18 @@ def get_block_device_mappings(node_config: Union[HeadNode, BaseQueue], os: str):
             ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
         )
 
-    # Root volume
-    if isinstance(node_config, BaseQueue):  # Queue
-        if (
-            node_config.compute_settings
-            and node_config.compute_settings.local_storage
-            and node_config.compute_settings.local_storage.root_volume
-        ):
-            root_volume = copy.deepcopy(node_config.compute_settings.local_storage.root_volume)
-        else:
-            root_volume = Ebs()
-    elif isinstance(node_config, HeadNode):  # HeadNode
-        if node_config.local_storage and node_config.local_storage.root_volume:
-            root_volume = copy.deepcopy(node_config.local_storage.root_volume)
-        else:
-            root_volume = Ebs()
+    root_volume = local_storage.root_volume or Ebs()
 
     block_device_mappings.append(
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
             device_name=OS_MAPPING[os]["root-device"],
-            ebs=ec2.CfnLaunchTemplate.EbsProperty(volume_size=root_volume.size, encrypted=root_volume.encrypted),
+            ebs=ec2.CfnLaunchTemplate.EbsProperty(
+                volume_size=root_volume.size,
+                encrypted=root_volume.encrypted,
+                volume_type=root_volume.volume_type,
+                iops=root_volume.iops,
+                throughput=root_volume.throughput,
+            ),
         )
     )
     return block_device_mappings

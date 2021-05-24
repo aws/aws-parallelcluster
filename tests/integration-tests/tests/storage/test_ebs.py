@@ -123,12 +123,13 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, regio
             encrypted = True
         _test_ebs_encrypted_with_kms(volume_id, region, encrypted=encrypted, kms_key_id=ebs_settings.get("KmsKeyId"))
         # test different iops
-        # only the iops of io1 and io2 can be configured by us
+        # only io1, io2, gp3 can configure iops
         if volume_type in ["io1", "io2", "gp3"]:
             volume_iops = ebs_settings["Iops"]
             assert_that(volume[1]).is_equal_to(int(volume_iops))
 
     _test_root_volume_encryption(cluster, os, region, scheduler, encrypted=False)
+    _assert_root_volume_configuration(cluster, os, region, scheduler)
 
 
 def _get_ebs_settings_by_name(config, name):
@@ -275,6 +276,42 @@ def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
         # If the scheduler is awsbatch, only the headnode root volume can be encrypted.
         root_volume_id = utils.get_root_volume_id(cluster.cfn_resources["HeadNode"], region, os)
         _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
+
+
+def _assert_root_volume_configuration(cluster, os, region, scheduler):
+    logging.info("Testing root volume type, iops, throughput.")
+
+    # Test root volume of head node
+    head_node = cluster.cfn_resources["HeadNode"]
+    if utils.dict_has_nested_key(cluster.config, ("HeadNode", "LocalStorage", "RootVolume")):
+        logging.info("Checking head node root volume settings")
+        root_volume_id = utils.get_root_volume_id(head_node, region, os)
+        expected_settings = cluster.config["HeadNode"]["LocalStorage"]["RootVolume"]
+        _assert_volume_configuration(expected_settings, root_volume_id, region)
+    if scheduler == "slurm":
+        # Only if the scheduler is slurm, root volumes both on compute can be configured
+        instance_ids = cluster.instances()
+        for instance in instance_ids:
+            if instance == head_node:
+                # head node is already checked
+                continue
+            root_volume_id = utils.get_root_volume_id(instance, region, os)
+            if utils.dict_has_nested_key(
+                cluster.config, ("Scheduling", "Queues", 0, "ComputeSettings", "LocalStorage", "RootVolume")
+            ):
+                logging.info("Checking compute node root volume settings")
+                expected_settings = cluster.config["Scheduling"]["Queues"][0]["ComputeSettings"]["LocalStorage"][
+                    "RootVolume"
+                ]
+                _assert_volume_configuration(expected_settings, root_volume_id, region)
+
+
+def _assert_volume_configuration(expected_settings, volume_id, region):
+    actual_root_volume_settings = (
+        boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+    )
+    for key in expected_settings:
+        assert_that(actual_root_volume_settings[key]).is_equal_to(expected_settings[key])
 
 
 @pytest.fixture()

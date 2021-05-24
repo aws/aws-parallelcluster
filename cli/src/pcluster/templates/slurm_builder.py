@@ -458,7 +458,9 @@ class SlurmConstruct(Construct):
                 )
                 if compute_resource.pass_cpu_options_in_launch_template
                 else None,
-                block_device_mappings=get_block_device_mappings(queue, self.config.image.os),
+                block_device_mappings=get_block_device_mappings(
+                    queue.compute_settings.local_storage, self.config.image.os
+                ),
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
                 placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=queue_placement_group),

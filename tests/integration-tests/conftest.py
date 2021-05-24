@@ -45,6 +45,7 @@ from retrying import retry
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
+    dict_has_nested_key,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
     get_instance_info,
@@ -374,17 +375,6 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
     return _config_renderer
 
 
-def _dict_has_nested_key(d, keys):
-    """Check if *keys (nested) exists in d (dict)."""
-    _d = d
-    for key in keys:
-        try:
-            _d = _d[key]
-        except KeyError:
-            return False
-    return True
-
-
 def _dict_add_nested_key(d, value, keys):
     _d = d
     for key in keys[:-1]:
@@ -398,7 +388,7 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
     with open(cluster_config) as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
-    if request.config.getoption("custom_chef_cookbook") and not _dict_has_nested_key(
+    if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")
     ):
         _dict_add_nested_key(
@@ -407,10 +397,10 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
             ("DevSettings", "Cookbook", "ChefCookbook"),
         )
 
-    if request.config.getoption("custom_ami") and not _dict_has_nested_key(config_content, ("Image", "CustomAmi")):
+    if request.config.getoption("custom_ami") and not dict_has_nested_key(config_content, ("Image", "CustomAmi")):
         _dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
 
-    if not _dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
+    if not dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
         if request.config.getoption("cookbook_git_ref") or request.config.getoption("node_git_ref"):
             tags = []
             if request.config.getoption("cookbook_git_ref"):
@@ -427,7 +417,7 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
 
     for option, config_param in [("pre_install", "OnNodeStart"), ("post_install", "OnNodeConfigured")]:
         if request.config.getoption(option):
-            if not _dict_has_nested_key(config_content, ("HeadNode", "CustomActions", config_param)):
+            if not dict_has_nested_key(config_content, ("HeadNode", "CustomActions", config_param)):
                 _dict_add_nested_key(
                     config_content,
                     request.config.getoption(option),
@@ -437,7 +427,7 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
 
             if config_content["Scheduling"]["Scheduler"] != "awsbatch":
                 for queue in config_content["Scheduling"]["Queues"]:
-                    if not _dict_has_nested_key(queue, ("CustomActions", config_param)):
+                    if not dict_has_nested_key(queue, ("CustomActions", config_param)):
                         _dict_add_nested_key(
                             queue, request.config.getoption(option), ("CustomActions", config_param, "Script")
                         )
@@ -447,7 +437,7 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
         ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
         ("custom_node_package", "NodePackage"),
     ]:
-        if request.config.getoption(option) and not _dict_has_nested_key(config_content, ("DevSettings", config_param)):
+        if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
             _dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
     with open(cluster_config, "w") as conf_file:
@@ -460,7 +450,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
         additional_iam_policies = {"Policy": f"arn:{_get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
-        if _dict_has_nested_key(node_config, ("Iam", "InstanceRole")):
+        if dict_has_nested_key(node_config, ("Iam", "InstanceRole")):
             # AdditionalIamPolicies and InstanceRole can not co-exist
             logging.info(
                 f"InstanceRole is specified, skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
@@ -469,7 +459,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
             logging.info(
                 f"{custom_option} script is an S3 URL, adding AdditionalIamPolicies: {additional_iam_policies}"
             )
-            if _dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
+            if dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
                 if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
                     node_config["Iam"]["AdditionalIamPolicies"].append({"Policy": additional_iam_policies})
             else:

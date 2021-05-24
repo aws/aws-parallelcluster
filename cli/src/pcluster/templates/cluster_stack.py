@@ -943,7 +943,7 @@ class ClusterCdkStack(Stack):
                 cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(core_count=head_node.vcpus, threads_per_core=1)
                 if head_node.pass_cpu_options_in_launch_template
                 else None,
-                block_device_mappings=get_block_device_mappings(head_node, self.config.image.os),
+                block_device_mappings=get_block_device_mappings(head_node.local_storage, self.config.image.os),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self.config.ami_id,
