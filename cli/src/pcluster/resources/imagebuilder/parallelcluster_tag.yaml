@@ -64,6 +64,17 @@ phases:
               # Install AWS CLI
               which aws
               if [[ $? -ne 0 ]]; then
+                echo "Installing unzip"
+                if [[ ${PLATFORM} == RHEL ]]; then
+                  if [[ ${OS} == centos8 ]]; then
+                    dnf -y install unzip
+                  else
+                    # all RHEL except centos8
+                    yum -y install unzip
+                  fi
+                elif [[ ${PLATFORM} == DEBIAN ]]; then
+                  apt-get -y install unzip
+                fi
                 echo "Installing AWS CLI"
                 curl --retry 3 -L -o /tmp/awscliv2.zip "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip"
                 cd /tmp/ && unzip awscliv2.zip
