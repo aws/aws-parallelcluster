@@ -32,7 +32,6 @@ from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
     OS_MAPPING,
-    PCLUSTER_APPLICATION_TAG,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
 )
@@ -156,7 +155,6 @@ def get_default_instance_tags(
     tags = {
         "Name": node_type,
         PCLUSTER_CLUSTER_NAME_TAG: stack_name,
-        PCLUSTER_APPLICATION_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
         "parallelcluster:attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
             BaseOS=config.image.os,
@@ -183,7 +181,6 @@ def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = Fa
     """Return a list of default tags to be used for volumes."""
     tags = {
         PCLUSTER_CLUSTER_NAME_TAG: stack_name,
-        PCLUSTER_APPLICATION_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
     }
     return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]

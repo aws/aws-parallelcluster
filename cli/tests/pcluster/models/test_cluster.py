@@ -17,7 +17,7 @@ from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
-from pcluster.constants import PCLUSTER_APPLICATION_TAG
+from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG
 from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket
@@ -58,7 +58,7 @@ class TestCluster:
             "pcluster.aws.ec2.Ec2Client.describe_instances",
             return_value=expected_response,
             expected_params=[
-                {"Name": f"tag:{PCLUSTER_APPLICATION_TAG}", "Values": ["test-cluster"]},
+                {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": ["test-cluster"]},
                 {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
                 {"Name": "tag:parallelcluster:node-type", "Values": [node_type.value]},
             ],
