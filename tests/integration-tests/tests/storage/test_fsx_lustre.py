@@ -187,9 +187,9 @@ def _test_fsx_lustre(
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
 
-    test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
     _test_import_path(remote_command_executor, mount_dir)
-    test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
+    assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
@@ -230,7 +230,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
     fsx_fs_id = get_fsx_fs_id(cluster, region)
 
     # Mount file system
-    test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
 
     # Create a text file in the mount directory.
     create_backup_test_file(scheduler_commands, remote_command_executor, mount_dir)
@@ -259,7 +259,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
     fsx_fs_id_restore = get_fsx_fs_id(cluster_restore, region)
 
     # Mount the restored file system
-    test_fsx_lustre_correctly_mounted(remote_command_executor_restore, mount_dir, os, region, fsx_fs_id_restore)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor_restore, mount_dir, os, region, fsx_fs_id_restore)
 
     # Validate whether text file created in the original file system is present in the restored file system.
     _test_restore_from_backup(remote_command_executor_restore, mount_dir)
@@ -360,7 +360,7 @@ def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
         cfn_stacks_factory.delete_stack(fsx_stack_name, region)
 
 
-def test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id):
+def assert_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id):
     logging.info("Testing fsx lustre is correctly mounted")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
     mount_name = get_mount_name(fsx_fs_id, region)
@@ -425,7 +425,7 @@ def _test_import_path(remote_command_executor, mount_dir):
     assert_that(result.stdout).is_equal_to("Downloaded by FSx Lustre")
 
 
-def test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
+def assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
     logging.info("Testing fsx lustre correctly mounted on compute nodes")
     remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
     job_command = "cat {mount_dir}/test_file && touch {mount_dir}/compute_output".format(mount_dir=mount_dir)
