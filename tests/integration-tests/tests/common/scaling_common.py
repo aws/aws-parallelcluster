@@ -183,7 +183,7 @@ def get_batch_ce_min_size(stack_name, region):
     )
 
 
-def test_maintain_initial_size(stack_name, region, maintain_initial_size, initial_size):
+def assert_maintain_initial_size_behavior(stack_name, region, maintain_initial_size, initial_size):
     min_size = get_min_asg_capacity(region, stack_name)
     if maintain_initial_size == "true":
         assert_that(min_size).is_equal_to(initial_size)

@@ -22,9 +22,9 @@ from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostn
 from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
 from tests.common.hit_common import wait_for_num_nodes_in_scheduler
 from tests.common.scaling_common import (
+    assert_maintain_initial_size_behavior,
     get_compute_nodes_allocation,
     get_desired_asg_capacity,
-    test_maintain_initial_size,
 )
 from tests.common.schedulers_common import get_scheduler_commands
 
@@ -113,7 +113,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
     )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
-    test_maintain_initial_size(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
+    assert_maintain_initial_size_behavior(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
 
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(15))

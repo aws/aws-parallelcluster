@@ -23,9 +23,9 @@ from utils import get_compute_nodes_instance_ids
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import retrieve_latest_ami
 from tests.storage.test_fsx_lustre import (
+    assert_fsx_lustre_correctly_mounted,
+    assert_fsx_lustre_correctly_shared,
     get_fsx_fs_id,
-    test_fsx_lustre_correctly_mounted,
-    test_fsx_lustre_correctly_shared,
 )
 
 
@@ -52,8 +52,8 @@ def _test_fsx_in_private_subnet(cluster, os, region, scheduler, fsx_mount_dir, b
     remote_command_executor = RemoteCommandExecutor(cluster, bastion="ec2-user@{}".format(bastion_ip))
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
-    test_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, os, region, fsx_fs_id)
-    test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
+    assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, os, region, fsx_fs_id)
+    assert_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, fsx_mount_dir)
 
 
 @pytest.fixture()
