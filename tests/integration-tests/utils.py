@@ -166,7 +166,7 @@ def _describe_cluster_instances(
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
-        {"Name": "tag:parallelcluster:application", "Values": [stack_name]},
+        {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
         {"Name": "instance-state-name", "Values": ["running"]},
     ]
     if filter_by_node_type:

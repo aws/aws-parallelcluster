@@ -28,7 +28,7 @@ from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatu
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
-    PCLUSTER_APPLICATION_TAG,
+    PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
@@ -481,7 +481,7 @@ class Cluster:
 
     def _get_instance_filters(self, node_type: NodeType):
         return [
-            {"Name": f"tag:{PCLUSTER_APPLICATION_TAG}", "Values": [self.stack_name]},
+            {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": [self.stack_name]},
             {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
             {"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": [node_type.value]},
         ]

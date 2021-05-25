@@ -133,7 +133,7 @@ def _terminate_cluster_nodes(event):
 def _has_shuttingdown_instances(stack_name):
     ec2 = boto3.client("ec2", config=boto3_config)
     filters = [
-        {"Name": "tag:parallelcluster:application", "Values": [stack_name]},
+        {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
         {"Name": "instance-state-name", "Values": ["shutting-down"]},
     ]
 
@@ -144,7 +144,7 @@ def _has_shuttingdown_instances(stack_name):
 def _describe_instance_ids_iterator(stack_name, instance_state=("pending", "running", "stopping", "stopped")):
     ec2 = boto3.client("ec2", config=boto3_config)
     filters = [
-        {"Name": "tag:parallelcluster:application", "Values": [stack_name]},
+        {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
         {"Name": "instance-state-name", "Values": list(instance_state)},
     ]
     pagination_config = {"PageSize": 100}
