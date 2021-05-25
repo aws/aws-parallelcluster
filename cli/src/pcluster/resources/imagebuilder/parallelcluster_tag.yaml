@@ -61,6 +61,15 @@ phases:
             - |
               set -v
 
+              # Install AWS CLI
+              which aws
+              if [[ $? -ne 0 ]]; then
+                echo "Installing AWS CLI"
+                curl --retry 3 -L -o /tmp/awscliv2.zip "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip"
+                cd /tmp/ && unzip awscliv2.zip
+                ./aws/install
+              fi
+
               DESCRIPTION="AWS ParallelCluster AMI for {{ test.OperatingSystemName.outputs.stdout }}"
               append_description () {
                 KEY="$1"
