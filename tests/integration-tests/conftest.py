@@ -503,6 +503,33 @@ def cfn_stacks_factory(request):
         factory.delete_all_stacks()
 
 
+@pytest.fixture()
+@pytest.mark.usefixtures("setup_sts_credentials")
+def parameterized_cfn_stacks_factory(request):
+    """Define a fixture that returns a parameterized stack factory and manages the stack creation and deletion."""
+    factory = CfnStacksFactory(request.config.getoption("credential"))
+
+    def _create_stack(region, template_path, stack_prefix="", parameters=None, capabilities=None):
+        file_content = extract_template(template_path)
+        stack = CfnStack(
+            name=generate_stack_name(stack_prefix, request.config.getoption("stackname_suffix")),
+            region=region,
+            template=file_content,
+            parameters=parameters or [],
+            capabilities=capabilities or [],
+        )
+        factory.create_stack(stack)
+        return stack
+
+    def extract_template(template_path):
+        with open(template_path) as cfn_file:
+            file_content = cfn_file.read()
+        return file_content
+
+    yield _create_stack
+    factory.delete_all_stacks()
+
+
 AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in use1-az3
     # FSx Lustre file system creation is currently not supported for use1-az3

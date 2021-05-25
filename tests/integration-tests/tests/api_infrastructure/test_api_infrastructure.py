@@ -17,41 +17,11 @@ import botocore
 import pytest
 import requests
 from assertpy import assert_that, soft_assertions
-from cfn_stacks_factory import CfnStack, CfnStacksFactory
-from utils import generate_stack_name
-
-
-@pytest.fixture()
-@pytest.mark.usefixtures("setup_sts_credentials")
-def api_infrastructure_stack_factory(request):
-    """Define a fixture to manage the creation and destruction of the API Infrastructure CloudFormation stack."""
-    factory = CfnStacksFactory(request.config.getoption("credential"))
-
-    def _create_api_infrastructure(region, parameters):
-        template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
-        file_content = extract_template(template_path)
-        stack = CfnStack(
-            name=generate_stack_name("integ-tests-api-infrastructure", request.config.getoption("stackname_suffix")),
-            region=region,
-            template=file_content,
-            parameters=parameters,
-            capabilities=["CAPABILITY_AUTO_EXPAND", "CAPABILITY_IAM"],
-        )
-        factory.create_stack(stack)
-        return stack
-
-    def extract_template(template_path):
-        with open(template_path) as cfn_file:
-            file_content = cfn_file.read()
-        return file_content
-
-    yield _create_api_infrastructure
-    factory.delete_all_stacks()
 
 
 @pytest.mark.skip_regions(["cn-north-1", "cn-northwest-1"])  # TODO No Lambda container support in China regions
 def test_api_infrastructure_with_default_parameters(
-    region, api_definition_s3_uri, public_ecr_image_uri, api_infrastructure_stack_factory
+    region, api_definition_s3_uri, public_ecr_image_uri, parameterized_cfn_stacks_factory
 ):
     """Test that creating the API Infrastructure stack with the defaults correctly sets up the Lambda and APIGateway API
 
@@ -64,7 +34,16 @@ def test_api_infrastructure_with_default_parameters(
         {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
         {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
     ]
-    stack = api_infrastructure_stack_factory(region, parameters)
+    capabilities = ["CAPABILITY_AUTO_EXPAND", "CAPABILITY_IAM"]
+    template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
+    stack_prefix = "integ-tests-api-infrastructure"
+    stack = parameterized_cfn_stacks_factory(
+        region=region,
+        template_path=template_path,
+        stack_prefix=stack_prefix,
+        parameters=parameters,
+        capabilities=capabilities,
+    )
 
     lambda_client = boto3.client("lambda", region_name=region)
     apigateway_client = boto3.client("apigateway", region_name=region)
