@@ -79,13 +79,13 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "*")
 def test_createami_post_install(
-    region, os, instance, test_datadir, request, pcluster_config_reader, vpc_stack, architecture
+    region, os, instance, test_datadir, request, pcluster_config_reader, vpc_stack, architecture, amis_dict
 ):
     """Test post install script and base AMI is ParallelCluster AMI"""
     cluster_config = pcluster_config_reader()
 
     # Get ParallelCluster AMI as base AMI
-    base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
+    base_ami = amis_dict.get(os)
 
     # Networking
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
@@ -117,7 +117,7 @@ def test_createami_post_install(
     assert_that(stdout_lower).does_not_contain("no custom ami created")
 
 
-def test_createami_wrong_os(region, instance, os, request, pcluster_config_reader, vpc_stack, architecture):
+def test_createami_wrong_os(region, instance, os, request, pcluster_config_reader, vpc_stack, architecture, amis_dict):
     """Test error message when os provide is different from the os of custom AMI"""
     cluster_config = pcluster_config_reader()
 
@@ -129,7 +129,7 @@ def test_createami_wrong_os(region, instance, os, request, pcluster_config_reade
     # Else ssh to packer instance will fail and cookbook logic cannot be tested
     logging.info("Asserting os and wrong_os have the same login username")
     assert_that(get_username_for_os(os) == get_username_for_os(wrong_os)).is_true()
-    base_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture)
+    base_ami = amis_dict.get(wrong_os)
 
     command = _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config)
     _createami_and_assert_error(command, fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}")

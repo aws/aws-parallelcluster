@@ -58,13 +58,14 @@ AMI_TYPE_DICT = {
 }
 
 
-def retrieve_latest_ami(region, os, amis_dict, ami_type="official", architecture="x86_64"):
+def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
+    """
+    Retrieve latest non-pcluster AMIs.
+
+    Pcluster AMIs should be retrieved with amis_dict fixture.
+    """
     try:
-        if ami_type == "pcluster":
-            LOGGER.debug(f"CFN template amis_dict: {amis_dict}")
-            return amis_dict.get(os, "UNSUPPORTED")
-        else:
-            ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
+        ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
         response = boto3.client("ec2", region_name=region).describe_images(
             Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}],
             Owners=AMI_TYPE_DICT.get(ami_type).get(os).get("owners"),
