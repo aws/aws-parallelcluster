@@ -21,7 +21,7 @@ from retrying import retry
 from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
-from tests.common.scaling_common import test_maintain_initial_size, watch_compute_nodes
+from tests.common.scaling_common import assert_maintain_initial_size_behavior, watch_compute_nodes
 from tests.common.schedulers_common import TorqueCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
@@ -51,7 +51,7 @@ def test_torque(region, pcluster_config_reader, clusters_factory):
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     maintain_initial_size = cluster.config.get("cluster default", "maintain_initial_size")
-    test_maintain_initial_size(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
+    assert_maintain_initial_size_behavior(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
     _test_torque_version(remote_command_executor)
     _test_jobs_executed_concurrently(remote_command_executor, max_slots)
     _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime)
