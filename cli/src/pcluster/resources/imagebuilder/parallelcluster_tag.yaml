@@ -65,14 +65,11 @@ phases:
               which aws
               if [[ $? -ne 0 ]]; then
                 echo "Installing unzip"
-                if [[ ${PLATFORM} == RHEL ]]; then
-                  if [[ ${OS} == centos8 ]]; then
-                    dnf -y install unzip
-                  else
-                    # all RHEL except centos8
-                    yum -y install unzip
-                  fi
-                elif [[ ${PLATFORM} == DEBIAN ]]; then
+                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^centos8 ]]; then
+                  dnf -y install unzip
+                elif [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux) ]]; then
+                  yum -y install unzip
+                elif [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^ubuntu ]]; then
                   apt-get -y install unzip
                 fi
                 echo "Installing AWS CLI"
