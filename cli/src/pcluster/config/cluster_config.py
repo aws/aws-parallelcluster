@@ -20,7 +20,7 @@ import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.config.common import BaseDevSettings, BaseTag, Resource
+from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, Resource
 from pcluster.constants import (
     CIDR_ALL_IPS,
     CW_DASHBOARD_ENABLED_DEFAULT,
@@ -75,7 +75,6 @@ from pcluster.validators.ebs_validators import (
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
-    AdditionalIamPolicyValidator,
     CapacityTypeValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
@@ -549,20 +548,6 @@ class S3Access(Resource):
         super().__init__()
         self.bucket_name = Resource.init_param(bucket_name)
         self.enable_write_access = Resource.init_param(enable_write_access, default=False)
-
-
-class AdditionalIamPolicy(Resource):
-    """Represent the Additional IAM Policy configuration."""
-
-    def __init__(
-        self,
-        policy: str,
-    ):
-        super().__init__()
-        self.policy = Resource.init_param(policy)
-
-    def _validate(self):
-        self._execute_validator(AdditionalIamPolicyValidator, policy=self.policy)
 
 
 class Iam(Resource):

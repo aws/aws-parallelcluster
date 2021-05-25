@@ -10,6 +10,7 @@
 # limitations under the License.
 from pcluster.config.common import BaseTag, Cookbook
 from pcluster.config.imagebuilder_config import (
+    AdditionalIamPolicy,
     Build,
     Component,
     DistributionConfiguration,
@@ -31,6 +32,7 @@ CLASS_DICT = {
     "cookbook": Cookbook,
     "distribution_configuration": DistributionConfiguration,
     "iam": Iam,
+    "additional_iam_policies": AdditionalIamPolicy,
 }
 
 

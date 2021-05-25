@@ -18,6 +18,7 @@ from abc import ABC
 from typing import List
 
 from pcluster.validators.common import ValidationResult
+from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
 from pcluster.validators.s3_validators import UrlValidator
 
 LOGGER = logging.getLogger(__name__)
@@ -175,6 +176,20 @@ class BaseTag(Resource):
         super().__init__()
         self.key = Resource.init_param(key)
         self.value = Resource.init_param(value)
+
+
+class AdditionalIamPolicy(Resource):
+    """Represent the Additional IAM Policy configuration."""
+
+    def __init__(
+        self,
+        policy: str,
+    ):
+        super().__init__()
+        self.policy = Resource.init_param(policy)
+
+    def _validate(self):
+        self._execute_validator(AdditionalIamPolicyValidator, policy=self.policy)
 
 
 class Cookbook(Resource):
