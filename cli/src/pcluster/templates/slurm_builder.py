@@ -100,8 +100,8 @@ class SlurmConstruct(Construct):
 
     def _add_parameters(self):
         self.cluster_dns_domain = CfnParameter(
-            scope=self.stack_scope,
-            id="ClusterDNSDomain",
+            self.stack_scope,
+            "ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
             default=f"{cluster_name(self.stack_name)}.pcluster",
         )
@@ -125,8 +125,8 @@ class SlurmConstruct(Construct):
         suffix = create_hash_suffix(node_name)
 
         iam.CfnPolicy(
-            scope=self.stack_scope,
-            id=f"SlurmPolicies{suffix}",
+            self.stack_scope,
+            f"SlurmPolicies{suffix}",
             policy_name="parallelcluster-slurm",
             policy_document=iam.PolicyDocument(
                 statements=[
@@ -228,7 +228,7 @@ class SlurmConstruct(Construct):
                 else:
                     # Create Placement Group
                     queue_placement_group = ec2.CfnPlacementGroup(
-                        scope=self.stack_scope, id=f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
+                        self.stack_scope, f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
                     ).ref
 
             queue_pre_install_action, queue_post_install_action = (None, None)
@@ -250,8 +250,8 @@ class SlurmConstruct(Construct):
                 )
 
         CustomResource(
-            scope=self.stack_scope,
-            id="TerminateComputeFleetCustomResource",
+            self.stack_scope,
+            "TerminateComputeFleetCustomResource",
             service_token=self.cleanup_lambda.attr_arn,
             properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"},
         )
@@ -260,8 +260,8 @@ class SlurmConstruct(Construct):
 
     def _add_private_hosted_zone(self):
         cluster_hosted_zone = route53.CfnHostedZone(
-            scope=self.stack_scope,
-            id="Route53HostedZone",
+            self.stack_scope,
+            "Route53HostedZone",
             name=self.cluster_dns_domain.value_as_string,
             vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
         )
@@ -269,8 +269,8 @@ class SlurmConstruct(Construct):
         head_node_role_info = self.instance_roles.get("HeadNode")
         if head_node_role_info.get("IsNew"):
             iam.CfnPolicy(
-                scope=self.stack_scope,
-                id="ParallelClusterSlurmRoute53Policies",
+                self.stack_scope,
+                "ParallelClusterSlurmRoute53Policies",
                 policy_name="parallelcluster-slurm-route53",
                 policy_document=iam.PolicyDocument(
                     statements=[
@@ -335,15 +335,15 @@ class SlurmConstruct(Construct):
         ).lambda_func
 
         CustomResource(
-            scope=self.stack_scope,
-            id="CleanupRoute53CustomResource",
+            self.stack_scope,
+            "CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
             properties={"ClusterHostedZone": cluster_hosted_zone.ref, "Action": "DELETE_DNS_RECORDS"},
         )
 
         CfnOutput(
-            scope=self.stack_scope,
-            id="ClusterHostedZone",
+            self.stack_scope,
+            "ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
             value=cluster_hosted_zone.ref,
         )
@@ -402,7 +402,7 @@ class SlurmConstruct(Construct):
             },
         )
 
-        CfnOutput(scope=self.stack_scope, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
+        CfnOutput(self.stack_scope, "UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
     def _add_compute_resource_launch_template(
         self,
@@ -449,8 +449,8 @@ class SlurmConstruct(Construct):
             )
 
         ec2.CfnLaunchTemplate(
-            scope=self.stack_scope,
-            id=f"ComputeServerLaunchTemplate{create_hash_suffix(queue.name + instance_type)}",
+            self.stack_scope,
+            f"ComputeServerLaunchTemplate{create_hash_suffix(queue.name + instance_type)}",
             launch_template_name=f"{cluster_name(self.stack_name)}-{queue.name}-{instance_type}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=instance_type,

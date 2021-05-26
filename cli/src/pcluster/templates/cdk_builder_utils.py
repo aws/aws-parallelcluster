@@ -255,8 +255,8 @@ def get_queue_security_groups_full(compute_security_groups: dict, queue: BaseQue
 def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStatement]):
     """Return a CfnRole to be used for a Lambda function."""
     return iam.CfnRole(
-        scope=scope,
-        id=f"{function_id}FunctionExecutionRole",
+        scope,
+        f"{function_id}FunctionExecutionRole",
         assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
         path="/",
         policies=[
@@ -287,15 +287,15 @@ class PclusterLambdaConstruct(Construct):
         function_name = f"pcluster-{function_id}-{self._stack_unique_id()}"
 
         self.log_group = logs.CfnLogGroup(
-            scope=scope,
-            id=f"{function_id}FunctionLogGroup",
+            scope,
+            f"{function_id}FunctionLogGroup",
             log_group_name=f"/aws/lambda/{function_name}",
             retention_in_days=get_cloud_watch_logs_retention_days(config),
         )
 
         self.lambda_func = awslambda.CfnFunction(
-            scope=scope,
-            id=f"{function_id}Function",
+            scope,
+            f"{function_id}Function",
             function_name=function_name,
             code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=bucket.name,
