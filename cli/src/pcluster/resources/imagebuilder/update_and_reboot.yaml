@@ -2,15 +2,14 @@ name: UpdateAndReboot
 description: Update OS and Reboot
 schemaVersion: 1.0
 
+constants:
+  - FailExitCode:
+      type: string
+      value: 1
+
 phases:
   - name: build
     steps:
-      - name: Fail
-        action: ExecuteBash
-        inputs:
-          commands:
-            - echo 1
-
       # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04
       - name: OperatingSystemRelease
         action: ExecuteBash
@@ -24,7 +23,7 @@ phases:
                 echo "${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               else
                 echo "The file '${!FILE}' does not exist. Failing build."
-                exit {{ build.Fail.outputs.stdout }}
+                exit {{ FailExitCode }}
               fi
 
       # Get uniformed OS name
@@ -48,7 +47,7 @@ phases:
                 OS='ubuntu2004'
               else
                 echo "Operating System '${!RELEASE}' is not supported. Failing build."
-                exit {{ build.Fail.outputs.stdout }}
+                exit {{ FailExitCode }}
               fi
 
               echo ${!OS}
@@ -80,7 +79,7 @@ phases:
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
               if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu)'` ]; then
                 echo "This component does not support '${!RELEASE}'. Failing build."
-                exit {{ build.Fail.outputs.stdout }}
+                exit {{ FailExitCode }}
               fi
 
               # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004, Centos7 and Centos8
@@ -88,7 +87,7 @@ phases:
               if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
                 if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|centos\.8|ubuntu\.18\.04|ubuntu\.20\.04)'` ]; then
                   echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
-                  exit {{ build.Fail.outputs.stdout }}
+                  exit {{ FailExitCode }}
                 fi
               fi
 
