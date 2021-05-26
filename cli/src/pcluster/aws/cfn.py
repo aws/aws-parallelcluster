@@ -120,16 +120,7 @@ class CfnClient(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def list_pcluster_stacks(self, next_token=None):
         """List existing pcluster stacks."""
-        describe_stacks_kwargs = {}
-        if next_token:
-            describe_stacks_kwargs["NextToken"] = next_token
-
-        result = self._client.describe_stacks(**describe_stacks_kwargs)
-        stack_list = []
-        for stack in result.get("Stacks", []):
-            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_VERSION_TAG):
-                stack_list.append(stack)
-        return stack_list, result.get("NextToken")
+        return self._list_parentless_stacks_with_tag(PCLUSTER_VERSION_TAG, next_token)
 
     def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
         """Get stack resource information."""
@@ -141,10 +132,18 @@ class CfnClient(Boto3Client):
             )
 
     @AWSExceptionHandler.handle_client_exception
-    def get_imagebuilder_stacks(self):
+    def get_imagebuilder_stacks(self, next_token=None):
         """List existing imagebuilder stacks."""
+        return self._list_parentless_stacks_with_tag(PCLUSTER_IMAGE_ID_TAG, next_token)
+
+    def _list_parentless_stacks_with_tag(self, tag, next_token=None):
+        describe_stacks_kwargs = {}
+        if next_token:
+            describe_stacks_kwargs["NextToken"] = next_token
+
+        result = self._client.describe_stacks(**describe_stacks_kwargs)
         stack_list = []
-        for stack in self._paginate_results(self._client.describe_stacks):
-            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_IMAGE_ID_TAG):
+        for stack in result.get("Stacks", []):
+            if stack.get("ParentId") is None and StackInfo(stack).get_tag(tag):
                 stack_list.append(stack)
-        return stack_list
+        return stack_list, result.get("NextToken")
