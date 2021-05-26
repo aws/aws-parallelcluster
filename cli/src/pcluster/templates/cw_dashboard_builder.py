@@ -83,7 +83,7 @@ class CWDashboardConstruct(Construct):
 
         # Initialize a cloudwatch dashboard
         self.cloudwatch_dashboard = cloudwatch.Dashboard(
-            scope=self.stack_scope, id="CloudwatchDashboard", dashboard_name=self.dashboard_name
+            self.stack_scope, "CloudwatchDashboard", dashboard_name=self.dashboard_name
         )
 
         # Create a text widget for title "Head Node EC2 metrics"
