@@ -191,21 +191,22 @@ class AWSBatchCliConfig:
         return "{0}({1})".format(self.__class__.__name__, self.__dict__)
 
     def __verify_initialization(self, log):
-        param_outputs_map = [
-            ("s3_bucket", "ResourcesS3Bucket"),
-            ("batch_cli_requirements", "BatchCliRequirements"),
-            ("compute_environment", "BatchComputeEnvironmentArn"),
-            ("job_queue", "BatchJobQueueArn"),
-            ("job_definition", "BatchJobDefinitionArn"),
-            ("head_node_ip", "HeadNodePrivateIP"),
+        config_to_cfn_map = [
+            ("s3_bucket", "ResourcesS3Bucket", "parameter"),
+            ("artifact_directory", "ArtifactS3RootDirectory", "parameter"),
+            ("batch_cli_requirements", "BatchCliRequirements", "output"),
+            ("compute_environment", "BatchComputeEnvironmentArn", "output"),
+            ("job_queue", "BatchJobQueueArn", "output"),
+            ("job_definition", "BatchJobDefinitionArn", "output"),
+            ("head_node_ip", "HeadNodePrivateIP", "output"),
         ]
-        for param_name, output in param_outputs_map:
+        for config_param, cfn_param, cfn_prop_type in config_to_cfn_map:
             try:
-                log.debug("%s = %s", param_name, getattr(self, param_name))
+                log.debug("%s = %s", config_param, getattr(self, config_param))
             except AttributeError:
                 fail(
                     "Error getting cluster information from AWS CloudFormation. "
-                    f"Missing output '{output}' from the CloudFormation stack."
+                    f"Missing {cfn_prop_type} '{cfn_param}' from the CloudFormation stack."
                 )
         CliRequirementsMatcher(self.batch_cli_requirements).check()
 
@@ -311,8 +312,6 @@ class AWSBatchCliConfig:
                         self.job_definition_mnp = output_value
                     elif output_key == "BatchCliRequirements":
                         self.batch_cli_requirements = output_value
-                    elif output_key == "Scheduler":
-                        scheduler = output_value
 
                 for parameter in stack.get("Parameters", []):
                     parameter_key = parameter.get("ParameterKey")
@@ -325,11 +324,13 @@ class AWSBatchCliConfig:
                         self.s3_bucket = parameter_value
                     elif parameter_key == "ArtifactS3RootDirectory":
                         self.artifact_directory = parameter_value
+                    elif parameter_key == "Scheduler":
+                        scheduler = parameter_value
             else:
                 fail(f"The cluster is in the ({stack_status}) status.")
 
             if scheduler is None:
-                fail("Unable to retrieve Scheduler info from the Cluster. Double check CloudFormation stack outputs.")
+                fail("Unable to retrieve cluster's scheduler. Double check CloudFormation stack parameters.")
             elif scheduler != "awsbatch":
                 fail(f"This command cannot be used with a {scheduler} cluster.")
 
