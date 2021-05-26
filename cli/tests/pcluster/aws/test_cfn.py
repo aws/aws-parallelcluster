@@ -172,3 +172,80 @@ class TestCfnClient:
         verified = utils.verify_stack_status(FAKE_NAME, ["CREATE_IN_PROGRESS"], "CREATE_COMPLETE")
         assert_that(verified).is_false()
         sleep_mock.assert_called_with(5)
+
+    @pytest.mark.parametrize(
+        "next_token, describe_stacks_response, expected_stacks",
+        [
+            (None, {"Stacks": []}, set()),
+            (
+                None,
+                {
+                    "Stacks": [
+                        {
+                            "StackName": "stackWithImageIdTagAndNoParentId",
+                            "CreationTime": datetime.now(),
+                            "StackStatus": "CREATE_IN_PROGRESS",
+                            "Tags": [{"Key": "parallelcluster:image_id", "Value": "image_id_1"}],
+                        },
+                        {"StackName": "name2", "CreationTime": datetime.now(), "StackStatus": "CREATE_IN_PROGRESS"},
+                        {
+                            "StackName": "name3",
+                            "CreationTime": datetime.now(),
+                            "StackStatus": "CREATE_IN_PROGRESS",
+                            "Tags": [{"Key": "parallelcluster:image_id", "Value": "image_id_2"}],
+                            "ParentId": "id",
+                        },
+                    ],
+                },
+                {"stackWithImageIdTagAndNoParentId"},
+            ),
+            (
+                "token",
+                {
+                    "Stacks": [
+                        {
+                            "StackName": "name1",
+                            "CreationTime": datetime.now(),
+                            "StackStatus": "CREATE_IN_PROGRESS",
+                            "Tags": [{"Key": "parallelcluster:image_id", "Value": "image_id_3"}],
+                        },
+                        {
+                            "StackName": "name2",
+                            "CreationTime": datetime.now(),
+                            "StackStatus": "CREATE_IN_PROGRESS",
+                            "Tags": [{"Key": "parallelcluster:image_id", "Value": "image_id_4"}],
+                        },
+                    ],
+                    "NextToken": "token",
+                },
+                {"name1", "name2"},
+            ),
+            ("invalid", Exception(), set()),
+        ],
+    )
+    def test_get_imagebuilder_stacks(
+        self, set_env, boto3_stubber, next_token, describe_stacks_response, expected_stacks
+    ):
+        set_env("AWS_DEFAULT_REGION", "us-east-1")
+
+        expected_describe_stacks_params = {} if not next_token else {"NextToken": next_token}
+        generate_error = isinstance(describe_stacks_response, Exception)
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_stacks",
+                response=describe_stacks_response if not generate_error else "error",
+                expected_params=expected_describe_stacks_params,
+                generate_error=generate_error,
+                error_code="error" if generate_error else None,
+            )
+        ]
+        boto3_stubber("cloudformation", mocked_requests)
+
+        if not generate_error:
+            stacks, next_token = CfnClient().get_imagebuilder_stacks(next_token=next_token)
+            assert_that(next_token).is_equal_to(describe_stacks_response.get("NextToken"))
+            assert_that({s["StackName"] for s in stacks}).is_equal_to(expected_stacks)
+        else:
+            with pytest.raises(AWSClientError) as e:
+                CfnClient().list_pcluster_stacks(next_token=next_token)
+            assert_that(e.value.error_code).is_equal_to("error")
