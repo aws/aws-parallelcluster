@@ -11,7 +11,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.utils import get_ebs_snapshot_info, get_partition
+from pcluster.aws.aws_api import AWSApi
+from pcluster.utils import get_partition
 from pcluster.validators.common import FailureLevel, Validator
 
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
@@ -134,7 +135,7 @@ class EbsVolumeSizeSnapshotValidator(Validator):
     def _validate(self, snapshot_id: int, volume_size: int):
         if snapshot_id:
             try:
-                snapshot_response_dict = get_ebs_snapshot_info(snapshot_id, raise_exceptions=True)
+                snapshot_response_dict = AWSApi.instance().ec2.get_ebs_snapshot_info(snapshot_id)
 
                 # validate that the input volume size is larger than the volume size of the EBS snapshot
                 snapshot_volume_size = snapshot_response_dict.get("VolumeSize")

@@ -21,8 +21,7 @@ from pcluster.api.errors import (
     LimitExceededException,
     ParallelClusterApiException,
 )
-from pcluster.aws.common import AWSClientError
-from pcluster.utils import Cache
+from pcluster.aws.common import AWSClientError, Cache
 
 LOGGER = logging.getLogger(__name__)
 

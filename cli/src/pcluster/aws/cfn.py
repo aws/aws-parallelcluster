@@ -87,6 +87,7 @@ class CfnClient(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_throttling
     def describe_stack(self, stack_name: str):
         """Get information for the given stack."""
         try:
@@ -96,6 +97,12 @@ class CfnClient(Boto3Client):
                 LOGGER.error("Could not describe CloudFormation stack %s: %s", stack_name, e)
                 raise StackNotFoundError(function_name="describe_stack", stack_name=stack_name)
             raise
+
+    @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_throttling
+    def get_stack_events(self, stack_name):
+        """Return events of a stack."""
+        return self._client.describe_stack_events(StackName=stack_name).get("StackEvents")
 
     def stack_exists(self, stack_name: str):
         """Return a boolean describing whether or not a stack by the given name exists."""

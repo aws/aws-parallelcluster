@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import functools
 import itertools
 import json
 import logging
@@ -28,9 +27,9 @@ from urllib.parse import urlparse
 import boto3
 import pkg_resources
 import yaml
-from botocore.exceptions import ClientError
 from pkg_resources import packaging
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
 
 LOGGER = logging.getLogger(__name__)
@@ -145,57 +144,20 @@ def get_stack_output_value(stack_outputs, output_key):
     return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
 
 
-def get_stack(stack_name, cfn_client=None):
-    """
-    Get the output for a DescribeStacks action for the given Stack.
-
-    :param stack_name: the CFN Stack name
-    :param cfn_client: boto3 cloudformation client
-    :return: the Stack data type
-    """
-    try:
-        if not cfn_client:
-            cfn_client = boto3.client("cloudformation")
-        return retry_on_boto3_throttling(cfn_client.describe_stacks, StackName=stack_name).get("Stacks")[0]
-    except ClientError as e:
-        error(
-            "Could not retrieve CloudFormation stack data. Failed with error: {0}".format(
-                e.response.get("Error").get("Message")
-            )
-        )
-
-
-def get_stack_events(stack_name, raise_on_error=False):
-    cfn_client = boto3.client("cloudformation")
-    try:
-        return retry_on_boto3_throttling(cfn_client.describe_stack_events, StackName=stack_name).get("StackEvents")
-    except ClientError as client_err:
-        if raise_on_error:
-            raise
-        error(
-            "Unable to get {stack_name}'s events: {reason}".format(
-                stack_name=stack_name, reason=client_err.response.get("Error").get("Message")
-            )
-        )
-
-
-def verify_stack_status(stack_name, waiting_states, successful_states, cfn_client=None):
+def verify_stack_status(stack_name, waiting_states, successful_states):
     """
     Wait for the stack creation to be completed and notify if the stack creation fails.
 
     :param stack_name: the stack name that we should verify
     :param waiting_states: list of status to wait for
     :param successful_states: list of final status considered as successful
-    :param cfn_client: the CloudFormation client to use to verify stack status
     :return: True if the final status is in the successful_states list, False otherwise.
     """
-    if not cfn_client:
-        cfn_client = boto3.client("cloudformation")
-    status = get_stack(stack_name, cfn_client).get("StackStatus")
+    status = AWSApi.instance().cfn.describe_stack(stack_name).get("StackStatus")
     resource_status = ""
     while status in waiting_states:
-        status = get_stack(stack_name, cfn_client).get("StackStatus")
-        events = get_stack_events(stack_name, raise_on_error=True)[0]
+        status = AWSApi.instance().cfn.describe_stack(stack_name).get("StackStatus")
+        events = AWSApi.instance().cfn.get_stack_events(stack_name)[0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
             80
         )
@@ -213,7 +175,7 @@ def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
     if not failed_states:
         failed_states = ["CREATE_FAILED"]
 
-    events = get_stack_events(stack_name, raise_on_error=True)
+    events = AWSApi.instance().cfn.get_stack_events(stack_name)
     for event in events:
         if event.get("ResourceStatus") in failed_states:
             _log_failed_cfn_event(event, indent)
@@ -281,17 +243,6 @@ def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
 
 
-def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
-    while True:
-        try:
-            return func(*args, **kwargs)
-        except ClientError as e:
-            if e.response["Error"]["Code"] != "Throttling":
-                raise
-            LOGGER.debug("Throttling when calling %s function. Will retry in %d seconds.", func.__name__, wait)
-            time.sleep(wait)
-
-
 def ellipsize(text, max_length):
     """Truncate the provided text to max length, adding ellipsis."""
     # Convert input text to string, just in case
@@ -301,84 +252,6 @@ def ellipsize(text, max_length):
 
 def policy_name_to_arn(policy_name):
     return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
-
-
-def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
-    """
-    Return a dict described the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
-
-    Example of output:
-    {
-        "Description": "This is my snapshot",
-        "Encrypted": False,
-        "VolumeId": "vol-049df61146c4d7901",
-        "State": "completed",
-        "VolumeSize": 120,
-        "StartTime": "2014-02-28T21:28:32.000Z",
-        "Progress": "100%",
-        "OwnerId": "012345678910",
-        "SnapshotId": "snap-1234567890abcdef0",
-    }
-    """
-    try:
-        return boto3.client("ec2").describe_snapshots(SnapshotIds=[ebs_snapshot_id]).get("Snapshots")[0]
-    except ClientError as e:
-        if raise_exceptions:
-            raise
-        error(
-            "Failed when calling DescribeSnapshot for {0}: {1}".format(
-                ebs_snapshot_id, e.response.get("Error").get("Message")
-            )
-        )
-
-
-class Cache:
-    """Simple utility class providing a cache mechanism for expensive functions."""
-
-    _caches = []
-
-    @staticmethod
-    def is_enabled():
-        """Tell if the cache is enabled."""
-        return not os.environ.get("PCLUSTER_CACHE_DISABLED")
-
-    @staticmethod
-    def clear_all():
-        """Clear the content of all caches."""
-        for cache in Cache._caches:
-            cache.clear()
-
-    @staticmethod
-    def _make_key(args, kwargs):
-        key = args
-        if kwargs:
-            for item in kwargs.items():
-                key += item
-        return hash(key)
-
-    @staticmethod
-    def cached(function):
-        """
-        Decorate a function to make it use a results cache based on passed arguments.
-
-        Note: all arguments must be hashable for this function to work properly.
-        """
-        cache = {}
-        Cache._caches.append(cache)
-
-        @functools.wraps(function)
-        def wrapper(*args, **kwargs):
-            cache_key = Cache._make_key(args, kwargs)
-
-            if Cache.is_enabled() and cache_key in cache:
-                return cache[cache_key]
-            else:
-                return_value = function(*args, **kwargs)
-                if Cache.is_enabled():
-                    cache[cache_key] = return_value
-                return return_value
-
-        return wrapper
 
 
 def grouper(iterable, size):

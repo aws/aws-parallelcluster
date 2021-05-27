@@ -16,6 +16,7 @@ from enum import Enum
 
 import boto3
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.cli_commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 from pcluster.cli_commands.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
@@ -23,7 +24,6 @@ from pcluster.utils import (
     get_cli_log_file,
     get_installed_version,
     get_region,
-    get_stack,
     get_stack_output_value,
     get_templates_bucket_path,
     verify_stack_status,
@@ -176,7 +176,7 @@ def _create_network_stack(configuration, parameters):
             sys.exit(0)
         print()
         LOGGER.info("The stack has been created")
-        return get_stack(stack_name, cfn_client).get("Outputs")
+        return AWSApi.instance().cfn.describe_stack(stack_name).get("Outputs")
     except KeyboardInterrupt:
         print()
         LOGGER.info(
