@@ -41,7 +41,7 @@ HeadNode:
   Iam:
     InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
-      - BucketName: String
+      - BucketName: string
         EnableWriteAccess: True
 Scheduling:
   Scheduler: slurm
@@ -73,7 +73,7 @@ Scheduling:
             - stirng2
       Iam:
         S3Access:
-          - BucketName: String
+          - BucketName: string
             EnableWriteAccess: False
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AdministratorAccess

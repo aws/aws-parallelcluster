@@ -43,9 +43,14 @@ per cluster.
 - Add support for associating an existing Elastic IP to the head node.
 - Encrypt root EBS volumes and shared EBS volumes by default. 
   Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
-- Change tags prefix from `aws-parallelcluster-` to `parallelcluster:`.
 - Enable EFA for a compute resource by default if the instance type supports EFA.
-- Use tags prefix `parallelcluster:`.
+- Remove parallelcluster- prefix from CloudFormation stack created by ParallelCluster.
+- Rename tags (Note: the following tags are crucial for ParallelCluster scaling logic): 
+   - aws-parallelcluster-node-type -> parallelcluster:node-type
+   - ClusterName -> parallelcluster:cluster-name
+   - aws-parallelcluster-attributes -> parallelcluster:attributes
+   - Version -> parallelcluster:version
+- Remove tag: Application.
 - Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
 
 2.x.x

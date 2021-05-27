@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-PCLUSTER_STACK_PREFIX = "parallelcluster-"
 PCLUSTER_NAME_MAX_LENGTH = 60
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
@@ -80,9 +79,8 @@ PCLUSTER_S3_CLUSTER_DIR_TAG = f"{PCLUSTER_PREFIX}cluster_dir"
 PCLUSTER_S3_BUCKET_TAG = f"{PCLUSTER_PREFIX}s3_bucket"
 PCLUSTER_IMAGE_BUILD_LOG_TAG = f"{PCLUSTER_PREFIX}build_log"
 PCLUSTER_VERSION_TAG = f"{PCLUSTER_PREFIX}version"
-# PCLUSTER_APPLICATION_TAG needs to be the same as the hard coded strings in cleanup_resource.py used by Lambda function
-PCLUSTER_APPLICATION_TAG = f"{PCLUSTER_PREFIX}application"
 # PCLUSTER_CLUSTER_NAME_TAG needs to be the same as the hard coded strings in node package
+# and in cleanup_resource.py used by Lambda function
 PCLUSTER_CLUSTER_NAME_TAG = f"{PCLUSTER_PREFIX}cluster-name"
 # PCLUSTER_NODE_TYPE_TAG needs to be the same as the hard coded strings in node package
 PCLUSTER_NODE_TYPE_TAG = f"{PCLUSTER_PREFIX}node-type"

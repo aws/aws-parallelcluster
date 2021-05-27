@@ -13,8 +13,7 @@ from pcluster.utils import Cache
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
 
-FAKE_CLUSTER_NAME = "cluster-name"
-FAKE_STACK_NAME = f"parallelcluster-{FAKE_CLUSTER_NAME}"
+FAKE_NAME = "cluster-name"
 
 
 @pytest.fixture()
@@ -23,18 +22,12 @@ def boto3_stubber_path():
     return "pcluster.utils.boto3"
 
 
-def test_get_stack_name():
-    """Test utils.get_stack_name."""
-    cluster = dummy_cluster(FAKE_CLUSTER_NAME)
-    assert_that(cluster.stack_name).is_equal_to(FAKE_STACK_NAME)
-
-
 def dummy_cluster_stack():
     """Return dummy cluster stack object."""
-    return ClusterStack({"StackName": FAKE_STACK_NAME})
+    return ClusterStack({"StackName": FAKE_NAME})
 
 
-def dummy_cluster(name=FAKE_CLUSTER_NAME, stack=None):
+def dummy_cluster(name=FAKE_NAME, stack=None):
     """Return dummy cluster object."""
     if stack is None:
         stack = dummy_cluster_stack()
@@ -47,45 +40,43 @@ def test_retry_on_boto3_throttling(boto3_stubber, mocker):
         MockedBoto3Request(
             method="describe_stack_resources",
             response="Error",
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
             generate_error=True,
             error_code="Throttling",
         ),
         MockedBoto3Request(
             method="describe_stack_resources",
             response="Error",
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
             generate_error=True,
             error_code="Throttling",
         ),
-        MockedBoto3Request(
-            method="describe_stack_resources", response={}, expected_params={"StackName": FAKE_STACK_NAME}
-        ),
+        MockedBoto3Request(method="describe_stack_resources", response={}, expected_params={"StackName": FAKE_NAME}),
     ]
     client = boto3_stubber("cloudformation", mocked_requests)
-    utils.retry_on_boto3_throttling(client.describe_stack_resources, StackName=FAKE_STACK_NAME)
+    utils.retry_on_boto3_throttling(client.describe_stack_resources, StackName=FAKE_NAME)
     sleep_mock.assert_called_with(5)
 
 
 def test_get_stack_retry(boto3_stubber, mocker):
     sleep_mock = mocker.patch("pcluster.utils.time.sleep")
-    expected_stack = {"StackName": FAKE_STACK_NAME, "CreationTime": 0, "StackStatus": "CREATED"}
+    expected_stack = {"StackName": FAKE_NAME, "CreationTime": 0, "StackStatus": "CREATED"}
     mocked_requests = [
         MockedBoto3Request(
             method="describe_stacks",
             response="Error",
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
             generate_error=True,
             error_code="Throttling",
         ),
         MockedBoto3Request(
             method="describe_stacks",
             response={"Stacks": [expected_stack]},
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
         ),
     ]
     boto3_stubber("cloudformation", mocked_requests)
-    stack = utils.get_stack(FAKE_STACK_NAME)
+    stack = utils.get_stack(FAKE_NAME)
     assert_that(stack).is_equal_to(expected_stack)
     sleep_mock.assert_called_with(5)
 
@@ -100,18 +91,18 @@ def test_verify_stack_status_retry(boto3_stubber, mocker):
         MockedBoto3Request(
             method="describe_stack_events",
             response="Error",
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
             generate_error=True,
             error_code="Throttling",
         ),
         MockedBoto3Request(
             method="describe_stack_events",
             response={"StackEvents": [_generate_stack_event()]},
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
         ),
     ]
     client = boto3_stubber("cloudformation", mocked_requests)
-    verified = utils.verify_stack_status(FAKE_STACK_NAME, ["CREATE_IN_PROGRESS"], "CREATE_COMPLETE", client)
+    verified = utils.verify_stack_status(FAKE_NAME, ["CREATE_IN_PROGRESS"], "CREATE_COMPLETE", client)
     assert_that(verified).is_false()
     sleep_mock.assert_called_with(5)
 
@@ -123,18 +114,18 @@ def test_get_stack_events_retry(boto3_stubber, mocker):
         MockedBoto3Request(
             method="describe_stack_events",
             response="Error",
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
             generate_error=True,
             error_code="Throttling",
         ),
         MockedBoto3Request(
             method="describe_stack_events",
             response={"StackEvents": expected_events},
-            expected_params={"StackName": FAKE_STACK_NAME},
+            expected_params={"StackName": FAKE_NAME},
         ),
     ]
     boto3_stubber("cloudformation", mocked_requests)
-    assert_that(utils.get_stack_events(FAKE_STACK_NAME)).is_equal_to(expected_events)
+    assert_that(utils.get_stack_events(FAKE_NAME)).is_equal_to(expected_events)
     sleep_mock.assert_called_with(5)
 
 
@@ -144,7 +135,7 @@ def _generate_stack_event():
         "ResourceStatus": "status",
         "StackId": "id",
         "EventId": "id",
-        "StackName": FAKE_STACK_NAME,
+        "StackName": FAKE_NAME,
         "Timestamp": 0,
     }
 

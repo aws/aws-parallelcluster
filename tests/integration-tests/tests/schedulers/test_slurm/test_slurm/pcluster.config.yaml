@@ -31,6 +31,6 @@ Scheduling:
           InstanceType: {{ gpu_instance_type }}
           MaxCount: 5
 SharedStorage:
-  - MountDir: /shared
+  - MountDir: /shared  # Test comment
     Name: name1
     StorageType: Ebs

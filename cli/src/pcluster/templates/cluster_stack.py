@@ -54,7 +54,6 @@ from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
-    cluster_name,
     create_hash_suffix,
     get_assume_role_policy_document,
     get_block_device_mappings,
@@ -100,7 +99,7 @@ class ClusterCdkStack(Stack):
             else:
                 # pcluster create create a log group with timestamp suffix
                 timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
-                self.log_group_name = f"/aws/parallelcluster/{cluster_name(self.stack_name)}-{timestamp}"
+                self.log_group_name = f"/aws/parallelcluster/{self.stack_name}-{timestamp}"
 
         self.instance_roles = {}
         self.instance_profiles = {}
@@ -117,6 +116,9 @@ class ClusterCdkStack(Stack):
 
     def _stack_unique_id(self):
         return Fn.select(2, Fn.split("/", self.stack_id))
+
+    def _build_resource_path(self):
+        return self.stack_id
 
     def _get_head_node_security_groups(self):
         """Return the security groups to be used for the head node, created by us OR provided by the user."""
@@ -474,16 +476,15 @@ class ClusterCdkStack(Stack):
 
     def _add_s3_access_policies_to_role(self, node: Union[HeadNode, BaseQueue], role_ref: str, name: str):
         """Attach S3 policies to given role."""
-        read_only_s3_resources = [
-            self.format_arn(service="s3", resource=s3_access.bucket_name + "*", region="", account="")
-            for s3_access in node.iam.s3_access
-            if not s3_access.enable_write_access
-        ]
-        read_write_s3_resources = [
-            self.format_arn(service="s3", resource=s3_access.bucket_name + "/*", region="", account="")
-            for s3_access in node.iam.s3_access
-            if s3_access.enable_write_access
-        ]
+        read_only_s3_resources = []
+        read_write_s3_resources = []
+        for s3_access in node.iam.s3_access:
+            for resource in s3_access.resource_regex:
+                arn = self.format_arn(service="s3", resource=resource, region="", account="")
+                if s3_access.enable_write_access:
+                    read_write_s3_resources.append(arn)
+                else:
+                    read_only_s3_resources.append(arn)
 
         s3_access_policy = iam.CfnPolicy(
             self,
@@ -528,7 +529,7 @@ class ClusterCdkStack(Stack):
             name,
             managed_policy_arns=additional_iam_policies,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
-            path="/",
+            path=f"/{self._build_resource_path()}/",
         ).ref
 
     def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
@@ -559,7 +560,11 @@ class ClusterCdkStack(Stack):
                             "cloudformation:SignalResource",
                         ],
                         effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="cloudformation", resource="stack/parallelcluster-*/*")],
+                        resources=[
+                            self.format_arn(service="cloudformation", resource=f"stack/{self._stack_name}/*"),
+                            # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                            self.format_arn(service="cloudformation", resource=f"stack/{self._stack_name}-*/*"),
+                        ],
                     ),
                     iam.PolicyStatement(
                         sid="DynamoDBTable",
@@ -606,7 +611,13 @@ class ClusterCdkStack(Stack):
                         sid="BatchJobPassRole",
                         actions=["iam:PassRole"],
                         effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="iam", region="", resource="role/parallelcluster-*")],
+                        resources=[
+                            self.format_arn(
+                                service="iam",
+                                region="",
+                                resource=f"role/{self._build_resource_path()}/*",
+                            )
+                        ],
                     ),
                     iam.PolicyStatement(
                         sid="DcvLicense",
@@ -932,7 +943,7 @@ class ClusterCdkStack(Stack):
                 cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(core_count=head_node.vcpus, threads_per_core=1)
                 if head_node.pass_cpu_options_in_launch_template
                 else None,
-                block_device_mappings=get_block_device_mappings(head_node, self.config.image.os),
+                block_device_mappings=get_block_device_mappings(head_node.local_storage, self.config.image.os),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
                 image_id=self.config.ami_id,

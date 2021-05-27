@@ -12,6 +12,9 @@
 #
 # This module contains all the classes required to convert a ImageBuilder into a CFN template by using CDK.
 #
+
+# pylint: disable=too-many-lines
+
 import copy
 import json
 import os
