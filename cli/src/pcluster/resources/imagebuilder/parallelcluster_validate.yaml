@@ -244,7 +244,7 @@ phases:
               set -v
               echo "{{ validate.SystemPyenvRoot.outputs.stdout }}/versions/{{ validate.PythonVersion.outputs.stdout }}/envs/node_virtualenv"
 
-      ### validate && test ###
+      ### validate ###
       # AWS CLI
       - name: AWSCli
         action: ExecuteBash
@@ -342,7 +342,7 @@ phases:
               echo "Testing NVIDIA driver install..."
               # grep driver version from nvidia-smi output. If driver is not installed nvidia-smi command will fail
               driver_output=$(nvidia-smi | grep -E -o "Driver Version: [0-9.]+")
-              if [ "${driver_output}" = "Driver Version: ${driver_ver}" ]; then
+              if [ "${driver_output}" != "Driver Version: ${driver_ver}" ]; then
                 echo "NVIDIA driver installed incorrectly! Installed ${driver_output} but expected version ${driver_ver}"
                 exit 1
               else

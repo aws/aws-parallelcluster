@@ -1,0 +1,31 @@
+name: ParallelClusterTest
+description: Test ParallelCluster AMI
+schemaVersion: 1.0
+
+phases:
+  - name: test
+    steps:
+      ### utils ###
+      - name: NvSwitches
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              nvswitches=$(lspci -d 10de:1af1 | wc -l)
+              echo "$nvswitches"
+
+      ### test ###
+      # FabricManager
+      - name: FabricManager
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              if [ {{ test.NvSwitches.outputs.stdout }} -gt 1 ]; then
+                echo "test fabric-manager daemon"
+                systemctl show -p SubState nvidia-fabricmanager | grep -i running
+                [[ $? -ne 0 ]] && echo "fabric-manager daemon test failed" && exit 1
+                echo "NVIDIA Fabric Manager service correctly started"
+              fi
