@@ -82,7 +82,7 @@ class ParallelClusterCli:
 
             if args.debug:
                 logging.getLogger("pcluster").setLevel(logging.DEBUG)
-            LOGGER.info("Handling CLI command %s", args.command)
+            LOGGER.debug("Handling CLI command %s", args.command)  # ToDo: change the level to info after finishing API.
             LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
 
             # TODO: remove this logic from here
