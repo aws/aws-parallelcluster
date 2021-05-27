@@ -10,14 +10,23 @@ from datetime import datetime
 import pytest
 from assertpy import assert_that
 
+from pcluster import utils as utils
+from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.common import AWSClientError
+from tests.pcluster.test_utils import FAKE_NAME, _generate_stack_event
 from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.aws.common.boto3"
+
+
+@pytest.fixture(autouse=True)
+def reset_aws_api():
+    """Reset AWSApi singleton to remove dependencies between tests."""
+    AWSApi._instance = None
 
 
 class TestCfnClient:
@@ -95,3 +104,71 @@ class TestCfnClient:
             with pytest.raises(AWSClientError) as e:
                 CfnClient().list_pcluster_stacks(next_token=next_token)
             assert_that(e.value.error_code).is_equal_to("error")
+
+    def test_get_stack_events_retry(self, boto3_stubber, mocker):
+        sleep_mock = mocker.patch("pcluster.aws.common.time.sleep")
+        expected_events = [_generate_stack_event()]
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_stack_events",
+                response="Error",
+                expected_params={"StackName": FAKE_NAME},
+                generate_error=True,
+                error_code="Throttling",
+            ),
+            MockedBoto3Request(
+                method="describe_stack_events",
+                response={"StackEvents": expected_events},
+                expected_params={"StackName": FAKE_NAME},
+            ),
+        ]
+        boto3_stubber("cloudformation", mocked_requests)
+        assert_that(CfnClient().get_stack_events(FAKE_NAME)).is_equal_to(expected_events)
+        sleep_mock.assert_called_with(5)
+
+    def test_get_stack_retry(self, boto3_stubber, mocker):
+        sleep_mock = mocker.patch("pcluster.aws.common.time.sleep")
+        expected_stack = {"StackName": FAKE_NAME, "CreationTime": 0, "StackStatus": "CREATED"}
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_stacks",
+                response="Error",
+                expected_params={"StackName": FAKE_NAME},
+                generate_error=True,
+                error_code="Throttling",
+            ),
+            MockedBoto3Request(
+                method="describe_stacks",
+                response={"Stacks": [expected_stack]},
+                expected_params={"StackName": FAKE_NAME},
+            ),
+        ]
+        boto3_stubber("cloudformation", mocked_requests)
+        stack = CfnClient().describe_stack(FAKE_NAME)
+        assert_that(stack).is_equal_to(expected_stack)
+        sleep_mock.assert_called_with(5)
+
+    def test_verify_stack_status_retry(self, boto3_stubber, mocker):
+        sleep_mock = mocker.patch("pcluster.aws.common.time.sleep")
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            side_effect=[{"StackStatus": "CREATE_IN_PROGRESS"}, {"StackStatus": "CREATE_FAILED"}],
+        )
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_stack_events",
+                response="Error",
+                expected_params={"StackName": FAKE_NAME},
+                generate_error=True,
+                error_code="Throttling",
+            ),
+            MockedBoto3Request(
+                method="describe_stack_events",
+                response={"StackEvents": [_generate_stack_event()]},
+                expected_params={"StackName": FAKE_NAME},
+            ),
+        ]
+        boto3_stubber("cloudformation", mocked_requests)
+        verified = utils.verify_stack_status(FAKE_NAME, ["CREATE_IN_PROGRESS"], "CREATE_COMPLETE")
+        assert_that(verified).is_false()
+        sleep_mock.assert_called_with(5)

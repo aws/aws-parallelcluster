@@ -15,11 +15,18 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.aws.common import ImageNotFoundError, StackNotFoundError
+from pcluster.aws.common import AWSExceptionHandler, ImageNotFoundError, StackNotFoundError
 from tests.pcluster.aws.dummy_aws_api import _DummyAWSApi, mock_aws_api
+from tests.pcluster.test_utils import FAKE_NAME
+from tests.utils import MockedBoto3Request
 
 FAKE_STACK_NAME = "parallelcluster-name"
 FAKE_IMAGE_ID = "ami-1234567"
+
+
+@pytest.fixture()
+def boto3_stubber_path():
+    return "pcluster.aws.common.boto3"
 
 
 @pytest.mark.parametrize(
@@ -56,3 +63,31 @@ def test_image_exists(mocker, response, is_error):
     mock_aws_api(mocker)
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_images", side_effect=response)
     assert_that(_DummyAWSApi().instance().ec2.image_exists(FAKE_IMAGE_ID)).is_equal_to(should_exist)
+
+
+def test_retry_on_boto3_throttling(boto3_stubber, mocker):
+    @AWSExceptionHandler.retry_on_boto3_throttling
+    def describe_stack_resources(client):
+        client.describe_stack_resources(StackName=FAKE_NAME)
+
+    sleep_mock = mocker.patch("pcluster.utils.time.sleep")
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_stack_resources",
+            response="Error",
+            expected_params={"StackName": FAKE_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(
+            method="describe_stack_resources",
+            response="Error",
+            expected_params={"StackName": FAKE_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(method="describe_stack_resources", response={}, expected_params={"StackName": FAKE_NAME}),
+    ]
+    client = boto3_stubber("cloudformation", mocked_requests)
+    describe_stack_resources(client)
+    sleep_mock.assert_called_with(5)

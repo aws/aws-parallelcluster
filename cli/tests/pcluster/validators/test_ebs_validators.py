@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 import pytest
 from assertpy import assert_that
 
@@ -179,6 +181,7 @@ def test_ebs_volume_size_snapshot_validator(
     expected_message,
     raise_error_when_getting_snapshot_info,
 ):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     snapshot_id = "snap-1234567890abcdef0"
     describe_snapshots_response = {
         "Description": "This is my snapshot",
@@ -194,12 +197,12 @@ def test_ebs_volume_size_snapshot_validator(
 
     if raise_error_when_getting_snapshot_info:
         mocker.patch(
-            "pcluster.validators.ebs_validators.get_ebs_snapshot_info",
+            "pcluster.aws.ec2.Ec2Client.get_ebs_snapshot_info",
             side_effect=Exception(expected_message),
         )
     else:
         mocker.patch(
-            "pcluster.validators.ebs_validators.get_ebs_snapshot_info",
+            "pcluster.aws.ec2.Ec2Client.get_ebs_snapshot_info",
             return_value=describe_snapshots_response,
         )
     mocker.patch(

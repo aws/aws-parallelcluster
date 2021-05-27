@@ -174,3 +174,39 @@ def test_get_official_image_id(boto3_stubber, os, architecture, filters, boto3_r
     else:
         ami_id = Ec2Client().get_official_image_id(os, architecture, filters)
         assert_that(ami_id).is_equal_to(expected_ami_id)
+
+
+@pytest.mark.parametrize(
+    "snapshot_id, error_message",
+    [("snap-1234567890abcdef0", None), ("snap-1234567890abcdef0", "Some error message")],
+)
+def test_get_ebs_snapshot_info(boto3_stubber, snapshot_id, error_message):
+    """Verify that get_snapshot_info makes the expected API call."""
+    response = {
+        "Description": "This is my snapshot",
+        "Encrypted": False,
+        "VolumeId": "vol-049df61146c4d7901",
+        "State": "completed",
+        "VolumeSize": 120,
+        "StartTime": "2014-02-28T21:28:32.000Z",
+        "Progress": "100%",
+        "OwnerId": "012345678910",
+        "SnapshotId": "snap-1234567890abcdef0",
+    }
+    describe_snapshots_response = {"Snapshots": [response]}
+
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_snapshots",
+            response=describe_snapshots_response if error_message is None else error_message,
+            expected_params={"SnapshotIds": ["snap-1234567890abcdef0"]},
+            generate_error=error_message is not None,
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    if error_message is None:
+        assert_that(Ec2Client().get_ebs_snapshot_info(snapshot_id)).is_equal_to(response)
+    elif error_message:
+        with pytest.raises(AWSClientError, match=error_message) as clienterror:
+            Ec2Client().get_ebs_snapshot_info(snapshot_id)
+            assert_that(clienterror.value.code).is_not_equal_to(0)

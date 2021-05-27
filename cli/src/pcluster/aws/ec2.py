@@ -12,9 +12,8 @@ from typing import List
 
 from pcluster import utils
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
-from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, ImageNotFoundError
+from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError
 from pcluster.constants import PCLUSTER_IMAGE_BUILD_STATUS_TAG, PCLUSTER_IMAGE_ID_TAG, SUPPORTED_ARCHITECTURES
-from pcluster.utils import Cache
 
 
 class Ec2Client(Boto3Client):
@@ -312,3 +311,23 @@ class Ec2Client(Boto3Client):
     def delete_snapshot(self, snapshot_id: str):
         """Delete snapshot."""
         self._client.delete_snapshot(SnapshotId=snapshot_id)
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_ebs_snapshot_info(self, ebs_snapshot_id):
+        """
+        Return a dict described the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
+
+        Example of output:
+        {
+            "Description": "This is my snapshot",
+            "Encrypted": False,
+            "VolumeId": "vol-049df61146c4d7901",
+            "State": "completed",
+            "VolumeSize": 120,
+            "StartTime": "2014-02-28T21:28:32.000Z",
+            "Progress": "100%",
+            "OwnerId": "012345678910",
+            "SnapshotId": "snap-1234567890abcdef0",
+        }
+        """
+        return self._client.describe_snapshots(SnapshotIds=[ebs_snapshot_id]).get("Snapshots")[0]
