@@ -16,6 +16,7 @@ import sys
 from datetime import datetime
 from typing import NoReturn
 
+import pkg_resources
 from dateutil import tz
 
 
@@ -107,6 +108,11 @@ def get_job_type(job):
     if is_mnp_job(job):
         return "MNP"
     return "SIMPLE"
+
+
+def get_installed_version(package_name="aws-parallelcluster-awsbatch-cli"):
+    """Get the version of the installed package."""
+    return pkg_resources.get_distribution(package_name).version
 
 
 class S3Uploader:

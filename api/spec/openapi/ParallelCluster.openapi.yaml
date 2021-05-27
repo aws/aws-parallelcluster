@@ -876,20 +876,20 @@ paths:
         type: aws_proxy
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
-  /v3/images/custom/{imageName}:
+  /v3/images/custom/{imageId}:
     delete:
       description: Initiate the deletion of the custom ParallelCluster image.
       operationId: DeleteImage
       parameters:
-        - name: imageName
+        - name: imageId
           in: path
-          description: Name of the image
+          description: Id of the image
           schema:
             type: string
             maxLength: 60
             minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-            description: Name of the image
+            description: Id of the image
           required: true
         - name: region
           in: query
@@ -961,15 +961,15 @@ paths:
       description: Get detailed information about an existing image.
       operationId: DescribeImage
       parameters:
-        - name: imageName
+        - name: imageId
           in: path
-          description: Name of the image
+          description: Id of the image
           schema:
             type: string
             maxLength: 60
             minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-            description: Name of the image
+            description: Id of the image
           required: true
         - name: region
           in: query
@@ -1109,14 +1109,14 @@ components:
           type: string
         os:
           type: string
-        name:
+        id:
           type: string
         architecture:
           type: string
       required:
         - amiId
         - architecture
-        - name
+        - id
         - os
     BadRequestExceptionResponseContent:
       type: object
@@ -1141,18 +1141,18 @@ components:
           type: string
           description: Image configuration as a YAML document
           format: byte
-        name:
+        id:
           type: string
           maxLength: 60
           minLength: 5
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Name of the image
+          description: Id of the image
         region:
           type: string
           description: AWS Region. Defaults to the region the API is deployed to.
       required:
+        - id
         - imageConfiguration
-        - name
     BuildImageResponseContent:
       type: object
       properties:
@@ -1424,9 +1424,9 @@ components:
       properties:
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
-        imageName:
+        imageId:
           type: string
-          description: Name of the Image
+          description: Id of the Image
         imagebuilderImageStatus:
           $ref: '#/components/schemas/ImageBuilderImageStatus'
         creationTime:
@@ -1462,7 +1462,7 @@ components:
         - creationTime
         - imageBuildStatus
         - imageConfiguration
-        - imageName
+        - imageId
         - region
         - tags
         - version
@@ -1567,12 +1567,12 @@ components:
     ImageInfoSummary:
       type: object
       properties:
-        imageName:
+        imageId:
           type: string
           maxLength: 60
           minLength: 5
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Name of the image
+          description: Id of the image
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
@@ -1590,7 +1590,7 @@ components:
         - cloudformationStackArn
         - cloudformationStackStatus
         - imageBuildStatus
-        - imageName
+        - imageId
         - region
         - version
     ImageStatusFilteringOption:

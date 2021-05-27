@@ -49,7 +49,7 @@ structure AmiInfo {
     @required
     amiId: String,
     @required
-    name: String,
+    id: String,
     @required
     os: String,
 }

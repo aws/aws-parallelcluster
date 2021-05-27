@@ -1,6 +1,6 @@
 namespace parallelcluster
 
-@http(method: "DELETE", uri: "/v3/images/custom/{imageName}", code: 202)
+@http(method: "DELETE", uri: "/v3/images/custom/{imageId}", code: 202)
 @tags(["Image Operations"])
 @idempotent
 @documentation("Initiate the deletion of the custom ParallelCluster image.")
@@ -19,7 +19,7 @@ operation DeleteImage {
 structure DeleteImageRequest {
     @httpLabel
     @required
-    imageName: ImageName,
+    imageId: ImageId,
 
     @httpQuery("region")
     region: Region,

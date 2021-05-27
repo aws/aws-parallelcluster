@@ -33,6 +33,12 @@ OS_MAPPING = {
     "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
 }
 
+# Describe the list of requirements to be satisfied by the Pcluster AWS Batch CLI to manage the cluster.
+# It must be in the form <package-name><comparison-operator><version>
+# It can contain multiple items separated by a colon.
+# i.e. aws-parallelcluster-awsbatch-cli>=2.0.0,aws-parallelcluster-awsbatch-cli<3.0.0
+AWSBATCH_CLI_REQUIREMENTS = "aws-parallelcluster-awsbatch-cli<2.0.0"
+
 FSX_SSD_THROUGHPUT = [50, 100, 200]
 FSX_HDD_THROUGHPUT = [12, 40]
 

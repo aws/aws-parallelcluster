@@ -16,11 +16,13 @@ CHANGELOG
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
 - Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 
   `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
-   `--subnet-id`.
+  `--subnet-id`.
 - Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
 - Add `delete-image` command with `--name`, `--region`, `--force` parameters.
 - Add `describe-image` command with `--name`, `--region` parameters.
 - Add`list-images` command with `--region`, `--color`parameters.
+- Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
+  as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
 - Add possibility to configure different security groups for each queue.

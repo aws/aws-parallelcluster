@@ -1,7 +1,7 @@
 namespace parallelcluster
 
 @readonly
-@http(method: "GET", uri: "/v3/images/custom/{imageName}", code: 200)
+@http(method: "GET", uri: "/v3/images/custom/{imageId}", code: 200)
 @tags(["Image Operations"])
 @documentation("Get detailed information about an existing image.")
 operation DescribeImage {
@@ -19,15 +19,15 @@ operation DescribeImage {
 structure DescribeImageRequest {
     @httpLabel
     @required
-    imageName: ImageName,
+    imageId: ImageId,
     @httpQuery("region")
     region: Region,
 }
 
 structure DescribeImageResponse {
     @required
-    @documentation("Name of the Image")
-    imageName: String,
+    @documentation("Id of the Image")
+    imageId: String,
     @required
     @documentation("AWS region where the image is created")
     region: Region,
