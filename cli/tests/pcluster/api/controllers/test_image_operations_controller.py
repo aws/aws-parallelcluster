@@ -20,7 +20,7 @@ class TestImageOperationsController:
         """Test case for build_image."""
         build_image_request_content = {
             "imageConfiguration": "imageConfiguration",
-            "name": "imagename",
+            "id": "imageid",
             "region": "eu-west-1",
         }
         query_string = [
@@ -51,7 +51,7 @@ class TestImageOperationsController:
             "Accept": "application/json",
         }
         response = client.open(
-            "/v3/images/custom/{image_name}".format(image_name="imagename"),
+            "/v3/images/custom/{image_id}".format(image_id="imageid"),
             method="DELETE",
             headers=headers,
             query_string=query_string,
@@ -65,7 +65,7 @@ class TestImageOperationsController:
             "Accept": "application/json",
         }
         response = client.open(
-            "/v3/images/custom/{image_name}".format(image_name="imagename"),
+            "/v3/images/custom/{image_id}".format(image_id="imageid"),
             method="GET",
             headers=headers,
             query_string=query_string,

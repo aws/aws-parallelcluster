@@ -21,22 +21,22 @@ class BuildImageRequestContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, image_configuration=None, name=None, region=None):
+    def __init__(self, image_configuration=None, id=None, region=None):
         """BuildImageRequestContent - a model defined in OpenAPI
 
         :param image_configuration: The image_configuration of this BuildImageRequestContent.
         :type image_configuration: str
-        :param name: The name of this BuildImageRequestContent.
-        :type name: str
+        :param id: The id of this BuildImageRequestContent.
+        :type id: str
         :param region: The region of this BuildImageRequestContent.
         :type region: str
         """
-        self.openapi_types = {"image_configuration": str, "name": str, "region": str}
+        self.openapi_types = {"image_configuration": str, "id": str, "region": str}
 
-        self.attribute_map = {"image_configuration": "imageConfiguration", "name": "name", "region": "region"}
+        self.attribute_map = {"image_configuration": "imageConfiguration", "id": "id", "region": "region"}
 
         self._image_configuration = image_configuration
-        self._name = name
+        self._id = id
         self._region = region
 
     @classmethod
@@ -76,37 +76,35 @@ class BuildImageRequestContent(Model):
         self._image_configuration = image_configuration
 
     @property
-    def name(self):
-        """Gets the name of this BuildImageRequestContent.
+    def id(self):
+        """Gets the id of this BuildImageRequestContent.
 
-        Name of the image
+        Id of the image
 
-        :return: The name of this BuildImageRequestContent.
+        :return: The id of this BuildImageRequestContent.
         :rtype: str
         """
-        return self._name
+        return self._id
 
-    @name.setter
-    def name(self, name):
-        """Sets the name of this BuildImageRequestContent.
+    @id.setter
+    def id(self, id):
+        """Sets the id of this BuildImageRequestContent.
 
-        Name of the image
+        Id of the image
 
-        :param name: The name of this BuildImageRequestContent.
-        :type name: str
+        :param id: The id of this BuildImageRequestContent.
+        :type id: str
         """
-        if name is None:
-            raise ValueError("Invalid value for `name`, must not be `None`")
-        if name is not None and len(name) > 60:
-            raise ValueError("Invalid value for `name`, length must be less than or equal to `60`")
-        if name is not None and len(name) < 5:
-            raise ValueError("Invalid value for `name`, length must be greater than or equal to `5`")
-        if name is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", name):
-            raise ValueError(
-                "Invalid value for `name`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
-            )
+        if id is None:
+            raise ValueError("Invalid value for `id`, must not be `None`")
+        if id is not None and len(id) > 60:
+            raise ValueError("Invalid value for `id`, length must be less than or equal to `60`")
+        if id is not None and len(id) < 5:
+            raise ValueError("Invalid value for `id`, length must be greater than or equal to `5`")
+        if id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", id):
+            raise ValueError("Invalid value for `id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`")
 
-        self._name = name
+        self._id = id
 
     @property
     def region(self):

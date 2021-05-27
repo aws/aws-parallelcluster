@@ -31,7 +31,7 @@ class DescribeImageResponseContent(Model):
     def __init__(
         self,
         image_configuration=None,
-        image_name=None,
+        image_id=None,
         imagebuilder_image_status=None,
         creation_time=None,
         image_build_status=None,
@@ -47,8 +47,8 @@ class DescribeImageResponseContent(Model):
 
         :param image_configuration: The image_configuration of this DescribeImageResponseContent.
         :type image_configuration: ImageConfigurationStructure
-        :param image_name: The image_name of this DescribeImageResponseContent.
-        :type image_name: str
+        :param image_id: The image_id of this DescribeImageResponseContent.
+        :type image_id: str
         :param imagebuilder_image_status: The imagebuilder_image_status of this DescribeImageResponseContent.
         :type imagebuilder_image_status: ImageBuilderImageStatus
         :param creation_time: The creation_time of this DescribeImageResponseContent.
@@ -72,7 +72,7 @@ class DescribeImageResponseContent(Model):
         """
         self.openapi_types = {
             "image_configuration": ImageConfigurationStructure,
-            "image_name": str,
+            "image_id": str,
             "imagebuilder_image_status": ImageBuilderImageStatus,
             "creation_time": datetime,
             "image_build_status": ImageBuildStatus,
@@ -87,7 +87,7 @@ class DescribeImageResponseContent(Model):
 
         self.attribute_map = {
             "image_configuration": "imageConfiguration",
-            "image_name": "imageName",
+            "image_id": "imageId",
             "imagebuilder_image_status": "imagebuilderImageStatus",
             "creation_time": "creationTime",
             "image_build_status": "imageBuildStatus",
@@ -101,7 +101,7 @@ class DescribeImageResponseContent(Model):
         }
 
         self._image_configuration = image_configuration
-        self._image_name = image_name
+        self._image_id = image_id
         self._imagebuilder_image_status = imagebuilder_image_status
         self._creation_time = creation_time
         self._image_build_status = image_build_status
@@ -148,29 +148,29 @@ class DescribeImageResponseContent(Model):
         self._image_configuration = image_configuration
 
     @property
-    def image_name(self):
-        """Gets the image_name of this DescribeImageResponseContent.
+    def image_id(self):
+        """Gets the image_id of this DescribeImageResponseContent.
 
-        Name of the Image
+        id of the Image
 
-        :return: The image_name of this DescribeImageResponseContent.
+        :return: The image_id of this DescribeImageResponseContent.
         :rtype: str
         """
-        return self._image_name
+        return self._image_id
 
-    @image_name.setter
-    def image_name(self, image_name):
-        """Sets the image_name of this DescribeImageResponseContent.
+    @image_id.setter
+    def image_id(self, image_id):
+        """Sets the image_id of this DescribeImageResponseContent.
 
-        Name of the Image
+        id of the Image
 
-        :param image_name: The image_name of this DescribeImageResponseContent.
-        :type image_name: str
+        :param image_id: The image_id of this DescribeImageResponseContent.
+        :type image_id: str
         """
-        if image_name is None:
-            raise ValueError("Invalid value for `image_name`, must not be `None`")
+        if image_id is None:
+            raise ValueError("Invalid value for `image_id`, must not be `None`")
 
-        self._image_name = image_name
+        self._image_id = image_id
 
     @property
     def imagebuilder_image_status(self):
