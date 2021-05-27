@@ -2,8 +2,8 @@ namespace parallelcluster
 
 @pattern("^[a-zA-Z][a-zA-Z0-9-]+$")
 @length(min: 5, max: 60)
-@documentation("Name of the image")
-string ImageName
+@documentation("Id of the image")
+string ImageId
 
 structure Ec2AmiInfo {
     @required
@@ -25,8 +25,8 @@ structure Ec2AmiInfo {
 
 structure ImageInfoSummary {
     @required
-    @documentation("Name of the image")
-    imageName: ImageName,
+    @documentation("Id of the image")
+    imageId: ImageId,
     @required
     @documentation("AWS region where the image is built")
     region: Region,

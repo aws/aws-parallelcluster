@@ -35,7 +35,7 @@ structure BuildImageRequest {
     clientToken: String,
 
     @required
-    name: ImageName,
+    id: ImageId,
     region: Region,
     @required
     imageConfiguration: ImageConfigurationData,
