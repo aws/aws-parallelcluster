@@ -674,6 +674,8 @@ Resources:
               group: root
         chefPrepEnv:
           commands:
+            ChefLogRedirect:
+              command: echo "Start running chef-client, redirect logs to /var/log/chef-client.log"
             chef:
               command: chef-client --local-mode --config /etc/chef/client.rb --log_level
                 info --logfile /var/log/chef-client.log --force-formatter --no-color
