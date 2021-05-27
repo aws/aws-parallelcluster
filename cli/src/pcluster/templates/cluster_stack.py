@@ -265,7 +265,10 @@ class ClusterCdkStack(Stack):
             )
 
         # Lambda Functions
-        self._add_aws_credentials_lambda()
+        self.aws_credentials_lambda = self._add_aws_credentials_lambda()
+
+        # Custom Resources
+        self._add_handle_head_node_custom_resource()
 
     def _add_cluster_log_group(self):
         log_group = logs.CfnLogGroup(
@@ -467,7 +470,7 @@ class ClusterCdkStack(Stack):
             )
         )
 
-        PclusterLambdaConstruct(
+        return PclusterLambdaConstruct(
             scope=self,
             id=f"{function_id}FunctionConstruct",
             function_id=function_id,
@@ -490,6 +493,63 @@ class ClusterCdkStack(Stack):
             },
             schedule_expression="rate(15 minutes)",
             schedule_enabled=True,
+        ).lambda_func
+
+    def _add_handle_head_node_custom_resource(self):
+        function_id = "HandleHeadNode"
+        _cluster_name = cluster_name(self.stack_name)
+        policy_suffix = create_hash_suffix(function_id)
+
+        execution_role = iam.CfnRole(
+            scope=self,
+            id=f"{function_id}FunctionExecutionRole",
+            assume_role_policy_document=get_assume_role_policy_document(f"lambda.{self.url_suffix}"),
+            managed_policy_arns=[
+                policy_name_to_arn("AmazonEC2ReadOnlyAccess"),
+                policy_name_to_arn("AWSLambda_ReadOnlyAccess"),
+            ],
+        )
+
+        iam.CfnPolicy(
+            scope=self,
+            id=f"{function_id}{policy_suffix}",
+            policy_name=f"{function_id}FunctionPolicy",
+            policy_document=iam.PolicyDocument(
+                statements=[
+                    iam.PolicyStatement(
+                        sid="LambdaInvocationPolicy",
+                        effect=iam.Effect.ALLOW,
+                        actions=["lambda:InvokeFunction"],
+                        resources=[self.aws_credentials_lambda.attr_arn],
+                    ),
+                    get_cloud_watch_logs_policy_statement(
+                        resource=self.format_arn(service="logs", account="*", region="*", resource="*")
+                    ),
+                ]
+            ),
+            roles=[execution_role.ref],
+        )
+
+        lambda_function = PclusterLambdaConstruct(
+            scope=self,
+            id=f"{function_id}FunctionConstruct",
+            function_id=function_id,
+            bucket=self.bucket,
+            config=self.config,
+            execution_role=execution_role.attr_arn,
+            handler_func="handle_head_node",
+            timeout=900,
+            memory_size=256,
+        ).lambda_func
+
+        CustomResource(
+            scope=self,
+            id=f"{function_id}CustomResource",
+            service_token=lambda_function.attr_arn,
+            properties={
+                "ClusterName": _cluster_name,
+                "AwsCredentialsLambda": self.aws_credentials_lambda.function_name,
+            },
         )
 
     def _add_head_eni(self):

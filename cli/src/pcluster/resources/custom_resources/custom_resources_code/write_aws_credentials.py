@@ -151,11 +151,27 @@ AWS_ACCESS_KEY_ID={credentials["aws_acces_key_id"]}
 AWS_SECRET_ACCESS_KEY={credentials["aws_secret_access_key"]}
 AWS_SESSION_TOKEN={credentials["aws_session_token"]}
 
-# cfnconfig: contains node variables
-source "/etc/parallelcluster/cfnconfig"
-SCRIPT="$scripts_dir/ssm/write_aws_credentials.sh"
+function waitForFile () {{
+    file=$1
+    max_attempts=$2
+    sleep_seconds=$3
+    attempts=0
+    while [[ ! -f $file && "$attempts" -lt "$max_attempts" ]]; do
+    attempts=$(($attempts+1))
+    echo "Waiting for $file (attempt $attempts/$max_attempts). Sleeping $sleep_seconds seconds"
+    sleep $sleep_seconds
+done
+}}
 
-bash $SCRIPT $AWS_IAM_ASSUMED_ROLE_ARN $AWS_ACCESS_KEY_ID $AWS_SECRET_ACCESS_KEY $AWS_SESSION_TOKEN
+# cfnconfig: contains node variables
+cfnconfig_file="/etc/parallelcluster/cfnconfig"
+waitForFile $cfnconfig_file 24 5
+source $cfnconfig_file
+
+script_file="$scripts_dir/ssm/write_aws_credentials.sh"
+waitForFile $script_file 24 5
+
+bash $script_file $AWS_IAM_ASSUMED_ROLE_ARN $AWS_ACCESS_KEY_ID $AWS_SECRET_ACCESS_KEY $AWS_SESSION_TOKEN
 """
 
     return script.split("\n")
