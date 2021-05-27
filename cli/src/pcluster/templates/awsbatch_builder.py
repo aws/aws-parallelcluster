@@ -26,7 +26,6 @@ from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
-    cluster_name,
     get_assume_role_policy_document,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
@@ -248,10 +247,13 @@ class AwsBatchConstruct(Construct):
                                 resources=[
                                     self._format_arn(
                                         service="cloudformation",
-                                        resource="stack/parallelcluster-*/*",
-                                        region=self._stack_region,
-                                        account=self._stack_account,
-                                    )
+                                        resource=f"stack/{self.stack_name}/*",
+                                    ),
+                                    self._format_arn(
+                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                                        service="cloudformation",
+                                        resource=f"stack/{self.stack_name}-*/*",
+                                    ),
                                 ],
                                 sid="CloudWatchLogsPolicy",
                             ),
@@ -333,7 +335,9 @@ class AwsBatchConstruct(Construct):
                                     self._job_definition_mnp.ref,
                                     self._job_queue.ref,
                                     self._job_role.attr_arn,
-                                    self._format_arn(service="cloudformation", resource="stack/parallelcluster-*/*"),
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
+                                    # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}-*/*"),
                                     self._format_arn(
                                         service="s3",
                                         resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
@@ -394,10 +398,13 @@ class AwsBatchConstruct(Construct):
                                 resources=[
                                     self._format_arn(
                                         service="cloudformation",
-                                        resource="stack/parallelcluster-*/*",
-                                        region=self._stack_region,
-                                        account=self._stack_account,
-                                    )
+                                        resource=f"stack/{self.stack_name}/*",
+                                    ),
+                                    self._format_arn(
+                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                                        service="cloudformation",
+                                        resource=f"stack/{self.stack_name}-*/*",
+                                    ),
                                 ],
                                 sid="CloudWatchLogsPolicy",
                             ),
@@ -437,9 +444,7 @@ class AwsBatchConstruct(Construct):
             privileged=True,
             environment=[
                 batch.CfnJobDefinition.EnvironmentProperty(name="PCLUSTER_AWS_REGION", value=self._stack_region),
-                batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_STACK_NAME", value=cluster_name(self.stack_name)
-                ),
+                batch.CfnJobDefinition.EnvironmentProperty(name="PCLUSTER_STACK_NAME", value=self.stack_name),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_SHARED_DIRS",
                     value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EBS),
@@ -513,7 +518,7 @@ class AwsBatchConstruct(Construct):
         )
 
     def _add_code_build_docker_image_builder_project(self):
-        log_group_name = f"/aws/codebuild/{cluster_name(self.stack_name)}-CodeBuildDockerImageBuilderProject"
+        log_group_name = f"/aws/codebuild/{self.stack_name}-CodeBuildDockerImageBuilderProject"
 
         logs.CfnLogGroup(
             self.stack_scope,
@@ -558,7 +563,7 @@ class AwsBatchConstruct(Construct):
                 type="ARM_CONTAINER" if self._condition_use_arm_code_build_image() else "LINUX_CONTAINER",
                 privileged_mode=True,
             ),
-            name=f"{cluster_name(self.stack_name)}-build-docker-images-project",
+            name=f"{self.stack_name}-build-docker-images-project",
             service_role=self._code_build_role.ref,
             source=codebuild.CfnProject.SourceProperty(
                 location=f"{self.bucket.name}/{self.bucket.artifact_directory}"

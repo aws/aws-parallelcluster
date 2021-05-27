@@ -85,7 +85,7 @@ class Cluster:
                 raise Exception(error)
             logging.info("Cluster {0} deleted successfully".format(self.name))
         except subprocess.CalledProcessError as e:
-            if re.search(r"Stack with id parallelcluster-.+ does not exist", e.stdout):
+            if re.search(f"Stack with id {self.name} does not exist", e.stdout):
                 pass
             else:
                 logging.error("Failed destroying cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
@@ -151,7 +151,7 @@ class Cluster:
     @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""
-        return "parallelcluster-" + self.name
+        return self.name
 
     @property
     def head_node_ip(self):
@@ -161,7 +161,7 @@ class Cluster:
         else:
             ec2 = boto3.client("ec2")
             filters = [
-                {"Name": "tag:parallelcluster:application", "Values": [self.cfn_name]},
+                {"Name": "tag:parallelcluster:cluster-name", "Values": [self.cfn_name]},
                 {"Name": "instance-state-name", "Values": ["running"]},
                 {"Name": "tag:parallelcluster:node-type", "Values": ["HeadNode"]},
             ]

@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 from hashlib import sha1
 from typing import List, Union
 
@@ -26,22 +25,21 @@ from pcluster.config.cluster_config import (
     BaseQueue,
     Ebs,
     HeadNode,
+    LocalStorage,
     SharedStorageType,
 )
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
     OS_MAPPING,
-    PCLUSTER_APPLICATION_TAG,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
-    PCLUSTER_STACK_PREFIX,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.utils import get_installed_version
 
 
-def get_block_device_mappings(node_config: Union[HeadNode, BaseQueue], os: str):
+def get_block_device_mappings(local_storage: LocalStorage, os: str):
     """Return block device mapping."""
     block_device_mappings = []
     for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
@@ -51,26 +49,18 @@ def get_block_device_mappings(node_config: Union[HeadNode, BaseQueue], os: str):
             ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
         )
 
-    # Root volume
-    if isinstance(node_config, BaseQueue):  # Queue
-        if (
-            node_config.compute_settings
-            and node_config.compute_settings.local_storage
-            and node_config.compute_settings.local_storage.root_volume
-        ):
-            root_volume = copy.deepcopy(node_config.compute_settings.local_storage.root_volume)
-        else:
-            root_volume = Ebs()
-    elif isinstance(node_config, HeadNode):  # HeadNode
-        if node_config.local_storage and node_config.local_storage.root_volume:
-            root_volume = copy.deepcopy(node_config.local_storage.root_volume)
-        else:
-            root_volume = Ebs()
+    root_volume = local_storage.root_volume or Ebs()
 
     block_device_mappings.append(
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
             device_name=OS_MAPPING[os]["root-device"],
-            ebs=ec2.CfnLaunchTemplate.EbsProperty(volume_size=root_volume.size, encrypted=root_volume.encrypted),
+            ebs=ec2.CfnLaunchTemplate.EbsProperty(
+                volume_size=root_volume.size,
+                encrypted=root_volume.encrypted,
+                volume_type=root_volume.volume_type,
+                iops=root_volume.iops,
+                throughput=root_volume.throughput,
+            ),
         )
     )
     return block_device_mappings
@@ -106,11 +96,6 @@ def get_common_user_data_env(node: Union[HeadNode, BaseQueue], config: BaseClust
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
         "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
     }
-
-
-def cluster_name(stack_name: str):
-    """Return cluster name from stack name."""
-    return stack_name.split(PCLUSTER_STACK_PREFIX)[1]
 
 
 def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
@@ -169,8 +154,7 @@ def get_default_instance_tags(
     """Return a list of default tags to be used for instances."""
     tags = {
         "Name": node_type,
-        PCLUSTER_CLUSTER_NAME_TAG: cluster_name(stack_name),
-        PCLUSTER_APPLICATION_TAG: stack_name,
+        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
         "parallelcluster:attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
             BaseOS=config.image.os,
@@ -196,8 +180,7 @@ def get_default_instance_tags(
 def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = False):
     """Return a list of default tags to be used for volumes."""
     tags = {
-        PCLUSTER_CLUSTER_NAME_TAG: cluster_name(stack_name),
-        PCLUSTER_APPLICATION_TAG: stack_name,
+        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
     }
     return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]

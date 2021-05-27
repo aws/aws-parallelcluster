@@ -8,9 +8,11 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     S3Access:
-      - BucketName: {{ bucket }}/read_only/  # FIXME find a name of the field, BucketName is not accurate
+      - BucketName: {{ bucket }}
+        KeyName: read_only/
         EnableWriteAccess: false
-      - BucketName: {{ bucket }}/read_and_write  # FIXME find a name of the field, BucketName is not accurate
+      - BucketName: {{ bucket }}
+        KeyName: read_and_write/
         EnableWriteAccess: true
 Scheduling:
   Scheduler: {{ scheduler }}
@@ -30,9 +32,11 @@ Scheduling:
       {% if scheduler == "slurm" %}
       Iam:
         S3Access:
-          - BucketName: {{ bucket }}/read_only/  # FIXME find a name of the field, BucketName is not accurate
+          - BucketName: {{ bucket }}
+            KeyName: read_only/
             EnableWriteAccess: false
-          - BucketName: {{ bucket }}/read_and_write  # FIXME find a name of the field, BucketName is not accurate
+          - BucketName: {{ bucket }}
+            KeyName: read_and_write/
             EnableWriteAccess: true
       {% endif %}
       Networking:

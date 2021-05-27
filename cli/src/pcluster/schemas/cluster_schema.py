@@ -137,6 +137,9 @@ class QueueRootVolumeSchema(BaseSchema):
 
     size = fields.Int(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    volume_type = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    iops = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -672,7 +675,12 @@ class RolesSchema(BaseSchema):
 class S3AccessSchema(BaseSchema):
     """Represent the schema of S3 access."""
 
-    bucket_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    bucket_name = fields.Str(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.Regexp(r"^[a-z0-9\-\.]+$"),
+    )
+    key_name = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     enable_write_access = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load

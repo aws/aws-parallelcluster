@@ -166,7 +166,7 @@ def _describe_cluster_instances(
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
-        {"Name": "tag:parallelcluster:application", "Values": [stack_name]},
+        {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
         {"Name": "instance-state-name", "Values": ["running"]},
     ]
     if filter_by_node_type:
@@ -430,3 +430,14 @@ def get_root_volume_id(instance_id, region, os):
     ]
     assert_that(matching_devices).is_length(1)
     return matching_devices[0].get("Ebs").get("VolumeId")
+
+
+def dict_has_nested_key(d, keys):
+    """Check if *keys (nested) exists in d (dict)."""
+    _d = d
+    for key in keys:
+        try:
+            _d = _d[key]
+        except KeyError:
+            return False
+    return True

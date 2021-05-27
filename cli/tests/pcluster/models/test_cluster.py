@@ -17,14 +17,14 @@ from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
-from pcluster.constants import PCLUSTER_APPLICATION_TAG
+from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG
 from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
-from tests.pcluster.test_utils import FAKE_CLUSTER_NAME, FAKE_STACK_NAME
+from tests.pcluster.test_utils import FAKE_NAME
 
 LOG_GROUP_TYPE = "AWS::Logs::LogGroup"
 ARTIFACT_DIRECTORY = "s3_artifacts_dir"
@@ -37,11 +37,11 @@ class TestCluster:
             "pcluster.models.cluster.Cluster.bucket",
             new_callable=PropertyMock(
                 return_value=S3Bucket(
-                    service_name=FAKE_CLUSTER_NAME, stack_name=FAKE_STACK_NAME, artifact_directory=ARTIFACT_DIRECTORY
+                    service_name=FAKE_NAME, stack_name=FAKE_NAME, artifact_directory=ARTIFACT_DIRECTORY
                 )
             ),
         )
-        return Cluster(FAKE_CLUSTER_NAME, stack=ClusterStack({"StackName": FAKE_STACK_NAME}))
+        return Cluster(FAKE_NAME, stack=ClusterStack({"StackName": FAKE_NAME}))
 
     @pytest.mark.parametrize(
         "node_type, expected_response, expected_instances",
@@ -58,7 +58,7 @@ class TestCluster:
             "pcluster.aws.ec2.Ec2Client.describe_instances",
             return_value=expected_response,
             expected_params=[
-                {"Name": f"tag:{PCLUSTER_APPLICATION_TAG}", "Values": ["test-cluster"]},
+                {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": ["test-cluster"]},
                 {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
                 {"Name": "tag:parallelcluster:node-type", "Values": [node_type.value]},
             ],
@@ -169,8 +169,8 @@ class TestCluster:
         "template_body,error_message",
         [
             ({"TemplateKey": "TemplateValue"}, None),
-            ({}, "Unable to retrieve template for stack {0}.*".format(FAKE_STACK_NAME)),
-            (None, "Unable to retrieve template for stack {0}.*".format(FAKE_STACK_NAME)),
+            ({}, "Unable to retrieve template for stack {0}.*".format(FAKE_NAME)),
+            (None, "Unable to retrieve template for stack {0}.*".format(FAKE_NAME)),
         ],
     )
     def test_get_stack_template(self, cluster, mocker, template_body, error_message):
@@ -180,7 +180,7 @@ class TestCluster:
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.get_stack_template",
             return_value=response,
-            expected_params=FAKE_STACK_NAME,
+            expected_params=FAKE_NAME,
             side_effect=AWSClientError(function_name="get_template", message="error") if not template_body else None,
         )
 
@@ -211,7 +211,7 @@ class TestCluster:
             "pcluster.aws.cfn.CfnClient.update_stack_from_url",
             return_value=response,
             expected_params={
-                "stack_name": FAKE_STACK_NAME,
+                "stack_name": FAKE_NAME,
                 "template_url": template_url,
             },
             side_effect=AWSClientError(function_name="update_stack_from_url", message=error_message)
@@ -236,7 +236,7 @@ class TestCluster:
                 assert_that(wait_for_update_mock.called).is_false()
         else:
             full_error_message = "Unable to update stack template for stack {stack_name}: {emsg}".format(
-                stack_name=FAKE_STACK_NAME, emsg=error_message
+                stack_name=FAKE_NAME, emsg=error_message
             )
             with pytest.raises(AWSClientError, match=full_error_message) as sysexit:
                 cluster._update_stack_template(template_url)
