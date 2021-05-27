@@ -4,21 +4,32 @@ on: [push, pull_request]
 
 jobs:
   depcheck:
+    name: Dependency Check
     runs-on: ubuntu-latest
-    name: DepCheck
     steps:
-      - uses: actions/checkout@v2
-      - name: Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          path: './cli'
-          format: 'HTML'
-      - name: Upload Test results
-        uses: actions/upload-artifact@master
-        with:
-          name: Depcheck report
-          path: ${{github.workspace}}/reports
-  build:
+        - uses: actions/checkout@v2
+        - name: Dependency Check
+          uses: dependency-check/Dependency-Check_Action@main
+          with:
+            path: './cli'
+            format: 'HTML'
+        - name: Upload Test results
+          uses: actions/upload-artifact@master
+          with:
+            name: CLI Depcheck report
+            path: ${{github.workspace}}/reports
+        - name: AWS Batch CLI Dependency Check
+          uses: dependency-check/Dependency-Check_Action@main
+          with:
+            path: './awsbatch-cli'
+            format: 'HTML'
+        - name: Upload AWS Batch CLI Test results
+          uses: actions/upload-artifact@master
+          with:
+            name: AWS Batch CLI Depcheck report
+            path: ${{github.workspace}}/reports
+  cli-tests:
+    name: CLI Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -71,7 +82,55 @@ jobs:
             python: 3.6
             toxdir: tests/integration-tests
             toxenv: validate-test-configs
-
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Tox and any other packages
+        run: pip install tox
+      - name: Run Tox
+        run: cd ${{ matrix.toxdir }} && tox -e ${{ matrix.toxenv }}
+  awsbatch-cli-tests:
+    name: AWS Batch CLI Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        name:
+          - Python 3.6 AWS Batch CLI Tests
+          - Python 3.7 AWS Batch CLI Tests
+          - Python 3.8 AWS Batch CLI Tests
+          - Python 3.9 AWS Batch CLI Tests
+          - Python 3.8 AWS Batch CLI Tests Coverage
+          - Code Checks AWS Batch CLI
+        include:
+          - name: Python 3.6 AWS Batch CLI Tests
+            python: 3.6
+            toxdir: awsbatch-cli
+            toxenv: py36-nocov
+          - name: Python 3.7 AWS Batch CLI Tests
+            python: 3.7
+            toxdir: awsbatch-cli
+            toxenv: py37-nocov
+          - name: Python 3.8 AWS Batch CLI Tests
+            python: 3.8
+            toxdir: awsbatch-cli
+            toxenv: py38-nocov
+          - name: Python 3.9 AWS Batch CLI Tests
+            python: 3.9
+            toxdir: awsbatch-cli
+            toxenv: py39-nocov
+          - name: Python 3.8 AWS Batch CLI Tests Coverage
+            python: 3.8
+            toxdir: awsbatch-cli
+            toxenv: py38-cov
+          - name: Code Checks AWS Batch CLI
+            python: 3.6
+            toxdir: awsbatch-cli
+            toxenv: code-linters
     steps:
       - uses: actions/checkout@v2
       - name: Setup Python
@@ -83,6 +142,7 @@ jobs:
       - name: Run Tox
         run: cd ${{ matrix.toxdir }} && tox -e ${{ matrix.toxenv }}
   validate-api-model:
+    name: API Model Validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -95,6 +155,7 @@ jobs:
       - working-directory: api
         run: ./gradlew buildSmithyModel openApiValidate
   api-docker-test:
+    name: API Docker Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

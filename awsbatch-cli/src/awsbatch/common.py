@@ -12,16 +12,20 @@
 
 import errno
 import logging
+import operator
 import os
+import re
+from collections import namedtuple
 from logging.handlers import RotatingFileHandler
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, ParamValidationError
 from configparser import ConfigParser, NoOptionError, NoSectionError
+from pkg_resources import packaging
 from tabulate import tabulate
 
-from awsbatch.utils import fail, get_region_by_stack_id
+from awsbatch.utils import fail, get_installed_version, get_region_by_stack_id
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
 
@@ -119,6 +123,42 @@ class Boto3ClientFactory:
             fail("AWS %s service failed with exception: %s" % (service, e))
 
 
+CliRequirement = namedtuple("Requirement", "package operator version")
+
+
+class CliRequirementsMatcher:
+    """Utility class to match requirements specified in CFN stack output."""
+
+    COMPARISON_OPERATORS = {
+        "<": operator.lt,
+        "<=": operator.le,
+        "==": operator.eq,
+        "!=": operator.ne,
+        ">=": operator.ge,
+        ">": operator.gt,
+    }
+
+    def __init__(self, requirements_string):
+        try:
+            self.requirements = []
+            for requirement_string in requirements_string.split(","):
+                match = re.search(r"([\w+_-]+)([<>=]+)([\d.]+)", requirement_string)
+                self.requirements.append(
+                    CliRequirement(package=match.group(1), operator=match.group(2), version=match.group(3))
+                )
+        except IndexError:
+            fail(f"Unable to parse ParallelCluster AWS Batch CLI requirements: '{requirements_string}'")
+
+    def check(self):
+        """Verify if CLI requirements are satisfied."""
+        for req in self.requirements:
+            if not self.COMPARISON_OPERATORS[req.operator](
+                packaging.version.parse(get_installed_version(req.package)),
+                packaging.version.parse(req.version),
+            ):
+                fail(f"The cluster requires {req.package}{req.operator}{req.version}")
+
+
 class AWSBatchCliConfig:
     """AWS ParallelCluster AWS Batch CLI configuration object."""
 
@@ -151,20 +191,24 @@ class AWSBatchCliConfig:
         return "{0}({1})".format(self.__class__.__name__, self.__dict__)
 
     def __verify_initialization(self, log):
-        try:
-            log.debug("stack_name = %s", self.stack_name)
-            log.debug("region = %s", self.region)
-            log.debug("s3_bucket = %s", self.s3_bucket)
-            log.debug("compute_environment = %s", self.compute_environment)
-            log.debug("job_queue = %s", self.job_queue)
-            log.debug("job_definition = %s", self.job_definition)
-            log.debug("head_node_ip = %s", self.head_node_ip)
-            log.info(self)
-        except AttributeError as e:
-            fail(
-                "Error getting cluster information from AWS CloudFormation."
-                "Missing attribute (%s) from the output CloudFormation stack." % e
-            )
+        config_to_cfn_map = [
+            ("s3_bucket", "ResourcesS3Bucket", "parameter"),
+            ("artifact_directory", "ArtifactS3RootDirectory", "parameter"),
+            ("batch_cli_requirements", "BatchCliRequirements", "output"),
+            ("compute_environment", "BatchComputeEnvironmentArn", "output"),
+            ("job_queue", "BatchJobQueueArn", "output"),
+            ("job_definition", "BatchJobDefinitionArn", "output"),
+            ("head_node_ip", "HeadNodePrivateIP", "output"),
+        ]
+        for config_param, cfn_param, cfn_prop_type in config_to_cfn_map:
+            try:
+                log.debug("%s = %s", config_param, getattr(self, config_param))
+            except AttributeError:
+                fail(
+                    "Error getting cluster information from AWS CloudFormation. "
+                    f"Missing {cfn_prop_type} '{cfn_param}' from the CloudFormation stack."
+                )
+        CliRequirementsMatcher(self.batch_cli_requirements).check()
 
     def __init_from_config(self, cli_config_file, cluster, log):  # noqa: C901 FIXME
         """
@@ -207,6 +251,7 @@ class AWSBatchCliConfig:
                 self.region = config.get(cluster_section, "region")
                 self.s3_bucket = config.get(cluster_section, "s3_bucket")
                 self.artifact_directory = config.get(cluster_section, "artifact_directory")
+                self.batch_cli_requirements = config.get(cluster_section, "batch_cli_requirements")
                 self.compute_environment = config.get(cluster_section, "compute_environment")
                 self.job_queue = config.get(cluster_section, "job_queue")
                 self.job_definition = config.get(cluster_section, "job_definition")
@@ -249,6 +294,7 @@ class AWSBatchCliConfig:
                 self.region = get_region_by_stack_id(stack.get("StackId"))
             self.proxy = "NONE"
 
+            scheduler = None
             stack_status = stack.get("StackStatus")
             if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
                 for output in stack.get("Outputs", []):
@@ -264,6 +310,8 @@ class AWSBatchCliConfig:
                         self.head_node_ip = output_value
                     elif output_key == "BatchJobDefinitionMnpArn":
                         self.job_definition_mnp = output_value
+                    elif output_key == "BatchCliRequirements":
+                        self.batch_cli_requirements = output_value
 
                 for parameter in stack.get("Parameters", []):
                     parameter_key = parameter.get("ParameterKey")
@@ -276,8 +324,15 @@ class AWSBatchCliConfig:
                         self.s3_bucket = parameter_value
                     elif parameter_key == "ArtifactS3RootDirectory":
                         self.artifact_directory = parameter_value
+                    elif parameter_key == "Scheduler":
+                        scheduler = parameter_value
             else:
-                fail("The cluster is in the (%s) status." % stack_status)
+                fail(f"The cluster is in the ({stack_status}) status.")
+
+            if scheduler is None:
+                fail("Unable to retrieve cluster's scheduler. Double check CloudFormation stack parameters.")
+            elif scheduler != "awsbatch":
+                fail(f"This command cannot be used with a {scheduler} cluster.")
 
         except (ClientError, ParamValidationError) as e:
             fail("Error getting cluster information from AWS CloudFormation. Failed with exception: %s" % e)

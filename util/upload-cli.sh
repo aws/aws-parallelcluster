@@ -76,22 +76,28 @@ main() {
         fi
     fi
 
-    _version=$(grep "^VERSION = \"" "${_srcdir}/cli/setup.py" |awk '{print $3}'| tr -d \")
-    if [ -z "${_version}" ]; then
-        _error_exit "Unable to detect AWS ParallelCluster version, are you in the right directory?"
+    _pcluster_version=$(grep "^VERSION = \"" "${_srcdir}/cli/setup.py" |awk '{print $3}'| tr -d \")
+    if [ -z "${_pcluster_version}" ]; then
+        _error_exit "Unable to detect ParallelCluster CLI version, are you in the right directory?"
     fi
-    _info "Detected version ${_version}"
+    _info "Detected ParallelCluster CLI version ${_pcluster_version}"
+
+    _version=$(grep "^VERSION = \"" "${_srcdir}/awsbatch-cli/setup.py" |awk '{print $3}'| tr -d \")
+    if [ -z "${_version}" ]; then
+        _error_exit "Unable to detect ParallelCluster AWS Batch CLI version, are you in the right directory?"
+    fi
+    _info "Detected ParallelCluster AWS Batch CLI version ${_version}"
 
     # Create archive
     _cwd=$(pwd)
     pushd "${_srcdir}" > /dev/null
     _stashName=$(git stash create)
-    git archive --format tar --prefix="aws-parallelcluster-${_version}/" "${_stashName:-HEAD}" | gzip > "${_cwd}/aws-parallelcluster-${_version}.tgz"
+    git archive --format tar --prefix="aws-parallelcluster-${_pcluster_version}/" "${_stashName:-HEAD}" | gzip > "${_cwd}/aws-parallelcluster-${_pcluster_version}.tgz"
     popd > /dev/null
 
     # upload package
-    _key_path="parallelcluster/${_version}/cli"
-    aws ${_profile} --region "${_region}" s3 cp aws-parallelcluster-${_version}.tgz s3://${_bucket}/${_key_path}/aws-parallelcluster-${_version}.tgz || _error_exit 'Failed to push CLI to S3'
+    _key_path="parallelcluster/${_pcluster_version}/cli"
+    aws ${_profile} --region "${_region}" s3 cp aws-parallelcluster-${_pcluster_version}.tgz s3://${_bucket}/${_key_path}/aws-parallelcluster-${_pcluster_version}.tgz || _error_exit 'Failed to push CLI to S3'
 
     _bucket_region=$(aws ${_profile} s3api get-bucket-location --bucket ${_bucket} --output text)
     if [ ${_bucket_region} == "None" ]; then
@@ -103,7 +109,7 @@ main() {
     echo "Done. Add the following configuration to the pcluster create config file:"
     echo ""
     echo "DevSettings:"
-    echo "  AwsBatchCliPackage: s3://${_bucket}/${_key_path}/aws-parallelcluster-${_version}.tgz"
+    echo "  AwsBatchCliPackage: s3://${_bucket}/${_key_path}/aws-parallelcluster-${_pcluster_version}.tgz"
 }
 
 main "$@"
