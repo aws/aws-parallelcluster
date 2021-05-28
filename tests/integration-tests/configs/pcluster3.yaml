@@ -22,6 +22,13 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["slurm"]
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
   iam:
     test_iam.py::test_iam_policies:
       dimensions:
@@ -60,6 +67,12 @@ test-suites:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
+          schedulers: ["slurm"]
+    test_ebs.py::test_ebs_single:
+      dimensions:
+        - regions: ["eu-west-3"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
           schedulers: ["slurm"]
   dcv:
     test_dcv.py::test_dcv_configuration:
