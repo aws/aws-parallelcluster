@@ -44,14 +44,15 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         "drive_cache_type",
         "storage_capacity",
         "imported_file_chunk_size",
+        "data_compression_type",
     ),
     [
-        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024),
-        ("SCRATCH_1", None, "NEW", None, None, 1200, 1024),
-        ("SCRATCH_2", None, None, None, None, 1200, 1024),
-        ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048),
-        ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512),
-        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024),
+        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024, None),
+        ("SCRATCH_1", None, "NEW", None, None, 1200, 1024, "LZ4"),
+        ("SCRATCH_2", None, None, None, None, 1200, 1024, "LZ4"),
+        ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048, "LZ4"),
+        ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512, "LZ4"),
+        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
     ],
 )
 @pytest.mark.regions(["eu-west-1"])
@@ -73,6 +74,7 @@ def test_fsx_lustre_configuration_options(
     drive_cache_type,
     storage_capacity,
     imported_file_chunk_size,
+    data_compression_type,
 ):
     mount_dir = "/fsx_mount_dir"
     bucket_name = s3_bucket_factory()
@@ -90,6 +92,7 @@ def test_fsx_lustre_configuration_options(
         storage_capacity=storage_capacity,
         imported_file_chunk_size=imported_file_chunk_size,
         weekly_maintenance_start_time=weekly_maintenance_start_time,
+        data_compression_type=data_compression_type,
     )
     cluster = clusters_factory(cluster_config)
     _test_fsx_lustre_configuration_options(
@@ -105,6 +108,7 @@ def test_fsx_lustre_configuration_options(
         weekly_maintenance_start_time,
         imported_file_chunk_size,
         storage_capacity,
+        data_compression_type,
     )
 
 
@@ -121,6 +125,7 @@ def _test_fsx_lustre_configuration_options(
     weekly_maintenance_start_time,
     imported_file_chunk_size,
     storage_capacity,
+    data_compression_type,
 ):
     _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -133,6 +138,7 @@ def _test_fsx_lustre_configuration_options(
     _test_storage_capacity(remote_command_executor, mount_dir, storage_capacity)
     _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx)
     _test_imported_file_chunch_size(imported_file_chunk_size, fsx)
+    _test_data_compression_type(data_compression_type, fsx)
 
 
 @pytest.mark.regions(["eu-west-1"])
@@ -557,6 +563,16 @@ def _test_imported_file_chunch_size(imported_file_chunk_size, fsx):
 def _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx):
     logging.info("Test FSx weekly maintenance start time setting")
     assert_that(get_weekly_maintenance_start_time(fsx)).is_equal_to(weekly_maintenance_start_time)
+
+
+def _test_data_compression_type(compression_type, fsx):
+    logging.info("Test FSx data compression type")
+    if compression_type:
+        assert_that(get_compression_type(fsx)).is_equal_to(compression_type)
+
+
+def get_compression_type(fsx):
+    return fsx.get("FileSystems")[0].get("LustreConfiguration").get("DataCompressionType")
 
 
 def get_imported_chunch_size(fsx):

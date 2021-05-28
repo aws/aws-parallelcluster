@@ -173,7 +173,8 @@ ALLOWED_VALUES = {
     "architectures": SUPPORTED_ARCHITECTURES,
     "fsx_auto_import_policy": ["NEW", "NEW_CHANGED"],
     "fsx_storage_type": ["SSD", "HDD"],
-    "fsx_drive_cache_type": ["READ"]
+    "fsx_drive_cache_type": ["READ"],
+    "fsx_data_compression_type": ["LZ4"]
 }
 
 AWS = {
@@ -589,6 +590,11 @@ FSX = {
                 "default": "NONE",
                 "update_policy": UpdatePolicy.IGNORED,
                 "visibility": Visibility.PRIVATE,
+            }),
+            ("data_compression_type", {
+                "default": "NONE",
+                "allowed_values": ALLOWED_VALUES["fsx_data_compression_type"],
+                "update_policy": UpdatePolicy.SUPPORTED
             }),
         ]
     )

@@ -21,24 +21,21 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         (DefaultCfnParams["fsx"].value, DefaultDict["fsx"].value),
         ({}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "{}".format(",".join(["NONE"] * 19))},
+            {"FSXOptions": "{}".format(",".join(["NONE"] * 20))},
             DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "{}".format(",".join(["NONE"] * 19))},
+            {"FSXOptions": "{}".format(",".join(["NONE"] * 20))},
             DefaultDict["fsx"].value,
         ),
         (
-            {
-                "FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
-                "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
-            },
+            {"FSXOptions": "test,{}".format(",".join(["NONE"] * 19))},
             utils.merge_dicts(DefaultDict["fsx"].value, {"shared_dir": "test"}),
         ),
         (
             {
                 "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
-                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,READ,mount_name,dns.name"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,READ,mount_name,dns.name,LZ4"
             },
             {
                 "shared_dir": "test",
@@ -60,12 +57,13 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "drive_cache_type": "READ",
                 "existing_mount_name": "mount_name",
                 "existing_dns_name": "dns.name",
+                "data_compression_type": "LZ4",
             },
         ),
         (
             {
                 "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
-                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,NONE,NONE,NONE"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,NONE,NONE,NONE,NONE"
             },
             {
                 "shared_dir": "test",
@@ -87,6 +85,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "drive_cache_type": "NONE",
                 "existing_mount_name": "NONE",
                 "existing_dns_name": "NONE",
+                "data_compression_type": "NONE",
             },
         ),
         (
@@ -111,12 +110,13 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "fsx_backup_id": "backup-0a1b2c3d4e5f6a7b8",
                 "auto_import_policy": "NEW_CHANGED",
                 "storage_type": "SSD",
+                "data_compression_type": "NONE",
             },
         ),
         (
             {
                 "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
-                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NONE,NONE,NONE"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NONE,NONE,NONE,NONE"
             },
             {
                 "shared_dir": "test",
@@ -134,6 +134,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "copy_tags_to_backups": False,
                 "fsx_backup_id": "backup-0a1b2c3d4e5f6a7b8",
                 "auto_import_policy": None,
+                "data_compression_type": "NONE",
             },
         ),
     ],
@@ -325,6 +326,20 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
             "INVALID_VALUE",
             " 'drive_cache_type' has an invalid value 'INVALID_VALUE'",
         ),
+        ("data_compression_type", None, "NONE", None),
+        ("data_compression_type", "LZ4", "LZ4", None),
+        (
+            "data_compression_type",
+            "INVALID_VALUE",
+            "INVALID_VALUE",
+            " 'data_compression_type' has an invalid value 'INVALID_VALUE'",
+        ),
+        (
+            "data_compression_type",
+            "NONE",
+            "NONE",
+            " 'data_compression_type' has an invalid value 'NONE'",
+        ),
     ],
 )
 def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -350,8 +365,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
-                    "NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,{}".format(",".join(["NONE"] * 19)),
                 },
             ),
             False,
@@ -365,7 +379,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
                     "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ,"
-                    "somemountname,my.fsx.dns.name",
+                    "somemountname,my.fsx.dns.name,LZ4",
                 },
             ),
             True,
@@ -379,7 +393,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
                     "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ,"
-                    "somemountname,my.fsx.dns.name",
+                    "somemountname,my.fsx.dns.name,LZ4",
                 },
             ),
             True,
@@ -395,7 +409,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
-                    "NONE,NONE,NONE,NONE",
+                    "NONE,NONE,NONE,NONE,NONE",
                 },
             ),
             False,
@@ -409,7 +423,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
                     "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,NONE,"
-                    "somemountname,my.fsx.dns.name",
+                    "somemountname,my.fsx.dns.name,NONE",
                 },
             ),
             True,
@@ -423,7 +437,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
                     "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,READ,"
-                    "somemountname,my.fsx.dns.name",
+                    "somemountname,my.fsx.dns.name,NONE",
                 },
             ),
             True,
@@ -437,7 +451,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
                     "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,SSD,NONE,"
-                    "somemountname,my.fsx.dns.name",
+                    "somemountname,my.fsx.dns.name,NONE",
                 },
             ),
             True,
