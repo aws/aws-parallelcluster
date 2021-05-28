@@ -231,10 +231,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: EC2Describe
             - Action:
               - ec2:CreateLaunchTemplate
@@ -247,10 +247,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: LaunchTemplates
             - Action:
               - ec2:CreateVpc
@@ -270,10 +270,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: NetworkingEasyConfig
             - Action:
               - ec2:CreateVolume
@@ -301,10 +301,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: EC2Modify
             - Action:
               - dynamodb:DescribeTable
@@ -321,10 +321,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: DynamoDB
             - Action:
               - route53:ChangeResourceRecordSets
@@ -339,10 +339,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: Route53HostedZones
             - Action:
               - cloudformation:DescribeStackEvents
@@ -360,10 +360,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: CloudFormation
             - Action:
               - cloudwatch:PutDashboard
@@ -374,10 +374,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: CloudWatch
             # TODO: review and scope down IAM policies
             - Action:
@@ -392,10 +392,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: IAMModify
             # TODO: review and scope down IAM policies
             - Action:
@@ -411,10 +411,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: IAM
             # TODO: review and scope down IAM policies
             - Action:
@@ -426,10 +426,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: IAMInstanceProfile
             - Action:
               - lambda:CreateFunction
@@ -449,10 +449,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: Lambda
             - Action:
               - codebuild:*
@@ -462,10 +462,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: CodeBuild
             - Action:
               - s3:*
@@ -473,10 +473,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: S3ResourcesBucket
             - Action:
               - s3:Get*
@@ -487,10 +487,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: S3ParallelClusterReadOnly
             - Action:
               - fsx:*
@@ -498,10 +498,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: FSx
             - Action:
               - ecr:*
@@ -509,10 +509,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: ECR
             - Action:
               - batch:*
@@ -520,20 +520,20 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: Batch
             - Action:
               - events:*
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Resource: '*'
               Sid: AmazonCloudWatchEvents
             - Action:
@@ -542,10 +542,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: SSMDescribe
             - Action:
               - ecs:DescribeContainerInstances
@@ -554,10 +554,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: ECS
             - Action:
               - elasticfilesystem:*
@@ -565,10 +565,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: EFS
             - Action:
               - imagebuilder:*
@@ -576,10 +576,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: ImageBuilder
             - Action:
               - logs:DeleteLogGroup
@@ -590,10 +590,10 @@ Resources:
               Effect: Allow
               Condition: !If
                 - IsMultiRegion
+                - !Ref AWS::NoValue
                 - StringEquals:
                     aws:RequestedRegion:
                       - !Ref AWS::Region
-                - !Ref AWS::NoValue
               Sid: CloudWatchLogs
 
   ParallelClusterFunctionLogGroup:
