@@ -1036,18 +1036,18 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
-  /v3/images/custom/{imageName}:
+  /v3/images/custom/{imageId}:
     delete:
       description: Initiate the deletion of the custom ParallelCluster image.
       operationId: delete_image
       parameters:
-      - description: Name of the image
+      - description: Id of the image
         explode: false
         in: path
-        name: imageName
+        name: imageId
         required: true
         schema:
-          description: Name of the image
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
@@ -1137,13 +1137,13 @@ paths:
       description: Get detailed information about an existing image.
       operationId: describe_image
       parameters:
-      - description: Name of the image
+      - description: Id of the image
         explode: false
         in: path
-        name: imageName
+        name: imageId
         required: true
         schema:
-          description: Name of the image
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
@@ -1304,7 +1304,7 @@ components:
       example:
         amiId: amiId
         os: os
-        name: name
+        id: id
         architecture: architecture
       properties:
         amiId:
@@ -1313,8 +1313,8 @@ components:
         os:
           title: os
           type: string
-        name:
-          title: name
+        id:
+          title: id
           type: string
         architecture:
           title: architecture
@@ -1322,7 +1322,7 @@ components:
       required:
       - amiId
       - architecture
-      - name
+      - id
       - os
       title: AmiInfo
       type: object
@@ -1352,15 +1352,15 @@ components:
     BuildImageRequestContent:
       example:
         imageConfiguration: imageConfiguration
-        name: name
+        id: id
         region: region
       properties:
         imageConfiguration:
           description: Image configuration as a YAML document
           format: byte
           type: string
-        name:
-          description: Name of the image
+        id:
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
@@ -1370,12 +1370,12 @@ components:
           type: string
       required:
       - imageConfiguration
-      - name
+      - id
       type: object
     BuildImageResponseContent:
       example:
         image:
-          imageName: imageName
+          imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -1652,7 +1652,7 @@ components:
     DeleteImageResponseContent:
       example:
         image:
-          imageName: imageName
+          imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -1807,7 +1807,7 @@ components:
       example:
         imageConfiguration:
           s3Url: s3Url
-        imageName: imageName
+        imageId: imageId
         imagebuilderImageStatus: null
         creationTime: 2000-01-23T04:56:07.000+00:00
         imageBuildStatus: null
@@ -1834,9 +1834,9 @@ components:
       properties:
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
-        imageName:
-          description: Name of the Image
-          title: imageName
+        imageId:
+          description: Id of the Image
+          title: imageId
           type: string
         imagebuilderImageStatus:
           $ref: '#/components/schemas/ImageBuilderImageStatus'
@@ -1880,7 +1880,7 @@ components:
       - creationTime
       - imageBuildStatus
       - imageConfiguration
-      - imageName
+      - imageId
       - region
       - tags
       - version
@@ -1892,11 +1892,11 @@ components:
         items:
         - amiId: amiId
           os: os
-          name: name
+          id: id
           architecture: architecture
         - amiId: amiId
           os: os
-          name: name
+          id: id
           architecture: architecture
       properties:
         nextToken:
@@ -2035,19 +2035,19 @@ components:
       type: object
     ImageInfoSummary:
       example:
-        imageName: imageName
+        imageId: imageId
         imageBuildStatus: null
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
         region: region
         version: version
       properties:
-        imageName:
-          description: Name of the image
+        imageId:
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
-          title: imageName
+          title: imageId
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
@@ -2069,7 +2069,7 @@ components:
       - cloudformationStackArn
       - cloudformationStackStatus
       - imageBuildStatus
-      - imageName
+      - imageId
       - region
       - version
       title: ImageInfoSummary
@@ -2144,13 +2144,13 @@ components:
       example:
         nextToken: nextToken
         items:
-        - imageName: imageName
+        - imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
           region: region
           version: version
-        - imageName: imageName
+        - imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn

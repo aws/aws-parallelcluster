@@ -60,7 +60,7 @@ def build_image(
     build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
     return BuildImageResponseContent(
         image=ImageInfoSummary(
-            image_name="image",
+            image_id="image",
             image_build_status=ImageBuildStatus.BUILD_FAILED,
             cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
             cloudformation_stack_arn="arn",
@@ -71,12 +71,12 @@ def build_image(
 
 
 @configure_aws_region()
-def delete_image(image_name, region=None, client_token=None, force=None):
+def delete_image(image_id, region=None, client_token=None, force=None):
     """
     Initiate the deletion of the custom ParallelCluster image.
 
-    :param image_name: Name of the image
-    :type image_name: str
+    :param image_id: Id of the image
+    :type image_id: str
     :param region: AWS Region. Defaults to the region the API is deployed to.
     :type region: str
     :param client_token: Idempotency token that can be set by the client so that retries for the same request are
@@ -89,7 +89,7 @@ def delete_image(image_name, region=None, client_token=None, force=None):
     """
     return DeleteImageResponseContent(
         image=ImageInfoSummary(
-            image_name="image",
+            image_id="image",
             image_build_status=ImageBuildStatus.BUILD_FAILED,
             cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
             cloudformation_stack_arn="arn",
@@ -100,12 +100,12 @@ def delete_image(image_name, region=None, client_token=None, force=None):
 
 
 @configure_aws_region()
-def describe_image(image_name, region=None):
+def describe_image(image_id, region=None):
     """
     Get detailed information about an existing image.
 
-    :param image_name: Name of the image
-    :type image_name: str
+    :param image_id: Id of the image
+    :type image_id: str
     :param region: AWS Region. Defaults to the region the API is deployed to.
     :type region: str
 
@@ -113,7 +113,7 @@ def describe_image(image_name, region=None):
     """
     return DescribeImageResponseContent(
         image_configuration=ImageConfigurationStructure(s3_url="s3"),
-        image_name="imagename",
+        image_id="imageid",
         imagebuilder_image_status=ImageBuilderImageStatus.BUILDING,
         creation_time=datetime.now(),
         image_build_status=ImageBuildStatus.BUILD_FAILED,
