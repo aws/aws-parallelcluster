@@ -157,9 +157,6 @@ class ImageInfoSummary(Model):
         :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
         :type cloudformation_stack_status: CloudFormationStatus
         """
-        if cloudformation_stack_status is None:
-            raise ValueError("Invalid value for `cloudformation_stack_status`, must not be `None`")
-
         self._cloudformation_stack_status = cloudformation_stack_status
 
     @property
@@ -182,9 +179,6 @@ class ImageInfoSummary(Model):
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
         :type cloudformation_stack_arn: str
         """
-        if cloudformation_stack_arn is None:
-            raise ValueError("Invalid value for `cloudformation_stack_arn`, must not be `None`")
-
         self._cloudformation_stack_arn = cloudformation_stack_arn
 
     @property

@@ -148,14 +148,12 @@ def describe_official_images(version=None, region=None, os=None, architecture=No
 
 
 @configure_aws_region()
-def list_images(region=None, next_token=None, image_status=None):
+def list_images(region=None, image_status=None):
     """
     Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default.
 
     :param region: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
     :type region: str
-    :param next_token: Token to use for paginated requests.
-    :type next_token: str
     :param image_status: Filter by image status.
     :type image_status: list | bytes
 
