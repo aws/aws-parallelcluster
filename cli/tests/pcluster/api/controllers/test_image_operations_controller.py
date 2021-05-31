@@ -91,7 +91,6 @@ class TestImageOperationsController:
         """Test case for list_images."""
         query_string = [
             ("region", "eu-west-1"),
-            ("nextToken", "next_token_example"),
             ("imageStatus", ImageBuildStatus.BUILD_FAILED),
             ("imageStatus", ImageBuildStatus.BUILD_COMPLETE),
         ]

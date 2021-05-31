@@ -857,15 +857,6 @@ paths:
             AWS region the API is deployed to.
           type: string
         style: form
-      - description: Token to use for paginated requests.
-        explode: true
-        in: query
-        name: nextToken
-        required: false
-        schema:
-          description: Token to use for paginated requests.
-          type: string
-        style: form
       - description: Filter by image status.
         explode: true
         in: query
@@ -2066,8 +2057,6 @@ components:
           title: version
           type: string
       required:
-      - cloudformationStackArn
-      - cloudformationStackStatus
       - imageBuildStatus
       - imageId
       - region
@@ -2142,7 +2131,6 @@ components:
       type: object
     ListImagesResponseContent:
       example:
-        nextToken: nextToken
         items:
         - imageId: imageId
           imageBuildStatus: null
@@ -2157,10 +2145,6 @@ components:
           region: region
           version: version
       properties:
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
         items:
           items:
             $ref: '#/components/schemas/ImageInfoSummary'
