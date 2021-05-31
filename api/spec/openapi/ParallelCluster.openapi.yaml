@@ -1587,8 +1587,6 @@ components:
           type: string
           description: ParallelCluster version used to build the image
       required:
-        - cloudformationStackArn
-        - cloudformationStackStatus
         - imageBuildStatus
         - imageId
         - region
