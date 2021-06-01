@@ -82,7 +82,7 @@ class StackInfo:
         :return: ParameterValue if that parameter exists, otherwise None
         """
         param_value = next((par["ParameterValue"] for par in self._params if par["ParameterKey"] == key_name), None)
-        return param_value.strip()
+        return None if param_value is None else param_value.strip()
 
 
 class InstanceInfo:

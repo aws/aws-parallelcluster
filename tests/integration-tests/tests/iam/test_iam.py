@@ -59,14 +59,15 @@ def test_iam_roles(
     # Test updating the iam_lambda_role
     updated_lambda_role_name = role_factory("lambda", [lambda_policies])
     assert_that(updated_lambda_role_name == lambda_role_name).is_false()
-    cluster.config_file = str(
-        pcluster_config_reader(
-            config_file=updated_config_file_name,
-            ec2_iam_role=cluster_role_name,
-            iam_lambda_role=updated_lambda_role_name,
+    cluster.update(
+        str(
+            pcluster_config_reader(
+                config_file=updated_config_file_name,
+                ec2_iam_role=cluster_role_name,
+                iam_lambda_role=updated_lambda_role_name,
+            )
         )
     )
-    cluster.update()
 
     # Check all CloudFormation stacks after update
     _check_lambda_role(cfn_client, lambda_client, cluster.name, updated_lambda_role_name, not is_awsbatch)
@@ -130,10 +131,8 @@ def _test_batch_access(remote_command_executor, region):
 @pytest.mark.regions(["eu-central-1"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.oss(["alinux2"])
-@pytest.mark.usefixtures("os", "instance")
-def test_s3_read_write_resource(
-    region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir, scheduler
-):
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_s3_read_write_resource(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for testing s3_read_resource and s3_read_write_resource
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)

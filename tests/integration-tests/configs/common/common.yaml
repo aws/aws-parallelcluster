@@ -453,7 +453,6 @@ update:
       - regions: ["eu-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-        schedulers: ["awsbatch"]
   test_update.py::test_update_slurm:
     dimensions:
       - regions: ["eu-west-1"]

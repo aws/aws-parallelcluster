@@ -473,10 +473,11 @@ class Efa(Resource):
 class CloudWatchLogs(Resource):
     """Represent the CloudWatch configuration in Logs."""
 
-    def __init__(self, enabled: bool = None, retention_in_days: int = None, **kwargs):
+    def __init__(self, enabled: bool = None, retention_in_days: int = None, retain_on_delete: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.enabled = Resource.init_param(enabled, default=CW_LOGS_ENABLED_DEFAULT)
         self.retention_in_days = Resource.init_param(retention_in_days, default=CW_LOGS_RETENTION_DAYS_DEFAULT)
+        self.retain_on_delete = Resource.init_param(retain_on_delete, default=True)
 
 
 class CloudWatchDashboards(Resource):

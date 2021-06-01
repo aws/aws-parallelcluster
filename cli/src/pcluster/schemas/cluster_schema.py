@@ -605,6 +605,7 @@ class CloudWatchLogsSchema(BaseSchema):
         validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
+    retain_on_delete = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

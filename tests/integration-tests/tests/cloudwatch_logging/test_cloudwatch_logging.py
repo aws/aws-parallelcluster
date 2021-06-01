@@ -642,5 +642,5 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
 def _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner):
     """Verify CloudWatch logs integration behaves as expected while a cluster is running and after it's deleted."""
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
-    cluster.delete(keep_logs=True)
+    cluster.delete(delete_logs=False)
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)

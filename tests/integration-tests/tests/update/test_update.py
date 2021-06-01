@@ -23,13 +23,12 @@ from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
-from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
-from tests.common.utils import fetch_instance_slots
+from tests.common.schedulers_common import SlurmCommands
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("os", "instance")
-def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -41,8 +40,7 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.config_file = str(init_config_file)
-    cluster.update(force=True)
+    cluster.update(str(init_config_file), force=True)
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
@@ -100,8 +98,7 @@ def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_dat
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
     )
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
+    cluster.update(str(updated_config_file))
 
     # Here is the expected list of nodes.
     # the cluster:
@@ -391,7 +388,7 @@ def _check_volume(cluster, config, region):
 
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.usefixtures("os", "scheduler", "instance")
+@pytest.mark.usefixtures("os", "instance")
 def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader()
@@ -401,13 +398,11 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     _verify_initialization(region, cluster, cluster.config)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.config_file = str(init_config_file)
-    cluster.update(force=False)
+    cluster.update(str(init_config_file), force=False)
 
     # Update cluster with new configuration
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
+    cluster.update(str(updated_config_file))
 
     # Read updated configuration
     with open(updated_config_file) as conf_file:
@@ -444,76 +439,3 @@ def get_batch_spot_bid_percentage(stack_name, region):
         .get("computeResources")
         .get("bidPercentage")
     )
-
-
-def _check_update_compute(
-    pcluster_config_reader,
-    clusters_factory,
-    init_config_name,
-    update_config_name,
-    scheduler,
-    region,
-    disable_hyperthreading=False,
-    cfn_scheduler_slots=None,
-):
-    # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(config_file=init_config_name)
-    cluster = clusters_factory(init_config_file)
-
-    # Check cfn_scheduler_slots before changing compute instance type
-    _check_compute_node_slots(
-        cluster,
-        scheduler,
-        region,
-        "c5.xlarge",
-        disable_hyperthreading=disable_hyperthreading,
-        cfn_scheduler_slots=cfn_scheduler_slots,
-        nodes_number=2,
-    )
-    cluster.stop()
-
-    # Update cluster with new configuration and change the compute instance type to c5.2xlarge
-    updated_config_file = pcluster_config_reader(update_config_name)
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
-
-    # Check cfn_scheduler_slots changed by changing compute instance type
-    _check_compute_node_slots(
-        cluster,
-        scheduler,
-        region,
-        "c5.2xlarge",
-        disable_hyperthreading=disable_hyperthreading,
-        cfn_scheduler_slots=cfn_scheduler_slots,
-    )
-
-
-def _check_compute_node_slots(
-    cluster, scheduler, region, new_compute_instance_type, disable_hyperthreading, cfn_scheduler_slots, nodes_number=1
-):
-    # Command executors
-    command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
-
-    # Get new slots_per_instance
-    slots_per_instance = fetch_instance_slots(region, new_compute_instance_type)
-    if disable_hyperthreading or cfn_scheduler_slots == "cores":
-        slots_per_instance = slots_per_instance // 2
-    elif cfn_scheduler_slots and cfn_scheduler_slots.isdigit():
-        slots_per_instance = int(cfn_scheduler_slots)
-
-    # assert number of slots assigned to scheduler is correct
-    assert_that(slots_per_instance * nodes_number).is_equal_to(4)
-
-    # submit a job to check cfn_scheduler_slot has been updated
-    result = scheduler_commands.submit_command("sleep 10", nodes=nodes_number, slots=slots_per_instance)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-
-    # assert the slots used for each node in scheduler
-    expected_nodes_used_slots = ["4"] if nodes_number == 1 else ["2", "2"]
-    actual_nodes_used_slots = scheduler_commands.get_nodes_used_slots()
-    for expected_slots, actual_slots in zip(expected_nodes_used_slots, actual_nodes_used_slots):
-        assert_that(expected_slots).is_equal_to(actual_slots)
-    scheduler_commands.wait_job_completed(job_id)
-    assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(nodes_number)
-    scheduler_commands.assert_job_succeeded(job_id)

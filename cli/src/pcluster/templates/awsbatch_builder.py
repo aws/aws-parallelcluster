@@ -33,6 +33,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_default_instance_tags,
     get_mount_dirs_by_type,
     get_queue_security_groups_full,
+    get_retain_log_on_delete,
     get_shared_storage_ids_by_type,
 )
 
@@ -520,12 +521,13 @@ class AwsBatchConstruct(Construct):
     def _add_code_build_docker_image_builder_project(self):
         log_group_name = f"/aws/codebuild/{self.stack_name}-CodeBuildDockerImageBuilderProject"
 
-        logs.CfnLogGroup(
+        log_group = logs.CfnLogGroup(
             self.stack_scope,
             "CodeBuildLogGroup",
             log_group_name=log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
+        log_group.cfn_options.deletion_policy = get_retain_log_on_delete(self.config)
 
         return codebuild.CfnProject(
             self.stack_scope,

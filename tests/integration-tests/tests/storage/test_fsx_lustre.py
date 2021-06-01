@@ -64,8 +64,8 @@ def test_fsx_lustre_configuration_options(
     auto_import_policy,
     region,
     pcluster_config_reader,
-    clusters_factory,
     s3_bucket_factory,
+    clusters_factory,
     test_datadir,
     os,
     scheduler,
@@ -144,8 +144,8 @@ def _test_fsx_lustre_configuration_options(
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
-    clusters_factory,
     s3_bucket_factory,
+    clusters_factory,
     test_datadir,
     os,
     scheduler,
@@ -310,7 +310,7 @@ def test_existing_fsx(
     _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
     """
     Define a fixture to manage the creation and destruction of fsx.

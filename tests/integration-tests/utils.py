@@ -441,3 +441,12 @@ def dict_has_nested_key(d, keys):
         except KeyError:
             return False
     return True
+
+
+def dict_add_nested_key(d, value, keys):
+    _d = d
+    for key in keys[:-1]:
+        if key not in _d:
+            _d[key] = {}
+        _d = _d[key]
+    _d[keys[-1]] = value
