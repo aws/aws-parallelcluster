@@ -631,10 +631,17 @@ class AmiSearchFilters(Resource):
 class ClusterDevSettings(BaseDevSettings):
     """Represent the dev settings configuration."""
 
-    def __init__(self, cluster_template: str = None, ami_search_filters: AmiSearchFilters = None, **kwargs):
+    def __init__(
+        self,
+        cluster_template: str = None,
+        ami_search_filters: AmiSearchFilters = None,
+        instance_types_data: str = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.cluster_template = Resource.init_param(cluster_template)
         self.ami_search_filters = Resource.init_param(ami_search_filters)
+        self.instance_types_data = Resource.init_param(instance_types_data)
 
     def _validate(self):
         super()._validate()

@@ -297,6 +297,11 @@ class Cluster:
             LOGGER.info("Validating cluster configuration...")
             # syntactic validation
             cluster_config_dict = config_dict or self.source_config
+            if "DevSettings" in cluster_config_dict:
+                instance_types_data = cluster_config_dict["DevSettings"].get("InstanceTypesData")
+                if instance_types_data:
+                    # Set additional instance types data in AWSApi. Schema load will use the information.
+                    AWSApi.instance().ec2.additional_instance_types_data = json.loads(instance_types_data)
             config = ClusterSchema().load(cluster_config_dict)
 
             # semantic validation

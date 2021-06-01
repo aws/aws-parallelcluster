@@ -21,12 +21,15 @@ class Ec2Client(Boto3Client):
 
     def __init__(self):
         super().__init__("ec2")
+        self.additional_instance_types_data = {}
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def list_instance_types(self) -> List[str]:
         """Return a list of instance types."""
-        return [offering.get("InstanceType") for offering in self.describe_instance_type_offerings()]
+        return [offering.get("InstanceType") for offering in self.describe_instance_type_offerings()] + list(
+            self.additional_instance_types_data.keys()
+        )
 
     @AWSExceptionHandler.handle_client_exception
     def describe_instance_type_offerings(self, filters=None, location_type=None):
@@ -187,7 +190,8 @@ class Ec2Client(Boto3Client):
     def get_instance_type_info(self, instance_type):
         """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
         return InstanceTypeInfo(
-            self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+            self.additional_instance_types_data.get(instance_type)
+            or self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
         )
 
     @AWSExceptionHandler.handle_client_exception

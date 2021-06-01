@@ -775,6 +775,7 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
 
     cluster_template = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     ami_search_filters = fields.Nested(AmiSearchFiltersSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
