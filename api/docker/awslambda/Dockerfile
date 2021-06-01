@@ -1,19 +1,16 @@
-### Stage 1: needed to retrieve the node binary for CDK
-FROM public.ecr.aws/lambda/nodejs:14 AS nodejs_docker
-
-### Stage 2: creates the wheel package from the pcluster source
+### Stage 1: creates the wheel package from the pcluster source
 FROM public.ecr.aws/lambda/python:3.8 AS build_pcluster
 
 RUN python -m pip install --upgrade setuptools wheel pip
-ADD src ./cli/src
+COPY src ./cli/src
 COPY setup.py MANIFEST.in README ./cli/
 RUN cd cli && python setup.py bdist_wheel
 
-### Stage 3: prepares the AWS Lambda environment
+### Stage 2: prepares the AWS Lambda environment
 FROM public.ecr.aws/lambda/python:3.8 AS pcluster_lambda
 
 # Copy the node runtime
-COPY --from=nodejs_docker /var/lang/bin/node /var/lang/bin
+COPY --from=public.ecr.aws/lambda/nodejs:14 /var/lang/bin/node /var/lang/bin
 # Copy the aws-parallelcluster wheel package
 COPY --from=build_pcluster /var/task/cli/dist/* ./dist/
 # Install aws-parallelcluster
