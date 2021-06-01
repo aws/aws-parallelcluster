@@ -7,10 +7,12 @@
 # limitations under the License.
 
 # pylint: disable=W0613
-
+import os as os_lib
 from datetime import datetime
 
 from pcluster.api.controllers.common import configure_aws_region
+from pcluster.api.converters import cloud_formation_status_to_image_status
+from pcluster.api.errors import BadRequestException, NotFoundException
 from pcluster.api.models import (
     BuildImageRequestContent,
     BuildImageResponseContent,
@@ -24,6 +26,8 @@ from pcluster.api.models import (
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.models.imagebuilder import ImageBuilder, NonExistingImageError
+from pcluster.models.imagebuilder_resources import NonExistingStackError
 
 
 @configure_aws_region(is_query_string_arg=False)
@@ -87,16 +91,51 @@ def delete_image(image_id, region=None, client_token=None, force=None):
 
     :rtype: DeleteImageResponseContent
     """
+    if client_token:
+        raise BadRequestException("clientToken is currently not supported for this operation")
+
+    force = force or False
+    imagebuilder = ImageBuilder(image_id=image_id)
+    image, stack = _get_underlying_image_or_stack(imagebuilder)
+
+    imagebuilder.delete(force=force)
+
+    if stack:
+        cloud_formation_status_after_deletion = _get_cloud_formation_status_after_deletion(stack.name)
+        image_build_status_after_deletion = cloud_formation_status_to_image_status(
+            cloud_formation_status_after_deletion
+        )
+
     return DeleteImageResponseContent(
         image=ImageInfoSummary(
-            image_id="image",
-            image_build_status=ImageBuildStatus.BUILD_FAILED,
-            cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-            cloudformation_stack_arn="arn",
-            region="region",
-            version="3.0.0",
+            image_id=image_id,
+            image_build_status=image_build_status_after_deletion if stack else ImageBuildStatus.DELETE_COMPLETE,
+            cloudformation_stack_status=cloud_formation_status_after_deletion if stack else None,
+            cloudformation_stack_arn=stack.id if stack else None,
+            region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+            version=stack.version if stack else image.version,
         )
     )
+
+
+def _get_underlying_image_or_stack(imagebuilder):
+    image = None
+    stack = None
+    try:
+        image = imagebuilder.image
+    except NonExistingImageError:
+        try:
+            stack = imagebuilder.stack
+        except NonExistingStackError:
+            raise NotFoundException("Unable to find an image of stack with id: {}".format(imagebuilder.image_id))
+    return image, stack
+
+
+def _get_cloud_formation_status_after_deletion(stack_name):
+    try:
+        return ImageBuilder(image_id=stack_name).stack.status
+    except NonExistingStackError:
+        return CloudFormationStatus.DELETE_COMPLETE
 
 
 @configure_aws_region()
