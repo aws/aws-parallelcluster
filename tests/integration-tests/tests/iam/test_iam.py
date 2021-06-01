@@ -49,13 +49,12 @@ def test_iam_roles(
     )
     cluster = clusters_factory(cluster_config)
 
-    main_stack_name = "parallelcluster-" + cluster.name
     cfn_client = boto3.client("cloudformation", region_name=region)
     lambda_client = boto3.client("lambda", region_name=region)
 
     # Check all CloudFormation stacks after creation
     # If scheduler is awsbatch, there will still be IAM roles created.
-    _check_lambda_role(cfn_client, lambda_client, main_stack_name, lambda_role_name, not is_awsbatch)
+    _check_lambda_role(cfn_client, lambda_client, cluster.name, lambda_role_name, not is_awsbatch)
 
     # Test updating the iam_lambda_role
     updated_lambda_role_name = role_factory("lambda", [lambda_policies])
@@ -70,7 +69,7 @@ def test_iam_roles(
     cluster.update()
 
     # Check all CloudFormation stacks after update
-    _check_lambda_role(cfn_client, lambda_client, main_stack_name, updated_lambda_role_name, not is_awsbatch)
+    _check_lambda_role(cfn_client, lambda_client, cluster.name, updated_lambda_role_name, not is_awsbatch)
 
 
 def _check_lambda_role(cfn_client, lambda_client, stack_name, lambda_role_name, check_no_role_is_created):

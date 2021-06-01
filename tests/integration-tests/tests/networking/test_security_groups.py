@@ -38,10 +38,7 @@ def test_additional_sg_and_ssh_from(region, custom_security_group, pcluster_conf
     logging.info("Asserting the security group of pcluster is not overwritten by additional seurity group")
     for instance in instances:
         assert_that(
-            any(
-                security_group["GroupName"].startswith("parallelcluster")
-                for security_group in instance["SecurityGroups"]
-            )
+            any(security_group["GroupName"].startswith(cluster.name) for security_group in instance["SecurityGroups"])
         ).is_true()
     logging.info("Asserting the security group of pcluster on the head node is aligned with ssh_from")
     check_headnode_security_group(region, cluster, 22, ssh_from)
