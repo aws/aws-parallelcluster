@@ -339,7 +339,7 @@ schedulers:
         schedulers: ["torque"]
   test_awsbatch.py::test_awsbatch:
     dimensions:
-      - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
+      - regions: ["eu-north-1", "us-gov-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
@@ -427,7 +427,7 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_CHINA_X86 }}
         schedulers: ["slurm"]
-      - regions: ["ap-northeast-1", "cn-north-1"]
+      - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_BATCH }}
         schedulers: ["awsbatch"]
