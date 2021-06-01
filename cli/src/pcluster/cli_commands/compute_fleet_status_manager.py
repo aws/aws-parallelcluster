@@ -15,6 +15,8 @@ from enum import Enum
 import boto3
 from boto3.dynamodb.conditions import Attr
 
+from pcluster.constants import PCLUSTER_DYNAMODB_PREFIX
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -65,7 +67,7 @@ class ComputeFleetStatusManager:
         pass
 
     def __init__(self, cluster_name):
-        self._table_name = "parallelcluster-" + cluster_name
+        self._table_name = PCLUSTER_DYNAMODB_PREFIX + cluster_name
         self._ddb_resource = boto3.resource("dynamodb")
         self._table = self._ddb_resource.Table(self._table_name)
 

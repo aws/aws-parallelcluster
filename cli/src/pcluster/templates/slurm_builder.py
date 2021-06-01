@@ -18,7 +18,7 @@ from aws_cdk import aws_route53 as route53
 from aws_cdk.core import CfnOutput, CfnParameter, CfnTag, Construct, CustomResource, Fn, Stack
 
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
-from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG
+from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -185,8 +185,13 @@ class SlurmConstruct(Construct):
                         effect=iam.Effect.ALLOW,
                         actions=["dynamodb:Query"],
                         resources=[
-                            self._format_arn(service="dynamodb", resource="table/{0}".format(self.stack_name)),
-                            self._format_arn(service="dynamodb", resource="table/{0}/index/*".format(self.stack_name)),
+                            self._format_arn(
+                                service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"
+                            ),
+                            self._format_arn(
+                                service="dynamodb",
+                                resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}/index/*",
+                            ),
                         ],
                     ),
                 ]
