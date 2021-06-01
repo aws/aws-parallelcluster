@@ -752,7 +752,9 @@ class AdditionalPackagesSchema(BaseSchema):
 class AmiSearchFiltersSchema(BaseSchema):
     """Represent the schema of the AmiSearchFilters section."""
 
-    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    tags = fields.Nested(
+        TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
+    )
     owner = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load()
@@ -928,7 +930,7 @@ class ComputeSettingsSchema(BaseSchema):
 class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
-    name = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     networking = fields.Nested(
         QueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )

@@ -53,7 +53,7 @@ def execute(args):
                 )
                 if not verified:
                     LOGGER.critical("\nCluster update failed.  Failed events:")
-                    utils.log_stack_failure_recursive(result.stack_name)
+                    utils.log_stack_failure_recursive(result.stack_name, failed_states=["UPDATE_FAILED"])
                     sys.exit(1)
 
                 result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())

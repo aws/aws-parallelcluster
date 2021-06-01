@@ -160,7 +160,7 @@ def _create_network_stack(configuration, parameters):
     stack_name = "parallelclusternetworking-{0}{1}".format(configuration.stack_name_prefix, TIMESTAMP)
     try:
         cfn_client = boto3.client("cloudformation")
-        stack = cfn_client.create_stack_from_url(
+        stack = cfn_client.create_stack(
             StackName=stack_name,
             TemplateURL=get_templates_bucket_path()
             + "networking/%s-%s.cfn.json" % (configuration.template_name, get_installed_version()),
