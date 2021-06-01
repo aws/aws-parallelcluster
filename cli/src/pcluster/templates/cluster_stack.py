@@ -48,7 +48,7 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.constants import OS_MAPPING, PCLUSTER_S3_ARTIFACTS_DICT
+from pcluster.constants import OS_MAPPING, PCLUSTER_DYNAMODB_PREFIX, PCLUSTER_S3_ARTIFACTS_DICT
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
@@ -576,7 +576,11 @@ class ClusterCdkStack(Stack):
                             "dynamodb:DescribeTable",
                         ],
                         effect=iam.Effect.ALLOW,
-                        resources=[self.format_arn(service="dynamodb", resource=f"table/{self._stack_name}")],
+                        resources=[
+                            self.format_arn(
+                                service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self._stack_name}"
+                            )
+                        ],
                     ),
                     iam.PolicyStatement(
                         sid="S3GetObj",
@@ -893,7 +897,7 @@ class ClusterCdkStack(Stack):
         table = dynamodb.CfnTable(
             self,
             "DynamoDBTable",
-            table_name=self._stack_name,
+            table_name=PCLUSTER_DYNAMODB_PREFIX + self._stack_name,
             attribute_definitions=[
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
