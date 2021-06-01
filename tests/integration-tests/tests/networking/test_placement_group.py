@@ -26,7 +26,7 @@ from utils import generate_stack_name
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os", "instance", "scheduler", "region")
-def test_placement_group(region, pcluster_config_reader, clusters_factory, placement_group_stack, instance):
+def test_placement_group(region, pcluster_config_reader, placement_group_stack, clusters_factory, instance):
     """Test the case when placement_group is in queue section. This test is only for slurm."""
     existing_placement_group = placement_group_stack.cfn_resources["PlacementGroup"]
     cluster_config = pcluster_config_reader(placement_group=existing_placement_group)

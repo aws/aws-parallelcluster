@@ -45,6 +45,7 @@ from retrying import retry
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
+    dict_add_nested_key,
     dict_has_nested_key,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
@@ -303,7 +304,7 @@ def clusters_factory(request, region):
     yield _cluster_factory
     if not request.config.getoption("no_delete"):
         factory.destroy_all_clusters(
-            keep_logs=request.config.getoption("keep_logs_on_test_failure") and request.node.rep_call.failed
+            delete_logs=request.config.getoption("keep_logs_on_test_failure") and request.node.rep_call.passed
         )
 
 
@@ -375,15 +376,6 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
     return _config_renderer
 
 
-def _dict_add_nested_key(d, value, keys):
-    _d = d
-    for key in keys[:-1]:
-        if key not in _d:
-            _d[key] = {}
-        _d = _d[key]
-    _d[keys[-1]] = value
-
-
 def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
     with open(cluster_config) as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
@@ -391,14 +383,14 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
     if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")
     ):
-        _dict_add_nested_key(
+        dict_add_nested_key(
             config_content,
             request.config.getoption("custom_chef_cookbook"),
             ("DevSettings", "Cookbook", "ChefCookbook"),
         )
 
     if request.config.getoption("custom_ami") and not dict_has_nested_key(config_content, ("Image", "CustomAmi")):
-        _dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
+        dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
 
     if not dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
         if request.config.getoption("cookbook_git_ref") or request.config.getoption("node_git_ref"):
@@ -409,16 +401,16 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
                 )
             if request.config.getoption("node_git_ref"):
                 tags.append({"Key": "parallelcluster_node_ref", "Value": request.config.getoption("node_git_ref")})
-            _dict_add_nested_key(config_content, tags, ("DevSettings", "AmiSearchFilters", "Tags"))
+            dict_add_nested_key(config_content, tags, ("DevSettings", "AmiSearchFilters", "Tags"))
         if request.config.getoption("ami_owner"):
-            _dict_add_nested_key(
+            dict_add_nested_key(
                 config_content, request.config.getoption("ami_owner"), ("DevSettings", "AmiSearchFilters", "Owner")
             )
 
     for option, config_param in [("pre_install", "OnNodeStart"), ("post_install", "OnNodeConfigured")]:
         if request.config.getoption(option):
             if not dict_has_nested_key(config_content, ("HeadNode", "CustomActions", config_param)):
-                _dict_add_nested_key(
+                dict_add_nested_key(
                     config_content,
                     request.config.getoption(option),
                     ("HeadNode", "CustomActions", config_param, "Script"),
@@ -428,7 +420,7 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
             if config_content["Scheduling"]["Scheduler"] != "awsbatch":
                 for queue in config_content["Scheduling"]["Queues"]:
                     if not dict_has_nested_key(queue, ("CustomActions", config_param)):
-                        _dict_add_nested_key(
+                        dict_add_nested_key(
                             queue, request.config.getoption(option), ("CustomActions", config_param, "Script")
                         )
                         _add_policy_for_pre_post_install(queue, option, request, region)
@@ -438,7 +430,7 @@ def add_custom_packages_configs(cluster_config, request, region):  # noqa C901
         ("custom_node_package", "NodePackage"),
     ]:
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
-            _dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
+            dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
     with open(cluster_config, "w") as conf_file:
         yaml.dump(config_content, conf_file)
@@ -463,7 +455,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
                 if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
                     node_config["Iam"]["AdditionalIamPolicies"].append({"Policy": additional_iam_policies})
             else:
-                _dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
+                dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
 
 
 def _get_arn_partition(region):
@@ -837,7 +829,7 @@ def _create_vpc_stack(request, template, region, cfn_stacks_factory):
     return stack
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="class")
 def s3_bucket_factory(region):
     """
     Define a fixture to create S3 buckets.
@@ -920,7 +912,7 @@ def key_name(request):
     return request.config.getoption("key_name")
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def pcluster_ami_without_standard_naming(region, os, architecture):
     """
     Define a fixture to manage the creation and deletion of AMI without standard naming.

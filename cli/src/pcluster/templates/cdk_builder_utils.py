@@ -17,7 +17,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import CfnTag, Construct, Fn, Stack
+from aws_cdk.core import CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import (
     BaseClusterConfig,
@@ -218,6 +218,10 @@ def get_cloud_watch_logs_retention_days(config: BaseClusterConfig) -> int:
     )
 
 
+def get_retain_log_on_delete(config: BaseClusterConfig):
+    return CfnDeletionPolicy.RETAIN if config.monitoring.logs.cloud_watch.retain_on_delete else CfnDeletionPolicy.DELETE
+
+
 def get_queue_security_groups_full(compute_security_groups: dict, queue: BaseQueue):
     """Return full security groups to be used for the queue, default plus additional ones."""
     queue_security_groups = []
@@ -275,6 +279,7 @@ class PclusterLambdaConstruct(Construct):
             log_group_name=f"/aws/lambda/{function_name}",
             retention_in_days=get_cloud_watch_logs_retention_days(config),
         )
+        self.log_group.cfn_options.deletion_policy = get_retain_log_on_delete(config)
 
         self.lambda_func = awslambda.CfnFunction(
             scope,

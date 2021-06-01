@@ -52,6 +52,7 @@ per cluster.
    - Version -> parallelcluster:version
 - Remove tag: Application.
 - Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
+- Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file. 
 
 2.x.x
 ------

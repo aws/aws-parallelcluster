@@ -52,7 +52,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos8", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_snapshot(
-    request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory
+    request, vpc_stacks, region, scheduler, pcluster_config_reader, snapshots_factory, clusters_factory
 ):
     logging.info("Testing ebs snapshot")
     mount_dir = "ebs_mount_dir"
@@ -141,7 +141,7 @@ def _get_ebs_settings_by_name(config, name):
 @pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
-    request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory
+    request, vpc_stacks, region, scheduler, pcluster_config_reader, snapshots_factory, clusters_factory
 ):
     logging.info("Testing ebs existing")
     existing_mount_dir = "existing_mount_dir"
@@ -314,7 +314,7 @@ def _assert_volume_configuration(expected_settings, volume_id, region):
         assert_that(actual_root_volume_settings[key]).is_equal_to(expected_settings[key])
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def snapshots_factory():
     factory = EBSSnapshotsFactory()
     yield factory
