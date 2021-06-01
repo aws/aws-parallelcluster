@@ -33,13 +33,11 @@ structure ImageInfoSummary {
     @required
     @documentation("ParallelCluster version used to build the image")
     version: Version,
-    @required
     @documentation("ARN of the main CloudFormation stack")
     cloudformationStackArn: String,
     @required
     @documentation("Status of the image build.")
     imageBuildStatus: ImageBuildStatus,
-    @required
     @documentation("Status of the CloudFormation stack for the image build process.")
     cloudformationStackStatus: CloudFormationStatus,
 }

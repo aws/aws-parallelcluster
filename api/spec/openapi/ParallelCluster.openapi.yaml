@@ -742,12 +742,6 @@ paths:
           schema:
             type: string
             description: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
-        - name: nextToken
-          in: query
-          description: Token to use for paginated requests.
-          schema:
-            type: string
-            description: Token to use for paginated requests.
         - name: imageStatus
           in: query
           description: Filter by image status.
@@ -1617,8 +1611,6 @@ components:
           type: string
           description: ParallelCluster version used to build the image
       required:
-        - cloudformationStackArn
-        - cloudformationStackStatus
         - imageBuildStatus
         - imageId
         - region
@@ -1667,9 +1659,6 @@ components:
     ListImagesResponseContent:
       type: object
       properties:
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
         items:
           type: array
           items:
