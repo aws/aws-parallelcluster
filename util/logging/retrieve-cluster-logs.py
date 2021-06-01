@@ -32,7 +32,6 @@ LOGGER = logging.getLogger(__file__)
 
 DEFAULT_BUCKET_PREFIX_FORMAT = "{{cluster_name}}-logs-{timestamp}".format(timestamp=datetime.now().timestamp())
 DEFAULT_TARBALL_PATH_FORMAT = "{bucket_prefix_format}.tar.gz".format(bucket_prefix_format=DEFAULT_BUCKET_PREFIX_FORMAT)
-PCLUSTER_STACK_PREFIX = "parallelcluster-"
 
 
 def err_and_exit(message):
@@ -54,7 +53,7 @@ def get_cloudwatch_log_group_name(stack_name, region):
 
 def get_log_group(args):
     """Get log group for args.cluster."""
-    log_group_name = get_cloudwatch_log_group_name(PCLUSTER_STACK_PREFIX + args.cluster, args.region)
+    log_group_name = get_cloudwatch_log_group_name(args.cluster, args.region)
     if log_group_name is None:
         # ClusterCWLogGroup is not present as output in pre 3.0 version.
         log_group_name = args.cluster
