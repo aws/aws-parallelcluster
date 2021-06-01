@@ -237,27 +237,6 @@ paths:
           description: AWS Region. Defaults to the region the API is deployed to.
           type: string
         style: form
-      - description: Retain cluster logs on delete. Defaults to True.
-        explode: true
-        in: query
-        name: retainLogs
-        required: false
-        schema:
-          description: Retain cluster logs on delete. Defaults to True.
-          nullable: true
-          type: boolean
-        style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
-          type: string
-        style: form
       responses:
         "202":
           content:
@@ -1376,8 +1355,8 @@ components:
           description: AWS Region. Defaults to the region the API is deployed to.
           type: string
       required:
-      - imageConfiguration
       - id
+      - imageConfiguration
       type: object
     BuildImageResponseContent:
       example:

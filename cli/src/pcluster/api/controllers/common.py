@@ -68,6 +68,26 @@ def configure_aws_region(is_query_string_arg: bool = True):
     return _decorator_validate_region
 
 
+def http_success_status_code(status_code: int = 200):
+    """
+    Set the status code for successful API responses.
+
+    It can be used as a decorator for API controller methods that need to return a status code different
+    from 200 for successful requests.
+
+    :param status_code: status code to return for successful requests
+    """
+
+    def _decorator_http_success_status_code(func):
+        @functools.wraps(func)
+        def _wrapper_http_success_status_code(*args, **kwargs):
+            return func(*args, **kwargs), status_code
+
+        return _wrapper_http_success_status_code
+
+    return _decorator_http_success_status_code
+
+
 def check_cluster_version(cluster):
     return cluster.stack.version and packaging.version.parse("4.0.0") > packaging.version.parse(
         cluster.stack.version

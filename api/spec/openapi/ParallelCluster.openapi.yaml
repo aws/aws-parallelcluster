@@ -194,19 +194,6 @@ paths:
           schema:
             type: string
             description: AWS Region. Defaults to the region the API is deployed to.
-        - name: retainLogs
-          in: query
-          description: Retain cluster logs on delete. Defaults to True.
-          schema:
-            type: boolean
-            description: Retain cluster logs on delete. Defaults to True.
-            nullable: true
-        - name: clientToken
-          in: query
-          description: Idempotency token that can be set by the client so that retries for the same request are idempotent
-          schema:
-            type: string
-            description: Idempotency token that can be set by the client so that retries for the same request are idempotent
       responses:
         "202":
           description: DeleteCluster 202 response
