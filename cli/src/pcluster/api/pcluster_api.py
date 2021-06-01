@@ -182,6 +182,7 @@ class PclusterApi:
     @staticmethod
     def delete_cluster(cluster_name: str, region: str, keep_logs: bool = True):
         """Delete cluster."""
+        cluster = None
         try:
             if region:
                 os.environ["AWS_DEFAULT_REGION"] = region
@@ -190,6 +191,8 @@ class PclusterApi:
             cluster.delete(keep_logs)
             return ClusterInfo(cluster.stack)
         except Exception as e:
+            if cluster:
+                cluster.terminate_nodes()
             return ApiFailure(str(e))
 
     @staticmethod

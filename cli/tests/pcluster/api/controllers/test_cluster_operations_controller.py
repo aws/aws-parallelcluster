@@ -150,7 +150,7 @@ class TestCreateCluster:
         }
 
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.status_code).is_equal_to(202)
             assert_that(response.get_json()).is_equal_to(expected_response)
         cluster_create_mock.assert_called_with(
             disable_rollback=not (rollback_on_failure or True),
@@ -406,18 +406,149 @@ class TestCreateCluster:
 
 
 class TestDeleteCluster:
-    def test_delete_cluster(self, client):
-        query_string = [("region", "eu-west-1"), ("retainLogs", True), ("clientToken", "client_token_example")]
+    url = "/v3/clusters/{cluster_name}"
+    method = "DELETE"
+
+    def _send_test_request(self, client, cluster_name="clustername", region="us-east-1"):
+        query_string = [
+            ("region", region),
+        ]
         headers = {
             "Accept": "application/json",
         }
-        response = client.open(
-            "/v3/clusters/{cluster_name}".format(cluster_name="clustername"),
-            method="DELETE",
-            headers=headers,
-            query_string=query_string,
+        return client.open(
+            self.url.format(cluster_name=cluster_name), method=self.method, headers=headers, query_string=query_string
         )
-        assert_that(response.status_code).is_equal_to(200)
+
+    @pytest.mark.parametrize(
+        "cfn_stack_data, expected_response",
+        [
+            (
+                cfn_describe_stack_mock_response(),
+                {
+                    "cluster": {
+                        "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                        "cloudformationStackStatus": "DELETE_IN_PROGRESS",
+                        "clusterName": "clustername",
+                        "clusterStatus": "DELETE_IN_PROGRESS",
+                        "region": "us-east-1",
+                        "version": "3.0.0",
+                    }
+                },
+            ),
+            (
+                cfn_describe_stack_mock_response({"StackStatus": "DELETE_IN_PROGRESS"}),
+                {
+                    "cluster": {
+                        "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                        "cloudformationStackStatus": "DELETE_IN_PROGRESS",
+                        "clusterName": "clustername",
+                        "clusterStatus": "DELETE_IN_PROGRESS",
+                        "region": "us-east-1",
+                        "version": "3.0.0",
+                    }
+                },
+            ),
+        ],
+        ids=["required", "cluster_delete_in_progress"],
+    )
+    def test_successful_request(self, mocker, client, cfn_stack_data, expected_response):
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
+        cluster_delete_mock = mocker.patch(
+            "pcluster.models.cluster.Cluster.delete",
+            auto_spec=True,
+        )
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(202)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+        if cfn_stack_data["StackStatus"] != "DELETE_IN_PROGRESS":
+            cluster_delete_mock.assert_called_with(keep_logs=False)
+        else:
+            cluster_delete_mock.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "region, cluster_name, expected_response",
+        [
+            (
+                "us-east-",
+                "clustername",
+                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
+            ),
+            (
+                "us-east-1",
+                "a",
+                {"message": "Bad Request: 'a' is too short"},
+            ),
+            (
+                "us-east-1",
+                "aaaaa.aaa",
+                {"message": "Bad Request: 'aaaaa.aaa' does not match '^[a-zA-Z][a-zA-Z0-9-]+$'"},
+            ),
+        ],
+        ids=["bad_region", "short_cluster_name", "invalid_cluster_name"],
+    )
+    def test_malformed_request(self, client, region, cluster_name, expected_response):
+        response = self._send_test_request(client, cluster_name=cluster_name, region=region)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_cluster_not_found(self, client, mocker):
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("func", "stack"))
+
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(404)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "major version. In case you have running instances belonging to a deleted cluster please"
+                    " use the DeleteClusterInstances API."
+                }
+            )
+
+    def test_incompatible_version(self, client, mocker):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(
+                {"Tags": [{"Key": "parallelcluster:version", "Value": "2.0.0"}]}
+            ),
+        )
+
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
+                    " version."
+                }
+            )
+
+    def test_cluster_action_error(self, client, mocker):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(),
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.delete",
+            auto_spec=True,
+            side_effect=ClusterActionError("error message"),
+        )
+
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(500)
+            assert_that(response.get_json()).is_equal_to(
+                {"message": "Failed when deleting cluster due to: error message."}
+            )
 
 
 class TestDescribeCluster:
@@ -658,8 +789,8 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster clustername does not exist or belongs to an incompatible ParallelCluster major "
-                    "version."
+                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "major version."
                 }
             )
 
@@ -677,7 +808,7 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "Bad Request: cluster clustername belongs to an incompatible ParallelCluster major"
+                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
                     " version."
                 }
             )
