@@ -12,6 +12,7 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
+import json
 import logging
 import time
 from copy import deepcopy
@@ -310,6 +311,7 @@ class Cluster:
 
         except ValidationError as e:
             # syntactic failure
+            ClusterSchema.process_validation_message(e)
             validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
             raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
 

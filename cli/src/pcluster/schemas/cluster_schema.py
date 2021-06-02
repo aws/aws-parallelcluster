@@ -77,7 +77,13 @@ from pcluster.config.cluster_config import (
     Ssh,
 )
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
+from pcluster.constants import (
+    EBS_VOLUME_SIZE_DEFAULT,
+    FSX_HDD_THROUGHPUT,
+    FSX_SSD_THROUGHPUT,
+    SUPPORTED_OSES,
+    SUPPORTED_SCHEDULERS,
+)
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
@@ -1152,3 +1158,20 @@ class ClusterSchema(BaseSchema):
 
         cluster.source_config = original_data
         return cluster
+
+    @staticmethod
+    def process_validation_message(validation_error: ValidationError):
+        """
+        Process error message.
+
+        Because there are some @pre_load(s) changing the structure of the schema,
+        """
+        # We need to modify the error message to be aligned with the structure before @pre_load(s)
+        error_message = validation_error.args[0]
+        if "Scheduling" in error_message:
+            scheduling = error_message["Scheduling"]
+            for scheduler in SUPPORTED_SCHEDULERS:
+                scheduler_settings = scheduling.get(scheduler.capitalize())
+                if scheduler_settings:
+                    error_message["Scheduling"] = scheduler_settings
+                    break
