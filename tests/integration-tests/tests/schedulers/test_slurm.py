@@ -1045,7 +1045,7 @@ def _test_active_job_running(scheduler_commands, remote_command_executor):
         remote_command_executor,
         ["/var/log/parallelcluster/clustermgtd"],
         [
-            "Not entering protected mode since active are jobs running in bootstrap failure partitions",
+            "currently have jobs running, not disabling them",
         ],
     )
     assert_that(scheduler_commands.get_partition_state(partition="half-broken")).is_equal_to("UP")
@@ -1062,8 +1062,9 @@ def _test_protected_mode(scheduler_commands, remote_command_executor, cluster):
         ["/var/log/parallelcluster/clustermgtd"],
         [
             "Setting cluster into protected mode due to failures detected in node provisioning",
-            "Bootstrap failure partitions",
+            "Placing bootstrap failure partitions to INACTIVE",
             "Updating compute fleet status from RUNNING to PROTECTED",
+            "is in power up state without valid backing instance",
         ],
     )
     # Assert bootstrap failure queues are inactive and compute fleet status is PROTECTED
@@ -1092,7 +1093,7 @@ def _test_recover_from_protected_mode(
     Test all queues can run jobs.
     """
     # Update the cluster again, remove the pre-install script to make the cluster work as expected
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.ini", bucket=bucket_name)
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.recover.ini", bucket=bucket_name)
     cluster.config_file = str(updated_config_file)
     _update_and_start_cluster(cluster)
     # Assert all queues are UP
@@ -1110,3 +1111,6 @@ def _test_recover_from_protected_mode(
         )
         scheduler_commands.wait_job_completed(job_id)
         scheduler_commands.assert_job_succeeded(job_id)
+    # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
+    # not enter protected mode
+    assert_that(cluster.status()).contains("ComputeFleetStatus: RUNNING")
