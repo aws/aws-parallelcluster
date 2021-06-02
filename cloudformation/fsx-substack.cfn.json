@@ -285,23 +285,6 @@
         "HDD"
       ]
     },
-    "UseDataCompression": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Fn::Select": [
-                "19",
-                {
-                  "Ref": "FSXOptions"
-                }
-              ]
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
     "UseDNSName": {
       "Fn::Not": [
         {
@@ -622,18 +605,10 @@
             ]
           },
           "DataCompressionType": {
-            "Fn::If": [
-              "UseDataCompression",
+            "Fn::Select": [
+              "19",
               {
-                "Fn::Select": [
-                  "19",
-                  {
-                    "Ref": "FSXOptions"
-                  }
-                ]
-              },
-              {
-                "Ref": "AWS::NoValue"
+                "Ref": "FSXOptions"
               }
             ]
           }
