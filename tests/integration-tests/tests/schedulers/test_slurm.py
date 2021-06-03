@@ -240,7 +240,7 @@ def _assert_cluster_initial_conditions(
     for nodename, node_states in cluster_node_states.items():
         if "dummy" in nodename:
             c5l_nodes.append(nodename)
-        if "ondemand" in nodename:
+        if "-ondemand" in nodename:
             instance_nodes.append(nodename)
         if node_states == "idle":
             if "-st-" in nodename:
