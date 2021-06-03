@@ -11,7 +11,7 @@ CHANGELOG
 - Add support for FSx Lustre DataCompressionType feature.
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
 - Transition from IMDSv1 to IMDSv2.
-- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state 
+- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
   in case recurrent failures are encountered when provisioning nodes.
 
 **CHANGES**
@@ -21,14 +21,17 @@ CHANGELOG
 - Upgrade Slurm to version 20.11.7.
   - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds
   - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value for all GPU, Type=tesla
-- Upgrade Arm Performance Libraries (APL) to version 21.0.0  
-- Make `key_name` parameter optional to support cluster configurations without a key pair. 
+- Upgrade Arm Performance Libraries (APL) to version 21.0.0
+- Make `key_name` parameter optional to support cluster configurations without a key pair.
 - Remove support for Python versions < 3.6.
 - Remove dependency on `future` package and `__future__` module.
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
-- Add sanity check to prevent cluster creation in non officially supported AWS regions 
+- Add sanity check to prevent cluster creation in non officially supported AWS regions
 - Change instance IAM policies to restrict run-instance API to only launching instances in the compute subnet.
 
+**BUG FIXES**
+
+- Use ICP-complaint AL2 repo URLs when building Docker images in China
 
 2.10.4
 ------
@@ -56,7 +59,7 @@ CHANGELOG
 
 **BUG FIXES**
 
-- Fix issue with ``awsbsub`` command when setting environment variables for the job submission 
+- Fix issue with ``awsbsub`` command when setting environment variables for the job submission
 
 2.10.2
 ------
@@ -71,7 +74,7 @@ CHANGELOG
 
 **BUG FIXES**
 
-- Fix sanity checks with ARM instance types by using cluster AMI when performing validation  
+- Fix sanity checks with ARM instance types by using cluster AMI when performing validation
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
 - Use non interactive `apt update` command when building custom Ubuntu AMIs.
 - Fix `encrypted_ephemeral = true` when using Alinux2 or CentOS8
@@ -89,13 +92,13 @@ CHANGELOG
 - Install Arm Performance Libraries (APL) 20.2.1 on ARM AMIs (CentOS8, Alinux2, Ubuntu1804).
 - Install EFA kernel module on ARM instances with `alinux2` and `ubuntu1804`. This enables support for `c6gn` instances.
 - Add support for io2 and gp3 EBS volume type.
-- Add `iam_lambda_role` parameter under `cluster` section to enable the possibility to specify an existing IAM role to 
-  be used by AWS Lambda functions in CloudFormation. 
-  When using `sge`, `torque`, or `slurm` as the scheduler, 
+- Add `iam_lambda_role` parameter under `cluster` section to enable the possibility to specify an existing IAM role to
+  be used by AWS Lambda functions in CloudFormation.
+  When using `sge`, `torque`, or `slurm` as the scheduler,
   `pcluster` will not create any IAM role if both `ec2_iam_role` and `iam_lambda_role` are provided.
 - Improve robustness of a Slurm cluster when clustermgtd is down.
 - Configure NFS threads to be max(8, num_cores) for performance. This enhancement will not take effect on Ubuntu 16.04.
-- Optimize calls to DescribeInstanceTypes EC2 API when validating cluster configuration. 
+- Optimize calls to DescribeInstanceTypes EC2 API when validating cluster configuration.
 
 **CHANGES**
 
@@ -112,7 +115,7 @@ CHANGELOG
   The runlevel is set to graphical.target on head node only when DCV is enabled. This prevents the execution of
   graphical services, such as x/gdm, when they are not required.
 - Download Intel MPI and HPC packages from S3 rather than Intel yum repos.
-- Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type 
+- Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type
     (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
 - Enable support for p4d as head node instance type (p4d was already supported as compute node in 2.10.0).
 - Pull Amazon Linux Docker images from public ECR when building docker image for `awsbatch` scheduler.
@@ -128,7 +131,7 @@ CHANGELOG
 - Set the default EBS volume size to 500 GiB when volume type is `st1` or `sc1`.
 - Fix installation of Intel PSXE package on CentOS 7 by using yum4.
 - Fix routing issues with multiple Network Interfaces on Ubuntu 18.04.
-  
+
 2.10.0
 ------
 
@@ -143,9 +146,9 @@ CHANGELOG
 - FSx Lustre:
   - Add possibility to configure Auto Import policy through the new `auto_import_policy` parameter.
   - Add support to HDD storage type and the new `storage_type` and `drive_cache_type` configuration parameters.
-- Create a CloudWatch Dashboard for the cluster, named `<clustername>-<region>`, including head node EC2 metrics and 
+- Create a CloudWatch Dashboard for the cluster, named `<clustername>-<region>`, including head node EC2 metrics and
   cluster logs. It can be disabled by configuring the `enable` parameter in the `dashboard` section.
-- Add `-r/-region` arg to `pcluster configure` command. If this arg is provided, configuration will 
+- Add `-r/-region` arg to `pcluster configure` command. If this arg is provided, configuration will
   skip region selection.
 - Add `-r/-region` arg to`ssh` and `dcv connect` commands.
 - Add `cluster_resource_bucket` parameter under `cluster` section to allow the user to specify an existing S3 bucket.
@@ -301,13 +304,13 @@ CHANGELOG
 - Upgrade EFA installer to version 1.9.4:
   - Kernel module: ``efa-2.6.0`` (from efa-1.5.1)
   - RDMA core: ``rdma-core-28.amzn0`` (from rdma-core-25.0)
-  - Libfabric: ``libfabric-1.10.1amzn1.1`` (updated from libfabric-aws-1.9.0amzn1.1) 
+  - Libfabric: ``libfabric-1.10.1amzn1.1`` (updated from libfabric-aws-1.9.0amzn1.1)
   - Open MPI: openmpi40-aws-4.0.3 (no change)
 - Avoid unnecessary validation of IAM policies.
 - Removed unused dependency on supervisor from the Batch Dockerfile.
 - Move all LogGroup definitions in the CloudFormation templates into the CloudWatch substack.
 - Disable libvirtd service on CentOS 7. Virtual bridge interfaces are incorrectly detected by Open MPI and
-  cause MPI applications to hang, see https://www.open-mpi.org/faq/?category=tcp#tcp-selection for details 
+  cause MPI applications to hang, see https://www.open-mpi.org/faq/?category=tcp#tcp-selection for details
 - Use CINC instead of Chef for provisioning instances. See https://cinc.sh/about/ for details.
 - Retry when mounting an NFS mount fails.
 - Install the ``pyenv`` virtual environments used by ParallelCluster cookbook and node daemon code under
