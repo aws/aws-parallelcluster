@@ -58,6 +58,13 @@ class StackNotFoundError(AWSClientError):
         super().__init__(function_name=function_name, message=f"Stack with id {stack_name} does not exist")
 
 
+class LimitExceededError(AWSClientError):
+    """Error caused by exceeding the limits of a downstream AWS service."""
+
+    def __init__(self, function_name: str, message: str, error_code: str = None):
+        super().__init__(function_name=function_name, message=message, error_code=error_code)
+
+
 class AWSExceptionHandler:
     """AWS Exception handler."""
 
@@ -78,7 +85,13 @@ class AWSExceptionHandler:
                 error = AWSClientError(func.__name__, str(e))
             except ClientError as e:
                 # add request id
-                error = AWSClientError(func.__name__, e.response["Error"]["Message"], e.response["Error"]["Code"])
+                message = e.response["Error"]["Message"]
+                error_code = e.response["Error"]["Code"]
+
+                if error_code in AWSClientError.ErrorCode.throttling_error_codes():
+                    error = LimitExceededError(func.__name__, message, error_code)
+                else:
+                    error = AWSClientError(func.__name__, message, error_code)
             LOGGER.error("Encountered error when performing boto3 call in %s: %s", error.function_name, error.message)
             raise error
 
