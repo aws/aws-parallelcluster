@@ -89,6 +89,7 @@ DEFAULT_FSX_DICT = {
     "drive_cache_type": "NONE",
     "existing_mount_name": "NONE",
     "existing_dns_name": "NONE",
+    "data_compression_type": "NONE",
 }
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
@@ -271,7 +272,7 @@ DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE
 
 DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
-DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "{}".format(",".join(["NONE"] * 19))}
+DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "{}".format(",".join(["NONE"] * 20))}
 
 DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
 DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
@@ -342,7 +343,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "{}".format(",".join(["NONE"] * 19)),
+    "FSXOptions": "{}".format(",".join(["NONE"] * 20)),
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings
@@ -414,7 +415,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "{}".format(",".join(["NONE"] * 19)),
+    "FSXOptions": "{}".format(",".join(["NONE"] * 20)),
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings

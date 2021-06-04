@@ -92,7 +92,7 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "arm64": SUPPORTED_OSS,
 }
 
-FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
+FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE", "data_compression_type": "NONE"}
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],

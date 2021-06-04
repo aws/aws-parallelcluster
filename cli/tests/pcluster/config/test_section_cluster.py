@@ -1153,8 +1153,7 @@ def test_cluster_section_to_cfn(
                     # raid
                     "RAIDOptions": "raid,NONE,2,gp2,20,NONE,false,NONE,125",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
-                    "NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,{}".format(",".join(["NONE"] * 19)),
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                     "Scheduler": "sge",
@@ -1219,8 +1218,7 @@ def test_cluster_section_to_cfn(
                     # raid
                     "RAIDOptions": "raid,NONE,2,gp2,20,NONE,false,NONE,125",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
-                    "NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,{}".format(",".join(["NONE"] * 19)),
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                 },

@@ -2,6 +2,15 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2
 
 ENV USER root
 
+ARG AWS_REGION
+
+# Copy entrypoint and scripts
+COPY scripts/ /parallelcluster/bin/
+RUN chmod +x /parallelcluster/bin/*
+
+# Modify Amazon Linux yum repo configuration
+RUN /parallelcluster/bin/modify_china_yum_vars.sh "${AWS_REGION}"
+
 RUN yum update -y \
     && yum -y install \
     aws-cli \
@@ -44,10 +53,6 @@ RUN echo "${USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
 
 # setup path
 ENV PATH "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/lib64/openmpi/bin/"
-
-# Copy entrypoint and scripts
-COPY scripts/ /parallelcluster/bin/
-RUN chmod +x /parallelcluster/bin/*
 
 # expose ssh port
 EXPOSE 22

@@ -373,7 +373,7 @@
       "Type": "String"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of fsx related options, 19 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,auto_import_policy,storage_type,drive_cache_type,existing_mount_name,existing_dns_name]",
+      "Description": "Comma separated list of fsx related options, 20 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,auto_import_policy,storage_type,drive_cache_type,existing_mount_name,existing_dns_name,data_compression_type]",
       "Type": "CommaDelimitedList"
     },
     "SubnetId": {
@@ -601,6 +601,14 @@
               },
               {
                 "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          "DataCompressionType": {
+            "Fn::Select": [
+              "19",
+              {
+                "Ref": "FSXOptions"
               }
             ]
           }
