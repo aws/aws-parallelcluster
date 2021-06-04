@@ -221,6 +221,10 @@ efa:
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
+      - regions: ["us-east-2"]
+        instances: [{{ common.instance("instance_type_1") }}]
+        oss: ["alinux2", "centos8", "ubuntu2004"]
+        schedulers: ["slurm"]
   test_efa.py::test_sit_efa:
     dimensions:
       - regions: ["us-east-1"]
@@ -403,6 +407,10 @@ schedulers:
       - regions: ["us-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
+        schedulers: ["slurm"]
+      - regions: ["us-east-2"]
+        instances: [{{ common.instance("instance_type_1") }}]
+        oss: ["alinux2"]
         schedulers: ["slurm"]
   test_slurm.py::test_error_handling:
     dimensions:

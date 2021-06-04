@@ -1,4 +1,4 @@
-{%- import 'common.jinja2' as common -%}
+{%- import 'common.jinja2' as common with context -%}
 ---
 test-suites:
 {{- common.OSS_COMMERCIAL_ARM.append("centos7") or "" -}}
