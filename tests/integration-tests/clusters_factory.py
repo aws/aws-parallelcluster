@@ -36,7 +36,7 @@ class Cluster:
         self.ssh_key = ssh_key
         self.region = region
         with open(config_file) as conf_file:
-            self.config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+            self.config = yaml.safe_load(conf_file)
         self.has_been_deleted = False
         self.create_complete = False
         self.__cfn_parameters = None
@@ -67,7 +67,7 @@ class Cluster:
         # Only update config file attribute if update is successful
         self.config_file = config_file
         with open(self.config_file) as conf_file:
-            self.config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+            self.config = yaml.safe_load(conf_file)
 
         # reset cached properties
         self._reset_cached_properties()

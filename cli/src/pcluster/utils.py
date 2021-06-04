@@ -276,7 +276,7 @@ def get_url_scheme(url):
 def load_yaml_dict(file_path):
     """Read the content of a yaml file."""
     with open(file_path) as conf_file:
-        yaml_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
+        yaml_content = yaml.safe_load(conf_file)
 
     # TODO use from cfn_flip import load_yaml
     return yaml_content
