@@ -104,12 +104,8 @@ def _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir, 
     # Run Cluster Checker
     result = remote_command_executor.run_remote_script(str(test_datadir / "run_clck.sh"))
     try:
-        if os == "centos8":
-            # Centos 8 is not supported by Cluster Checker.
-            # The tool is looking for libstdc++.so.5 and is unable to detect libstdc++.so.6
-            assert_that(result.stdout).contains("Overall Result: 1 issue found - FUNCTIONALITY (1)")
-            assert_that(result.stdout).contains("The 'LP64' version of 'libstdc++.so.5' is missing")
-        else:
+        # Centos 8 is not supported by Cluster Checker.
+        if os != "centos8":
             assert_that(result.stdout).contains("Overall Result: No issues found")
     except AssertionError as e:
         logging.error(remote_command_executor.run_remote_command("cat clck_results.log").stdout)
