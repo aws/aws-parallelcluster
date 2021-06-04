@@ -179,7 +179,7 @@ def assert_config_contains_expected_values(
     key_name, scheduler, os, instance, vpc_id, headnode_subnet_id, compute_subnet_id, config_path
 ):
     with open(config_path) as conf_file:
-        config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+        config = yaml.safe_load(conf_file)
 
     # Assert that the config object contains the expected values
     param_validators = [

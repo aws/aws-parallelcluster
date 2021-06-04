@@ -144,7 +144,7 @@ def test_s3_read_write_resource(region, pcluster_config_reader, s3_bucket_factor
     cluster = clusters_factory(cluster_config)
 
     with open(cluster_config) as conf_file:
-        config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+        config = yaml.safe_load(conf_file)
 
     # Check S3 resources
     check_s3_read_resource(region, cluster, get_policy_resources(config, enable_write_access=False))

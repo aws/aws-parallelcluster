@@ -386,7 +386,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
 
 def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
     with open(cluster_config) as conf_file:
-        config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
+        config_content = yaml.safe_load(conf_file)
 
     if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
         config_content, ("DevSettings", "Cookbook", "ChefCookbook")

@@ -171,7 +171,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     # Read updated configuration
     with open(updated_config_file) as conf_file:
-        updated_config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+        updated_config = yaml.safe_load(conf_file)
 
     # Check new S3 resources
     check_s3_read_resource(region, cluster, get_policy_resources(updated_config, enable_write_access=False))
@@ -406,7 +406,7 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
     # Read updated configuration
     with open(updated_config_file) as conf_file:
-        updated_config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+        updated_config = yaml.safe_load(conf_file)
 
     # verify updated parameters
     _verify_initialization(region, cluster, updated_config)

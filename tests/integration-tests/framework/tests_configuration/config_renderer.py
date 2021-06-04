@@ -31,7 +31,7 @@ def read_config_file(config_file, print_rendered=False):
     logging.info("Parsing config file: %s", config_file)
     rendered_config = _render_config_file(config_file)
     try:
-        return yaml.load(rendered_config, Loader=yaml.SafeLoader)
+        return yaml.safe_load(rendered_config)
     except Exception:
         logging.exception("Failed when reading config file %s", config_file)
         print_rendered = True
