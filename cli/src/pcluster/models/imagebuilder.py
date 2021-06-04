@@ -20,7 +20,7 @@ import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError, get_region
+from pcluster.aws.common import AWSClientError, ImageNotFoundError, LimitExceededError, StackNotFoundError, get_region
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
@@ -33,7 +33,12 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError, StackError
+from pcluster.models.imagebuilder_resources import (
+    ImageBuilderStack,
+    LimitExceededStackError,
+    NonExistingStackError,
+    StackError,
+)
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -78,8 +83,29 @@ class ImageBuilderActionError(Exception):
         self.validation_failures = validation_failures or []
 
 
+class LimitExceededImageBuilderActionError(ImageBuilderActionError):
+    """Represent an error during the execution of an action on the imagebuilder due to limit exceeded."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class BadRequestImageBuilderActionError(ImageBuilderActionError):
+    """Represent an error during the execution of an action due to limit exceeded."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class ImageError(Exception):
     """Represent image errors."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class LimitExceededImageError(ImageError):
+    """Represent image errors due to limits exceeded."""
 
     def __init__(self, message: str):
         super().__init__(message)
@@ -90,6 +116,27 @@ class NonExistingImageError(ImageError):
 
     def __init__(self, image_id):
         super().__init__(f"Image {image_id} does not exist.")
+
+
+def _stack_error_mapper(error, message):
+    if isinstance(error, LimitExceededError):
+        return LimitExceededStackError(message)
+    else:
+        return StackError(message)
+
+
+def _image_error_mapper(error, message):
+    if isinstance(error, LimitExceededError):
+        return LimitExceededImageError(message)
+    else:
+        return ImageError(message)
+
+
+def _imagebuilder_error_mapper(error, message):
+    if isinstance(error, (LimitExceededImageError, LimitExceededStackError, LimitExceededError)):
+        return LimitExceededImageBuilderActionError(message)
+    else:
+        return ImageBuilderActionError(message)
 
 
 class ImageBuilder:
@@ -147,7 +194,7 @@ class ImageBuilder:
             except StackNotFoundError:
                 raise NonExistingStackError(self.image_id)
             except AWSClientError as e:
-                raise StackError(f"Unable to get image {self.image_id}, due to {e}")
+                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}")
         return self.__stack
 
     @property
@@ -159,7 +206,7 @@ class ImageBuilder:
             except ImageNotFoundError:
                 raise NonExistingImageError(self.image_id)
             except AWSClientError as e:
-                raise ImageError(f"Unable to get image {self.image_id}, due to {e}.")
+                raise _image_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}.")
 
         return self.__image
 
@@ -173,7 +220,7 @@ class ImageBuilder:
                     return key
             return None
         except StackError as e:
-            raise ImageBuilderActionError(f"Unable to get image {self.image_id} status , due to {e}")
+            raise _imagebuilder_error_mapper(e, f"Unable to get image {self.image_id} status , due to {e}")
 
     @property
     def source_config(self):
@@ -213,13 +260,13 @@ class ImageBuilder:
             custom_bucket_name = self.image.s3_bucket_name
         except ImageError as e:
             if not isinstance(e, NonExistingImageError):
-                raise ImageBuilderActionError(f"Unable to get S3 bucket name from image {self.image_id} . {e}")
+                raise _imagebuilder_error_mapper(e, f"Unable to get S3 bucket name from image {self.image_id} . {e}")
 
         if custom_bucket_name is None:
             try:
                 custom_bucket_name = self.stack.s3_bucket_name
             except StackError as e:
-                raise ImageBuilderActionError(f"Unable to get S3 bucket name from image {self.image_id}. {e}")
+                raise _imagebuilder_error_mapper(e, f"Unable to get S3 bucket name from image {self.image_id}. {e}")
 
         return (
             custom_bucket_name
@@ -235,7 +282,7 @@ class ImageBuilder:
         except ImageError as e:
             if not isinstance(e, NonExistingImageError):
                 LOGGER.error("Unable to find tag %s in image %s.", PCLUSTER_S3_IMAGE_DIR_TAG, self.image_id)
-                raise ImageBuilderActionError(f"Unable to get artifact directory from image {self.image_id}. {e}")
+                raise _imagebuilder_error_mapper(e, f"Unable to get artifact directory from image {self.image_id}. {e}")
 
         if s3_artifact_dir is None:
             try:
@@ -246,7 +293,7 @@ class ImageBuilder:
                         "No artifact directory found in image tag and cloudformation stack tag."
                     )
             except StackError as e:
-                raise ImageBuilderActionError(f"Unable to get artifact directory from image {self.image_id}. {e}")
+                raise _imagebuilder_error_mapper(e, f"Unable to get artifact directory from image {self.image_id}. {e}")
 
         return s3_artifact_dir
 
@@ -334,7 +381,7 @@ class ImageBuilder:
             if not creation_result and artifacts_uploaded:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete_s3_artifacts()
-            raise ImageBuilderActionError(f"ParallelCluster image build infrastructure creation failed.\n{e}")
+            raise _imagebuilder_error_mapper(e, f"ParallelCluster image build infrastructure creation failed.\n{e}")
 
     def _upload_config(self):
         """Upload source config to S3 bucket."""
@@ -346,8 +393,9 @@ class ImageBuilder:
                 )
 
         except Exception as e:
-            raise ImageBuilderActionError(
-                f"Unable to upload imagebuilder config to the S3 bucket {self.bucket.name} due to exception: {e}"
+            raise _imagebuilder_error_mapper(
+                e,
+                f"Unable to upload imagebuilder config to the S3 bucket {self.bucket.name} due to exception: {e}",
             )
 
     def _upload_artifacts(self):
@@ -369,8 +417,9 @@ class ImageBuilder:
                 resource_dir=resources, custom_artifacts_name=self._s3_artifacts_dict.get("custom_artifacts_name")
             )
         except Exception as e:
-            raise ImageBuilderActionError(
-                f"Unable to upload imagebuilder cfn template to the S3 bucket {self.bucket.name} due to exception: {e}"
+            raise _imagebuilder_error_mapper(
+                e,
+                f"Unable to upload imagebuilder cfn template to the S3 bucket {self.bucket.name} due to exception: {e}",
             )
 
     def delete(self, force=False):  # noqa: C901
@@ -406,7 +455,7 @@ class ImageBuilder:
                     logging.warning("Unable to delete log group %s.", self._log_group_name())
 
             except (AWSClientError, ImageError) as e:
-                raise ImageBuilderActionError(f"Unable to delete image and stack, due to {str(e)}")
+                raise _imagebuilder_error_mapper(e, f"Unable to delete image and stack, due to {str(e)}")
 
     def _check_image_is_shared(self):
         """Check the image is shared with other account."""
@@ -424,7 +473,7 @@ class ImageBuilder:
         except (AWSClientError, ImageError) as e:
             if isinstance(e, NonExistingImageError):
                 return False
-            raise ImageBuilderActionError(f"Unable to delete image and stack, due to {str(e)}")
+            raise _imagebuilder_error_mapper(e, f"Unable to delete image and stack, due to {str(e)}")
 
     def _check_instance_using_image(self):
         """Check image is used by other instances."""
@@ -437,12 +486,16 @@ class ImageBuilder:
                     self.image_id,
                     str(result),
                 )
-                raise ImageBuilderActionError("Unable to delete image and stack")
+                raise BadRequestImageBuilderActionError(
+                    "Unable to delete image and stack: image {} is used by instances {}.".format(
+                        self.image_id, str(result)
+                    )
+                )
             return False
         except (AWSClientError, ImageError) as e:
             if isinstance(e, NonExistingImageError):
                 return False
-            raise ImageBuilderActionError(f"Unable to delete image and stack, due to {str(e)}")
+            raise _imagebuilder_error_mapper(e, f"Unable to delete image and stack, due to {str(e)}")
 
     def _validate_id(self):
         match = re.match(PCLUSTER_IMAGE_ID_REGEX, self.image_id)

@@ -7,12 +7,19 @@
 # limitations under the License.
 
 # pylint: disable=W0613
+import functools
 import os as os_lib
 from datetime import datetime
 
 from pcluster.api.controllers.common import configure_aws_region
 from pcluster.api.converters import cloud_formation_status_to_image_status
-from pcluster.api.errors import BadRequestException, NotFoundException
+from pcluster.api.errors import (
+    BadRequestException,
+    InternalServiceException,
+    LimitExceededException,
+    NotFoundException,
+    ParallelClusterApiException,
+)
 from pcluster.api.models import (
     BuildImageRequestContent,
     BuildImageResponseContent,
@@ -26,8 +33,36 @@ from pcluster.api.models import (
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
-from pcluster.models.imagebuilder import ImageBuilder, NonExistingImageError
-from pcluster.models.imagebuilder_resources import NonExistingStackError
+from pcluster.models.imagebuilder import (
+    BadRequestImageBuilderActionError,
+    ImageBuilder,
+    LimitExceededImageBuilderActionError,
+    LimitExceededImageError,
+    NonExistingImageError,
+)
+
+from ...models.imagebuilder_resources import LimitExceededStackError, NonExistingStackError
+
+
+def convert_imagebuilder_errors():
+    def _decorate_image_operations_api(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except ParallelClusterApiException as e:
+                error = e
+            except (LimitExceededImageError, LimitExceededStackError, LimitExceededImageBuilderActionError) as e:
+                error = LimitExceededException(str(e))
+            except BadRequestImageBuilderActionError as e:
+                error = BadRequestException(str(e))
+            except Exception as e:
+                error = InternalServiceException(str(e))
+            raise error
+
+        return wrapper
+
+    return _decorate_image_operations_api
 
 
 @configure_aws_region(is_query_string_arg=False)
@@ -75,6 +110,7 @@ def build_image(
 
 
 @configure_aws_region()
+@convert_imagebuilder_errors()
 def delete_image(image_id, region=None, client_token=None, force=None):
     """
     Initiate the deletion of the custom ParallelCluster image.
@@ -127,7 +163,9 @@ def _get_underlying_image_or_stack(imagebuilder):
         try:
             stack = imagebuilder.stack
         except NonExistingStackError:
-            raise NotFoundException("Unable to find an image of stack with id: {}".format(imagebuilder.image_id))
+            raise NotFoundException(
+                "Unable to find an image or stack for ParallelCluster image id: {}".format(imagebuilder.image_id)
+            )
     return image, stack
 
 

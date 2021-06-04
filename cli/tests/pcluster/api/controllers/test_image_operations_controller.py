@@ -15,7 +15,8 @@ from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import ImageNotFoundError, StackNotFoundError
-from pcluster.models.imagebuilder import ImageBuilderActionError
+from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, LimitExceededImageError
+from pcluster.models.imagebuilder_resources import LimitExceededStackError
 
 
 class TestImageOperationsController:
@@ -96,11 +97,13 @@ class TestDeleteImage:
     url = "/v3/images/custom/{image_name}"
     method = "DELETE"
 
-    def _send_test_request(self, client, image_name, region="us-east-1", force=True):
+    def _send_test_request(self, client, image_name, region="us-east-1", force=True, client_token=None):
         query_string = [
             ("force", force),
             ("region", region),
         ]
+        if client_token:
+            query_string.append(("clientToken", client_token))
         headers = {
             "Accept": "application/json",
         }
@@ -232,7 +235,7 @@ class TestDeleteImage:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
-                {"message": "Unable to find an image of stack with id: nonExistentImage"}
+                {"message": "Unable to find an image or stack for ParallelCluster image id: nonExistentImage"}
             )
 
     @pytest.mark.parametrize(
@@ -262,18 +265,47 @@ class TestDeleteImage:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
-    def test_that_a_server_internal_error_is_thrown_if_the_delete_fails(self, client, mocker):
+    def test_that_imagebuilder_bad_request_error_is_converted(self, client, mocker):
         image = self._create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
         mocker.patch(
-            "pcluster.models.imagebuilder.ImageBuilder.delete", side_effect=ImageBuilderActionError("test error")
+            "pcluster.models.imagebuilder.ImageBuilder.delete",
+            side_effect=BadRequestImageBuilderActionError("test error"),
         )
-        expected_error = {
-            "message": "Unexpected fatal exception. Please look "
-            "at the application logs for details on the encountered failure."
-        }
+        expected_error = {"message": "Bad Request: test error"}
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+    @pytest.mark.parametrize("error", [LimitExceededImageError, LimitExceededStackError, LimitExceededImageError])
+    def test_that_limit_exceeded_error_is_converted(self, client, mocker, error):
+        image = self._create_image_info("image1")
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.delete", side_effect=error("test error"))
+        expected_error = {"message": "test error"}
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(429)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+    def test_that_other_errors_are_converted(self, client, mocker):
+        image = self._create_image_info("image1")
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.delete", side_effect=Exception("test error"))
+        expected_error = {"message": "test error"}
         response = self._send_test_request(client, "image1")
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(500)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+    def test_that_call_with_client_token_throws_bad_request(self, client, mocker):
+        expected_error = {"message": "Bad Request: clientToken is currently not supported for this operation"}
+        response = self._send_test_request(client, "image1", client_token="clientToken")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_error)
