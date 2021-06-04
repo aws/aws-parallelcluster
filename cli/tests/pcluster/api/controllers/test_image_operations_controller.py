@@ -10,6 +10,7 @@ import json
 import pytest
 from assertpy import assert_that, soft_assertions
 
+from cli.tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from pcluster.api.models import CloudFormationStatus, ImageBuildStatus, ImageStatusFilteringOption
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.aws_resources import ImageInfo
@@ -26,39 +27,11 @@ from pcluster.models.imagebuilder import (
     LimitExceededImageBuilderActionError,
     LimitExceededImageError,
 )
-from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
+from pcluster.models.imagebuilder_resources import BadRequestStackError, ImageBuilderStack, LimitExceededStackError
 
 
 class TestImageOperationsController:
     """ImageOperationsController integration test stubs."""
-
-    def test_build_image(self, client):
-        """Test case for build_image."""
-        build_image_request_content = {
-            "imageConfiguration": "imageConfiguration",
-            "id": "imageid",
-            "region": "eu-west-1",
-        }
-        query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
-            ("validationFailureLevel", ValidationLevel.INFO),
-            ("dryrun", True),
-            ("rollbackOnFailure", True),
-            ("clientToken", "client_token_example"),
-        ]
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-        response = client.open(
-            "/v3/images/custom",
-            method="POST",
-            headers=headers,
-            data=json.dumps(build_image_request_content),
-            content_type="application/json",
-            query_string=query_string,
-        )
-        assert_that(response.status_code).is_equal_to(200)
 
     def test_describe_image(self, client):
         """Test case for describe_image."""
@@ -453,3 +426,59 @@ class TestDeleteImage:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_error)
+
+
+class TestBuildImage:
+    url = "/v3/images/custom"
+    method = "POST"
+    encoded_config = "SW1hZ2U6CiAgT3M6IGFsaW51eDIKSGVhZE5vZGU6CiAgSW5zdGFuY2VUeXBlOiB0Mi5taWNybw=="
+
+    def _send_test_request(self, client, dryrun=False):
+        build_image_request_content = {
+            "imageConfiguration": self.encoded_config,
+            "id": "imageid",
+            "region": "eu-west-1",
+        }
+        query_string = [
+            ("suppressValidators", ["suppress_validators_example"]),
+            ("validationFailureLevel", ValidationLevel.INFO),
+            ("dryrun", dryrun),
+            ("rollbackOnFailure", True),
+        ]
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        return client.open(
+            self.url,
+            method=self.method,
+            data=json.dumps(build_image_request_content),
+            headers=headers,
+            query_string=query_string,
+            content_type="application/json",
+        )
+
+    def test_build_image_success(self, client, mocker):
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", return_value=None)
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=_create_stack("image1", CloudFormationStatus.CREATE_IN_PROGRESS),
+        )
+
+        expected_response = {
+            "image": {
+                "cloudformationStackArn": "arn:image1",
+                "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+                "imageBuildStatus": "BUILD_IN_PROGRESS",
+                "imageId": "image1",
+                "region": "eu-west-1",
+                "version": "3.0.0",
+            }
+        }
+
+        response = self._send_test_request(client, dryrun=False)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)

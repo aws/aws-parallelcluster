@@ -11,16 +11,21 @@ import functools
 import os as os_lib
 from datetime import datetime
 
-from pcluster.api.controllers.common import configure_aws_region
-from pcluster.api.converters import cloud_formation_status_to_image_status
+from pcluster.api.controllers.common import configure_aws_region, parse_config
+from pcluster.api.converters import (
+    cloud_formation_status_to_image_status,
+    validation_results_to_config_validation_errors,
+)
 from pcluster.api.errors import (
     BadRequestException,
+    BuildImageBadRequestException,
     InternalServiceException,
     LimitExceededException,
     NotFoundException,
     ParallelClusterApiException,
 )
 from pcluster.api.models import (
+    BuildImageBadRequestExceptionResponseContent,
     BuildImageRequestContent,
     BuildImageResponseContent,
     CloudFormationStatus,
@@ -39,6 +44,7 @@ from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
+    ConflictImageBuilderActionError,
     ImageBuilder,
     LimitExceededImageBuilderActionError,
     LimitExceededImageError,
@@ -50,6 +56,7 @@ from pcluster.models.imagebuilder_resources import (
     LimitExceededStackError,
     NonExistingStackError,
 )
+from pcluster.validators.common import FailureLevel
 
 
 def convert_imagebuilder_errors():
@@ -74,6 +81,9 @@ def convert_imagebuilder_errors():
                 BadRequestImageBuilderActionError,
             ) as e:
                 error = BadRequestException(str(e))
+            except ConflictImageBuilderActionError as e:
+                # TODO change to ConflictException after https://github.com/aws/aws-parallelcluster/pull/2776 is merged
+                error = InternalServiceException(str(e))
             except Exception as e:
                 error = InternalServiceException(str(e))
             raise error
@@ -84,6 +94,7 @@ def convert_imagebuilder_errors():
 
 
 @configure_aws_region(is_query_string_arg=False)
+@convert_imagebuilder_errors()
 def build_image(
     build_image_request_content,
     suppress_validators=None,
@@ -114,17 +125,39 @@ def build_image(
 
     :rtype: BuildImageResponseContent
     """
-    build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
-    return BuildImageResponseContent(
-        image=ImageInfoSummary(
-            image_id="image",
-            image_build_status=ImageBuildStatus.BUILD_FAILED,
-            cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-            cloudformation_stack_arn="arn",
-            region="region",
-            version="3.0.0",
+    if client_token:
+        raise BuildImageBadRequestException(
+            BuildImageBadRequestExceptionResponseContent(
+                message="clientToken is currently not supported for this operation",
+                configuration_validation_errors=[],
+            )
         )
-    )
+
+    rollback_on_failure = rollback_on_failure or False
+    disable_rollback = not rollback_on_failure
+    suppress_validators = suppress_validators or False
+    validation_failure_level = validation_failure_level or FailureLevel.ERROR
+    dryrun = dryrun or False
+
+    build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
+
+    try:
+        image_id = build_image_request_content.id
+        config = parse_config(build_image_request_content.image_configuration)
+        imagebuilder = ImageBuilder(image_id=image_id, config=config)
+
+        if dryrun:
+            imagebuilder.validate_create_request(suppress_validators, validation_failure_level)
+            # TODO change to DryrunOperationException after merging https://github.com/aws/aws-parallelcluster/pull/2776
+            raise Exception("temp exception, throw the DryrunOperationException we throw in CreateCluster")
+
+        imagebuilder.create(disable_rollback, suppress_validators, validation_failure_level)
+        return BuildImageResponseContent(image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack))
+    except BadRequestImageBuilderActionError as e:
+        errors = validation_results_to_config_validation_errors(e.validation_failures)
+        raise BuildImageBadRequestException(
+            BuildImageBadRequestExceptionResponseContent(message=str(e), configuration_validation_errors=errors)
+        )
 
 
 @configure_aws_region()
