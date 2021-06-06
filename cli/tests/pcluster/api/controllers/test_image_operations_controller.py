@@ -20,6 +20,7 @@ from pcluster.aws.common import (
     LimitExceededError,
     StackNotFoundError,
 )
+from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
@@ -46,21 +47,6 @@ class TestImageOperationsController:
             headers=headers,
             query_string=query_string,
         )
-        assert_that(response.status_code).is_equal_to(200)
-
-    def test_describe_official_images(self, client):
-        """Test case for describe_official_images."""
-        query_string = [
-            ("version", "version_example"),
-            ("region", "eu-west-1"),
-            ("os", "os_example"),
-            ("architecture", "architecture_example"),
-            ("nextToken", "next_token_example"),
-        ]
-        headers = {
-            "Accept": "application/json",
-        }
-        response = client.open("/v3/images/official", method="GET", headers=headers, query_string=query_string)
         assert_that(response.status_code).is_equal_to(200)
 
 
@@ -567,4 +553,141 @@ class TestBuildImage:
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+
+def _create_official_image_info(version, os, architecture):
+    return ImageInfo(
+        {
+            "Name": f"aws-parallelcluster-{version}-{OS_TO_IMAGE_NAME_PART_MAP[os]}-{architecture}-other",
+            "Architecture": "x86_64",
+            "ImageId": "ami-test",
+        }
+    )
+
+
+def _describe_official_images_expected_response(version, os, architecture):
+    return {
+        "amiId": "ami-test",
+        "os": os,
+        "name": f"aws-parallelcluster-{version}-{OS_TO_IMAGE_NAME_PART_MAP[os]}-{architecture}-other",
+        "architecture": architecture,
+    }
+
+
+class TestDescribeOfficialImages:
+    def _send_test_request(self, client, version=None, os=None, architecture=None, region="us-east-1"):
+        query_string = [
+            ("version", version),
+            ("region", region),
+            ("os", os),
+            ("architecture", architecture),
+        ]
+        headers = {
+            "Accept": "application/json",
+        }
+        return client.open("/v3/images/official", method="GET", headers=headers, query_string=query_string)
+
+    @pytest.mark.parametrize(
+        "version, os, arch, mocked_response, expected_response",
+        [
+            pytest.param(
+                None,
+                None,
+                None,
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with no arguments",
+            ),
+            pytest.param(
+                "3.0.0",
+                None,
+                None,
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with version",
+            ),
+            pytest.param(
+                None,
+                "alinux2",
+                None,
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with os",
+            ),
+            pytest.param(
+                None,
+                None,
+                "x86_64",
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with architecture",
+            ),
+            pytest.param(
+                "3.0.0",
+                None,
+                "x86_64",
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with version and architecture",
+            ),
+            pytest.param(
+                "3.0.0",
+                "alinux2",
+                None,
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with version and os",
+            ),
+            pytest.param(
+                "3.0.0",
+                "alinux2",
+                "x86_64",
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with version, os and architecture",
+            ),
+        ],
+    )
+    def test_describe_successful(self, client, mocker, version, os, arch, mocked_response, expected_response):
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_official_images", return_value=mocked_response)
+        response = self._send_test_request(client, version, os, arch)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "region, expected_response",
+        [
+            pytest.param(
+                "us-east-",
+                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
+                id="test with malformed region",
+            ),
+            pytest.param(None, {"message": "Bad Request: region needs to be set"}, id="test without region"),
+        ],
+    )
+    def test_malformed_request(self, client, region, expected_response):
+        response = self._send_test_request(client, region=region)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "error, status_code", [(LimitExceededError, 429), (BadRequestError, 400), (AWSClientError, 500)]
+    )
+    def test_that_errors_are_converted(self, client, mocker, error, status_code):
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.get_official_images",
+            side_effect=error(function_name="get_official_images", message="test error"),
+        )
+        expected_error = {"message": "test error"}
+        if error == BadRequestError:
+            expected_error["message"] = "Bad Request: " + expected_error["message"]
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(status_code)
             assert_that(response.get_json()).is_equal_to(expected_error)
