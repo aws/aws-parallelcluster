@@ -8,15 +8,16 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+import os as os_lib
 
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 
-from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.config.cluster_config import AmiSearchFilters, Tag
+from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP
 from pcluster.utils import get_installed_version
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
@@ -37,7 +38,7 @@ def boto3_stubber_path():
 )
 @pytest.mark.nomockdefaultinstance
 def test_get_default_instance(boto3_stubber, region, free_tier_instance_type, default_instance_type, stub_boto3):
-    os.environ["AWS_DEFAULT_REGION"] = region
+    os_lib.environ["AWS_DEFAULT_REGION"] = region
     if free_tier_instance_type:
         response = {"InstanceTypes": [{"InstanceType": free_tier_instance_type}]}
     else:
@@ -104,6 +105,144 @@ def test_get_supported_architectures(mocker, instance_type, supported_architectu
     assert_that(observed_architectures).is_equal_to(expected_architectures)
 
     get_instance_types_info_patch.assert_called_with(instance_type)
+
+
+@pytest.mark.parametrize(
+    "os_part, expected_os",
+    [
+        ("amzn2-hvm", "alinux2"),
+        ("centos7-hvm", "centos7"),
+        ("ubuntu-2004-lts-hvm", "ubuntu2004"),
+        ("nonexistant-hvm", "linux"),
+        ("nonexistant", "linux"),
+    ],
+)
+def test_extract_os_from_official_image_name(os_part, expected_os):
+    name = f"aws-parallelcluster-3.0.0-{os_part}-otherstuff"
+    os = Ec2Client.extract_os_from_official_image_name(name)
+    assert_that(os).is_equal_to(expected_os)
+
+
+@pytest.mark.parametrize(
+    "version, os, architecture, boto3_response, expected_response, error_message",
+    [
+        pytest.param(
+            None,
+            None,
+            None,
+            {
+                "Images": [
+                    {"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"},
+                    {"Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other"},
+                ]
+            },
+            [
+                ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}),
+                ImageInfo({"Name": "ami-parallelcluster-3.0.0-centos7-hvm-x86_64-other"}),
+            ],
+            None,
+            id="test with no filter",
+        ),
+        pytest.param(
+            "3.0.0",
+            None,
+            None,
+            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            None,
+            id="test with version",
+        ),
+        pytest.param(
+            None,
+            "alinux2",
+            None,
+            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            None,
+            id="test with os",
+        ),
+        pytest.param(
+            None,
+            None,
+            "x86_64",
+            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            None,
+            id="test with architecture",
+        ),
+        pytest.param(
+            None,
+            "alinux2",
+            "x86_64",
+            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            None,
+            id="test with os and architecture",
+        ),
+        pytest.param(
+            "3.0.0",
+            None,
+            "x86_64",
+            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            None,
+            id="test with version and architecture",
+        ),
+        pytest.param(
+            "3.0.0",
+            "alinux2",
+            None,
+            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            None,
+            id="test with version and os",
+        ),
+        pytest.param(
+            "3.0.0",
+            "alinux2",
+            "x86_64",
+            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
+            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
+            None,
+            id="test with version, os and architecture",
+        ),
+        pytest.param(
+            "3.0.0", "alinux2", "arm64", Exception("error message"), None, "error message", id="test with boto3 error"
+        ),
+    ],
+)
+def test_get_official_images(
+    boto3_stubber, version, os, architecture, boto3_response, expected_response, error_message
+):
+    filter_version = version or "*"
+    filter_os = OS_TO_IMAGE_NAME_PART_MAP[os] if os else "*"
+    filter_arch = architecture or "*"
+    expected_params = {
+        "Filters": [
+            {"Name": "name", "Values": [f"aws-parallelcluster-{filter_version}-{filter_os}-{filter_arch}*"]},
+        ],
+        "ImageIds": [],
+        "Owners": ["amazon"],
+    }
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_images",
+            expected_params=expected_params,
+            response=str(boto3_response) if isinstance(boto3_response, Exception) else boto3_response,
+            generate_error=isinstance(boto3_response, Exception),
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+
+    if error_message:
+        with pytest.raises(AWSClientError, match=error_message):
+            Ec2Client().get_official_images(version, os, architecture)
+    else:
+        response = Ec2Client().get_official_images(version, os, architecture)
+        with soft_assertions():
+            assert_that(len(response)).is_equal_to(len(expected_response))
+            for i in range(len(response)):
+                assert_that(response[i].name).is_equal_to(expected_response[i].name)
 
 
 @pytest.mark.parametrize(

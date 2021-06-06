@@ -27,6 +27,7 @@ from pcluster.api.errors import (
     ParallelClusterApiException,
 )
 from pcluster.api.models import (
+    AmiInfo,
     BuildImageBadRequestExceptionResponseContent,
     BuildImageRequestContent,
     BuildImageResponseContent,
@@ -43,6 +44,7 @@ from pcluster.api.models.delete_image_response_content import DeleteImageRespons
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import BadRequestError, LimitExceededError
+from pcluster.aws.ec2 import Ec2Client
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
@@ -242,6 +244,7 @@ def describe_image(image_id, region=None):
 
 
 @configure_aws_region()
+@convert_imagebuilder_errors()
 def describe_official_images(version=None, region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
@@ -257,7 +260,21 @@ def describe_official_images(version=None, region=None, os=None, architecture=No
 
     :rtype: DescribeOfficialImagesResponseContent
     """
-    return DescribeOfficialImagesResponseContent(items=[])
+    images = [
+        _image_info_to_ami_info(image)
+        for image in AWSApi.instance().ec2.get_official_images(version=version, os=os, architecture=architecture)
+    ]
+
+    return DescribeOfficialImagesResponseContent(items=images)
+
+
+def _image_info_to_ami_info(image):
+    return AmiInfo(
+        ami_id=image.id,
+        os=Ec2Client.extract_os_from_official_image_name(image.name),
+        name=image.name,
+        architecture=image.architecture,
+    )
 
 
 @configure_aws_region()

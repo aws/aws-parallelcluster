@@ -8,12 +8,19 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 from typing import List
 
 from pcluster import utils
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError
-from pcluster.constants import PCLUSTER_IMAGE_BUILD_STATUS_TAG, PCLUSTER_IMAGE_ID_TAG, SUPPORTED_ARCHITECTURES
+from pcluster.constants import (
+    IMAGE_NAME_PART_TO_OS_MAP,
+    OS_TO_IMAGE_NAME_PART_MAP,
+    PCLUSTER_IMAGE_BUILD_STATUS_TAG,
+    PCLUSTER_IMAGE_ID_TAG,
+    SUPPORTED_ARCHITECTURES,
+)
 
 
 class Ec2Client(Boto3Client):
@@ -221,6 +228,19 @@ class Ec2Client(Boto3Client):
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
         return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
 
+    def get_official_images(self, version=None, os=None, architecture=None):
+        """Get the list of official images, optionally filtered by os and architecture."""
+        try:
+            owners = ["amazon"]
+            version = version or "*"
+            os = OS_TO_IMAGE_NAME_PART_MAP.get(os, "") if os else "*"
+            architecture = architecture or "*"
+            name = f"aws-parallelcluster-{version}-{os}-{architecture}*"
+            filters = [{"Name": "name", "Values": [name]}]
+            return self.describe_images(ami_ids=[], owners=owners, filters=filters)
+        except ImageNotFoundError:
+            return []
+
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def get_eip_allocation_id(self, eip):
@@ -228,18 +248,19 @@ class Ec2Client(Boto3Client):
         return self._client.describe_addresses(PublicIps=[eip])["Addresses"][0]["AllocationId"]
 
     @staticmethod
+    def extract_os_from_official_image_name(name):
+        """Return the os from the os part in an official image name."""
+        name_pattern = "aws-parallelcluster-[^-]+-(?P<OsPart>.+-hvm)-.*"
+        matches = re.match(name_pattern, name)
+        os_part = matches.groupdict().get("OsPart") if matches else None
+        return IMAGE_NAME_PART_TO_OS_MAP.get(os_part, "linux")
+
+    @staticmethod
     def _get_official_image_name_prefix(os, architecture):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
-        suffixes = {
-            "alinux2": "amzn2-hvm",
-            "centos7": "centos7-hvm",
-            "centos8": "centos8-hvm",
-            "ubuntu1804": "ubuntu-1804-lts-hvm",
-            "ubuntu2004": "ubuntu-2004-lts-hvm",
-        }
-        return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
-            version=utils.get_installed_version(), suffix=suffixes[os], arch=architecture
-        )
+        version = utils.get_installed_version()
+        os_part = OS_TO_IMAGE_NAME_PART_MAP[os]
+        return f"aws-parallelcluster-{version}-{os_part}-{architecture}"
 
     @AWSExceptionHandler.handle_client_exception
     def terminate_instances(self, instance_ids):
