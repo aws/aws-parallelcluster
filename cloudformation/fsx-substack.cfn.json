@@ -605,10 +605,18 @@
             ]
           },
           "DataCompressionType": {
-            "Fn::Select": [
-              "19",
+            "Fn::If": [
+              "UseBackupId",
               {
-                "Ref": "FSXOptions"
+                "Ref": "AWS::NoValue"
+              },
+              {
+                "Fn::Select": [
+                  "19",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
               }
             ]
           }

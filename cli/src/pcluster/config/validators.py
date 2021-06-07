@@ -232,6 +232,8 @@ def fsx_validator(section_key, section_label, pcluster_config):
     fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
     fsx_storage_type = fsx_section.get_param_value("storage_type")
     fsx_drive_cache_type = fsx_section.get_param_value("drive_cache_type")
+    fsx_backup_id = fsx_section.get_param_value("fsx_backup_id")
+    fsx_data_compression_type = fsx_section.get_param_value("data_compression_type")
 
     validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy)
     validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput)
@@ -249,8 +251,20 @@ def fsx_validator(section_key, section_label, pcluster_config):
     validate_storage_type_options(
         errors, fsx_storage_type, fsx_deployment_type, fsx_per_unit_storage_throughput, fsx_drive_cache_type
     )
+    _validate_fsx_compression_type_option(errors, fsx_backup_id, fsx_data_compression_type)
 
     return errors, warnings
+
+
+def _validate_fsx_compression_type_option(errors, fsx_backup_id, fsx_data_compression_type):
+    # DataCompressionType is not supported when creating filesystem from backup.
+    # The designed behavior is to use the existing compression setting from the backup.
+    if fsx_backup_id and fsx_data_compression_type and fsx_data_compression_type != "NONE":
+        errors.append(
+            f"FSx data compression option ({fsx_data_compression_type}) cannot be specified "
+            f"when creating a filesystem from backup ({fsx_backup_id}). "
+            "To fix, please unspecify 'fsx_backup_id' or 'data_compression_type'."
+        )
 
 
 def fsx_architecture_os_validator(section_key, section_label, pcluster_config):

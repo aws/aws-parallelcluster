@@ -1121,6 +1121,33 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             "'drive_cache_type' features can be used only with HDD filesystems",
             0,
         ),
+        (
+            {
+                "data_compression_type": "LZ4",
+                "fsx_backup_id": "backup-12345678",
+            },
+            None,
+            "FSx data compression option (LZ4) cannot be specified when creating a filesystem from backup",
+            0,
+        ),
+        (
+            {
+                "data_compression_type": "NONE",
+                "fsx_backup_id": "backup-12345678",
+            },
+            None,
+            "The configuration parameter 'data_compression_type' has an invalid value 'NONE'",
+            0,
+        ),
+        (
+            {
+                "data_compression_type": "LZ4",
+                "storage_capacity": 1200,
+            },
+            None,
+            None,
+            0,
+        ),
     ],
 )
 def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_error, num_calls):
