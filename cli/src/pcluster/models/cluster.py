@@ -12,10 +12,15 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
+import gzip
 import json
 import logging
+import os
+import tarfile
+import tempfile
 import time
 from copy import deepcopy
+from datetime import datetime
 from enum import Enum
 from typing import List
 
@@ -34,7 +39,12 @@ from pcluster.constants import (
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.models.cluster_resources import ClusterInstance, ClusterStack
+from pcluster.models.cluster_resources import (
+    ClusterInstance,
+    ClusterStack,
+    ExportClusterLogsFilters,
+    ExportLogsFilterError,
+)
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -677,3 +687,142 @@ class Cluster:
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
         return [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]
+
+    def export_logs(
+        self,
+        output: str,
+        bucket: str,
+        bucket_prefix: str = None,
+        keep_s3_objects: bool = False,
+        filters: str = None,
+    ):
+        """
+        Export cluster's logs in the given output path, by using given bucket as a temporary folder.
+
+        :param output to save log file archive to
+        :param bucket to export cluster logs data to
+        :param bucket_prefix Keypath under which exported logs data will be stored in s3 bucket,
+               also serves as top-level directory in resulting archive
+        :param keep_s3_objects Keep the exported objects exports to S3. The default behavior is to delete them
+        :param filters Filters in the format Name=name,Values=value1,value2
+               Accepted filters are: start_time, end_time, private_instance_ip
+        """
+        # check stack
+        if not AWSApi.instance().cfn.stack_exists(self.stack_name):
+            raise ClusterActionError(f"Cluster {self.name} does not exist")
+        if not self.config.is_cw_logging_enabled:
+            raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
+
+        # check bucket
+        bucket_region = AWSApi.instance().s3.get_bucket_region(bucket_name=bucket)
+        if bucket_region != get_region():
+            raise ClusterActionError(
+                "The bucket used for exporting logs must be in the same region as the cluster. "
+                f"The given cluster is in {get_region()}, but the given bucket's region is {bucket_region}."
+            )
+
+        # If the default bucket prefix is being used and there's nothing underneath that prefix already
+        # then we can delete everything under that prefix after downloading the data
+        # (unless keep-s3-objects is specified)
+        delete_everything_under_prefix = False
+        if not bucket_prefix:
+            bucket_prefix = f"{self.name}-logs-{datetime.now().timestamp()}"
+            delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, bucket_prefix)
+
+        # Start export task
+        export_logs_filters = self._init_export_logs_filters(filters)
+        task_id = self._export_logs_to_s3(
+            log_stream_prefix=export_logs_filters.log_stream_prefix,
+            bucket=bucket,
+            bucket_prefix=bucket_prefix,
+            start_time=export_logs_filters.start_time,
+            end_time=export_logs_filters.end_time,
+        )
+        try:
+            self._download_and_archive_logs_from_s3(bucket, bucket_prefix, output, task_id)
+            LOGGER.debug("Archive of CloudWatch logs from cluster %s saved to %s", self.name, output)
+        finally:
+            if not keep_s3_objects:
+                delete_key = bucket_prefix if delete_everything_under_prefix else "/".join((bucket_prefix, task_id))
+                LOGGER.debug("Cleaning up S3 bucket %s. Deleting all objects under %s", bucket, delete_key)
+                AWSApi.instance().s3_resource.delete_objects(bucket_name=bucket, prefix=delete_key)
+
+    def _init_export_logs_filters(self, filters):
+        try:
+            export_logs_filters = ExportClusterLogsFilters(log_group_name=self.stack.log_group_name, filters=filters)
+            export_logs_filters.validate()
+        except ExportLogsFilterError as e:
+            raise ClusterActionError(str(e))
+        return export_logs_filters
+
+    def _export_logs_to_s3(self, bucket, bucket_prefix=None, log_stream_prefix=None, start_time=None, end_time=None):
+        """Export the contents of a cluster's CloudWatch log group to an s3 bucket."""
+        try:
+            LOGGER.info("Starting export of logs from log group %s to s3 bucket %s", self.stack.log_group_name, bucket)
+            task_id = AWSApi.instance().logs.create_export_task(
+                log_group_name=self.stack.log_group_name,
+                log_stream_name_prefix=log_stream_prefix,
+                bucket=bucket,
+                bucket_prefix=bucket_prefix,
+                start_time=start_time,
+                end_time=end_time,
+            )
+
+            result_status = self._wait_for_task_completion(task_id)
+            if result_status != "COMPLETED":
+                raise ClusterActionError(f"CloudWatch logs export task {task_id} failed with status: {result_status}")
+            return task_id
+        except AWSClientError as e:
+            # TODO use log type/class
+            if "Please check if CloudWatch Logs has been granted permission to perform this operation." in str(e):
+                raise ClusterActionError(
+                    f"CloudWatch Logs needs GetBucketAcl and PutObject permission for the s3 bucket {bucket}. "
+                    "See https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/S3ExportTasks.html#S3Permissions "
+                    "for more details."
+                )
+            raise ClusterActionError(f"Unexpected error when starting export task: {e}")
+
+    @staticmethod
+    def _wait_for_task_completion(task_id):
+        """Wait for the CloudWatch logs export task given by task_id to finish."""
+        LOGGER.info("Waiting for export task with task ID=%s to finish...", task_id)
+        status = "PENDING"
+        still_running_statuses = ("PENDING", "PENDING_CANCEL", "RUNNING")
+        while status in still_running_statuses:
+            time.sleep(1)
+            status = AWSApi.instance().logs.get_export_task_status(task_id)
+        return status
+
+    def _download_and_archive_logs_from_s3(self, bucket_name, bucket_prefix, output, task_id):
+        """Download logs from s3 bucket."""
+        prefix = f"{bucket_prefix}/{task_id}"
+        with tempfile.TemporaryDirectory() as parent_tempdir:
+            tempdir = os.path.join(parent_tempdir, bucket_prefix)
+            self._download_all_objects_with_prefix(bucket_name, prefix, tempdir)
+
+            LOGGER.debug("Creating archive of logs at %s and saving it to %s", tempdir, output)
+            with tarfile.open(output, "w:gz") as tar:
+                tar.add(tempdir, arcname=bucket_prefix)
+
+    @staticmethod
+    def _download_all_objects_with_prefix(bucket_name, prefix, destdir):
+        """Download all object in bucket with given prefix into destdir."""
+        LOGGER.debug("Downloading exported logs from s3 bucket %s (under key %s) to %s", bucket_name, prefix, destdir)
+        for archive_object in AWSApi.instance().s3_resource.get_objects(bucket_name=bucket_name, prefix=prefix):
+            decompressed_path = os.path.dirname(os.path.join(destdir, archive_object.key))
+            decompressed_path = decompressed_path.replace(
+                r"{unwanted_path_segment}{sep}".format(unwanted_path_segment=prefix, sep=os.path.sep), ""
+            )
+            compressed_path = f"{decompressed_path}.gz"
+
+            LOGGER.debug("Downloading object with key=%s to %s", archive_object.key, compressed_path)
+            os.makedirs(os.path.dirname(compressed_path), exist_ok=True)
+            AWSApi.instance().s3_resource.download_file(
+                bucket_name=bucket_name, key=archive_object.key, output=compressed_path
+            )
+
+            # Create a decompressed copy of the downloaded archive and remove the original
+            LOGGER.debug("Extracting object at %s to %s", compressed_path, decompressed_path)
+            with gzip.open(compressed_path) as gfile, open(decompressed_path, "wb") as outfile:
+                outfile.write(gfile.read())
+            os.remove(compressed_path)

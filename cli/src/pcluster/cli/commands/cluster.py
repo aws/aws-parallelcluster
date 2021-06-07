@@ -5,10 +5,11 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-
 # pylint: disable=import-outside-toplevel
 
 import logging
+import os
+import re
 import textwrap
 from typing import List
 
@@ -365,3 +366,62 @@ class DcvConnectCommand(DcvCommand):
         from pcluster.cli_commands.dcv.connect import dcv_connect
 
         dcv_connect(args)
+
+
+class ExportClusterLogsCommand(CliCommand):
+    """Implement pcluster export-cluster-logs command."""
+
+    # CLI
+    name = "export-cluster-logs"
+    help = "Export the logs of the cluster to a local tar archive by passing through an Amazon S3 Bucket."
+    description = help
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    @staticmethod
+    def _regex_arg(value):
+        filter_regex = r"Name=(private-ip-address|start-time|end-time),Values=[\w\-_.,]+"
+        if not re.compile(fr"^({filter_regex})(\s+{filter_regex})*$").match(value):
+            raise argparse.ArgumentTypeError("filters parameter must be in the form Name=...,Values=... ")
+        return value
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("cluster_name", help="Export the logs of the cluster name provided here.")
+        parser.add_argument("--output", help="File path to save log archive to.", type=os.path.realpath)
+        # Export options
+        parser.add_argument(
+            "--bucket",
+            required=True,
+            help="S3 bucket to export cluster logs data to. It must be in the same region of the cluster",
+        )
+        parser.add_argument(
+            "--bucket-prefix",
+            help="Keypath under which exported logs data will be stored in s3 bucket. "
+            "Also serves as top-level directory in resulting archive.",
+        )
+        parser.add_argument(
+            "--keep-s3-objects",
+            action="store_true",
+            help="Keep the exported objects exports to S3. The default behavior is to delete them.",
+        )
+        # Filters
+        parser.add_argument(
+            "--filters",
+            nargs="+",
+            type=self._regex_arg,
+            help=(
+                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
+                "start-time - Start time of interval of interest for log events, "
+                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC. "
+                "Defaults to cluster's start time.\n"
+                "end-time - End time of interval of interest for log events, "
+                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC. Defaults to current time.\n"
+                "private-ip-address - The private IPv4 address of the instance."
+            ),
+        )
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+        from pcluster.cli_commands.commands import export_cluster_logs
+
+        export_cluster_logs(args)

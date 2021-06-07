@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
 # with the License. A copy of the License is located at
@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 # FIXME
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-branches
@@ -18,6 +17,7 @@ import logging
 import os
 import sys
 from builtins import str
+from datetime import datetime
 
 from botocore.exceptions import ClientError
 from tabulate import tabulate
@@ -293,9 +293,12 @@ def _print_cluster_status(cluster_name, scheduler):
     result = PclusterApi().describe_cluster_instances(
         cluster_name=cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
     )
-    if isinstance(result, list) and len(result) == 1:
-        LOGGER.info("%s: %s", result[0].node_type, result[0].state)
-        _print_compute_fleet_status(cluster_name, scheduler)
+    if isinstance(result, list):
+        if len(result) == 1:
+            LOGGER.info("%s: %s", result[0].node_type, result[0].state)
+            _print_compute_fleet_status(cluster_name, scheduler)
+        else:
+            utils.error("Unexpected error. Unable to retrieve Head Node information")
     else:
         utils.error(f"Unable to retrieve the status of the cluster's instances.\n{result.message}")
 
@@ -432,6 +435,44 @@ def update(args):
             utils.error(f"Cluster update failed. {result.message}")
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
+        sys.exit(0)
+
+
+def export_cluster_logs(args):
+    """Export the logs associated to the cluster."""
+    LOGGER.info("Beginning export of logs for the cluster: %s", args.cluster_name)
+    LOGGER.debug("CLI args: %s", str(args))
+
+    try:
+        # Verify that a file can be written to the given path
+        output = args.output or os.path.realpath(f"{args.cluster_name}-logs-{datetime.now().timestamp()}.tar.gz")
+        file_dir = os.path.dirname(output)
+        if not os.path.isdir(file_dir):
+            try:
+                os.makedirs(file_dir)
+            except Exception as exception:
+                utils.error(
+                    f"Failed to create parent directory {file_dir} for cluster's logs archive. Reason: {exception}"
+                )
+        if not os.access(file_dir, os.W_OK):
+            utils.error(f"Cannot write cluster's log archive to {output}. {file_dir} is not writeable.")
+
+        # export logs cluster raises an exception if stack does not exist or for other internal errors
+        result = PclusterApi().export_cluster_logs(
+            cluster_name=args.cluster_name,
+            region=utils.get_region(),
+            output=output,
+            bucket=args.bucket,
+            bucket_prefix=args.bucket_prefix,
+            keep_s3_objects=args.keep_s3_objects,
+            filters=" ".join(args.filters) if args.filters else None,
+        )
+        if isinstance(result, ApiFailure):
+            utils.error(f"Unable to export cluster's logs.\n{result.message}")
+        else:
+            LOGGER.info("Cluster's logs exported correctly to %s.", output)
+    except KeyboardInterrupt:
+        LOGGER.info("Exiting...")
         sys.exit(0)
 
 
