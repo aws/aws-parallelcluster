@@ -1054,12 +1054,6 @@ paths:
           schema:
             type: string
             description: Filter by architecture
-        - name: nextToken
-          in: query
-          description: Token to use for paginated requests.
-          schema:
-            type: string
-            description: Token to use for paginated requests.
       responses:
         "200":
           description: DescribeOfficialImages 200 response
@@ -1110,14 +1104,14 @@ components:
           type: string
         os:
           type: string
-        id:
+        name:
           type: string
         architecture:
           type: string
       required:
         - amiId
         - architecture
-        - id
+        - name
         - os
     BadRequestExceptionResponseContent:
       type: object
@@ -1470,9 +1464,6 @@ components:
     DescribeOfficialImagesResponseContent:
       type: object
       properties:
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
         items:
           type: array
           items:

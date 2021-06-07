@@ -1249,15 +1249,6 @@ paths:
           description: Filter by architecture
           type: string
         style: form
-      - description: Token to use for paginated requests.
-        explode: true
-        in: query
-        name: nextToken
-        required: false
-        schema:
-          description: Token to use for paginated requests.
-          type: string
-        style: form
       responses:
         "200":
           content:
@@ -1306,7 +1297,7 @@ components:
       example:
         amiId: amiId
         os: os
-        id: id
+        name: name
         architecture: architecture
       properties:
         amiId:
@@ -1315,8 +1306,8 @@ components:
         os:
           title: os
           type: string
-        id:
-          title: id
+        name:
+          title: name
           type: string
         architecture:
           title: architecture
@@ -1324,7 +1315,7 @@ components:
       required:
       - amiId
       - architecture
-      - id
+      - name
       - os
       title: AmiInfo
       type: object
@@ -1890,21 +1881,16 @@ components:
       type: object
     DescribeOfficialImagesResponseContent:
       example:
-        nextToken: nextToken
         items:
         - amiId: amiId
           os: os
-          id: id
+          name: name
           architecture: architecture
         - amiId: amiId
           os: os
-          id: id
+          name: name
           architecture: architecture
       properties:
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
         items:
           items:
             $ref: '#/components/schemas/AmiInfo'

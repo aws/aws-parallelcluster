@@ -242,7 +242,7 @@ def describe_image(image_id, region=None):
 
 
 @configure_aws_region()
-def describe_official_images(version=None, region=None, os=None, architecture=None, next_token=None):
+def describe_official_images(version=None, region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
 
@@ -254,8 +254,6 @@ def describe_official_images(version=None, region=None, os=None, architecture=No
     :type os: str
     :param architecture: Filter by architecture
     :type architecture: str
-    :param next_token: Token to use for paginated requests.
-    :type next_token: str
 
     :rtype: DescribeOfficialImagesResponseContent
     """
