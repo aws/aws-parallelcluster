@@ -8,9 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import re
+from datetime import datetime
+
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.constants import OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
+from pcluster.aws.common import AWSClientError
+from pcluster.constants import CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
 
 
 class ClusterStack(StackInfo):
@@ -58,7 +62,7 @@ class ClusterStack(StackInfo):
     @property
     def log_group_name(self):
         """Return the log group name used in the cluster."""
-        return self._get_param("ClusterCWLogGroup")
+        return self._get_param(CW_LOGS_CFN_PARAM_NAME)
 
     @property
     def original_config_version(self):
@@ -103,3 +107,77 @@ class ClusterInstance(InstanceInfo):
 
     def _get_tag(self, tag_key: str):
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)
+
+
+class ExportLogsFilterError(Exception):
+    """Represent export logs filter errors."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class ExportClusterLogsFilters:
+    """Class to manage export logs filters."""
+
+    def __init__(self, log_group_name: str, filters: str = None):
+        self._log_group_name = log_group_name
+        self._start_time = None
+        self.end_time = int(datetime.now().timestamp() * 1000)
+        self.log_stream_prefix = None
+
+        if filters:
+            filters_list = re.findall(r"Name=([^=,]+),Values=([^= ]+)(?: |$)", filters)
+            if not filters_list:
+                raise ExportLogsFilterError(
+                    f"Invalid filters {filters}. They must be in the form Name=xxx,Values=yyy ."
+                )
+            for name, values in filters_list:
+                if "," in values:
+                    raise ExportLogsFilterError(f"Filter {name} doesn't accept comma separated strings as value.")
+
+                filter_name = name.replace("-", "_")
+                if name in ["start-time", "end-time"]:
+                    try:
+                        filter_value = int(values) * 1000
+                    except Exception:
+                        raise ExportLogsFilterError(f"Unable to use {values} filter, the expected format is Unix epoch")
+                elif name == "private-ip-address":
+                    filter_name = "log_stream_prefix"
+                    filter_value = f"ip-{values.replace('.', '-')}"
+                else:
+                    filter_value = values
+
+                if not hasattr(self, filter_name):
+                    raise ExportLogsFilterError(f"Filter {name} not supported.")
+                setattr(self, filter_name, filter_value)
+
+    @property
+    def start_time(self):
+        """Get start time filter."""
+        if not self._start_time:
+            try:
+                self._start_time = AWSApi.instance().logs.describe_log_group(self._log_group_name).get("creationTime")
+            except AWSClientError as e:
+                raise ExportLogsFilterError(
+                    f"Unable to retrieve creation time of log group {self._log_group_name}, {str(e)}"
+                )
+        return self._start_time
+
+    @start_time.setter
+    def start_time(self, value):
+        """Set start_time value."""
+        self._start_time = value
+
+    def validate(self):
+        """Check filters consistency."""
+        if self.start_time >= self.end_time:
+            raise ExportLogsFilterError("Start time must be earlier than end time.")
+
+        event_in_window = AWSApi.instance().logs.filter_log_events(
+            log_group_name=self._log_group_name, start_time=self.start_time, end_time=self.end_time
+        )
+        if not event_in_window:
+            raise ExportLogsFilterError(
+                f"No log events in the log group {self._log_group_name} in interval starting "
+                f"at {self.start_time} and ending at {self.end_time}."
+            )

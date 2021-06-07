@@ -299,6 +299,34 @@ class PclusterApi:
         return None
 
     @staticmethod
+    def export_cluster_logs(
+        cluster_name: str,
+        region: str,
+        bucket: str,
+        output: str,
+        bucket_prefix: str = None,
+        keep_s3_objects: bool = False,
+        filters: str = None,
+    ):
+        """Export cluster's logs."""
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            cluster = Cluster(cluster_name)
+            cluster.export_logs(
+                output=output,
+                bucket=bucket,
+                bucket_prefix=bucket_prefix,
+                keep_s3_objects=keep_s3_objects,
+                filters=filters,
+            )
+        except Exception as e:
+            return ApiFailure(str(e))
+
+        return None
+
+    @staticmethod
     def _is_version_2(cluster):
         return packaging.version.parse(cluster.stack.version) < packaging.version.parse("3.0.0")
 

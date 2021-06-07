@@ -96,6 +96,7 @@ class ParallelClusterCli:
                 sys.exit(1)
 
             args.func(args, extra_args)
+            sys.exit(0)
         except NoCredentialsError:  # TODO: remove from here
             LOGGER.error("AWS Credentials not found.")
             sys.exit(1)

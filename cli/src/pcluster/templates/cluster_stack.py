@@ -48,7 +48,13 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.constants import OS_MAPPING, PCLUSTER_DYNAMODB_PREFIX, PCLUSTER_S3_ARTIFACTS_DICT
+from pcluster.constants import (
+    CW_LOG_GROUP_NAME_PREFIX,
+    CW_LOGS_CFN_PARAM_NAME,
+    OS_MAPPING,
+    PCLUSTER_DYNAMODB_PREFIX,
+    PCLUSTER_S3_ARTIFACTS_DICT,
+)
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
@@ -94,13 +100,13 @@ class ClusterCdkStack(Stack):
         self.bucket = bucket
         if self.config.is_cw_logging_enabled:
             if log_group_name:
-                # pcluster update keep the log group, I
-                # It has to be passed in to avoid the change of log group name because of the surffix.
+                # pcluster update keep the log group,
+                # It has to be passed in order to avoid the change of log group name because of the suffix.
                 self.log_group_name = log_group_name
             else:
                 # pcluster create create a log group with timestamp suffix
                 timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
-                self.log_group_name = f"/aws/parallelcluster/{self.stack_name}-{timestamp}"
+                self.log_group_name = f"{CW_LOG_GROUP_NAME_PREFIX}{self.stack_name}-{timestamp}"
 
         self.instance_roles = {}
         self.instance_profiles = {}
@@ -173,7 +179,7 @@ class ClusterCdkStack(Stack):
         if self.config.is_cw_logging_enabled:
             CfnParameter(
                 self,
-                "ClusterCWLogGroup",
+                CW_LOGS_CFN_PARAM_NAME,
                 description="CloudWatch Log Group associated to the cluster",
                 default=self.log_group_name,
             )

@@ -18,6 +18,7 @@ from pcluster.aws.fsx import FSxClient
 from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
+from pcluster.aws.logs import LogsClient
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
 from pcluster.aws.sts import StsClient
@@ -83,7 +84,7 @@ class _DummyAWSApi(AWSApi):
         self._s3_resource = _DummyS3Resource()
         self._iam = _DummyIamClient()
         self._batch = _DummyBatchClient()
-        # TODO: mock all clients
+        self._logs = _DummyLogsClient()
 
 
 class _DummyCfnClient(CfnClient):
@@ -186,6 +187,12 @@ class _DummyIamClient(IamClient):
 
 
 class _DummyBatchClient(IamClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+
+class _DummyLogsClient(LogsClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
