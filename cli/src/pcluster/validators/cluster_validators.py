@@ -20,6 +20,7 @@ from pcluster.constants import (
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
     PCLUSTER_VERSION_TAG,
+    SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
     SUPPORTED_REGIONS,
 )
@@ -780,6 +781,27 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
         except Exception as e:
             self._add_failure(
                 f"Unable to validate configuration parameters for the head node.\n{str(e)}", FailureLevel.ERROR
+            )
+
+
+class HeadNodeImdsValidator(Validator):
+    """
+    Head Node IMDS configuration validator.
+
+    Verify if the Head Node IMDs configuration is compatible with other configurations.
+    """
+
+    def _validate(self, imds_secured: bool, scheduler: str):
+        if scheduler is None:
+            self._add_failure(
+                f"Cannot validate IMDS configuration with scheduler {scheduler}.",
+                FailureLevel.ERROR,
+            )
+        elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
+            self._add_failure(
+                f"IMDS secured cannot be enabled in Head Node when using scheduler {scheduler}. "
+                f"Supported schedulers are: {','.join(SCHEDULERS_SUPPORTING_IMDS_SECURED)}",
+                FailureLevel.ERROR,
             )
 
 

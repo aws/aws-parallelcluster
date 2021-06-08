@@ -69,6 +69,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
+    get_property_head_node_imds_secured,
     get_retain_log_on_delete,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
@@ -1067,6 +1068,11 @@ class ClusterCdkStack(Stack):
                     "instance_types_data_s3_key": f"{self.bucket.artifact_directory}/configs/instance-types-data.json",
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
+                    "head_node_imds_secured": "true"
+                    if get_property_head_node_imds_secured(
+                        self.config.head_node.imds.secured, self.config.scheduling.scheduler
+                    )
+                    else "false",
                 },
                 "run_list": f"recipe[aws-parallelcluster::{self.config.scheduling.scheduler}_config]",
             },
