@@ -459,7 +459,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
             )
             if dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
                 if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
-                    node_config["Iam"]["AdditionalIamPolicies"].append({"Policy": additional_iam_policies})
+                    node_config["Iam"]["AdditionalIamPolicies"].append(additional_iam_policies)
             else:
                 dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
 
