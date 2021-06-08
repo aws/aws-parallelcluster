@@ -29,7 +29,7 @@ CHANGELOG
 
 **BUG FIXES**
 
-- Use ICP-complaint AL2 repo URLs when building Docker images in China
+- Use ICP-compliant AL2 repo URLs when building Docker images in China
 
 2.10.4
 ------
