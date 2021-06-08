@@ -58,6 +58,7 @@ from pcluster.validators.cluster_validators import (
     EfsIdValidator,
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
+    HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
@@ -587,6 +588,18 @@ class Iam(Resource):
         return arns
 
 
+class Imds(Resource):
+    """Represent the IMDS configuration."""
+
+    def __init__(
+        self,
+        secured: bool = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.secured = Resource.init_param(secured)
+
+
 class ClusterIam(Resource):
     """Represent the IAM configuration for Cluster."""
 
@@ -700,6 +713,7 @@ class HeadNode(Resource):
         dcv: Dcv = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
+        imds: Imds = None,
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
@@ -712,6 +726,7 @@ class HeadNode(Resource):
         self.dcv = dcv
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
+        self.imds = imds or Imds(implied=True)
         self.__instance_type_info = None
 
     def _register_validators(self):
@@ -1166,6 +1181,9 @@ class AwsBatchClusterConfig(BaseClusterConfig):
         super()._register_validators()
         self._register_validator(AwsBatchRegionValidator, region=self.region)
         self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+        self._register_validator(
+            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
+        )
         # TODO add InstanceTypesBaseAMICompatibleValidator
 
         for queue in self.scheduling.queues:
@@ -1383,6 +1401,9 @@ class SlurmClusterConfig(BaseClusterConfig):
     def _register_validators(self):
         super()._register_validators()
         self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+        self._register_validator(
+            HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
+        )
 
         for queue in self.scheduling.queues:
             self._register_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)
