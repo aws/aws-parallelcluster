@@ -15,9 +15,9 @@
 
 from typing import List
 
+from pcluster.aws.common import get_region
 from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, ExtraChefAttributes, Resource
 from pcluster.imagebuilder_utils import ROOT_VOLUME_TYPE
-from pcluster.utils import get_region
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator

@@ -11,10 +11,8 @@
 import re
 from abc import ABC
 
-import boto3
-from botocore.exceptions import ClientError
-
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
@@ -318,9 +316,7 @@ class EfaSecurityGroupValidator(Validator):
         efa_sg_found = False
         for security_group in security_groups:
             try:
-                sec_group = (
-                    boto3.client("ec2").describe_security_groups(GroupIds=[security_group]).get("SecurityGroups")[0]
-                )
+                sec_group = AWSApi.instance().ec2.describe_single_security_group(security_group)
                 allowed_in = False
                 allowed_out = False
 
@@ -348,10 +344,8 @@ class EfaSecurityGroupValidator(Validator):
                 if allowed_in and allowed_out:
                     efa_sg_found = True
                     break
-
-            except ClientError as e:
-                self._add_failure(e.response.get("Error").get("Message"), FailureLevel.WARNING)
-
+            except AWSClientError as e:
+                self._add_failure(str(e), FailureLevel.WARNING)
         return efa_sg_found
 
 
@@ -371,7 +365,7 @@ def _check_in_out_access(security_groups_ids, port):
     in_access = False
     out_access = False
 
-    for sec_group in boto3.client("ec2").describe_security_groups(GroupIds=security_groups_ids).get("SecurityGroups"):
+    for sec_group in AWSApi.instance().ec2.describe_security_groups(security_groups_ids).get("SecurityGroups"):
 
         # Check all inbound rules
         for rule in sec_group.get("IpPermissions"):
@@ -424,14 +418,11 @@ class FsxNetworkingValidator(Validator):
 
     def _validate(self, file_system_id, head_node_subnet_id):
         try:
-            ec2 = boto3.client("ec2")
 
             # Check to see if there is any existing mt on the fs
-            file_system = (
-                boto3.client("fsx").describe_file_systems(FileSystemIds=[file_system_id]).get("FileSystems")[0]
-            )
+            file_system = AWSApi.instance().fsx.get_filesystem_info(file_system_id).file_system_data
 
-            vpc_id = ec2.describe_subnets(SubnetIds=[head_node_subnet_id]).get("Subnets")[0].get("VpcId")
+            vpc_id = AWSApi.instance().ec2.get_subnet_vpc(head_node_subnet_id)
 
             # Check to see if fs is in the same VPC as the stack
             if file_system.get("VpcId") != vpc_id:
@@ -450,9 +441,7 @@ class FsxNetworkingValidator(Validator):
                     FailureLevel.ERROR,
                 )
             else:
-                network_interface_responses = ec2.describe_network_interfaces(
-                    NetworkInterfaceIds=network_interface_ids
-                ).get("NetworkInterfaces")
+                network_interface_responses = AWSApi.instance().ec2.describe_network_interfaces(network_interface_ids)
 
                 fs_access = False
                 network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
@@ -469,8 +458,8 @@ class FsxNetworkingValidator(Validator):
                         "TCP traffic through port 988.".format(file_system_id),
                         FailureLevel.ERROR,
                     )
-        except ClientError as e:
-            self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
 
 
 class FsxArchitectureOsValidator(Validator):
@@ -694,10 +683,10 @@ class _LaunchTemplateValidator(Validator, ABC):
     def _ec2_run_instance(self, availability_zone: str, **kwargs):  # noqa: C901 FIXME!!!
         """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
         try:
-            boto3.client("ec2").run_instances(**kwargs)
-        except ClientError as e:
-            code = e.response.get("Error").get("Code")
-            message = e.response.get("Error").get("Message")
+            AWSApi.instance().ec2.run_instances(**kwargs)
+        except AWSClientError as e:
+            code = e.error_code
+            message = str(e)
             subnet_id = kwargs["NetworkInterfaces"][0]["SubnetId"]
             if code == "DryRunOperation":
                 pass

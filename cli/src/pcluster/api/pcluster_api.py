@@ -17,6 +17,7 @@ from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
+from pcluster.aws.common import get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.cluster import (
     Cluster,
@@ -29,7 +30,7 @@ from pcluster.models.cluster import (
 from pcluster.models.cluster_resources import ClusterInstance
 from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, NonExistingImageError
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
-from pcluster.utils import get_installed_version, get_region
+from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)

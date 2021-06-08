@@ -24,6 +24,14 @@ def clear_env():
         del os.environ["AWS_DEFAULT_REGION"]
 
 
+@pytest.fixture(autouse=True)
+def reset_aws_api():
+    """Reset AWSApi singleton to remove dependencies between tests."""
+    from pcluster.aws.aws_api import AWSApi
+
+    AWSApi._instance = None
+
+
 @pytest.fixture
 def failed_with_message(capsys):
     """Assert that the command exited with a specific error message."""

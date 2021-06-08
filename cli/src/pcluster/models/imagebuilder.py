@@ -20,7 +20,7 @@ import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError
+from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError, get_region
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
@@ -37,7 +37,7 @@ from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistin
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, get_region
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition
 from pcluster.validators.common import FailureLevel
 
 ImageBuilderStatusMapping = {

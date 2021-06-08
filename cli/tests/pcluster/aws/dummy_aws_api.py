@@ -82,6 +82,7 @@ class _DummyAWSApi(AWSApi):
         self._sts = _DummyStsClient()
         self._s3_resource = _DummyS3Resource()
         self._iam = _DummyIamClient()
+        self._batch = _DummyBatchClient()
         # TODO: mock all clients
 
 
@@ -179,6 +180,12 @@ class _DummyS3Resource(S3Resource):
 
 
 class _DummyIamClient(IamClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+
+class _DummyBatchClient(IamClient):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
