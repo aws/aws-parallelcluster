@@ -235,9 +235,9 @@ class Cluster:
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
 
-    def __init__(self, keep_logs_on_failure=False):
+    def __init__(self, delete_logs_on_success=False):
         self.__created_clusters = {}
-        self._keep_logs_on_failure = keep_logs_on_failure
+        self._delete_logs_on_success = delete_logs_on_success
 
     def create_cluster(self, cluster, extra_args=None, raise_on_error=True):
         """
@@ -279,11 +279,11 @@ class ClustersFactory:
         logging.info("Sleeping for 30 seconds in case cluster is not ready yet")
         time.sleep(30)
 
-    def destroy_cluster(self, name, delete_logs):
+    def destroy_cluster(self, name, test_passed):
         """Destroy a created cluster."""
         logging.info("Destroying cluster {0}".format(name))
         if name in self.__created_clusters:
-            delete_logs = delete_logs and (self._keep_logs_on_failure and self.__created_clusters[name].create_complete)
+            delete_logs = test_passed and self._delete_logs_on_success and self.__created_clusters[name].create_complete
             try:
                 self.__created_clusters[name].delete(delete_logs=delete_logs)
             except Exception as e:
@@ -300,11 +300,11 @@ class ClustersFactory:
     def _destroy_cluster(self, name):
         self.__created_clusters[name].delete(delete_logs=False)
 
-    def destroy_all_clusters(self, delete_logs):
+    def destroy_all_clusters(self, test_passed):
         """Destroy all created clusters."""
         logging.debug("Destroying all clusters")
         for key in list(self.__created_clusters.keys()):
             try:
-                self.destroy_cluster(key, delete_logs)
+                self.destroy_cluster(key, test_passed)
             except Exception as e:
                 logging.error("Failed when destroying cluster {0} with exception {1}.".format(key, e))

@@ -109,12 +109,7 @@ def pytest_addoption(parser):
     parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
     parser.addoption(
-        "--keep-logs-on-cluster-failure",
-        help="preserve CloudWatch logs when a cluster fails to be created",
-        action="store_true",
-    )
-    parser.addoption(
-        "--keep-logs-on-test-failure", help="preserve CloudWatch logs when a test fails", action="store_true"
+        "--delete-logs-on-success", help="delete CloudWatch logs when a test succeeds", action="store_true"
     )
 
 
@@ -289,7 +284,7 @@ def clusters_factory(request, region):
 
     The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
     """
-    factory = ClustersFactory(keep_logs_on_failure=request.config.getoption("keep_logs_on_cluster_failure"))
+    factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
     def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True):
         cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
@@ -311,9 +306,7 @@ def clusters_factory(request, region):
 
     yield _cluster_factory
     if not request.config.getoption("no_delete"):
-        factory.destroy_all_clusters(
-            delete_logs=request.config.getoption("keep_logs_on_test_failure") and request.node.rep_call.passed
-        )
+        factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
