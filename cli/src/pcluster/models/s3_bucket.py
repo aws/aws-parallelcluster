@@ -21,9 +21,9 @@ from enum import Enum
 import yaml
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError
+from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
-from pcluster.utils import get_partition, get_region, zip_dir
+from pcluster.utils import get_partition, zip_dir
 
 LOGGER = logging.getLogger(__name__)
 

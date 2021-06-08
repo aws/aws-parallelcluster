@@ -26,4 +26,5 @@ def assert_failure_messages(actual_failures, expected_messages):
             )
             assert_that(res).is_true()
     else:
+        print(actual_failures)
         assert_that(actual_failures).is_empty()

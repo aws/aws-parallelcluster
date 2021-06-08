@@ -19,6 +19,7 @@ import boto3
 import yaml
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import get_region
 from pcluster.cli_commands.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,
@@ -33,7 +34,7 @@ from pcluster.cli_commands.configure.utils import (
     prompt_iterable,
 )
 from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
-from pcluster.utils import default_config_file_path, error, get_region, get_supported_os_for_scheduler
+from pcluster.utils import default_config_file_path, error, get_supported_os_for_scheduler
 
 LOGGER = logging.getLogger(__name__)
 

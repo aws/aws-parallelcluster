@@ -33,6 +33,7 @@ from aws_cdk.core import CfnParameter, CfnTag, Construct, Fn, Stack
 import pcluster.utils as utils
 from pcluster import imagebuilder_utils
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import get_region
 from pcluster.config.common import BaseTag
 from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.constants import (
@@ -112,7 +113,7 @@ class ImageBuilderCdkStack(Stack):
         log_group_arn = self.format_arn(
             service="logs",
             resource="log-group",
-            region=utils.get_region(),
+            region=get_region(),
             sep=":",
             resource_name=f"/aws/imagebuilder/{self._build_image_recipe_name()}",
         )
@@ -760,7 +761,7 @@ class ImageBuilderCdkStack(Stack):
             function_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=self.config.custom_s3_bucket
-                or S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), utils.get_region()),
+                or S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), get_region()),
                 s3_key=self.bucket.get_object_key(S3FileType.CUSTOM_RESOURCES, "artifacts.zip"),
             ),
             handler="delete_image_stack.handler",

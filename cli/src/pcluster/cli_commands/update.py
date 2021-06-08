@@ -17,6 +17,7 @@ from tabulate import tabulate
 
 import pcluster.utils as utils
 from pcluster.api.pcluster_api import ClusterInfo, PclusterApi
+from pcluster.aws.common import get_region
 from pcluster.cli_commands.commands import _parse_config_file, print_stack_outputs
 from pcluster.config.update_policy import UpdatePolicy
 
@@ -38,7 +39,7 @@ def execute(args):
         result = PclusterApi().update_cluster(
             cluster_config,
             args.cluster_name,
-            utils.get_region(),
+            get_region(),
             suppress_validators=args.suppress_validators,
             force=args.force,
         )
@@ -56,7 +57,7 @@ def execute(args):
                     utils.log_stack_failure_recursive(result.stack_name, failed_states=["UPDATE_FAILED"])
                     sys.exit(1)
 
-                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=get_region())
                 if isinstance(result, ClusterInfo):
                     print_stack_outputs(result.stack_outputs)
                 else:

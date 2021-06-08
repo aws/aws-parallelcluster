@@ -24,6 +24,7 @@ from tabulate import tabulate
 
 import pcluster.utils as utils
 from pcluster.api.pcluster_api import ApiFailure, ClusterInfo, ImageBuilderInfo, PclusterApi
+from pcluster.aws.common import get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.models.cluster import NodeType
 from pcluster.utils import load_yaml_dict
@@ -82,7 +83,7 @@ def create(args):
         result = PclusterApi().create_cluster(
             cluster_config=cluster_config,
             cluster_name=args.cluster_name,
-            region=utils.get_region(),
+            region=get_region(),
             disable_rollback=args.norollback,
             suppress_validators=args.suppress_validators,
             validation_failure_level=args.validation_failure_level,
@@ -100,7 +101,7 @@ def create(args):
                     sys.exit(1)
 
                 LOGGER.info("")
-                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=get_region())
                 if isinstance(result, ClusterInfo):
                     print_stack_outputs(result.stack_outputs)
                 else:
@@ -174,7 +175,7 @@ def _colorize(stack_status, args):
 def list_clusters(args):
     """List existing clusters."""
     try:
-        result = PclusterApi().list_clusters(region=utils.get_region())
+        result = PclusterApi().list_clusters(region=get_region())
         if isinstance(result, list):
             clusters = [[cluster.name, _colorize(cluster.status, args), cluster.version] for cluster in result]
             LOGGER.info(tabulate(clusters, tablefmt="plain"))
@@ -188,7 +189,7 @@ def list_clusters(args):
 def instances(args):
     """Print the list of instances associated to the cluster."""
     try:
-        result = PclusterApi().describe_cluster_instances(cluster_name=args.cluster_name, region=utils.get_region())
+        result = PclusterApi().describe_cluster_instances(cluster_name=args.cluster_name, region=get_region())
         if isinstance(result, list):
             for instance in result:
                 LOGGER.info("%s         %s", f"{instance.node_type}\t", instance.instance_id)
@@ -214,7 +215,7 @@ def ssh(args, extra_args):
             from pipes import quote as cmd_quote
 
         result = PclusterApi().describe_cluster_instances(
-            cluster_name=args.cluster_name, region=utils.get_region(), node_type=NodeType.HEAD_NODE
+            cluster_name=args.cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
         )
         if isinstance(result, list) and len(result) == 1:
             # build command
@@ -247,7 +248,7 @@ def ssh(args, extra_args):
 def status(args):
     """Get cluster status."""
     try:
-        result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+        result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=get_region())
         if isinstance(result, ClusterInfo):
             sys.stdout.write(f"\rStatus: {result.stack_status}\n")
             sys.stdout.flush()
@@ -271,7 +272,7 @@ def status(args):
                 if verified:
                     # Retrieve instances info
                     result = PclusterApi().describe_cluster_instances(
-                        cluster_name=args.cluster_name, region=utils.get_region()
+                        cluster_name=args.cluster_name, region=get_region()
                     )
                     if isinstance(result, list):
                         for instance in result:
@@ -301,7 +302,7 @@ def delete(args):  # noqa: C901
     LOGGER.debug("CLI args: %s", str(args))
     try:
         # delete cluster raises an exception if stack does not exist
-        result = PclusterApi().delete_cluster(args.cluster_name, utils.get_region(), args.keep_logs)
+        result = PclusterApi().delete_cluster(args.cluster_name, get_region(), args.keep_logs)
         if isinstance(result, ClusterInfo):
             print("Cluster deletion started correctly.")
         else:
@@ -315,7 +316,7 @@ def delete(args):  # noqa: C901
                 result.stack_arn, waiting_states=["DELETE_IN_PROGRESS"], successful_states=["DELETE_COMPLETE"]
             )
             if not verified:
-                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=get_region())
                 if isinstance(result, ClusterInfo):
                     utils.log_stack_failure_recursive(result.stack_arn, failed_states=["DELETE_FAILED"])
                 elif isinstance(result, ApiFailure):
@@ -353,7 +354,9 @@ def start(args):
     """Start cluster compute fleet."""
     try:
         result = PclusterApi().update_compute_fleet_status(
-            cluster_name=args.cluster_name, region=utils.get_region(), status=ComputeFleetStatus.START_REQUESTED
+            cluster_name=args.cluster_name,
+            region=get_region(),
+            status=ComputeFleetStatus.START_REQUESTED,
         )
         if isinstance(result, ApiFailure):
             utils.error(f"Unable to start the compute fleet of the cluster.\n{result.message}")
@@ -368,7 +371,9 @@ def stop(args):
     """Stop cluster compute fleet."""
     try:
         result = PclusterApi().update_compute_fleet_status(
-            cluster_name=args.cluster_name, region=utils.get_region(), status=ComputeFleetStatus.STOP_REQUESTED
+            cluster_name=args.cluster_name,
+            region=get_region(),
+            status=ComputeFleetStatus.STOP_REQUESTED,
         )
         if isinstance(result, ApiFailure):
             utils.error(f"Unable to stop the compute fleet of the cluster.\n{result.message}")
@@ -384,7 +389,9 @@ def build_image(args):
     LOGGER.info("Building AWS ParallelCluster image. This could take a while...")
     try:
         response = PclusterApi().build_image(
-            imagebuilder_config=load_yaml_dict(args.config_file), image_id=args.id, region=utils.get_region()
+            imagebuilder_config=load_yaml_dict(args.config_file),
+            image_id=args.id,
+            region=get_region(),
         )
 
         if isinstance(response, ApiFailure):
@@ -414,7 +421,7 @@ def update(args):
     try:
         cluster_config = _parse_config_file(config_file=args.config_file)
         # delete cluster raises an exception if stack does not exist
-        result = PclusterApi().update_cluster(cluster_config, args.cluster_name, utils.get_region())
+        result = PclusterApi().update_cluster(cluster_config, args.cluster_name, get_region())
         if isinstance(result, ClusterInfo):
             print("Cluster update started correctly.")
         else:
@@ -430,7 +437,7 @@ def delete_image(args):
     LOGGER.debug("CLI args: %s", str(args))
     try:
         # delete image raises an exception if stack does not exist
-        result = PclusterApi().delete_image(image_id=args.id, region=utils.get_region(), force=args.force)
+        result = PclusterApi().delete_image(image_id=args.id, region=get_region(), force=args.force)
         if isinstance(result, ImageBuilderInfo):
             result.imagebuild_status = "DELETE_IN_PROGRESS"
 
@@ -458,7 +465,7 @@ def delete_image(args):
 def describe_image(args):
     """Describe image info by image_name."""
     try:
-        result = PclusterApi().describe_image(image_id=args.id, region=utils.get_region())
+        result = PclusterApi().describe_image(image_id=args.id, region=get_region())
         LOGGER.info("Response:")
         if isinstance(result, ApiFailure):
             LOGGER.info("Build image error %s", result.message)
@@ -472,7 +479,7 @@ def describe_image(args):
 def list_images(args):
     """List existing AWS ParallelCluster AMIs."""
     try:
-        result = PclusterApi().list_images(region=utils.get_region())
+        result = PclusterApi().list_images(region=get_region())
         if isinstance(result, list):
             images = []
             for info in result:

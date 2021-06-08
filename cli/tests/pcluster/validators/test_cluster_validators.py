@@ -43,7 +43,7 @@ from tests.utils import MockedBoto3Request
 
 @pytest.fixture()
 def boto3_stubber_path():
-    return "pcluster.validators.cluster_validators.boto3"
+    return "pcluster.aws.common.boto3"
 
 
 @pytest.mark.parametrize(

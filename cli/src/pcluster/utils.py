@@ -24,12 +24,12 @@ from shlex import quote
 from typing import NoReturn
 from urllib.parse import urlparse
 
-import boto3
 import pkg_resources
 import yaml
 from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import get_region
 from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
 
 LOGGER = logging.getLogger(__name__)
@@ -38,18 +38,6 @@ LOGGER = logging.getLogger(__name__)
 def default_config_file_path():
     """Return the default path for the ParallelCluster configuration file."""
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
-
-
-def get_region():
-    """
-    Get region used internally for all the AWS calls.
-
-    The region from the env has higher priority because it can be explicitly set from the code (e.g. unit test).
-    """
-    region = os.environ.get("AWS_DEFAULT_REGION") or boto3.session.Session().region_name
-    if region is None:
-        error("AWS region not configured")
-    return region
 
 
 def get_partition():

@@ -187,3 +187,11 @@ class Cache:
                 return return_value
 
         return wrapper
+
+
+def get_region():
+    """Get region used internally for all the AWS calls."""
+    region = boto3.session.Session().region_name
+    if region is None:
+        raise AWSClientError("get_region", "AWS region not configured")
+    return region
