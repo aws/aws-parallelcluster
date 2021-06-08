@@ -10,9 +10,6 @@
 # limitations under the License.
 from typing import List, Union
 
-import boto3
-from botocore.exceptions import ClientError
-
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.validators.common import FailureLevel, Validator
@@ -25,9 +22,9 @@ class SecurityGroupsValidator(Validator):
         if security_group_ids:
             for sg_id in security_group_ids:
                 try:
-                    boto3.client("ec2").describe_security_groups(GroupIds=[sg_id])
-                except ClientError as e:
-                    self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
+                    AWSApi.instance().ec2.describe_security_group(sg_id)
+                except AWSClientError as e:
+                    self._add_failure(str(e), FailureLevel.ERROR)
 
 
 class SubnetsValidator(Validator):

@@ -8,10 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import boto3
-from botocore.exceptions import ClientError
-
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.utils import get_partition
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -166,23 +164,19 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                         FailureLevel.WARNING,
                     )
             except Exception as exception:
-                if isinstance(exception, ClientError) and exception.response.get("Error").get("Code") in [
+                if isinstance(exception, AWSClientError) and exception.error_code in [
                     "InvalidSnapshot.NotFound",
                     "InvalidSnapshot.Malformed",
                 ]:
                     self._add_failure(
-                        "The snapshot {0} does not appear to exist: {1}.".format(
-                            snapshot_id, exception.response.get("Error").get("Message")
-                        ),
+                        "The snapshot {0} does not appear to exist: {1}.".format(snapshot_id, str(exception)),
                         FailureLevel.ERROR,
                     )
                 else:
                     self._add_failure(
                         "Issue getting info for snapshot {0}: {1}.".format(
                             snapshot_id,
-                            exception.response.get("Error").get("Message")
-                            if isinstance(exception, ClientError)
-                            else exception,
+                            str(exception) if isinstance(exception, AWSClientError) else exception,
                         ),
                         FailureLevel.ERROR,
                     )
@@ -198,18 +192,14 @@ class SharedEbsVolumeIdValidator(Validator):
     def _validate(self, volume_id: str):
         if volume_id:
             try:
-                respond = boto3.client("ec2").describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+                respond = AWSApi.instance().ec2.describe_volume(volume_id)
                 if respond.get("State") != "available":
                     self._add_failure(
                         "Volume {0} is in state '{1}' not 'available'.".format(volume_id, respond.get("State")),
                         FailureLevel.WARNING,
                     )
-            except ClientError as e:
-                if (
-                    e.response.get("Error")
-                    .get("Message")
-                    .endswith("parameter volumes is invalid. Expected: 'vol-...'.")
-                ):
+            except AWSClientError as e:
+                if str(e).endswith("parameter volumes is invalid. Expected: 'vol-...'."):
                     self._add_failure(f"Volume {volume_id} does not exist.", FailureLevel.ERROR)
                 else:
-                    self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
+                    self._add_failure(str(e), FailureLevel.ERROR)

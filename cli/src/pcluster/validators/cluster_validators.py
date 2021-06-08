@@ -316,7 +316,7 @@ class EfaSecurityGroupValidator(Validator):
         efa_sg_found = False
         for security_group in security_groups:
             try:
-                sec_group = AWSApi.instance().ec2.describe_single_security_group(security_group)
+                sec_group = AWSApi.instance().ec2.describe_security_group(security_group)
                 allowed_in = False
                 allowed_out = False
 

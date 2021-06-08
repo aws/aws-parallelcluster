@@ -28,3 +28,8 @@ class FSxClient(Boto3Client):
         :return: filesystem info
         """
         return FsxFileSystemInfo(self._client.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0])
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_backup(self, backup_id):
+        """Describe backup."""
+        return self._client().describe_backups(BackupIds=[backup_id]).get("Backups")[0]

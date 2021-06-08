@@ -113,7 +113,7 @@ def _get_supported_batch_instance_types():
     known_exceptions = ["optimal"]
     supported_instance_types_and_families = supported_instance_types + supported_instance_families + known_exceptions
     try:
-        parsed_instance_types_and_families = AWSApi.instance().batch.get_parsed_supported_instance_types_and_families()
+        parsed_instance_types_and_families = AWSApi.instance().batch.get_supported_instance_types_and_families()
         if _batch_instance_types_and_families_are_supported(
             parsed_instance_types_and_families, supported_instance_types_and_families
         ):

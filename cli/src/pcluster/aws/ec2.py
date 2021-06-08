@@ -337,7 +337,7 @@ class Ec2Client(Boto3Client):
         return self._client.describe_snapshots(SnapshotIds=[ebs_snapshot_id]).get("Snapshots")[0]
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_single_security_group(self, security_group_id):
+    def describe_security_group(self, security_group_id):
         """Describe a single security group."""
         return self.describe_security_groups([security_group_id]).get("SecurityGroups")[0]
 
@@ -352,6 +352,11 @@ class Ec2Client(Boto3Client):
         return self._client.describe_network_interfaces(NetworkInterfaceIds=network_interface_ids).get(
             "NetworkInterfaces"
         )
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_volume(self, volume_id):
+        """Describe a volume."""
+        return self._client.describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
 
     @AWSExceptionHandler.handle_client_exception
     def run_instances(self, **kwargs):

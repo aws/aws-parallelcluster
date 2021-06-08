@@ -97,7 +97,7 @@ class BatchClient(Boto3Client):
             serviceRole="AWSBatchServiceRole",
         )
 
-    def get_parsed_supported_instance_types_and_families(self):
+    def get_supported_instance_types_and_families(self):
         """
         Parse the supported instance types emsg, obtained by calling CreateComputeEnvironment.
 
