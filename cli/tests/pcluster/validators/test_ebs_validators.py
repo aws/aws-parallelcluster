@@ -25,7 +25,6 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator
 from tests.pcluster.validators.utils import assert_failure_messages
-from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()
@@ -236,42 +235,35 @@ def test_ebs_volume_kms_key_id_validator(kms_key_id, encrypted, expected_message
     assert_failure_messages(actual_failures, expected_message)
 
 
-def test_ec2_volume_validator(boto3_stubber):
-    describe_volumes_response = {
-        "Volumes": [
-            {
-                "AvailabilityZone": "us-east-1a",
-                "Attachments": [
-                    {
-                        "AttachTime": "2013-12-18T22:35:00.000Z",
-                        "InstanceId": "i-1234567890abcdef0",
-                        "VolumeId": "vol-12345678",
-                        "State": "attached",
-                        "DeleteOnTermination": True,
-                        "Device": "/dev/sda1",
-                    }
-                ],
-                "Encrypted": False,
-                "VolumeType": "gp2",
-                "VolumeId": "vol-049df61146c4d7901",
-                "State": "available",  # TODO add test with "in-use"
-                "SnapshotId": "snap-1234567890abcdef0",
-                "CreateTime": "2013-12-18T22:35:00.084Z",
-                "Size": 8,
-            }
-        ]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_volumes",
-            response=describe_volumes_response,
-            expected_params={"VolumeIds": ["vol-12345678"]},
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
+def test_ec2_volume_validator(mocker):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    describe_volume_mock = mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.describe_volume",
+        return_value={
+            "AvailabilityZone": "us-east-1a",
+            "Attachments": [
+                {
+                    "AttachTime": "2013-12-18T22:35:00.000Z",
+                    "InstanceId": "i-1234567890abcdef0",
+                    "VolumeId": "vol-12345678",
+                    "State": "attached",
+                    "DeleteOnTermination": True,
+                    "Device": "/dev/sda1",
+                }
+            ],
+            "Encrypted": False,
+            "VolumeType": "gp2",
+            "VolumeId": "vol-049df61146c4d7901",
+            "State": "available",  # TODO add test with "in-use"
+            "SnapshotId": "snap-1234567890abcdef0",
+            "CreateTime": "2013-12-18T22:35:00.084Z",
+            "Size": 8,
+        },
+    )
 
     actual_failures = SharedEbsVolumeIdValidator().execute(volume_id="vol-12345678")
     assert_failure_messages(actual_failures, None)
+    describe_volume_mock.assert_called_with("vol-12345678")
 
 
 def test_ebs_allowed_values_all_have_volume_size_bounds():

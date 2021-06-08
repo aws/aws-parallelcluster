@@ -154,7 +154,7 @@ def test_get_supported_batch_instance_types(mocker, raise_error_parsing_function
     dummy_all_instance_families = dummy_batch_instance_families + ["non-batch-instance-family"]
     # Mock all functions called by the function
     parsing_function_patch = mocker.patch(
-        "pcluster.aws.batch.BatchClient.get_parsed_supported_instance_types_and_families",
+        "pcluster.aws.batch.BatchClient.get_supported_instance_types_and_families",
         side_effect=BatchErrorMessageParsingException
         if raise_error_parsing_function
         else lambda: dummy_batch_instance_types + dummy_batch_instance_families,
@@ -237,7 +237,7 @@ def test_parse_supported_instance_types_and_families_from_cce_emsg(
     results_log_msg_preamble = "Parsed the following instance types and families from Batch CCE error message:"
     caplog.set_level(logging.DEBUG, logger="pcluster")
     if match_expected:
-        assert_that(AWSApi.instance().batch.get_parsed_supported_instance_types_and_families()).is_equal_to(
+        assert_that(AWSApi.instance().batch.get_supported_instance_types_and_families()).is_equal_to(
             expected_return_value
         )
         assert_that(caplog.text).contains(results_log_msg_preamble)
@@ -246,7 +246,7 @@ def test_parse_supported_instance_types_and_families_from_cce_emsg(
             BatchErrorMessageParsingException,
             match="Could not parse supported instance types from the following: {0}".format(escape(api_emsg)),
         ):
-            AWSApi.instance().batch.get_parsed_supported_instance_types_and_families()
+            AWSApi.instance().batch.get_supported_instance_types_and_families()
         assert_that(caplog.text).does_not_contain(results_log_msg_preamble)
 
 

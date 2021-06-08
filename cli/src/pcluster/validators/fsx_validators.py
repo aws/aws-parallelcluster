@@ -8,11 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import boto3
-from botocore.exceptions import ClientError
-
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import get_region
+from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.validators.common import FailureLevel, Validator
 from pcluster.validators.utils import get_bucket_name_from_s3_url
@@ -208,12 +205,10 @@ class FsxBackupIdValidator(Validator):
     def _validate(self, backup_id):
         if backup_id:
             try:
-                boto3.client("fsx").describe_backups(BackupIds=[backup_id]).get("Backups")[0]
-            except ClientError as e:
+                AWSApi.instance().fsx.describe_backup(backup_id)
+            except AWSClientError as e:
                 self._add_failure(
-                    "Failed to retrieve backup with Id '{0}': {1}".format(
-                        backup_id, e.response.get("Error").get("Message")
-                    ),
+                    "Failed to retrieve backup with Id '{0}': {1}".format(backup_id, str(e)),
                     FailureLevel.ERROR,
                 )
 
