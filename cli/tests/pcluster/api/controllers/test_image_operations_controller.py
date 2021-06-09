@@ -170,7 +170,7 @@ class TestDeleteImage:
         expected_response = {
             "image": {
                 "imageId": "image1",
-                "imageBuildStatus": ImageBuildStatus.DELETE_COMPLETE,
+                "imageBuildStatus": ImageBuildStatus.DELETE_IN_PROGRESS,
                 "region": "us-east-1",
                 "version": "3.0.0",
             }
@@ -182,7 +182,7 @@ class TestDeleteImage:
         expected_response = {
             "image": {
                 "imageId": "image1",
-                "imageBuildStatus": ImageBuildStatus.DELETE_COMPLETE,
+                "imageBuildStatus": ImageBuildStatus.DELETE_IN_PROGRESS,
                 "region": "us-east-1",
                 "version": "3.0.0",
             }
@@ -211,10 +211,10 @@ class TestDeleteImage:
         expected_response = {
             "image": {
                 "imageId": "image1",
-                "imageBuildStatus": ImageBuildStatus.DELETE_COMPLETE,
+                "imageBuildStatus": ImageBuildStatus.DELETE_IN_PROGRESS,
                 "region": "us-east-1",
                 "version": "3.0.0",
-                "cloudformationStackStatus": CloudFormationStatus.DELETE_COMPLETE,
+                "cloudformationStackStatus": CloudFormationStatus.DELETE_IN_PROGRESS,
                 "cloudformationStackArn": "arn:image1",
             }
         }
