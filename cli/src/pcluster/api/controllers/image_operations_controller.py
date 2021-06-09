@@ -32,6 +32,7 @@ from pcluster.api.models import (
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
@@ -40,9 +41,7 @@ from pcluster.models.imagebuilder import (
     LimitExceededImageError,
     NonExistingImageError,
 )
-
-from ...aws.common import BadRequestError, LimitExceededError
-from ...models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError, NonExistingStackError
+from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError, NonExistingStackError
 
 
 def convert_imagebuilder_errors():
