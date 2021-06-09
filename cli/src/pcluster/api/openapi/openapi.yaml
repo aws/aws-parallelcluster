@@ -857,17 +857,22 @@ paths:
             AWS region the API is deployed to.
           type: string
         style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
       - description: Filter by image status.
         explode: true
         in: query
         name: imageStatus
-        required: false
+        required: true
         schema:
-          description: Filter by image status.
-          items:
-            $ref: '#/components/schemas/ImageStatusFilteringOption'
-          type: array
-          uniqueItems: true
+          $ref: '#/components/schemas/ImageStatusFilteringOption'
         style: form
       responses:
         "200":
@@ -2065,11 +2070,9 @@ components:
       type: object
     ImageStatusFilteringOption:
       enum:
-      - BUILD_IN_PROGRESS
-      - BUILD_FAILED
-      - BUILD_COMPLETE
-      - DELETE_IN_PROGRESS
-      - DELETE_FAILED
+      - AVAILABLE
+      - PENDING
+      - FAILED
       title: ImageStatusFilteringOption
       type: string
     InstanceState:
@@ -2131,6 +2134,7 @@ components:
       type: object
     ListImagesResponseContent:
       example:
+        nextToken: nextToken
         items:
         - imageId: imageId
           imageBuildStatus: null
@@ -2145,6 +2149,10 @@ components:
           region: region
           version: version
       properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
         items:
           items:
             $ref: '#/components/schemas/ImageInfoSummary'
