@@ -15,8 +15,13 @@ from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import ImageNotFoundError, StackNotFoundError
-from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, LimitExceededImageError
-from pcluster.models.imagebuilder_resources import LimitExceededStackError
+from pcluster.models.imagebuilder import (
+    BadRequestImageBuilderActionError,
+    BadRequestImageError,
+    LimitExceededImageBuilderActionError,
+    LimitExceededImageError,
+)
+from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
 
 
 class TestImageOperationsController:
@@ -131,9 +136,7 @@ class TestDeleteImage:
             ],
         }
 
-    def _assert_successful(
-        self, mocker, client, image_id, force, region, image, stack, expected_response, stack_after_deletion=None
-    ):
+    def _assert_successful(self, mocker, client, image_id, force, region, image, stack, expected_response):
         if image:
             mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
         else:
@@ -143,13 +146,7 @@ class TestDeleteImage:
             )
 
         if stack:
-            if stack_after_deletion:
-                mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=[stack, stack_after_deletion])
-            else:
-                mocker.patch(
-                    "pcluster.aws.cfn.CfnClient.describe_stack",
-                    side_effect=[stack, StackNotFoundError("describe_stack", "stack_name")],
-                )
+            mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack)
         else:
             mocker.patch(
                 "pcluster.aws.cfn.CfnClient.describe_stack",
@@ -191,7 +188,6 @@ class TestDeleteImage:
 
     def test_delete_image_with_only_stack_and_no_available_image_succeeds(self, mocker, client):
         stack = self._create_stack("image1", CloudFormationStatus.DELETE_FAILED)
-        stack_after_deletion = self._create_stack("image1", CloudFormationStatus.DELETE_IN_PROGRESS)
         expected_response = {
             "image": {
                 "imageId": "image1",
@@ -202,25 +198,7 @@ class TestDeleteImage:
                 "cloudformationStackArn": "arn:image1",
             }
         }
-        self._assert_successful(
-            mocker, client, "image1", True, "us-east-1", None, stack, expected_response, stack_after_deletion
-        )
-
-    def test_delete_image_with_only_stack_when_stack_is_deleted_immediately(self, mocker, client):
-        stack = self._create_stack("image1", CloudFormationStatus.DELETE_FAILED)
-        expected_response = {
-            "image": {
-                "imageId": "image1",
-                "imageBuildStatus": ImageBuildStatus.DELETE_IN_PROGRESS,
-                "region": "us-east-1",
-                "version": "3.0.0",
-                "cloudformationStackStatus": CloudFormationStatus.DELETE_IN_PROGRESS,
-                "cloudformationStackArn": "arn:image1",
-            }
-        }
-        self._assert_successful(
-            mocker, client, "image1", True, "us-east-1", None, stack, expected_response, stack_after_deletion=None
-        )
+        self._assert_successful(mocker, client, "image1", True, "us-east-1", None, stack, expected_response)
 
     def test_delete_image_with_no_available_image_or_stack_throws_not_found_exception(self, mocker, client):
         mocker.patch(
@@ -265,12 +243,13 @@ class TestDeleteImage:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
-    def test_that_imagebuilder_bad_request_error_is_converted(self, client, mocker):
+    @pytest.mark.parametrize("error", [BadRequestImageError, BadRequestStackError, BadRequestImageBuilderActionError])
+    def test_that_imagebuilder_bad_request_error_is_converted(self, client, mocker, error):
         image = self._create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
         mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.delete",
-            side_effect=BadRequestImageBuilderActionError("test error"),
+            side_effect=error("test error"),
         )
         expected_error = {"message": "Bad Request: test error"}
         response = self._send_test_request(client, "image1")
@@ -279,7 +258,9 @@ class TestDeleteImage:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_error)
 
-    @pytest.mark.parametrize("error", [LimitExceededImageError, LimitExceededStackError, LimitExceededImageError])
+    @pytest.mark.parametrize(
+        "error", [LimitExceededImageError, LimitExceededStackError, LimitExceededImageBuilderActionError]
+    )
     def test_that_limit_exceeded_error_is_converted(self, client, mocker, error):
         image = self._create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
