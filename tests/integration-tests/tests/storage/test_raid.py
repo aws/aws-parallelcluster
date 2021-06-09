@@ -48,8 +48,8 @@ def test_raid_fault_tolerance_mode(scheduler, pcluster_config_reader, clusters_f
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     mount_dir = "/raid_dir"
-    _test_raid_correctly_configured(remote_command_executor, raid_type="1", volume_size=20, raid_devices=2)
-    _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
+    _test_raid_correctly_configured(remote_command_executor, raid_type="1", volume_size=35, raid_devices=2)
+    _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
     _test_raid_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
