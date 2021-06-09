@@ -332,6 +332,7 @@ def _test_dev_settings(
 def test_delete_with_ec2_error(mocker, error, returned_error):
     with pytest.raises(returned_error):
         mock_aws_api(mocker)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
         mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", side_effect=(error))
         ImageBuilder("imageId").delete(force=True)
 
@@ -347,6 +348,5 @@ def test_delete_with_ec2_error(mocker, error, returned_error):
 def test_delete_with_cfn_error(mocker, error, returned_error):
     with pytest.raises(returned_error):
         mock_aws_api(mocker)
-        mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", return_value=False)
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", side_effect=(error))
         ImageBuilder("imageId").delete(force=True)
