@@ -12,11 +12,10 @@ phases:
           commands:
             - |
               set -v
-              nvswitches=$(lspci -d 10de:1af1 | wc -l)
-              echo "$nvswitches"
+              NVSWITCHES=$(lspci -d 10de:1af1 | wc -l)
+              echo "${NVSWITCHES}"
 
-      ### test ###
-      # FabricManager
+      ### tests ###
       - name: FabricManager
         action: ExecuteBash
         inputs:
@@ -29,3 +28,13 @@ phases:
                 [[ $? -ne 0 ]] && echo "fabric-manager daemon test failed" && exit 1
                 echo "NVIDIA Fabric Manager service correctly started"
               fi
+
+      - name: CloudWatch
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status | grep status | grep stopped
+              [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
+              echo "CloudWatch test passed"
