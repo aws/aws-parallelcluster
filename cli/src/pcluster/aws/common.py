@@ -65,6 +65,13 @@ class LimitExceededError(AWSClientError):
         super().__init__(function_name=function_name, message=message, error_code=error_code)
 
 
+class BadRequestError(AWSClientError):
+    """Error caused by a problem in the request."""
+
+    def __init__(self, function_name: str, message: str, error_code: str = None):
+        super().__init__(function_name=function_name, message=message, error_code=error_code)
+
+
 class AWSExceptionHandler:
     """AWS Exception handler."""
 
@@ -77,7 +84,7 @@ class AWSExceptionHandler:
             try:
                 return func(*args, **kwargs)
             except ParamValidationError as validation_error:
-                error = AWSClientError(
+                error = BadRequestError(
                     func.__name__,
                     "Error validating parameter. Failed with exception: {0}".format(str(validation_error)),
                 )

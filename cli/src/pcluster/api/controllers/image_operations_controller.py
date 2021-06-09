@@ -34,13 +34,15 @@ from pcluster.api.models.delete_image_response_content import DeleteImageRespons
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
+    BadRequestImageError,
     ImageBuilder,
     LimitExceededImageBuilderActionError,
     LimitExceededImageError,
     NonExistingImageError,
 )
 
-from ...models.imagebuilder_resources import LimitExceededStackError, NonExistingStackError
+from ...aws.common import BadRequestError, LimitExceededError
+from ...models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError, NonExistingStackError
 
 
 def convert_imagebuilder_errors():
@@ -51,9 +53,19 @@ def convert_imagebuilder_errors():
                 return func(*args, **kwargs)
             except ParallelClusterApiException as e:
                 error = e
-            except (LimitExceededImageError, LimitExceededStackError, LimitExceededImageBuilderActionError) as e:
+            except (
+                LimitExceededError,
+                LimitExceededImageError,
+                LimitExceededStackError,
+                LimitExceededImageBuilderActionError,
+            ) as e:
                 error = LimitExceededException(str(e))
-            except BadRequestImageBuilderActionError as e:
+            except (
+                BadRequestError,
+                BadRequestImageError,
+                BadRequestStackError,
+                BadRequestImageBuilderActionError,
+            ) as e:
                 error = BadRequestException(str(e))
             except Exception as e:
                 error = InternalServiceException(str(e))

@@ -20,7 +20,14 @@ import pkg_resources
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import AWSClientError, ImageNotFoundError, LimitExceededError, StackNotFoundError, get_region
+from pcluster.aws.common import (
+    AWSClientError,
+    BadRequestError,
+    ImageNotFoundError,
+    LimitExceededError,
+    StackNotFoundError,
+    get_region,
+)
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
@@ -34,6 +41,7 @@ from pcluster.constants import (
     PCLUSTER_VERSION_TAG,
 )
 from pcluster.models.imagebuilder_resources import (
+    BadRequestStackError,
     ImageBuilderStack,
     LimitExceededStackError,
     NonExistingStackError,
@@ -91,7 +99,7 @@ class LimitExceededImageBuilderActionError(ImageBuilderActionError):
 
 
 class BadRequestImageBuilderActionError(ImageBuilderActionError):
-    """Represent an error during the execution of an action due to limit exceeded."""
+    """Represent an error during the execution of an action due to exceeding the limit of some AWS service."""
 
     def __init__(self, message: str):
         super().__init__(message)
@@ -111,6 +119,13 @@ class LimitExceededImageError(ImageError):
         super().__init__(message)
 
 
+class BadRequestImageError(ImageError):
+    """Represent image errors due to a bad request."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class NonExistingImageError(ImageError):
     """Represent an error if image does not exist."""
 
@@ -121,6 +136,8 @@ class NonExistingImageError(ImageError):
 def _stack_error_mapper(error, message):
     if isinstance(error, LimitExceededError):
         return LimitExceededStackError(message)
+    elif isinstance(error, BadRequestError):
+        return BadRequestStackError(message)
     else:
         return StackError(message)
 
@@ -128,6 +145,8 @@ def _stack_error_mapper(error, message):
 def _image_error_mapper(error, message):
     if isinstance(error, LimitExceededError):
         return LimitExceededImageError(message)
+    elif isinstance(error, BadRequestError):
+        return BadRequestImageError(message)
     else:
         return ImageError(message)
 
@@ -135,6 +154,8 @@ def _image_error_mapper(error, message):
 def _imagebuilder_error_mapper(error, message):
     if isinstance(error, (LimitExceededImageError, LimitExceededStackError, LimitExceededError)):
         return LimitExceededImageBuilderActionError(message)
+    elif isinstance(error, (BadRequestImageError, BadRequestStackError, BadRequestError)):
+        return BadRequestImageBuilderActionError(message)
     else:
         return ImageBuilderActionError(message)
 
