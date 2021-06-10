@@ -18,7 +18,7 @@ from tabulate import tabulate
 import pcluster.utils as utils
 from pcluster.api.pcluster_api import ClusterInfo, PclusterApi
 from pcluster.aws.common import get_region
-from pcluster.cli_commands.commands import _parse_config_file, print_stack_outputs
+from pcluster.cli_commands.commands import print_stack_outputs, read_config_file
 from pcluster.config.update_policy import UpdatePolicy
 
 LOGGER = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def execute(args):
                 "your cluster may become unstable."
             )
 
-        cluster_config = _parse_config_file(config_file=args.config_file)
+        cluster_config = read_config_file(config_file=args.config_file)
         result = PclusterApi().update_cluster(
             cluster_config,
             args.cluster_name,
