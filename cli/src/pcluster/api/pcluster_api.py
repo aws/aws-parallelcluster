@@ -384,9 +384,9 @@ class PclusterApi:
             images_response = [ImageBuilderImageInfo(imagebuilder=imagebuilder) for imagebuilder in imagebuilders]
 
             # get building image stacks by image name tag
+            stacks, _ = AWSApi.instance().cfn.get_imagebuilder_stacks()
             imagebuilder_stacks = [
-                ImageBuilder(image_id=stack.get("StackName"), stack=ImageBuilderStack(stack))
-                for stack, _ in AWSApi.instance().cfn.get_imagebuilder_stacks()
+                ImageBuilder(image_id=stack.get("StackName"), stack=ImageBuilderStack(stack)) for stack in stacks
             ]
             imagebuilder_stacks_response = [
                 ImageBuilderStackInfo(imagebuilder=imagebuilder) for imagebuilder in imagebuilder_stacks
