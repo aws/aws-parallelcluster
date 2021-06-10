@@ -90,7 +90,7 @@ def _assert_compute_logs(remote_command_executor, instance_id):
 
 
 def _assert_server_status(cluster):
-    expected_status = ["Status: CREATE_COMPLETE", "HeadNode: RUNNING", "ComputeFleetStatus: RUNNING"]
+    expected_status = ["Status: CREATE_COMPLETE", "HeadNode: running", "ComputeFleetStatus: RUNNING"]
     cluster_status = cluster.status()
     for detail in expected_status:
         assert_that(cluster_status).contains(detail)
