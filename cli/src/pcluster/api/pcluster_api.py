@@ -143,7 +143,7 @@ class PclusterApi:
 
     @staticmethod
     def create_cluster(
-        cluster_config: dict,
+        cluster_config: str,
         cluster_name: str,
         region: str,
         disable_rollback: bool = False,
@@ -153,7 +153,7 @@ class PclusterApi:
         """
         Load cluster model from cluster_config and create stack.
 
-        :param cluster_config: cluster configuration (yaml dict)
+        :param cluster_config: cluster configuration (str)
         :param cluster_name: the name to assign to the cluster
         :param region: AWS region
         :param disable_rollback: Disable rollback in case of failures
@@ -199,7 +199,7 @@ class PclusterApi:
 
     @staticmethod
     def update_cluster(
-        cluster_config: dict,
+        cluster_config: str,
         cluster_name: str,
         region: str,
         suppress_validators: bool = False,
@@ -209,7 +209,7 @@ class PclusterApi:
         """
         Update existing cluster.
 
-        :param cluster_config: cluster configuration (yaml dict)
+        :param cluster_config: cluster configuration (str)
         :param cluster_name: the name to assign to the cluster
         :param region: AWS region
         :param suppress_validators: bool = False,

@@ -227,7 +227,7 @@ class S3Bucket:
                     key=self.get_object_key(S3FileType.CUSTOM_RESOURCES, res),
                 )
 
-    def get_config(self, config_name, version_id=None, format=S3FileFormat.YAML):
+    def get_config(self, config_name, version_id=None, format=S3FileFormat.TEXT):
         """Get config file from S3 bucket."""
         return self._get_file(file_type=S3FileType.CONFIGS, file_name=config_name, version_id=version_id, format=format)
 
