@@ -123,8 +123,8 @@ def create(args):
         sys.exit(0)
 
 
-def _print_compute_fleet_status(cluster_name, stack_outputs):
-    if utils.get_stack_output_value(stack_outputs, "Scheduler") == "slurm":
+def _print_compute_fleet_status(cluster_name, scheduler):
+    if scheduler == "slurm":
         status_manager = ComputeFleetStatusManager(cluster_name)
         compute_fleet_status = status_manager.get_status()
         if compute_fleet_status != ComputeFleetStatus.UNKNOWN:
@@ -270,15 +270,7 @@ def status(args):
                     successful_states=["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"],
                 )
                 if verified:
-                    # Retrieve instances info
-                    result = PclusterApi().describe_cluster_instances(
-                        cluster_name=args.cluster_name, region=get_region()
-                    )
-                    if isinstance(result, list):
-                        for instance in result:
-                            LOGGER.info("%s         %s", f"{instance.node_type}\t", instance.instance_id)
-                    else:
-                        utils.error(f"Unable to retrieve the instances of the cluster.\n{result.message}")
+                    _print_cluster_status(args.cluster_name, result.scheduler)
                 else:
                     # Log failed events
                     utils.log_stack_failure_recursive(
@@ -294,6 +286,18 @@ def status(args):
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
+
+
+def _print_cluster_status(cluster_name, scheduler):
+    """Print head node and compute fleet status."""
+    result = PclusterApi().describe_cluster_instances(
+        cluster_name=cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
+    )
+    if isinstance(result, list) and len(result) == 1:
+        LOGGER.info("%s: %s", result[0].node_type, result[0].state)
+        _print_compute_fleet_status(cluster_name, scheduler)
+    else:
+        utils.error(f"Unable to retrieve the status of the cluster's instances.\n{result.message}")
 
 
 def delete(args):  # noqa: C901
