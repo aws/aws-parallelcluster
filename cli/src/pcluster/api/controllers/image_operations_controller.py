@@ -7,10 +7,18 @@
 # limitations under the License.
 
 # pylint: disable=W0613
-
+import functools
+import os as os_lib
 from datetime import datetime
 
 from pcluster.api.controllers.common import configure_aws_region
+from pcluster.api.errors import (
+    BadRequestException,
+    InternalServiceException,
+    LimitExceededException,
+    NotFoundException,
+    ParallelClusterApiException,
+)
 from pcluster.api.models import (
     BuildImageRequestContent,
     BuildImageResponseContent,
@@ -24,6 +32,47 @@ from pcluster.api.models import (
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.aws.common import BadRequestError, LimitExceededError
+from pcluster.models.imagebuilder import (
+    BadRequestImageBuilderActionError,
+    BadRequestImageError,
+    ImageBuilder,
+    LimitExceededImageBuilderActionError,
+    LimitExceededImageError,
+    NonExistingImageError,
+)
+from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError, NonExistingStackError
+
+
+def convert_imagebuilder_errors():
+    def _decorate_image_operations_api(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except ParallelClusterApiException as e:
+                error = e
+            except (
+                LimitExceededError,
+                LimitExceededImageError,
+                LimitExceededStackError,
+                LimitExceededImageBuilderActionError,
+            ) as e:
+                error = LimitExceededException(str(e))
+            except (
+                BadRequestError,
+                BadRequestImageError,
+                BadRequestStackError,
+                BadRequestImageBuilderActionError,
+            ) as e:
+                error = BadRequestException(str(e))
+            except Exception as e:
+                error = InternalServiceException(str(e))
+            raise error
+
+        return wrapper
+
+    return _decorate_image_operations_api
 
 
 @configure_aws_region(is_query_string_arg=False)
@@ -71,6 +120,7 @@ def build_image(
 
 
 @configure_aws_region()
+@convert_imagebuilder_errors()
 def delete_image(image_id, region=None, client_token=None, force=None):
     """
     Initiate the deletion of the custom ParallelCluster image.
@@ -87,16 +137,40 @@ def delete_image(image_id, region=None, client_token=None, force=None):
 
     :rtype: DeleteImageResponseContent
     """
+    if client_token:
+        raise BadRequestException("clientToken is currently not supported for this operation")
+
+    force = force or False
+    imagebuilder = ImageBuilder(image_id=image_id)
+    image, stack = _get_underlying_image_or_stack(imagebuilder)
+
+    imagebuilder.delete(force=force)
+
     return DeleteImageResponseContent(
         image=ImageInfoSummary(
-            image_id="image",
-            image_build_status=ImageBuildStatus.BUILD_FAILED,
-            cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-            cloudformation_stack_arn="arn",
-            region="region",
-            version="3.0.0",
+            image_id=image_id,
+            image_build_status=ImageBuildStatus.DELETE_IN_PROGRESS,
+            cloudformation_stack_status=CloudFormationStatus.DELETE_IN_PROGRESS if stack else None,
+            cloudformation_stack_arn=stack.id if stack else None,
+            region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+            version=stack.version if stack else image.version,
         )
     )
+
+
+def _get_underlying_image_or_stack(imagebuilder):
+    image = None
+    stack = None
+    try:
+        image = imagebuilder.image
+    except NonExistingImageError:
+        try:
+            stack = imagebuilder.stack
+        except NonExistingStackError:
+            raise NotFoundException(
+                "Unable to find an image or stack for ParallelCluster image id: {}".format(imagebuilder.image_id)
+            )
+    return image, stack
 
 
 @configure_aws_region()

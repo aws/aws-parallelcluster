@@ -15,8 +15,14 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import AWSClientError
+from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError
 from pcluster.config.imagebuilder_config import ImageBuilderExtraChefAttributes
+from pcluster.models.imagebuilder import (
+    BadRequestImageBuilderActionError,
+    ImageBuilder,
+    ImageBuilderActionError,
+    LimitExceededImageBuilderActionError,
+)
 from pcluster.validators.common import FailureLevel
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_imagebuilder_config import imagebuilder_factory
@@ -313,3 +319,34 @@ def _test_dev_settings(
         validation_failures, expected_failure_levels, expected_failure_messages
     ):
         assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
+
+
+@pytest.mark.parametrize(
+    "error, returned_error",
+    [
+        (BadRequestError(function_name="image_exists", message="test error"), BadRequestImageBuilderActionError),
+        (LimitExceededError(function_name="image_exists", message="test error"), LimitExceededImageBuilderActionError),
+        (AWSClientError(function_name="image_exists", message="test error"), ImageBuilderActionError),
+    ],
+)
+def test_delete_with_ec2_error(mocker, error, returned_error):
+    with pytest.raises(returned_error):
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", side_effect=(error))
+        ImageBuilder("imageId").delete(force=True)
+
+
+@pytest.mark.parametrize(
+    "error, returned_error",
+    [
+        (BadRequestError(function_name="image_exists", message="test error"), BadRequestImageBuilderActionError),
+        (LimitExceededError(function_name="image_exists", message="test error"), LimitExceededImageBuilderActionError),
+        (AWSClientError(function_name="image_exists", message="test error"), ImageBuilderActionError),
+    ],
+)
+def test_delete_with_cfn_error(mocker, error, returned_error):
+    with pytest.raises(returned_error):
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", side_effect=(error))
+        ImageBuilder("imageId").delete(force=True)

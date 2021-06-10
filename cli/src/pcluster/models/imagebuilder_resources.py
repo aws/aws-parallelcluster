@@ -39,6 +39,20 @@ class NonExistingStackError(StackError):
         super().__init__(f"ImageBuilder stack {stack_name} does not exist.")
 
 
+class LimitExceededStackError(StackError):
+    """Represent an error if we exceeded the limit of some downstream AWS service."""
+
+    def __init__(self, message: str):
+        super().__init__(message=message)
+
+
+class BadRequestStackError(StackError):
+    """Represent an error due to a problem in the request."""
+
+    def __init__(self, message: str):
+        super().__init__(message=message)
+
+
 class ImageBuilderStack(StackInfo):
     """Class representing a running stack associated to a building image."""
 
