@@ -177,6 +177,17 @@ class Cluster:
             logging.error("Failed exporting cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
+    def list_logs(self):
+        """Run pcluster list-cluster-logs and return the result."""
+        cmd_args = ["pcluster", "list-cluster-logs", self.name]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Cluster's logs listed successfully")
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed listing cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
     @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""

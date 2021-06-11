@@ -16,6 +16,7 @@
 import logging
 import os
 import sys
+import time
 from builtins import str
 from datetime import datetime
 
@@ -470,6 +471,33 @@ def export_cluster_logs(args):
             utils.error(f"Unable to export cluster's logs.\n{result.message}")
         else:
             LOGGER.info("Cluster's logs exported correctly to %s.", output)
+    except KeyboardInterrupt:
+        LOGGER.info("Exiting...")
+        sys.exit(0)
+
+
+def list_cluster_logs(args):
+    """List available cluster logs."""
+    try:
+        result = PclusterApi().list_cluster_logs(
+            cluster_name=args.cluster_name,
+            region=get_region(),
+            filters=" ".join(args.filters) if args.filters else None,
+        )
+        if isinstance(result, list):
+            output_headers = ["logStreamName", "firstEventTimestamp", "lastEventTimestamp"]
+            filtered_result = []
+            for item in result:
+                filtered_item = {}
+                for key in output_headers:
+                    value = item.get(key)
+                    if key.endswith("Timestamp"):
+                        value = time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(value / 1000))
+                    filtered_item[key] = value
+                filtered_result.append(filtered_item)
+            LOGGER.info(tabulate(filtered_result, headers="keys", tablefmt="plain"))
+        else:
+            utils.error(f"Unable to retrieve the list of cluster's logs.\n{result.message}")
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
         sys.exit(0)

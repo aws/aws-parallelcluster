@@ -11,14 +11,41 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.models.cluster_resources import ExportClusterLogsFilters, ExportLogsFilterError
+from pcluster.models.cluster_resources import (
+    ExportClusterLogsFiltersParser,
+    FiltersParser,
+    FiltersParserError,
+    ListClusterLogsFiltersParser,
+)
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
-class TestExportClusterLogsFilters:
+class TestFiltersParser:
+    @pytest.fixture()
+    def filters_parser(self):
+        return FiltersParser()
+
+    @pytest.mark.parametrize(
+        "filters, expected_filters_size, expected_error",
+        [
+            ("Name=wrong,Value=test", 0, "They must be in the form"),
+            ("Name=test1,Values=a ", 1, ""),
+            ("Name=test1,Values=a Name=test2,Values=b,c", 2, ""),
+        ],
+    )
+    def test_initialization(self, filters, expected_filters_size, expected_error):
+        if expected_error:
+            with pytest.raises(FiltersParserError, match=expected_error):
+                FiltersParser(filters)
+        else:
+            filters = FiltersParser(filters)
+            assert_that(expected_filters_size).is_equal_to(len(filters.filters_list))
+
+
+class TestExportClusterLogsFiltersParser:
     @pytest.fixture()
     def export_logs_filters(self):
-        return ExportClusterLogsFilters("log_group_name")
+        return ExportClusterLogsFiltersParser("log_group_name")
 
     @pytest.mark.parametrize(
         "filters, expected_attrs, expected_error",
@@ -50,10 +77,10 @@ class TestExportClusterLogsFilters:
         )
 
         if expected_error:
-            with pytest.raises(ExportLogsFilterError, match=expected_error):
-                ExportClusterLogsFilters(log_group_name, filters)
+            with pytest.raises(FiltersParserError, match=expected_error):
+                ExportClusterLogsFiltersParser(log_group_name, filters)
         else:
-            export_logs_filters = ExportClusterLogsFilters(log_group_name, filters)
+            export_logs_filters = ExportClusterLogsFiltersParser(log_group_name, filters)
 
             for attr in expected_attrs:
                 assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
@@ -84,7 +111,7 @@ class TestExportClusterLogsFilters:
             setattr(export_logs_filters, attr, attrs[attr])
 
         if expected_error:
-            with pytest.raises(ExportLogsFilterError, match=expected_error):
+            with pytest.raises(FiltersParserError, match=expected_error):
                 export_logs_filters.validate()
         else:
             export_logs_filters.validate()
@@ -92,3 +119,30 @@ class TestExportClusterLogsFilters:
             if "start_time" not in attrs:
                 describe_log_group_mock.assert_called_with(log_group_name)
                 assert_that(export_logs_filters.start_time).is_equal_to(creation_time_mock)
+
+
+class TestListClusterLogsFiltersParser:
+    @pytest.mark.parametrize(
+        "filters, expected_attrs, expected_error",
+        [
+            ("Name=wrong,Value=test", {}, "They must be in the form"),
+            ("Name=wrong,Values=test", {}, "Filter wrong not supported."),
+            ("Name=private-ip-address,Values=10.10.10.10 ", {"log_stream_prefix": "ip-10-10-10-10"}, ""),
+            (
+                "Name=private-ip-address,Values=10.10.10.10,10.0.0.0",
+                {},
+                "Filter .* doesn't accept comma separated strings as value",
+            ),
+        ],
+    )
+    def test_initialization(self, filters, expected_attrs, expected_error):
+        log_group_name = "log_group_name"
+
+        if expected_error:
+            with pytest.raises(FiltersParserError, match=expected_error):
+                ListClusterLogsFiltersParser(log_group_name, filters)
+        else:
+            export_logs_filters = ListClusterLogsFiltersParser(log_group_name, filters)
+
+            for attr in expected_attrs:
+                assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))

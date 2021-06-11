@@ -81,3 +81,17 @@ class LogsClient(Boto3Client):
                 ),
             )
         return tasks[0].get("status").get("code")
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_log_streams(self, log_group_name, log_stream_name_prefix=None):
+        """Return a list of log streams in the given log group, filtered by the given prefix."""
+        if log_stream_name_prefix:
+            return list(
+                self._paginate_results(
+                    self._client.describe_log_streams,
+                    logGroupName=log_group_name,
+                    logStreamNamePrefix=log_stream_name_prefix,
+                )
+            )
+        else:
+            return list(self._paginate_results(self._client.describe_log_streams, logGroupName=log_group_name))
