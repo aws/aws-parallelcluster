@@ -176,7 +176,7 @@ def _get_underlying_image_or_stack(imagebuilder):
             stack = imagebuilder.stack
         except NonExistingStackError:
             raise NotFoundException(
-                "Unable to find an image or stack for ParallelCluster image id: {}".format(imagebuilder.image_id)
+                f"Unable to find an image or stack for ParallelCluster image id: {imagebuilder.image_id}"
             )
     return image, stack
 
