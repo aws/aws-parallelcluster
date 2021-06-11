@@ -509,6 +509,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "eu-west-1": ["euw1-az1", "euw1-az2"],
     # io2 EBS volumes not available in cac1-az4
     "ca-central-1": ["cac1-az1", "cac1-az2"],
+    # FSx not available in cnn1-az4
+    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
 
