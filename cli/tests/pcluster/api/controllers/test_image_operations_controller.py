@@ -103,7 +103,7 @@ def _create_image_info(image_id):
 
 def _create_stack(image_id, status):
     return {
-        "StackId": "arn:{}".format(image_id),
+        "StackId": f"arn:{image_id}",
         "StackStatus": status,
         "Tags": [
             {"Key": "parallelcluster:image_id", "Value": image_id},
