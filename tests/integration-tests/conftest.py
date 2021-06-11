@@ -550,6 +550,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "eu-north-1": ["eun1-az2"],
     # g3.8xlarge is not supported in euc1-az1
     "eu-central-1": ["euc1-az2", "euc1-az3"],
+    # FSx not available in cnn1-az4
+    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
 
