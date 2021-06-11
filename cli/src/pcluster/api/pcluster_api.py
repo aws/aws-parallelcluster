@@ -16,7 +16,6 @@ from typing import List, Union
 from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.cluster import (
@@ -97,16 +96,16 @@ class ImageBuilderInfo:
 class ImageBuilderStackInfo(ImageBuilderInfo):
     """Representation stack info of a building image."""
 
-    def __init__(self, imagebuilder: ImageBuilder, stack: ImageBuilderStack):
+    def __init__(self, imagebuilder: ImageBuilder):
         super().__init__(imagebuilder=imagebuilder)
         self.stack_exist = True
-        self.stack_name = stack.name
-        self.stack_status = stack.status
-        self.stack_arn = stack.id
-        self.tags = stack.tags
-        self.version = stack.version
-        self.creation_time = stack.creation_time
-        self.build_log = stack.build_log
+        self.stack_name = imagebuilder.stack.name
+        self.stack_status = imagebuilder.stack.status
+        self.stack_arn = imagebuilder.stack.id
+        self.tags = imagebuilder.stack.tags
+        self.version = imagebuilder.stack.version
+        self.creation_time = imagebuilder.stack.creation_time
+        self.build_log = imagebuilder.stack.build_log
 
         # build image process status by stack status mapping
         self.imagebuild_status = imagebuilder.imagebuild_status
@@ -118,19 +117,19 @@ class ImageBuilderStackInfo(ImageBuilderInfo):
 class ImageBuilderImageInfo(ImageBuilderInfo):
     """Representation image info of a built image."""
 
-    def __init__(self, imagebuilder: ImageBuilder, image: ImageInfo):
+    def __init__(self, imagebuilder: ImageBuilder):
         super().__init__(imagebuilder=imagebuilder)
         self.image_exist = True
-        self.image_name = image.name
-        self.image_id = image.pcluster_image_id
-        self.ec2_image_id = image.id
-        self.image_state = image.state
-        self.image_architecture = image.architecture
-        self.image_tags = image.tags
+        self.image_name = imagebuilder.image.name
+        self.image_id = imagebuilder.image.pcluster_image_id
+        self.ec2_image_id = imagebuilder.image.id
+        self.image_state = imagebuilder.image.state
+        self.image_architecture = imagebuilder.image.architecture
+        self.image_tags = imagebuilder.image.tags
         self.imagebuild_status = "BUILD_COMPLETE"
-        self.creation_time = image.creation_date
-        self.build_log = image.build_log
-        self.version = image.version
+        self.creation_time = imagebuilder.image.creation_date
+        self.build_log = imagebuilder.image.build_log
+        self.version = imagebuilder.image.version
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -144,7 +143,7 @@ class PclusterApi:
 
     @staticmethod
     def create_cluster(
-        cluster_config: dict,
+        cluster_config: str,
         cluster_name: str,
         region: str,
         disable_rollback: bool = False,
@@ -154,7 +153,7 @@ class PclusterApi:
         """
         Load cluster model from cluster_config and create stack.
 
-        :param cluster_config: cluster configuration (yaml dict)
+        :param cluster_config: cluster configuration (str)
         :param cluster_name: the name to assign to the cluster
         :param region: AWS region
         :param disable_rollback: Disable rollback in case of failures
@@ -200,7 +199,7 @@ class PclusterApi:
 
     @staticmethod
     def update_cluster(
-        cluster_config: dict,
+        cluster_config: str,
         cluster_name: str,
         region: str,
         suppress_validators: bool = False,
@@ -210,7 +209,7 @@ class PclusterApi:
         """
         Update existing cluster.
 
-        :param cluster_config: cluster configuration (yaml dict)
+        :param cluster_config: cluster configuration (str)
         :param cluster_name: the name to assign to the cluster
         :param region: AWS region
         :param suppress_validators: bool = False,
@@ -319,7 +318,7 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             imagebuilder = ImageBuilder(image_id=image_id, config=imagebuilder_config)
             imagebuilder.create(disable_rollback)
-            return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
+            return ImageBuilderStackInfo(imagebuilder=imagebuilder)
         except ImageBuilderActionError as e:
             return ApiFailure(str(e), e.validation_failures)
         except Exception as e:
@@ -339,14 +338,11 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
             # retrieve imagebuilder config and generate model
             imagebuilder = ImageBuilder(image_id=image_id)
+            image, _ = PclusterApi._get_underlying_image_or_stack(imagebuilder)
             imagebuilder.delete(force=force)
-            try:
-                return ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
-            except NonExistingImageError:
-                try:
-                    return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
-                except NonExistingStackError:
-                    raise ImageBuilderActionError(f"Image {image_id} does not exist.")
+            if image:
+                return ImageBuilderImageInfo(imagebuilder=imagebuilder)
+            return ImageBuilderStackInfo(imagebuilder=imagebuilder)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -363,13 +359,10 @@ class PclusterApi:
                 os.environ["AWS_DEFAULT_REGION"] = region
 
             imagebuilder = ImageBuilder(image_id=image_id)
-            try:
-                return ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
-            except NonExistingImageError:
-                try:
-                    return ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
-                except NonExistingStackError:
-                    raise ImageBuilderActionError(f"Image {image_id} does not exist.")
+            image, _ = PclusterApi._get_underlying_image_or_stack(imagebuilder)
+            if image:
+                return ImageBuilderImageInfo(imagebuilder=imagebuilder)
+            return ImageBuilderStackInfo(imagebuilder=imagebuilder)
         except Exception as e:
             return ApiFailure(str(e))
 
@@ -388,21 +381,31 @@ class PclusterApi:
             # get built images by image name tag
             images = AWSApi.instance().ec2.get_images()
             imagebuilders = [ImageBuilder(image=image, image_id=image.pcluster_image_id) for image in images]
-            images_response = [
-                ImageBuilderImageInfo(imagebuilder=imagebuilder, image=imagebuilder.image)
-                for imagebuilder in imagebuilders
-            ]
+            images_response = [ImageBuilderImageInfo(imagebuilder=imagebuilder) for imagebuilder in imagebuilders]
 
             # get building image stacks by image name tag
+            stacks, _ = AWSApi.instance().cfn.get_imagebuilder_stacks()
             imagebuilder_stacks = [
-                ImageBuilder(image_id=stack.get("StackName"), stack=ImageBuilderStack(stack))
-                for stack, _ in AWSApi.instance().cfn.get_imagebuilder_stacks()
+                ImageBuilder(image_id=stack.get("StackName"), stack=ImageBuilderStack(stack)) for stack in stacks
             ]
             imagebuilder_stacks_response = [
-                ImageBuilderStackInfo(imagebuilder=imagebuilder, stack=imagebuilder.stack)
-                for imagebuilder in imagebuilder_stacks
+                ImageBuilderStackInfo(imagebuilder=imagebuilder) for imagebuilder in imagebuilder_stacks
             ]
 
             return images_response + imagebuilder_stacks_response
         except Exception as e:
             return ApiFailure(str(e))
+
+    @staticmethod
+    def _get_underlying_image_or_stack(imagebuilder: ImageBuilder):
+        image = None
+        stack = None
+        try:
+            image = imagebuilder.image
+        except NonExistingImageError:
+            try:
+                stack = imagebuilder.stack
+            except NonExistingStackError:
+                raise ImageBuilderActionError(f"Image {imagebuilder.image_id} does not exist.")
+
+        return image, stack

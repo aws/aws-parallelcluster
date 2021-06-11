@@ -65,7 +65,7 @@ class ClusterActionError(Exception):
 class ConfigValidationError(ClusterActionError):
     """Represent an error during the validation of the configuration."""
 
-    def __init__(self, message: str, validation_failures: list):
+    def __init__(self, message: str, validation_failures: list = None):
         super().__init__(message)
         self.validation_failures = validation_failures or []
 
@@ -81,9 +81,9 @@ class ClusterUpdateError(ClusterActionError):
 class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
 
-    def __init__(self, name: str, config: dict = None, stack: ClusterStack = None):
+    def __init__(self, name: str, config: str = None, stack: ClusterStack = None):
         self.name = name
-        self.__source_config = config
+        self.__source_config_text = config
         self.__stack = stack
         self.__bucket = None
         self.template_body = None
@@ -101,11 +101,11 @@ class Cluster:
         return self.__stack
 
     @property
-    def source_config(self):
+    def source_config_text(self):
         """Return original config used to create the cluster."""
-        if not self.__source_config:
-            self.__source_config = self._get_cluster_config_dict()
-        return self.__source_config
+        if not self.__source_config_text:
+            self.__source_config_text = self._get_cluster_config()
+        return self.__source_config_text
 
     @property
     # pylint: disable=R0801
@@ -144,7 +144,7 @@ class Cluster:
             ]
         )
 
-    def _get_cluster_config_dict(self):
+    def _get_cluster_config(self):
         """Retrieve cluster config content."""
         config_version = self.stack.original_config_version
         try:
@@ -161,8 +161,8 @@ class Cluster:
         """Return ClusterConfig object."""
         if not self.__config:
             try:
-                self.__config = ClusterSchema().load(self.source_config)
-            except ValidationError as e:
+                self.__config = ClusterSchema().load(yaml.safe_load(self.source_config_text))
+            except Exception as e:
                 raise ClusterActionError(f"Unable to parse configuration file. {e}")
         return self.__config
 
@@ -210,7 +210,7 @@ class Cluster:
         if self.__bucket:
             return self.__bucket
 
-        if self.__source_config:
+        if self.__source_config_text:
             # get custom_s3_bucket in create command
             custom_bucket_name = self.config.custom_s3_bucket
         else:
@@ -287,16 +287,19 @@ class Cluster:
                 self.bucket.delete_s3_artifacts()
             raise ClusterActionError(f"Cluster creation failed.\n{e}")
 
-    def _validate_and_parse_config(self, suppress_validators, validation_failure_level, config_dict=None):
+    def _validate_and_parse_config(
+        self, suppress_validators, validation_failure_level, config_text=None
+    ) -> BaseClusterConfig:
         """
-        Perform semantic and syntactic validation and return parsed config.
+        Perform syntactic and semantic validation and return parsed config.
 
-        :param config_dict: config to parse, self.source_config will be used if not specified.
+        :param config_text: config to parse, self.source_config_text will be used if not specified.
         """
         try:
             LOGGER.info("Validating cluster configuration...")
             # syntactic validation
-            cluster_config_dict = config_dict or self.source_config
+            cluster_config_dict = yaml.safe_load(config_text or self.source_config_text)
+
             if "DevSettings" in cluster_config_dict:
                 instance_types_data = cluster_config_dict["DevSettings"].get("InstanceTypesData")
                 if instance_types_data:
@@ -319,6 +322,8 @@ class Cluster:
             ClusterSchema.process_validation_message(e)
             validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
             raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
+        except Exception as e:
+            raise ConfigValidationError(f"Configuration is invalid: {e}")
 
         return config
 
@@ -337,7 +342,9 @@ class Cluster:
 
                 # Upload original config
                 result = self.bucket.upload_config(
-                    config=self.config.source_config, config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name")
+                    config=self.source_config_text,
+                    config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name"),
+                    format=S3FileFormat.TEXT,
                 )
 
                 # original config version will be stored in CloudFormation Parameters
@@ -596,7 +603,7 @@ class Cluster:
 
     def update(
         self,
-        target_source_config: dict,
+        target_source_config: str,
         suppress_validators: bool = False,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
         force: bool = False,
@@ -622,13 +629,15 @@ class Cluster:
             )
 
             # verify changes
-            patch = ConfigPatch(cluster=self, base_config=self.source_config, target_config=target_source_config)
+            patch = ConfigPatch(
+                cluster=self, base_config=self.config.source_config, target_config=target_config.source_config
+            )
             patch_allowed, update_changes = patch.check()
             if not (patch_allowed or force):
                 raise ClusterUpdateError("Update failure", update_changes=update_changes)
 
             self.config = target_config
-            self.__source_config = target_source_config
+            self.__source_config_text = target_source_config
 
             self._add_version_tag()
             self._upload_config()

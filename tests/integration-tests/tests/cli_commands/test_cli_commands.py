@@ -42,7 +42,7 @@ def _test_pcluster_instances_and_status(cluster, region, compute_fleet_status=No
     cluster_instances_from_ec2 = get_cluster_nodes_instance_ids(cluster.cfn_name, region)
     cluster_instances_from_cli = cluster.instances()
     assert_that(set(cluster_instances_from_cli)).is_equal_to(set(cluster_instances_from_ec2))
-    expected_status_details = ["Status: CREATE_COMPLETE", "HeadNode: RUNNING"]
+    expected_status_details = ["Status: CREATE_COMPLETE", "HeadNode: running"]
     if compute_fleet_status:
         expected_status_details.append("ComputeFleetStatus: {0}".format(compute_fleet_status))
     cluster_status = cluster.status()

@@ -26,6 +26,7 @@ import boto3
 import pkg_resources
 import pytest
 import yaml
+from botocore.config import Config
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -549,6 +550,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "eu-north-1": ["eun1-az2"],
     # g3.8xlarge is not supported in euc1-az1
     "eu-central-1": ["euc1-az2", "euc1-az3"],
+    # FSx not available in cnn1-az4
+    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
 
@@ -725,7 +728,15 @@ def common_pcluster_policies(region):
 @pytest.fixture(scope="class")
 def role_factory(region):
     roles = []
-    iam_client = boto3.client("iam", region_name=region)
+    iam_client = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
 
     def create_role(trusted_service, policies=()):
         iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"

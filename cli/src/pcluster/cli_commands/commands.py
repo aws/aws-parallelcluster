@@ -32,9 +32,9 @@ from pcluster.utils import load_yaml_dict
 LOGGER = logging.getLogger(__name__)
 
 
-def _parse_config_file(config_file, fail_on_config_file_absence=True):
+def read_config_file(config_file, fail_on_config_file_absence=True):
     """
-    Parse the config file and initialize config_file and config_parser attributes.
+    Read the config file.
 
     :param config_file: The config file to parse
     :param fail_on_config_file_absence: set to true to raise SystemExit if config file doesn't exist
@@ -60,14 +60,13 @@ def _parse_config_file(config_file, fail_on_config_file_absence=True):
         else:
             LOGGER.debug("Specified configuration file %s doesn't exist.", config_file)
     else:
-        LOGGER.debug("Parsing configuration file %s", config_file)
+        LOGGER.debug("Reading configuration file %s", config_file)
     try:
-        return load_yaml_dict(file_path=config_file)
+        with open(config_file) as conf_file:
+            content = conf_file.read()
+        return content
     except Exception as e:
-        utils.error(
-            "Error parsing configuration file {0}.\nDouble check it's a valid Yaml file. "
-            "Error: {1}".format(config_file, str(e))
-        )
+        utils.error("Error reading configuration file {0}. Error: {1}".format(config_file, str(e)))
 
 
 def create(args):
@@ -79,7 +78,7 @@ def create(args):
         if not args.disable_update_check:
             utils.check_if_latest_version()
 
-        cluster_config = _parse_config_file(config_file=args.config_file)
+        cluster_config = read_config_file(config_file=args.config_file)
         result = PclusterApi().create_cluster(
             cluster_config=cluster_config,
             cluster_name=args.cluster_name,
@@ -123,8 +122,8 @@ def create(args):
         sys.exit(0)
 
 
-def _print_compute_fleet_status(cluster_name, stack_outputs):
-    if utils.get_stack_output_value(stack_outputs, "Scheduler") == "slurm":
+def _print_compute_fleet_status(cluster_name, scheduler):
+    if scheduler == "slurm":
         status_manager = ComputeFleetStatusManager(cluster_name)
         compute_fleet_status = status_manager.get_status()
         if compute_fleet_status != ComputeFleetStatus.UNKNOWN:
@@ -270,15 +269,7 @@ def status(args):
                     successful_states=["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"],
                 )
                 if verified:
-                    # Retrieve instances info
-                    result = PclusterApi().describe_cluster_instances(
-                        cluster_name=args.cluster_name, region=get_region()
-                    )
-                    if isinstance(result, list):
-                        for instance in result:
-                            LOGGER.info("%s         %s", f"{instance.node_type}\t", instance.instance_id)
-                    else:
-                        utils.error(f"Unable to retrieve the instances of the cluster.\n{result.message}")
+                    _print_cluster_status(args.cluster_name, result.scheduler)
                 else:
                     # Log failed events
                     utils.log_stack_failure_recursive(
@@ -294,6 +285,18 @@ def status(args):
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
+
+
+def _print_cluster_status(cluster_name, scheduler):
+    """Print head node and compute fleet status."""
+    result = PclusterApi().describe_cluster_instances(
+        cluster_name=cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
+    )
+    if isinstance(result, list) and len(result) == 1:
+        LOGGER.info("%s: %s", result[0].node_type, result[0].state)
+        _print_compute_fleet_status(cluster_name, scheduler)
+    else:
+        utils.error(f"Unable to retrieve the status of the cluster's instances.\n{result.message}")
 
 
 def delete(args):  # noqa: C901
@@ -419,7 +422,7 @@ def update(args):
     LOGGER.debug("CLI args: %s", str(args))
 
     try:
-        cluster_config = _parse_config_file(config_file=args.config_file)
+        cluster_config = read_config_file(config_file=args.config_file)
         # delete cluster raises an exception if stack does not exist
         result = PclusterApi().update_cluster(cluster_config, args.cluster_name, get_region())
         if isinstance(result, ClusterInfo):
