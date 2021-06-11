@@ -39,6 +39,7 @@ def test_slurm_cli_commands(scheduler, region, pcluster_config_reader, clusters_
     instance_ids = _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="RUNNING")
     _test_pcluster_stop_and_start(cluster, region, expected_num_nodes=2)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, instance_ids)
+    _test_pcluster_list_cluster_logs(cluster, instance_ids)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
@@ -145,3 +146,18 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
         if e.response["Error"]["Code"] == "404":
             bucket_cleaned_up = True
     assert_that(bucket_cleaned_up).is_true()
+
+
+def _test_pcluster_list_cluster_logs(cluster, instance_ids):
+    """Test pcluster list-cluster-logs functionality."""
+    logging.info("Testing that pcluster list-cluster-logs is working as expected")
+    std_output = cluster.list_logs()
+
+    # check headers
+    assert_that(std_output).contains("logStreamName")
+    assert_that(std_output).contains("firstEventTimestamp")
+    assert_that(std_output).contains("lastEventTimestamp")
+
+    # check there are the logs of all the instances
+    for instance_id in set(instance_ids):
+        assert_that(std_output).contains(instance_id)

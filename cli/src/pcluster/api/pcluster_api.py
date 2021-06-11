@@ -327,6 +327,18 @@ class PclusterApi:
         return None
 
     @staticmethod
+    def list_cluster_logs(cluster_name: str, region: str, filters: str = None):
+        """List cluster's logs from CloudWatch. AWS Lambda logs are excluded. CloudWatch logging must be enabled."""
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            cluster = Cluster(cluster_name)
+            return cluster.list_logs(filters=filters)
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
     def _is_version_2(cluster):
         return packaging.version.parse(cluster.stack.version) < packaging.version.parse("3.0.0")
 

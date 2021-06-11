@@ -379,13 +379,6 @@ class ExportClusterLogsCommand(CliCommand):
     def __init__(self, subparsers):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
-    @staticmethod
-    def _regex_arg(value):
-        filter_regex = r"Name=(private-ip-address|start-time|end-time),Values=[\w\-_.,]+"
-        if not re.compile(fr"^({filter_regex})(\s+{filter_regex})*$").match(value):
-            raise argparse.ArgumentTypeError("filters parameter must be in the form Name=...,Values=... ")
-        return value
-
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Export the logs of the cluster name provided here.")
         parser.add_argument("--output", help="File path to save log archive to.", type=os.path.realpath)
@@ -406,10 +399,11 @@ class ExportClusterLogsCommand(CliCommand):
             help="Keep the exported objects exports to S3. The default behavior is to delete them.",
         )
         # Filters
+        filters_arg = _FiltersArg(accepted_filters=["private-ip-address", "start-time", "end-time"])
         parser.add_argument(
             "--filters",
             nargs="+",
-            type=self._regex_arg,
+            type=filters_arg,
             help=(
                 "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
                 "start-time - Start time of interval of interest for log events, "
@@ -425,3 +419,47 @@ class ExportClusterLogsCommand(CliCommand):
         from pcluster.cli_commands.commands import export_cluster_logs
 
         export_cluster_logs(args)
+
+
+class ListClusterLogsCommand(CliCommand):
+    """Implement pcluster list-cluster-logs command."""
+
+    # CLI
+    name = "list-cluster-logs"
+    help = "List the logs of the cluster saved to CloudWatch."
+    description = help
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("cluster_name", help="List the logs of the cluster name provided here.")
+        # Filters
+        filters_arg = _FiltersArg(accepted_filters=["private-ip-address"])
+        parser.add_argument(
+            "--filters",
+            nargs="+",
+            type=filters_arg,
+            help=(
+                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filter is:\n"
+                "private-ip-address - The private IPv4 address of the instance."
+            ),
+        )
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+        from pcluster.cli_commands.commands import list_cluster_logs
+
+        list_cluster_logs(args)
+
+
+class _FiltersArg:
+    """Class to implement regex parsing for filters parameter."""
+
+    def __init__(self, accepted_filters):
+        filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
+        self._pattern = re.compile(fr"^({filter_regex})(\s+{filter_regex})*$")
+
+    def __call__(self, value):
+        if not self._pattern.match(value):
+            raise argparse.ArgumentTypeError("filters parameter must be in the form Name=...,Values=... ")
+        return value

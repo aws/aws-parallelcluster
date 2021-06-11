@@ -42,8 +42,9 @@ from pcluster.constants import (
 from pcluster.models.cluster_resources import (
     ClusterInstance,
     ClusterStack,
-    ExportClusterLogsFilters,
-    ExportLogsFilterError,
+    ExportClusterLogsFiltersParser,
+    FiltersParserError,
+    ListClusterLogsFiltersParser,
 )
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
@@ -749,9 +750,11 @@ class Cluster:
 
     def _init_export_logs_filters(self, filters):
         try:
-            export_logs_filters = ExportClusterLogsFilters(log_group_name=self.stack.log_group_name, filters=filters)
+            export_logs_filters = ExportClusterLogsFiltersParser(
+                log_group_name=self.stack.log_group_name, filters=filters
+            )
             export_logs_filters.validate()
-        except ExportLogsFilterError as e:
+        except FiltersParserError as e:
             raise ClusterActionError(str(e))
         return export_logs_filters
 
@@ -826,3 +829,29 @@ class Cluster:
             with gzip.open(compressed_path) as gfile, open(decompressed_path, "wb") as outfile:
                 outfile.write(gfile.read())
             os.remove(compressed_path)
+
+    def list_logs(self, filters: str = None):
+        """List cluster's logs."""
+        try:
+            LOGGER.info("Listing log streams from log group %s", self.stack.log_group_name)
+
+            # check stack
+            if not AWSApi.instance().cfn.stack_exists(self.stack_name):
+                raise ClusterActionError(f"Cluster {self.name} does not exist")
+            if not self.config.is_cw_logging_enabled:
+                raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
+
+            list_logs_filters = self._init_list_logs_filters(filters)
+            return AWSApi.instance().logs.describe_log_streams(
+                log_group_name=self.stack.log_group_name,
+                log_stream_name_prefix=list_logs_filters.log_stream_prefix,
+            )
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unexpected error when retrieving cluster's logs: {e}")
+
+    def _init_list_logs_filters(self, filters):
+        try:
+            list_logs_filters = ListClusterLogsFiltersParser(log_group_name=self.stack.log_group_name, filters=filters)
+        except FiltersParserError as e:
+            raise ClusterActionError(str(e))
+        return list_logs_filters

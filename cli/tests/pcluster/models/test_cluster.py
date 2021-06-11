@@ -407,7 +407,6 @@ class TestCluster:
         )
 
         expected_call_count = len(task_statuses)
-        # updated_status_mock = mocker.patch.object(cluster, "_get_updated_stack_status", side_effect=stack_statuses)
         mocker.patch("pcluster.models.cluster.time.sleep")  # so we don't actually have to wait
 
         cluster._wait_for_task_completion("task_id")
@@ -430,90 +429,56 @@ class TestCluster:
             wait_for_completion_mock.assert_called_with(task_id)
 
     @pytest.mark.parametrize(
-        "args, stack_exists, logging_enabled, bucket_region, is_bucket_empty, expected_error",
+        "stack_exists, logging_enabled, client_error, expected_error",
         [
-            ({}, False, False, "", True, "Cluster .* does not exist"),
-            ({}, True, False, "", True, "CloudWatch logging is not enabled"),
-            (
-                {},
-                True,
-                True,
-                "us-east-1",
-                True,
-                "bucket used for exporting logs must be in the same region as the cluster",
-            ),
-            (
-                {"bucket": "bucketname2", "bucket_prefix": "prefix", "keep_s3_objects": True},
-                True,
-                True,
-                "us-east-2",
-                True,
-                "",
-            ),
-            ({}, True, True, "us-east-2", False, ""),
+            (False, False, False, "Cluster .* does not exist"),
+            (True, False, False, "CloudWatch logging is not enabled"),
+            (True, True, True, "Unexpected error when retrieving"),
+            (True, True, False, ""),
         ],
     )
-    def test_export_logs(
+    def test_list_logs(
         self,
         cluster,
         mocker,
         set_env,
-        args,
         stack_exists,
         logging_enabled,
-        bucket_region,
-        is_bucket_empty,
+        client_error,
         expected_error,
     ):
         mock_aws_api(mocker)
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
-        bucket_region_mock = mocker.patch("pcluster.aws.s3.S3Client.get_bucket_region", return_value=bucket_region)
-        is_empty_mock = mocker.patch("pcluster.aws.s3_resource.S3Resource.is_empty", return_value=is_bucket_empty)
-        delete_objects_mock = mocker.patch("pcluster.aws.s3_resource.S3Resource.delete_objects")
-
-        mocker.patch("pcluster.models.cluster.Cluster._init_export_logs_filters", return_value=_MockExportLogsFilters())
-        export_logs_mock = mocker.patch("pcluster.models.cluster.Cluster._export_logs_to_s3", return_value="task_id")
-        download_mock = mocker.patch("pcluster.models.cluster.Cluster._download_and_archive_logs_from_s3")
+        describe_logs_mock = mocker.patch(
+            "pcluster.aws.logs.LogsClient.describe_log_streams",
+            side_effect=AWSClientError("describe_log_streams", "error") if client_error else None,
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster._init_list_logs_filters", return_value=_MockListClusterLogsFiltersParser()
+        )
 
         cluster.config = dummy_slurm_cluster_config(mocker)
         cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
 
-        kwargs = {"output": "outputpath", "bucket": "bucketname"}
-        kwargs.update(**args)
-
-        if expected_error:
+        if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
-                cluster.export_logs(**kwargs)
+                cluster.list_logs()
         else:
-            cluster.export_logs(**kwargs)
-            export_logs_mock.assert_called()
-            if "bucket_prefix" not in args:
-                is_empty_mock.assert_called()
-            else:
-                download_mock.assert_called_with(
-                    kwargs["bucket"], kwargs.get("bucket_prefix", None), kwargs["output"], "task_id"
-                )
-                download_mock.assert_called()
+            cluster.list_logs()
+            describe_logs_mock.assert_called()
 
         # check preliminary steps
         stack_exists_mock.assert_called_with(cluster.stack_name)
-        if stack_exists and logging_enabled:
-            bucket_region_mock.assert_called_with(bucket_name=kwargs["bucket"])
-
-        # check final block
-        if "keep_s3_objects" in args and not args["keep_s3_objects"]:
-            if "bucket_prefix" in args:
-                delete_prefix = (
-                    kwargs["bucket_prefix"] if is_bucket_empty else "/".join((kwargs["bucket_prefix"], "task_id"))
-                )
-                delete_objects_mock.assert_called_with(bucket_name=kwargs["bucket"], prefix=delete_prefix)
-            else:
-                delete_objects_mock.assert_called()
 
 
-class _MockExportLogsFilters:
+class _MockExportClusterLogsFiltersParser:
     def __init__(self):
         self.log_stream_prefix = None
         self.start_time = 0
         self.end_time = 0
+
+
+class _MockListClusterLogsFiltersParser:
+    def __init__(self):
+        self.log_stream_prefix = None
