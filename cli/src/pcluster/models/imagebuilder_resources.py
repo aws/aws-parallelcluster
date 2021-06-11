@@ -82,8 +82,8 @@ class ImageBuilderStack(StackInfo):
         return self.get_tag(PCLUSTER_IMAGE_CONFIG_TAG)
 
     @property
-    def image_name(self):
-        """Return image name tag value."""
+    def pcluster_image_id(self):
+        """Return image id tag value."""
         return self.get_tag(PCLUSTER_IMAGE_ID_TAG)
 
     @property

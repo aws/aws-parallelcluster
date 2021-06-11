@@ -10,11 +10,16 @@ import json
 import pytest
 from assertpy import assert_that, soft_assertions
 
-from pcluster.api.models import CloudFormationStatus
-from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.api.models import CloudFormationStatus, ImageBuildStatus, ImageStatusFilteringOption
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import ImageNotFoundError, StackNotFoundError
+from pcluster.aws.common import (
+    AWSClientError,
+    BadRequestError,
+    ImageNotFoundError,
+    LimitExceededError,
+    StackNotFoundError,
+)
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
@@ -84,18 +89,196 @@ class TestImageOperationsController:
         response = client.open("/v3/images/official", method="GET", headers=headers, query_string=query_string)
         assert_that(response.status_code).is_equal_to(200)
 
-    def test_list_images(self, client):
-        """Test case for list_images."""
-        query_string = [
-            ("region", "eu-west-1"),
-            ("imageStatus", ImageBuildStatus.BUILD_FAILED),
-            ("imageStatus", ImageBuildStatus.BUILD_COMPLETE),
-        ]
+
+def _create_image_info(image_id):
+    return ImageInfo(
+        {
+            "Tags": [
+                {"Key": "parallelcluster:image_id", "Value": image_id},
+                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+            ],
+        }
+    )
+
+
+def _create_stack(image_id, status):
+    return {
+        "StackId": "arn:{}".format(image_id),
+        "StackStatus": status,
+        "Tags": [
+            {"Key": "parallelcluster:image_id", "Value": image_id},
+            {"Key": "parallelcluster:version", "Value": "3.0.0"},
+        ],
+    }
+
+
+class TestListImages:
+    url = "v3/images/custom"
+    method = "GET"
+
+    def _send_test_request(self, client, image_status, next_token=None, region="us-east-1"):
+        query_string = []
+
+        if region:
+            query_string.append(("region", region))
+
+        if image_status:
+            query_string.append(("imageStatus", image_status))
+
+        if next_token:
+            query_string.append(("nextToken", next_token))
+
         headers = {
             "Accept": "application/json",
         }
-        response = client.open("/v3/images/custom", method="GET", headers=headers, query_string=query_string)
-        assert_that(response.status_code).is_equal_to(200)
+
+        return client.open(self.url, method=self.method, headers=headers, query_string=query_string)
+
+    def test_list_available_images_successful(self, client, mocker):
+        describe_result = [
+            _create_image_info("image1"),
+            _create_image_info("image2"),
+        ]
+        expected_response = {
+            "items": [
+                {
+                    "imageId": "image1",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image2",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+            ]
+        }
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_images", return_value=describe_result)
+
+        response = self._send_test_request(client, ImageStatusFilteringOption.AVAILABLE)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize("next_token", [None, "nextToken"], ids=["nextToken is None", "nextToken is not None"])
+    def test_list_pending_images_successful(self, client, mocker, next_token):
+        describe_result = [
+            _create_stack("image1", CloudFormationStatus.CREATE_COMPLETE),
+            _create_stack("image2", CloudFormationStatus.CREATE_COMPLETE),
+            _create_stack("image3", CloudFormationStatus.CREATE_IN_PROGRESS),
+            _create_stack("image4", CloudFormationStatus.DELETE_IN_PROGRESS),
+        ]
+        mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
+
+        response = self._send_test_request(client, ImageStatusFilteringOption.PENDING, next_token)
+
+        expected_response = {
+            "items": [
+                {
+                    "imageId": "image3",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
+                    "cloudformationStackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                    "cloudformationStackArn": "arn:image3",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+            ],
+            "nextToken": "nextPage",
+        }
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize("next_token", [None, "nextToken"], ids=["nextToken is None", "nextToken is not None"])
+    def test_list_failed_images_successful(self, client, mocker, next_token):
+        describe_result = [
+            _create_stack("image1", CloudFormationStatus.CREATE_COMPLETE),
+            _create_stack("image2", CloudFormationStatus.CREATE_COMPLETE),
+            _create_stack("image3", CloudFormationStatus.CREATE_IN_PROGRESS),
+            _create_stack("image4", CloudFormationStatus.DELETE_IN_PROGRESS),
+            _create_stack("image5", CloudFormationStatus.DELETE_FAILED),
+            _create_stack("image6", CloudFormationStatus.CREATE_FAILED),
+        ]
+        mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
+
+        response = self._send_test_request(client, ImageStatusFilteringOption.FAILED, next_token)
+
+        expected_response = {
+            "items": [
+                {
+                    "imageId": "image5",
+                    "imageBuildStatus": ImageBuildStatus.DELETE_FAILED,
+                    "cloudformationStackStatus": CloudFormationStatus.DELETE_FAILED,
+                    "cloudformationStackArn": "arn:image5",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image6",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStatus.CREATE_FAILED,
+                    "cloudformationStackArn": "arn:image6",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+            ],
+            "nextToken": "nextPage",
+        }
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "region, image_status, expected_response",
+        [
+            pytest.param(
+                "us-east-",
+                "AVAILABLE",
+                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
+                id="bad region",
+            ),
+            pytest.param(None, "AVAILABLE", {"message": "Bad Request: region needs to be set"}, id="region not set"),
+            pytest.param(
+                "us-east-1",
+                None,
+                {"message": "Bad Request: Missing query parameter 'imageStatus'"},
+                id="image status not set",
+            ),
+            pytest.param(
+                "us-east-1",
+                "UNAVAILABLE_STATE",
+                {"message": "Bad Request: 'UNAVAILABLE_STATE' is not one of ['AVAILABLE', 'PENDING', 'FAILED']"},
+                id="image status not among the valid ones",
+            ),
+        ],
+    )
+    def test_malformed_request(self, client, region, image_status, expected_response):
+        response = self._send_test_request(client, image_status, region=region)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "error, status_code", [(LimitExceededError, 429), (BadRequestError, 400), (AWSClientError, 500)]
+    )
+    def test_that_errors_are_converted(self, client, mocker, error, status_code):
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.get_images", side_effect=error(function_name="get_images", message="test error")
+        )
+        expected_error = {"message": "test error"}
+        if error == BadRequestError:
+            expected_error["message"] = "Bad Request: " + expected_error["message"]
+        response = self._send_test_request(client, ImageStatusFilteringOption.AVAILABLE)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(status_code)
+            assert_that(response.get_json()).is_equal_to(expected_error)
 
 
 class TestDeleteImage:
@@ -115,26 +298,6 @@ class TestDeleteImage:
         return client.open(
             self.url.format(image_name=image_name), method=self.method, headers=headers, query_string=query_string
         )
-
-    def _create_image_info(self, image_id):
-        return ImageInfo(
-            {
-                "Tags": [
-                    {"Key": "parallelcluster:image_id", "Value": image_id},
-                    {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                ],
-            }
-        )
-
-    def _create_stack(self, image_id, status):
-        return {
-            "StackId": "arn:{}".format(image_id),
-            "StackStatus": status,
-            "Tags": [
-                {"Key": "parallelcluster:image_id", "Value": image_id},
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
-            ],
-        }
 
     def _assert_successful(self, mocker, client, image_id, force, region, image, stack, expected_response):
         if image:
@@ -162,8 +325,8 @@ class TestDeleteImage:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     def test_delete_available_ec2_image_with_stack_yet_to_be_removed_succeeds(self, mocker, client):
-        image = self._create_image_info("image1")
-        stack = self._create_stack("image1", CloudFormationStatus.DELETE_IN_PROGRESS)
+        image = _create_image_info("image1")
+        stack = _create_stack("image1", CloudFormationStatus.DELETE_IN_PROGRESS)
         expected_response = {
             "image": {
                 "imageId": "image1",
@@ -175,7 +338,7 @@ class TestDeleteImage:
         self._assert_successful(mocker, client, "image1", True, "us-east-1", image, stack, expected_response)
 
     def test_delete_available_ec2_image_with_stack_already_removed_succeeds(self, mocker, client):
-        image = self._create_image_info("image1")
+        image = _create_image_info("image1")
         expected_response = {
             "image": {
                 "imageId": "image1",
@@ -187,7 +350,7 @@ class TestDeleteImage:
         self._assert_successful(mocker, client, "image1", True, "us-east-1", image, None, expected_response)
 
     def test_delete_image_with_only_stack_and_no_available_image_succeeds(self, mocker, client):
-        stack = self._create_stack("image1", CloudFormationStatus.DELETE_FAILED)
+        stack = _create_stack("image1", CloudFormationStatus.DELETE_FAILED)
         expected_response = {
             "image": {
                 "imageId": "image1",
@@ -245,7 +408,7 @@ class TestDeleteImage:
 
     @pytest.mark.parametrize("error", [BadRequestImageError, BadRequestStackError, BadRequestImageBuilderActionError])
     def test_that_imagebuilder_bad_request_error_is_converted(self, client, mocker, error):
-        image = self._create_image_info("image1")
+        image = _create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
         mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.delete",
@@ -262,7 +425,7 @@ class TestDeleteImage:
         "error", [LimitExceededImageError, LimitExceededStackError, LimitExceededImageBuilderActionError]
     )
     def test_that_limit_exceeded_error_is_converted(self, client, mocker, error):
-        image = self._create_image_info("image1")
+        image = _create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
         mocker.patch("pcluster.models.imagebuilder.ImageBuilder.delete", side_effect=error("test error"))
         expected_error = {"message": "test error"}
@@ -273,7 +436,7 @@ class TestDeleteImage:
             assert_that(response.get_json()).is_equal_to(expected_error)
 
     def test_that_other_errors_are_converted(self, client, mocker):
-        image = self._create_image_info("image1")
+        image = _create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
         mocker.patch("pcluster.models.imagebuilder.ImageBuilder.delete", side_effect=Exception("test error"))
         expected_error = {"message": "test error"}
@@ -283,7 +446,7 @@ class TestDeleteImage:
             assert_that(response.status_code).is_equal_to(500)
             assert_that(response.get_json()).is_equal_to(expected_error)
 
-    def test_that_call_with_client_token_throws_bad_request(self, client, mocker):
+    def test_that_call_with_client_token_throws_bad_request(self, client):
         expected_error = {"message": "Bad Request: clientToken is currently not supported for this operation"}
         response = self._send_test_request(client, "image1", client_token="clientToken")
 

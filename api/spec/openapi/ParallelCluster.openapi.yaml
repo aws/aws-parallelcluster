@@ -726,17 +726,18 @@ paths:
           schema:
             type: string
             description: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
+        - name: nextToken
+          in: query
+          description: Token to use for paginated requests.
+          schema:
+            type: string
+            description: Token to use for paginated requests.
         - name: imageStatus
           in: query
           description: Filter by image status.
-          style: form
           schema:
-            type: array
-            items:
-              $ref: '#/components/schemas/ImageStatusFilteringOption'
-            uniqueItems: true
-            description: Filter by image status.
-          explode: true
+            $ref: '#/components/schemas/ImageStatusFilteringOption'
+          required: true
       responses:
         "200":
           description: ListImages 200 response
@@ -1588,11 +1589,9 @@ components:
     ImageStatusFilteringOption:
       type: string
       enum:
-        - BUILD_IN_PROGRESS
-        - BUILD_FAILED
-        - BUILD_COMPLETE
-        - DELETE_IN_PROGRESS
-        - DELETE_FAILED
+        - AVAILABLE
+        - PENDING
+        - FAILED
     InstanceState:
       type: string
       enum:
@@ -1629,6 +1628,9 @@ components:
     ListImagesResponseContent:
       type: object
       properties:
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
         items:
           type: array
           items:

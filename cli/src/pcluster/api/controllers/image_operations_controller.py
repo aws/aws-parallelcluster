@@ -12,6 +12,7 @@ import os as os_lib
 from datetime import datetime
 
 from pcluster.api.controllers.common import configure_aws_region
+from pcluster.api.converters import cloud_formation_status_to_image_status
 from pcluster.api.errors import (
     BadRequestException,
     InternalServiceException,
@@ -28,10 +29,12 @@ from pcluster.api.models import (
     ImageBuilderImageStatus,
     ImageConfigurationStructure,
     ImageInfoSummary,
+    ImageStatusFilteringOption,
     ListImagesResponseContent,
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
@@ -41,7 +44,12 @@ from pcluster.models.imagebuilder import (
     LimitExceededImageError,
     NonExistingImageError,
 )
-from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError, NonExistingStackError
+from pcluster.models.imagebuilder_resources import (
+    BadRequestStackError,
+    ImageBuilderStack,
+    LimitExceededStackError,
+    NonExistingStackError,
+)
 
 
 def convert_imagebuilder_errors():
@@ -222,15 +230,67 @@ def describe_official_images(version=None, region=None, os=None, architecture=No
 
 
 @configure_aws_region()
-def list_images(region=None, image_status=None):
+@convert_imagebuilder_errors()
+def list_images(image_status, region=None, next_token=None):
     """
     Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default.
 
+    :param image_status: Filter by image status.
+    :type image_status: dict | bytes
     :param region: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
     :type region: str
-    :param image_status: Filter by image status.
-    :type image_status: list | bytes
+    :param next_token: Token to use for paginated requests.
+    :type next_token: str
 
     :rtype: ListImagesResponseContent
     """
-    return ListImagesResponseContent(items=[])
+    if image_status == ImageStatusFilteringOption.AVAILABLE:
+        return ListImagesResponseContent(items=_get_available_images())
+    else:
+        items, next_token = _get_images_in_progress(image_status, next_token)
+        return ListImagesResponseContent(items=items, next_token=next_token)
+
+
+def _get_available_images():
+    return [_image_info_to_image_info_summary(image) for image in AWSApi.instance().ec2.get_images()]
+
+
+def _get_images_in_progress(image_status, next_token):
+    stacks, next_token = AWSApi.instance().cfn.get_imagebuilder_stacks(next_token=next_token)
+    imagebuilder_stacks = [ImageBuilderStack(stack) for stack in stacks]
+    cloudformation_states = _image_status_to_cloudformation_status(image_status)
+    summaries = [
+        _imagebuilder_stack_to_image_info_summary(stack)
+        for stack in imagebuilder_stacks
+        if stack.status in cloudformation_states
+    ]
+    return summaries, next_token
+
+
+def _image_status_to_cloudformation_status(image_status):
+    mapping = {
+        ImageStatusFilteringOption.AVAILABLE: {CloudFormationStatus.CREATE_COMPLETE},
+        ImageStatusFilteringOption.PENDING: {CloudFormationStatus.CREATE_IN_PROGRESS},
+        ImageStatusFilteringOption.FAILED: {CloudFormationStatus.CREATE_FAILED, CloudFormationStatus.DELETE_FAILED},
+    }
+    return mapping.get(image_status, set())
+
+
+def _imagebuilder_stack_to_image_info_summary(stack):
+    return ImageInfoSummary(
+        image_id=stack.pcluster_image_id,
+        image_build_status=cloud_formation_status_to_image_status(stack.status),
+        cloudformation_stack_status=stack.status,
+        cloudformation_stack_arn=stack.id,
+        region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+        version=stack.version,
+    )
+
+
+def _image_info_to_image_info_summary(image):
+    return ImageInfoSummary(
+        image_id=image.pcluster_image_id,
+        image_build_status=ImageBuildStatus.BUILD_COMPLETE,
+        region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+        version=image.version,
+    )
