@@ -517,6 +517,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "ca-central-1": ["cac1-az1", "cac1-az2"],
     # instance can only be launch in placement group in eun1-az2
     "eu-north-1": ["eun1-az2"],
+    # FSx not available in cnn1-az4
+    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
 
