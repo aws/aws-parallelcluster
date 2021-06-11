@@ -688,9 +688,7 @@ class _LaunchTemplateValidator(Validator, ABC):
             code = e.error_code
             message = str(e)
             subnet_id = kwargs["NetworkInterfaces"][0]["SubnetId"]
-            if code == "DryRunOperation":
-                pass
-            elif code == "UnsupportedOperation":
+            if code == "UnsupportedOperation":
                 if "does not support specifying CpuOptions" in message:
                     message.replace("specifying CpuOptions", "disabling simultaneous multithreading")
                 self._add_failure(message, FailureLevel.ERROR)
