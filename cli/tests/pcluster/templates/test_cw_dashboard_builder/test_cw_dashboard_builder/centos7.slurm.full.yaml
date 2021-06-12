@@ -1,5 +1,5 @@
 Image:
-  Os: centos8
+  Os: centos7
 HeadNode:
   InstanceType: t2.micro
   Networking:

@@ -11,6 +11,7 @@
 import errno
 import logging
 import os
+import re
 import stat
 import sys
 from collections import OrderedDict
@@ -35,6 +36,7 @@ from pcluster.cli_commands.configure.utils import (
 )
 from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
 from pcluster.utils import default_config_file_path, error, get_supported_os_for_scheduler
+from pcluster.validators.cluster_validators import NAME_REGEX
 
 LOGGER = logging.getLogger(__name__)
 
@@ -139,7 +141,11 @@ def configure(args):  # noqa: C901
     default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
         "Head node instance type",
-        lambda x: x in AWSApi.instance().ec2.list_instance_types(),
+        lambda x: x in AWSApi.instance().ec2.list_instance_types()
+        and (  # pcluster doesn't support CentOS7 with ARM
+            base_os != "centos7"
+            or AWSApi.instance().ec2.get_instance_type_info(x).supported_architecture()[0] == "x86_64"
+        ),
         default_value=default_instance_type,
     )
     if scheduler == "awsbatch":
@@ -151,7 +157,11 @@ def configure(args):  # noqa: C901
     compute_instance_types = []
     cluster_size = 0  # Sum of maximum count through all the compute resources
     for queue_index in range(number_of_queues):
-        queue_name = f"queue{queue_index}"
+        queue_name = prompt(
+            f"Name of queue {queue_index+1}",
+            validator=lambda x: re.match(NAME_REGEX, x),
+            default_value=f"queue{queue_index+1}",
+        )
         if scheduler == "awsbatch":
             number_of_compute_resources = 1
         else:
@@ -164,20 +174,15 @@ def configure(args):  # noqa: C901
             )
         compute_resources = []
         for compute_resource_index in range(number_of_compute_resources):
-            compute_resource_name = f"{queue_name}-i{compute_resource_index}"
             if scheduler != "awsbatch":
                 compute_instance_type = prompt(
-                    f"Compute instance type for {compute_resource_name} in {queue_name}",
+                    f"Compute instance type for compute resource {compute_resource_index+1} in {queue_name}",
                     validator=lambda x: x in AWSApi.instance().ec2.list_instance_types(),
                     default_value=default_instance_type,
                 )
-            min_cluster_size = int(
-                prompt(
-                    "Minimum {0}".format(size_name),
-                    validator=lambda x: str(x).isdigit(),
-                    default_value=DEFAULT_MIN_COUNT,
-                )
-            )
+                sanitized_instance_type = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
+                compute_resource_name = f"{queue_name}-{sanitized_instance_type}"
+            min_cluster_size = DEFAULT_MIN_COUNT
             max_cluster_size = int(
                 prompt(
                     "Maximum {0}".format(size_name),
@@ -188,7 +193,7 @@ def configure(args):  # noqa: C901
             if scheduler == "awsbatch":
                 compute_resources.append(
                     {
-                        "Name": compute_resource_name,
+                        "Name": f"{queue_name}-optimal",
                         "InstanceTypes": ["optimal"],
                         "MinvCpus": min_cluster_size,
                         "DesiredvCpus": min_cluster_size,
@@ -328,16 +333,18 @@ def _choose_network_configuration(scheduler, head_node_instance_type, compute_in
         )
         print("Exiting...")
         sys.exit(1)
+    common_availability_zones_list = list(common_availability_zones)
+    common_availability_zones_list.sort()
+    availability_zone = prompt_iterable("Availability Zone", options=common_availability_zones_list)
     target_type = prompt_iterable(
         "Network Configuration",
         options=[configuration.value.config_type for configuration in NetworkConfiguration],
         default_value=PublicPrivateNetworkConfig().config_type,
     )
-
     network_configuration = next(
         configuration.value for configuration in NetworkConfiguration if configuration.value.config_type == target_type
     )
-    network_configuration.availability_zones = common_availability_zones
+    network_configuration.availability_zone = availability_zone
     return network_configuration
 
 
