@@ -128,3 +128,14 @@ class ImageBuilderStack(StackInfo):
             except (AWSClientError, KeyError):
                 return None
         return None
+
+    @property
+    def image_state(self):
+        """Return the ImageBuilder image state."""
+        if self._imagebuilder_image_resource:
+            try:
+                image_build_version_arn = self._imagebuilder_image_resource["StackResourceDetail"]["PhysicalResourceId"]
+                return AWSApi.instance().imagebuilder.get_image_state(image_build_version_arn)
+            except (AWSClientError, KeyError):
+                return None
+        return None
