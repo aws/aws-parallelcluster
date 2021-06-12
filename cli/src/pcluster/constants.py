@@ -16,12 +16,12 @@ PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
-SUPPORTED_OSES = ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {
     "x86_64": SUPPORTED_OSES,
-    "arm64": ["alinux2", "ubuntu1804", "ubuntu2004", "centos8"],
+    "arm64": ["alinux2", "ubuntu1804", "ubuntu2004"],
 }
 
 OS_MAPPING = {

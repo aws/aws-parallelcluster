@@ -75,7 +75,7 @@ def test_pcluster_configure_avoid_bad_subnets(
     When config file contains a subnet that does not have the desired instance type, verify that `pcluster configure`
     can correct the headnode/compute_subnet_id fields using qualified subnets and show a message for the omitted subnets
     """
-    config_path = pcluster_config_reader(wrong_subnet_id=subnet_in_use1_az3)
+    config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
         region,
         key_name,
@@ -201,7 +201,7 @@ def assert_config_contains_expected_values(
     if scheduler == "slurm":
         param_validators += [
             {"parameter_path": compute_resource_path + ["InstanceType"], "expected_value": instance},
-            {"parameter_path": compute_resource_path + ["MinCount"], "expected_value": 1},
+            {"parameter_path": compute_resource_path + ["MinCount"], "expected_value": 0},
         ]
     elif scheduler == "awsbatch":
         param_validators += [
@@ -249,13 +249,13 @@ def orchestrate_pcluster_configure_stages(
         {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
         {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
         {"prompt": r"Number of queues \[1\]: ", "response": "1", "skip_for_batch": True},
-        {"prompt": r"Number of compute resources for queue0 \[1\]: ", "response": "1", "skip_for_batch": True},
+        {"prompt": r"Name of queue 1 \[queue1\]: ", "response": "myqueue"},
+        {"prompt": r"Number of compute resources for myqueue \[1\]: ", "response": "1", "skip_for_batch": True},
         {
-            "prompt": r"Compute instance type for queue0-i0 in queue0 \[t.\.micro\]: ",
+            "prompt": r"Compute instance type for compute resource 1 in myqueue \[t.\.micro\]: ",
             "response": instance,
             "skip_for_batch": True,
         },
-        {"prompt": fr"Minimum {size_name} \[0\]: ", "response": "1"},
         {"prompt": fr"Maximum {size_name} \[10\]: ", "response": ""},
         {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
