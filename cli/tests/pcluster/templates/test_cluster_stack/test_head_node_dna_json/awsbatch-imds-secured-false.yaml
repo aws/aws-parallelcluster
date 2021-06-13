@@ -1,0 +1,22 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Ssh:
+    KeyName: ec2-key-name
+  Networking:
+    SubnetId: subnet-12345678
+  Imds:
+    Secured: False
+Scheduling:
+  Scheduler: awsbatch
+  Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceTypes:
+            - c5.xlarge
+          MaxvCpus: 10
