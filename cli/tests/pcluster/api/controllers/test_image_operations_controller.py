@@ -9,6 +9,7 @@ import json
 
 import pytest
 from assertpy import assert_that, soft_assertions
+from pytest_mock import mocker
 
 from cli.tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from pcluster.api.models import CloudFormationStatus, ImageBuildStatus, ImageStatusFilteringOption
@@ -24,10 +25,12 @@ from pcluster.aws.common import (
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
+    ConflictImageBuilderActionError,
     LimitExceededImageBuilderActionError,
     LimitExceededImageError,
 )
-from pcluster.models.imagebuilder_resources import BadRequestStackError, ImageBuilderStack, LimitExceededStackError
+from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
+from pcluster.validators.common import FailureLevel, ValidationResult
 
 
 class TestImageOperationsController:
@@ -431,7 +434,17 @@ class TestDeleteImage:
 class TestBuildImage:
     url = "/v3/images/custom"
     method = "POST"
-    encoded_config = "SW1hZ2U6CiAgT3M6IGFsaW51eDIKSGVhZE5vZGU6CiAgSW5zdGFuY2VUeXBlOiB0Mi5taWNybw=="
+    encoded_config = (
+        "QnVpbGQ6CiAgSW5zdGFuY2VUeXBlOiBjNS54bGFyZ2UKICBQYXJlbnRJbWFnZTogYXJuOmF"
+        "3czppbWFnZWJ1aWxkZXI6dXMtZWFzdC0xOmF3czppbWFnZS9hbWF6b24tbGludXgtMi14OD"
+        "YveC54LngKCkRldlNldHRpbmdzOgogIENvb2tib29rOgogICAgQ2hlZkNvb2tib29rOiBod"
+        "HRwczovL2dpdGh1Yi5jb20vYXdzL2F3cy1wYXJhbGxlbGNsdXN0ZXItY29va2Jvb2svdGFy"
+        "YmFsbC8yNmFiODQyM2I4NGRlMWEwOThiYzI2ZThmZjE3NjhlOTMwZmM3NzA3CiAgTm9kZVB"
+        "hY2thZ2U6IGh0dHBzOi8vZ2l0aHViLmNvbS9hd3MvYXdzLXBhcmFsbGVsY2x1c3Rlci1ub2"
+        "RlL3RhcmJhbGwvODc1ZWY5Mzk4NmE4NmVhMzI2NzgzNWE4MTNkMzhlYWEwNWU1NzVmMwogI"
+        "EF3c0JhdGNoQ2xpUGFja2FnZTogaHR0cHM6Ly9naXRodWIuY29tL2F3cy9hd3MtcGFyYWxs"
+        "ZWxjbHVzdGVyL3RhcmJhbGwvZDVjMmExZWMyNjdhODY1Y2ZmM2NmMzUwYWYzMGQ0NGU2OGYwZWYxOA===="
+    )
 
     def _send_test_request(self, client, dryrun=False):
         build_image_request_content = {
@@ -481,4 +494,40 @@ class TestBuildImage:
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "validation_errors, error_code, expected_response",
+        [
+            pytest.param(
+                None, 412, {"message": "Request would have succeeded, but DryRun flag is set."}, id="test success"
+            ),
+            pytest.param(
+                BadRequestImageBuilderActionError(
+                    "test error", [ValidationResult("test failure", FailureLevel.ERROR, "dummy validator")]
+                ),
+                400,
+                {
+                    "configuration_validation_errors": [
+                        {"level": "ERROR", "id": None, "type": "dummy validator", "message": "test failure"}
+                    ],
+                    "message": "test error",
+                },
+                id="test validation failure",
+            ),
+            pytest.param(ConflictImageBuilderActionError("test error"), 409, {"message": "test error"}),
+        ],
+    )
+    def test_dryrun(self, client, mocker, validation_errors, error_code, expected_response):
+        if validation_errors:
+            mocker.patch(
+                "pcluster.models.imagebuilder.ImageBuilder.validate_create_request", side_effect=validation_errors
+            )
+        else:
+            mocker.patch("pcluster.models.imagebuilder.ImageBuilder.validate_create_request", return_value=None)
+
+        response = self._send_test_request(client, dryrun=True)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_response)

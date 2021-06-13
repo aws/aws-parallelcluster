@@ -19,6 +19,8 @@ from pcluster.api.converters import (
 from pcluster.api.errors import (
     BadRequestException,
     BuildImageBadRequestException,
+    ConflictException,
+    DryrunOperationException,
     InternalServiceException,
     LimitExceededException,
     NotFoundException,
@@ -82,8 +84,7 @@ def convert_imagebuilder_errors():
             ) as e:
                 error = BadRequestException(str(e))
             except ConflictImageBuilderActionError as e:
-                # TODO change to ConflictException after https://github.com/aws/aws-parallelcluster/pull/2776 is merged
-                error = InternalServiceException(str(e))
+                error = ConflictException(str(e))
             except Exception as e:
                 error = InternalServiceException(str(e))
             raise error
@@ -148,8 +149,7 @@ def build_image(
 
         if dryrun:
             imagebuilder.validate_create_request(suppress_validators, validation_failure_level)
-            # TODO change to DryrunOperationException after merging https://github.com/aws/aws-parallelcluster/pull/2776
-            raise Exception("temp exception, throw the DryrunOperationException we throw in CreateCluster")
+            raise DryrunOperationException()
 
         imagebuilder.create(disable_rollback, suppress_validators, validation_failure_level)
         return BuildImageResponseContent(image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack))
