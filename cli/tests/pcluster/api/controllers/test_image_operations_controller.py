@@ -9,9 +9,7 @@ import json
 
 import pytest
 from assertpy import assert_that, soft_assertions
-from pytest_mock import mocker
 
-from cli.tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from pcluster.api.models import CloudFormationStatus, ImageBuildStatus, ImageStatusFilteringOption
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.aws_resources import ImageInfo
@@ -446,7 +444,7 @@ class TestBuildImage:
         "ZWxjbHVzdGVyL3RhcmJhbGwvZDVjMmExZWMyNjdhODY1Y2ZmM2NmMzUwYWYzMGQ0NGU2OGYwZWYxOA===="
     )
 
-    def _send_test_request(self, client, dryrun=False):
+    def _send_test_request(self, client, dryrun=False, client_token=None):
         build_image_request_content = {
             "imageConfiguration": self.encoded_config,
             "id": "imageid",
@@ -458,6 +456,8 @@ class TestBuildImage:
             ("dryrun", dryrun),
             ("rollbackOnFailure", True),
         ]
+        if client_token:
+            query_string.append(("clientToken", client_token))
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -472,7 +472,6 @@ class TestBuildImage:
         )
 
     def test_build_image_success(self, client, mocker):
-        mock_aws_api(mocker)
         mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", return_value=None)
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
@@ -504,18 +503,20 @@ class TestBuildImage:
             ),
             pytest.param(
                 BadRequestImageBuilderActionError(
-                    "test error", [ValidationResult("test failure", FailureLevel.ERROR, "dummy validator")]
+                    "test validation error", [ValidationResult("test failure", FailureLevel.ERROR, "dummy validator")]
                 ),
                 400,
                 {
                     "configuration_validation_errors": [
                         {"level": "ERROR", "id": None, "type": "dummy validator", "message": "test failure"}
                     ],
-                    "message": "test error",
+                    "message": "test validation error",
                 },
                 id="test validation failure",
             ),
-            pytest.param(ConflictImageBuilderActionError("test error"), 409, {"message": "test error"}),
+            pytest.param(
+                ConflictImageBuilderActionError("test error"), 409, {"message": "test error"}, id="test conflict error"
+            ),
         ],
     )
     def test_dryrun(self, client, mocker, validation_errors, error_code, expected_response):
@@ -531,3 +532,39 @@ class TestBuildImage:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "error, error_code",
+        [
+            (LimitExceededImageError, 429),
+            (LimitExceededStackError, 429),
+            (LimitExceededImageBuilderActionError, 429),
+            (BadRequestImageError, 400),
+            (BadRequestStackError, 400),
+            (BadRequestImageBuilderActionError, 400),
+            (ConflictImageBuilderActionError, 409),
+        ],
+    )
+    def test_that_errors_are_converted(self, client, mocker, error, error_code):
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", side_effect=(error("test error")))
+        expected_error = {"message": "test error"}
+        if error in {BadRequestImageError, BadRequestStackError}:
+            expected_error["message"] = "Bad Request: " + expected_error["message"]
+        if error == BadRequestImageBuilderActionError:
+            expected_error["configuration_validation_errors"] = []
+        response = self._send_test_request(client, dryrun=False)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+    def test_that_call_with_client_token_throws_bad_request(self, client):
+        expected_error = {
+            "configuration_validation_errors": [],
+            "message": "clientToken is currently not supported for this operation",
+        }
+        response = self._send_test_request(client, client_token="clientToken")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_error)
