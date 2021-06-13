@@ -1009,6 +1009,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
           description: ConflictException 409 response
+        "412":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
+          description: DryrunOperationException 412 response
         "429":
           content:
             application/json:
@@ -1907,6 +1913,15 @@ components:
       required:
       - items
       title: DescribeOfficialImagesResponseContent
+      type: object
+    DryrunOperationExceptionResponseContent:
+      description: Communicates that the operation would have succeeded without the
+        dryrun flag.
+      properties:
+        message:
+          title: message
+          type: string
+      title: DryrunOperationExceptionResponseContent
       type: object
     EC2Instance:
       example:
