@@ -290,3 +290,11 @@ def timestamp_to_isoformat(timestamp, timezone=None):
 def isoformat_to_epoch(time_isoformat):
     """Convert iso8601 date format to unix epoch datetime with milliseconds."""
     return int(parse(time_isoformat).timestamp() * 1000)
+
+
+def load_json_dict(file_path):
+    """Read the content of a json file."""
+    with open(file_path) as file:
+        json_content = json.load(file)
+
+    return json_content

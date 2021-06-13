@@ -13,9 +13,10 @@ import time
 
 import boto3
 from assertpy import assert_that, soft_assertions
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_count, get_compute_nodes_instance_ids
+from utils import get_compute_nodes_count, get_compute_nodes_instance_ids, get_username_for_os
 
 from tests.common.scaling_common import get_compute_nodes_allocation
 
@@ -125,3 +126,30 @@ def assert_num_instances_constant(cluster_name, region, desired, timeout=5):
     start_time = time.time()
     while time.time() < start_time + 60 * (timeout):
         assert_num_instances_in_cluster(cluster_name, region, desired)
+
+
+def assert_head_node_is_running(region, cluster):
+    logging.info("Asserting the head node is running")
+    head_node_state = (
+        boto3.client("ec2", region_name=region)
+        .describe_instances(Filters=[{"Name": "ip-address", "Values": [cluster.head_node_ip]}])
+        .get("Reservations")[0]
+        .get("Instances")[0]
+        .get("State")
+        .get("Name")
+    )
+    assert_that(head_node_state).is_equal_to("running")
+
+
+def assert_aws_identity_access_is_correct(cluster, users_allow_list):
+    logging.info("Asserting access to AWS caller identity is correct")
+    username = get_username_for_os(cluster.os)
+    remote_command_executor = RemoteCommandExecutor(cluster, username=username)
+
+    for user, allowed in users_allow_list.items():
+        logging.info(f"Asserting access to AWS caller identity is {'allowed' if allowed else 'denied'} for user {user}")
+        command = f"sudo -u {user} aws sts get-caller-identity"
+        result = remote_command_executor.run_remote_command(command, raise_on_error=False)
+        logging.info(f"user={user} and result.failed={result.failed}")
+        logging.info(f"user={user} and result.stdout={result.stdout}")
+        assert_that(result.failed).is_equal_to(not allowed)

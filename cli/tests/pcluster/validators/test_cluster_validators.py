@@ -11,7 +11,7 @@
 import pytest
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, SCHEDULERS_SUPPORTING_IMDS_SECURED
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
@@ -765,7 +765,12 @@ def test_intel_hpc_os_validator(os, expected_message):
         (False, "slurm", None),
         (None, "awsbatch", None),
         (False, "awsbatch", None),
-        (True, "awsbatch", "IMDS secured cannot be enabled in Head Node when using scheduler awsbatch."),
+        (
+            True,
+            "awsbatch",
+            f"IMDS secured cannot be enabled in Head Node when using scheduler awsbatch. "
+            f"Supported schedulers are: {','.join(SCHEDULERS_SUPPORTING_IMDS_SECURED)}",
+        ),
         (None, None, "Cannot validate IMDS configuration with scheduler None."),
         (True, None, "Cannot validate IMDS configuration with scheduler None."),
         (False, None, "Cannot validate IMDS configuration with scheduler None."),
