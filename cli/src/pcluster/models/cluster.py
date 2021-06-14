@@ -714,12 +714,12 @@ class Cluster:
         """
         Export cluster's logs in the given output path, by using given bucket as a temporary folder.
 
-        :param output to save log file archive to
-        :param bucket to export cluster logs data to
-        :param bucket_prefix Keypath under which exported logs data will be stored in s3 bucket,
+        :param output: file path to save log file archive to
+        :param bucket: Temporary S3 bucket to be used to export cluster logs data
+        :param bucket_prefix: Key path under which exported logs data will be stored in s3 bucket,
                also serves as top-level directory in resulting archive
-        :param keep_s3_objects Keep the exported objects exports to S3. The default behavior is to delete them
-        :param filters Filters in the format Name=name,Values=value1,value2
+        :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
+        :param filters: Filters in the format Name=name,Values=value1,value2
                Accepted filters are: start_time, end_time, private_instance_ip
         """
         # check stack
@@ -870,3 +870,45 @@ class Cluster:
         except FiltersParserError as e:
             raise ClusterActionError(str(e))
         return list_logs_filters
+
+    def get_log_events(
+        self,
+        log_stream_name: str,
+        start_time: int = None,
+        end_time: int = None,
+        start_from_head: bool = False,
+        limit: int = None,
+        next_token: str = None,
+    ):
+        """
+        Get the log stream events.
+
+        :param log_stream_name: Log stream name
+        :param start_time: Start time of interval of interest for log events,
+            expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
+        :param end_time: End time of interval of interest for log events,
+            expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
+        :param start_from_head: If the value is true, the earliest log events are returned first.
+            If the value is false, the latest log events are returned first. The default value is false.
+        :param limit: The maximum number of log events returned. If you don't specify a value,
+            the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
+        :param next_token: Token for paginated requests.
+        """
+        # check stack
+        if not AWSApi.instance().cfn.stack_exists(self.stack_name):
+            raise ClusterActionError(f"Cluster {self.name} does not exist")
+        if not self.config.is_cw_logging_enabled:
+            raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
+
+        try:
+            return AWSApi.instance().logs.get_log_events(
+                log_group_name=self.stack.log_group_name,
+                log_stream_name=log_stream_name,
+                end_time=end_time,
+                start_time=start_time,
+                limit=limit,
+                start_from_head=start_from_head,
+                next_token=next_token,
+            )
+        except AWSClientError as e:
+            raise ClusterActionError(f"Unexpected error when retrieving log events: {e}")

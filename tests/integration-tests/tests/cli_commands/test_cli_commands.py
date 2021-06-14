@@ -39,7 +39,8 @@ def test_slurm_cli_commands(scheduler, region, pcluster_config_reader, clusters_
     instance_ids = _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="RUNNING")
     _test_pcluster_stop_and_start(cluster, region, expected_num_nodes=2)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, instance_ids)
-    _test_pcluster_list_cluster_logs(cluster, instance_ids)
+    cfn_init_log_stream = _test_pcluster_list_cluster_logs(cluster, instance_ids)
+    _test_pcluster_get_cluster_log_events(cluster, cfn_init_log_stream)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
@@ -149,7 +150,7 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
 
 
 def _test_pcluster_list_cluster_logs(cluster, instance_ids):
-    """Test pcluster list-cluster-logs functionality."""
+    """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
     logging.info("Testing that pcluster list-cluster-logs is working as expected")
     std_output = cluster.list_logs()
 
@@ -161,3 +162,19 @@ def _test_pcluster_list_cluster_logs(cluster, instance_ids):
     # check there are the logs of all the instances
     for instance_id in set(instance_ids):
         assert_that(std_output).contains(instance_id)
+
+    # search for cfn-init log stream name
+    cfn_init_log_stream = None
+    for line in std_output.split("\n"):
+        if "cfn-init" in line:
+            cfn_init_log_stream = line.split(" ")[0]
+            break
+    return cfn_init_log_stream
+
+
+def _test_pcluster_get_cluster_log_events(cluster, cfn_init_log_stream):
+    """Test pcluster get-cluster-log-events functionality."""
+    logging.info("Testing that pcluster get-cluster-log-events is working as expected")
+    std_output = cluster.get_log_events(cfn_init_log_stream, head=10)
+
+    assert_that(std_output).contains("[DEBUG] CloudFormation client initialized with endpoint")

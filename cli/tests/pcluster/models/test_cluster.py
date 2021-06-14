@@ -471,6 +471,46 @@ class TestCluster:
         # check preliminary steps
         stack_exists_mock.assert_called_with(cluster.stack_name)
 
+    @pytest.mark.parametrize(
+        "stack_exists, logging_enabled, client_error, expected_error",
+        [
+            (False, False, False, "Cluster .* does not exist"),
+            (True, False, False, "CloudWatch logging is not enabled"),
+            (True, True, True, "Unexpected error when retrieving log events"),
+            (True, True, False, ""),
+        ],
+    )
+    def test_get_cluster_log_events(
+        self,
+        cluster,
+        mocker,
+        set_env,
+        stack_exists,
+        logging_enabled,
+        client_error,
+        expected_error,
+    ):
+        mock_aws_api(mocker)
+        set_env("AWS_DEFAULT_REGION", "us-east-2")
+        stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
+        get_log_events_mock = mocker.patch(
+            "pcluster.aws.logs.LogsClient.get_log_events",
+            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
+        )
+
+        cluster.config = dummy_slurm_cluster_config(mocker)
+        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+
+        if expected_error or client_error:
+            with pytest.raises(ClusterActionError, match=expected_error):
+                cluster.get_log_events("log_stream_name")
+        else:
+            cluster.get_log_events("log_stream_name")
+            get_log_events_mock.assert_called()
+
+        # check preliminary steps
+        stack_exists_mock.assert_called_with(cluster.stack_name)
+
 
 class _MockExportClusterLogsFiltersParser:
     def __init__(self):

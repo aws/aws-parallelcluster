@@ -21,6 +21,7 @@ from builtins import str
 from datetime import datetime
 
 from botocore.exceptions import ClientError
+from dateutil import tz
 from tabulate import tabulate
 
 import pcluster.utils as utils
@@ -496,7 +497,7 @@ def list_cluster_logs(args):
                 for key in output_headers:
                     value = item.get(key)
                     if key.endswith("Timestamp"):
-                        value = time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(value / 1000))
+                        value = _timestamp_to_date(value)
                     filtered_item[key] = value
                 filtered_result.append(filtered_item)
             LOGGER.info(tabulate(filtered_result, headers="keys", tablefmt="plain"))
@@ -505,6 +506,79 @@ def list_cluster_logs(args):
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
         sys.exit(0)
+
+
+def get_cluster_log_events(args):
+    """Get log events for a specific log stream of the cluster saved in CloudWatch."""
+
+    if args.head and args.tail:
+        utils.error("Parameters validation error: 'tail' and 'head' options cannot be set at the same time")
+
+    if args.stream:
+        if args.next_token:
+            utils.error("Parameters validation error: 'stream' and 'next-token' options cannot be set at the same time")
+        if args.head:
+            utils.error("Parameters validation error: 'stream' and 'head' options cannot be set at the same time")
+    else:
+        if args.stream_period:
+            utils.error("Parameters validation error: 'stream-period' can be used only with 'stream' option")
+
+    limit = None
+    start_from_head = False
+    if args.head:
+        limit = args.head
+        start_from_head = True
+    elif args.tail:
+        limit = args.tail
+
+    try:
+        kwargs = {
+            "cluster_name": args.cluster_name,
+            "region": get_region(),
+            "log_stream_name": args.log_stream_name,
+            "start_time": args.start_time,
+            "end_time": args.end_time,
+            "start_from_head": start_from_head,
+            "limit": limit,
+            "next_token": args.next_token,
+        }
+        result = PclusterApi().get_cluster_log_events(**kwargs)
+        if isinstance(result, ApiFailure):
+            utils.error(f"Unable to retrieve the log events.\n{result.message}")
+        else:
+            _print_log_events(result.get("events", []))
+            if args.stream:
+                # stream content
+                next_token = result.get("nextForwardToken", None)
+                while next_token is not None and args.stream:
+                    LOGGER.debug(f"NextToken is {next_token}")
+                    period = args.stream_period or 5
+                    LOGGER.debug(f"Waiting other {period} seconds...")
+                    time.sleep(period)
+
+                    kwargs["next_token"] = next_token
+                    result = PclusterApi().get_cluster_log_events(**kwargs)
+                    next_token = result.get("nextForwardToken", None)
+                    _print_log_events(result.get("events", []))
+            else:
+                LOGGER.info(f"\nnextBackwardToken is: {result['nextBackwardToken']}")
+                LOGGER.info(f"nextForwardToken is: {result['nextForwardToken']}")
+    except KeyboardInterrupt:
+        LOGGER.info("Exiting...")
+        sys.exit(0)
+
+
+def _print_log_events(events: list):
+    """
+    Print given events.
+
+    :param events: list of boto3 events
+    """
+    if not events:
+        print("No events found.")
+    else:
+        for event in events:
+            print("{0}: {1}".format(_timestamp_to_date(event["timestamp"]), event["message"]))
 
 
 def delete_image(args):
@@ -572,3 +646,17 @@ def list_images(args):
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
         sys.exit(0)
+
+
+def _timestamp_to_date(timestamp, timezone=None):
+    """
+    Convert timestamp to a readable date.
+
+    :param timestamp: timestamp to convert
+    :param timezone: timezone to use when converting. Defaults to local.
+    :return: the converted date
+    """
+    if not timezone:
+        timezone = tz.tzlocal()
+    # Forcing microsecond to 0 to avoid having them displayed.
+    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()

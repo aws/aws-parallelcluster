@@ -1,12 +1,12 @@
 usage: pcluster [-h]
-                {create,update,delete,start,stop,status,list,instances,ssh,configure,export-cluster-logs,list-cluster-logs,build-image,delete-image,describe-image,list-images,version,list-clusters,dcv}
+                {create,update,delete,start,stop,status,list,instances,ssh,configure,export-cluster-logs,list-cluster-logs,get-cluster-log-events,build-image,delete-image,describe-image,list-images,version,list-clusters,dcv}
                 ...
 
 pcluster is the AWS ParallelCluster CLI and permits launching and management
 of HPC clusters in the AWS cloud.
 
 positional arguments:
-  {create,update,delete,start,stop,status,list,instances,ssh,configure,export-cluster-logs,list-cluster-logs,build-image,delete-image,describe-image,list-images,version,list-clusters,dcv}
+  {create,update,delete,start,stop,status,list,instances,ssh,configure,export-cluster-logs,list-cluster-logs,get-cluster-log-events,build-image,delete-image,describe-image,list-images,version,list-clusters,dcv}
     create              Creates a new cluster.
     update              Updates a running cluster using the values in the
                         config file.
@@ -25,6 +25,9 @@ positional arguments:
                         Export the logs of the cluster to a local tar archive
                         by passing through an Amazon S3 Bucket.
     list-cluster-logs   List the logs of the cluster saved to CloudWatch.
+    get-cluster-log-events
+                        Retrieve the events of a log stream of the cluster
+                        saved to CloudWatch.
     build-image         Creates a custom AMI to use with AWS ParallelCluster.
     delete-image        Deletes an image and related image builder stack.
     describe-image      Describes the specified ParallelCluster image.

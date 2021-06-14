@@ -339,6 +339,49 @@ class PclusterApi:
             return ApiFailure(str(e))
 
     @staticmethod
+    def get_cluster_log_events(
+        cluster_name: str,
+        region: str,
+        log_stream_name: str,
+        start_time: int = None,
+        end_time: int = None,
+        start_from_head: bool = False,
+        limit: int = None,
+        next_token: str = None,
+    ):
+        """
+        Get log events for a specific log stream from CloudWatch. CloudWatch logging must be enabled.
+
+        :param cluster_name: the cluster's name
+        :param region: the cluster's region
+        :param log_stream_name: Log stream name
+        :param start_time: Start time of interval of interest for log events,
+            expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
+        :param end_time: End time of interval of interest for log events,
+            expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
+        :param start_from_head: If the value is true, the earliest log events are returned first.
+            If the value is false, the latest log events are returned first. The default value is false.
+        :param limit: The maximum number of log events returned. If you don't specify a value,
+            the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
+        :param next_token: Token for paginated requests.
+        """
+        try:
+            if region:
+                os.environ["AWS_DEFAULT_REGION"] = region
+
+            cluster = Cluster(cluster_name)
+            return cluster.get_log_events(
+                log_stream_name=log_stream_name,
+                start_time=start_time,
+                end_time=end_time,
+                start_from_head=start_from_head,
+                limit=limit,
+                next_token=next_token,
+            )
+        except Exception as e:
+            return ApiFailure(str(e))
+
+    @staticmethod
     def _is_version_2(cluster):
         return packaging.version.parse(cluster.stack.version) < packaging.version.parse("3.0.0")
 
