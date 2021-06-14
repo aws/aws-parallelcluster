@@ -45,6 +45,31 @@ class LogsClient(Boto3Client):
         ).get("events")
 
     @AWSExceptionHandler.handle_client_exception
+    def get_log_events(
+        self,
+        log_group_name,
+        log_stream_name,
+        start_time=None,
+        end_time=None,
+        limit=None,
+        start_from_head=None,
+        next_token=None,
+    ):
+        """Return the list of events included in a specific time window for a given log stream."""
+        kwargs = {"logGroupName": log_group_name, "logStreamName": log_stream_name}
+        if start_time:
+            kwargs["startTime"] = start_time
+        if end_time:
+            kwargs["endTime"] = end_time
+        if limit:
+            kwargs["limit"] = limit
+        if start_from_head is not None:
+            kwargs["startFromHead"] = start_from_head
+        if next_token:
+            kwargs["nextToken"] = next_token
+        return self._client.get_log_events(**kwargs)
+
+    @AWSExceptionHandler.handle_client_exception
     def create_export_task(
         self, log_group_name, bucket, bucket_prefix=None, log_stream_name_prefix=None, start_time=None, end_time=None
     ):

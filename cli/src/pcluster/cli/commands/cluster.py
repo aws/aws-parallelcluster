@@ -445,6 +445,7 @@ class ListClusterLogsCommand(CliCommand):
                 "private-ip-address - The private IPv4 address of the instance."
             ),
         )
+        parser.add_argument("--next-token", help="Token for paginated requests")
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
         from pcluster.cli_commands.commands import list_cluster_logs
@@ -463,3 +464,59 @@ class _FiltersArg:
         if not self._pattern.match(value):
             raise argparse.ArgumentTypeError("filters parameter must be in the form Name=...,Values=... ")
         return value
+
+
+class GetClusterLogsEventsCommand(CliCommand):
+    """Implement pcluster get-cluster-log-events command."""
+
+    # CLI
+    name = "get-cluster-log-events"
+    help = "Retrieve the events of a log stream of the cluster saved to CloudWatch."
+    description = help
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("cluster_name", help="Get the log stream of the cluster name provided here.")
+        parser.add_argument(
+            "--log-stream-name",
+            help="Log stream name, as reported by 'pcluster list-cluster-logs' command",
+            required=True,
+        )
+
+        # Filters
+        parser.add_argument(
+            "--start-time",
+            help=(
+                "Start time of interval of interest for log events, "
+                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+            ),
+            type=int,
+        )
+        parser.add_argument(
+            "--end-time",
+            help=(
+                "End time of interval of interest for log events, "
+                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+            ),
+            type=int,
+        )
+        parser.add_argument("--head", help="Gets the first <head> lines of the log stream", type=int)
+        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream", type=int)
+        parser.add_argument("--next-token", help="Token for paginated requests")
+
+        # Stream utilities
+        parser.add_argument(
+            "--stream",
+            help="Gets the log stream and waits for additional output to be produced. "
+            "It can be used in conjunction with --tail to start from the "
+            "latest <tail> lines of the log stream",
+            action="store_true",
+        )
+        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds", type=int)
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+        from pcluster.cli_commands.commands import get_cluster_log_events
+
+        get_cluster_log_events(args)

@@ -188,6 +188,19 @@ class Cluster:
             logging.error("Failed listing cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
+    def get_log_events(self, log_stream, head=None):
+        """Run pcluster get-cluster-log-events and return the result."""
+        cmd_args = ["pcluster", "get-cluster-log-events", self.name, "--log-stream-name", log_stream]
+        if head:
+            cmd_args += ["--head", str(head)]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Log events listed successfully")
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed listing log events with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
     @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""
