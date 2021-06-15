@@ -776,7 +776,7 @@ class ImageBuilderCdkStack(Stack):
             self,
             "DeleteStackFunctionPermission",
             action="lambda:InvokeFunction",
-            principal="sns.{0}".format(self.url_suffix),
+            principal="sns.amazonaws.com",
             function_name=lambda_cleanup.attr_arn,
             source_arn=Fn.ref("BuildNotificationTopic"),
         )
