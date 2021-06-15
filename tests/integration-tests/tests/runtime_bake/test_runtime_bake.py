@@ -49,8 +49,9 @@ def test_runtime_bake(
     else:
         custom_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
-    # Custom Cookbook
+    # Custom Cookbook and Node
     custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
+    custom_node = request.config.getoption("createami_custom_node_package")
 
     # Create S3 bucket for pre install scripts, to remove epel package if it is installed
     bucket_name = s3_bucket_factory()
@@ -61,6 +62,7 @@ def test_runtime_bake(
         bucket_name=bucket_name,
         custom_ami=custom_ami,
         custom_cookbook=custom_cookbook if custom_cookbook else "",
+        custom_node=custom_node if custom_node else "",
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
