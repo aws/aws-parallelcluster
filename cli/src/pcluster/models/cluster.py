@@ -844,7 +844,7 @@ class Cluster:
                 outfile.write(gfile.read())
             os.remove(compressed_path)
 
-    def list_logs(self, filters: str = None):
+    def list_logs(self, filters: str = None, next_token: str = None):
         """List cluster's logs."""
         try:
             LOGGER.info("Listing log streams from log group %s", self.stack.log_group_name)
@@ -859,6 +859,7 @@ class Cluster:
             return AWSApi.instance().logs.describe_log_streams(
                 log_group_name=self.stack.log_group_name,
                 log_stream_name_prefix=list_logs_filters.log_stream_prefix,
+                next_token=next_token,
             )
         except AWSClientError as e:
             raise ClusterActionError(f"Unexpected error when retrieving cluster's logs: {e}")
