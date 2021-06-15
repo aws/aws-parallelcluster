@@ -507,6 +507,9 @@ class SlurmCommands(SchedulerCommands):
 
     def get_node_addr_host(self):
         """Return a list of nodename, nodeaddr, nodehostname entries."""
+        # q1-dy-c5xlarge-1 172.31.4.241 q1-dy-c5xlarge-1
+        # q1-dy-c5xlarge-2 172.31.4.136 q1-dy-c5xlarge-2
+        # q1-dy-c5xlarge-3 q1-dy-c5xlarge-3 q1-dy-c5xlarge-3
         return self._remote_command_executor.run_remote_command(
             "/opt/slurm/bin/sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
         ).stdout.splitlines()

@@ -140,6 +140,13 @@ def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clus
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4, 1)
+    _test_online_node_configured_correctly(
+        scheduler_commands,
+        partition="ondemand1",
+        num_static_nodes=2,
+        num_dynamic_nodes=2,
+        dynamic_instance_type=instance,
+    )
     _test_partition_states(
         scheduler_commands,
         cluster.cfn_name,
@@ -253,6 +260,39 @@ def _assert_cluster_initial_conditions(
     assert_that(len(instance_nodes)).is_equal_to(expected_num_instance_node)
     assert_that(len(static_nodes)).is_equal_to(expected_num_static)
     assert_that(len(dynamic_nodes)).is_equal_to(expected_num_dynamic)
+
+
+def _test_online_node_configured_correctly(
+    scheduler_commands,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+):
+    logging.info("Testing that online nodes' nodeaddr and nodehostname are configured correctly.")
+    init_job_id = submit_initial_job(
+        scheduler_commands,
+        "sleep infinity",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    static_nodes, dynamic_nodes = assert_initial_conditions(
+        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition, cancel_job_id=init_job_id
+    )
+    node_attr_map = {}
+    for node_entry in scheduler_commands.get_node_addr_host():
+        nodename, nodeaddr, nodehostname = node_entry.split()
+        node_attr_map[nodename] = {"nodeaddr": nodeaddr, "nodehostname": nodehostname}
+    logging.info(node_attr_map)
+    for nodename in static_nodes + dynamic_nodes:
+        # For online nodes:
+        # Nodeaddr should be set to private ip of instance
+        # Nodehostname should be the same with nodename
+        assert_that(nodename in node_attr_map).is_true()
+        assert_that(nodename).is_not_equal_to(node_attr_map.get(nodename).get("nodeaddr"))
+        assert_that(nodename).is_equal_to(node_attr_map.get(nodename).get("nodehostname"))
 
 
 def _test_partition_states(
