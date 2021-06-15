@@ -124,10 +124,9 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
 
 
 @pytest.mark.parametrize(
-    "version, os, architecture, boto3_response, expected_response, error_message",
+    "os, architecture, boto3_response, expected_response, error_message",
     [
         pytest.param(
-            None,
             None,
             None,
             {
@@ -144,16 +143,6 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
             id="test with no filter",
         ),
         pytest.param(
-            "3.0.0",
-            None,
-            None,
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
-            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
-            None,
-            id="test with version",
-        ),
-        pytest.param(
-            None,
             "alinux2",
             None,
             {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
@@ -163,7 +152,6 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
         ),
         pytest.param(
             None,
-            None,
             "x86_64",
             {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
             [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
@@ -171,7 +159,6 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
             id="test with architecture",
         ),
         pytest.param(
-            None,
             "alinux2",
             "x86_64",
             {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
@@ -179,42 +166,11 @@ def test_extract_os_from_official_image_name(os_part, expected_os):
             None,
             id="test with os and architecture",
         ),
-        pytest.param(
-            "3.0.0",
-            None,
-            "x86_64",
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
-            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
-            None,
-            id="test with version and architecture",
-        ),
-        pytest.param(
-            "3.0.0",
-            "alinux2",
-            None,
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
-            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
-            None,
-            id="test with version and os",
-        ),
-        pytest.param(
-            "3.0.0",
-            "alinux2",
-            "x86_64",
-            {"Images": [{"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"}]},
-            [ImageInfo({"Name": "aws-parallelcluster-3.0.0-amzn2-hvm-x86_64-other"})],
-            None,
-            id="test with version, os and architecture",
-        ),
-        pytest.param(
-            "3.0.0", "alinux2", "arm64", Exception("error message"), None, "error message", id="test with boto3 error"
-        ),
+        pytest.param("alinux2", "arm64", Exception("error message"), None, "error message", id="test with boto3 error"),
     ],
 )
-def test_get_official_images(
-    boto3_stubber, version, os, architecture, boto3_response, expected_response, error_message
-):
-    filter_version = version or "*"
+def test_get_official_images(boto3_stubber, os, architecture, boto3_response, expected_response, error_message):
+    filter_version = get_installed_version()
     filter_os = OS_TO_IMAGE_NAME_PART_MAP[os] if os else "*"
     filter_arch = architecture or "*"
     expected_params = {
@@ -236,9 +192,9 @@ def test_get_official_images(
 
     if error_message:
         with pytest.raises(AWSClientError, match=error_message):
-            Ec2Client().get_official_images(version, os, architecture)
+            Ec2Client().get_official_images(os, architecture)
     else:
-        response = Ec2Client().get_official_images(version, os, architecture)
+        response = Ec2Client().get_official_images(os, architecture)
         with soft_assertions():
             assert_that(len(response)).is_equal_to(len(expected_response))
             for i in range(len(response)):

@@ -45,6 +45,7 @@ from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.aws.ec2 import Ec2Client
+from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
@@ -60,6 +61,7 @@ from pcluster.models.imagebuilder_resources import (
     LimitExceededStackError,
     NonExistingStackError,
 )
+from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel
 
 
@@ -245,12 +247,10 @@ def describe_image(image_id, region=None):
 
 @configure_aws_region()
 @convert_imagebuilder_errors()
-def describe_official_images(version=None, region=None, os=None, architecture=None):
+def describe_official_images(region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
 
-    :param version: ParallelCluster version to retrieve AMIs for.
-    :type version: str
     :param region: AWS Region. Defaults to the region the API is deployed to.
     :type region: str
     :param os: Filter by OS distribution
@@ -260,12 +260,26 @@ def describe_official_images(version=None, region=None, os=None, architecture=No
 
     :rtype: DescribeOfficialImagesResponseContent
     """
+    _validate_optional_filters(os, architecture)
+
     images = [
         _image_info_to_ami_info(image)
-        for image in AWSApi.instance().ec2.get_official_images(version=version, os=os, architecture=architecture)
+        for image in AWSApi.instance().ec2.get_official_images(os=os, architecture=architecture)
     ]
 
     return DescribeOfficialImagesResponseContent(items=images)
+
+
+def _validate_optional_filters(os, architecture):
+    error = ""
+    if os is not None and os not in SUPPORTED_OSES:
+        error = f"{os} is not one of {SUPPORTED_OSES}"
+    if architecture is not None and architecture not in SUPPORTED_ARCHITECTURES:
+        if error:
+            error += "; "
+        error += f"{architecture} is not one of {SUPPORTED_ARCHITECTURES}"
+    if error:
+        raise BadRequestException(error)
 
 
 def _image_info_to_ami_info(image):
@@ -274,6 +288,7 @@ def _image_info_to_ami_info(image):
         os=Ec2Client.extract_os_from_official_image_name(image.name),
         name=image.name,
         architecture=image.architecture,
+        version=get_installed_version(),
     )
 
 

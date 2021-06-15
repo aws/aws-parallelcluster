@@ -16,9 +16,6 @@ operation DescribeOfficialImages {
 }
 
 structure DescribeOfficialImagesRequest {
-    @httpQuery("version")
-    @documentation("ParallelCluster version to retrieve AMIs for.")
-    version: Version,
     @httpQuery("region")
     region: Region,
     @httpQuery("os")
@@ -47,4 +44,6 @@ structure AmiInfo {
     name: String,
     @required
     os: String,
+    @required
+    version: Version,
 }

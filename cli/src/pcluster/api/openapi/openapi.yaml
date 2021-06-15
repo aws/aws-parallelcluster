@@ -1213,15 +1213,6 @@ paths:
       description: Describe ParallelCluster AMIs.
       operationId: describe_official_images
       parameters:
-      - description: ParallelCluster version to retrieve AMIs for.
-        explode: true
-        in: query
-        name: version
-        required: false
-        schema:
-          description: ParallelCluster version to retrieve AMIs for.
-          type: string
-        style: form
       - description: AWS Region. Defaults to the region the API is deployed to.
         explode: true
         in: query
@@ -1298,6 +1289,7 @@ components:
         amiId: amiId
         os: os
         name: name
+        version: version
         architecture: architecture
       properties:
         amiId:
@@ -1309,6 +1301,9 @@ components:
         name:
           title: name
           type: string
+        version:
+          title: version
+          type: string
         architecture:
           title: architecture
           type: string
@@ -1316,6 +1311,7 @@ components:
       - amiId
       - architecture
       - name
+      - version
       - os
       title: AmiInfo
       type: object
@@ -1885,10 +1881,12 @@ components:
         - amiId: amiId
           os: os
           name: name
+          version: version
           architecture: architecture
         - amiId: amiId
           os: os
           name: name
+          version: version
           architecture: architecture
       properties:
         items:

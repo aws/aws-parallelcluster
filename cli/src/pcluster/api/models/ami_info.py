@@ -19,7 +19,7 @@ class AmiInfo(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, ami_id=None, os=None, name=None, architecture=None):
+    def __init__(self, ami_id=None, os=None, name=None, version=None, architecture=None):
         """AmiInfo - a model defined in OpenAPI
 
         :param ami_id: The ami_id of this AmiInfo.
@@ -28,16 +28,25 @@ class AmiInfo(Model):
         :type os: str
         :param name: The name of this AmiInfo.
         :type name: str
+        :param version: The version of this AmiInfo.
+        :type version: st
         :param architecture: The architecture of this AmiInfo.
         :type architecture: str
         """
-        self.openapi_types = {"ami_id": str, "os": str, "name": str, "architecture": str}
+        self.openapi_types = {"ami_id": str, "os": str, "name": str, "version": str, "architecture": str}
 
-        self.attribute_map = {"ami_id": "amiId", "os": "os", "name": "name", "architecture": "architecture"}
+        self.attribute_map = {
+            "ami_id": "amiId",
+            "os": "os",
+            "name": "name",
+            "version": "version",
+            "architecture": "architecture",
+        }
 
         self._ami_id = ami_id
         self._os = os
         self._name = name
+        self._version = version
         self._architecture = architecture
 
     @classmethod
@@ -119,6 +128,29 @@ class AmiInfo(Model):
             raise ValueError("Invalid value for `name`, must not be `None`")
 
         self._name = name
+
+    @property
+    def version(self):
+        """Gets the version of this AmiInfo.
+
+
+        :return: The version of this AmiInfo.
+        :rtype: str
+        """
+        return self._version
+
+    @version.setter
+    def version(self, version):
+        """Sets the version of this AmiInfo.
+
+
+        :param version: The version of this AmiInfo.
+        :type version: str
+        """
+        if version is None:
+            raise ValueError("Invalid value for `version`, must not be `None`")  # noqa: E501
+
+        self._version = version
 
     @property
     def architecture(self):

@@ -1030,12 +1030,6 @@ paths:
       description: Describe ParallelCluster AMIs.
       operationId: DescribeOfficialImages
       parameters:
-        - name: version
-          in: query
-          description: ParallelCluster version to retrieve AMIs for.
-          schema:
-            type: string
-            description: ParallelCluster version to retrieve AMIs for.
         - name: region
           in: query
           description: AWS Region. Defaults to the region the API is deployed to.
@@ -1106,6 +1100,8 @@ components:
           type: string
         name:
           type: string
+        version:
+          type: string
         architecture:
           type: string
       required:
@@ -1113,6 +1109,7 @@ components:
         - architecture
         - name
         - os
+        - version
     BadRequestExceptionResponseContent:
       type: object
       description: This exception is thrown when a client calls an API with wrong parameters
