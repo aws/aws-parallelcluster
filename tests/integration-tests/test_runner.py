@@ -248,6 +248,11 @@ def _init_argparser():
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
     ami_group.add_argument(
+        "--pcluster-git-ref",
+        help="Git ref of the custom cli package used to build the AMI.",
+        default=TEST_DEFAULTS.get("pcluster_git_ref"),
+    )
+    ami_group.add_argument(
         "--cookbook-git-ref",
         help="Git ref of the custom cookbook package used to build the AMI.",
         default=TEST_DEFAULTS.get("cookbook_git_ref"),
@@ -478,6 +483,9 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
 def _set_ami_args(args, pytest_args):
     if args.custom_ami:
         pytest_args.extend(["--custom-ami", args.custom_ami])
+
+    if args.pcluster_git_ref:
+        pytest_args.extend(["--pcluster-git-ref", args.pcluster_git_ref])
 
     if args.cookbook_git_ref:
         pytest_args.extend(["--cookbook-git-ref", args.cookbook_git_ref])
