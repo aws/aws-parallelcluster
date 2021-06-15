@@ -228,14 +228,11 @@ class Ec2Client(Boto3Client):
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
         return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
 
-    def get_official_images(self, version=None, os=None, architecture=None):
+    def get_official_images(self, os=None, architecture=None):
         """Get the list of official images, optionally filtered by os and architecture."""
         try:
             owners = ["amazon"]
-            version = version or "*"
-            os = OS_TO_IMAGE_NAME_PART_MAP.get(os, "") if os else "*"
-            architecture = architecture or "*"
-            name = f"aws-parallelcluster-{version}-{os}-{architecture}*"
+            name = f"{self._get_official_image_name_prefix(os, architecture)}*"
             filters = [{"Name": "name", "Values": [name]}]
             return self.describe_images(ami_ids=[], owners=owners, filters=filters)
         except ImageNotFoundError:
@@ -256,11 +253,12 @@ class Ec2Client(Boto3Client):
         return IMAGE_NAME_PART_TO_OS_MAP.get(os_part, "linux")
 
     @staticmethod
-    def _get_official_image_name_prefix(os, architecture):
+    def _get_official_image_name_prefix(os=None, architecture=None):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
         version = utils.get_installed_version()
-        os_part = OS_TO_IMAGE_NAME_PART_MAP[os]
-        return f"aws-parallelcluster-{version}-{os_part}-{architecture}"
+        os = "*" if os is None else OS_TO_IMAGE_NAME_PART_MAP.get(os, "")
+        architecture = architecture or "*"
+        return f"aws-parallelcluster-{version}-{os}-{architecture}"
 
     @AWSExceptionHandler.handle_client_exception
     def terminate_instances(self, instance_ids):

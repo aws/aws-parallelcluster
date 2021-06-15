@@ -20,7 +20,7 @@ from pcluster.aws.common import (
     LimitExceededError,
     StackNotFoundError,
 )
-from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP
+from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP, SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
@@ -29,6 +29,7 @@ from pcluster.models.imagebuilder import (
     LimitExceededImageError,
 )
 from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
+from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
@@ -572,13 +573,13 @@ def _describe_official_images_expected_response(version, os, architecture):
         "os": os,
         "name": f"aws-parallelcluster-{version}-{OS_TO_IMAGE_NAME_PART_MAP[os]}-{architecture}-other",
         "architecture": architecture,
+        "version": get_installed_version(),
     }
 
 
 class TestDescribeOfficialImages:
-    def _send_test_request(self, client, version=None, os=None, architecture=None, region="us-east-1"):
+    def _send_test_request(self, client, os=None, architecture=None, region="us-east-1"):
         query_string = [
-            ("version", version),
             ("region", region),
             ("os", os),
             ("architecture", architecture),
@@ -589,10 +590,9 @@ class TestDescribeOfficialImages:
         return client.open("/v3/images/official", method="GET", headers=headers, query_string=query_string)
 
     @pytest.mark.parametrize(
-        "version, os, arch, mocked_response, expected_response",
+        "os, arch, mocked_response, expected_response",
         [
             pytest.param(
-                None,
                 None,
                 None,
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
@@ -600,15 +600,6 @@ class TestDescribeOfficialImages:
                 id="test with no arguments",
             ),
             pytest.param(
-                "3.0.0",
-                None,
-                None,
-                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
-                id="test with version",
-            ),
-            pytest.param(
-                None,
                 "alinux2",
                 None,
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
@@ -617,59 +608,69 @@ class TestDescribeOfficialImages:
             ),
             pytest.param(
                 None,
-                None,
                 "x86_64",
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
                 {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
                 id="test with architecture",
             ),
             pytest.param(
-                "3.0.0",
-                None,
-                "x86_64",
-                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
-                id="test with version and architecture",
-            ),
-            pytest.param(
-                "3.0.0",
-                "alinux2",
-                None,
-                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
-                id="test with version and os",
-            ),
-            pytest.param(
-                "3.0.0",
                 "alinux2",
                 "x86_64",
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
                 {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
-                id="test with version, os and architecture",
+                id="test with os and architecture",
             ),
         ],
     )
-    def test_describe_successful(self, client, mocker, version, os, arch, mocked_response, expected_response):
+    def test_describe_successful(self, client, mocker, os, arch, mocked_response, expected_response):
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_official_images", return_value=mocked_response)
-        response = self._send_test_request(client, version, os, arch)
+        response = self._send_test_request(client, os, arch)
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
-        "region, expected_response",
+        "region, os, architecture, expected_response",
         [
             pytest.param(
                 "us-east-",
+                None,
+                None,
                 {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
                 id="test with malformed region",
             ),
-            pytest.param(None, {"message": "Bad Request: region needs to be set"}, id="test without region"),
+            pytest.param(
+                None, None, None, {"message": "Bad Request: region needs to be set"}, id="test without region"
+            ),
+            pytest.param(
+                "us-east-1",
+                "nonExistentOs",
+                None,
+                {"message": f"Bad Request: nonExistentOs is not one of {SUPPORTED_OSES}"},
+                id="test with malformed os",
+            ),
+            pytest.param(
+                "us-east-1",
+                None,
+                "nonExistentArchitecture",
+                {"message": f"Bad Request: nonExistentArchitecture is not one of {SUPPORTED_ARCHITECTURES}"},
+                id="test with malformed architecture",
+            ),
+            pytest.param(
+                "us-east-1",
+                "nonExistentOs",
+                "nonExistentArchitecture",
+                {
+                    "message": f"Bad Request: nonExistentOs is not one of {SUPPORTED_OSES}; "
+                    f"nonExistentArchitecture is not one of {SUPPORTED_ARCHITECTURES}"
+                },
+                id="test with malformed os and architecture",
+            ),
         ],
     )
-    def test_malformed_request(self, client, region, expected_response):
-        response = self._send_test_request(client, region=region)
+    def test_malformed_request(self, client, region, os, architecture, expected_response):
+        response = self._send_test_request(client, region=region, os=os, architecture=architecture)
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(400)
