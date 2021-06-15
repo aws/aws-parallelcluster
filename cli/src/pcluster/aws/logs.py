@@ -49,23 +49,16 @@ class LogsClient(Boto3Client):
         self, log_group_name, bucket, bucket_prefix=None, log_stream_name_prefix=None, start_time=None, end_time=None
     ):
         """Start the task that will export a log group name to an s3 bucket, and return the task ID."""
+        kwargs = {
+            "logGroupName": log_group_name,
+            "fromTime": start_time,
+            "to": end_time,
+            "destination": bucket,
+            "destinationPrefix": bucket_prefix,
+        }
         if log_stream_name_prefix:
-            return self._client.create_export_task(
-                logGroupName=log_group_name,
-                logStreamNamePrefix=log_stream_name_prefix,
-                fromTime=start_time,
-                to=end_time,
-                destination=bucket,
-                destinationPrefix=bucket_prefix,
-            ).get("taskId")
-        else:
-            return self._client.create_export_task(
-                logGroupName=log_group_name,
-                fromTime=start_time,
-                to=end_time,
-                destination=bucket,
-                destinationPrefix=bucket_prefix,
-            ).get("taskId")
+            kwargs["logStreamNamePrefix"] = log_stream_name_prefix
+        return self._client.create_export_task(**kwargs).get("taskId")
 
     @AWSExceptionHandler.handle_client_exception
     def get_export_task_status(self, task_id):
@@ -83,15 +76,11 @@ class LogsClient(Boto3Client):
         return tasks[0].get("status").get("code")
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_log_streams(self, log_group_name, log_stream_name_prefix=None):
+    def describe_log_streams(self, log_group_name, log_stream_name_prefix=None, next_token=None):
         """Return a list of log streams in the given log group, filtered by the given prefix."""
+        kwargs = {"logGroupName": log_group_name}
         if log_stream_name_prefix:
-            return list(
-                self._paginate_results(
-                    self._client.describe_log_streams,
-                    logGroupName=log_group_name,
-                    logStreamNamePrefix=log_stream_name_prefix,
-                )
-            )
-        else:
-            return list(self._paginate_results(self._client.describe_log_streams, logGroupName=log_group_name))
+            kwargs["logStreamNamePrefix"] = log_stream_name_prefix
+        if next_token:
+            kwargs["nextToken"] = next_token
+        return self._client.describe_log_streams(**kwargs)

@@ -6,10 +6,11 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 import re
-import time
+from datetime import datetime
 
 import pytest
 from assertpy import assert_that
+from dateutil import tz
 
 BASE_COMMAND = ["pcluster", "list-cluster-logs"]
 REQUIRED_ARGS = {"cluster_name": "clustername"}
@@ -49,22 +50,36 @@ class TestListClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args",
-        [{}, {"filters": "Name=private-ip-address,Values=10.10.10.10"}],
+        [{}, {"filters": "Name=private-ip-address,Values=10.10.10.10", "next_token": "123"}],
         ids=["required", "all"],
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, args):
-        mocked_result = [
-            {
-                "logStreamName": "ip-10-0-0-184.i-085e4292f0f85bb5b.cloud-init",
-                "firstEventTimestamp": 1623071664893,
-                "lastEventTimestamp": 1623071692892,
-            },
-            {
-                "logStreamName": "ip-10-0-0-184.i-085e4292f0f85bb5b.cloud-init-output",
-                "firstEventTimestamp": 1623071664892,
-                "lastEventTimestamp": 1623071692892,
-            },
-        ]
+        mocked_result = {
+            "logStreams": [
+                {
+                    "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
+                    "creationTime": 1622802842228,
+                    "firstEventTimestamp": 1622802790248,
+                    "lastEventTimestamp": 1622802893126,
+                    "lastIngestionTime": 1622802903119,
+                    "uploadSequenceToken": "4961...",
+                    "arn": "arn:aws:logs:eu-west-1:111:log-group:/aws/parallelcluster/test22-202106041223:log-stream:ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
+                    "storedBytes": 0,
+                },
+                {
+                    "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.chef-client",
+                    "creationTime": 1622802842207,
+                    "firstEventTimestamp": 1622802837114,
+                    "lastEventTimestamp": 1622802861226,
+                    "lastIngestionTime": 1622802897558,
+                    "uploadSequenceToken": "4962...",
+                    "arn": "arn:aws:logs:eu-west-1:111:log-group:/aws/parallelcluster/test22-202106041223:log-stream:ip-10-0-0-102.i-0717e670ad2549e72.chef-client",
+                    "storedBytes": 0,
+                },
+            ],
+            "nextToken": "123-456",
+            "ResponseMetadata": {},
+        }
         list_logs_mock = mocker.patch(
             "pcluster.api.pcluster_api.PclusterApi.list_cluster_logs", return_value=mocked_result
         )
@@ -75,17 +90,19 @@ class TestListClusterLogsCommand:
 
         out_err = capsys.readouterr()
         expected_out = [
-            "ip-10-0-0-184.i-085e4292f0f85bb5b.cloud-init",
-            "ip-10-0-0-184.i-085e4292f0f85bb5b.cloud-init-output",
-            time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(1623071664892 / 1000)),
-            time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(1623071692892 / 1000)),
+            "ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
+            self._timestamp_to_date(1622802790248),
+            self._timestamp_to_date(1622802893126),
+            "ip-10-0-0-102.i-0717e670ad2549e72.chef-client",
+            self._timestamp_to_date(1622802837114),
+            self._timestamp_to_date(1622802861226),
         ]
         for item in expected_out:
             assert_that(out_err.out.strip()).contains(item)
         assert_that(list_logs_mock.call_args).is_length(2)
 
         # verify arguments
-        expected_params = {"cluster_name": None, "region": r"[\w-]+", "filters": None}
+        expected_params = {"cluster_name": None, "region": r"[\w-]+", "filters": None, "next_token": None}
         expected_params.update(REQUIRED_ARGS)
         expected_params.update(args)
         self._check_params(list_logs_mock, expected_params, args)
@@ -97,6 +114,8 @@ class TestListClusterLogsCommand:
             cli_args.extend([args["cluster_name"]])
         if "filters" in args:
             cli_args.extend(["--filters", args["filters"]])
+        if "next_token" in args:
+            cli_args.extend(["--next-token", args["next_token"]])
         return cli_args
 
     @staticmethod
@@ -116,3 +135,7 @@ class TestListClusterLogsCommand:
                 assert_that(call_param, f"Expected: {expected_value}, value is: {call_param}").is_equal_to(
                     expected_value
                 )
+
+    @staticmethod
+    def _timestamp_to_date(timestamp):
+        return datetime.fromtimestamp(timestamp / 1000, tz=tz.tzlocal()).replace(microsecond=0).isoformat()

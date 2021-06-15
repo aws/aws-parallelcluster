@@ -482,11 +482,16 @@ def list_cluster_logs(args):
             cluster_name=args.cluster_name,
             region=get_region(),
             filters=" ".join(args.filters) if args.filters else None,
+            next_token=args.next_token,
         )
-        if isinstance(result, list):
+        if isinstance(result, ApiFailure):
+            utils.error(f"Unable to retrieve the list of cluster's logs.\n{result.message}")
+        elif not result.get("logStreams", None):
+            print("No logs found.")
+        else:
             output_headers = ["logStreamName", "firstEventTimestamp", "lastEventTimestamp"]
             filtered_result = []
-            for item in result:
+            for item in result.get("logStreams", []):
                 filtered_item = {}
                 for key in output_headers:
                     value = item.get(key)
@@ -495,8 +500,8 @@ def list_cluster_logs(args):
                     filtered_item[key] = value
                 filtered_result.append(filtered_item)
             LOGGER.info(tabulate(filtered_result, headers="keys", tablefmt="plain"))
-        else:
-            utils.error(f"Unable to retrieve the list of cluster's logs.\n{result.message}")
+            if result.get("nextToken", None):
+                LOGGER.info(f"\nnextToken is: {result['nextToken']}")
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
         sys.exit(0)
