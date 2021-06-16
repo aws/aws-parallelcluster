@@ -222,7 +222,7 @@ class ImageBuilder:
             except StackNotFoundError:
                 raise NonExistingStackError(self.image_id)
             except AWSClientError as e:
-                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}")
+                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}.")
         return self.__stack
 
     @property
@@ -347,13 +347,15 @@ class ImageBuilder:
 
         :param suppress_validators: the validators we want to suppress when checking the configuration
         :param validation_failure_level: the level above which we throw an exception when validating the configuration
+        :return: the list of suppressed validation failures
         """
         self._validate_id()
         self._validate_no_existing_image()
-        self._validate_config(suppress_validators, validation_failure_level)
+        return self._validate_config(suppress_validators, validation_failure_level)
 
     def _validate_config(self, suppress_validators, validation_failure_level):
         """Validate the configuration, throwing an exception for failures above a given failure level."""
+        validation_failures = []
         if not suppress_validators:
             validation_failures = self.config.validate()
             for failure in validation_failures:
@@ -361,6 +363,7 @@ class ImageBuilder:
                     raise BadRequestImageBuilderActionError(
                         message="Configuration is invalid", validation_failures=validation_failures
                     )
+        return validation_failures
 
     def _validate_no_existing_image(self):
         """Validate that no existing image or stack with the same ImageBuilder image_id exists."""
@@ -379,7 +382,7 @@ class ImageBuilder:
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
         """Create the CFN Stack and associate resources."""
-        self.validate_create_request(suppress_validators, validation_failure_level)
+        suppressed_validation_failures = self.validate_create_request(suppress_validators, validation_failure_level)
 
         # Generate artifact directory for image
         self._generate_artifact_dir()
@@ -415,6 +418,8 @@ class ImageBuilder:
 
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
+
+            return suppressed_validation_failures
 
         except Exception as e:
             LOGGER.critical(e)

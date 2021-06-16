@@ -1798,15 +1798,17 @@ components:
           s3Url: s3Url
         imageId: imageId
         imagebuilderImageStatus: null
+        imagebuilderImageStatusReason: imagebuilderImageStatusReason
         creationTime: 2000-01-23T04:56:07.000+00:00
         imageBuildStatus: null
-        failureReason: failureReason
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
+        cloudformationStackStatusReason: cloudformationStackStatusReason
         region: region
         ec2AmiInfo:
           amiName: amiName
           amiId: amiId
+          description: description
           state: null
           tags:
           - value: value
@@ -1815,11 +1817,6 @@ components:
             key: key
           architecture: architecture
         version: version
-        tags:
-        - value: value
-          key: key
-        - value: value
-          key: key
       properties:
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
@@ -1836,13 +1833,16 @@ components:
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
-        failureReason:
-          description: "Describe the reason of the failure when the stack is in CREATE_FAILED,\
-            \ UPDATE_FAILED or DELETE_FAILED status"
-          title: failureReason
+        cloudformationStackStatusReason:
+          description: Reason for the CloudFormation stack status
+          title: cloudformationStackStatusReason
           type: string
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStatus'
+        imagebuilderImageStatusReason:
+          description: Reason for the ImageBuilder Image status.
+          title: imagebuilderImageStatusReason
+          type: string
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack
           title: cloudformationStackArn
@@ -1857,21 +1857,11 @@ components:
           description: ParallelCluster version used to build the image
           title: version
           type: string
-        tags:
-          description: Tags of the infrastructure to build the Image
-          items:
-            $ref: '#/components/schemas/Tag'
-          title: tags
-          type: array
       required:
-      - cloudformationStackArn
-      - cloudformationStackStatus
-      - creationTime
       - imageBuildStatus
       - imageConfiguration
       - imageId
       - region
-      - tags
       - version
       title: DescribeImageResponseContent
       type: object
@@ -1946,6 +1936,7 @@ components:
       example:
         amiName: amiName
         amiId: amiId
+        description: description
         state: null
         tags:
         - value: value
@@ -1962,6 +1953,10 @@ components:
           description: EC2 AMI id
           title: amiId
           type: string
+        description:
+          description: EC2 AMI description
+          title: description
+          type: string
         state:
           $ref: '#/components/schemas/Ec2AmiState'
         tags:
@@ -1977,6 +1972,7 @@ components:
       required:
       - amiId
       - amiName
+      - description
       - architecture
       - state
       - tags
