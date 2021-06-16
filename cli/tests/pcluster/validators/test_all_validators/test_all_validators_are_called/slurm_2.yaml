@@ -1,5 +1,5 @@
 Image:
-  Os: centos8
+  Os: alinux2
 HeadNode:
   InstanceType: t2.micro  # t2.micro
   Networking:

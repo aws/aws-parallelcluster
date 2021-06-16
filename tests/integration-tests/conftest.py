@@ -79,6 +79,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
     )
+    parser.addoption("--pcluster-git-ref", help="Git ref of the custom cli package used to build the AMI.")
     parser.addoption("--cookbook-git-ref", help="Git ref of the custom cookbook package used to build the AMI.")
     parser.addoption("--node-git-ref", help="Git ref of the custom node package used to build the AMI.")
     parser.addoption(
@@ -372,10 +373,37 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        inject_additional_config_settings(config_file_path, request, region)
+        if not config_file.endswith("image.config.yaml"):
+            inject_additional_config_settings(config_file_path, request, region)
+        else:
+            inject_additional_image_configs_settings(config_file_path, request)
         return config_file_path
 
     return _config_renderer
+
+
+def inject_additional_image_configs_settings(image_config, request):
+    with open(image_config) as conf_file:
+        config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
+
+    if request.config.getoption("createami_custom_chef_cookbook") and not dict_has_nested_key(
+        config_content, ("DevSettings", "Cookbook", "ChefCookbook")
+    ):
+        dict_add_nested_key(
+            config_content,
+            request.config.getoption("createami_custom_chef_cookbook"),
+            ("DevSettings", "Cookbook", "ChefCookbook"),
+        )
+
+    for option, config_param in [
+        ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
+        ("createami_custom_node_package", "NodePackage"),
+    ]:
+        if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
+            dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
+
+    with open(image_config, "w") as conf_file:
+        yaml.dump(config_content, conf_file)
 
 
 def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
@@ -397,12 +425,19 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
     if not dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
         if request.config.getoption("cookbook_git_ref") or request.config.getoption("node_git_ref"):
             tags = []
+            if request.config.getoption("pcluster_git_ref"):
+                tags.append(
+                    {"Key": "build:parallelcluster:cli_ref", "Value": request.config.getoption("pcluster_git_ref")}
+                )
             if request.config.getoption("cookbook_git_ref"):
                 tags.append(
-                    {"Key": "parallelcluster_cookbook_ref", "Value": request.config.getoption("cookbook_git_ref")}
+                    {"Key": "build:parallelcluster:cookbook_ref", "Value": request.config.getoption("cookbook_git_ref")}
                 )
             if request.config.getoption("node_git_ref"):
-                tags.append({"Key": "parallelcluster_node_ref", "Value": request.config.getoption("node_git_ref")})
+                tags.append(
+                    {"Key": "build:parallelcluster:node_ref", "Value": request.config.getoption("node_git_ref")}
+                )
+            tags.append({"Key": "parallelcluster:build_status", "Value": "available"})
             dict_add_nested_key(config_content, tags, ("DevSettings", "AmiSearchFilters", "Tags"))
         if request.config.getoption("ami_owner"):
             dict_add_nested_key(
