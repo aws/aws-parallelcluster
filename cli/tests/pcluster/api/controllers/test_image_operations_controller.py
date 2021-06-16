@@ -438,7 +438,6 @@ class TestBuildImage:
             "region": "eu-west-1",
         }
         query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
             ("validationFailureLevel", ValidationLevel.INFO),
             ("dryrun", dryrun),
             ("rollbackOnFailure", True),
@@ -494,8 +493,8 @@ class TestBuildImage:
                 ),
                 400,
                 {
-                    "configuration_validation_errors": [
-                        {"level": "ERROR", "id": None, "type": "dummy validator", "message": "test failure"}
+                    "configurationValidationErrors": [
+                        {"level": "ERROR", "type": "dummy validator", "message": "test failure"}
                     ],
                     "message": "test validation error",
                 },
@@ -538,7 +537,7 @@ class TestBuildImage:
         if error in {BadRequestImageError, BadRequestStackError}:
             expected_error["message"] = "Bad Request: " + expected_error["message"]
         if error == BadRequestImageBuilderActionError:
-            expected_error["configuration_validation_errors"] = []
+            expected_error["configurationValidationErrors"] = []
         response = self._send_test_request(client, dryrun=False)
 
         with soft_assertions():
@@ -547,7 +546,7 @@ class TestBuildImage:
 
     def test_that_call_with_client_token_throws_bad_request(self, client):
         expected_error = {
-            "configuration_validation_errors": [],
+            "configurationValidationErrors": [],
             "message": "clientToken is currently not supported for this operation",
         }
         response = self._send_test_request(client, client_token="clientToken")
