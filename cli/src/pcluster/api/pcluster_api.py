@@ -306,6 +306,8 @@ class PclusterApi:
         output: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
+        start_time: int = None,
+        end_time: int = None,
         filters: str = None,
     ):
         """Export cluster's logs."""
@@ -319,6 +321,8 @@ class PclusterApi:
                 bucket=bucket,
                 bucket_prefix=bucket_prefix,
                 keep_s3_objects=keep_s3_objects,
+                start_time=start_time,
+                end_time=end_time,
                 filters=filters,
             )
         except Exception as e:

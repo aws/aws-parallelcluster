@@ -709,6 +709,8 @@ class Cluster:
         bucket: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
+        start_time: str = None,
+        end_time: str = None,
         filters: str = None,
     ):
         """
@@ -719,8 +721,10 @@ class Cluster:
         :param bucket_prefix: Key path under which exported logs data will be stored in s3 bucket,
                also serves as top-level directory in resulting archive
         :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
+        :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
+        :param end_time: End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
         :param filters: Filters in the format Name=name,Values=value1,value2
-               Accepted filters are: start_time, end_time, private_instance_ip
+               Accepted filters are: private_dns_name, node_type==HeadNode
         """
         # check stack
         if not AWSApi.instance().cfn.stack_exists(self.stack_name):
@@ -745,7 +749,7 @@ class Cluster:
             delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, bucket_prefix)
 
         # Start export task
-        export_logs_filters = self._init_export_logs_filters(filters)
+        export_logs_filters = self._init_export_logs_filters(start_time, end_time, filters)
         task_id = self._export_logs_to_s3(
             log_stream_prefix=export_logs_filters.log_stream_prefix,
             bucket=bucket,
@@ -756,16 +760,22 @@ class Cluster:
         try:
             self._download_and_archive_logs_from_s3(bucket, bucket_prefix, output, task_id)
             LOGGER.debug("Archive of CloudWatch logs from cluster %s saved to %s", self.name, output)
+        except OSError:
+            raise ClusterActionError("Unable to download archive logs from S3, double check your filters are correct.")
         finally:
             if not keep_s3_objects:
                 delete_key = bucket_prefix if delete_everything_under_prefix else "/".join((bucket_prefix, task_id))
                 LOGGER.debug("Cleaning up S3 bucket %s. Deleting all objects under %s", bucket, delete_key)
                 AWSApi.instance().s3_resource.delete_objects(bucket_name=bucket, prefix=delete_key)
 
-    def _init_export_logs_filters(self, filters):
+    def _init_export_logs_filters(self, start_time, end_time, filters):
         try:
             export_logs_filters = ExportClusterLogsFiltersParser(
-                log_group_name=self.stack.log_group_name, filters=filters
+                head_node=self.head_node_instance,
+                log_group_name=self.stack.log_group_name,
+                start_time=start_time,
+                end_time=end_time,
+                filters=filters,
             )
             export_logs_filters.validate()
         except FiltersParserError as e:
@@ -845,7 +855,13 @@ class Cluster:
             os.remove(compressed_path)
 
     def list_logs(self, filters: str = None, next_token: str = None):
-        """List cluster's logs."""
+        """
+        List cluster's logs.
+
+        :param next_token: Token for paginated requests.
+        :param filters: Filters in the format Name=name,Values=value1,value2
+        Accepted filters are: private_dns_name, node_type==HeadNode
+        """
         try:
             LOGGER.info("Listing log streams from log group %s", self.stack.log_group_name)
 
@@ -866,7 +882,12 @@ class Cluster:
 
     def _init_list_logs_filters(self, filters):
         try:
-            list_logs_filters = ListClusterLogsFiltersParser(log_group_name=self.stack.log_group_name, filters=filters)
+            list_logs_filters = ListClusterLogsFiltersParser(
+                head_node=self.head_node_instance,
+                log_group_name=self.stack.log_group_name,
+                filters=filters,
+            )
+            list_logs_filters.validate()
         except FiltersParserError as e:
             raise ClusterActionError(str(e))
         return list_logs_filters

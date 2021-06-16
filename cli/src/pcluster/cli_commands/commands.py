@@ -465,6 +465,8 @@ def export_cluster_logs(args):
             bucket=args.bucket,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
+            start_time=args.start_time,
+            end_time=args.end_time,
             filters=" ".join(args.filters) if args.filters else None,
         )
         if isinstance(result, ApiFailure):
@@ -490,15 +492,19 @@ def list_cluster_logs(args):
         elif not result.get("logStreams", None):
             print("No logs found.")
         else:
-            output_headers = ["logStreamName", "firstEventTimestamp", "lastEventTimestamp"]
+            output_headers = {
+                "logStreamName": "Log Stream Name",
+                "firstEventTimestamp": "First Event",
+                "lastEventTimestamp": "Last Event",
+            }
             filtered_result = []
             for item in result.get("logStreams", []):
                 filtered_item = {}
-                for key in output_headers:
+                for key, output_key in output_headers.items():
                     value = item.get(key)
                     if key.endswith("Timestamp"):
-                        value = _timestamp_to_date(value)
-                    filtered_item[key] = value
+                        value = utils.timestamp_to_isoformat(value)
+                    filtered_item[output_key] = value
                 filtered_result.append(filtered_item)
             LOGGER.info(tabulate(filtered_result, headers="keys", tablefmt="plain"))
             if result.get("nextToken", None):
@@ -578,7 +584,7 @@ def _print_log_events(events: list):
         print("No events found.")
     else:
         for event in events:
-            print("{0}: {1}".format(_timestamp_to_date(event["timestamp"]), event["message"]))
+            print("{0}: {1}".format(utils.timestamp_to_isoformat(event["timestamp"]), event["message"]))
 
 
 def delete_image(args):
@@ -646,17 +652,3 @@ def list_images(args):
     except KeyboardInterrupt:
         LOGGER.info("Exiting...")
         sys.exit(0)
-
-
-def _timestamp_to_date(timestamp, timezone=None):
-    """
-    Convert timestamp to a readable date.
-
-    :param timestamp: timestamp to convert
-    :param timezone: timezone to use when converting. Defaults to local.
-    :return: the converted date
-    """
-    if not timezone:
-        timezone = tz.tzlocal()
-    # Forcing microsecond to 0 to avoid having them displayed.
-    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()

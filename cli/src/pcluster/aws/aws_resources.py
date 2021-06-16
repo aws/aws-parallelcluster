@@ -118,6 +118,16 @@ class InstanceInfo:
         return self._instance_data.get("PrivateIpAddress")
 
     @property
+    def private_dns_name(self) -> str:
+        """Return Private DNS name of the instance (e.g. "ip-10-0-0-157.us-east-2.compute.internal")."""
+        return self._instance_data.get("PrivateDnsName")
+
+    @property
+    def private_dns_name_short(self) -> str:
+        """Return short form of the Private DNS name of the instance (e.g. ip-10-0-0-157)."""
+        return self.private_dns_name.split(".")[0]
+
+    @property
     def instance_type(self) -> str:
         """Return instance type."""
         return self._instance_data.get("InstanceType")

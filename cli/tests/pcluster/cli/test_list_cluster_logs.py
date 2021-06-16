@@ -38,7 +38,7 @@ class TestListClusterLogsCommand:
         "args, error_message",
         [
             ({"filters": "Name=wrong,Value=test"}, "filters parameter must be in the form"),
-            ({"filters": "private-ip-address=test"}, "filters parameter must be in the form"),
+            ({"filters": "private-dns-name=test"}, "filters parameter must be in the form"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -50,7 +50,7 @@ class TestListClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args",
-        [{}, {"filters": "Name=private-ip-address,Values=10.10.10.10", "next_token": "123"}],
+        [{}, {"filters": "Name=private-dns-name,Values=ip-10-10-10-10", "next_token": "123"}],
         ids=["required", "all"],
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, args):
@@ -63,7 +63,10 @@ class TestListClusterLogsCommand:
                     "lastEventTimestamp": 1622802893126,
                     "lastIngestionTime": 1622802903119,
                     "uploadSequenceToken": "4961...",
-                    "arn": "arn:aws:logs:eu-west-1:111:log-group:/aws/parallelcluster/test22-202106041223:log-stream:ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
+                    "arn": (
+                        "arn:aws:logs:eu-west-1:111:log-group:/aws/parallelcluster/"
+                        "test22-202106041223:log-stream:ip-10-0-0-102.i-0717e670ad2549e72.cfn-init"
+                    ),
                     "storedBytes": 0,
                 },
                 {
@@ -73,7 +76,10 @@ class TestListClusterLogsCommand:
                     "lastEventTimestamp": 1622802861226,
                     "lastIngestionTime": 1622802897558,
                     "uploadSequenceToken": "4962...",
-                    "arn": "arn:aws:logs:eu-west-1:111:log-group:/aws/parallelcluster/test22-202106041223:log-stream:ip-10-0-0-102.i-0717e670ad2549e72.chef-client",
+                    "arn": (
+                        "arn:aws:logs:eu-west-1:111:log-group:/aws/parallelcluster/"
+                        "test22-202106041223:log-stream:ip-10-0-0-102.i-0717e670ad2549e72.chef-client"
+                    ),
                     "storedBytes": 0,
                 },
             ],

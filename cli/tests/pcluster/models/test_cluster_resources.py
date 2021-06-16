@@ -8,67 +8,96 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+import time
+
 import pytest
 from assertpy import assert_that
 
 from pcluster.models.cluster_resources import (
+    ClusterInstance,
     ExportClusterLogsFiltersParser,
-    FiltersParser,
     FiltersParserError,
     ListClusterLogsFiltersParser,
+    LogsFiltersParser,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
-class TestFiltersParser:
-    @pytest.fixture()
-    def filters_parser(self):
-        return FiltersParser()
+@pytest.fixture()
+def mock_head_node():
+    return ClusterInstance({"PrivateDnsName": "ip-10-0-0-102.eu-west2.compute.internal"})
 
+
+class TestLogsFiltersParser:
     @pytest.mark.parametrize(
-        "filters, expected_filters_size, expected_error",
+        "filters, expected_error",
         [
-            ("Name=wrong,Value=test", 0, "They must be in the form"),
-            ("Name=test1,Values=a ", 1, ""),
-            ("Name=test1,Values=a Name=test2,Values=b,c", 2, ""),
+            ("Name=wrong,Value=test", "They must be in the form"),
+            ("Name=wrong,Values=test", "Filter wrong not supported."),
+            (
+                "Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11",
+                "Filter .* doesn't accept comma separated strings as value",
+            ),
         ],
     )
-    def test_initialization(self, filters, expected_filters_size, expected_error):
+    def test_initialization_error(self, mock_head_node, filters, expected_error):
+        with pytest.raises(FiltersParserError, match=expected_error):
+            LogsFiltersParser(mock_head_node, filters)
+
+    @pytest.mark.parametrize(
+        "filters, expected_filters_size, expected_attrs",
+        [
+            ("Name=private-dns-name,Values=ip-10-10-10-10 ", 1, {"log_stream_prefix": "ip-10-10-10-10"}),
+            ("Name=node-type,Values=HeadNode ", 1, {"log_stream_prefix": "ip-10-0-0-102"}),
+            (None, 0, {"log_stream_prefix": None}),
+        ],
+    )
+    def test_initialization_success(self, mock_head_node, filters, expected_filters_size, expected_attrs):
+        logs_filters = LogsFiltersParser(mock_head_node, filters)
+
+        for attr in expected_attrs:
+            assert_that(getattr(logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
+        assert_that(expected_filters_size).is_equal_to(len(logs_filters.filters_list))
+
+    @pytest.mark.parametrize(
+        "filters, event_in_window, expected_error",
+        [
+            (
+                "Name=private-dns-name,Values=ip-10-10-10-10 Name=node-type,Values=HeadNode",
+                True,
+                "cannot be set at the same time",
+            ),
+            (
+                "Name=node-type,Values=Compute",
+                True,
+                "The only accepted value for Node Type filter is 'HeadNode'",
+            ),
+        ],
+    )
+    def test_validate(self, mock_head_node, filters, event_in_window, expected_error):
+        logs_filters = LogsFiltersParser(mock_head_node, filters)
+
         if expected_error:
             with pytest.raises(FiltersParserError, match=expected_error):
-                FiltersParser(filters)
+                logs_filters.validate()
         else:
-            filters = FiltersParser(filters)
-            assert_that(expected_filters_size).is_equal_to(len(filters.filters_list))
+            logs_filters.validate()
 
 
 class TestExportClusterLogsFiltersParser:
     @pytest.fixture()
-    def export_logs_filters(self):
-        return ExportClusterLogsFiltersParser("log_group_name")
+    def export_logs_filters(self, mock_head_node):
+        return ExportClusterLogsFiltersParser(mock_head_node, "log_group_name")
 
     @pytest.mark.parametrize(
-        "filters, expected_attrs, expected_error",
+        "params, expected_error",
         [
-            ("Name=wrong,Value=test", {}, "They must be in the form"),
-            ("Name=wrong,Values=test", {}, "Filter wrong not supported."),
-            ("Name=private-ip-address,Values=10.10.10.10 ", {"log_stream_prefix": "ip-10-10-10-10"}, ""),
-            (
-                "Name=private-ip-address,Values=10.10.10.10,10.0.0.0",
-                {},
-                "Filter .* doesn't accept comma separated strings as value",
-            ),
-            ("Name=end-time,Values=tre", {}, "the expected format is Unix epoch"),
-            (
-                "Name=private-ip-address,Values=10.10.10.10 "
-                "Name=start-time,Values=1623071001 "
-                "Name=end-time,Values=1623071001",
-                {"log_stream_prefix": "ip-10-10-10-10", "start_time": 1623071001000, "end_time": 1623071001000},
-                "",
-            ),
+            ({"start_time": "1623071000"}, "Unable to parse time. It must be in ISO8601 format"),
+            ({"end_time": "1623071000"}, "Unable to parse time. It must be in ISO8601 format"),
         ],
     )
-    def test_initialization(self, mocker, filters, expected_attrs, expected_error):
+    def test_initialization_error(self, mocker, mock_head_node, params, expected_error):
         log_group_name = "log_group_name"
         creation_time_mock = 1623061001000
         mock_aws_api(mocker)
@@ -76,45 +105,83 @@ class TestExportClusterLogsFiltersParser:
             "pcluster.aws.logs.LogsClient.describe_log_group", return_value={"creationTime": creation_time_mock}
         )
 
-        if expected_error:
-            with pytest.raises(FiltersParserError, match=expected_error):
-                ExportClusterLogsFiltersParser(log_group_name, filters)
-        else:
-            export_logs_filters = ExportClusterLogsFiltersParser(log_group_name, filters)
+        with pytest.raises(FiltersParserError, match=expected_error):
+            ExportClusterLogsFiltersParser(
+                mock_head_node,
+                log_group_name,
+                params.get("start_time", None),
+                params.get("end_time", None),
+                params.get("filters", None),
+            )
 
-            for attr in expected_attrs:
-                assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
+    @pytest.mark.parametrize(
+        "params, expected_attrs",
+        [
+            (
+                {"start_time": "2012-07-09", "end_time": "2012-07-29"},
+                {"log_stream_prefix": None, "start_time": 1341788400000, "end_time": 1343516400000},
+            ),
+        ],
+    )
+    def test_initialization_success(self, mocker, mock_head_node, params, expected_attrs):
+        os.environ["TZ"] = "Europe/London"
+        time.tzset()
+        log_group_name = "log_group_name"
+        creation_time_mock = 1623061001000
+        mock_aws_api(mocker)
+        mocker.patch(
+            "pcluster.aws.logs.LogsClient.describe_log_group", return_value={"creationTime": creation_time_mock}
+        )
+
+        export_logs_filters = ExportClusterLogsFiltersParser(
+            mock_head_node,
+            log_group_name,
+            params.get("start_time", None),
+            params.get("end_time", None),
+            params.get("filters", None),
+        )
+
+        for attr in expected_attrs:
+            assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
 
     @pytest.mark.parametrize(
         "attrs, event_in_window, expected_error",
         [
-            # end time after mocked cluster creation time
-            ({"end_time": 1623060001000}, True, "Start time must be earlier than end time"),
-            (
-                {"start_time": 1623072001000, "end_time": 1623071001000},
-                True,
-                "Start time must be earlier than end time",
-            ),
-            ({"end_time": 1623071001000}, False, "No log events in the log group"),
+            ({"end_time": "2020-06-02"}, True, "Start time must be earlier than end time"),
+            ({"start_time": "2021-06-07", "end_time": "2021-06-02"}, True, "Start time must be earlier than end time"),
+            ({"end_time": "2021-07-09T22:45:22+04:00"}, False, "No log events in the log group"),
         ],
     )
-    def test_validate(self, mocker, export_logs_filters, attrs, event_in_window, expected_error):
+    def test_validate(self, mocker, mock_head_node, attrs, event_in_window, expected_error):
         log_group_name = "log_group_name"
         creation_time_mock = 1623061001000
         mock_aws_api(mocker)
         describe_log_group_mock = mocker.patch(
             "pcluster.aws.logs.LogsClient.describe_log_group", return_value={"creationTime": creation_time_mock}
         )
-        mocker.patch("pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window)
+        filter_log_events_mock = mocker.patch(
+            "pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window
+        )
 
-        for attr in attrs:
-            setattr(export_logs_filters, attr, attrs[attr])
+        export_logs_filters = ExportClusterLogsFiltersParser(
+            mock_head_node,
+            log_group_name,
+            attrs.get("start_time", None),
+            attrs.get("end_time", None),
+            attrs.get("filters", None),
+        )
 
         if expected_error:
             with pytest.raises(FiltersParserError, match=expected_error):
                 export_logs_filters.validate()
         else:
             export_logs_filters.validate()
+            filter_log_events_mock.assert_called_with(
+                log_group_name,
+                export_logs_filters.log_stream_prefix,
+                export_logs_filters.start_time,
+                export_logs_filters.end_time,
+            )
 
             if "start_time" not in attrs:
                 describe_log_group_mock.assert_called_with(log_group_name)
@@ -123,26 +190,24 @@ class TestExportClusterLogsFiltersParser:
 
 class TestListClusterLogsFiltersParser:
     @pytest.mark.parametrize(
-        "filters, expected_attrs, expected_error",
-        [
-            ("Name=wrong,Value=test", {}, "They must be in the form"),
-            ("Name=wrong,Values=test", {}, "Filter wrong not supported."),
-            ("Name=private-ip-address,Values=10.10.10.10 ", {"log_stream_prefix": "ip-10-10-10-10"}, ""),
-            (
-                "Name=private-ip-address,Values=10.10.10.10,10.0.0.0",
-                {},
-                "Filter .* doesn't accept comma separated strings as value",
-            ),
-        ],
+        "event_in_window, expected_error",
+        [(True, None), (False, "No log events in the log group")],
     )
-    def test_initialization(self, filters, expected_attrs, expected_error):
+    def test_validate(self, mocker, mock_head_node, event_in_window, expected_error):
         log_group_name = "log_group_name"
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window)
+        filter_log_events_mock = mocker.patch(
+            "pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window
+        )
+
+        list_logs_filters = ListClusterLogsFiltersParser(mock_head_node, log_group_name)
 
         if expected_error:
             with pytest.raises(FiltersParserError, match=expected_error):
-                ListClusterLogsFiltersParser(log_group_name, filters)
+                list_logs_filters.validate()
         else:
-            export_logs_filters = ListClusterLogsFiltersParser(log_group_name, filters)
-
-            for attr in expected_attrs:
-                assert_that(getattr(export_logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
+            list_logs_filters.validate()
+            filter_log_events_mock.assert_called_with(
+                log_group_name=log_group_name, log_stream_name_prefix=list_logs_filters.log_stream_prefix
+            )
