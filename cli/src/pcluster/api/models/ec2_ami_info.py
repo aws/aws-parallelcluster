@@ -23,13 +23,15 @@ class Ec2AmiInfo(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, ami_name=None, ami_id=None, state=None, tags=None, architecture=None):
+    def __init__(self, ami_name=None, ami_id=None, description=None, state=None, tags=None, architecture=None):
         """Ec2AmiInfo - a model defined in OpenAPI
 
         :param ami_name: The ami_name of this Ec2AmiInfo.
         :type ami_name: str
         :param ami_id: The ami_id of this Ec2AmiInfo.
         :type ami_id: str
+        :param description: The description of this Ec2AmiInfo.
+        :type description: str
         :param state: The state of this Ec2AmiInfo.
         :type state: Ec2AmiState
         :param tags: The tags of this Ec2AmiInfo.
@@ -40,6 +42,7 @@ class Ec2AmiInfo(Model):
         self.openapi_types = {
             "ami_name": str,
             "ami_id": str,
+            "description": str,
             "state": Ec2AmiState,
             "tags": List[Tag],
             "architecture": str,
@@ -48,6 +51,7 @@ class Ec2AmiInfo(Model):
         self.attribute_map = {
             "ami_name": "amiName",
             "ami_id": "amiId",
+            "description": "description",
             "state": "state",
             "tags": "tags",
             "architecture": "architecture",
@@ -55,6 +59,7 @@ class Ec2AmiInfo(Model):
 
         self._ami_name = ami_name
         self._ami_id = ami_id
+        self._description = description
         self._state = state
         self._tags = tags
         self._architecture = architecture
@@ -119,6 +124,31 @@ class Ec2AmiInfo(Model):
             raise ValueError("Invalid value for `ami_id`, must not be `None`")
 
         self._ami_id = ami_id
+
+    @property
+    def description(self):
+        """Gets the description of this Ec2AmiInfo.
+
+        EC2 AMI description  # noqa: E501
+
+        :return: The description of this Ec2AmiInfo.
+        :rtype: str
+        """
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        """Sets the description of this Ec2AmiInfo.
+
+        EC2 AMI description  # noqa: E501
+
+        :param description: The description of this Ec2AmiInfo.
+        :type description: str
+        """
+        if description is None:
+            raise ValueError("Invalid value for `description`, must not be `None`")  # noqa: E501
+
+        self._description = description
 
     @property
     def state(self):

@@ -9,24 +9,31 @@
 # pylint: disable=W0613
 import functools
 import os as os_lib
-from datetime import datetime
 
-from pcluster.api.controllers.common import configure_aws_region
-from pcluster.api.converters import cloud_formation_status_to_image_status
+from pcluster.api.controllers.common import configure_aws_region, parse_config
+from pcluster.api.converters import (
+    cloud_formation_status_to_image_status,
+    validation_results_to_config_validation_errors,
+)
 from pcluster.api.errors import (
     BadRequestException,
+    BuildImageBadRequestException,
+    ConflictException,
+    DryrunOperationException,
     InternalServiceException,
     LimitExceededException,
     NotFoundException,
     ParallelClusterApiException,
 )
 from pcluster.api.models import (
+    AmiInfo,
+    BuildImageBadRequestExceptionResponseContent,
     BuildImageRequestContent,
     BuildImageResponseContent,
     CloudFormationStatus,
     DescribeImageResponseContent,
     DescribeOfficialImagesResponseContent,
-    ImageBuilderImageStatus,
+    Ec2AmiInfo,
     ImageConfigurationStructure,
     ImageInfoSummary,
     ImageStatusFilteringOption,
@@ -36,9 +43,12 @@ from pcluster.api.models.delete_image_response_content import DeleteImageRespons
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import BadRequestError, LimitExceededError
+from pcluster.aws.ec2 import Ec2Client
+from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
+    ConflictImageBuilderActionError,
     ImageBuilder,
     LimitExceededImageBuilderActionError,
     LimitExceededImageError,
@@ -50,6 +60,8 @@ from pcluster.models.imagebuilder_resources import (
     LimitExceededStackError,
     NonExistingStackError,
 )
+from pcluster.utils import get_installed_version
+from pcluster.validators.common import FailureLevel
 
 
 def convert_imagebuilder_errors():
@@ -74,6 +86,8 @@ def convert_imagebuilder_errors():
                 BadRequestImageBuilderActionError,
             ) as e:
                 error = BadRequestException(str(e))
+            except ConflictImageBuilderActionError as e:
+                error = ConflictException(str(e))
             except Exception as e:
                 error = InternalServiceException(str(e))
             raise error
@@ -84,6 +98,7 @@ def convert_imagebuilder_errors():
 
 
 @configure_aws_region(is_query_string_arg=False)
+@convert_imagebuilder_errors()
 def build_image(
     build_image_request_content,
     suppress_validators=None,
@@ -114,17 +129,43 @@ def build_image(
 
     :rtype: BuildImageResponseContent
     """
-    build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
-    return BuildImageResponseContent(
-        image=ImageInfoSummary(
-            image_id="image",
-            image_build_status=ImageBuildStatus.BUILD_FAILED,
-            cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-            cloudformation_stack_arn="arn",
-            region="region",
-            version="3.0.0",
+    if client_token:
+        raise BuildImageBadRequestException(
+            BuildImageBadRequestExceptionResponseContent(
+                message="clientToken is currently not supported for this operation",
+                configuration_validation_errors=[],
+            )
         )
-    )
+
+    rollback_on_failure = rollback_on_failure or False
+    disable_rollback = not rollback_on_failure
+    suppress_validators = suppress_validators or False
+    validation_failure_level = validation_failure_level or FailureLevel.ERROR
+    dryrun = dryrun or False
+
+    build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
+
+    try:
+        image_id = build_image_request_content.id
+        config = parse_config(build_image_request_content.image_configuration)
+        imagebuilder = ImageBuilder(image_id=image_id, config=config)
+
+        if dryrun:
+            imagebuilder.validate_create_request(suppress_validators, validation_failure_level)
+            raise DryrunOperationException()
+
+        suppressed_validation_failures = imagebuilder.create(
+            disable_rollback, suppress_validators, validation_failure_level
+        )
+        return BuildImageResponseContent(
+            image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
+            validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,
+        )
+    except BadRequestImageBuilderActionError as e:
+        errors = validation_results_to_config_validation_errors(e.validation_failures)
+        raise BuildImageBadRequestException(
+            BuildImageBadRequestExceptionResponseContent(message=str(e), configuration_validation_errors=errors)
+        )
 
 
 @configure_aws_region()
@@ -182,6 +223,7 @@ def _get_underlying_image_or_stack(imagebuilder):
 
 
 @configure_aws_region()
+@convert_imagebuilder_errors()
 def describe_image(image_id, region=None):
     """
     Get detailed information about an existing image.
@@ -193,40 +235,97 @@ def describe_image(image_id, region=None):
 
     :rtype: DescribeImageResponseContent
     """
+    imagebuilder = ImageBuilder(image_id=image_id)
+
+    try:
+        return _image_to_describe_image_response(imagebuilder)
+    except NonExistingImageError:
+        try:
+            return _stack_to_describe_image_response(imagebuilder)
+        except NonExistingStackError:
+            raise NotFoundException("No image or stack associated to parallelcluster image id {}.".format(image_id))
+
+
+def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
-        image_configuration=ImageConfigurationStructure(s3_url="s3"),
-        image_id="imageid",
-        imagebuilder_image_status=ImageBuilderImageStatus.BUILDING,
-        creation_time=datetime.now(),
-        image_build_status=ImageBuildStatus.BUILD_FAILED,
-        failure_reason=":D",
-        cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-        cloudformation_stack_arn="arn",
-        region="region",
-        version="3.0.0",
-        tags=[],
+        creation_time=imagebuilder.image.creation_date,
+        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        image_id=imagebuilder.image_id,
+        image_build_status=ImageBuildStatus.BUILD_COMPLETE,
+        ec2_ami_info=Ec2AmiInfo(
+            ami_name=imagebuilder.image.name,
+            ami_id=imagebuilder.image.id,
+            state=imagebuilder.image.state.upper(),
+            tags=imagebuilder.image.tags,
+            architecture=imagebuilder.image.architecture,
+            description=imagebuilder.image.description,
+        ),
+        region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+        version=imagebuilder.image.version,
+    )
+
+
+def _stack_to_describe_image_response(imagebuilder):
+    imagebuilder_image_state = imagebuilder.stack.image_state or dict()
+    return DescribeImageResponseContent(
+        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        image_id=imagebuilder.image_id,
+        image_build_status=imagebuilder.imagebuild_status,
+        imagebuilder_image_status=imagebuilder_image_state.get("status", None),
+        imagebuilder_image_status_reason=imagebuilder_image_state.get("reason", None),
+        cloudformation_stack_status=imagebuilder.stack.status,
+        cloudformation_stack_status_reason=imagebuilder.stack.status_reason,
+        cloudformation_stack_arn=imagebuilder.stack.id,
+        region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+        version=imagebuilder.stack.version,
     )
 
 
 @configure_aws_region()
-def describe_official_images(version=None, region=None, os=None, architecture=None, next_token=None):
+@convert_imagebuilder_errors()
+def describe_official_images(region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
 
-    :param version: ParallelCluster version to retrieve AMIs for.
-    :type version: str
     :param region: AWS Region. Defaults to the region the API is deployed to.
     :type region: str
     :param os: Filter by OS distribution
     :type os: str
     :param architecture: Filter by architecture
     :type architecture: str
-    :param next_token: Token to use for paginated requests.
-    :type next_token: str
 
     :rtype: DescribeOfficialImagesResponseContent
     """
-    return DescribeOfficialImagesResponseContent(items=[])
+    _validate_optional_filters(os, architecture)
+
+    images = [
+        _image_info_to_ami_info(image)
+        for image in AWSApi.instance().ec2.get_official_images(os=os, architecture=architecture)
+    ]
+
+    return DescribeOfficialImagesResponseContent(items=images)
+
+
+def _validate_optional_filters(os, architecture):
+    error = ""
+    if os is not None and os not in SUPPORTED_OSES:
+        error = f"{os} is not one of {SUPPORTED_OSES}"
+    if architecture is not None and architecture not in SUPPORTED_ARCHITECTURES:
+        if error:
+            error += "; "
+        error += f"{architecture} is not one of {SUPPORTED_ARCHITECTURES}"
+    if error:
+        raise BadRequestException(error)
+
+
+def _image_info_to_ami_info(image):
+    return AmiInfo(
+        ami_id=image.id,
+        os=Ec2Client.extract_os_from_official_image_name(image.name),
+        name=image.name,
+        architecture=image.architecture,
+        version=get_installed_version(),
+    )
 
 
 @configure_aws_region()

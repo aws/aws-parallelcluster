@@ -693,8 +693,8 @@ Resources:
           def get_tag_from_image_arn(image_arn):
               """ Returns the Docker image tag given an ImageBuilder image ARN
 
-              Arn format: arn:aws:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/.../${Version}/${BuildNumber}
-              Tag format: ${Version}-${BuildNumber}
+              Arn format: arn:aws:imagebuilder:<region>:<account id>:image/.../<version>/<build number>
+              Tag format: <version>-<build number>
               """
               parts = image_arn.split('/')
               version = parts[-2]

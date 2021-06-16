@@ -4,7 +4,6 @@ namespace parallelcluster
 @http(method: "GET", uri: "/v3/images/official", code: 200)
 @tags(["Image Operations"])
 @documentation("Describe ParallelCluster AMIs.")
-@paginated
 operation DescribeOfficialImages {
     input: DescribeOfficialImagesRequest,
     output: DescribeOfficialImagesResponse,
@@ -17,9 +16,6 @@ operation DescribeOfficialImages {
 }
 
 structure DescribeOfficialImagesRequest {
-    @httpQuery("version")
-    @documentation("ParallelCluster version to retrieve AMIs for.")
-    version: Version,
     @httpQuery("region")
     region: Region,
     @httpQuery("os")
@@ -28,13 +24,9 @@ structure DescribeOfficialImagesRequest {
     @httpQuery("architecture")
     @documentation("Filter by architecture")
     architecture: String,
-    @httpQuery("nextToken")
-    nextToken: PaginationToken,
 }
 
 structure DescribeOfficialImagesResponse {
-    nextToken: PaginationToken,
-
     @required
     items: AmisInfo,
 }
@@ -49,7 +41,9 @@ structure AmiInfo {
     @required
     amiId: String,
     @required
-    id: String,
+    name: String,
     @required
     os: String,
+    @required
+    version: Version,
 }

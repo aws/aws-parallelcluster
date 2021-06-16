@@ -53,6 +53,11 @@ class StackInfo:
         return self._stack_data.get("StackStatus")
 
     @property
+    def status_reason(self):
+        """Return the reason the stack is in its current status."""
+        return self._stack_data.get("StackStatusReason", None)
+
+    @property
     def creation_time(self):
         """Return creation time of the stack."""
         return str(self._stack_data.get("CreationTime"))

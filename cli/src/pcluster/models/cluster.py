@@ -331,8 +331,10 @@ class Cluster:
         except ValidationError as e:
             # syntactic failure
             ClusterSchema.process_validation_message(e)
-            validation_failures = [ValidationResult(str(e), FailureLevel.ERROR)]
+            validation_failures = [ValidationResult(str(e), FailureLevel.ERROR, validator_type="ConfigSchemaValidator")]
             raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
+        except ConfigValidationError as e:
+            raise e
         except Exception as e:
             raise ConfigValidationError(f"Configuration is invalid: {e}")
 

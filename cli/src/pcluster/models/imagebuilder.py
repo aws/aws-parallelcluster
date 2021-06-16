@@ -101,6 +101,13 @@ class LimitExceededImageBuilderActionError(ImageBuilderActionError):
 class BadRequestImageBuilderActionError(ImageBuilderActionError):
     """Represent an error during the execution of an action due to exceeding the limit of some AWS service."""
 
+    def __init__(self, message: str, validation_failures: list = None):
+        super().__init__(message, validation_failures)
+
+
+class ConflictImageBuilderActionError(ImageBuilderActionError):
+    """Represent an error due to another image/stack with the same name already existing."""
+
     def __init__(self, message: str):
         super().__init__(message)
 
@@ -215,7 +222,7 @@ class ImageBuilder:
             except StackNotFoundError:
                 raise NonExistingStackError(self.image_id)
             except AWSClientError as e:
-                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}")
+                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}.")
         return self.__stack
 
     @property
@@ -335,6 +342,39 @@ class ImageBuilder:
             ]
         )
 
+    def validate_create_request(self, suppress_validators, validation_failure_level):
+        """Validate a create request.
+
+        :param suppress_validators: the validators we want to suppress when checking the configuration
+        :param validation_failure_level: the level above which we throw an exception when validating the configuration
+        :return: the list of suppressed validation failures
+        """
+        self._validate_id()
+        self._validate_no_existing_image()
+        return self._validate_config(suppress_validators, validation_failure_level)
+
+    def _validate_config(self, suppress_validators, validation_failure_level):
+        """Validate the configuration, throwing an exception for failures above a given failure level."""
+        validation_failures = []
+        if not suppress_validators:
+            validation_failures = self.config.validate()
+            for failure in validation_failures:
+                if failure.level.value >= FailureLevel(validation_failure_level).value:
+                    raise BadRequestImageBuilderActionError(
+                        message="Configuration is invalid", validation_failures=validation_failures
+                    )
+        return validation_failures
+
+    def _validate_no_existing_image(self):
+        """Validate that no existing image or stack with the same ImageBuilder image_id exists."""
+        if AWSApi.instance().ec2.image_exists(self.image_id):
+            raise ConflictImageBuilderActionError(f"ParallelCluster image {self.image_id} already exists.")
+
+        if AWSApi.instance().cfn.stack_exists(self.image_id):
+            raise ConflictImageBuilderActionError(
+                f"ParallelCluster build infrastructure for image {self.image_id} already exists"
+            )
+
     def create(
         self,
         disable_rollback: bool = True,
@@ -342,25 +382,7 @@ class ImageBuilder:
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
         """Create the CFN Stack and associate resources."""
-        # validate image id
-        self._validate_id()
-
-        # check image existence
-        if AWSApi.instance().ec2.image_exists(self.image_id):
-            raise ImageBuilderActionError(f"ParallelCluster image {self.image_id} already exists.")
-
-        # check stack existence
-        if AWSApi.instance().cfn.stack_exists(self.image_id):
-            raise ImageBuilderActionError(
-                f"ParallelCluster build infrastructure for image {self.image_id} already exists"
-            )
-
-        if not suppress_validators:
-            validation_failures = self.config.validate()
-            for failure in validation_failures:
-                if failure.level.value >= FailureLevel(validation_failure_level).value:
-                    # Raise the exception if there is a failure with a level equals to or greater than the specified one
-                    raise ImageBuilderActionError("Configuration is invalid", validation_failures=validation_failures)
+        suppressed_validation_failures = self.validate_create_request(suppress_validators, validation_failure_level)
 
         # Generate artifact directory for image
         self._generate_artifact_dir()
@@ -396,6 +418,8 @@ class ImageBuilder:
 
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
+
+            return suppressed_validation_failures
 
         except Exception as e:
             LOGGER.critical(e)
@@ -522,7 +546,7 @@ class ImageBuilder:
     def _validate_id(self):
         match = re.match(PCLUSTER_IMAGE_ID_REGEX, self.image_id)
         if match is None:
-            raise ImageBuilderActionError(
+            raise BadRequestImageBuilderActionError(
                 "Image id '{0}' failed to satisfy constraint: ".format(self.image_id)
                 + "The process id can contain only alphanumeric characters (case-sensitive) and hyphens. "
                 + "It must start with an alphabetic character and can't be longer than 128 characters."
