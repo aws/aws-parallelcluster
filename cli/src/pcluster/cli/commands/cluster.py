@@ -399,19 +399,29 @@ class ExportClusterLogsCommand(CliCommand):
             help="Keep the exported objects exports to S3. The default behavior is to delete them.",
         )
         # Filters
-        filters_arg = _FiltersArg(accepted_filters=["private-ip-address", "start-time", "end-time"])
+        parser.add_argument(
+            "--start-time",
+            help=(
+                "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to cluster's start time"
+            ),
+        )
+        parser.add_argument(
+            "--end-time",
+            help=(
+                "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
+            ),
+        )
+        filters_arg = _FiltersArg(accepted_filters=["private-dns-name", "node-type"])
         parser.add_argument(
             "--filters",
             nargs="+",
             type=filters_arg,
             help=(
                 "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
-                "start-time - Start time of interval of interest for log events, "
-                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC. "
-                "Defaults to cluster's start time.\n"
-                "end-time - End time of interval of interest for log events, "
-                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC. Defaults to current time.\n"
-                "private-ip-address - The private IPv4 address of the instance."
+                "private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\n"
+                "node-type - The node type, the only accepted value for this filter is HeadNode."
             ),
         )
 
@@ -435,14 +445,15 @@ class ListClusterLogsCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="List the logs of the cluster name provided here.")
         # Filters
-        filters_arg = _FiltersArg(accepted_filters=["private-ip-address"])
+        filters_arg = _FiltersArg(accepted_filters=["private-dns-name"])
         parser.add_argument(
             "--filters",
             nargs="+",
             type=filters_arg,
             help=(
-                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filter is:\n"
-                "private-ip-address - The private IPv4 address of the instance."
+                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
+                "private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\n"
+                "node-type - The node type, the only accepted value for this filter is HeadNode."
             ),
         )
         parser.add_argument("--next-token", help="Token for paginated requests")
@@ -462,7 +473,7 @@ class _FiltersArg:
 
     def __call__(self, value):
         if not self._pattern.match(value):
-            raise argparse.ArgumentTypeError("filters parameter must be in the form Name=...,Values=... ")
+            raise argparse.ArgumentTypeError(f"filters parameter must be in the form {self._pattern.pattern} ")
         return value
 
 

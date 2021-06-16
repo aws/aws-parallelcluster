@@ -36,7 +36,7 @@ class TestExportClusterLogsCommand:
         "args, error_message",
         [
             ({"filters": "Name=wrong,Value=test"}, "filters parameter must be in the form"),
-            ({"filters": "private-ip-address=test"}, "filters parameter must be in the form"),
+            ({"filters": "private-dns-name=test"}, "filters parameter must be in the form"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -50,36 +50,36 @@ class TestExportClusterLogsCommand:
         "args",
         [
             {},
-            {
-                "output": "output-path",
-            },
-            {
-                "bucket": "bucket-name",
-                "bucket_prefix": "test",
-                "keep_s3_objects": True,
-            },
-            {
-                "filters": "Name=private-ip-address,Values=10.10.10.10",
-            },
+            {"output": "output-path"},
+            {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
+            {"filters": "Name=private-dns-name,Values=ip-10-10-10-10"},
             {
                 "output": "output-path",
                 "bucket": "bucket-name",
                 "bucket_prefix": "test",
                 "keep_s3_objects": True,
-                "filters": "Name=private-ip-address,Values=10.10.10.10 "
-                "Name=start-time,Values=1623071000 "
-                "Name=end-time,Values=1623071000",
+                "start_time": "2021-06-02T15:55:10+02:00",
+                "end_time": "2021-06-07",
+                "filters": "Name=private-dns-name,Values=ip-10-10-10-10",
+            },
+            {
+                "output": "output-path",
+                "bucket": "bucket-name",
+                "bucket_prefix": "test",
+                "keep_s3_objects": False,
+                "start_time": "2021-06-02T15:55:10+02:00",
+                "end_time": "2021-06-07",
+                "filters": "Name=node-type,Values=HeadNode",
             },
         ],
-        ids=["required", "output", "bucket_options", "filters", "all"],
     )
     def test_execute(self, mocker, capsys, set_env, assert_out_err, run_cli, args):
         export_logs_mock = mocker.patch("pcluster.api.pcluster_api.PclusterApi.export_cluster_logs")
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
-        run_cli(command, expect_failure=False)
 
+        run_cli(command, expect_failure=False)
         assert_out_err(expected_out="Cluster's logs exported correctly", expected_err="")
         assert_that(export_logs_mock.call_args).is_length(2)
 
@@ -111,6 +111,10 @@ class TestExportClusterLogsCommand:
             cli_args.extend(["--bucket-prefix", args["bucket_prefix"]])
         if "keep_s3_objects" in args and args["keep_s3_objects"]:
             cli_args.extend(["--keep-s3-objects"])
+        if "start_time" in args:
+            cli_args.extend(["--start-time", args["start_time"]])
+        if "end_time" in args:
+            cli_args.extend(["--end-time", args["end_time"]])
         if "filters" in args:
             cli_args.extend(["--filters", args["filters"]])
         return cli_args

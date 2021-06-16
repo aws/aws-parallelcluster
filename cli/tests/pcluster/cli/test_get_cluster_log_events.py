@@ -71,17 +71,26 @@ class TestGetClusterLogEventsCommand:
                 "events": [
                     {
                         "timestamp": 1622802790248,
-                        "message": "2021-06-04 10:33:10,248 [DEBUG] CloudFormation client initialized with endpoint https://cloudformation.eu-west-1.amazonaws.com",
+                        "message": (
+                            "2021-06-04 10:33:10,248 [DEBUG] CloudFormation client initialized "
+                            "with endpoint https://cloudformation.eu-west-1.amazonaws.com"
+                        ),
                         "ingestionTime": 1622802842382,
                     },
                     {
                         "timestamp": 1622802790248,
-                        "message": "2021-06-04 10:33:10,248 [DEBUG] Describing resource HeadNodeLaunchTemplate in stack test22",
+                        "message": (
+                            "2021-06-04 10:33:10,248 [DEBUG] Describing resource HeadNodeLaunchTemplate in "
+                            "stack test22"
+                        ),
                         "ingestionTime": 1622802842382,
                     },
                     {
                         "timestamp": 1622802790390,
-                        "message": "2021-06-04 10:33:10,390 [INFO] -----------------------Starting build-----------------------",
+                        "message": (
+                            "2021-06-04 10:33:10,390 [INFO] -----------------------Starting build"
+                            "-----------------------"
+                        ),
                         "ingestionTime": 1622802842382,
                     },
                 ],

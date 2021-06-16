@@ -38,11 +38,16 @@ class LogsClient(Boto3Client):
         raise AWSClientError(function_name="describe_log_groups", message=f"Log Group {log_group_name} not found")
 
     @AWSExceptionHandler.handle_client_exception
-    def filter_log_events(self, log_group_name, start_time=None, end_time=None):
+    def filter_log_events(self, log_group_name, start_time=None, end_time=None, log_stream_name_prefix=None):
         """Return the list of events included in a specific time window for a given group name."""
-        return self._client.filter_log_events(
-            logGroupName=log_group_name, startTime=start_time, endTime=end_time, limit=1
-        ).get("events")
+        kwargs = {"logGroupName": log_group_name, "limit": 1}
+        if start_time:
+            kwargs["startTime"] = start_time
+        if end_time:
+            kwargs["endTime"] = end_time
+        if log_stream_name_prefix:
+            kwargs["logStreamNamePrefix"] = log_stream_name_prefix
+        return self._client.filter_log_events(**kwargs).get("events")
 
     @AWSExceptionHandler.handle_client_exception
     def get_log_events(

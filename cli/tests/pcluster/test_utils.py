@@ -1,5 +1,6 @@
 """This module provides unit tests for the functions in the pcluster.utils module."""
 import os
+import time
 
 import pytest
 from assertpy import assert_that
@@ -230,3 +231,35 @@ def test_init_from_instance_type(mocker, caplog):
 )
 def test_get_url_scheme(url, expect_output):
     assert_that(utils.get_url_scheme(url)).is_equal_to(expect_output)
+
+
+@pytest.mark.parametrize(
+    "timestamp, time_zone, expect_output",
+    [
+        (1622802892000, "Europe/London", "2021-06-04T11:34:52+01:00"),
+        (1622802892000, "America/Los_Angeles", "2021-06-04T03:34:52-07:00"),
+        (1622757600000, "Europe/London", "2021-06-03T23:00:00+01:00"),
+    ],
+)
+def test_timestamp_to_isoformat(timestamp, time_zone, expect_output):
+    os.environ["TZ"] = time_zone
+    time.tzset()
+    assert_that(utils.timestamp_to_isoformat(timestamp)).is_equal_to(expect_output)
+
+
+@pytest.mark.parametrize(
+    "time_isoformat, time_zone, expect_output",
+    [
+        ("2021-06-04T03:34:52-07:00", "America/Los_Angeles", 1622802892000),
+        ("2021-06-04T11:34:52+02:00", "Europe/Rome", 1622799292000),
+        ("2021-06-04T11:34:52", "Europe/Rome", 1622799292000),
+        ("2021-06-04T11:34", "Europe/Rome", 1622799240000),
+        ("2021-06-04T11", "Europe/London", 1622800800000),
+        ("2021-06-04", "Europe/London", 1622761200000),
+        ("2021-06", "Europe/London", 1623884400000),
+    ],
+)
+def test_isoformat_to_epoch(time_isoformat, time_zone, expect_output):
+    os.environ["TZ"] = time_zone
+    time.tzset()
+    assert_that(utils.isoformat_to_epoch(time_isoformat)).is_equal_to(expect_output)

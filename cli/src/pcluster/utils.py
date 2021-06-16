@@ -19,6 +19,7 @@ import sys
 import time
 import urllib.request
 import zipfile
+from datetime import datetime
 from io import BytesIO
 from shlex import quote
 from typing import NoReturn
@@ -26,6 +27,8 @@ from urllib.parse import urlparse
 
 import pkg_resources
 import yaml
+from dateutil import tz
+from dateutil.parser import parse
 from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
@@ -268,3 +271,22 @@ def load_yaml_dict(file_path):
 
     # TODO use from cfn_flip import load_yaml
     return yaml_content
+
+
+def timestamp_to_isoformat(timestamp, timezone=None):
+    """
+    Convert timestamp to a readable date.
+
+    :param timestamp: timestamp to convert
+    :param timezone: timezone to use when converting. Defaults to local.
+    :return: the converted date
+    """
+    if not timezone:
+        timezone = tz.tzlocal()
+    # Forcing microsecond to 0 to avoid having them displayed.
+    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
+
+
+def isoformat_to_epoch(time_isoformat):
+    """Convert iso8601 date format to unix epoch datetime with milliseconds."""
+    return int(parse(time_isoformat).timestamp() * 1000)

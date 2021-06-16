@@ -3,6 +3,8 @@ usage: pcluster export-cluster-logs [-h] [--debug]
                                     [--output OUTPUT] --bucket BUCKET
                                     [--bucket-prefix BUCKET_PREFIX]
                                     [--keep-s3-objects]
+                                    [--start-time START_TIME]
+                                    [--end-time END_TIME]
                                     [--filters FILTERS [FILTERS ...]]
                                     cluster_name
 
@@ -26,14 +28,19 @@ optional arguments:
                         resulting archive.
   --keep-s3-objects     Keep the exported objects exports to S3. The default
                         behavior is to delete them.
+  --start-time START_TIME
+                        Start time of interval of interest for log events. ISO
+                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
+                        1984-09-15T19:20:30+01:00), time elements might be
+                        omitted. Defaults to cluster's start time
+  --end-time END_TIME   End time of interval of interest for log events. ISO
+                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
+                        1984-09-15T19:20:30+01:00), time elements might be
+                        omitted. Defaults to current time
   --filters FILTERS [FILTERS ...]
                         The filters in the form Name=a,Values=1
-                        Name=b,Values=2,3. Accepted filters are: start-time -
-                        Start time of interval of interest for log events,
-                        expressed as the number of milliseconds after Jan 1,
-                        1970 00:00:00 UTC. Defaults to cluster's start time.
-                        end-time - End time of interval of interest for log
-                        events, expressed as the number of milliseconds after
-                        Jan 1, 1970 00:00:00 UTC. Defaults to current time.
-                        private-ip-address - The private IPv4 address of the
-                        instance.
+                        Name=b,Values=2,3. Accepted filters are: private-dns-
+                        name - The short form of the private DNS name of the
+                        instance (e.g. ip-10-0-0-101). node-type - The node
+                        type, the only accepted value for this filter is
+                        HeadNode.
