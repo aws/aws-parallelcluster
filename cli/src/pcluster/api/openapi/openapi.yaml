@@ -1808,6 +1808,7 @@ components:
         ec2AmiInfo:
           amiName: amiName
           amiId: amiId
+          description: description
           state: null
           tags:
           - value: value
@@ -1935,6 +1936,7 @@ components:
       example:
         amiName: amiName
         amiId: amiId
+        description: description
         state: null
         tags:
         - value: value
@@ -1951,6 +1953,10 @@ components:
           description: EC2 AMI id
           title: amiId
           type: string
+        description:
+          description: EC2 AMI description
+          title: description
+          type: string
         state:
           $ref: '#/components/schemas/Ec2AmiState'
         tags:
@@ -1966,6 +1972,7 @@ components:
       required:
       - amiId
       - amiName
+      - description
       - architecture
       - state
       - tags
