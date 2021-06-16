@@ -730,7 +730,7 @@ class ImageBuilderCdkStack(Stack):
                 self,
                 "DeleteStackFunctionExecutionRole",
                 managed_policy_arns=managed_lambda_policy,
-                assume_role_policy_document=get_assume_role_policy_document("lambda.{0}".format(self.url_suffix)),
+                assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
                 path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                 policies=[
                     iam.CfnRole.PolicyProperty(
@@ -776,7 +776,7 @@ class ImageBuilderCdkStack(Stack):
             self,
             "DeleteStackFunctionPermission",
             action="lambda:InvokeFunction",
-            principal="sns.{0}".format(self.url_suffix),
+            principal="sns.amazonaws.com",
             function_name=lambda_cleanup.attr_arn,
             source_arn=Fn.ref("BuildNotificationTopic"),
         )

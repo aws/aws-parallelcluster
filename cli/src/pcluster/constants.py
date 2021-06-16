@@ -32,6 +32,16 @@ OS_MAPPING = {
     "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
 }
 
+OS_TO_IMAGE_NAME_PART_MAP = {
+    "alinux2": "amzn2-hvm",
+    "centos7": "centos7-hvm",
+    "centos8": "centos8-hvm",
+    "ubuntu1804": "ubuntu-1804-lts-hvm",
+    "ubuntu2004": "ubuntu-2004-lts-hvm",
+}
+
+IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
+
 # Describe the list of requirements to be satisfied by the Pcluster AWS Batch CLI to manage the cluster.
 # It must be in the form <package-name><comparison-operator><version>
 # It can contain multiple items separated by a colon.

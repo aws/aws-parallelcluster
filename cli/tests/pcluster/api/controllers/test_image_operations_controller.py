@@ -6,11 +6,18 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
+from datetime import datetime
 
 import pytest
 from assertpy import assert_that, soft_assertions
 
-from pcluster.api.models import CloudFormationStatus, ImageBuildStatus, ImageStatusFilteringOption
+from pcluster.api.models import (
+    CloudFormationStatus,
+    Ec2AmiState,
+    ImageBuilderImageStatus,
+    ImageBuildStatus,
+    ImageStatusFilteringOption,
+)
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import (
@@ -20,96 +27,53 @@ from pcluster.aws.common import (
     LimitExceededError,
     StackNotFoundError,
 )
+from pcluster.constants import OS_TO_IMAGE_NAME_PART_MAP, SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     BadRequestImageError,
+    ConflictImageBuilderActionError,
     LimitExceededImageBuilderActionError,
     LimitExceededImageError,
 )
 from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
-
-
-class TestImageOperationsController:
-    """ImageOperationsController integration test stubs."""
-
-    def test_build_image(self, client):
-        """Test case for build_image."""
-        build_image_request_content = {
-            "imageConfiguration": "imageConfiguration",
-            "id": "imageid",
-            "region": "eu-west-1",
-        }
-        query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
-            ("validationFailureLevel", ValidationLevel.INFO),
-            ("dryrun", True),
-            ("rollbackOnFailure", True),
-            ("clientToken", "client_token_example"),
-        ]
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-        response = client.open(
-            "/v3/images/custom",
-            method="POST",
-            headers=headers,
-            data=json.dumps(build_image_request_content),
-            content_type="application/json",
-            query_string=query_string,
-        )
-        assert_that(response.status_code).is_equal_to(200)
-
-    def test_describe_image(self, client):
-        """Test case for describe_image."""
-        query_string = [("region", "eu-west-1")]
-        headers = {
-            "Accept": "application/json",
-        }
-        response = client.open(
-            "/v3/images/custom/{image_id}".format(image_id="imageid"),
-            method="GET",
-            headers=headers,
-            query_string=query_string,
-        )
-        assert_that(response.status_code).is_equal_to(200)
-
-    def test_describe_official_images(self, client):
-        """Test case for describe_official_images."""
-        query_string = [
-            ("version", "version_example"),
-            ("region", "eu-west-1"),
-            ("os", "os_example"),
-            ("architecture", "architecture_example"),
-            ("nextToken", "next_token_example"),
-        ]
-        headers = {
-            "Accept": "application/json",
-        }
-        response = client.open("/v3/images/official", method="GET", headers=headers, query_string=query_string)
-        assert_that(response.status_code).is_equal_to(200)
+from pcluster.utils import get_installed_version
+from pcluster.validators.common import FailureLevel, ValidationResult
 
 
 def _create_image_info(image_id):
     return ImageInfo(
         {
+            "Name": image_id,
+            "ImageId": image_id,
+            "State": Ec2AmiState.AVAILABLE,
+            "Architecture": "x86_64",
+            "CreationDate": datetime(2021, 4, 12),
+            "Description": "description",
             "Tags": [
                 {"Key": "parallelcluster:image_id", "Value": image_id},
                 {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:build_config", "Value": "test_url"},
             ],
         }
     )
 
 
-def _create_stack(image_id, status):
-    return {
+def _create_stack(image_id, status, reason=None):
+    stack = {
         "StackId": f"arn:{image_id}",
+        "StackName": f"arn:{image_id}",
         "StackStatus": status,
         "Tags": [
             {"Key": "parallelcluster:image_id", "Value": image_id},
             {"Key": "parallelcluster:version", "Value": "3.0.0"},
+            {"Key": "parallelcluster:build_config", "Value": "test_url"},
         ],
     }
+
+    if reason:
+        stack["StackStatusReason"] = reason
+
+    return stack
 
 
 class TestListImages:
@@ -452,4 +416,438 @@ class TestDeleteImage:
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+
+class TestBuildImage:
+    url = "/v3/images/custom"
+    method = "POST"
+    encoded_config = (
+        "QnVpbGQ6CiAgSW5zdGFuY2VUeXBlOiBjNS54bGFyZ2UKICBQYXJlbnRJbWFnZTogYXJuOmF"
+        "3czppbWFnZWJ1aWxkZXI6dXMtZWFzdC0xOmF3czppbWFnZS9hbWF6b24tbGludXgtMi14OD"
+        "YveC54LngKCkRldlNldHRpbmdzOgogIENvb2tib29rOgogICAgQ2hlZkNvb2tib29rOiBod"
+        "HRwczovL2dpdGh1Yi5jb20vYXdzL2F3cy1wYXJhbGxlbGNsdXN0ZXItY29va2Jvb2svdGFy"
+        "YmFsbC8yNmFiODQyM2I4NGRlMWEwOThiYzI2ZThmZjE3NjhlOTMwZmM3NzA3CiAgTm9kZVB"
+        "hY2thZ2U6IGh0dHBzOi8vZ2l0aHViLmNvbS9hd3MvYXdzLXBhcmFsbGVsY2x1c3Rlci1ub2"
+        "RlL3RhcmJhbGwvODc1ZWY5Mzk4NmE4NmVhMzI2NzgzNWE4MTNkMzhlYWEwNWU1NzVmMwogI"
+        "EF3c0JhdGNoQ2xpUGFja2FnZTogaHR0cHM6Ly9naXRodWIuY29tL2F3cy9hd3MtcGFyYWxs"
+        "ZWxjbHVzdGVyL3RhcmJhbGwvZDVjMmExZWMyNjdhODY1Y2ZmM2NmMzUwYWYzMGQ0NGU2OGYwZWYxOA===="
+    )
+
+    def _send_test_request(self, client, dryrun=False, client_token=None):
+        build_image_request_content = {
+            "imageConfiguration": self.encoded_config,
+            "id": "imageid",
+            "region": "eu-west-1",
+        }
+        query_string = [
+            ("suppressValidators", ["suppress_validators_example"]),
+            ("validationFailureLevel", ValidationLevel.INFO),
+            ("dryrun", dryrun),
+            ("rollbackOnFailure", True),
+        ]
+        if client_token:
+            query_string.append(("clientToken", client_token))
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        return client.open(
+            self.url,
+            method=self.method,
+            data=json.dumps(build_image_request_content),
+            headers=headers,
+            query_string=query_string,
+            content_type="application/json",
+        )
+
+    @pytest.mark.parametrize(
+        "suppressed_validation_errors",
+        [[], [ValidationResult("suppressed failure", FailureLevel.INFO, "dummy validator")]],
+        ids=["test with no validation errors", "test with validation errors"],
+    )
+    def test_build_image_success(self, client, mocker, suppressed_validation_errors):
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", return_value=suppressed_validation_errors)
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=_create_stack("image1", CloudFormationStatus.CREATE_IN_PROGRESS),
+        )
+
+        expected_response = {
+            "image": {
+                "cloudformationStackArn": "arn:image1",
+                "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+                "imageBuildStatus": "BUILD_IN_PROGRESS",
+                "imageId": "image1",
+                "region": "eu-west-1",
+                "version": "3.0.0",
+            }
+        }
+
+        if suppressed_validation_errors:
+            expected_response["validationMessages"] = [
+                {"level": "INFO", "type": "dummy validator", "message": "suppressed failure"}
+            ]
+
+        response = self._send_test_request(client, dryrun=False)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "validation_errors, error_code, expected_response",
+        [
+            pytest.param(
+                None, 412, {"message": "Request would have succeeded, but DryRun flag is set."}, id="test success"
+            ),
+            pytest.param(
+                BadRequestImageBuilderActionError(
+                    "test validation error", [ValidationResult("test failure", FailureLevel.ERROR, "dummy validator")]
+                ),
+                400,
+                {
+                    "configuration_validation_errors": [
+                        {"level": "ERROR", "id": None, "type": "dummy validator", "message": "test failure"}
+                    ],
+                    "message": "test validation error",
+                },
+                id="test validation failure",
+            ),
+            pytest.param(
+                ConflictImageBuilderActionError("test error"), 409, {"message": "test error"}, id="test conflict error"
+            ),
+        ],
+    )
+    def test_dryrun(self, client, mocker, validation_errors, error_code, expected_response):
+        if validation_errors:
+            mocker.patch(
+                "pcluster.models.imagebuilder.ImageBuilder.validate_create_request", side_effect=validation_errors
+            )
+        else:
+            mocker.patch("pcluster.models.imagebuilder.ImageBuilder.validate_create_request", return_value=None)
+
+        response = self._send_test_request(client, dryrun=True)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "error, error_code",
+        [
+            (LimitExceededImageError, 429),
+            (LimitExceededStackError, 429),
+            (LimitExceededImageBuilderActionError, 429),
+            (BadRequestImageError, 400),
+            (BadRequestStackError, 400),
+            (BadRequestImageBuilderActionError, 400),
+            (ConflictImageBuilderActionError, 409),
+        ],
+    )
+    def test_that_errors_are_converted(self, client, mocker, error, error_code):
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", side_effect=(error("test error")))
+        expected_error = {"message": "test error"}
+        if error in {BadRequestImageError, BadRequestStackError}:
+            expected_error["message"] = "Bad Request: " + expected_error["message"]
+        if error == BadRequestImageBuilderActionError:
+            expected_error["configuration_validation_errors"] = []
+        response = self._send_test_request(client, dryrun=False)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+    def test_that_call_with_client_token_throws_bad_request(self, client):
+        expected_error = {
+            "configuration_validation_errors": [],
+            "message": "clientToken is currently not supported for this operation",
+        }
+        response = self._send_test_request(client, client_token="clientToken")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+
+def _create_official_image_info(version, os, architecture):
+    return ImageInfo(
+        {
+            "Name": f"aws-parallelcluster-{version}-{OS_TO_IMAGE_NAME_PART_MAP[os]}-{architecture}-other",
+            "Architecture": "x86_64",
+            "ImageId": "ami-test",
+        }
+    )
+
+
+def _describe_official_images_expected_response(version, os, architecture):
+    return {
+        "amiId": "ami-test",
+        "os": os,
+        "name": f"aws-parallelcluster-{version}-{OS_TO_IMAGE_NAME_PART_MAP[os]}-{architecture}-other",
+        "architecture": architecture,
+        "version": get_installed_version(),
+    }
+
+
+class TestDescribeOfficialImages:
+    def _send_test_request(self, client, os=None, architecture=None, region="us-east-1"):
+        query_string = [
+            ("region", region),
+            ("os", os),
+            ("architecture", architecture),
+        ]
+        headers = {
+            "Accept": "application/json",
+        }
+        return client.open("/v3/images/official", method="GET", headers=headers, query_string=query_string)
+
+    @pytest.mark.parametrize(
+        "os, arch, mocked_response, expected_response",
+        [
+            pytest.param(
+                None,
+                None,
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with no arguments",
+            ),
+            pytest.param(
+                "alinux2",
+                None,
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with os",
+            ),
+            pytest.param(
+                None,
+                "x86_64",
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with architecture",
+            ),
+            pytest.param(
+                "alinux2",
+                "x86_64",
+                [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
+                {"items": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                id="test with os and architecture",
+            ),
+        ],
+    )
+    def test_describe_successful(self, client, mocker, os, arch, mocked_response, expected_response):
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_official_images", return_value=mocked_response)
+        response = self._send_test_request(client, os, arch)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "region, os, architecture, expected_response",
+        [
+            pytest.param(
+                "us-east-",
+                None,
+                None,
+                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
+                id="test with malformed region",
+            ),
+            pytest.param(
+                None, None, None, {"message": "Bad Request: region needs to be set"}, id="test without region"
+            ),
+            pytest.param(
+                "us-east-1",
+                "nonExistentOs",
+                None,
+                {"message": f"Bad Request: nonExistentOs is not one of {SUPPORTED_OSES}"},
+                id="test with malformed os",
+            ),
+            pytest.param(
+                "us-east-1",
+                None,
+                "nonExistentArchitecture",
+                {"message": f"Bad Request: nonExistentArchitecture is not one of {SUPPORTED_ARCHITECTURES}"},
+                id="test with malformed architecture",
+            ),
+            pytest.param(
+                "us-east-1",
+                "nonExistentOs",
+                "nonExistentArchitecture",
+                {
+                    "message": f"Bad Request: nonExistentOs is not one of {SUPPORTED_OSES}; "
+                    f"nonExistentArchitecture is not one of {SUPPORTED_ARCHITECTURES}"
+                },
+                id="test with malformed os and architecture",
+            ),
+        ],
+    )
+    def test_malformed_request(self, client, region, os, architecture, expected_response):
+        response = self._send_test_request(client, region=region, os=os, architecture=architecture)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "error, status_code", [(LimitExceededError, 429), (BadRequestError, 400), (AWSClientError, 500)]
+    )
+    def test_that_errors_are_converted(self, client, mocker, error, status_code):
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.get_official_images",
+            side_effect=error(function_name="get_official_images", message="test error"),
+        )
+        expected_error = {"message": "test error"}
+        if error == BadRequestError:
+            expected_error["message"] = "Bad Request: " + expected_error["message"]
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(status_code)
+            assert_that(response.get_json()).is_equal_to(expected_error)
+
+
+class TestDescribeImage:
+    url = "/v3/images/custom/{image_name}"
+    method = "GET"
+
+    def _send_test_request(self, client, image_name, region="us-east-1"):
+        query_string = []
+        if region:
+            query_string.append(("region", region))
+        headers = {
+            "Accept": "application/json",
+        }
+        return client.open(
+            self.url.format(image_name=image_name), method=self.method, headers=headers, query_string=query_string
+        )
+
+    def test_describe_of_image_already_available(self, client, mocker):
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
+            return_value=_create_image_info("image1"),
+        )
+
+        expected_response = {
+            "creationTime": "2021-04-12T00:00:00Z",
+            "ec2AmiInfo": {
+                "amiId": "image1",
+                "amiName": "image1",
+                "architecture": "x86_64",
+                "state": Ec2AmiState.AVAILABLE,
+                "description": "description",
+                "tags": [
+                    {"Key": "parallelcluster:image_id", "Value": "image1"},
+                    {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                    {"Key": "parallelcluster:build_config", "Value": "test_url"},
+                ],
+            },
+            "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
+            "imageConfiguration": {"s3Url": "test_url"},
+            "imageId": "image1",
+            "region": "us-east-1",
+            "version": "3.0.0",
+        }
+
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_describe_of_image_not_yet_available_with_no_associated_imagebuilder_image(self, client, mocker):
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
+            side_effect=ImageNotFoundError("describe_image_by_id_tag"),
+        )
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=_create_stack("image1", CloudFormationStatus.CREATE_IN_PROGRESS),
+        )
+
+        expected_response = {
+            "imageConfiguration": {"s3Url": "test_url"},
+            "imageId": "image1",
+            "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
+            "cloudformationStackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+            "cloudformationStackArn": "arn:image1",
+            "region": "us-east-1",
+            "version": "3.0.0",
+        }
+
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_describe_image_in_failed_state_with_reasons_and_associated_imagebuilder_image(self, client, mocker):
+        mocker.patch(
+            "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
+            side_effect=ImageNotFoundError("describe_image_by_id_tag"),
+        )
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=_create_stack("image1", CloudFormationStatus.CREATE_FAILED, "cfn test reason"),
+        )
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack_resource",
+            return_value={"StackResourceDetail": {"PhysicalResourceId": "test_id"}},
+        )
+        mocker.patch(
+            "pcluster.aws.imagebuilder.ImageBuilderClient.get_image_state",
+            return_value={"status": ImageBuilderImageStatus.FAILED, "reason": "img test reason"},
+        )
+
+        expected_response = {
+            "cloudformationStackArn": "arn:image1",
+            "cloudformationStackStatus": CloudFormationStatus.CREATE_FAILED,
+            "cloudformationStackStatusReason": "cfn test reason",
+            "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+            "imageConfiguration": {"s3Url": "test_url"},
+            "imageId": "image1",
+            "imagebuilderImageStatus": ImageBuilderImageStatus.FAILED,
+            "imagebuilderImageStatusReason": "img test reason",
+            "region": "us-east-1",
+            "version": "3.0.0",
+        }
+
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "method_to_patch, error, error_code",
+        [
+            ("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", LimitExceededError, 429),
+            ("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", BadRequestError, 400),
+            ("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", AWSClientError, 500),
+            ("pcluster.aws.cfn.CfnClient.describe_stack", LimitExceededError, 429),
+            ("pcluster.aws.cfn.CfnClient.describe_stack", BadRequestError, 400),
+            ("pcluster.aws.cfn.CfnClient.describe_stack", AWSClientError, 500),
+            ("pcluster.aws.cfn.CfnClient.describe_stack", StackNotFoundError, 404),
+        ],
+    )
+    def test_that_errors_are_converted(self, client, mocker, method_to_patch, error, error_code):
+        method = method_to_patch.split(".")[-1]
+        if method == "describe_stack":
+            mocker.patch(
+                "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
+                side_effect=ImageNotFoundError("describe_image_by_id_tag"),
+            )
+        mocker.patch(method_to_patch, side_effect=error(method, "test error"))
+
+        if error == StackNotFoundError:
+            expected_error = {"message": "No image or stack associated to parallelcluster image id image1."}
+        elif error == BadRequestError:
+            expected_error = {"message": "Bad Request: Unable to get image image1, due to test error."}
+        else:
+            expected_error = {"message": "Unable to get image image1, due to test error."}
+
+        response = self._send_test_request(client, "image1")
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_error)

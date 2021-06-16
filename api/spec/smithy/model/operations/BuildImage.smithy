@@ -13,6 +13,7 @@ operation BuildImage {
       ConflictException,
       UnauthorizedClientError,
       LimitExceededException,
+      DryrunOperationException,
     ]
 }
 

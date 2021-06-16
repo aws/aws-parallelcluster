@@ -1009,6 +1009,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
           description: ConflictException 409 response
+        "412":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
+          description: DryrunOperationException 412 response
         "429":
           content:
             application/json:
@@ -1207,15 +1213,6 @@ paths:
       description: Describe ParallelCluster AMIs.
       operationId: describe_official_images
       parameters:
-      - description: ParallelCluster version to retrieve AMIs for.
-        explode: true
-        in: query
-        name: version
-        required: false
-        schema:
-          description: ParallelCluster version to retrieve AMIs for.
-          type: string
-        style: form
       - description: AWS Region. Defaults to the region the API is deployed to.
         explode: true
         in: query
@@ -1241,15 +1238,6 @@ paths:
         required: false
         schema:
           description: Filter by architecture
-          type: string
-        style: form
-      - description: Token to use for paginated requests.
-        explode: true
-        in: query
-        name: nextToken
-        required: false
-        schema:
-          description: Token to use for paginated requests.
           type: string
         style: form
       responses:
@@ -1300,7 +1288,8 @@ components:
       example:
         amiId: amiId
         os: os
-        id: id
+        name: name
+        version: version
         architecture: architecture
       properties:
         amiId:
@@ -1309,8 +1298,11 @@ components:
         os:
           title: os
           type: string
-        id:
-          title: id
+        name:
+          title: name
+          type: string
+        version:
+          title: version
           type: string
         architecture:
           title: architecture
@@ -1318,7 +1310,8 @@ components:
       required:
       - amiId
       - architecture
-      - id
+      - name
+      - version
       - os
       title: AmiInfo
       type: object
@@ -1805,15 +1798,17 @@ components:
           s3Url: s3Url
         imageId: imageId
         imagebuilderImageStatus: null
+        imagebuilderImageStatusReason: imagebuilderImageStatusReason
         creationTime: 2000-01-23T04:56:07.000+00:00
         imageBuildStatus: null
-        failureReason: failureReason
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
+        cloudformationStackStatusReason: cloudformationStackStatusReason
         region: region
         ec2AmiInfo:
           amiName: amiName
           amiId: amiId
+          description: description
           state: null
           tags:
           - value: value
@@ -1822,11 +1817,6 @@ components:
             key: key
           architecture: architecture
         version: version
-        tags:
-        - value: value
-          key: key
-        - value: value
-          key: key
       properties:
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
@@ -1843,13 +1833,16 @@ components:
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
-        failureReason:
-          description: "Describe the reason of the failure when the stack is in CREATE_FAILED,\
-            \ UPDATE_FAILED or DELETE_FAILED status"
-          title: failureReason
+        cloudformationStackStatusReason:
+          description: Reason for the CloudFormation stack status
+          title: cloudformationStackStatusReason
           type: string
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStatus'
+        imagebuilderImageStatusReason:
+          description: Reason for the ImageBuilder Image status.
+          title: imagebuilderImageStatusReason
+          type: string
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack
           title: cloudformationStackArn
@@ -1864,41 +1857,28 @@ components:
           description: ParallelCluster version used to build the image
           title: version
           type: string
-        tags:
-          description: Tags of the infrastructure to build the Image
-          items:
-            $ref: '#/components/schemas/Tag'
-          title: tags
-          type: array
       required:
-      - cloudformationStackArn
-      - cloudformationStackStatus
-      - creationTime
       - imageBuildStatus
       - imageConfiguration
       - imageId
       - region
-      - tags
       - version
       title: DescribeImageResponseContent
       type: object
     DescribeOfficialImagesResponseContent:
       example:
-        nextToken: nextToken
         items:
         - amiId: amiId
           os: os
-          id: id
+          name: name
+          version: version
           architecture: architecture
         - amiId: amiId
           os: os
-          id: id
+          name: name
+          version: version
           architecture: architecture
       properties:
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
         items:
           items:
             $ref: '#/components/schemas/AmiInfo'
@@ -1907,6 +1887,15 @@ components:
       required:
       - items
       title: DescribeOfficialImagesResponseContent
+      type: object
+    DryrunOperationExceptionResponseContent:
+      description: Communicates that the operation would have succeeded without the
+        dryrun flag.
+      properties:
+        message:
+          title: message
+          type: string
+      title: DryrunOperationExceptionResponseContent
       type: object
     EC2Instance:
       example:
@@ -1947,6 +1936,7 @@ components:
       example:
         amiName: amiName
         amiId: amiId
+        description: description
         state: null
         tags:
         - value: value
@@ -1963,6 +1953,10 @@ components:
           description: EC2 AMI id
           title: amiId
           type: string
+        description:
+          description: EC2 AMI description
+          title: description
+          type: string
         state:
           $ref: '#/components/schemas/Ec2AmiState'
         tags:
@@ -1978,6 +1972,7 @@ components:
       required:
       - amiId
       - amiName
+      - description
       - architecture
       - state
       - tags

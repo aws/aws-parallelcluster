@@ -78,3 +78,10 @@ structure ConflictException {
 structure LimitExceededException {
     message: String
 }
+
+@documentation("Communicates that the operation would have succeeded without the dryrun flag.")
+@error("client")
+@httpError(412)
+structure DryrunOperationException {
+    message: String
+}

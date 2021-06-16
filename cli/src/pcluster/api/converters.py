@@ -5,7 +5,16 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-from pcluster.api.models import CloudFormationStatus, ClusterStatus, ImageBuildStatus
+from typing import List
+
+from pcluster.api.models import (
+    CloudFormationStatus,
+    ClusterStatus,
+    ConfigValidationMessage,
+    ImageBuildStatus,
+    ValidationLevel,
+)
+from pcluster.validators.common import ValidationResult
 
 
 def cloud_formation_status_to_cluster_status(cfn_status):
@@ -42,3 +51,19 @@ def cloud_formation_status_to_image_status(cfn_status):
         CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE: ImageBuildStatus.BUILD_FAILED,
     }
     return mapping.get(cfn_status, cfn_status)
+
+
+def validation_results_to_config_validation_errors(
+    config_validation_errors: List[ValidationResult],
+) -> List[ConfigValidationMessage]:
+    configuration_validation_messages = []
+    if config_validation_errors:
+        for failure in config_validation_errors:
+            configuration_validation_messages.append(
+                ConfigValidationMessage(
+                    level=ValidationLevel.from_dict(failure.level.name),
+                    message=failure.message,
+                    type=failure.validator_type,
+                )
+            )
+    return configuration_validation_messages

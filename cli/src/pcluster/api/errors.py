@@ -9,6 +9,8 @@ from abc import ABC
 
 from pcluster.api.models import (
     BadRequestExceptionResponseContent,
+    ConflictExceptionResponseContent,
+    DryrunOperationExceptionResponseContent,
     InternalServiceExceptionResponseContent,
     LimitExceededExceptionResponseContent,
     NotFoundExceptionResponseContent,
@@ -97,3 +99,21 @@ class NotFoundException(ParallelClusterApiException):
 
     def __init__(self, content: str):
         super().__init__(NotFoundExceptionResponseContent(content))
+
+
+class DryrunOperationException(ParallelClusterApiException):
+    """Exception raised when a dryrun operation would have succeeded without the dryrun flag."""
+
+    code = 412
+
+    def __init__(self, content: str = "Request would have succeeded, but DryRun flag is set."):
+        super().__init__(DryrunOperationExceptionResponseContent(content))
+
+
+class ConflictException(ParallelClusterApiException):
+    """This exception is thrown when a client request to create/modify content would result in a conflict."""
+
+    code = 409
+
+    def __init__(self, content: str):
+        super().__init__(ConflictExceptionResponseContent(content))
