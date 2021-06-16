@@ -222,7 +222,7 @@ class ImageBuilder:
             except StackNotFoundError:
                 raise NonExistingStackError(self.image_id)
             except AWSClientError as e:
-                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}")
+                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}.")
         return self.__stack
 
     @property

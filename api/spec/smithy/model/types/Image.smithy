@@ -20,7 +20,10 @@ structure Ec2AmiInfo {
     architecture: String,
     @required
     @documentation("EC2 AMI state")
-    state: Ec2AmiState
+    state: Ec2AmiState,
+    @required
+    @documentation("EC2 AMI description")
+    description: String,
 }
 
 structure ImageInfoSummary {

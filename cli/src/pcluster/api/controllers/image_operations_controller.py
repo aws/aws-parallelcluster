@@ -9,7 +9,6 @@
 # pylint: disable=W0613
 import functools
 import os as os_lib
-from datetime import datetime
 
 from pcluster.api.controllers.common import configure_aws_region, parse_config
 from pcluster.api.converters import (
@@ -34,7 +33,7 @@ from pcluster.api.models import (
     CloudFormationStatus,
     DescribeImageResponseContent,
     DescribeOfficialImagesResponseContent,
-    ImageBuilderImageStatus,
+    Ec2AmiInfo,
     ImageConfigurationStructure,
     ImageInfoSummary,
     ImageStatusFilteringOption,
@@ -224,6 +223,7 @@ def _get_underlying_image_or_stack(imagebuilder):
 
 
 @configure_aws_region()
+@convert_imagebuilder_errors()
 def describe_image(image_id, region=None):
     """
     Get detailed information about an existing image.
@@ -235,18 +235,49 @@ def describe_image(image_id, region=None):
 
     :rtype: DescribeImageResponseContent
     """
+    imagebuilder = ImageBuilder(image_id=image_id)
+
+    try:
+        return _image_to_describe_image_response(imagebuilder)
+    except NonExistingImageError:
+        try:
+            return _stack_to_describe_image_response(imagebuilder)
+        except NonExistingStackError:
+            raise NotFoundException("No image or stack associated to parallelcluster image id {}.".format(image_id))
+
+
+def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
-        image_configuration=ImageConfigurationStructure(s3_url="s3"),
-        image_id="imageid",
-        imagebuilder_image_status=ImageBuilderImageStatus.BUILDING,
-        creation_time=datetime.now(),
-        image_build_status=ImageBuildStatus.BUILD_FAILED,
-        failure_reason=":D",
-        cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-        cloudformation_stack_arn="arn",
-        region="region",
-        version="3.0.0",
-        tags=[],
+        creation_time=imagebuilder.image.creation_date,
+        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        image_id=imagebuilder.image_id,
+        image_build_status=ImageBuildStatus.BUILD_COMPLETE,
+        ec2_ami_info=Ec2AmiInfo(
+            ami_name=imagebuilder.image.name,
+            ami_id=imagebuilder.image.id,
+            state=imagebuilder.image.state.upper(),
+            tags=imagebuilder.image.tags,
+            architecture=imagebuilder.image.architecture,
+            description=imagebuilder.image.description,
+        ),
+        region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+        version=imagebuilder.image.version,
+    )
+
+
+def _stack_to_describe_image_response(imagebuilder):
+    imagebuilder_image_state = imagebuilder.stack.image_state or dict()
+    return DescribeImageResponseContent(
+        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        image_id=imagebuilder.image_id,
+        image_build_status=imagebuilder.imagebuild_status,
+        imagebuilder_image_status=imagebuilder_image_state.get("status", None),
+        imagebuilder_image_status_reason=imagebuilder_image_state.get("reason", None),
+        cloudformation_stack_status=imagebuilder.stack.status,
+        cloudformation_stack_status_reason=imagebuilder.stack.status_reason,
+        cloudformation_stack_arn=imagebuilder.stack.id,
+        region=os_lib.environ.get("AWS_DEFAULT_REGION"),
+        version=imagebuilder.stack.version,
     )
 
 
