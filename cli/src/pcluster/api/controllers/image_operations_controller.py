@@ -154,8 +154,13 @@ def build_image(
             imagebuilder.validate_create_request(suppress_validators, validation_failure_level)
             raise DryrunOperationException()
 
-        imagebuilder.create(disable_rollback, suppress_validators, validation_failure_level)
-        return BuildImageResponseContent(image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack))
+        suppressed_validation_failures = imagebuilder.create(
+            disable_rollback, suppress_validators, validation_failure_level
+        )
+        return BuildImageResponseContent(
+            image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
+            validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,
+        )
     except BadRequestImageBuilderActionError as e:
         errors = validation_results_to_config_validation_errors(e.validation_failures)
         raise BuildImageBadRequestException(
