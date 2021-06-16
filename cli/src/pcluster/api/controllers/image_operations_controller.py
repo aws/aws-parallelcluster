@@ -253,6 +253,7 @@ def _image_to_describe_image_response(imagebuilder):
             state=imagebuilder.image.state.upper(),
             tags=imagebuilder.image.tags,
             architecture=imagebuilder.image.architecture,
+            description=imagebuilder.image.description,
         ),
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=imagebuilder.image.version,

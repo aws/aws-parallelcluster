@@ -48,6 +48,7 @@ def _create_image_info(image_id):
             "State": Ec2AmiState.AVAILABLE,
             "Architecture": "x86_64",
             "CreationDate": datetime(2021, 4, 12),
+            "Description": "description",
             "Tags": [
                 {"Key": "parallelcluster:image_id", "Value": image_id},
                 {"Key": "parallelcluster:version", "Value": "3.0.0"},
@@ -724,6 +725,7 @@ class TestDescribeImage:
                 "amiName": "image1",
                 "architecture": "x86_64",
                 "state": Ec2AmiState.AVAILABLE,
+                "description": "description",
                 "tags": [
                     {"Key": "parallelcluster:image_id", "Value": "image1"},
                     {"Key": "parallelcluster:version", "Value": "3.0.0"},
