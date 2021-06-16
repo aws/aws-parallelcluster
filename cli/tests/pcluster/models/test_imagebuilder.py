@@ -12,11 +12,11 @@ import json
 from urllib.error import URLError
 
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError
-from pcluster.config.imagebuilder_config import ImageBuilderExtraChefAttributes
+from pcluster.config.imagebuilder_config import Build, ImageBuilderConfig, ImageBuilderExtraChefAttributes
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     ImageBuilder,
@@ -350,3 +350,31 @@ def test_delete_with_cfn_error(mocker, error, returned_error):
         mock_aws_api(mocker)
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", side_effect=(error))
         ImageBuilder("imageId").delete(force=True)
+
+
+@pytest.mark.parametrize(
+    "config, expected_result, expected_error_message",
+    [
+        (None, None, None),
+        ("notAYamldict", None, "configuration must be a valid YAML document"),
+        ("malformed\n\nyaml", None, "configuration must be a valid YAML document"),
+        (
+            "Build:\n  InstanceType: instanceType\n  ParentImage: arn:parentImage",
+            ImageBuilderConfig(build=Build(instance_type="instanceType", parent_image="arn:parentImage")),
+            None,
+        ),
+    ],
+    ids=["config text is None", "not a YAML dict", "config text is not valid YAML", "valid config text"],
+)
+def test_config_object_initialization(config, expected_result, expected_error_message):
+    if expected_error_message:
+        with pytest.raises(BadRequestImageBuilderActionError, match=expected_error_message):
+            ImageBuilder(config=config).config
+    elif config is None:
+        result = ImageBuilder(config=config).config
+        assert_that(result).is_none()
+    else:
+        result = ImageBuilder(config=config).config
+        with soft_assertions():
+            assert_that(result.build.instance_type).is_equal_to(expected_result.build.instance_type)
+            assert_that(result.build.parent_image).is_equal_to(expected_result.build.parent_image)

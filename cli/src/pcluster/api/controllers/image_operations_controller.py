@@ -10,7 +10,7 @@
 import functools
 import os as os_lib
 
-from pcluster.api.controllers.common import configure_aws_region, parse_config
+from pcluster.api.controllers.common import configure_aws_region, read_config
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,
     validation_results_to_config_validation_errors,
@@ -147,7 +147,7 @@ def build_image(
 
     try:
         image_id = build_image_request_content.id
-        config = parse_config(build_image_request_content.image_configuration)
+        config = read_config(build_image_request_content.image_configuration)
         imagebuilder = ImageBuilder(image_id=image_id, config=config)
 
         if dryrun:

@@ -28,7 +28,6 @@ from pcluster.api.pcluster_api import ApiFailure, ClusterInfo, ImageBuilderInfo,
 from pcluster.aws.common import get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.models.cluster import NodeType
-from pcluster.utils import load_yaml_dict
 
 LOGGER = logging.getLogger(__name__)
 
@@ -396,7 +395,7 @@ def build_image(args):
     LOGGER.info("Building AWS ParallelCluster image. This could take a while...")
     try:
         response = PclusterApi().build_image(
-            imagebuilder_config=load_yaml_dict(args.config_file),
+            imagebuilder_config=read_config_file(args.config_file),
             image_id=args.id,
             region=get_region(),
         )
