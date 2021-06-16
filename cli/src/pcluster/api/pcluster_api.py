@@ -343,11 +343,11 @@ class PclusterApi:
         return packaging.version.parse(cluster.stack.version) < packaging.version.parse("3.0.0")
 
     @staticmethod
-    def build_image(imagebuilder_config: dict, image_id: str, region: str, disable_rollback: bool = True):
+    def build_image(imagebuilder_config: str, image_id: str, region: str, disable_rollback: bool = True):
         """
         Load imagebuilder model from imagebuilder_config and create stack.
 
-        :param imagebuilder_config: imagebuilder configuration (yaml dict)
+        :param imagebuilder_config: imagebuilder configuration (str)
         :param image_id: Id for pcluster Image, the same as imagebuilder cfn stack name
         :param region: AWS region
         :param disable_rollback: Disable rollback in case of failures
