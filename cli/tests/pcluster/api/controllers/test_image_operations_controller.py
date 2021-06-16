@@ -458,8 +458,13 @@ class TestBuildImage:
             content_type="application/json",
         )
 
-    def test_build_image_success(self, client, mocker):
-        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", return_value=None)
+    @pytest.mark.parametrize(
+        "suppressed_validation_errors",
+        [[], [ValidationResult("suppressed failure", FailureLevel.INFO, "dummy validator")]],
+        ids=["test with no validation errors", "test with validation errors"],
+    )
+    def test_build_image_success(self, client, mocker, suppressed_validation_errors):
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", return_value=suppressed_validation_errors)
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
             return_value=_create_stack("image1", CloudFormationStatus.CREATE_IN_PROGRESS),
@@ -475,6 +480,11 @@ class TestBuildImage:
                 "version": "3.0.0",
             }
         }
+
+        if suppressed_validation_errors:
+            expected_response["validationMessages"] = [
+                {"level": "INFO", "type": "dummy validator", "message": "suppressed failure"}
+            ]
 
         response = self._send_test_request(client, dryrun=False)
 
