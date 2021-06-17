@@ -54,6 +54,9 @@ per cluster.
 - Remove tag: Application.
 - Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
 - Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file. 
+- Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
+- Add prompt for availability zone in pcluster configure automated subnets creation.
+- Remove support for CentOS8.
 
 2.x.x
 ------

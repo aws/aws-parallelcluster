@@ -11,6 +11,8 @@
 import re
 from typing import List
 
+from botocore.exceptions import ClientError
+
 from pcluster import utils
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError
@@ -380,4 +382,8 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def run_instances(self, **kwargs):
         """Describe network interfaces."""
-        return self._client.run_instances(**kwargs)
+        try:
+            self._client.run_instances(**kwargs)
+        except ClientError as e:
+            if e.response.get("Error").get("Code") != "DryRunOperation":
+                raise

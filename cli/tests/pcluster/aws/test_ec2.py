@@ -305,3 +305,29 @@ def test_get_ebs_snapshot_info(boto3_stubber, snapshot_id, error_message):
         with pytest.raises(AWSClientError, match=error_message) as clienterror:
             Ec2Client().get_ebs_snapshot_info(snapshot_id)
             assert_that(clienterror.value.code).is_not_equal_to(0)
+
+
+@pytest.mark.parametrize(
+    "error_code, raise_exception",
+    [("DryRunOperation", False), ("UnsupportedOperation", True)],
+)
+def test_run_instances_dryrun(boto3_stubber, error_code, raise_exception):
+    """Verify that if run_instance doesn't generate exception if the error code is DryRunOperation."""
+    error_message = "fake error message"
+    mocked_requests = [
+        MockedBoto3Request(
+            method="run_instances",
+            response=error_message,
+            expected_params=None,
+            generate_error=True,
+            error_code=error_code,
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    kwargs = {"MaxCount": 10, "MinCount": 0, "DryRun": True}
+    if raise_exception:
+        with pytest.raises(AWSClientError, match=error_message) as clienterror:
+            Ec2Client().run_instances(**kwargs)
+            assert_that(clienterror.value.code).is_not_equal_to(0)
+    else:
+        Ec2Client().run_instances(**kwargs)

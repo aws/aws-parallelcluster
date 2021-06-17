@@ -17,6 +17,7 @@ import logging
 import re
 
 import pkg_resources
+import yaml
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
@@ -47,7 +48,7 @@ from pcluster.models.imagebuilder_resources import (
     NonExistingStackError,
     StackError,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition
@@ -167,14 +168,26 @@ def _imagebuilder_error_mapper(error, message):
         return ImageBuilderActionError(message)
 
 
+def _parse_config(config):
+    try:
+        config_dict = yaml.safe_load(config)
+        if not isinstance(config_dict, dict):
+            LOGGER.error("Failed: parsed config is not a dict")
+            raise Exception("parsed config is not a dict")
+        return config_dict
+    except Exception as e:
+        LOGGER.error("Failed when parsing the configuration due to invalid YAML document: %s", e)
+        raise BadRequestImageBuilderActionError("configuration must be a valid YAML document")
+
+
 class ImageBuilder:
     """Represent a building image, composed by an ImageBuilder config and an ImageBuilderStack."""
 
     def __init__(
-        self, image: ImageInfo = None, image_id: str = None, config: dict = None, stack: ImageBuilderStack = None
+        self, image: ImageInfo = None, image_id: str = None, config: str = None, stack: ImageBuilderStack = None
     ):
         self.image_id = image_id
-        self.__source_config = config
+        self.__source_config_text = config
         self.__stack = stack
         self.__image = image
         self.__config_url = None
@@ -202,7 +215,7 @@ class ImageBuilder:
         """Return configuration file S3 bucket url."""
         if not self.__config_url:
             # get config url in build image command
-            if self.__source_config:
+            if self.__source_config_text:
                 self.__config_url = self.bucket.get_config_s3_url(self._s3_artifacts_dict.get("config_name"))
             else:
                 if self.__image:
@@ -222,7 +235,7 @@ class ImageBuilder:
             except StackNotFoundError:
                 raise NonExistingStackError(self.image_id)
             except AWSClientError as e:
-                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}")
+                raise _stack_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}.")
         return self.__stack
 
     @property
@@ -251,15 +264,15 @@ class ImageBuilder:
             raise _imagebuilder_error_mapper(e, f"Unable to get image {self.image_id} status , due to {e}")
 
     @property
-    def source_config(self):
+    def source_config_text(self):
         """Return source config, only called by build image process."""
-        return self.__source_config
+        return self.__source_config_text
 
     @property
     def config(self):
         """Return ImageBuilder Config object, only called by build image process."""
-        if not self.__config and self.__source_config:
-            self.__config = ImageBuilderSchema().load(self.__source_config)
+        if not self.__config and self.__source_config_text:
+            self.__config = ImageBuilderSchema().load(_parse_config(self.__source_config_text))
         return self.__config
 
     @property
@@ -268,7 +281,7 @@ class ImageBuilder:
         if self.__bucket:
             return self.__bucket
 
-        if self.__source_config:
+        if self.__source_config_text:
             custom_bucket_name = self.config.custom_s3_bucket
         else:
             custom_bucket_name = self._get_custom_bucket()
@@ -347,13 +360,15 @@ class ImageBuilder:
 
         :param suppress_validators: the validators we want to suppress when checking the configuration
         :param validation_failure_level: the level above which we throw an exception when validating the configuration
+        :return: the list of suppressed validation failures
         """
         self._validate_id()
         self._validate_no_existing_image()
-        self._validate_config(suppress_validators, validation_failure_level)
+        return self._validate_config(suppress_validators, validation_failure_level)
 
     def _validate_config(self, suppress_validators, validation_failure_level):
         """Validate the configuration, throwing an exception for failures above a given failure level."""
+        validation_failures = []
         if not suppress_validators:
             validation_failures = self.config.validate()
             for failure in validation_failures:
@@ -361,6 +376,7 @@ class ImageBuilder:
                     raise BadRequestImageBuilderActionError(
                         message="Configuration is invalid", validation_failures=validation_failures
                     )
+        return validation_failures
 
     def _validate_no_existing_image(self):
         """Validate that no existing image or stack with the same ImageBuilder image_id exists."""
@@ -379,7 +395,7 @@ class ImageBuilder:
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
         """Create the CFN Stack and associate resources."""
-        self.validate_create_request(suppress_validators, validation_failure_level)
+        suppressed_validation_failures = self.validate_create_request(suppress_validators, validation_failure_level)
 
         # Generate artifact directory for image
         self._generate_artifact_dir()
@@ -416,6 +432,8 @@ class ImageBuilder:
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
 
+            return suppressed_validation_failures
+
         except Exception as e:
             LOGGER.critical(e)
             if not creation_result and artifacts_uploaded:
@@ -429,7 +447,9 @@ class ImageBuilder:
             if self.config:
                 # Upload original config
                 self.bucket.upload_config(
-                    config=self.source_config, config_name=self._s3_artifacts_dict.get("config_name")
+                    config=self.source_config_text,
+                    config_name=self._s3_artifacts_dict.get("config_name"),
+                    format=S3FileFormat.TEXT,
                 )
 
         except Exception as e:

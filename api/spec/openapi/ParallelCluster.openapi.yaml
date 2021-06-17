@@ -1432,8 +1432,14 @@ components:
     DescribeImageResponseContent:
       type: object
       properties:
+        cloudformationStackStatusReason:
+          type: string
+          description: Reason for the CloudFormation stack status
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
+        imagebuilderImageStatusReason:
+          type: string
+          description: Reason for the ImageBuilder Image status.
         imageId:
           type: string
           description: Id of the Image
@@ -1445,9 +1451,6 @@ components:
           format: date-time
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
-        failureReason:
-          type: string
-          description: Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStatus'
         cloudformationStackArn:
@@ -1461,20 +1464,11 @@ components:
         version:
           type: string
           description: ParallelCluster version used to build the image
-        tags:
-          type: array
-          items:
-            $ref: '#/components/schemas/Tag'
-          description: Tags of the infrastructure to build the Image
       required:
-        - cloudformationStackArn
-        - cloudformationStackStatus
-        - creationTime
         - imageBuildStatus
         - imageConfiguration
         - imageId
         - region
-        - tags
         - version
     DescribeOfficialImagesResponseContent:
       type: object
@@ -1522,6 +1516,9 @@ components:
         amiId:
           type: string
           description: EC2 AMI id
+        description:
+          type: string
+          description: EC2 AMI description
         state:
           $ref: '#/components/schemas/Ec2AmiState'
         tags:
@@ -1536,6 +1533,7 @@ components:
         - amiId
         - amiName
         - architecture
+        - description
         - state
         - tags
     Ec2AmiState:
