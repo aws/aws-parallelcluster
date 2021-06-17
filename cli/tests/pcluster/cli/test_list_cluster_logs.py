@@ -86,9 +86,7 @@ class TestListClusterLogsCommand:
             "nextToken": "123-456",
             "ResponseMetadata": {},
         }
-        list_logs_mock = mocker.patch(
-            "pcluster.api.pcluster_api.PclusterApi.list_cluster_logs", return_value=mocked_result
-        )
+        list_logs_mock = mocker.patch("pcluster.cli.commands.cluster.Cluster.list_logs", return_value=mocked_result)
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
@@ -108,8 +106,7 @@ class TestListClusterLogsCommand:
         assert_that(list_logs_mock.call_args).is_length(2)
 
         # verify arguments
-        expected_params = {"cluster_name": None, "region": r"[\w-]+", "filters": None, "next_token": None}
-        expected_params.update(REQUIRED_ARGS)
+        expected_params = {"filters": None, "next_token": None}
         expected_params.update(args)
         self._check_params(list_logs_mock, expected_params, args)
 
