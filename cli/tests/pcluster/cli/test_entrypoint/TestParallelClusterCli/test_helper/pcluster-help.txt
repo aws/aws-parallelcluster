@@ -22,8 +22,8 @@ positional arguments:
     ssh                 Connects to the head node instance using SSH.
     configure           Start the AWS ParallelCluster configuration.
     export-cluster-logs
-                        Export the logs of the cluster to a local tar archive
-                        by passing through an Amazon S3 Bucket.
+                        Export the logs of the cluster to a local tar.gz
+                        archive by passing through an Amazon S3 Bucket.
     list-cluster-logs   List the logs of the cluster saved to CloudWatch.
     get-cluster-log-events
                         Retrieve the events of a log stream of the cluster

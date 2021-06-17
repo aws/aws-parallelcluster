@@ -100,10 +100,10 @@ class TestGetClusterLogEventsCommand:
             }
         ] * 2 + [{}]
         get_cluster_log_events_mock = mocker.patch(
-            "pcluster.api.pcluster_api.PclusterApi.get_cluster_log_events", side_effect=mocked_result
+            "pcluster.cli.commands.cluster.Cluster.get_log_events", side_effect=mocked_result
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
-        mocker.patch("pcluster.cli_commands.commands.time.sleep")  # so we don't actually have to wait
+        mocker.patch("pcluster.cli.commands.cluster.time.sleep")  # so we don't actually have to wait
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
 
@@ -119,8 +119,6 @@ class TestGetClusterLogEventsCommand:
 
             # verify arguments
             expected_params = {
-                "cluster_name": "clustername",
-                "region": r"[\w-]+",
                 "log_stream_name": "log-stream-name",
                 "start_time": args.get("start_time", None),
                 "end_time": args.get("end_time", None),
@@ -128,7 +126,6 @@ class TestGetClusterLogEventsCommand:
                 "limit": args.get("head") or args.get("tail") or None,
                 "next_token": "f/3618" if args.get("stream") else args.get("next_token", None),
             }
-            expected_params.update(REQUIRED_ARGS)
             self._check_params(get_cluster_log_events_mock, expected_params, args)
 
     @staticmethod

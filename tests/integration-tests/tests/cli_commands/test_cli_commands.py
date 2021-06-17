@@ -155,9 +155,9 @@ def _test_pcluster_list_cluster_logs(cluster, instance_ids):
     std_output = cluster.list_logs()
 
     # check headers
-    assert_that(std_output).contains("logStreamName")
-    assert_that(std_output).contains("firstEventTimestamp")
-    assert_that(std_output).contains("lastEventTimestamp")
+    assert_that(std_output).contains("Log Stream Name")
+    assert_that(std_output).contains("First Event")
+    assert_that(std_output).contains("Last Event")
 
     # check there are the logs of all the instances
     for instance_id in set(instance_ids):

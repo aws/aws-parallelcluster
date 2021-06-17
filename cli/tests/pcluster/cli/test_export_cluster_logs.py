@@ -74,26 +74,22 @@ class TestExportClusterLogsCommand:
         ],
     )
     def test_execute(self, mocker, capsys, set_env, assert_out_err, run_cli, args):
-        export_logs_mock = mocker.patch("pcluster.api.pcluster_api.PclusterApi.export_cluster_logs")
+        export_logs_mock = mocker.patch("pcluster.cli.commands.cluster.Cluster.export_logs")
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
-
         run_cli(command, expect_failure=False)
         assert_out_err(expected_out="Cluster's logs exported correctly", expected_err="")
         assert_that(export_logs_mock.call_args).is_length(2)
 
         # verify arguments
         expected_params = {
-            "cluster_name": None,
-            "region": r"[\w-]+",
             "output": r".*clustername-logs-.*\.tar\.gz",
-            "bucket": None,
+            "bucket": "bucket",
             "bucket_prefix": None,
             "keep_s3_objects": False,
             "filters": None,
         }
-        expected_params.update(REQUIRED_ARGS)
         expected_params.update(args)
 
         self._check_params(export_logs_mock, expected_params, args)

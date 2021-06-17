@@ -8,7 +8,7 @@ usage: pcluster export-cluster-logs [-h] [--debug]
                                     [--filters FILTERS [FILTERS ...]]
                                     cluster_name
 
-Export the logs of the cluster to a local tar archive by passing through an
+Export the logs of the cluster to a local tar.gz archive by passing through an
 Amazon S3 Bucket.
 
 positional arguments:
