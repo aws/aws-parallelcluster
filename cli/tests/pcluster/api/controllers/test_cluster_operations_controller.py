@@ -18,7 +18,12 @@ from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.common import AWSClientError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor
-from pcluster.models.cluster import ClusterActionError
+from pcluster.models.cluster import (
+    BadRequestClusterActionError,
+    ClusterActionError,
+    ConflictClusterActionError,
+    LimitExceededClusterActionError,
+)
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
@@ -83,7 +88,7 @@ class TestCreateCluster:
         )
 
     @pytest.mark.parametrize(
-        "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, rollback_on_failure",
+        "create_cluster_request_content, suppress_validators, validation_failure_level, rollback_on_failure",
         [
             (
                 {
@@ -93,18 +98,6 @@ class TestCreateCluster:
                 },
                 None,
                 None,
-                None,
-                None,
-            ),
-            (
-                {
-                    "region": "us-east-1",
-                    "name": "cluster",
-                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
-                },
-                None,
-                None,
-                True,
                 None,
             ),
             (
@@ -116,22 +109,19 @@ class TestCreateCluster:
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
                 False,
-                False,
             ),
         ],
-        ids=["required", "dryrun", "all"],
+        ids=["required", "all"],
     )
-    def test_successful_request(
+    def test_successful_create_request(
         self,
         client,
         mocker,
         create_cluster_request_content,
         suppress_validators,
         validation_failure_level,
-        dryrun,
         rollback_on_failure,
     ):
-        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
         cluster_create_mock = mocker.patch(
             "pcluster.models.cluster.Cluster.create",
             auto_spec=True,
@@ -143,37 +133,58 @@ class TestCreateCluster:
             create_cluster_request_content,
             suppress_validators,
             validation_failure_level,
-            dryrun,
+            False,
             rollback_on_failure,
         )
 
-        if not dryrun:
-            expected_response = {
-                "cluster": {
-                    "cloudformationStackArn": "id",
-                    "cloudformationStackStatus": "CREATE_IN_PROGRESS",
-                    "clusterName": create_cluster_request_content["name"],
-                    "clusterStatus": "CREATE_IN_PROGRESS",
-                    "region": create_cluster_request_content["region"],
-                    "version": "3.0.0",
-                },
-                "validationMessages": [{"level": "WARNING", "message": "message", "type": "type"}],
-            }
-        else:
-            expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        expected_response = {
+            "cluster": {
+                "cloudformationStackArn": "id",
+                "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+                "clusterName": create_cluster_request_content["name"],
+                "clusterStatus": "CREATE_IN_PROGRESS",
+                "region": create_cluster_request_content["region"],
+                "version": "3.0.0",
+            },
+            "validationMessages": [{"level": "WARNING", "message": "message", "type": "type"}],
+        }
+
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(200 if not dryrun else 412)
+            assert_that(response.status_code).is_equal_to(200)
             assert_that(response.get_json()).is_equal_to(expected_response)
         cluster_create_mock.assert_called_with(
             disable_rollback=not (rollback_on_failure or True),
             validator_suppressors=mocker.ANY,
             validation_failure_level=FailureLevel[validation_failure_level or ValidationLevel.ERROR],
-            dryrun=dryrun or False,
         )
         cluster_create_mock.assert_called_once()
         if suppress_validators:
             _, kwargs = cluster_create_mock.call_args
             assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
+
+    def test_dryrun(self, client, mocker):
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.validate_create_request",
+            auto_spec=True,
+            return_value=([]),
+        )
+
+        create_cluster_request_content = {
+            "region": "us-east-1",
+            "name": "cluster",
+            "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+        }
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content=create_cluster_request_content,
+            dryrun=True,
+        )
+
+        expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(412)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
         "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, rollback_on_failure, "
@@ -262,15 +273,15 @@ class TestCreateCluster:
                 None,
                 {"message": "Bad Request: invalid configuration. " "Please make sure the string is base64 encoded."},
             ),
-            (
-                {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
-                None,
-                None,
-                None,
-                None,
-                None,
-                {"message": "Bad Request: configuration must be a valid base64-encoded YAML document"},
-            ),
+            # (
+            #     {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
+            #     None,
+            #     None,
+            #     None,
+            #     None,
+            #     None,
+            #     {"message": "Bad Request: configuration must be a valid base64-encoded YAML document"},
+            # ),
             (
                 {
                     "clusterConfiguration": "SW1hZ2U6CiAgSW52YWxpZEtleTogdGVzdA==",
@@ -326,7 +337,7 @@ class TestCreateCluster:
             "invalid_dryrun",
             "invalid_rollback",
             "invalid_config_encoding",
-            "invalid_config_format",
+            # "invalid_config_format",
             "invalid_config_schema",
             "empty_config",
             "client_token",
@@ -360,27 +371,20 @@ class TestCreateCluster:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
-    def test_existing_cluster_error(self, client, mocker):
-        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
-        response = self._send_test_request(
-            client,
-            create_cluster_request_content={
-                "region": "us-east-1",
-                "name": "clustername",
-                "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
-            },
-        )
-
-        with soft_assertions():
-            assert_that(response.status_code).is_equal_to(409)
-            assert_that(response.get_json()).is_equal_to({"message": "cluster clustername already exists"})
-
-    def test_cluster_action_error(self, client, mocker):
-        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+    @pytest.mark.parametrize(
+        "error_type, error_code",
+        [
+            (LimitExceededClusterActionError, 429),
+            (BadRequestClusterActionError, 400),
+            (ConflictClusterActionError, 409),
+            (ClusterActionError, 500),
+        ],
+    )
+    def test_cluster_action_error(self, client, mocker, error_type, error_code):
         mocker.patch(
             "pcluster.models.cluster.Cluster.create",
             auto_spec=True,
-            side_effect=ClusterActionError("error message"),
+            side_effect=error_type("error message"),
         )
 
         response = self._send_test_request(
@@ -392,14 +396,13 @@ class TestCreateCluster:
             },
         )
 
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestClusterActionError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(500)
-            assert_that(response.get_json()).is_equal_to(
-                {
-                    "message": "Failed when creating cluster due to: error message. "
-                    "If you suppressed config validators this might be due to an invalid configuration file"
-                }
-            )
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 class TestDeleteCluster:
