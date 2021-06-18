@@ -41,7 +41,9 @@ class TestCluster:
                 )
             ),
         )
-        return Cluster(FAKE_NAME, stack=ClusterStack({"StackName": FAKE_NAME}))
+        return Cluster(
+            FAKE_NAME, stack=ClusterStack({"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"})
+        )
 
     @pytest.mark.parametrize(
         "node_type, expected_response, expected_instances",
@@ -430,7 +432,7 @@ class TestCluster:
         "stack_exists, logging_enabled, client_error, expected_error",
         [
             (False, False, False, "Cluster .* does not exist"),
-            (True, False, False, "CloudWatch logging is not enabled"),
+            (True, False, False, ""),
             (True, True, True, "Unexpected error when retrieving"),
             (True, True, False, ""),
         ],
@@ -464,7 +466,8 @@ class TestCluster:
                 cluster.list_logs()
         else:
             cluster.list_logs()
-            describe_logs_mock.assert_called()
+            if logging_enabled:
+                describe_logs_mock.assert_called()
 
         # check preliminary steps
         stack_exists_mock.assert_called_with(cluster.stack_name)

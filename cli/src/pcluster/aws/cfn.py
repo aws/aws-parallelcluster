@@ -101,8 +101,19 @@ class CfnClient(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     @AWSExceptionHandler.retry_on_boto3_throttling
     def get_stack_events(self, stack_name):
-        """Return events of a stack."""
-        return self._client.describe_stack_events(StackName=stack_name).get("StackEvents")
+        """Return all the events of a stack."""
+        return list(self._paginate_results(self._client.describe_stack_events, StackName=stack_name))
+
+    @staticmethod
+    def format_event(event):
+        """Format CFN Stack event."""
+        return "{} {} {} {} {}".format(
+            event.get("Timestamp").isoformat(timespec="seconds"),
+            event.get("ResourceStatus"),
+            event.get("ResourceType"),
+            event.get("LogicalResourceId"),
+            event.get("ResourceStatusReason", ""),
+        )
 
     def stack_exists(self, stack_name: str):
         """Return a boolean describing whether or not a stack by the given name exists."""

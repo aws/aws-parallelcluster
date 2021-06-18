@@ -21,6 +21,7 @@ from tabulate import tabulate
 
 from pcluster import utils
 from pcluster.api.models.cluster_status import ClusterStatusEnum
+from pcluster.aws.aws_api import AWSApi
 from pcluster.cli.commands.common import (
     CliCommand,
     CliCommandV3,
@@ -509,9 +510,14 @@ class ListClusterLogsCommand(CliCommand):
             filters=" ".join(args.filters) if args.filters else None,
             next_token=args.next_token,
         )
+        # Print CFN Stack events stream
+        if not args.next_token:
+            print("{}\n".format(tabulate(response.get("stackEventsStream", []), headers="keys", tablefmt="plain")))
+
         if not response.get("logStreams", None):
-            print("No logs found.")
+            print("There are no cluster's logs saved in CloudWatch.")
         else:
+            # List CW log streams
             output_headers = {
                 "logStreamName": "Log Stream Name",
                 "firstEventTimestamp": "First Event",
@@ -627,24 +633,30 @@ class GetClusterLogEventsCommand(CliCommand):
         }
         cluster = Cluster(args.cluster_name)
         response = cluster.get_log_events(**kwargs)
-        self._print_log_events(response.get("events", []))
 
-        if args.stream:
-            # stream content
-            next_token = response.get("nextForwardToken", None)
-            while next_token is not None and args.stream:
-                LOGGER.debug("NextToken is %s", next_token)
-                period = args.stream_period or 5
-                LOGGER.debug("Waiting other %s seconds...", period)
-                time.sleep(period)
+        if args.log_stream_name != Cluster.STACK_EVENTS_LOG_STREAM_NAME:
+            # Print log stream events
+            self._print_log_events(response.get("events", []))
+            if args.stream:
+                # stream content
+                next_token = response.get("nextForwardToken", None)
+                while next_token is not None and args.stream:
+                    LOGGER.debug("NextToken is %s", next_token)
+                    period = args.stream_period or 5
+                    LOGGER.debug("Waiting other %s seconds...", period)
+                    time.sleep(period)
 
-                kwargs["next_token"] = next_token
-                result = cluster.get_log_events(**kwargs)
-                next_token = result.get("nextForwardToken", None)
-                self._print_log_events(result.get("events", []))
+                    kwargs["next_token"] = next_token
+                    result = cluster.get_log_events(**kwargs)
+                    next_token = result.get("nextForwardToken", None)
+                    self._print_log_events(result.get("events", []))
+            else:
+                LOGGER.info("\nnextBackwardToken is: %s", response["nextBackwardToken"])
+                LOGGER.info("nextForwardToken is: %s", response["nextForwardToken"])
         else:
-            LOGGER.info("\nnextBackwardToken is: %s", response["nextBackwardToken"])
-            LOGGER.info("nextForwardToken is: %s", response["nextForwardToken"])
+            # Print CFN stack events
+            for event in response.get("events", []):
+                print(AWSApi.instance().cfn.format_event(event))
 
     @staticmethod
     def _print_log_events(events: list):

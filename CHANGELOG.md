@@ -21,7 +21,8 @@ CHANGELOG
 - Add `delete-image` command with `--name`, `--region`, `--force` parameters.
 - Add `describe-image` command with `--name`, `--region` parameters.
 - Add `list-images` command with `--region`, `--color`parameters.
-- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands.
+- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs 
+  and CloudFormation Stack Events.
 - Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
   as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
