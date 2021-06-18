@@ -57,11 +57,6 @@ class Validator(ABC):
         self._validate(*arg, **kwargs)
         return self._failures
 
-    @property
-    def type(self):
-        """Identify the type of validator."""
-        return self.__class__.__name__
-
     @abstractmethod
     def _validate(self, *args, **kwargs):
         """Must be implemented with specific validation logic."""

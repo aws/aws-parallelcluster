@@ -7,33 +7,30 @@
 # limitations under the License.
 
 # pylint: disable=W0613
-import base64
+import functools
 import logging
 import os
 from typing import Dict, List, Optional, Set
 
-import yaml
-
-from pcluster.api.controllers.common import (
-    check_cluster_version,
-    configure_aws_region,
-    parse_config,
+from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, read_config
+from pcluster.api.converters import (
+    cloud_formation_status_to_cluster_status,
+    validation_results_to_config_validation_errors,
 )
-from pcluster.api.controllers.common import check_cluster_version, configure_aws_region
-from pcluster.api.converters import cloud_formation_status_to_cluster_status
 from pcluster.api.errors import (
     BadRequestException,
     ConflictException,
     CreateClusterBadRequestException,
     DryrunOperationException,
     InternalServiceException,
+    LimitExceededException,
     NotFoundException,
+    ParallelClusterApiException,
 )
 from pcluster.api.models import (
     CloudFormationStatus,
     ClusterConfigurationStructure,
     ClusterInfoSummary,
-    ConfigValidationMessage,
     CreateClusterBadRequestExceptionResponseContent,
     CreateClusterRequestContent,
     CreateClusterResponseContent,
@@ -49,18 +46,55 @@ from pcluster.api.models import (
 )
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import StackNotFoundError
+from pcluster.aws.common import BadRequestError, LimitExceededError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
-from pcluster.models.cluster import Cluster, ClusterActionError, ConfigValidationError
+from pcluster.models.cluster import (
+    BadRequestClusterActionError,
+    Cluster,
+    ClusterActionError,
+    ConfigValidationError,
+    ConflictClusterActionError,
+    LimitExceededClusterActionError,
+)
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.utils import get_installed_version
-from pcluster.validators.common import FailureLevel, ValidationResult
+from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
 
 
+def convert_errors():
+    def _decorate_cluster_operations_api(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except ParallelClusterApiException as e:
+                error = e
+            except (
+                LimitExceededError,
+                LimitExceededClusterActionError,
+            ) as e:
+                error = LimitExceededException(str(e))
+            except (
+                BadRequestError,
+                BadRequestClusterActionError,
+            ) as e:
+                error = BadRequestException(str(e))
+            except ConflictClusterActionError as e:
+                error = ConflictException(str(e))
+            except Exception as e:
+                error = InternalServiceException(str(e))
+            raise error
+
+        return wrapper
+
+    return _decorate_cluster_operations_api
+
+
 @configure_aws_region(is_query_string_arg=False)
+@convert_errors()
 def create_cluster(
     create_cluster_request_content: Dict,
     suppress_validators: List[str] = None,
@@ -93,25 +127,22 @@ def create_cluster(
     # Validate inputs
     if client_token:
         raise BadRequestException("clientToken is currently not supported for this operation")
-    cluster_config, _ = parse_config(create_cluster_request_content.cluster_configuration)
+    cluster_config = read_config(create_cluster_request_content.cluster_configuration)
 
-    # Check unique cluster name
-    cluster = Cluster(create_cluster_request_content.name, cluster_config)
-    if AWSApi.instance().cfn.stack_exists(cluster.stack_name):
-        raise ConflictException(f"cluster {cluster.name} already exists")
-
-    # Create cluster
     try:
+        cluster = Cluster(create_cluster_request_content.name, cluster_config)
+
+        if dryrun:
+            cluster.validate_create_request(
+                _get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level]
+            )
+            raise DryrunOperationException()
+
         stack_id, ignored_validation_failures = cluster.create(
             disable_rollback=not rollback_on_failure,
             validator_suppressors=_get_validator_suppressors(suppress_validators),
             validation_failure_level=FailureLevel[validation_failure_level],
-            dryrun=dryrun,
         )
-
-        if dryrun:
-            LOGGER.info("Skipping cluster creation due to dryrun operation")
-            raise DryrunOperationException()
 
         return CreateClusterResponseContent(
             ClusterInfoSummary(
@@ -122,16 +153,10 @@ def create_cluster(
                 version=get_installed_version(),
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.CREATE_IN_PROGRESS),
             ),
-            validation_messages=_build_validation_messages_list(ignored_validation_failures) or None,
+            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
     except ConfigValidationError as e:
         raise _handle_config_validation_error(e)
-    except ClusterActionError as e:
-        # TODO: this currently might include also some failures that are due to a bad client request
-        raise InternalServiceException(
-            f"Failed when creating cluster due to: {e}. "
-            "If you suppressed config validators this might be due to an invalid configuration file"
-        )
 
 
 @configure_aws_region()
@@ -311,22 +336,8 @@ def update_cluster(
     )
 
 
-def _build_validation_messages_list(config_validation_errors: List[ValidationResult]) -> List[ConfigValidationMessage]:
-    configuration_validation_messages = []
-    if config_validation_errors:
-        for failure in config_validation_errors:
-            configuration_validation_messages.append(
-                ConfigValidationMessage(
-                    level=ValidationLevel.from_dict(failure.level.name),
-                    message=failure.message,
-                    type=failure.validator_type,
-                )
-            )
-    return configuration_validation_messages
-
-
 def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBadRequestException:
-    config_validation_messages = _build_validation_messages_list(e.validation_failures)
+    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures)
     return CreateClusterBadRequestException(
         CreateClusterBadRequestExceptionResponseContent(
             configuration_validation_errors=config_validation_messages, message="Invalid cluster configuration"

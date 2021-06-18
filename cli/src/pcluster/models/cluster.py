@@ -29,7 +29,7 @@ import yaml
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError, get_region
+from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
@@ -90,6 +90,40 @@ class ClusterUpdateError(ClusterActionError):
         self.update_changes = update_changes or []
 
 
+class LimitExceededClusterActionError(ClusterActionError):
+    """Represent an error during the execution of an action due to exceeding the limit of some AWS service."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class BadRequestClusterActionError(ClusterActionError):
+    """Represent an error during the execution of an action due to a problem with the request."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class ConflictClusterActionError(ClusterActionError):
+    """Represent an error due to another cluster with the same name already existing."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+def _cluster_error_mapper(error, message=None):
+    if message is None:
+        message = str(error)
+    if isinstance(error, (LimitExceededError, LimitExceededClusterActionError)):
+        return LimitExceededClusterActionError(message)
+    elif isinstance(error, (BadRequestError, BadRequestClusterActionError)):
+        return BadRequestClusterActionError(message)
+    elif isinstance(error, ConflictClusterActionError):
+        return ConflictClusterActionError(message)
+    else:
+        return ClusterActionError(message)
+
+
 class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
 
@@ -137,7 +171,9 @@ class Cluster:
                 )
         except AWSClientError as e:
             LOGGER.error("No artifact dir found in cluster stack output.")
-            raise ClusterActionError(f"Unable to find artifact dir in cluster stack {self.stack_name} output. {e}")
+            raise _cluster_error_mapper(
+                e, f"Unable to find artifact dir in cluster stack {self.stack_name} output. {e}"
+            )
 
     def _generate_artifact_dir(self):
         """
@@ -164,8 +200,8 @@ class Cluster:
                 version_id=config_version, config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name")
             )
         except Exception as e:
-            raise ClusterActionError(
-                f"Unable to load configuration from bucket '{self.bucket.name}/{self.s3_artifacts_dir}'.\n{e}"
+            raise _cluster_error_mapper(
+                e, f"Unable to load configuration from bucket '{self.bucket.name}/{self.s3_artifacts_dir}'.\n{e}"
             )
 
     @property
@@ -175,7 +211,7 @@ class Cluster:
             try:
                 self.__config = ClusterSchema().load(yaml.safe_load(self.source_config_text))
             except Exception as e:
-                raise ClusterActionError(f"Unable to parse configuration file. {e}")
+                raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}")
         return self.__config
 
     @config.setter
@@ -242,7 +278,7 @@ class Cluster:
                 artifact_directory=self.s3_artifacts_dir,
             )
         except AWSClientError as e:
-            raise ClusterActionError(f"Unable to initialize s3 bucket. {e}")
+            raise _cluster_error_mapper(e, f"Unable to initialize s3 bucket. {e}")
 
         return self.__bucket
 
@@ -251,7 +287,6 @@ class Cluster:
         disable_rollback: bool = False,
         validator_suppressors: Set[ValidatorSuppressor] = None,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
-        dryrun: bool = False,
     ) -> Tuple[Optional[str], List]:
         """
         Create cluster.
@@ -262,11 +297,9 @@ class Cluster:
         creation_result = None
         artifact_dir_generated = False
         try:
-            self.config, ignored_validation_failures = self._validate_and_parse_config(
+            suppressed_validation_failures = self.validate_create_request(
                 validator_suppressors, validation_failure_level
             )
-            if dryrun:
-                return None, ignored_validation_failures
 
             self._add_version_tag()
             self._generate_artifact_dir()
@@ -292,7 +325,7 @@ class Cluster:
                 tags=self._get_cfn_tags(),
             )
 
-            return creation_result.get("StackId"), ignored_validation_failures
+            return creation_result.get("StackId"), suppressed_validation_failures
 
         except ConfigValidationError as e:
             raise e
@@ -300,7 +333,19 @@ class Cluster:
             if not creation_result and artifact_dir_generated:
                 # Cleanup S3 artifacts if stack is not created yet
                 self.bucket.delete_s3_artifacts()
-            raise ClusterActionError(str(e))
+            raise _cluster_error_mapper(e, str(e))
+
+    def validate_create_request(self, validator_suppressors, validation_failure_level):
+        """Validate a create cluster request."""
+        self._validate_no_existing_stack()
+        self.config, ignored_validation_failures = self._validate_and_parse_config(
+            validator_suppressors, validation_failure_level
+        )
+        return ignored_validation_failures
+
+    def _validate_no_existing_stack(self):
+        if AWSApi.instance().cfn.stack_exists(self.stack_name):
+            raise ConfigValidationError(f"cluster {self.name} already exists")
 
     def _validate_and_parse_config(self, validator_suppressors, validation_failure_level, config_text=None):
         """
@@ -368,8 +413,8 @@ class Cluster:
                 self.config.original_config_version = result.get("VersionId")
 
         except Exception as e:
-            raise ClusterActionError(
-                f"Unable to upload cluster config to the S3 bucket {self.bucket.name} due to exception: {e}"
+            raise _cluster_error_mapper(
+                e, f"Unable to upload cluster config to the S3 bucket {self.bucket.name} due to exception: {e}"
             )
 
     def _upload_artifacts(self):
@@ -406,7 +451,7 @@ class Cluster:
         except Exception as e:
             message = f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
             LOGGER.error(message)
-            raise ClusterActionError(message)
+            raise _cluster_error_mapper(e, message)
 
     def delete(self, keep_logs: bool = True):
         """Delete cluster preserving log groups."""
@@ -418,7 +463,7 @@ class Cluster:
             self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
         except Exception as e:
             self._terminate_nodes()
-            raise ClusterActionError(f"Cluster {self.name} did not delete successfully. {e}")
+            raise _cluster_error_mapper(e, f"Cluster {self.name} did not delete successfully. {e}")
 
     def _persist_cloudwatch_log_groups(self):
         """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
@@ -446,14 +491,14 @@ class Cluster:
                 self.bucket.get_cfn_template_url(PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
             )
         except AWSClientError as e:
-            raise ClusterActionError(f"Unable to persist logs on cluster deletion, failed with error: {e}.")
+            raise _cluster_error_mapper(e, f"Unable to persist logs on cluster deletion, failed with error: {e}.")
 
     def _get_updated_stack_status(self):
         """Return updated status of the stack."""
         try:
             return AWSApi.instance().cfn.describe_stack(self.stack_name).get("StackStatus")
         except AWSClientError as e:
-            raise ClusterActionError(f"Unable to retrieve status of stack {self.stack_name}. {e}")
+            raise _cluster_error_mapper(e, f"Unable to retrieve status of stack {self.stack_name}. {e}")
 
     def _update_stack_template(self, template_url):
         """Update template of the running stack according to updated template."""
@@ -477,7 +522,7 @@ class Cluster:
         try:
             return yaml.safe_load(AWSApi.instance().cfn.get_stack_template(self.stack_name))
         except AWSClientError as e:
-            raise ClusterActionError(f"Unable to retrieve template for stack {self.stack_name}. {e}")
+            raise _cluster_error_mapper(e, f"Unable to retrieve template for stack {self.stack_name}. {e}")
 
     def _terminate_nodes(self):
         try:
@@ -523,7 +568,7 @@ class Cluster:
             filters = self._get_instance_filters(node_type)
             return AWSApi.instance().ec2.describe_instances(filters)
         except AWSClientError as e:
-            raise ClusterActionError(f"Failed to retrieve cluster instances. {e}")
+            raise _cluster_error_mapper(e, f"Failed to retrieve cluster instances. {e}")
 
     def has_running_capacity(self, updated_value: bool = False):
         """Return True if the cluster has running capacity. Note: the value will be cached."""
@@ -563,7 +608,7 @@ class Cluster:
                         desired_vcpus=compute_resource.desired_vcpus,
                     )
                 except Exception as e:
-                    raise ClusterActionError(f"Unable to enable Batch compute environment. {str(e)}")
+                    raise _cluster_error_mapper(e, f"Unable to enable Batch compute environment. {str(e)}")
 
             else:  # scheduler == "slurm"
                 stack_status = self.stack.status
@@ -584,7 +629,7 @@ class Cluster:
         except ClusterActionError as e:
             raise e
         except Exception as e:
-            raise ClusterActionError(f"Failed when starting compute fleet with error: {str(e)}")
+            raise _cluster_error_mapper(e, f"Failed when starting compute fleet with error: {str(e)}")
 
     def stop(self):
         """Stop compute fleet of the cluster."""
@@ -595,7 +640,7 @@ class Cluster:
                 try:
                     AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
                 except Exception as e:
-                    raise ClusterActionError(f"Unable to disable Batch compute environment. {str(e)}")
+                    raise _cluster_error_mapper(e, f"Unable to disable Batch compute environment. {str(e)}")
 
             else:  # scheduler == "slurm"
                 stack_status = self.stack.status
@@ -616,7 +661,7 @@ class Cluster:
         except ClusterActionError as e:
             raise e
         except Exception as e:
-            raise ClusterActionError(f"Failed when stopping compute fleet with error: {str(e)}")
+            raise _cluster_error_mapper(e, f"Failed when stopping compute fleet with error: {str(e)}")
 
     def update(
         self,
@@ -635,10 +680,12 @@ class Cluster:
         try:
             # check cluster existence
             if not AWSApi.instance().cfn.stack_exists(self.stack_name):
-                raise ClusterActionError(f"Cluster {self.name} does not exist")
+                raise BadRequestClusterActionError(f"Cluster {self.name} does not exist")
 
             if "IN_PROGRESS" in self.stack.status:
-                raise ClusterActionError(f"Cannot execute update while stack is in {self.stack.status} status.")
+                raise BadRequestClusterActionError(
+                    f"Cannot execute update while stack is in {self.stack.status} status."
+                )
 
             # validate target config
             target_config, _ = self._validate_and_parse_config(
@@ -689,7 +736,7 @@ class Cluster:
             raise e
         except Exception as e:
             LOGGER.critical(e)
-            raise ClusterActionError(f"Cluster update failed.\n{e}")
+            raise _cluster_error_mapper(e, f"Cluster update failed.\n{e}")
 
     def _add_version_tag(self):
         """Add version tag to the stack."""
@@ -803,12 +850,13 @@ class Cluster:
         except AWSClientError as e:
             # TODO use log type/class
             if "Please check if CloudWatch Logs has been granted permission to perform this operation." in str(e):
-                raise ClusterActionError(
+                raise _cluster_error_mapper(
+                    e,
                     f"CloudWatch Logs needs GetBucketAcl and PutObject permission for the s3 bucket {bucket}. "
                     "See https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/S3ExportTasks.html#S3Permissions "
-                    "for more details."
+                    "for more details.",
                 )
-            raise ClusterActionError(f"Unexpected error when starting export task: {e}")
+            raise _cluster_error_mapper(e, f"Unexpected error when starting export task: {e}")
 
     @staticmethod
     def _wait_for_task_completion(task_id):
@@ -879,7 +927,7 @@ class Cluster:
                 next_token=next_token,
             )
         except AWSClientError as e:
-            raise ClusterActionError(f"Unexpected error when retrieving cluster's logs: {e}")
+            raise _cluster_error_mapper(e, f"Unexpected error when retrieving cluster's logs: {e}")
 
     def _init_list_logs_filters(self, filters):
         try:
@@ -933,4 +981,4 @@ class Cluster:
                 next_token=next_token,
             )
         except AWSClientError as e:
-            raise ClusterActionError(f"Unexpected error when retrieving log events: {e}")
+            raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}")

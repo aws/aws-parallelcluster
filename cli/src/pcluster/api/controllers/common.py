@@ -15,7 +15,6 @@ import base64
 import functools
 import logging
 import os
-from typing import Tuple
 
 from flask import request
 from pkg_resources import packaging
@@ -77,4 +76,3 @@ def read_config(base64_encoded_config: str) -> str:
         raise BadRequestException("configuration is required and cannot be empty")
 
     return config
-
