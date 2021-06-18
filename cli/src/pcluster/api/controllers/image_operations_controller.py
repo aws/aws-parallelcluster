@@ -64,7 +64,7 @@ from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel
 
 
-def convert_imagebuilder_errors():
+def convert_errors():
     def _decorate_image_operations_api(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -98,7 +98,7 @@ def convert_imagebuilder_errors():
 
 
 @configure_aws_region(is_query_string_arg=False)
-@convert_imagebuilder_errors()
+@convert_errors()
 def build_image(
     build_image_request_content,
     suppress_validators=None,
@@ -169,7 +169,7 @@ def build_image(
 
 
 @configure_aws_region()
-@convert_imagebuilder_errors()
+@convert_errors()
 def delete_image(image_id, region=None, client_token=None, force=None):
     """
     Initiate the deletion of the custom ParallelCluster image.
@@ -223,7 +223,7 @@ def _get_underlying_image_or_stack(imagebuilder):
 
 
 @configure_aws_region()
-@convert_imagebuilder_errors()
+@convert_errors()
 def describe_image(image_id, region=None):
     """
     Get detailed information about an existing image.
@@ -282,7 +282,7 @@ def _stack_to_describe_image_response(imagebuilder):
 
 
 @configure_aws_region()
-@convert_imagebuilder_errors()
+@convert_errors()
 def describe_official_images(region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
@@ -329,7 +329,7 @@ def _image_info_to_ami_info(image):
 
 
 @configure_aws_region()
-@convert_imagebuilder_errors()
+@convert_errors()
 def list_images(image_status, region=None, next_token=None):
     """
     Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default.

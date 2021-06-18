@@ -93,14 +93,14 @@ class ImageBuilderActionError(Exception):
 
 
 class LimitExceededImageBuilderActionError(ImageBuilderActionError):
-    """Represent an error during the execution of an action on the imagebuilder due to limit exceeded."""
+    """Represent an error during the execution of an action due to exceeding the limit of some AWS service."""
 
     def __init__(self, message: str):
         super().__init__(message)
 
 
 class BadRequestImageBuilderActionError(ImageBuilderActionError):
-    """Represent an error during the execution of an action due to exceeding the limit of some AWS service."""
+    """Represent an error during the execution of an action due to a problem with the request."""
 
     def __init__(self, message: str, validation_failures: list = None):
         super().__init__(message, validation_failures)
@@ -159,11 +159,20 @@ def _image_error_mapper(error, message):
         return ImageError(message)
 
 
-def _imagebuilder_error_mapper(error, message):
-    if isinstance(error, (LimitExceededImageError, LimitExceededStackError, LimitExceededError)):
+def _imagebuilder_error_mapper(error, message=None):
+    if message is None:
+        message = str(error)
+    if isinstance(
+        error,
+        (LimitExceededImageError, LimitExceededStackError, LimitExceededError, LimitExceededImageBuilderActionError),
+    ):
         return LimitExceededImageBuilderActionError(message)
-    elif isinstance(error, (BadRequestImageError, BadRequestStackError, BadRequestError)):
+    elif isinstance(
+        error, (BadRequestImageError, BadRequestStackError, BadRequestError, BadRequestImageBuilderActionError)
+    ):
         return BadRequestImageBuilderActionError(message)
+    elif isinstance(error, ConflictImageBuilderActionError):
+        return ConflictImageBuilderActionError(message)
     else:
         return ImageBuilderActionError(message)
 
