@@ -456,10 +456,6 @@ class ExportClusterLogsCommand(CliCommand):
     def _export_cluster_logs(args: Namespace, output_file_path: str):
         """Export the logs associated to the cluster."""
         LOGGER.info("Beginning export of logs for the cluster: %s", args.cluster_name)
-        LOGGER.debug("CLI args: %s", str(args))
-        if args.region:
-            os.environ["AWS_DEFAULT_REGION"] = args.region
-
         cluster = Cluster(args.cluster_name)
         cluster.export_logs(
             output=output_file_path,

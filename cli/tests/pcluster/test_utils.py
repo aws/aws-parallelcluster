@@ -256,7 +256,6 @@ def test_timestamp_to_isoformat(timestamp, time_zone, expect_output):
         ("2021-06-04T11:34", "Europe/Rome", 1622799240000),
         ("2021-06-04T11", "Europe/London", 1622800800000),
         ("2021-06-04", "Europe/London", 1622761200000),
-        ("2021-06", "Europe/London", 1623884400000),
     ],
 )
 def test_isoformat_to_epoch(time_isoformat, time_zone, expect_output):
