@@ -21,14 +21,7 @@ import yaml
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import (
-    AWSClientError,
-    BadRequestError,
-    ImageNotFoundError,
-    LimitExceededError,
-    StackNotFoundError,
-    get_region,
-)
+from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError, get_region
 from pcluster.config.common import BaseTag
 from pcluster.constants import (
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
@@ -41,6 +34,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
+from pcluster.exceptions import BadRequest, Conflict, LimitExceeded
 from pcluster.models.imagebuilder_resources import (
     BadRequestStackError,
     ImageBuilderStack,
@@ -92,21 +86,21 @@ class ImageBuilderActionError(Exception):
         self.validation_failures = validation_failures or []
 
 
-class LimitExceededImageBuilderActionError(ImageBuilderActionError):
+class LimitExceededImageBuilderActionError(ImageBuilderActionError, LimitExceeded):
     """Represent an error during the execution of an action due to exceeding the limit of some AWS service."""
 
     def __init__(self, message: str):
         super().__init__(message)
 
 
-class BadRequestImageBuilderActionError(ImageBuilderActionError):
+class BadRequestImageBuilderActionError(ImageBuilderActionError, BadRequest):
     """Represent an error during the execution of an action due to a problem with the request."""
 
     def __init__(self, message: str, validation_failures: list = None):
         super().__init__(message, validation_failures)
 
 
-class ConflictImageBuilderActionError(ImageBuilderActionError):
+class ConflictImageBuilderActionError(ImageBuilderActionError, Conflict):
     """Represent an error due to another image/stack with the same name already existing."""
 
     def __init__(self, message: str):
@@ -120,14 +114,14 @@ class ImageError(Exception):
         super().__init__(message)
 
 
-class LimitExceededImageError(ImageError):
+class LimitExceededImageError(ImageError, LimitExceeded):
     """Represent image errors due to limits exceeded."""
 
     def __init__(self, message: str):
         super().__init__(message)
 
 
-class BadRequestImageError(ImageError):
+class BadRequestImageError(ImageError, BadRequest):
     """Represent image errors due to a bad request."""
 
     def __init__(self, message: str):
@@ -142,18 +136,18 @@ class NonExistingImageError(ImageError):
 
 
 def _stack_error_mapper(error, message):
-    if isinstance(error, LimitExceededError):
+    if isinstance(error, LimitExceeded):
         return LimitExceededStackError(message)
-    elif isinstance(error, BadRequestError):
+    elif isinstance(error, BadRequest):
         return BadRequestStackError(message)
     else:
         return StackError(message)
 
 
 def _image_error_mapper(error, message):
-    if isinstance(error, LimitExceededError):
+    if isinstance(error, LimitExceeded):
         return LimitExceededImageError(message)
-    elif isinstance(error, BadRequestError):
+    elif isinstance(error, BadRequest):
         return BadRequestImageError(message)
     else:
         return ImageError(message)
@@ -162,16 +156,12 @@ def _image_error_mapper(error, message):
 def _imagebuilder_error_mapper(error, message=None):
     if message is None:
         message = str(error)
-    if isinstance(
-        error,
-        (LimitExceededImageError, LimitExceededStackError, LimitExceededError, LimitExceededImageBuilderActionError),
-    ):
+
+    if isinstance(error, LimitExceeded):
         return LimitExceededImageBuilderActionError(message)
-    elif isinstance(
-        error, (BadRequestImageError, BadRequestStackError, BadRequestError, BadRequestImageBuilderActionError)
-    ):
+    elif isinstance(error, BadRequest):
         return BadRequestImageBuilderActionError(message)
-    elif isinstance(error, ConflictImageBuilderActionError):
+    elif isinstance(error, Conflict):
         return ConflictImageBuilderActionError(message)
     else:
         return ImageBuilderActionError(message)

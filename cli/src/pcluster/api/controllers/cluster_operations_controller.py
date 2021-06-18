@@ -7,25 +7,21 @@
 # limitations under the License.
 
 # pylint: disable=W0613
-import functools
 import logging
 import os
 from typing import Dict, List, Optional, Set
 
-from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, read_config
+from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, convert_errors, read_config
 from pcluster.api.converters import (
     cloud_formation_status_to_cluster_status,
     validation_results_to_config_validation_errors,
 )
 from pcluster.api.errors import (
     BadRequestException,
-    ConflictException,
     CreateClusterBadRequestException,
     DryrunOperationException,
     InternalServiceException,
-    LimitExceededException,
     NotFoundException,
-    ParallelClusterApiException,
 )
 from pcluster.api.models import (
     CloudFormationStatus,
@@ -46,51 +42,15 @@ from pcluster.api.models import (
 )
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import BadRequestError, LimitExceededError, StackNotFoundError
+from pcluster.aws.common import StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
-from pcluster.models.cluster import (
-    BadRequestClusterActionError,
-    Cluster,
-    ClusterActionError,
-    ConfigValidationError,
-    ConflictClusterActionError,
-    LimitExceededClusterActionError,
-)
+from pcluster.models.cluster import Cluster, ClusterActionError, ConfigValidationError
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
-
-
-def convert_errors():
-    def _decorate_cluster_operations_api(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except ParallelClusterApiException as e:
-                error = e
-            except (
-                LimitExceededError,
-                LimitExceededClusterActionError,
-            ) as e:
-                error = LimitExceededException(str(e))
-            except (
-                BadRequestError,
-                BadRequestClusterActionError,
-            ) as e:
-                error = BadRequestException(str(e))
-            except ConflictClusterActionError as e:
-                error = ConflictException(str(e))
-            except Exception as e:
-                error = InternalServiceException(str(e))
-            raise error
-
-        return wrapper
-
-    return _decorate_cluster_operations_api
 
 
 @configure_aws_region(is_query_string_arg=False)
