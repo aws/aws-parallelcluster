@@ -23,6 +23,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
+from pcluster.exceptions import BadRequest, LimitExceeded
 
 
 class StackError(Exception):
@@ -39,14 +40,14 @@ class NonExistingStackError(StackError):
         super().__init__(f"ImageBuilder stack {stack_name} does not exist.")
 
 
-class LimitExceededStackError(StackError):
+class LimitExceededStackError(StackError, LimitExceeded):
     """Represent an error if we exceeded the limit of some downstream AWS service."""
 
     def __init__(self, message: str):
         super().__init__(message=message)
 
 
-class BadRequestStackError(StackError):
+class BadRequestStackError(StackError, BadRequest):
     """Represent an error due to a problem in the request."""
 
     def __init__(self, message: str):

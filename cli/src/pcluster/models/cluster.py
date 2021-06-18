@@ -29,7 +29,7 @@ import yaml
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, get_region
+from pcluster.aws.common import AWSClientError, get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
@@ -40,6 +40,7 @@ from pcluster.constants import (
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
 )
+from pcluster.exceptions import BadRequest, Conflict, LimitExceeded
 from pcluster.models.cluster_resources import (
     ClusterInstance,
     ClusterStack,
@@ -90,21 +91,21 @@ class ClusterUpdateError(ClusterActionError):
         self.update_changes = update_changes or []
 
 
-class LimitExceededClusterActionError(ClusterActionError):
+class LimitExceededClusterActionError(ClusterActionError, LimitExceeded):
     """Represent an error during the execution of an action due to exceeding the limit of some AWS service."""
 
     def __init__(self, message: str):
         super().__init__(message)
 
 
-class BadRequestClusterActionError(ClusterActionError):
+class BadRequestClusterActionError(ClusterActionError, BadRequest):
     """Represent an error during the execution of an action due to a problem with the request."""
 
     def __init__(self, message: str):
         super().__init__(message)
 
 
-class ConflictClusterActionError(ClusterActionError):
+class ConflictClusterActionError(ClusterActionError, Conflict):
     """Represent an error due to another cluster with the same name already existing."""
 
     def __init__(self, message: str):
@@ -114,11 +115,11 @@ class ConflictClusterActionError(ClusterActionError):
 def _cluster_error_mapper(error, message=None):
     if message is None:
         message = str(error)
-    if isinstance(error, (LimitExceededError, LimitExceededClusterActionError)):
+    if isinstance(error, LimitExceeded):
         return LimitExceededClusterActionError(message)
-    elif isinstance(error, (BadRequestError, BadRequestClusterActionError)):
+    elif isinstance(error, BadRequest):
         return BadRequestClusterActionError(message)
-    elif isinstance(error, ConflictClusterActionError):
+    elif isinstance(error, Conflict):
         return ConflictClusterActionError(message)
     else:
         return ClusterActionError(message)

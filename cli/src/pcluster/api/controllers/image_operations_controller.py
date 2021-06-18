@@ -7,10 +7,9 @@
 # limitations under the License.
 
 # pylint: disable=W0613
-import functools
 import os as os_lib
 
-from pcluster.api.controllers.common import configure_aws_region, read_config
+from pcluster.api.controllers.common import configure_aws_region, convert_errors, read_config
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,
     validation_results_to_config_validation_errors,
@@ -18,12 +17,8 @@ from pcluster.api.converters import (
 from pcluster.api.errors import (
     BadRequestException,
     BuildImageBadRequestException,
-    ConflictException,
     DryrunOperationException,
-    InternalServiceException,
-    LimitExceededException,
     NotFoundException,
-    ParallelClusterApiException,
 )
 from pcluster.api.models import (
     AmiInfo,
@@ -42,59 +37,12 @@ from pcluster.api.models import (
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
-from pcluster.models.imagebuilder import (
-    BadRequestImageBuilderActionError,
-    BadRequestImageError,
-    ConflictImageBuilderActionError,
-    ImageBuilder,
-    LimitExceededImageBuilderActionError,
-    LimitExceededImageError,
-    NonExistingImageError,
-)
-from pcluster.models.imagebuilder_resources import (
-    BadRequestStackError,
-    ImageBuilderStack,
-    LimitExceededStackError,
-    NonExistingStackError,
-)
+from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
+from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
 from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel
-
-
-def convert_errors():
-    def _decorate_image_operations_api(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except ParallelClusterApiException as e:
-                error = e
-            except (
-                LimitExceededError,
-                LimitExceededImageError,
-                LimitExceededStackError,
-                LimitExceededImageBuilderActionError,
-            ) as e:
-                error = LimitExceededException(str(e))
-            except (
-                BadRequestError,
-                BadRequestImageError,
-                BadRequestStackError,
-                BadRequestImageBuilderActionError,
-            ) as e:
-                error = BadRequestException(str(e))
-            except ConflictImageBuilderActionError as e:
-                error = ConflictException(str(e))
-            except Exception as e:
-                error = InternalServiceException(str(e))
-            raise error
-
-        return wrapper
-
-    return _decorate_image_operations_api
 
 
 @configure_aws_region(is_query_string_arg=False)

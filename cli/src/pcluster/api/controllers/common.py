@@ -19,8 +19,15 @@ import os
 from flask import request
 from pkg_resources import packaging
 
-from pcluster.api.errors import BadRequestException
+from pcluster.api.errors import (
+    BadRequestException,
+    ConflictException,
+    InternalServiceException,
+    LimitExceededException,
+    ParallelClusterApiException,
+)
 from pcluster.constants import SUPPORTED_REGIONS
+from pcluster.exceptions import BadRequest, Conflict, LimitExceeded
 
 LOGGER = logging.getLogger(__name__)
 
@@ -76,3 +83,26 @@ def read_config(base64_encoded_config: str) -> str:
         raise BadRequestException("configuration is required and cannot be empty")
 
     return config
+
+
+def convert_errors():
+    def _decorate_image_operations_api(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except ParallelClusterApiException as e:
+                error = e
+            except LimitExceeded as e:
+                error = LimitExceededException(str(e))
+            except BadRequest as e:
+                error = BadRequestException(str(e))
+            except Conflict as e:
+                error = ConflictException(str(e))
+            except Exception as e:
+                error = InternalServiceException(str(e))
+            raise error
+
+        return wrapper
+
+    return _decorate_image_operations_api
