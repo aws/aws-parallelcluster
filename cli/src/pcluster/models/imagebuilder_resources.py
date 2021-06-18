@@ -115,7 +115,7 @@ class ImageBuilderStack(StackInfo):
             if imagebuilder_image_status == "CREATE_IN_PROGRESS":
                 return True
             return False
-        except KeyError:
+        except (TypeError, KeyError):
             return False
 
     @property
