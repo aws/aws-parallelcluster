@@ -466,7 +466,7 @@ class ExportClusterLogsCommand(CliCommand):
             end_time=args.end_time,
             filters=" ".join(args.filters) if args.filters else None,
         )
-        LOGGER.info("Cluster's logs exported correctly to %s.", output_file_path)
+        LOGGER.info("Cluster's logs exported correctly to %s", output_file_path)
 
 
 class ListClusterLogsCommand(CliCommand):
@@ -483,7 +483,7 @@ class ListClusterLogsCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="List the logs of the cluster name provided here.")
         # Filters
-        filters_arg = _FiltersArg(accepted_filters=["private-dns-name"])
+        filters_arg = _FiltersArg(accepted_filters=["private-dns-name", "node-type"])
         parser.add_argument(
             "--filters",
             nargs="+",
@@ -504,9 +504,6 @@ class ListClusterLogsCommand(CliCommand):
 
     @staticmethod
     def _list_cluster_logs(args: Namespace):
-        if args.region:
-            os.environ["AWS_DEFAULT_REGION"] = args.region
-
         cluster = Cluster(args.cluster_name)
         response = cluster.list_logs(
             filters=" ".join(args.filters) if args.filters else None,
@@ -529,9 +526,9 @@ class ListClusterLogsCommand(CliCommand):
                         value = utils.timestamp_to_isoformat(value)
                     filtered_item[output_key] = value
                 filtered_result.append(filtered_item)
-            LOGGER.info(tabulate(filtered_result, headers="keys", tablefmt="plain"))
+            print(tabulate(filtered_result, headers="keys", tablefmt="plain"))
             if response.get("nextToken", None):
-                LOGGER.info("\nnextToken is: %s", response["nextToken"])
+                print("\nnextToken is: %s", response["nextToken"])
 
 
 class _FiltersArg:
@@ -620,8 +617,6 @@ class GetClusterLogEventsCommand(CliCommand):
 
     def _get_cluster_log_events(self, args: Namespace):
         """Get log events for a specific log stream of the cluster saved in CloudWatch."""
-        if args.region:
-            os.environ["AWS_DEFAULT_REGION"] = args.region
         kwargs = {
             "log_stream_name": args.log_stream_name,
             "start_time": args.start_time,
