@@ -429,6 +429,92 @@ class TestCluster:
             wait_for_completion_mock.assert_called_with(task_id)
 
     @pytest.mark.parametrize(
+        "stack_exists, bucket_region, is_bucket_empty, logging_enabled, client_error, expected_error, kwargs",
+        [
+            (False, "us-east-2", True, False, False, "Cluster .* does not exist", {}),
+            (True, "us-east-2", True, False, False, "", {}),
+            (True, "eu-west-1", True, True, False, "The bucket used for exporting logs must be in the same region", {}),
+            (True, "us-east-2", True, True, True, "Unexpected error when exporting", {}),
+            (True, "us-east-2", False, True, False, "", {}),
+            (True, "us-east-2", True, True, False, "", {}),
+            (True, "us-east-2", True, True, False, "", {"keep_s3_objects": True}),
+            (True, "us-east-2", True, True, False, "", {"bucket_prefix": "test_prefix"}),
+        ],
+    )
+    def test_export_logs(
+        self,
+        cluster,
+        mocker,
+        set_env,
+        stack_exists,
+        bucket_region,
+        is_bucket_empty,
+        logging_enabled,
+        client_error,
+        expected_error,
+        kwargs,
+    ):
+        mock_aws_api(mocker)
+        set_env("AWS_DEFAULT_REGION", "us-east-2")
+        stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
+        download_stack_events_mock = mocker.patch("pcluster.models.cluster.Cluster._download_stack_events_file")
+        create_logs_archive_mock = mocker.patch("pcluster.models.cluster.Cluster._create_logs_archive")
+
+        cluster.config = dummy_slurm_cluster_config(mocker)
+        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+
+        # Following mocks are used only if CW loggins is enabled
+        bucket_region_mock = mocker.patch("pcluster.aws.s3.S3Client.get_bucket_region", return_value=bucket_region)
+        bucket_empty_mock = mocker.patch("pcluster.aws.s3_resource.S3Resource.is_empty", return_value=is_bucket_empty)
+        mocker.patch(
+            "pcluster.models.cluster.Cluster._init_export_logs_filters",
+            return_value=_MockExportClusterLogsFiltersParser(),
+        )
+        export_logs_mock = mocker.patch("pcluster.models.cluster.Cluster._export_logs_to_s3", return_value="task_id")
+        download_objects_mock = mocker.patch("pcluster.models.cluster.Cluster._download_s3_objects_with_prefix")
+        delete_objects_mock = mocker.patch(
+            "pcluster.aws.s3_resource.S3Resource.delete_objects",
+            side_effect=AWSClientError("delete_objects", "error") if client_error else None,
+        )
+
+        kwargs.update({"output": "output_path", "bucket": "bucket_name"})
+        if expected_error or client_error:
+            with pytest.raises(ClusterActionError, match=expected_error):
+                cluster.export_logs(**kwargs)
+        else:
+            cluster.export_logs(**kwargs)
+            # check archive steps
+            download_stack_events_mock.assert_called()
+            create_logs_archive_mock.assert_called()
+
+            # check preliminary steps
+            stack_exists_mock.assert_called_with(cluster.stack_name)
+
+            if logging_enabled:
+                bucket_region_mock.assert_called_with(bucket_name=kwargs.get("bucket"))
+                if not kwargs.get("bucket_prefix", None):
+                    bucket_empty_mock.assert_called()
+
+                export_logs_mock.assert_called()
+                download_objects_mock.assert_called()
+                # check final steps
+                if logging_enabled and not kwargs.get("keep_s3_objects", False):
+                    if kwargs.get("bucket_prefix", None):
+                        prefix = "/".join((kwargs.get("bucket_prefix"), "task_id"))
+                        delete_objects_mock.assert_called_with(bucket_name=kwargs.get("bucket"), prefix=prefix)
+                    else:
+                        delete_objects_mock.assert_called()
+                else:
+                    delete_objects_mock.assert_not_called()
+
+            else:
+                bucket_region_mock.assert_not_called()
+                bucket_empty_mock.assert_not_called()
+                export_logs_mock.assert_not_called()
+                download_objects_mock.assert_not_called()
+                delete_objects_mock.assert_not_called()
+
+    @pytest.mark.parametrize(
         "stack_exists, logging_enabled, client_error, expected_error",
         [
             (False, False, False, "Cluster .* does not exist"),
