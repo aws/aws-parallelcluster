@@ -49,9 +49,12 @@ class TestListClusterLogsCommand:
         assert_that(out + err).contains(error_message)
 
     @pytest.mark.parametrize(
-        "args",
-        [{}, {"filters": "Name=private-dns-name,Values=ip-10-10-10-10", "next_token": "123"}],
-        ids=["required", "all"],
+        "args, ",
+        [
+            {},
+            {"filters": "Name=private-dns-name,Values=ip-10-10-10-10", "next_token": "123"},
+            {"filters": "Name=node-type,Values=HeadNode"},
+        ]
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, args):
         mocked_result = {
