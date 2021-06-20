@@ -15,6 +15,7 @@
 import copy
 import logging
 import re
+from typing import Set
 
 import pkg_resources
 import yaml
@@ -22,7 +23,7 @@ import yaml
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError, get_region
-from pcluster.config.common import BaseTag
+from pcluster.config.common import BaseTag, ValidatorSuppressor
 from pcluster.constants import (
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
@@ -354,27 +355,25 @@ class ImageBuilder:
             ]
         )
 
-    def validate_create_request(self, suppress_validators, validation_failure_level):
+    def validate_create_request(self, validator_suppressors, validation_failure_level):
         """Validate a create request.
 
-        :param suppress_validators: the validators we want to suppress when checking the configuration
+        :param validator_suppressors: the validators we want to suppress when checking the configuration
         :param validation_failure_level: the level above which we throw an exception when validating the configuration
         :return: the list of suppressed validation failures
         """
         self._validate_id()
         self._validate_no_existing_image()
-        return self._validate_config(suppress_validators, validation_failure_level)
+        return self._validate_config(validator_suppressors, validation_failure_level)
 
-    def _validate_config(self, suppress_validators, validation_failure_level):
+    def _validate_config(self, validator_suppressors, validation_failure_level):
         """Validate the configuration, throwing an exception for failures above a given failure level."""
-        validation_failures = []
-        if not suppress_validators:
-            validation_failures = self.config.validate()
-            for failure in validation_failures:
-                if failure.level.value >= FailureLevel(validation_failure_level).value:
-                    raise BadRequestImageBuilderActionError(
-                        message="Configuration is invalid", validation_failures=validation_failures
-                    )
+        validation_failures = self.config.validate(validator_suppressors)
+        for failure in validation_failures:
+            if failure.level.value >= FailureLevel(validation_failure_level).value:
+                raise BadRequestImageBuilderActionError(
+                    message="Configuration is invalid", validation_failures=validation_failures
+                )
         return validation_failures
 
     def _validate_no_existing_image(self):
@@ -390,11 +389,11 @@ class ImageBuilder:
     def create(
         self,
         disable_rollback: bool = True,
-        suppress_validators: bool = False,
+        validator_suppressors: Set[ValidatorSuppressor] = None,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
     ):
         """Create the CFN Stack and associate resources."""
-        suppressed_validation_failures = self.validate_create_request(suppress_validators, validation_failure_level)
+        suppressed_validation_failures = self.validate_create_request(validator_suppressors, validation_failure_level)
 
         # Generate artifact directory for image
         self._generate_artifact_dir()
