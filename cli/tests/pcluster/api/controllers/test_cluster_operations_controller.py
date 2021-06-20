@@ -11,7 +11,7 @@ from datetime import datetime
 import pytest
 from assertpy import assert_that, soft_assertions
 
-from pcluster.api.controllers.cluster_operations_controller import _get_validator_suppressors
+from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
@@ -928,5 +928,5 @@ class TestUpdateCluster:
     ],
 )
 def test_get_validator_suppressors(suppress_validators_list, expected_suppressors):
-    result = _get_validator_suppressors(suppress_validators_list)
+    result = get_validator_suppressors(suppress_validators_list)
     assert_that(result).is_equal_to(expected_suppressors)

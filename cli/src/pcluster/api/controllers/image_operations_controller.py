@@ -9,7 +9,7 @@
 # pylint: disable=W0613
 import os as os_lib
 
-from pcluster.api.controllers.common import configure_aws_region, convert_errors, read_config
+from pcluster.api.controllers.common import configure_aws_region, convert_errors, get_validator_suppressors, read_config
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,
     validation_results_to_config_validation_errors,
@@ -87,7 +87,6 @@ def build_image(
 
     rollback_on_failure = rollback_on_failure or False
     disable_rollback = not rollback_on_failure
-    suppress_validators = suppress_validators or False
     validation_failure_level = validation_failure_level or FailureLevel.ERROR
     dryrun = dryrun or False
 
@@ -99,12 +98,18 @@ def build_image(
         imagebuilder = ImageBuilder(image_id=image_id, config=config)
 
         if dryrun:
-            imagebuilder.validate_create_request(suppress_validators, validation_failure_level)
+            imagebuilder.validate_create_request(
+                validator_suppressors=get_validator_suppressors(suppress_validators),
+                validation_failure_level=FailureLevel[validation_failure_level],
+            )
             raise DryrunOperationException()
 
         suppressed_validation_failures = imagebuilder.create(
-            disable_rollback, suppress_validators, validation_failure_level
+            disable_rollback=disable_rollback,
+            validator_suppressors=get_validator_suppressors(suppress_validators),
+            validation_failure_level=FailureLevel[validation_failure_level],
         )
+
         return BuildImageResponseContent(
             image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
             validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,

@@ -9,9 +9,10 @@
 # pylint: disable=W0613
 import logging
 import os
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 
-from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, convert_errors, read_config
+from pcluster.api.controllers.common import get_validator_suppressors, check_cluster_version, configure_aws_region, \
+    convert_errors, read_config
 from pcluster.api.converters import (
     cloud_formation_status_to_cluster_status,
     validation_results_to_config_validation_errors,
@@ -44,7 +45,6 @@ from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
 from pcluster.models.cluster import Cluster, ClusterActionError, ConfigValidationError
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.utils import get_installed_version
@@ -94,13 +94,13 @@ def create_cluster(
 
         if dryrun:
             cluster.validate_create_request(
-                _get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level]
+                get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level]
             )
             raise DryrunOperationException()
 
         stack_id, ignored_validation_failures = cluster.create(
             disable_rollback=not rollback_on_failure,
-            validator_suppressors=_get_validator_suppressors(suppress_validators),
+            validator_suppressors=get_validator_suppressors(suppress_validators),
             validation_failure_level=FailureLevel[validation_failure_level],
         )
 
@@ -305,19 +305,3 @@ def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBa
     )
 
 
-def _get_validator_suppressors(suppress_validators: Optional[List[str]]) -> Set[ValidatorSuppressor]:
-    validator_suppressors: Set[ValidatorSuppressor] = set()
-    if not suppress_validators:
-        return validator_suppressors
-
-    validator_types_to_suppress = set()
-    for suppress_validator_expression in suppress_validators:
-        if suppress_validator_expression == "ALL":
-            validator_suppressors.add(AllValidatorsSuppressor())
-        elif suppress_validator_expression.startswith("type:"):
-            validator_types_to_suppress.add(suppress_validator_expression[len("type:") :])  # noqa: E203
-
-    if validator_types_to_suppress:
-        validator_suppressors.add(TypeMatchValidatorsSuppressor(validator_types_to_suppress))
-
-    return validator_suppressors
