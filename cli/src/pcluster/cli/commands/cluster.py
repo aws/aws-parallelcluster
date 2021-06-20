@@ -430,7 +430,7 @@ class ExportClusterLogsCommand(CliCommand):
             ),
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
             output_file_path = args.output or os.path.realpath(
                 f"{args.cluster_name}-logs-{datetime.now().timestamp()}.tar.gz"
@@ -496,7 +496,7 @@ class ListClusterLogsCommand(CliCommand):
         )
         parser.add_argument("--next-token", help="Token for paginated requests")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
             self._list_cluster_logs(args)
         except Exception as e:
@@ -595,7 +595,7 @@ class GetClusterLogEventsCommand(CliCommand):
         )
         parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds", type=int)
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
             self._validate_args(args)
             self._get_cluster_log_events(args)
