@@ -51,9 +51,9 @@ from pcluster.constants import (
 )
 from pcluster.models.common import BadRequest, Conflict, LimitExceeded, parse_config
 from pcluster.models.cluster_resources import FiltersParserError
+from pcluster.models.common_resources import LogGroupTimeFiltersParser
 from pcluster.models.imagebuilder_resources import (
     BadRequestStackError,
-    ExportImageLogsFiltersParser,
     ImageBuilderStack,
     LimitExceededStackError,
     NonExistingStackError,
@@ -711,7 +711,7 @@ class ImageBuilder:
 
     def _init_export_logs_filters(self, start_time, end_time):
         try:
-            export_logs_filters = ExportImageLogsFiltersParser(
+            export_logs_filters = LogGroupTimeFiltersParser(
                 log_group_name=self._log_group_name, start_time=start_time, end_time=end_time
             )
             export_logs_filters.validate()
