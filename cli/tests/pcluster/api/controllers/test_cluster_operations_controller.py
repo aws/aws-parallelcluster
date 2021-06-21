@@ -273,15 +273,15 @@ class TestCreateCluster:
                 None,
                 {"message": "Bad Request: invalid configuration. " "Please make sure the string is base64 encoded."},
             ),
-            # (
-            #     {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
-            #     None,
-            #     None,
-            #     None,
-            #     None,
-            #     None,
-            #     {"message": "Bad Request: configuration must be a valid base64-encoded YAML document"},
-            # ),
+            (
+                {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: configuration must be a valid YAML document"},
+            ),
             (
                 {
                     "clusterConfiguration": "SW1hZ2U6CiAgSW52YWxpZEtleTogdGVzdA==",
@@ -337,7 +337,7 @@ class TestCreateCluster:
             "invalid_dryrun",
             "invalid_rollback",
             "invalid_config_encoding",
-            # "invalid_config_format",
+            "invalid_config_format",
             "invalid_config_schema",
             "empty_config",
             "client_token",

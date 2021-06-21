@@ -18,7 +18,6 @@ import re
 from typing import Set
 
 import pkg_resources
-import yaml
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
@@ -42,7 +41,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.models.common import BadRequest, Conflict, LimitExceeded
+from pcluster.models.common import BadRequest, Conflict, LimitExceeded, parse_config
 from pcluster.models.imagebuilder_resources import (
     BadRequestStackError,
     ImageBuilderStack,
@@ -175,18 +174,6 @@ def _imagebuilder_error_mapper(error, message=None):
         return ImageBuilderActionError(message)
 
 
-def _parse_config(config):
-    try:
-        config_dict = yaml.safe_load(config)
-        if not isinstance(config_dict, dict):
-            LOGGER.error("Failed: parsed config is not a dict")
-            raise Exception("parsed config is not a dict")
-        return config_dict
-    except Exception as e:
-        LOGGER.error("Failed when parsing the configuration due to invalid YAML document: %s", e)
-        raise BadRequestImageBuilderActionError("configuration must be a valid YAML document")
-
-
 class ImageBuilder:
     """Represent a building image, composed by an ImageBuilder config and an ImageBuilderStack."""
 
@@ -279,7 +266,7 @@ class ImageBuilder:
     def config(self):
         """Return ImageBuilder Config object, only called by build image process."""
         if not self.__config and self.__source_config_text:
-            self.__config = ImageBuilderSchema().load(_parse_config(self.__source_config_text))
+            self.__config = ImageBuilderSchema().load(parse_config(self.__source_config_text))
         return self.__config
 
     @property

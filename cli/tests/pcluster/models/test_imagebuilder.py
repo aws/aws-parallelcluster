@@ -17,6 +17,7 @@ from assertpy import assert_that, soft_assertions
 from pcluster.aws.aws_resources import ImageInfo
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError
 from pcluster.config.imagebuilder_config import Build, ImageBuilderConfig, ImageBuilderExtraChefAttributes
+from pcluster.models.common import BadRequest
 from pcluster.models.imagebuilder import (
     BadRequestImageBuilderActionError,
     ImageBuilder,
@@ -368,7 +369,7 @@ def test_delete_with_cfn_error(mocker, error, returned_error):
 )
 def test_config_object_initialization(config, expected_result, expected_error_message):
     if expected_error_message:
-        with pytest.raises(BadRequestImageBuilderActionError, match=expected_error_message):
+        with pytest.raises(BadRequest, match=expected_error_message):
             ImageBuilder(config=config).config
     elif config is None:
         result = ImageBuilder(config=config).config
