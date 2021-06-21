@@ -39,7 +39,9 @@ class CliCommand(ABC):
         if region_arg:
             parser.add_argument("-r", "--region", help="AWS Region to use.", choices=SUPPORTED_REGIONS)
         if config_arg:
-            parser.add_argument("-c", "--config", dest="config_file", help="Defines an alternative config file.")
+            parser.add_argument(
+                "-c", "--config", dest="config_file", help="Defines an alternative config file.", required=True
+            )
         if nowait_arg:
             parser.add_argument(
                 "-nw",
