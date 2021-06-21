@@ -19,7 +19,7 @@ from pcluster.models.cluster_resources import (
     ExportClusterLogsFiltersParser,
     FiltersParserError,
     ListClusterLogsFiltersParser,
-    LogsFiltersParser,
+    ClusterLogsFiltersParser,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -29,7 +29,7 @@ def mock_head_node():
     return ClusterInstance({"PrivateDnsName": "ip-10-0-0-102.eu-west2.compute.internal"})
 
 
-class TestLogsFiltersParser:
+class TestClusterLogsFiltersParser:
     @pytest.mark.parametrize(
         "filters, expected_error",
         [
@@ -43,7 +43,7 @@ class TestLogsFiltersParser:
     )
     def test_initialization_error(self, mock_head_node, filters, expected_error):
         with pytest.raises(FiltersParserError, match=expected_error):
-            LogsFiltersParser(mock_head_node, filters)
+            ClusterLogsFiltersParser(mock_head_node, filters)
 
     @pytest.mark.parametrize(
         "filters, expected_filters_size, expected_attrs",
@@ -54,7 +54,7 @@ class TestLogsFiltersParser:
         ],
     )
     def test_initialization_success(self, mock_head_node, filters, expected_filters_size, expected_attrs):
-        logs_filters = LogsFiltersParser(mock_head_node, filters)
+        logs_filters = ClusterLogsFiltersParser(mock_head_node, filters)
 
         for attr in expected_attrs:
             assert_that(getattr(logs_filters, attr)).is_equal_to(expected_attrs.get(attr))
@@ -76,7 +76,7 @@ class TestLogsFiltersParser:
         ],
     )
     def test_validate(self, mock_head_node, filters, event_in_window, expected_error):
-        logs_filters = LogsFiltersParser(mock_head_node, filters)
+        logs_filters = ClusterLogsFiltersParser(mock_head_node, filters)
 
         if expected_error:
             with pytest.raises(FiltersParserError, match=expected_error):
