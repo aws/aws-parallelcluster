@@ -346,7 +346,7 @@ class Cluster:
 
     def _validate_no_existing_stack(self):
         if AWSApi.instance().cfn.stack_exists(self.stack_name):
-            raise ConfigValidationError(f"cluster {self.name} already exists")
+            raise BadRequestClusterActionError(f"cluster {self.name} already exists")
 
     def _validate_and_parse_config(self, validator_suppressors, validation_failure_level, config_text=None):
         """
@@ -359,11 +359,7 @@ class Cluster:
             # syntactic validation
             cluster_config_dict = yaml.safe_load(config_text or self.source_config_text)
 
-            if "DevSettings" in cluster_config_dict:
-                instance_types_data = cluster_config_dict["DevSettings"].get("InstanceTypesData")
-                if instance_types_data:
-                    # Set additional instance types data in AWSApi. Schema load will use the information.
-                    AWSApi.instance().ec2.additional_instance_types_data = json.loads(instance_types_data)
+            Cluster._load_additional_instance_type_data(cluster_config_dict)
             config = ClusterSchema().load(cluster_config_dict)
 
             # semantic validation
@@ -389,6 +385,14 @@ class Cluster:
             raise ConfigValidationError(f"Configuration is invalid: {e}")
 
         return config, validation_failures
+
+    @staticmethod
+    def _load_additional_instance_type_data(cluster_config_dict):
+        if "DevSettings" in cluster_config_dict:
+            instance_types_data = cluster_config_dict["DevSettings"].get("InstanceTypesData")
+            if instance_types_data:
+                # Set additional instance types data in AWSApi. Schema load will use the information.
+                AWSApi.instance().ec2.additional_instance_types_data = json.loads(instance_types_data)
 
     def _upload_config(self):
         """Upload source config and save config version."""

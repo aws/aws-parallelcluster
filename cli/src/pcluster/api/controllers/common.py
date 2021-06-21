@@ -77,7 +77,7 @@ def read_config(base64_encoded_config: str) -> str:
     try:
         config = base64.b64decode(base64_encoded_config).decode("UTF-8")
     except Exception as e:
-        LOGGER.error("Failed when decoding cluster configuration: %s", e)
+        LOGGER.error("Failed when decoding configuration: %s", e)
         raise BadRequestException("invalid configuration. Please make sure the string is base64 encoded.")
 
     if not config:
@@ -88,7 +88,7 @@ def read_config(base64_encoded_config: str) -> str:
 
 
 def convert_errors():
-    def _decorate_image_operations_api(func):
+    def _decorate_api(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
@@ -107,7 +107,7 @@ def convert_errors():
 
         return wrapper
 
-    return _decorate_image_operations_api
+    return _decorate_api
 
 
 def get_validator_suppressors(suppress_validators: Optional[List[str]]) -> Set[ValidatorSuppressor]:
