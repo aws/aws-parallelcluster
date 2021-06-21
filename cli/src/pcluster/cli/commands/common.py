@@ -7,6 +7,7 @@
 #  limitations under the License.
 import json
 import logging
+import os
 import sys
 from abc import ABC, abstractmethod
 from typing import Dict
@@ -14,8 +15,10 @@ from typing import Dict
 import argparse
 from flask.testing import FlaskClient
 
+from pcluster import utils
 from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.constants import SUPPORTED_REGIONS
+from pcluster.utils import isoformat_to_epoch
 
 LOGGER = logging.getLogger(__name__)
 
@@ -116,3 +119,30 @@ class ParallelClusterFlaskClient(FlaskClient):
         }
         headers = headers or {}
         return super().open(*args, headers={**default_headers, **headers}, **kwargs)
+
+
+class Iso8601Arg:
+    """Class to validate ISO8601 parameters."""
+
+    def __call__(self, value):
+        try:
+            isoformat_to_epoch(value)
+            return value
+        except Exception as e:
+            raise argparse.ArgumentTypeError(
+                "Start time and end time filters must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                f"(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15). {e}"
+            )
+
+
+def validate_output_file_path(file_path: str):
+    """Verify that a file can be written to the given path."""
+
+    file_dir = os.path.dirname(file_path)
+    if not os.path.isdir(file_dir):
+        try:
+            os.makedirs(file_dir)
+        except Exception as e:
+            utils.error(f"Failed to create parent directory {file_dir} for file {file_path}. Reason: {e}")
+    if not os.access(file_dir, os.W_OK):
+        utils.error(f"Cannot write file: {file_path}. {file_dir} is not writeable.")

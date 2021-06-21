@@ -40,6 +40,7 @@ from pcluster.constants import (
     PCLUSTER_NODE_TYPE_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
+    STACK_EVENTS_LOG_STREAM_NAME,
 )
 from pcluster.models.cluster_resources import (
     ClusterInstance,
@@ -130,8 +131,6 @@ def _cluster_error_mapper(error, message=None):
 
 class Cluster:
     """Represent a running cluster, composed by a ClusterConfig and a ClusterStack."""
-
-    STACK_EVENTS_LOG_STREAM_NAME = "cloudformation-stack-events"
 
     def __init__(self, name: str, config: str = None, stack: ClusterStack = None):
         self.name = name
@@ -841,7 +840,7 @@ class Cluster:
                     )
 
                 # Get stack events and write them into a file
-                stack_events_file = os.path.join(logs_archive_tempdir, self.STACK_EVENTS_LOG_STREAM_NAME)
+                stack_events_file = os.path.join(logs_archive_tempdir, STACK_EVENTS_LOG_STREAM_NAME)
                 self._download_stack_events_file(stack_events_file)
 
                 self._create_logs_archive(stack_events_file, log_streams_dir, output, bucket_prefix)
@@ -851,7 +850,7 @@ class Cluster:
     def _create_logs_archive(self, stack_events_file, log_streams_dir, output, log_streams_dir_archive_name):
         LOGGER.debug("Creating archive of logs and saving it to %s", output)
         with tarfile.open(output, "w:gz") as tar:
-            tar.add(stack_events_file, arcname=self.STACK_EVENTS_LOG_STREAM_NAME)
+            tar.add(stack_events_file, arcname=STACK_EVENTS_LOG_STREAM_NAME)
             if log_streams_dir:
                 tar.add(log_streams_dir, arcname=log_streams_dir_archive_name)
 
@@ -969,7 +968,7 @@ class Cluster:
                 # add CFN Stack information only at the first request, when next-token is not specified
                 response["stackEventsStream"] = [
                     {
-                        "Stack Events Stream": self.STACK_EVENTS_LOG_STREAM_NAME,
+                        "Stack Events Stream": STACK_EVENTS_LOG_STREAM_NAME,
                         "Cluster Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
                         "Last Update Time": parse(self.stack.last_updated_time).isoformat(timespec="seconds"),
                     }
@@ -1017,7 +1016,7 @@ class Cluster:
             raise ClusterActionError(f"Cluster {self.name} does not exist")
 
         try:
-            if log_stream_name != self.STACK_EVENTS_LOG_STREAM_NAME:
+            if log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
                 if not self.config.is_cw_logging_enabled:
                     raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
 
