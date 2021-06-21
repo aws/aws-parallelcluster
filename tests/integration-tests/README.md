@@ -41,7 +41,7 @@ usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELI
                       [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
                       [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL]
                       [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
-                      [--custom-ami CUSTOM_AMI] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks]
+                      [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks]
                       [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
                       [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
 
@@ -111,6 +111,8 @@ Custom packages and templates:
 AMI selection parameters:
   --custom-ami CUSTOM_AMI
                         custom AMI to use for all tests. (default: None)
+  --pcluster-git-ref PCLUSTER_GIT_REF
+                        Git ref of the custom cli package used to build the AMI. (default: None)
   --cookbook-git-ref COOKBOOK_GIT_REF
                         Git ref of the custom cookbook package used to build the AMI. (default: None)
   --node-git-ref NODE_GIT_REF
