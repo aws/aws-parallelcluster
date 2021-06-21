@@ -11,8 +11,13 @@ import logging
 import os
 from typing import Dict, List
 
-from pcluster.api.controllers.common import get_validator_suppressors, check_cluster_version, configure_aws_region, \
-    convert_errors, read_config
+from pcluster.api.controllers.common import (
+    check_cluster_version,
+    configure_aws_region,
+    convert_errors,
+    get_validator_suppressors,
+    read_config,
+)
 from pcluster.api.converters import (
     cloud_formation_status_to_cluster_status,
     validation_results_to_config_validation_errors,
@@ -303,5 +308,3 @@ def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBa
             configuration_validation_errors=config_validation_messages, message="Invalid cluster configuration"
         )
     )
-
-

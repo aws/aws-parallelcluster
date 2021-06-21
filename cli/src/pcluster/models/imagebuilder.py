@@ -22,7 +22,14 @@ import yaml
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import AWSClientError, ImageNotFoundError, StackNotFoundError, get_region
+from pcluster.aws.common import (
+    AWSClientError,
+    BadRequestError,
+    ImageNotFoundError,
+    LimitExceededError,
+    StackNotFoundError,
+    get_region,
+)
 from pcluster.config.common import BaseTag, ValidatorSuppressor
 from pcluster.constants import (
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
@@ -35,7 +42,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.exceptions import BadRequest, Conflict, LimitExceeded
+from pcluster.models.common import BadRequest, Conflict, LimitExceeded
 from pcluster.models.imagebuilder_resources import (
     BadRequestStackError,
     ImageBuilderStack,
@@ -137,18 +144,18 @@ class NonExistingImageError(ImageError):
 
 
 def _stack_error_mapper(error, message):
-    if isinstance(error, LimitExceeded):
+    if isinstance(error, (LimitExceeded, LimitExceededError)):
         return LimitExceededStackError(message)
-    elif isinstance(error, BadRequest):
+    elif isinstance(error, (BadRequest, BadRequestError)):
         return BadRequestStackError(message)
     else:
         return StackError(message)
 
 
 def _image_error_mapper(error, message):
-    if isinstance(error, LimitExceeded):
+    if isinstance(error, (LimitExceeded, LimitExceededError)):
         return LimitExceededImageError(message)
-    elif isinstance(error, BadRequest):
+    elif isinstance(error, (BadRequest, BadRequestError)):
         return BadRequestImageError(message)
     else:
         return ImageError(message)
@@ -158,9 +165,9 @@ def _imagebuilder_error_mapper(error, message=None):
     if message is None:
         message = str(error)
 
-    if isinstance(error, LimitExceeded):
+    if isinstance(error, (LimitExceeded, LimitExceededError)):
         return LimitExceededImageBuilderActionError(message)
-    elif isinstance(error, BadRequest):
+    elif isinstance(error, (BadRequest, BadRequestError)):
         return BadRequestImageBuilderActionError(message)
     elif isinstance(error, Conflict):
         return ConflictImageBuilderActionError(message)

@@ -23,7 +23,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.exceptions import BadRequest, LimitExceeded
+from pcluster.models.common import BadRequest, LimitExceeded
 
 
 class StackError(Exception):
