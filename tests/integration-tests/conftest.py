@@ -423,7 +423,11 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
         dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
 
     if not dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
-        if request.config.getoption("cookbook_git_ref") or request.config.getoption("node_git_ref"):
+        if (
+            request.config.getoption("pcluster_git_ref")
+            or request.config.getoption("cookbook_git_ref")
+            or request.config.getoption("node_git_ref")
+        ):
             tags = []
             if request.config.getoption("pcluster_git_ref"):
                 tags.append(
