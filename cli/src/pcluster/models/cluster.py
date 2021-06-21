@@ -47,7 +47,7 @@ from pcluster.models.cluster_resources import (
     FiltersParserError,
     ListClusterLogsFiltersParser,
 )
-from pcluster.models.common import BadRequest, Conflict, LimitExceeded
+from pcluster.models.common import BadRequest, Conflict, LimitExceeded, parse_config
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -210,7 +210,7 @@ class Cluster:
         """Return ClusterConfig object."""
         if not self.__config:
             try:
-                self.__config = ClusterSchema().load(yaml.safe_load(self.source_config_text))
+                self.__config = ClusterSchema().load(parse_config(self.source_config_text))
             except Exception as e:
                 raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}")
         return self.__config
@@ -354,20 +354,17 @@ class Cluster:
 
         :param config_text: config to parse, self.source_config_text will be used if not specified.
         """
+        cluster_config_dict = parse_config(config_text or self.source_config_text)
+
         try:
             LOGGER.info("Validating cluster configuration...")
-            # syntactic validation
-            cluster_config_dict = yaml.safe_load(config_text or self.source_config_text)
-
             Cluster._load_additional_instance_type_data(cluster_config_dict)
             config = ClusterSchema().load(cluster_config_dict)
 
-            # semantic validation
             validation_failures = ClusterNameValidator().execute(name=self.name)
             validation_failures += config.validate(validator_suppressors)
             for failure in validation_failures:
                 if failure.level.value >= FailureLevel(validation_failure_level).value:
-                    # Raise the exception if there is a failure with a level greater than the specified one
                     raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
             LOGGER.info("Validation succeeded.")
         except ValidationError as e:
