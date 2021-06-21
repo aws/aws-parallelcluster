@@ -52,7 +52,7 @@ from pcluster.models.common import BadRequest, Conflict, LimitExceeded, parse_co
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, grouper
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, grouper, isoformat_to_epoch
 from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
@@ -992,8 +992,8 @@ class Cluster:
     def get_log_events(
         self,
         log_stream_name: str,
-        start_time: int = None,
-        end_time: int = None,
+        start_time: str = None,
+        end_time: str = None,
         start_from_head: bool = False,
         limit: int = None,
         next_token: str = None,
@@ -1002,10 +1002,8 @@ class Cluster:
         Get the log stream events.
 
         :param log_stream_name: Log stream name
-        :param start_time: Start time of interval of interest for log events,
-            expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
-        :param end_time: End time of interval of interest for log events,
-            expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.
+        :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
+        :param end_time: End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
         :param start_from_head: If the value is true, the earliest log events are returned first.
             If the value is false, the latest log events are returned first. The default value is false.
         :param limit: The maximum number of log events returned. If you don't specify a value,
@@ -1024,8 +1022,8 @@ class Cluster:
                 return AWSApi.instance().logs.get_log_events(
                     log_group_name=self.stack.log_group_name,
                     log_stream_name=log_stream_name,
-                    end_time=end_time,
-                    start_time=start_time,
+                    end_time=isoformat_to_epoch(end_time) if end_time else None,
+                    start_time=isoformat_to_epoch(start_time) if start_time else None,
                     limit=limit,
                     start_from_head=start_from_head,
                     next_token=next_token,

@@ -32,6 +32,7 @@ from pcluster.cli.commands.common import (
 )
 from pcluster.constants import PCLUSTER_VERSION_TAG
 from pcluster.models.cluster import Cluster
+from pcluster.utils import isoformat_to_epoch
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -407,6 +408,7 @@ class ExportClusterLogsCommand(CliCommand):
         # Filters
         parser.add_argument(
             "--start-time",
+            type=_Iso8601Arg(),
             help=(
                 "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to cluster's start time"
@@ -414,6 +416,7 @@ class ExportClusterLogsCommand(CliCommand):
         )
         parser.add_argument(
             "--end-time",
+            type=_Iso8601Arg(),
             help=(
                 "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
@@ -550,6 +553,20 @@ class _FiltersArg:
         return value
 
 
+class _Iso8601Arg:
+    """Class to validate ISO8601 parameters."""
+
+    def __call__(self, value):
+        try:
+            isoformat_to_epoch(value)
+            return value
+        except Exception as e:
+            raise argparse.ArgumentTypeError(
+                "Start time and end time filters must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                f"(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15). {e}"
+            )
+
+
 class GetClusterLogEventsCommand(CliCommand):
     """Implement pcluster get-cluster-log-events command."""
 
@@ -565,38 +582,40 @@ class GetClusterLogEventsCommand(CliCommand):
         parser.add_argument("cluster_name", help="Get the log stream of the cluster name provided here.")
         parser.add_argument(
             "--log-stream-name",
-            help="Log stream name, as reported by 'pcluster list-cluster-logs' command",
+            help="Log stream name, as reported by 'pcluster list-cluster-logs' command.",
             required=True,
         )
         # Filters
         parser.add_argument(
             "--start-time",
+            type=_Iso8601Arg(),
             help=(
-                "Start time of interval of interest for log events, "
-                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+                "Start time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted."
             ),
-            type=int,
         )
         parser.add_argument(
             "--end-time",
+            type=_Iso8601Arg(),
             help=(
-                "End time of interval of interest for log events, "
-                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+                "End time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. "
             ),
-            type=int,
         )
-        parser.add_argument("--head", help="Gets the first <head> lines of the log stream", type=int)
-        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream", type=int)
-        parser.add_argument("--next-token", help="Token for paginated requests")
+        parser.add_argument("--head", help="Gets the first <head> lines of the log stream.", type=int)
+        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream.", type=int)
+        parser.add_argument("--next-token", help="Token for paginated requests.")
         # Stream utilities
         parser.add_argument(
             "--stream",
-            help="Gets the log stream and waits for additional output to be produced. "
-            "It can be used in conjunction with --tail to start from the "
-            "latest <tail> lines of the log stream",
+            help=(
+                "Gets the log stream and waits for additional output to be produced. "
+                "It can be used in conjunction with --tail to start from the latest <tail> lines of the log stream. "
+                "It doesn't work for CloudFormation Stack Events log stream."
+            ),
             action="store_true",
         )
-        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds", type=int)
+        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds.", type=int)
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
