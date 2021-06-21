@@ -27,9 +27,10 @@ from pcluster.api.errors import (
     LimitExceededException,
     ParallelClusterApiException,
 )
+from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
 from pcluster.constants import SUPPORTED_REGIONS
-from pcluster.exceptions import BadRequest, Conflict, LimitExceeded
+from pcluster.models.common import BadRequest, Conflict, LimitExceeded
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,9 +96,9 @@ def convert_errors():
                 return func(*args, **kwargs)
             except ParallelClusterApiException as e:
                 error = e
-            except LimitExceeded as e:
+            except (LimitExceeded, LimitExceededError) as e:
                 error = LimitExceededException(str(e))
-            except BadRequest as e:
+            except (BadRequest, BadRequestError) as e:
                 error = BadRequestException(str(e))
             except Conflict as e:
                 error = ConflictException(str(e))

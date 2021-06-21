@@ -19,8 +19,6 @@ from enum import Enum
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
-from pcluster.exceptions import BadRequest, LimitExceeded
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -61,14 +59,14 @@ class StackNotFoundError(AWSClientError):
         super().__init__(function_name=function_name, message=f"Stack with id {stack_name} does not exist")
 
 
-class LimitExceededError(AWSClientError, LimitExceeded):
+class LimitExceededError(AWSClientError):
     """Error caused by exceeding the limits of a downstream AWS service."""
 
     def __init__(self, function_name: str, message: str, error_code: str = None):
         super().__init__(function_name=function_name, message=message, error_code=error_code)
 
 
-class BadRequestError(AWSClientError, BadRequest):
+class BadRequestError(AWSClientError):
     """Error caused by a problem in the request."""
 
     def __init__(self, function_name: str, message: str, error_code: str = None):

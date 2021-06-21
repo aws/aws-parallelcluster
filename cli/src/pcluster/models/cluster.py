@@ -29,7 +29,7 @@ import yaml
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError, get_region
+from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
@@ -40,7 +40,6 @@ from pcluster.constants import (
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
 )
-from pcluster.exceptions import BadRequest, Conflict, LimitExceeded
 from pcluster.models.cluster_resources import (
     ClusterInstance,
     ClusterStack,
@@ -48,6 +47,7 @@ from pcluster.models.cluster_resources import (
     FiltersParserError,
     ListClusterLogsFiltersParser,
 )
+from pcluster.models.common import BadRequest, Conflict, LimitExceeded
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -115,9 +115,9 @@ class ConflictClusterActionError(ClusterActionError, Conflict):
 def _cluster_error_mapper(error, message=None):
     if message is None:
         message = str(error)
-    if isinstance(error, LimitExceeded):
+    if isinstance(error, (LimitExceeded, LimitExceededError)):
         return LimitExceededClusterActionError(message)
-    elif isinstance(error, BadRequest):
+    elif isinstance(error, (BadRequest, BadRequestError)):
         return BadRequestClusterActionError(message)
     elif isinstance(error, Conflict):
         return ConflictClusterActionError(message)
