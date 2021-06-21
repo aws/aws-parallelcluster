@@ -30,6 +30,7 @@ from pcluster.models.cluster import NodeType
 LOGGER = logging.getLogger(__name__)
 
 
+# pylint: disable=inconsistent-return-statements
 def read_config_file(config_file, fail_on_config_file_absence=True):
     """
     Read the config file.
