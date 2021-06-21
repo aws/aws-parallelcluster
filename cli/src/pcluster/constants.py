@@ -79,6 +79,8 @@ CW_LOGS_RETENTION_DAYS_DEFAULT = 14
 CW_LOGS_CFN_PARAM_NAME = "ClusterCWLogGroup"
 CW_LOG_GROUP_NAME_PREFIX = "/aws/parallelcluster/"
 
+STACK_EVENTS_LOG_STREAM_NAME = "cloudformation-stack-events"
+
 PCLUSTER_IMAGE_NAME_REGEX = r"^[-_A-Za-z0-9{][-_A-Za-z0-9\s:{}\.]+[-_A-Za-z0-9}]$"
 PCLUSTER_IMAGE_ID_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,127})$"
 

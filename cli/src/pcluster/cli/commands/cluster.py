@@ -26,13 +26,14 @@ from pcluster.cli.commands.common import (
     CliCommand,
     CliCommandV3,
     DcvCommand,
+    Iso8601Arg,
     ParallelClusterFlaskClient,
     csv_type,
     print_json,
+    validate_output_file_path,
 )
-from pcluster.constants import PCLUSTER_VERSION_TAG
+from pcluster.constants import PCLUSTER_VERSION_TAG, STACK_EVENTS_LOG_STREAM_NAME
 from pcluster.models.cluster import Cluster
-from pcluster.utils import isoformat_to_epoch
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -408,7 +409,7 @@ class ExportClusterLogsCommand(CliCommand):
         # Filters
         parser.add_argument(
             "--start-time",
-            type=_Iso8601Arg(),
+            type=Iso8601Arg(),
             help=(
                 "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to cluster's start time"
@@ -416,7 +417,7 @@ class ExportClusterLogsCommand(CliCommand):
         )
         parser.add_argument(
             "--end-time",
-            type=_Iso8601Arg(),
+            type=Iso8601Arg(),
             help=(
                 "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
@@ -446,15 +447,7 @@ class ExportClusterLogsCommand(CliCommand):
 
     @staticmethod
     def _validate_command_args(output_file_path: str):
-        # Verify that a file can be written to the given path
-        file_dir = os.path.dirname(output_file_path)
-        if not os.path.isdir(file_dir):
-            try:
-                os.makedirs(file_dir)
-            except Exception as e:
-                utils.error(f"Failed to create parent directory {file_dir} for cluster's logs archive. Reason: {e}")
-        if not os.access(file_dir, os.W_OK):
-            utils.error(f"Cannot write cluster's log archive to {output_file_path}. {file_dir} is not writeable.")
+        validate_output_file_path(output_file_path)
 
     @staticmethod
     def _export_cluster_logs(args: Namespace, output_file_path: str):
@@ -553,20 +546,6 @@ class _FiltersArg:
         return value
 
 
-class _Iso8601Arg:
-    """Class to validate ISO8601 parameters."""
-
-    def __call__(self, value):
-        try:
-            isoformat_to_epoch(value)
-            return value
-        except Exception as e:
-            raise argparse.ArgumentTypeError(
-                "Start time and end time filters must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                f"(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15). {e}"
-            )
-
-
 class GetClusterLogEventsCommand(CliCommand):
     """Implement pcluster get-cluster-log-events command."""
 
@@ -588,7 +567,7 @@ class GetClusterLogEventsCommand(CliCommand):
         # Filters
         parser.add_argument(
             "--start-time",
-            type=_Iso8601Arg(),
+            type=Iso8601Arg(),
             help=(
                 "Start time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted."
@@ -596,7 +575,7 @@ class GetClusterLogEventsCommand(CliCommand):
         )
         parser.add_argument(
             "--end-time",
-            type=_Iso8601Arg(),
+            type=Iso8601Arg(),
             help=(
                 "End time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. "
@@ -653,7 +632,7 @@ class GetClusterLogEventsCommand(CliCommand):
         cluster = Cluster(args.cluster_name)
         response = cluster.get_log_events(**kwargs)
 
-        if args.log_stream_name != Cluster.STACK_EVENTS_LOG_STREAM_NAME:
+        if args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
             # Print log stream events
             self._print_log_events(response.get("events", []))
             if args.stream:
