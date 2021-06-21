@@ -529,7 +529,7 @@ Resources:
                   dnf -y groupinstall development && dnf -y install curl wget jq python3-pip
                   pip3 install awscli --upgrade --user
                 elif [ "${!yum}" == "0" ]; then
-                  yum -y groupinstall development && yum -y install curl wget jq awscli python3-pip
+                  yum -y groupinstall development && yum -y install epel-release && yum -y --setopt=skip_missing_names_on_install=False install curl wget jq awscli python3-pip
                 fi
                 if [ "${!apt}" == "0" ]; then
                   apt-cache search build-essential; apt-get clean; apt update -y; apt-get -y install build-essential curl wget jq python-setuptools awscli python3-pip
