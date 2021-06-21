@@ -188,11 +188,13 @@ class Cluster:
             logging.error("Failed listing cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def get_log_events(self, log_stream, head=None):
+    def get_log_events(self, log_stream, head=None, tail=None):
         """Run pcluster get-cluster-log-events and return the result."""
         cmd_args = ["pcluster", "get-cluster-log-events", self.name, "--log-stream-name", log_stream]
         if head:
             cmd_args += ["--head", str(head)]
+        if tail:
+            cmd_args += ["--tail", str(tail)]
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Log events listed successfully")

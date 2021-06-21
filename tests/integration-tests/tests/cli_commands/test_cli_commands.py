@@ -190,6 +190,10 @@ def _test_pcluster_get_cluster_log_events(cluster, cfn_init_log_stream):
     std_output = cluster.get_log_events(cfn_init_log_stream, head=10)
     assert_that(std_output).contains("[DEBUG] CloudFormation client initialized with endpoint")
 
-    # Check CFN Stack events stream
-    std_output = cluster.get_log_events("cloudformation-stack-events")
-    assert_that(std_output).contains("CREATE_COMPLETE AWS::CloudFormation::Stack")
+    # Check CFN Stack events stream with tail option
+    std_output = cluster.get_log_events("cloudformation-stack-events", tail=10)
+    assert_that(std_output).contains(f"CREATE_COMPLETE AWS::CloudFormation::Stack {cluster.name}")
+
+    # Check CFN Stack events stream with head option
+    std_output = cluster.get_log_events("cloudformation-stack-events", head=10)
+    assert_that(std_output).contains(f"CREATE_IN_PROGRESS AWS::CloudFormation::Stack {cluster.name} User Initiated")

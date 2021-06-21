@@ -1031,6 +1031,13 @@ class Cluster:
                     next_token=next_token,
                 )
             else:
-                return {"events": AWSApi.instance().cfn.get_stack_events(self.stack_name)}
+                stack_events = AWSApi.instance().cfn.get_stack_events(self.stack_name)
+                stack_events.reverse()
+                if limit:
+                    if start_from_head:
+                        stack_events = stack_events[:limit]
+                    else:
+                        stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
+                return {"events": stack_events}
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}")
