@@ -14,6 +14,8 @@ CHANGELOG
 - Add support for `security_group_id` in packer custom builders. Customers can export `AWS_SECURITY_GROUP_ID` environment variable to specify security group for custom builders when building custom AMIs.
 - SGE: always use shortname as hostname filter with `qstat`. This will make nodewatcher more robust when using custom DHCP option, where the full hostname seen by `SGE` might differ from the hostname returned from EC2 metadata(local-hostname).
 - Transition from IMDSv1 to IMDSv2.
+- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
+  in case recurrent failures are encountered when provisioning nodes.
 
 **CHANGES**
 
