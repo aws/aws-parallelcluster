@@ -17,20 +17,18 @@ from typing import List
 
 import argparse
 from argparse import ArgumentParser, Namespace
-from tabulate import tabulate
 
 from pcluster import utils
 from pcluster.api.models.cluster_status import ClusterStatusEnum
-from pcluster.aws.aws_api import AWSApi
 from pcluster.cli.commands.common import (
     CliCommand,
     CliCommandV3,
     DcvCommand,
-    Iso8601Arg,
+    ExportLogsCommand,
+    GetLogEventsCommand,
     ParallelClusterFlaskClient,
     csv_type,
     print_json,
-    validate_output_file_path,
 )
 from pcluster.constants import PCLUSTER_VERSION_TAG, STACK_EVENTS_LOG_STREAM_NAME
 from pcluster.models.cluster import Cluster
@@ -376,7 +374,7 @@ class DcvConnectCommand(DcvCommand):
         dcv_connect(args)
 
 
-class ExportClusterLogsCommand(CliCommand):
+class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
     """Implement pcluster export-cluster-logs command."""
 
     # CLI
@@ -389,40 +387,14 @@ class ExportClusterLogsCommand(CliCommand):
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Export the logs of the cluster name provided here.")
-        parser.add_argument("--output", help="File path to save log archive to.", type=os.path.realpath)
         # Export options
         parser.add_argument(
             "--bucket",
             required=True,
             help="S3 bucket to export cluster logs data to. It must be in the same region of the cluster",
         )
-        parser.add_argument(
-            "--bucket-prefix",
-            help="Keypath under which exported logs data will be stored in s3 bucket. "
-            "Also serves as top-level directory in resulting archive.",
-        )
-        parser.add_argument(
-            "--keep-s3-objects",
-            action="store_true",
-            help="Keep the exported objects exports to S3. The default behavior is to delete them.",
-        )
+        super()._register_common_command_args(parser)
         # Filters
-        parser.add_argument(
-            "--start-time",
-            type=Iso8601Arg(),
-            help=(
-                "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to cluster's start time"
-            ),
-        )
-        parser.add_argument(
-            "--end-time",
-            type=Iso8601Arg(),
-            help=(
-                "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
-            ),
-        )
         filters_arg = _FiltersArg(accepted_filters=["private-dns-name", "node-type"])
         parser.add_argument(
             "--filters",
@@ -440,14 +412,10 @@ class ExportClusterLogsCommand(CliCommand):
             output_file_path = args.output or os.path.realpath(
                 f"{args.cluster_name}-logs-{datetime.now().timestamp()}.tar.gz"
             )
-            self._validate_command_args(output_file_path)
+            self._validate_output_file_path(output_file_path)
             self._export_cluster_logs(args, output_file_path)
         except Exception as e:
             utils.error(f"Unable to export cluster's logs.\n{e}")
-
-    @staticmethod
-    def _validate_command_args(output_file_path: str):
-        validate_output_file_path(output_file_path)
 
     @staticmethod
     def _export_cluster_logs(args: Namespace, output_file_path: str):
@@ -502,35 +470,10 @@ class ListClusterLogsCommand(CliCommand):
     @staticmethod
     def _list_cluster_logs(args: Namespace):
         cluster = Cluster(args.cluster_name)
-        response = cluster.list_logs(
-            filters=" ".join(args.filters) if args.filters else None,
-            next_token=args.next_token,
-        )
-        # Print CFN Stack events stream
+        logs = cluster.list_logs(filters=" ".join(args.filters) if args.filters else None, next_token=args.next_token)
         if not args.next_token:
-            print("{}\n".format(tabulate(response.get("stackEventsStream", []), headers="keys", tablefmt="plain")))
-
-        if not response.get("logStreams", None):
-            print("There are no cluster's logs saved in CloudWatch.")
-        else:
-            # List CW log streams
-            output_headers = {
-                "logStreamName": "Log Stream Name",
-                "firstEventTimestamp": "First Event",
-                "lastEventTimestamp": "Last Event",
-            }
-            filtered_result = []
-            for item in response.get("logStreams", []):
-                filtered_item = {}
-                for key, output_key in output_headers.items():
-                    value = item.get(key)
-                    if key.endswith("Timestamp"):
-                        value = utils.timestamp_to_isoformat(value)
-                    filtered_item[output_key] = value
-                filtered_result.append(filtered_item)
-            print(tabulate(filtered_result, headers="keys", tablefmt="plain"))
-            if response.get("nextToken", None):
-                print("\nnextToken is: %s", response["nextToken"])
+            logs.print_stack_log_streams()
+        logs.print_cw_log_streams()
 
 
 class _FiltersArg:
@@ -546,7 +489,7 @@ class _FiltersArg:
         return value
 
 
-class GetClusterLogEventsCommand(CliCommand):
+class GetClusterLogEventsCommand(GetLogEventsCommand, CliCommand):
     """Implement pcluster get-cluster-log-events command."""
 
     # CLI
@@ -564,62 +507,17 @@ class GetClusterLogEventsCommand(CliCommand):
             help="Log stream name, as reported by 'pcluster list-cluster-logs' command.",
             required=True,
         )
-        # Filters
-        parser.add_argument(
-            "--start-time",
-            type=Iso8601Arg(),
-            help=(
-                "Start time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted."
-            ),
-        )
-        parser.add_argument(
-            "--end-time",
-            type=Iso8601Arg(),
-            help=(
-                "End time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. "
-            ),
-        )
-        parser.add_argument("--head", help="Gets the first <head> lines of the log stream.", type=int)
-        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream.", type=int)
-        parser.add_argument("--next-token", help="Token for paginated requests.")
-        # Stream utilities
-        parser.add_argument(
-            "--stream",
-            help=(
-                "Gets the log stream and waits for additional output to be produced. "
-                "It can be used in conjunction with --tail to start from the latest <tail> lines of the log stream. "
-                "It doesn't work for CloudFormation Stack Events log stream."
-            ),
-            action="store_true",
-        )
-        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds.", type=int)
+        super()._register_common_command_args(parser)
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
-            self._validate_args(args)
+            self._validate_common_args(args)
             self._get_cluster_log_events(args)
         except Exception as e:
             utils.error(f"Unable to get cluster's log events.\n{e}")
 
     @staticmethod
-    def _validate_args(args: Namespace):
-        if args.head and args.tail:
-            utils.error("Parameters validation error: 'tail' and 'head' options cannot be set at the same time")
-
-        if args.stream:
-            if args.next_token:
-                utils.error(
-                    "Parameters validation error: 'stream' and 'next-token' options cannot be set at the same time"
-                )
-            if args.head:
-                utils.error("Parameters validation error: 'stream' and 'head' options cannot be set at the same time")
-        else:
-            if args.stream_period:
-                utils.error("Parameters validation error: 'stream-period' can be used only with 'stream' option")
-
-    def _get_cluster_log_events(self, args: Namespace):
+    def _get_cluster_log_events(args: Namespace):
         """Get log events for a specific log stream of the cluster saved in CloudWatch."""
         kwargs = {
             "log_stream_name": args.log_stream_name,
@@ -630,41 +528,20 @@ class GetClusterLogEventsCommand(CliCommand):
             "next_token": args.next_token,
         }
         cluster = Cluster(args.cluster_name)
-        response = cluster.get_log_events(**kwargs)
+        log_events = cluster.get_log_events(**kwargs)
 
-        if args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
-            # Print log stream events
-            self._print_log_events(response.get("events", []))
-            if args.stream:
-                # stream content
-                next_token = response.get("nextForwardToken", None)
-                while next_token is not None and args.stream:
-                    LOGGER.debug("NextToken is %s", next_token)
-                    period = args.stream_period or 5
-                    LOGGER.debug("Waiting other %s seconds...", period)
-                    time.sleep(period)
+        log_events.print_events()
+        if args.stream and args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
+            # stream content
+            next_token = log_events.next_ftoken
+            while next_token is not None:
+                period = args.stream_period or 5
+                LOGGER.debug("Waiting other %s seconds...", period)
+                time.sleep(period)
 
-                    kwargs["next_token"] = next_token
-                    result = cluster.get_log_events(**kwargs)
-                    next_token = result.get("nextForwardToken", None)
-                    self._print_log_events(result.get("events", []))
-            else:
-                LOGGER.info("\nnextBackwardToken is: %s", response["nextBackwardToken"])
-                LOGGER.info("nextForwardToken is: %s", response["nextForwardToken"])
+                kwargs["next_token"] = next_token
+                log_events = cluster.get_log_events(**kwargs)
+                next_token = log_events.next_ftoken
+                log_events.print_events()
         else:
-            # Print CFN stack events
-            for event in response.get("events", []):
-                print(AWSApi.instance().cfn.format_event(event))
-
-    @staticmethod
-    def _print_log_events(events: list):
-        """
-        Print given events.
-
-        :param events: list of boto3 events
-        """
-        if not events:
-            print("No events found.")
-        else:
-            for event in events:
-                print("{0}: {1}".format(utils.timestamp_to_isoformat(event["timestamp"]), event["message"]))
+            log_events.print_next_tokens()

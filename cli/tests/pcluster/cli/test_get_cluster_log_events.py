@@ -12,6 +12,8 @@ import time
 import pytest
 from assertpy import assert_that
 
+from pcluster.models.common_resources import LogStream
+
 BASE_COMMAND = ["pcluster", "get-cluster-log-events"]
 REQUIRED_ARGS = {"cluster_name": "clustername", "log_stream_name": "log-stream-name"}
 
@@ -76,38 +78,41 @@ class TestGetClusterLogEventsCommand:
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, test_datadir, assert_out_err, args, expected_error):
         mocked_result = [
-            {
-                "events": [
-                    {
-                        "timestamp": 1622802790248,
-                        "message": (
-                            "2021-06-04 10:33:10,248 [DEBUG] CloudFormation client initialized "
-                            "with endpoint https://cloudformation.eu-west-1.amazonaws.com"
-                        ),
-                        "ingestionTime": 1622802842382,
-                    },
-                    {
-                        "timestamp": 1622802790248,
-                        "message": (
-                            "2021-06-04 10:33:10,248 [DEBUG] Describing resource HeadNodeLaunchTemplate in "
-                            "stack test22"
-                        ),
-                        "ingestionTime": 1622802842382,
-                    },
-                    {
-                        "timestamp": 1622802790390,
-                        "message": (
-                            "2021-06-04 10:33:10,390 [INFO] -----------------------Starting build"
-                            "-----------------------"
-                        ),
-                        "ingestionTime": 1622802842382,
-                    },
-                ],
-                "nextForwardToken": "f/3618",
-                "nextBackwardToken": "b/3619",
-                "ResponseMetadata": {},
-            }
-        ] * 2 + [{}]
+            LogStream(
+                "logstream",
+                {
+                    "events": [
+                        {
+                            "timestamp": 1622802790248,
+                            "message": (
+                                "2021-06-04 10:33:10,248 [DEBUG] CloudFormation client initialized "
+                                "with endpoint https://cloudformation.eu-west-1.amazonaws.com"
+                            ),
+                            "ingestionTime": 1622802842382,
+                        },
+                        {
+                            "timestamp": 1622802790248,
+                            "message": (
+                                "2021-06-04 10:33:10,248 [DEBUG] Describing resource HeadNodeLaunchTemplate in "
+                                "stack test22"
+                            ),
+                            "ingestionTime": 1622802842382,
+                        },
+                        {
+                            "timestamp": 1622802790390,
+                            "message": (
+                                "2021-06-04 10:33:10,390 [INFO] -----------------------Starting build"
+                                "-----------------------"
+                            ),
+                            "ingestionTime": 1622802842382,
+                        },
+                    ],
+                    "nextForwardToken": "f/3618",
+                    "nextBackwardToken": "b/3619",
+                    "ResponseMetadata": {},
+                },
+            )
+        ] * 2 + [LogStream("logstream", {})]
         get_cluster_log_events_mock = mocker.patch(
             "pcluster.cli.commands.cluster.Cluster.get_log_events", side_effect=mocked_result
         )

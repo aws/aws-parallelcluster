@@ -12,15 +12,12 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-import gzip
 import json
 import logging
 import os
-import tarfile
 import tempfile
 import time
 from copy import deepcopy
-from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Set, Tuple
 
@@ -50,6 +47,13 @@ from pcluster.models.cluster_resources import (
     ListClusterLogsFiltersParser,
 )
 from pcluster.models.common import BadRequest, Conflict, LimitExceeded, parse_config
+from pcluster.models.common_resources import (
+    CloudWatchLogsExporter,
+    Logs,
+    LogStream,
+    create_logs_archive,
+    export_stack_events,
+)
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
@@ -787,52 +791,25 @@ class Cluster:
             raise ClusterActionError(f"Cluster {self.name} does not exist")
 
         try:
-            with tempfile.TemporaryDirectory() as logs_archive_tempdir:
-                log_streams_dir = None
+            with tempfile.TemporaryDirectory() as output_tempdir:
+                files_to_archive = []
                 if self.config.is_cw_logging_enabled:
-                    # check bucket
-                    bucket_region = AWSApi.instance().s3.get_bucket_region(bucket_name=bucket)
-                    if bucket_region != get_region():
-                        raise ClusterActionError(
-                            "The bucket used for exporting logs must be in the same region as the cluster. "
-                            f"The given cluster is in {get_region()}, but the given bucket's region is {bucket_region}."
-                        )
-
-                    # If the default bucket prefix is being used and there's nothing underneath that prefix already
-                    # then we can delete everything under that prefix after downloading the data
-                    # (unless keep-s3-objects is specified)
-                    delete_everything_under_prefix = False
-                    if not bucket_prefix:
-                        bucket_prefix = f"{self.name}-logs-{datetime.now().timestamp()}"
-                        delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, bucket_prefix)
-
-                    # Start export task
+                    # Export logs from CloudWatch
                     export_logs_filters = self._init_export_logs_filters(start_time, end_time, filters)
-                    task_id = self._export_logs_to_s3(
-                        log_stream_prefix=export_logs_filters.log_stream_prefix,
+                    logs_exporter = CloudWatchLogsExporter(
+                        resource_id=self.name,
+                        log_group_name=self.stack.log_group_name,
                         bucket=bucket,
+                        output_dir=output_tempdir,
                         bucket_prefix=bucket_prefix,
+                        keep_s3_objects=keep_s3_objects,
+                    )
+                    log_streams_dir = logs_exporter.execute(
+                        log_stream_prefix=export_logs_filters.log_stream_prefix,
                         start_time=export_logs_filters.start_time,
                         end_time=export_logs_filters.end_time,
                     )
-
-                    # Download exported S3 objects to tempdir
-                    try:
-                        log_streams_dir = os.path.join(logs_archive_tempdir, bucket_prefix)
-                        self._download_s3_objects_with_prefix(bucket, bucket_prefix, task_id, log_streams_dir)
-                        LOGGER.debug("Archive of CloudWatch logs from cluster %s saved to %s", self.name, output)
-                    except OSError:
-                        raise ClusterActionError(
-                            "Unable to download archive logs from S3, double check your filters are correct."
-                        )
-                    finally:
-                        if self.config.is_cw_logging_enabled and not keep_s3_objects:
-                            if delete_everything_under_prefix:
-                                delete_key = bucket_prefix
-                            else:
-                                delete_key = "/".join((bucket_prefix, task_id))
-                            LOGGER.debug("Cleaning up S3 bucket %s. Deleting all objects under %s", bucket, delete_key)
-                            AWSApi.instance().s3_resource.delete_objects(bucket_name=bucket, prefix=delete_key)
+                    files_to_archive.append(log_streams_dir)
                 else:
                     LOGGER.debug(
                         "CloudWatch logging is not enabled for cluster %s, only CFN Stack events will be exported.",
@@ -840,26 +817,13 @@ class Cluster:
                     )
 
                 # Get stack events and write them into a file
-                stack_events_file = os.path.join(logs_archive_tempdir, STACK_EVENTS_LOG_STREAM_NAME)
-                self._download_stack_events_file(stack_events_file)
+                stack_events_file = os.path.join(output_tempdir, STACK_EVENTS_LOG_STREAM_NAME)
+                export_stack_events(self.stack_name, stack_events_file)
+                files_to_archive.append(stack_events_file)
 
-                self._create_logs_archive(stack_events_file, log_streams_dir, output, bucket_prefix)
+                create_logs_archive(files_to_archive, output)
         except AWSClientError as e:
             raise ClusterActionError(f"Unexpected error when exporting cluster's logs: {e}")
-
-    def _create_logs_archive(self, stack_events_file, log_streams_dir, output, log_streams_dir_archive_name):
-        LOGGER.debug("Creating archive of logs and saving it to %s", output)
-        with tarfile.open(output, "w:gz") as tar:
-            tar.add(stack_events_file, arcname=STACK_EVENTS_LOG_STREAM_NAME)
-            if log_streams_dir:
-                tar.add(log_streams_dir, arcname=log_streams_dir_archive_name)
-
-    def _download_stack_events_file(self, stack_events_file):
-        """Save CFN stack events into a file."""
-        stack_events = AWSApi.instance().cfn.get_stack_events(self.stack_name)
-        with open(stack_events_file, "w") as cfn_events_file:
-            for event in stack_events:
-                cfn_events_file.write("%s\n" % AWSApi.instance().cfn.format_event(event))
 
     def _init_export_logs_filters(self, start_time, end_time, filters):
         try:
@@ -874,69 +838,6 @@ class Cluster:
         except FiltersParserError as e:
             raise ClusterActionError(str(e))
         return export_logs_filters
-
-    def _export_logs_to_s3(self, bucket, bucket_prefix=None, log_stream_prefix=None, start_time=None, end_time=None):
-        """Export the contents of a cluster's CloudWatch log group to an s3 bucket."""
-        try:
-            LOGGER.info("Starting export of logs from log group %s to s3 bucket %s", self.stack.log_group_name, bucket)
-            task_id = AWSApi.instance().logs.create_export_task(
-                log_group_name=self.stack.log_group_name,
-                log_stream_name_prefix=log_stream_prefix,
-                bucket=bucket,
-                bucket_prefix=bucket_prefix,
-                start_time=start_time,
-                end_time=end_time,
-            )
-
-            result_status = self._wait_for_task_completion(task_id)
-            if result_status != "COMPLETED":
-                raise ClusterActionError(f"CloudWatch logs export task {task_id} failed with status: {result_status}")
-            return task_id
-        except AWSClientError as e:
-            # TODO use log type/class
-            if "Please check if CloudWatch Logs has been granted permission to perform this operation." in str(e):
-                raise _cluster_error_mapper(
-                    e,
-                    f"CloudWatch Logs needs GetBucketAcl and PutObject permission for the s3 bucket {bucket}. "
-                    "See https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/S3ExportTasks.html#S3Permissions "
-                    "for more details.",
-                )
-            raise _cluster_error_mapper(e, f"Unexpected error when starting export task: {e}")
-
-    @staticmethod
-    def _wait_for_task_completion(task_id):
-        """Wait for the CloudWatch logs export task given by task_id to finish."""
-        LOGGER.info("Waiting for export task with task ID=%s to finish...", task_id)
-        status = "PENDING"
-        still_running_statuses = ("PENDING", "PENDING_CANCEL", "RUNNING")
-        while status in still_running_statuses:
-            time.sleep(1)
-            status = AWSApi.instance().logs.get_export_task_status(task_id)
-        return status
-
-    @staticmethod
-    def _download_s3_objects_with_prefix(bucket_name, bucket_prefix, task_id, destdir):
-        """Download all object in bucket with given prefix into destdir."""
-        prefix = f"{bucket_prefix}/{task_id}"
-        LOGGER.debug("Downloading exported logs from s3 bucket %s (under key %s) to %s", bucket_name, prefix, destdir)
-        for archive_object in AWSApi.instance().s3_resource.get_objects(bucket_name=bucket_name, prefix=prefix):
-            decompressed_path = os.path.dirname(os.path.join(destdir, archive_object.key))
-            decompressed_path = decompressed_path.replace(
-                r"{unwanted_path_segment}{sep}".format(unwanted_path_segment=prefix, sep=os.path.sep), ""
-            )
-            compressed_path = f"{decompressed_path}.gz"
-
-            LOGGER.debug("Downloading object with key=%s to %s", archive_object.key, compressed_path)
-            os.makedirs(os.path.dirname(compressed_path), exist_ok=True)
-            AWSApi.instance().s3_resource.download_file(
-                bucket_name=bucket_name, key=archive_object.key, output=compressed_path
-            )
-
-            # Create a decompressed copy of the downloaded archive and remove the original
-            LOGGER.debug("Extracting object at %s to %s", compressed_path, decompressed_path)
-            with gzip.open(compressed_path) as gfile, open(decompressed_path, "wb") as outfile:
-                outfile.write(gfile.read())
-            os.remove(compressed_path)
 
     def list_logs(self, filters: str = None, next_token: str = None):
         """
@@ -953,10 +854,10 @@ class Cluster:
                 raise ClusterActionError(f"Cluster {self.name} does not exist")
 
             LOGGER.debug("Listing log streams from log group %s", self.stack.log_group_name)
-            response = {}
+            response = Logs()
             if self.config.is_cw_logging_enabled:
                 list_logs_filters = self._init_list_logs_filters(filters)
-                response = AWSApi.instance().logs.describe_log_streams(
+                response.cw_log_streams = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self.stack.log_group_name,
                     log_stream_name_prefix=list_logs_filters.log_stream_prefix,
                     next_token=next_token,
@@ -966,7 +867,7 @@ class Cluster:
 
             if not next_token:
                 # add CFN Stack information only at the first request, when next-token is not specified
-                response["stackEventsStream"] = [
+                response.stack_log_streams = [
                     {
                         "Stack Events Stream": STACK_EVENTS_LOG_STREAM_NAME,
                         "Cluster Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
@@ -981,9 +882,7 @@ class Cluster:
     def _init_list_logs_filters(self, filters):
         try:
             list_logs_filters = ListClusterLogsFiltersParser(
-                head_node=self.head_node_instance,
-                log_group_name=self.stack.log_group_name,
-                filters=filters,
+                head_node=self.head_node_instance, log_group_name=self.stack.log_group_name, filters=filters
             )
             list_logs_filters.validate()
         except FiltersParserError as e:
@@ -1020,7 +919,7 @@ class Cluster:
                 if not self.config.is_cw_logging_enabled:
                     raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
 
-                return AWSApi.instance().logs.get_log_events(
+                log_events_response = AWSApi.instance().logs.get_log_events(
                     log_group_name=self.stack.log_group_name,
                     log_stream_name=log_stream_name,
                     end_time=isoformat_to_epoch(end_time) if end_time else None,
@@ -1029,6 +928,7 @@ class Cluster:
                     start_from_head=start_from_head,
                     next_token=next_token,
                 )
+                return LogStream(log_stream_name, log_events_response)
             else:
                 stack_events = AWSApi.instance().cfn.get_stack_events(self.stack_name)
                 stack_events.reverse()
@@ -1037,6 +937,6 @@ class Cluster:
                         stack_events = stack_events[:limit]
                     else:
                         stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
-                return {"events": stack_events}
+                return LogStream(log_stream_name, {"events": stack_events})
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}")

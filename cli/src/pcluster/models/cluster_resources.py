@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
-from datetime import datetime
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
@@ -154,7 +153,7 @@ class ClusterLogsFiltersParser:
                 raise FiltersParserError("Private DNS Name and Node Type filters cannot be set at the same time.")
 
 
-class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser, LogGroupTimeFiltersParser):
+class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser):
     """Class to manage export cluster logs filters."""
 
     def __init__(
@@ -165,13 +164,21 @@ class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser, LogGroupTimeFilte
         end_time: str = None,
         filters: str = None,
     ):
-        super(ClusterLogsFiltersParser).__init__(head_node, filters)
-        super(LogGroupTimeFiltersParser).__init__(log_group_name, start_time, end_time)
+        super().__init__(head_node, filters)
+        self.time_parser = LogGroupTimeFiltersParser(log_group_name, start_time, end_time)
+
+    @property
+    def start_time(self):
+        return self.time_parser.start_time
+
+    @property
+    def end_time(self):
+        return self.time_parser.end_time
 
     def validate(self):
         """Check filter consistency."""
-        super(ClusterLogsFiltersParser).validate()
-        super(LogGroupTimeFiltersParser).validate(log_stream_prefix=self.log_stream_prefix)
+        super().validate()
+        self.time_parser.validate(log_stream_prefix=self.log_stream_prefix)
 
 
 class ListClusterLogsFiltersParser(ClusterLogsFiltersParser):
