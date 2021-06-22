@@ -257,12 +257,10 @@ class TestCluster:
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack")
         mocker.patch("pcluster.aws.cfn.CfnClient.delete_stack")
         persist_cloudwatch_log_groups_mock = mocker.patch.object(cluster, "_persist_cloudwatch_log_groups")
-        terminate_nodes_mock = mocker.patch.object(cluster, "_terminate_nodes")
 
         cluster.delete(keep_logs)
 
         assert_that(persist_cloudwatch_log_groups_mock.called).is_equal_to(persist_called)
-        assert_that(terminate_nodes_mock.call_count).is_equal_to(1 if terminate_instances_called else 0)
 
     @pytest.mark.parametrize(
         "template, expected_retain, fail_on_persist",

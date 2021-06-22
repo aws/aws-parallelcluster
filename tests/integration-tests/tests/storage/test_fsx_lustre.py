@@ -444,7 +444,7 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name, region):
         "sudo lfs hsm_archive {mount_dir}/file_to_export && sleep 5".format(mount_dir=mount_dir)
     )
     remote_command_executor.run_remote_command(
-        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
             region=region, bucket_name=bucket_name
         )
     )
@@ -518,7 +518,7 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(task.get("Lifecycle")).is_equal_to("SUCCEEDED")
 
     remote_command_executor.run_remote_command(
-        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
             region=region, bucket_name=bucket_name
         )
     )

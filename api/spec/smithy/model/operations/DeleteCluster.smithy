@@ -23,13 +23,6 @@ structure DeleteClusterRequest {
 
     @httpQuery("region")
     region: Region,
-    @httpQuery("retainLogs")
-    @documentation("Retain cluster logs on delete. Defaults to True.")
-    retainLogs: Boolean,
-    @idempotencyToken
-    @httpQuery("clientToken")
-    @documentation("Idempotency token that can be set by the client so that retries for the same request are idempotent")
-    clientToken: String,
 }
 
 structure DeleteClusterResponse {

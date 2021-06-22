@@ -22,6 +22,7 @@ from pcluster.config.cluster_config import (
     HeadNodeNetworking,
     Iam,
     Image,
+    Imds,
     QueueNetworking,
     Raid,
     S3Access,
@@ -86,9 +87,12 @@ def dummy_head_node(mocker):
     head_node_networking.assign_public_ip = True
     head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
     head_node_dcv = Dcv(enabled=True, port=1024)
+    head_node_imds = Imds(secured=True)
     ssh = Ssh(key_name="test")
 
-    head_node = HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv)
+    head_node = HeadNode(
+        instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv, imds=head_node_imds
+    )
 
     disable_ht_cpu_opts_mock = mocker.PropertyMock(return_value="true")
     mocker.patch(

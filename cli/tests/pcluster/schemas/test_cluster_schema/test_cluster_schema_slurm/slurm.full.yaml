@@ -46,6 +46,8 @@ HeadNode:
       - BucketName: string
         KeyName: String
         EnableWriteAccess: True
+  Imds:
+    Secured: True
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
