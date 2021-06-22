@@ -35,6 +35,9 @@ task generatePythonClient(
     generatorName = "python"
     inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.yaml".toString()
     outputDir = "$projectDir/generated/python-client".toString()
+    configOptions = [
+            packageName: "pcluster.api.client"
+    ]
 }
 
 task buildSmithyModel(type:Exec) {
