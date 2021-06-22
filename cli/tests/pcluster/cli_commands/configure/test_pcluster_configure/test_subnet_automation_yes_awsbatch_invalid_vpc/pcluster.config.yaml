@@ -6,6 +6,8 @@ HeadNode:
     SubnetId: subnet-12345678
   Ssh:
     KeyName: key1
+  Imds:
+    Secured: false
 Scheduling:
   Scheduler: awsbatch
   Queues:
