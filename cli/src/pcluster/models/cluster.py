@@ -58,6 +58,8 @@ from pcluster.validators.common import FailureLevel, ValidationResult
 
 LOGGER = logging.getLogger(__name__)
 
+# pylint: disable=C0302
+
 
 class NodeType(Enum):
     """Enum that identifies the cluster node type."""
