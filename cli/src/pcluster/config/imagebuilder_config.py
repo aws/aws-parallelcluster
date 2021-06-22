@@ -21,8 +21,13 @@ from pcluster.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
-from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator, ComponentsValidator
+from pcluster.validators.imagebuilder_validators import (
+    AMIVolumeSizeValidator,
+    ComponentsValidator,
+    SecurityGroupsAndSubnetValidator,
+)
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
+from pcluster.validators.networking_validators import SecurityGroupsValidator
 from pcluster.validators.s3_validators import S3BucketRegionValidator, S3BucketValidator
 
 # ---------------------- Image ---------------------- #
@@ -143,6 +148,10 @@ class Build(Resource):
         self._register_validator(
             ComponentsValidator,
             components=self.components,
+        )
+        self._register_validator(SecurityGroupsValidator, security_group_ids=self.security_group_ids)
+        self._register_validator(
+            SecurityGroupsAndSubnetValidator, security_group_ids=self.security_group_ids, subnet_id=self.subnet_id
         )
 
 

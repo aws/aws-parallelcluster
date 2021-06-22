@@ -41,3 +41,16 @@ class ComponentsValidator(Validator):
                 "It's not possible to specify more than 15 build components.".format(len(components)),
                 FailureLevel.ERROR,
             )
+
+
+class SecurityGroupsAndSubnetValidator(Validator):
+    """Security Groups and Subnet validator."""
+
+    def _validate(self, security_group_ids: list, subnet_id: str):
+        """Validate security groups is required if subnet is specified."""
+        if subnet_id:
+            if not security_group_ids:
+                self._add_failure(
+                    "Subnet id {0} is specified, security groups is required.".format(subnet_id),
+                    FailureLevel.ERROR,
+                )

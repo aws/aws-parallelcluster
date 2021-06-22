@@ -12,7 +12,11 @@
 import pytest
 
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator, ComponentsValidator
+from pcluster.validators.imagebuilder_validators import (
+    AMIVolumeSizeValidator,
+    ComponentsValidator,
+    SecurityGroupsAndSubnetValidator,
+)
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
 
@@ -109,4 +113,24 @@ def test_ami_volume_size_validator(mocker, image, volume_size, expected_message,
 )
 def test_components_validator(components, expected_message):
     actual_failures = ComponentsValidator().execute(components)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "security_group_ids, subnet_ids, expected_message",
+    [
+        (
+            ["sg-0058826a55bae6679", "sg-01971157d4012122a"],
+            "subnet-0d03dc52",
+            None,
+        ),
+        (
+            [],
+            "subnet-0d03dc52",
+            "Subnet id subnet-0d03dc52 is specified, security groups is required",
+        ),
+    ],
+)
+def test_security_groups_and_subnet_validator(security_group_ids, subnet_ids, expected_message):
+    actual_failures = SecurityGroupsAndSubnetValidator().execute(security_group_ids, subnet_ids)
     assert_failure_messages(actual_failures, expected_message)
