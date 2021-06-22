@@ -9,7 +9,13 @@
 # pylint: disable=W0613
 import os as os_lib
 
-from pcluster.api.controllers.common import configure_aws_region, convert_errors, get_validator_suppressors, read_config
+from pcluster.api.controllers.common import (
+    configure_aws_region,
+    convert_errors,
+    get_validator_suppressors,
+    http_success_status_code,
+    read_config,
+)
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,
     validation_results_to_config_validation_errors,
@@ -46,6 +52,7 @@ from pcluster.validators.common import FailureLevel
 
 
 @configure_aws_region(is_query_string_arg=False)
+@http_success_status_code(202)
 @convert_errors()
 def build_image(
     build_image_request_content,
@@ -112,7 +119,7 @@ def build_image(
 
         return BuildImageResponseContent(
             image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
-            validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,
+            validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures),
         )
     except BadRequestImageBuilderActionError as e:
         errors = validation_results_to_config_validation_errors(e.validation_failures)
@@ -122,6 +129,7 @@ def build_image(
 
 
 @configure_aws_region()
+@http_success_status_code(202)
 @convert_errors()
 def delete_image(image_id, region=None, client_token=None, force=None):
     """
