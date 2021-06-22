@@ -285,7 +285,7 @@ class TestDeleteImage:
         response = self._send_test_request(client, image_id, region, force)
 
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.status_code).is_equal_to(202)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     def test_delete_available_ec2_image_with_stack_yet_to_be_removed_succeeds(self, mocker, client):
@@ -492,18 +492,16 @@ class TestBuildImage:
                 "imageId": "image1",
                 "region": "eu-west-1",
                 "version": "3.0.0",
-            }
+            },
+            "validationMessages": [{"level": "INFO", "type": "type1", "message": "suppressed failure"}]
+            if suppressed_validation_errors
+            else [],
         }
-
-        if suppressed_validation_errors:
-            expected_response["validationMessages"] = [
-                {"level": "INFO", "type": "type1", "message": "suppressed failure"}
-            ]
 
         response = self._send_test_request(client, dryrun=False, suppress_validators=suppress_validators)
 
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(200)
+            assert_that(response.status_code).is_equal_to(202)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
         mocked_call.assert_called_once()
