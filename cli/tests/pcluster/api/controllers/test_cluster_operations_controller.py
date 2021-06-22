@@ -531,7 +531,15 @@ class TestDeleteCluster:
                 }
             )
 
-    def test_cluster_action_error(self, client, mocker):
+    @pytest.mark.parametrize(
+        "error_type, error_code",
+        [
+            (LimitExceededClusterActionError, 429),
+            (BadRequestClusterActionError, 400),
+            (ClusterActionError, 500),
+        ],
+    )
+    def test_cluster_action_error(self, client, mocker, error_type, error_code):
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
             return_value=cfn_describe_stack_mock_response(),
@@ -539,16 +547,18 @@ class TestDeleteCluster:
         mocker.patch(
             "pcluster.models.cluster.Cluster.delete",
             auto_spec=True,
-            side_effect=ClusterActionError("error message"),
+            side_effect=error_type("error message"),
         )
 
         response = self._send_test_request(client)
 
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestClusterActionError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(500)
-            assert_that(response.get_json()).is_equal_to(
-                {"message": "Failed when deleting cluster due to: error message."}
-            )
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 class TestDescribeCluster:
