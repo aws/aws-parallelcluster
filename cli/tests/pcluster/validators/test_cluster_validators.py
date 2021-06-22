@@ -11,7 +11,7 @@
 import pytest
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, SCHEDULERS_SUPPORTING_IMDS_SECURED
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
@@ -28,6 +28,7 @@ from pcluster.validators.cluster_validators import (
     EfaValidator,
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
+    HeadNodeImdsValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
@@ -43,7 +44,7 @@ from tests.utils import MockedBoto3Request
 
 @pytest.fixture()
 def boto3_stubber_path():
-    return "pcluster.validators.cluster_validators.boto3"
+    return "pcluster.aws.common.boto3"
 
 
 @pytest.mark.parametrize(
@@ -86,12 +87,10 @@ def test_region_validator(region, expected_message):
     "os, scheduler, expected_message",
     [
         ("centos7", "slurm", None),
-        ("centos8", "slurm", None),
         ("ubuntu1804", "slurm", None),
         ("ubuntu2004", "slurm", None),
         ("alinux2", "slurm", None),
         ("centos7", "awsbatch", "scheduler supports the following operating systems"),
-        ("centos8", "awsbatch", "scheduler supports the following operating systems"),
         ("ubuntu1804", "awsbatch", "scheduler supports the following operating systems"),
         ("ubuntu2004", "awsbatch", "scheduler supports the following operating systems"),
         ("alinux2", "awsbatch", None),
@@ -358,13 +357,11 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
         # All OSes supported for x86_64
         ("alinux2", "x86_64", None),
         ("centos7", "x86_64", None),
-        ("centos8", "x86_64", None),
         ("ubuntu1804", "x86_64", None),
         ("ubuntu2004", "x86_64", None),
         # Only a subset of OSes supported for arm64
         ("alinux2", "arm64", None),
         ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
-        ("centos8", "arm64", None),
         ("ubuntu1804", "arm64", None),
         ("ubuntu2004", "arm64", None),
     ],
@@ -624,13 +621,11 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
         # Supported combinations
         ("x86_64", "alinux2", None),
         ("x86_64", "centos7", None),
-        ("x86_64", "centos8", None),
         ("x86_64", "ubuntu1804", None),
         ("x86_64", "ubuntu2004", None),
         ("arm64", "ubuntu1804", None),
         ("arm64", "ubuntu2004", None),
         ("arm64", "alinux2", None),
-        ("arm64", "centos8", None),
         # Unsupported combinations
         (
             "UnsupportedArchitecture",
@@ -703,12 +698,10 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
     "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
     [
         (True, "centos7", "t2.medium", None, None, None),
-        (True, "centos8", "t2.medium", None, None, None),
         (True, "ubuntu1804", "t2.medium", None, None, None),
         (True, "ubuntu1804", "t2.medium", None, "1.2.3.4/32", None),
         (True, "ubuntu2004", "t2.medium", None, None, None),
         (True, "centos7", "t2.medium", "0.0.0.0/0", 8443, "port 8443 to the world"),
-        (True, "centos8", "t2.medium", "0.0.0.0/0", 9090, "port 9090 to the world"),
         (True, "alinux2", "t2.medium", None, None, None),
         (True, "alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
         (True, "alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
@@ -717,7 +710,6 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
         (True, "alinux2", "m6g.xlarge", None, None, None),
         (True, "centos7", "m6g.xlarge", None, None, "Please double check the os configuration"),
         (True, "ubuntu2004", "m6g.xlarge", None, None, "Please double check the os configuration"),
-        (True, "centos8", "m6g.xlarge", None, None, None),
     ],
 )
 def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expected_message):
@@ -762,4 +754,28 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
 )
 def test_intel_hpc_os_validator(os, expected_message):
     actual_failures = IntelHpcOsValidator().execute(os)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "imds_secured, scheduler, expected_message",
+    [
+        (None, "slurm", None),
+        (True, "slurm", None),
+        (False, "slurm", None),
+        (None, "awsbatch", None),
+        (False, "awsbatch", None),
+        (
+            True,
+            "awsbatch",
+            f"IMDS secured cannot be enabled in Head Node when using scheduler awsbatch. "
+            f"Supported schedulers are: {','.join(SCHEDULERS_SUPPORTING_IMDS_SECURED)}",
+        ),
+        (None, None, "Cannot validate IMDS configuration with scheduler None."),
+        (True, None, "Cannot validate IMDS configuration with scheduler None."),
+        (False, None, "Cannot validate IMDS configuration with scheduler None."),
+    ],
+)
+def test_head_node_imds_validator(imds_secured, scheduler, expected_message):
+    actual_failures = HeadNodeImdsValidator().execute(imds_secured=imds_secured, scheduler=scheduler)
     assert_failure_messages(actual_failures, expected_message)

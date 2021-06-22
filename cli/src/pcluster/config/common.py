@@ -14,14 +14,55 @@
 #
 import json
 import logging
-from abc import ABC
-from typing import List
+from abc import ABC, abstractmethod
+from typing import List, Set
 
-from pcluster.validators.common import ValidationResult
+from pcluster.validators.common import ValidationResult, Validator
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
 from pcluster.validators.s3_validators import UrlValidator
 
 LOGGER = logging.getLogger(__name__)
+
+
+class ValidatorSuppressor(ABC):
+    """Interface for a class that encapsulates the logic to suppress config validators."""
+
+    @abstractmethod
+    def suppress_validator(self, validator: Validator) -> bool:
+        """Return True if the given validator needs to be suppressed."""
+        pass
+
+
+class AllValidatorsSuppressor(ValidatorSuppressor):
+    """Suppressor that suppresses all validators."""
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, AllValidatorsSuppressor)
+
+    def __hash__(self) -> int:
+        return hash(1)
+
+    def suppress_validator(self, validator: Validator) -> bool:  # noqa: D102
+        return True
+
+
+class TypeMatchValidatorsSuppressor(ValidatorSuppressor):
+    """Suppressor that suppresses validators based on their type."""
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, TypeMatchValidatorsSuppressor):
+            return o._validators_to_suppress == self._validators_to_suppress
+        return False
+
+    def __hash__(self) -> int:
+        return hash("".join(sorted(self._validators_to_suppress)))
+
+    def __init__(self, validators_to_suppress: Set[str]):
+        super().__init__()
+        self._validators_to_suppress = validators_to_suppress
+
+    def suppress_validator(self, validator: Validator) -> bool:  # noqa: D102
+        return validator.type in self._validators_to_suppress
 
 
 class Resource(ABC):
@@ -82,6 +123,7 @@ class Resource(ABC):
         # Parameters registry
         self.__params = {}
         self._validation_failures: List[ValidationResult] = []
+        self._validators: List = []
         self.implied = implied
 
     @property
@@ -125,27 +167,37 @@ class Resource(ABC):
         """Create a resource attribute backed by a Configuration Parameter."""
         return Resource.Param(value, default=default, update_policy=update_policy)
 
-    def validate(self) -> List[ValidationResult]:
+    def validate(self, validator_suppressor_list: List[ValidatorSuppressor] = None) -> List[ValidationResult]:
         """Execute registered validators."""
-        # Cleanup failures
+        # Cleanup failures and validators
         self._validation_failures.clear()
 
         # Call validators for nested resources
         for attr, value in self.__dict__.items():
             if isinstance(value, Resource):
                 # Validate nested Resources
-                self._validation_failures.extend(value.validate())
+                self._validation_failures.extend(value.validate(validator_suppressor_list))
             if isinstance(value, list) and value:
                 # Validate nested lists of Resources
                 for item in self.__getattribute__(attr):
                     if isinstance(item, Resource):
-                        self._validation_failures.extend(item.validate())
+                        self._validation_failures.extend(item.validate(validator_suppressor_list))
 
         # Update validators to be executed according to current status of the model and order by priority
-        self._validate()
+        self._validators.clear()
+        self._register_validators()
+        for validator_class, validator_args in self._validators:
+            validator = validator_class()
+            if validator_suppressor_list and any(
+                suppressor.suppress_validator(validator) for suppressor in validator_suppressor_list
+            ):
+                LOGGER.debug("Suppressing validator %s", validator_class.__name__)
+                continue
+            LOGGER.debug("Executing validator %s", validator_class.__name__)
+            self._validation_failures.extend(validator_class().execute(**validator_args))
         return self._validation_failures
 
-    def _validate(self):
+    def _register_validators(self):
         """
         Execute validators.
 
@@ -153,10 +205,9 @@ class Resource(ABC):
         """
         pass
 
-    def _execute_validator(self, validator_class, **validator_args):
+    def _register_validator(self, validator_class, **validator_args):
         """Execute the validator."""
-        self._validation_failures.extend(validator_class().execute(**validator_args))
-        return self._validation_failures
+        self._validators.append((validator_class, validator_args))
 
     def __repr__(self):
         """Return a human readable representation of the Resource object."""
@@ -188,8 +239,8 @@ class AdditionalIamPolicy(Resource):
         super().__init__()
         self.policy = Resource.init_param(policy)
 
-    def _validate(self):
-        self._execute_validator(AdditionalIamPolicyValidator, policy=self.policy)
+    def _register_validators(self):
+        self._register_validator(AdditionalIamPolicyValidator, policy=self.policy)
 
 
 class Cookbook(Resource):
@@ -201,9 +252,9 @@ class Cookbook(Resource):
         self.extra_chef_attributes = Resource.init_param(extra_chef_attributes)
         # TODO: add validator
 
-    def _validate(self):
+    def _register_validators(self):
         if self.chef_cookbook is not None:
-            self._execute_validator(UrlValidator, url=self.chef_cookbook)
+            self._register_validator(UrlValidator, url=self.chef_cookbook)
 
 
 class BaseDevSettings(Resource):
@@ -215,11 +266,11 @@ class BaseDevSettings(Resource):
         self.node_package = Resource.init_param(node_package)
         self.aws_batch_cli_package = Resource.init_param(aws_batch_cli_package)
 
-    def _validate(self):
+    def _register_validators(self):
         if self.node_package:
-            self._execute_validator(UrlValidator, url=self.node_package)
+            self._register_validator(UrlValidator, url=self.node_package)
         if self.aws_batch_cli_package:
-            self._execute_validator(UrlValidator, url=self.aws_batch_cli_package)
+            self._register_validator(UrlValidator, url=self.aws_batch_cli_package)
 
 
 # ------------ Common attributes class between ImageBuilder an Cluster models ----------- #

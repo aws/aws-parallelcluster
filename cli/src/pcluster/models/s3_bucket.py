@@ -21,9 +21,9 @@ from enum import Enum
 import yaml
 
 from pcluster.aws.aws_api import AWSApi
-from pcluster.aws.common import AWSClientError
+from pcluster.aws.common import AWSClientError, get_region
 from pcluster.constants import PCLUSTER_S3_BUCKET_VERSION
-from pcluster.utils import get_partition, get_region, zip_dir
+from pcluster.utils import get_partition, zip_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -227,14 +227,14 @@ class S3Bucket:
                     key=self.get_object_key(S3FileType.CUSTOM_RESOURCES, res),
                 )
 
-    def get_config(self, config_name, version_id=None, format=S3FileFormat.YAML):
+    def get_config(self, config_name, version_id=None, format=S3FileFormat.TEXT):
         """Get config file from S3 bucket."""
         return self._get_file(file_type=S3FileType.CONFIGS, file_name=config_name, version_id=version_id, format=format)
 
-    def get_config_presigned_url(self, config_name: str):
+    def get_config_presigned_url(self, config_name: str, version_id=None):
         """Get an S3 presigned URL for the config file."""
         return AWSApi.instance().s3.create_presigned_url(
-            self.name, self.get_object_key(S3FileType.CONFIGS, config_name)
+            self.name, self.get_object_key(S3FileType.CONFIGS, config_name), version_id
         )
 
     def get_config_url(self, config_name):

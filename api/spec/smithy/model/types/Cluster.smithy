@@ -5,6 +5,13 @@ namespace parallelcluster
 @documentation("Name of the cluster")
 string ClusterName
 
+set SuppressValidatorsList {
+   member: SuppressValidatorExpression
+}
+
+@pattern("^(ALL|type:[A-Za-z0-9]+)$")
+string SuppressValidatorExpression
+
 structure ClusterInfoSummary {
     @required
     @documentation("Name of the cluster")

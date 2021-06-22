@@ -1,0 +1,6 @@
+2021-06-04T11:33:10+01:00: 2021-06-04 10:33:10,248 [DEBUG] CloudFormation client initialized with endpoint https://cloudformation.eu-west-1.amazonaws.com
+2021-06-04T11:33:10+01:00: 2021-06-04 10:33:10,248 [DEBUG] Describing resource HeadNodeLaunchTemplate in stack test22
+2021-06-04T11:33:10+01:00: 2021-06-04 10:33:10,390 [INFO] -----------------------Starting build-----------------------
+
+nextBackwardToken is: b/3619
+nextForwardToken is: f/3618

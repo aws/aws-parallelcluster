@@ -13,12 +13,13 @@ operation BuildImage {
       ConflictException,
       UnauthorizedClientError,
       LimitExceededException,
+      DryrunOperationException,
     ]
 }
 
 structure BuildImageRequest {
     @httpQuery("suppressValidators")
-    @documentation("Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value")
+    @documentation("Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)")
     suppressValidators: SuppressValidatorsList,
     @httpQuery("validationFailureLevel")
     @documentation("Min validation level that will cause the creation to fail. Defaults to 'error'.")
@@ -48,9 +49,3 @@ structure BuildImageResponse {
     @documentation("List of messages collected during image config validation whose level is lower than the validationFailureLevel set by the user")
     validationMessages: ValidationMessages
 }
-
-list SuppressValidatorsList {
-   member: SuppressValidatorExpression
-}
-
-string SuppressValidatorExpression

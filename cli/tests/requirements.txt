@@ -1,3 +1,5 @@
+assertpy
+freezegun
 jinja2
 pytest
 pytest-cov
@@ -5,5 +7,4 @@ pytest-datadir
 pytest-html
 pytest-mock
 pytest-xdist
-assertpy
 recordclass

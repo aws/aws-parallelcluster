@@ -12,6 +12,7 @@ import os
 
 from pcluster.aws.batch import BatchClient
 from pcluster.aws.cfn import CfnClient
+from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.efs import EfsClient
 from pcluster.aws.fsx import FSxClient
@@ -50,6 +51,7 @@ class AWSApi:
         self._sts = None
         self._s3_resource = None
         self._iam = None
+        self._ddb_resource = None
         self._logs = None
 
     @property
@@ -128,6 +130,13 @@ class AWSApi:
         if not self._iam:
             self._iam = IamClient()
         return self._iam
+
+    @property
+    def ddb_resource(self):
+        """DynamoResource client."""  # noqa: D403
+        if not self._ddb_resource:
+            self._ddb_resource = DynamoResource()
+        return self._ddb_resource
 
     @property
     def logs(self):

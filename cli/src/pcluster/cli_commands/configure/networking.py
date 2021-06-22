@@ -17,13 +17,13 @@ from enum import Enum
 import boto3
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import get_region
 from pcluster.cli_commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 from pcluster.cli_commands.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
 from pcluster.utils import (
     get_cli_log_file,
     get_installed_version,
-    get_region,
     get_stack_output_value,
     get_templates_bucket_path,
     verify_stack_status,
@@ -43,11 +43,11 @@ else:
 class BaseNetworkConfig(ABC):
     """The abstract base configuration from which all configurations shall inherit."""
 
-    def __init__(self, config_type, template_name, stack_name_prefix, availability_zones):
+    def __init__(self, config_type, template_name, stack_name_prefix, availability_zone):
         self.config_type = config_type
         self.template_name = template_name
         self.stack_name_prefix = stack_name_prefix
-        self.availability_zones = availability_zones
+        self.availability_zone = availability_zone
 
     def create(self, vpc_id, compute_subnet_size):
         """
@@ -71,27 +71,22 @@ class BaseNetworkConfig(ABC):
         return {"ParameterKey": key, "ParameterValue": value}
 
     def _get_cfn_parameters(self, vpc_id, internet_gateway_id):
-        availability_zone = self._get_availability_zone()
         return [
-            BaseNetworkConfig._build_cfn_param("AvailabilityZone", availability_zone),
+            BaseNetworkConfig._build_cfn_param("AvailabilityZone", self.availability_zone),
             BaseNetworkConfig._build_cfn_param("InternetGatewayId", internet_gateway_id),
             BaseNetworkConfig._build_cfn_param("VpcId", vpc_id),
         ]
-
-    def _get_availability_zone(self):
-        # ToDo: is the first az in the azs list the optimal option?
-        return self.availability_zones.pop() if self.availability_zones else ""
 
 
 class PublicNetworkConfig(BaseNetworkConfig):
     """The public configuration that creates one public subnet with head node and compute fleet."""
 
-    def __init__(self, availability_zones=None):
+    def __init__(self, availability_zone=None):
         super().__init__(
             config_type="Head node and compute fleet in the same public subnet",
             template_name="public",
             stack_name_prefix="pub",
-            availability_zones=availability_zones,
+            availability_zone=availability_zone,
         )
 
     def get_cfn_parameters(self, vpc_id, internet_gateway_id, public_cidr):
@@ -116,12 +111,12 @@ class PublicNetworkConfig(BaseNetworkConfig):
 class PublicPrivateNetworkConfig(BaseNetworkConfig):
     """The public private config that creates one public subnet for head node and one private subnet for compute."""
 
-    def __init__(self, availability_zones=None):
+    def __init__(self, availability_zone=""):
         super().__init__(
             config_type="Head node in a public subnet and compute fleet in a private subnet",
             template_name="public-private",
             stack_name_prefix="pubpriv",
-            availability_zones=availability_zones,
+            availability_zone=availability_zone,
         )
 
     def get_cfn_parameters(self, vpc_id, internet_gateway_id, public_cidr, private_cidr):

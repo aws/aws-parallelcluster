@@ -25,7 +25,6 @@ class ValidationLevel(Model):
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
 
     def __init__(self):
         """ValidationLevel - a model defined in OpenAPI"""

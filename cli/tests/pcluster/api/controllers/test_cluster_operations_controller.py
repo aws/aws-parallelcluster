@@ -11,12 +11,20 @@ from datetime import datetime
 import pytest
 from assertpy import assert_that, soft_assertions
 
+from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.common import AWSClientError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.models.cluster import ClusterActionError
+from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor
+from pcluster.models.cluster import (
+    BadRequestClusterActionError,
+    ClusterActionError,
+    ConflictClusterActionError,
+    LimitExceededClusterActionError,
+)
+from pcluster.validators.common import FailureLevel, ValidationResult
 
 
 def cfn_describe_stack_mock_response(edits=None):
@@ -41,47 +49,516 @@ def cfn_describe_stack_mock_response(edits=None):
 
 
 class TestCreateCluster:
-    def test_create_cluster(self, client):
-        create_cluster_request_content = {
-            "name": "clustername",
-            "region": "eu-west-1",
-            "clusterConfiguration": "clusterConfiguration",
-        }
-        query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
-            ("validationFailureLevel", ValidationLevel.INFO),
-            ("dryrun", True),
-            ("rollbackOnFailure", True),
-            ("clientToken", "client_token_example"),
-        ]
+    url = "/v3/clusters"
+    method = "POST"
+
+    BASE64_ENCODED_CONFIG = "SW1hZ2U6CiAgT3M6IGFsaW51eDIKSGVhZE5vZGU6CiAgSW5zdGFuY2VUeXBlOiB0Mi5taWNybw=="
+
+    def _send_test_request(
+        self,
+        client,
+        create_cluster_request_content=None,
+        suppress_validators=None,
+        validation_failure_level=None,
+        dryrun=None,
+        rollback_on_failure=None,
+        client_token=None,
+    ):
+        query_string = []
+        if suppress_validators:
+            query_string.extend([("suppressValidators", validator) for validator in suppress_validators])
+        if validation_failure_level:
+            query_string.append(("validationFailureLevel", validation_failure_level))
+        if dryrun is not None:
+            query_string.append(("dryrun", dryrun))
+        if rollback_on_failure is not None:
+            query_string.append(("rollbackOnFailure", rollback_on_failure))
+        if client_token:
+            query_string.append(("clientToken", client_token))
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        response = client.open(
-            "/v3/clusters",
-            method="POST",
+        return client.open(
+            self.url,
+            method=self.method,
             headers=headers,
-            data=json.dumps(create_cluster_request_content),
-            content_type="application/json",
             query_string=query_string,
+            data=json.dumps(create_cluster_request_content) if create_cluster_request_content else None,
         )
-        assert_that(response.status_code).is_equal_to(200)
+
+    @pytest.mark.parametrize(
+        "create_cluster_request_content, suppress_validators, validation_failure_level, rollback_on_failure",
+        [
+            (
+                {
+                    "region": "us-east-1",
+                    "name": "cluster",
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                None,
+                None,
+                None,
+            ),
+            (
+                {
+                    "region": "us-east-1",
+                    "name": "cluster",
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                ["type:type1", "type:type2"],
+                ValidationLevel.WARNING,
+                False,
+            ),
+        ],
+        ids=["required", "all"],
+    )
+    def test_successful_create_request(
+        self,
+        client,
+        mocker,
+        create_cluster_request_content,
+        suppress_validators,
+        validation_failure_level,
+        rollback_on_failure,
+    ):
+        cluster_create_mock = mocker.patch(
+            "pcluster.models.cluster.Cluster.create",
+            auto_spec=True,
+            return_value=("id", [ValidationResult("message", FailureLevel.WARNING, "type")]),
+        )
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content,
+            suppress_validators,
+            validation_failure_level,
+            False,
+            rollback_on_failure,
+        )
+
+        expected_response = {
+            "cluster": {
+                "cloudformationStackArn": "id",
+                "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+                "clusterName": create_cluster_request_content["name"],
+                "clusterStatus": "CREATE_IN_PROGRESS",
+                "region": create_cluster_request_content["region"],
+                "version": "3.0.0",
+            },
+            "validationMessages": [{"level": "WARNING", "message": "message", "type": "type"}],
+        }
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(202)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+        cluster_create_mock.assert_called_with(
+            disable_rollback=not (rollback_on_failure or True),
+            validator_suppressors=mocker.ANY,
+            validation_failure_level=FailureLevel[validation_failure_level or ValidationLevel.ERROR],
+        )
+        cluster_create_mock.assert_called_once()
+        if suppress_validators:
+            _, kwargs = cluster_create_mock.call_args
+            assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
+
+    def test_dryrun(self, client, mocker):
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.validate_create_request",
+            auto_spec=True,
+            return_value=([]),
+        )
+
+        create_cluster_request_content = {
+            "region": "us-east-1",
+            "name": "cluster",
+            "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+        }
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content=create_cluster_request_content,
+            dryrun=True,
+        )
+
+        expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(412)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, rollback_on_failure, "
+        "client_token, expected_response",
+        [
+            (None, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            ({}, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            (
+                {"region": "us-east-1", "name": "cluster"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'clusterConfiguration' is a required property"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "invalid"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: invalid or unsupported region 'invalid'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'name' is a required property"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                ["ALL", "ALLL"],
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'ALLL' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                ["type:"],
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'type:' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                "CRITICAL",
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'CRITICAL' is not one of ['INFO', 'WARNING', 'ERROR']"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                "NO",
+                None,
+                None,
+                {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'dryrun'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                "NO",
+                None,
+                {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'rollbackOnFailure'"},
+            ),
+            (
+                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: invalid configuration. " "Please make sure the string is base64 encoded."},
+            ),
+            (
+                {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: configuration must be a valid YAML document"},
+            ),
+            (
+                {
+                    "clusterConfiguration": "SW1hZ2U6CiAgSW52YWxpZEtleTogdGVzdA==",
+                    "name": "cluster",
+                    "region": "us-east-1",
+                },
+                None,
+                None,
+                None,
+                None,
+                None,
+                {
+                    "configurationValidationErrors": [
+                        {
+                            "level": "ERROR",
+                            "message": "[('HeadNode', ['Missing data for required field.']), "
+                            "('Image', {'Os': ['Missing data for required field.'], 'InvalidKey': "
+                            "['Unknown field.']}), ('Scheduling', ['Missing data for required field.'])]",
+                            "type": "ConfigSchemaValidator",
+                        }
+                    ],
+                    "message": "Invalid cluster configuration",
+                },
+            ),
+            (
+                {"clusterConfiguration": "", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: configuration is required and cannot be empty"},
+            ),
+            (
+                {"clusterConfiguration": "", "name": "cluster", "region": "us-east-1"},
+                None,
+                None,
+                None,
+                None,
+                "token",
+                {"message": "Bad Request: clientToken is currently not supported for this operation"},
+            ),
+        ],
+        ids=[
+            "no_body",
+            "empty_body",
+            "missing_config",
+            "invalid_region",
+            "missing_name",
+            "invalid_suppress_validators",
+            "invalid_suppress_validators",
+            "invalid_failure_level",
+            "invalid_dryrun",
+            "invalid_rollback",
+            "invalid_config_encoding",
+            "invalid_config_format",
+            "invalid_config_schema",
+            "empty_config",
+            "client_token",
+        ],
+    )
+    def test_malformed_request(
+        self,
+        client,
+        mocker,
+        create_cluster_request_content,
+        suppress_validators,
+        validation_failure_level,
+        dryrun,
+        rollback_on_failure,
+        client_token,
+        expected_response,
+    ):
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content,
+            suppress_validators,
+            validation_failure_level,
+            dryrun,
+            rollback_on_failure,
+            client_token,
+        )
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "error_type, error_code",
+        [
+            (LimitExceededClusterActionError, 429),
+            (BadRequestClusterActionError, 400),
+            (ConflictClusterActionError, 409),
+            (ClusterActionError, 500),
+        ],
+    )
+    def test_cluster_action_error(self, client, mocker, error_type, error_code):
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.create",
+            auto_spec=True,
+            side_effect=error_type("error message"),
+        )
+
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content={
+                "region": "us-east-1",
+                "name": "clustername",
+                "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+            },
+        )
+
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestClusterActionError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 class TestDeleteCluster:
-    def test_delete_cluster(self, client):
-        query_string = [("region", "eu-west-1"), ("retainLogs", True), ("clientToken", "client_token_example")]
+    url = "/v3/clusters/{cluster_name}"
+    method = "DELETE"
+
+    def _send_test_request(self, client, cluster_name="clustername", region="us-east-1"):
+        query_string = [
+            ("region", region),
+        ]
         headers = {
             "Accept": "application/json",
         }
-        response = client.open(
-            "/v3/clusters/{cluster_name}".format(cluster_name="clustername"),
-            method="DELETE",
-            headers=headers,
-            query_string=query_string,
+        return client.open(
+            self.url.format(cluster_name=cluster_name), method=self.method, headers=headers, query_string=query_string
         )
-        assert_that(response.status_code).is_equal_to(200)
+
+    @pytest.mark.parametrize(
+        "cfn_stack_data, expected_response",
+        [
+            (
+                cfn_describe_stack_mock_response(),
+                {
+                    "cluster": {
+                        "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                        "cloudformationStackStatus": "DELETE_IN_PROGRESS",
+                        "clusterName": "clustername",
+                        "clusterStatus": "DELETE_IN_PROGRESS",
+                        "region": "us-east-1",
+                        "version": "3.0.0",
+                    }
+                },
+            ),
+            (
+                cfn_describe_stack_mock_response({"StackStatus": "DELETE_IN_PROGRESS"}),
+                {
+                    "cluster": {
+                        "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
+                        "cloudformationStackStatus": "DELETE_IN_PROGRESS",
+                        "clusterName": "clustername",
+                        "clusterStatus": "DELETE_IN_PROGRESS",
+                        "region": "us-east-1",
+                        "version": "3.0.0",
+                    }
+                },
+            ),
+        ],
+        ids=["required", "cluster_delete_in_progress"],
+    )
+    def test_successful_request(self, mocker, client, cfn_stack_data, expected_response):
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
+        cluster_delete_mock = mocker.patch(
+            "pcluster.models.cluster.Cluster.delete",
+            auto_spec=True,
+        )
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(202)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+        if cfn_stack_data["StackStatus"] != "DELETE_IN_PROGRESS":
+            cluster_delete_mock.assert_called_with(keep_logs=False)
+        else:
+            cluster_delete_mock.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "region, cluster_name, expected_response",
+        [
+            (
+                "us-east-",
+                "clustername",
+                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
+            ),
+            (
+                "us-east-1",
+                "a",
+                {"message": "Bad Request: 'a' is too short"},
+            ),
+            (
+                "us-east-1",
+                "aaaaa.aaa",
+                {"message": "Bad Request: 'aaaaa.aaa' does not match '^[a-zA-Z][a-zA-Z0-9-]+$'"},
+            ),
+        ],
+        ids=["bad_region", "short_cluster_name", "invalid_cluster_name"],
+    )
+    def test_malformed_request(self, client, region, cluster_name, expected_response):
+        response = self._send_test_request(client, cluster_name=cluster_name, region=region)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_cluster_not_found(self, client, mocker):
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("func", "stack"))
+
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(404)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "major version. In case you have running instances belonging to a deleted cluster please"
+                    " use the DeleteClusterInstances API."
+                }
+            )
+
+    def test_incompatible_version(self, client, mocker):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(
+                {"Tags": [{"Key": "parallelcluster:version", "Value": "2.0.0"}]}
+            ),
+        )
+
+        response = self._send_test_request(client)
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
+                    " version."
+                }
+            )
+
+    @pytest.mark.parametrize(
+        "error_type, error_code",
+        [
+            (LimitExceededClusterActionError, 429),
+            (BadRequestClusterActionError, 400),
+            (ClusterActionError, 500),
+        ],
+    )
+    def test_cluster_action_error(self, client, mocker, error_type, error_code):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(),
+        )
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.delete",
+            auto_spec=True,
+            side_effect=error_type("error message"),
+        )
+
+        response = self._send_test_request(client)
+
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestClusterActionError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 class TestDescribeCluster:
@@ -322,8 +799,8 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster clustername does not exist or belongs to an incompatible ParallelCluster major "
-                    "version."
+                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "major version."
                 }
             )
 
@@ -341,7 +818,7 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "Bad Request: cluster clustername belongs to an incompatible ParallelCluster major"
+                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
                     " version."
                 }
             )
@@ -559,7 +1036,7 @@ class TestUpdateCluster:
     def test_update_cluster(self, client):
         update_cluster_request_content = {"clusterConfiguration": "clusterConfiguration"}
         query_string = [
-            ("suppressValidators", ["suppress_validators_example"]),
+            ("suppressValidators", "ALL"),
             ["validationFailureLevel", ValidationLevel.INFO],
             ("region", "eu-west-1"),
             ("dryrun", True),
@@ -579,3 +1056,18 @@ class TestUpdateCluster:
             query_string=query_string,
         )
         assert_that(response.status_code).is_equal_to(200)
+
+
+@pytest.mark.parametrize(
+    "suppress_validators_list, expected_suppressors",
+    [
+        (None, set()),
+        ([], set()),
+        (["ALL"], {AllValidatorsSuppressor()}),
+        (["type:type1", "type:type2"], {TypeMatchValidatorsSuppressor({"type1", "type2"})}),
+        (["type:type1", "ALL"], {AllValidatorsSuppressor(), TypeMatchValidatorsSuppressor({"type1"})}),
+    ],
+)
+def test_get_validator_suppressors(suppress_validators_list, expected_suppressors):
+    result = get_validator_suppressors(suppress_validators_list)
+    assert_that(result).is_equal_to(expected_suppressors)

@@ -24,6 +24,14 @@ def clear_env():
         del os.environ["AWS_DEFAULT_REGION"]
 
 
+@pytest.fixture(autouse=True)
+def reset_aws_api():
+    """Reset AWSApi singleton to remove dependencies between tests."""
+    from pcluster.aws.aws_api import AWSApi
+
+    AWSApi._instance = None
+
+
 @pytest.fixture
 def failed_with_message(capsys):
     """Assert that the command exited with a specific error message."""
@@ -190,12 +198,15 @@ def unset_env():
 
 @pytest.fixture()
 def run_cli(mocker, capsys):
-    def _run_cli(command, expect_failure=False):
+    def _run_cli(command, expect_failure=False, expect_message=None):
         mocker.patch.object(sys, "argv", command)
         with pytest.raises(SystemExit) as sysexit:
             ParallelClusterCli().handle_command()
         if expect_failure:
-            assert_that(sysexit.value.code).is_greater_than(0)
+            if expect_message:
+                assert_that(sysexit.value.code).contains(expect_message)
+            else:
+                assert_that(sysexit.value.code).is_greater_than(0)
         else:
             assert_that(sysexit.value.code).is_equal_to(0)
 
@@ -207,8 +218,8 @@ def assert_out_err(capsys):
     def _assert_out_err(expected_out, expected_err):
         out_err = capsys.readouterr()
         with soft_assertions():
-            assert_that(out_err.out.strip()).is_equal_to(expected_out)
-            assert_that(out_err.err.strip()).is_equal_to(expected_err)
+            assert_that(out_err.out.strip()).contains(expected_out)
+            assert_that(out_err.err.strip()).contains(expected_err)
 
     return _assert_out_err
 

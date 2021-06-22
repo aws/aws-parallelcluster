@@ -26,6 +26,7 @@ import boto3
 import pkg_resources
 import pytest
 import yaml
+from botocore.config import Config
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -78,6 +79,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
     )
+    parser.addoption("--pcluster-git-ref", help="Git ref of the custom cli package used to build the AMI.")
     parser.addoption("--cookbook-git-ref", help="Git ref of the custom cookbook package used to build the AMI.")
     parser.addoption("--node-git-ref", help="Git ref of the custom node package used to build the AMI.")
     parser.addoption(
@@ -109,12 +111,7 @@ def pytest_addoption(parser):
     parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
     parser.addoption(
-        "--keep-logs-on-cluster-failure",
-        help="preserve CloudWatch logs when a cluster fails to be created",
-        action="store_true",
-    )
-    parser.addoption(
-        "--keep-logs-on-test-failure", help="preserve CloudWatch logs when a test fails", action="store_true"
+        "--delete-logs-on-success", help="delete CloudWatch logs when a test succeeds", action="store_true"
     )
 
 
@@ -289,7 +286,7 @@ def clusters_factory(request, region):
 
     The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
     """
-    factory = ClustersFactory(keep_logs_on_failure=request.config.getoption("keep_logs_on_cluster_failure"))
+    factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
     def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True):
         cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
@@ -311,9 +308,7 @@ def clusters_factory(request, region):
 
     yield _cluster_factory
     if not request.config.getoption("no_delete"):
-        factory.destroy_all_clusters(
-            delete_logs=request.config.getoption("keep_logs_on_test_failure") and request.node.rep_call.passed
-        )
+        factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
@@ -378,10 +373,37 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        inject_additional_config_settings(config_file_path, request, region)
+        if not config_file.endswith("image.config.yaml"):
+            inject_additional_config_settings(config_file_path, request, region)
+        else:
+            inject_additional_image_configs_settings(config_file_path, request)
         return config_file_path
 
     return _config_renderer
+
+
+def inject_additional_image_configs_settings(image_config, request):
+    with open(image_config) as conf_file:
+        config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
+
+    if request.config.getoption("createami_custom_chef_cookbook") and not dict_has_nested_key(
+        config_content, ("DevSettings", "Cookbook", "ChefCookbook")
+    ):
+        dict_add_nested_key(
+            config_content,
+            request.config.getoption("createami_custom_chef_cookbook"),
+            ("DevSettings", "Cookbook", "ChefCookbook"),
+        )
+
+    for option, config_param in [
+        ("custom_awsbatchcli_package", "AwsBatchCliPackage"),
+        ("createami_custom_node_package", "NodePackage"),
+    ]:
+        if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
+            dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
+
+    with open(image_config, "w") as conf_file:
+        yaml.dump(config_content, conf_file)
 
 
 def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
@@ -401,14 +423,25 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
         dict_add_nested_key(config_content, request.config.getoption("custom_ami"), ("Image", "CustomAmi"))
 
     if not dict_has_nested_key(config_content, ("DevSettings", "AmiSearchFilters")):
-        if request.config.getoption("cookbook_git_ref") or request.config.getoption("node_git_ref"):
+        if (
+            request.config.getoption("pcluster_git_ref")
+            or request.config.getoption("cookbook_git_ref")
+            or request.config.getoption("node_git_ref")
+        ):
             tags = []
+            if request.config.getoption("pcluster_git_ref"):
+                tags.append(
+                    {"Key": "build:parallelcluster:cli_ref", "Value": request.config.getoption("pcluster_git_ref")}
+                )
             if request.config.getoption("cookbook_git_ref"):
                 tags.append(
-                    {"Key": "parallelcluster_cookbook_ref", "Value": request.config.getoption("cookbook_git_ref")}
+                    {"Key": "build:parallelcluster:cookbook_ref", "Value": request.config.getoption("cookbook_git_ref")}
                 )
             if request.config.getoption("node_git_ref"):
-                tags.append({"Key": "parallelcluster_node_ref", "Value": request.config.getoption("node_git_ref")})
+                tags.append(
+                    {"Key": "build:parallelcluster:node_ref", "Value": request.config.getoption("node_git_ref")}
+                )
+            tags.append({"Key": "parallelcluster:build_status", "Value": "available"})
             dict_add_nested_key(config_content, tags, ("DevSettings", "AmiSearchFilters", "Tags"))
         if request.config.getoption("ami_owner"):
             dict_add_nested_key(
@@ -466,7 +499,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
             )
             if dict_has_nested_key(node_config, ("Iam", "AdditionalIamPolicies")):
                 if additional_iam_policies not in node_config["Iam"]["AdditionalIamPolicies"]:
-                    node_config["Iam"]["AdditionalIamPolicies"].append({"Policy": additional_iam_policies})
+                    node_config["Iam"]["AdditionalIamPolicies"].append(additional_iam_policies)
             else:
                 dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
 
@@ -556,6 +589,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "eu-north-1": ["eun1-az2"],
     # g3.8xlarge is not supported in euc1-az1
     "eu-central-1": ["euc1-az2", "euc1-az3"],
+    # FSx not available in cnn1-az4
+    "cn-north-1": ["cnn1-az1", "cnn1-az2"],
 }
 
 
@@ -732,7 +767,15 @@ def common_pcluster_policies(region):
 @pytest.fixture(scope="class")
 def role_factory(region):
     roles = []
-    iam_client = boto3.client("iam", region_name=region)
+    iam_client = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
 
     def create_role(trusted_service, policies=()):
         iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"

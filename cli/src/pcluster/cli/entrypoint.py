@@ -36,7 +36,9 @@ class VersionCommand(CliCommand):
     def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
         pass
 
-    def execute(self, args: argparse.Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(  # noqa: D102
+        self, args: argparse.Namespace, extra_args: List[str]  # pylint: disable=unused-argument
+    ) -> None:
         print(get_installed_version())
 
 
@@ -96,6 +98,7 @@ class ParallelClusterCli:
                 sys.exit(1)
 
             args.func(args, extra_args)
+            sys.exit(0)
         except NoCredentialsError:  # TODO: remove from here
             LOGGER.error("AWS Credentials not found.")
             sys.exit(1)

@@ -13,9 +13,8 @@ Scheduling:
     - Name: ondemand1
       ComputeResources:
         - Name: ondemand-i1
-          InstanceType: c5.large
-        - Name: ondemand-i2
           InstanceType: {{ instance }}
+          DisableSimultaneousMultithreading: true
           MinCount: 2
       Networking:
         PlacementGroup:

@@ -31,6 +31,7 @@ class AWSClientError(Exception):
         VALIDATION_ERROR = "ValidationError"
         REQUEST_LIMIT_EXCEEDED = "RequestLimitExceeded"
         THROTTLING_EXCEPTION = "ThrottlingException"
+        CONDITIONAL_CHECK_FAILED_EXCEPTION = "ConditionalCheckFailedException"
 
         @classmethod
         def throttling_error_codes(cls):
@@ -58,6 +59,20 @@ class StackNotFoundError(AWSClientError):
         super().__init__(function_name=function_name, message=f"Stack with id {stack_name} does not exist")
 
 
+class LimitExceededError(AWSClientError):
+    """Error caused by exceeding the limits of a downstream AWS service."""
+
+    def __init__(self, function_name: str, message: str, error_code: str = None):
+        super().__init__(function_name=function_name, message=message, error_code=error_code)
+
+
+class BadRequestError(AWSClientError):
+    """Error caused by a problem in the request."""
+
+    def __init__(self, function_name: str, message: str, error_code: str = None):
+        super().__init__(function_name=function_name, message=message, error_code=error_code)
+
+
 class AWSExceptionHandler:
     """AWS Exception handler."""
 
@@ -70,7 +85,7 @@ class AWSExceptionHandler:
             try:
                 return func(*args, **kwargs)
             except ParamValidationError as validation_error:
-                error = AWSClientError(
+                error = BadRequestError(
                     func.__name__,
                     "Error validating parameter. Failed with exception: {0}".format(str(validation_error)),
                 )
@@ -78,7 +93,13 @@ class AWSExceptionHandler:
                 error = AWSClientError(func.__name__, str(e))
             except ClientError as e:
                 # add request id
-                error = AWSClientError(func.__name__, e.response["Error"]["Message"], e.response["Error"]["Code"])
+                message = e.response["Error"]["Message"]
+                error_code = e.response["Error"]["Code"]
+
+                if error_code in AWSClientError.ErrorCode.throttling_error_codes():
+                    error = LimitExceededError(func.__name__, message, error_code)
+                else:
+                    error = AWSClientError(func.__name__, message, error_code)
             LOGGER.error("Encountered error when performing boto3 call in %s: %s", error.function_name, error.message)
             raise error
 
@@ -187,3 +208,11 @@ class Cache:
                 return return_value
 
         return wrapper
+
+
+def get_region():
+    """Get region used internally for all the AWS calls."""
+    region = boto3.session.Session().region_name
+    if region is None:
+        raise AWSClientError("get_region", "AWS region not configured")
+    return region

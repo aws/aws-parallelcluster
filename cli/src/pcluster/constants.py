@@ -16,12 +16,13 @@ PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
-SUPPORTED_OSES = ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]
+SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
+SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {
     "x86_64": SUPPORTED_OSES,
-    "arm64": ["alinux2", "ubuntu1804", "ubuntu2004", "centos8"],
+    "arm64": ["alinux2", "ubuntu1804", "ubuntu2004"],
 }
 
 OS_MAPPING = {
@@ -31,6 +32,16 @@ OS_MAPPING = {
     "ubuntu1804": {"user": "ubuntu", "root-device": "/dev/sda1"},
     "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
 }
+
+OS_TO_IMAGE_NAME_PART_MAP = {
+    "alinux2": "amzn2-hvm",
+    "centos7": "centos7-hvm",
+    "centos8": "centos8-hvm",
+    "ubuntu1804": "ubuntu-1804-lts-hvm",
+    "ubuntu2004": "ubuntu-2004-lts-hvm",
+}
+
+IMAGE_NAME_PART_TO_OS_MAP = {value: key for key, value in OS_TO_IMAGE_NAME_PART_MAP.items()}
 
 # Describe the list of requirements to be satisfied by the Pcluster AWS Batch CLI to manage the cluster.
 # It must be in the form <package-name><comparison-operator><version>
@@ -62,9 +73,11 @@ COOKBOOK_PACKAGES_VERSIONS = {
     "ami": "dev",
 }
 
-CW_LOGS_RETENTION_DAYS_DEFAULT = 14
 CW_DASHBOARD_ENABLED_DEFAULT = True
 CW_LOGS_ENABLED_DEFAULT = True
+CW_LOGS_RETENTION_DAYS_DEFAULT = 14
+CW_LOGS_CFN_PARAM_NAME = "ClusterCWLogGroup"
+CW_LOG_GROUP_NAME_PREFIX = "/aws/parallelcluster/"
 
 PCLUSTER_IMAGE_NAME_REGEX = r"^[-_A-Za-z0-9{][-_A-Za-z0-9\s:{}\.]+[-_A-Za-z0-9}]$"
 PCLUSTER_IMAGE_ID_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,127})$"

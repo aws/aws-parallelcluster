@@ -11,11 +11,22 @@ import logging
 import os
 from typing import Dict, List
 
-from pcluster.api.controllers.common import check_cluster_version, configure_aws_region
-from pcluster.api.converters import cloud_formation_status_to_cluster_status
+from pcluster.api.controllers.common import (
+    check_cluster_version,
+    configure_aws_region,
+    convert_errors,
+    get_validator_suppressors,
+    http_success_status_code,
+    read_config,
+)
+from pcluster.api.converters import (
+    cloud_formation_status_to_cluster_status,
+    validation_results_to_config_validation_errors,
+)
 from pcluster.api.errors import (
     BadRequestException,
     CreateClusterBadRequestException,
+    DryrunOperationException,
     InternalServiceException,
     NotFoundException,
 )
@@ -34,22 +45,27 @@ from pcluster.api.models import (
     Tag,
     UpdateClusterRequestContent,
     UpdateClusterResponseContent,
+    ValidationLevel,
 )
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.models.cluster import Cluster, ClusterActionError
+from pcluster.models.cluster import Cluster, ClusterActionError, ConfigValidationError
 from pcluster.models.cluster_resources import ClusterStack
+from pcluster.utils import get_installed_version
+from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
 
 
 @configure_aws_region(is_query_string_arg=False)
+@convert_errors()
+@http_success_status_code(202)
 def create_cluster(
     create_cluster_request_content: Dict,
     suppress_validators: List[str] = None,
-    validation_failure_level: Dict = None,
+    validation_failure_level: str = None,
     dryrun: bool = None,
     rollback_on_failure: bool = None,
     client_token: str = None,
@@ -58,8 +74,8 @@ def create_cluster(
     Create a ParallelCluster managed cluster in a given region.
 
     :param create_cluster_request_content:
-    :param suppress_validators: Identifies one or more config validators to suppress. Format:
-    ALL|id:$value|level:(info|error|warning)|type:$value
+    :param suppress_validators: Identifies one or more config validators to suppress.
+    Format: (ALL|type:[A-Za-z0-9]+)
     :param validation_failure_level: Min validation level that will cause the cluster creation to fail.
     Defaults to &#39;ERROR&#39;.
     :param dryrun: Only perform request validation without creating any resource. It can be used to validate the cluster
@@ -69,26 +85,51 @@ def create_cluster(
     :param client_token: Idempotency token that can be set by the client so that retries for the same request are
     idempotent
     """
+    # Set defaults
+    rollback_on_failure = rollback_on_failure or True
+    validation_failure_level = validation_failure_level or ValidationLevel.ERROR
+    dryrun = dryrun or False
     create_cluster_request_content = CreateClusterRequestContent.from_dict(create_cluster_request_content)
-    if create_cluster_request_content.cluster_configuration == "invalid":
-        raise CreateClusterBadRequestException(
-            CreateClusterBadRequestExceptionResponseContent(configuration_validation_errors=[], message="invalid")
+
+    # Validate inputs
+    if client_token:
+        raise BadRequestException("clientToken is currently not supported for this operation")
+    cluster_config = read_config(create_cluster_request_content.cluster_configuration)
+
+    try:
+        cluster = Cluster(create_cluster_request_content.name, cluster_config)
+
+        if dryrun:
+            cluster.validate_create_request(
+                get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level]
+            )
+            raise DryrunOperationException()
+
+        stack_id, ignored_validation_failures = cluster.create(
+            disable_rollback=not rollback_on_failure,
+            validator_suppressors=get_validator_suppressors(suppress_validators),
+            validation_failure_level=FailureLevel[validation_failure_level],
         )
 
-    return CreateClusterResponseContent(
-        ClusterInfoSummary(
-            cluster_name="nameeee",
-            cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-            cloudformation_stack_arn="arn",
-            region="region",
-            version="3.0.0",
-            cluster_status=ClusterStatus.CREATE_COMPLETE,
+        return CreateClusterResponseContent(
+            ClusterInfoSummary(
+                cluster_name=create_cluster_request_content.name,
+                cloudformation_stack_status=CloudFormationStatus.CREATE_IN_PROGRESS,
+                cloudformation_stack_arn=stack_id,
+                region=os.environ.get("AWS_DEFAULT_REGION"),
+                version=get_installed_version(),
+                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.CREATE_IN_PROGRESS),
+            ),
+            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
-    )
+    except ConfigValidationError as e:
+        raise _handle_config_validation_error(e)
 
 
 @configure_aws_region()
-def delete_cluster(cluster_name, region=None, retain_logs=None, client_token=None):
+@convert_errors()
+@http_success_status_code(202)
+def delete_cluster(cluster_name, region=None):
     """
     Initiate the deletion of a cluster.
 
@@ -96,24 +137,37 @@ def delete_cluster(cluster_name, region=None, retain_logs=None, client_token=Non
     :type cluster_name: str
     :param region: AWS Region. Defaults to the region the API is deployed to.
     :type region: str
-    :param retain_logs: Retain cluster logs on delete. Defaults to True.
-    :type retain_logs: bool
-    :param client_token: Idempotency token that can be set by the client so that retries for the same request are
-    idempotent
-    :type client_token: str
 
     :rtype: DeleteClusterResponseContent
     """
-    return DeleteClusterResponseContent(
-        cluster=ClusterInfoSummary(
-            cluster_name="nameeee",
-            cloudformation_stack_status=CloudFormationStatus.CREATE_COMPLETE,
-            cloudformation_stack_arn="arn",
-            region="region",
-            version="3.0.0",
-            cluster_status=ClusterStatus.CREATE_COMPLETE,
+    try:
+        cluster = Cluster(cluster_name)
+
+        if not check_cluster_version(cluster):
+            raise BadRequestException(
+                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
+            )
+
+        if not cluster.status == CloudFormationStatus.DELETE_IN_PROGRESS:
+            # TODO: remove keep_logs logic from delete
+            cluster.delete(keep_logs=False)
+
+        return DeleteClusterResponseContent(
+            cluster=ClusterInfoSummary(
+                cluster_name=cluster_name,
+                cloudformation_stack_status=CloudFormationStatus.DELETE_IN_PROGRESS,
+                cloudformation_stack_arn=cluster.stack.id,
+                region=os.environ.get("AWS_DEFAULT_REGION"),
+                version=cluster.stack.version,
+                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.DELETE_IN_PROGRESS),
+            )
         )
-    )
+    except StackNotFoundError:
+        raise NotFoundException(
+            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version. "
+            "In case you have running instances belonging to a deleted cluster please use the DeleteClusterInstances "
+            "API."
+        )
 
 
 @configure_aws_region()
@@ -133,19 +187,19 @@ def describe_cluster(cluster_name, region=None):
         cfn_stack = cluster.stack
     except StackNotFoundError:
         raise NotFoundException(
-            f"cluster {cluster_name} does not exist or belongs to an incompatible ParallelCluster " "major version."
+            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
         )
 
     if not check_cluster_version(cluster):
-        raise BadRequestException(f"cluster {cluster_name} belongs to an incompatible ParallelCluster major version.")
+        raise BadRequestException(f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version.")
 
-    fleet_status = cluster.compute_fleet_status  # TODO: use Dynamodb client
+    fleet_status = cluster.compute_fleet_status
     if fleet_status == ComputeFleetStatus.UNKNOWN:
         raise InternalServiceException("could not retrieve compute fleet status.")
 
     config_url = "NOT_AVAILABLE"
     try:
-        config_url = cluster.config_presigned_url  # TODO: add config retrieval by version
+        config_url = cluster.config_presigned_url
     except ClusterActionError as e:
         # Do not fail request when S3 bucket is not available
         LOGGER.error(e)
@@ -153,7 +207,7 @@ def describe_cluster(cluster_name, region=None):
     response = DescribeClusterResponseContent(
         creation_time=cfn_stack.creation_time,
         version=cfn_stack.version,
-        cluster_configuration=ClusterConfigurationStructure(s3_url=config_url),  # TODO: add config version
+        cluster_configuration=ClusterConfigurationStructure(s3_url=config_url),
         tags=[Tag(value=tag.get("Value"), key=tag.get("Key")) for tag in cfn_stack.tags],
         cloud_formation_status=cfn_stack.status,
         cluster_name=cluster_name,
@@ -233,7 +287,7 @@ def update_cluster(
     :param cluster_name: Name of the cluster
     :type cluster_name: str
     :param suppress_validators: Identifies one or more config validators to suppress.
-    Format: ALL|id:$value|level:(info|error|warning)|type:$value
+    Format: (ALL|type:[A-Za-z0-9]+)
     :type suppress_validators: List[str]
     :param validation_failure_level: Min validation level that will cause the update to fail.
     Defaults to &#39;error&#39;.
@@ -260,5 +314,14 @@ def update_cluster(
             region="region",
             version="3.0.0",
             cluster_status=ClusterStatus.CREATE_COMPLETE,
+        )
+    )
+
+
+def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBadRequestException:
+    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures)
+    return CreateClusterBadRequestException(
+        CreateClusterBadRequestExceptionResponseContent(
+            configuration_validation_errors=config_validation_messages, message="Invalid cluster configuration"
         )
     )

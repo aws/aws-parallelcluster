@@ -19,17 +19,20 @@ import sys
 import time
 import urllib.request
 import zipfile
+from datetime import datetime
 from io import BytesIO
 from shlex import quote
 from typing import NoReturn
 from urllib.parse import urlparse
 
-import boto3
 import pkg_resources
 import yaml
+from dateutil import tz
+from dateutil.parser import parse
 from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import get_region
 from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
 
 LOGGER = logging.getLogger(__name__)
@@ -38,18 +41,6 @@ LOGGER = logging.getLogger(__name__)
 def default_config_file_path():
     """Return the default path for the ParallelCluster configuration file."""
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
-
-
-def get_region():
-    """
-    Get region used internally for all the AWS calls.
-
-    The region from the env has higher priority because it can be explicitly set from the code (e.g. unit test).
-    """
-    region = os.environ.get("AWS_DEFAULT_REGION") or boto3.session.Session().region_name
-    if region is None:
-        error("AWS region not configured")
-    return region
 
 
 def get_partition():
@@ -280,3 +271,30 @@ def load_yaml_dict(file_path):
 
     # TODO use from cfn_flip import load_yaml
     return yaml_content
+
+
+def timestamp_to_isoformat(timestamp, timezone=None):
+    """
+    Convert timestamp to a readable date.
+
+    :param timestamp: timestamp to convert
+    :param timezone: timezone to use when converting. Defaults to local.
+    :return: the converted date
+    """
+    if not timezone:
+        timezone = tz.tzlocal()
+    # Forcing microsecond to 0 to avoid having them displayed.
+    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
+
+
+def isoformat_to_epoch(time_isoformat):
+    """Convert iso8601 date format to unix epoch datetime with milliseconds."""
+    return int(parse(time_isoformat).timestamp() * 1000)
+
+
+def load_json_dict(file_path):
+    """Read the content of a json file."""
+    with open(file_path) as file:
+        json_content = json.load(file)
+
+    return json_content

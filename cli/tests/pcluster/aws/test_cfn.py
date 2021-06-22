@@ -11,7 +11,6 @@ import pytest
 from assertpy import assert_that
 
 from pcluster import utils as utils
-from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.cfn import CfnClient
 from pcluster.aws.common import AWSClientError
 from tests.pcluster.test_utils import FAKE_NAME, _generate_stack_event
@@ -21,12 +20,6 @@ from tests.utils import MockedBoto3Request
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.aws.common.boto3"
-
-
-@pytest.fixture(autouse=True)
-def reset_aws_api():
-    """Reset AWSApi singleton to remove dependencies between tests."""
-    AWSApi._instance = None
 
 
 class TestCfnClient:

@@ -53,6 +53,11 @@ class StackInfo:
         return self._stack_data.get("StackStatus")
 
     @property
+    def status_reason(self):
+        """Return the reason the stack is in its current status."""
+        return self._stack_data.get("StackStatusReason", None)
+
+    @property
     def creation_time(self):
         """Return creation time of the stack."""
         return str(self._stack_data.get("CreationTime"))
@@ -111,6 +116,16 @@ class InstanceInfo:
     def private_ip(self) -> str:
         """Return Private Ip of the instance."""
         return self._instance_data.get("PrivateIpAddress")
+
+    @property
+    def private_dns_name(self) -> str:
+        """Return Private DNS name of the instance (e.g. "ip-10-0-0-157.us-east-2.compute.internal")."""
+        return self._instance_data.get("PrivateDnsName")
+
+    @property
+    def private_dns_name_short(self) -> str:
+        """Return short form of the Private DNS name of the instance (e.g. ip-10-0-0-157)."""
+        return self.private_dns_name.split(".")[0]
 
     @property
     def instance_type(self) -> str:

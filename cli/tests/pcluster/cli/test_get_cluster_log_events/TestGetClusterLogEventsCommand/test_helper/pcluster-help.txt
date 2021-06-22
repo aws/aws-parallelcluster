@@ -1,0 +1,40 @@
+usage: pcluster get-cluster-log-events [-h] [--debug]
+                                       [-r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}]
+                                       --log-stream-name LOG_STREAM_NAME
+                                       [--start-time START_TIME]
+                                       [--end-time END_TIME] [--head HEAD]
+                                       [--tail TAIL] [--next-token NEXT_TOKEN]
+                                       [--stream]
+                                       [--stream-period STREAM_PERIOD]
+                                       cluster_name
+
+Retrieve the events of a log stream of the cluster saved to CloudWatch.
+
+positional arguments:
+  cluster_name          Get the log stream of the cluster name provided here.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --debug               Turn on debug logging.
+  -r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}, --region {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}
+                        AWS Region to use.
+  --log-stream-name LOG_STREAM_NAME
+                        Log stream name, as reported by 'pcluster list-
+                        cluster-logs' command
+  --start-time START_TIME
+                        Start time of interval of interest for log events,
+                        expressed as the number of milliseconds after Jan 1,
+                        1970 00:00:00 UTC.
+  --end-time END_TIME   End time of interval of interest for log events,
+                        expressed as the number of milliseconds after Jan 1,
+                        1970 00:00:00 UTC.
+  --head HEAD           Gets the first <head> lines of the log stream
+  --tail TAIL           Gets the last <tail> lines of the log stream
+  --next-token NEXT_TOKEN
+                        Token for paginated requests
+  --stream              Gets the log stream and waits for additional output to
+                        be produced. It can be used in conjunction with --tail
+                        to start from the latest <tail> lines of the log
+                        stream
+  --stream-period STREAM_PERIOD
+                        Sets the streaming period. Default is 5 seconds

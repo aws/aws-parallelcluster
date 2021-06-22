@@ -24,11 +24,9 @@ class ImageStatusFilteringOption(Model):
     """
     allowed enum values
     """
-    BUILD_IN_PROGRESS = "BUILD_IN_PROGRESS"
-    BUILD_FAILED = "BUILD_FAILED"
-    BUILD_COMPLETE = "BUILD_COMPLETE"
-    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
-    DELETE_FAILED = "DELETE_FAILED"
+    AVAILABLE = "AVAILABLE"
+    PENDING = "PENDING"
+    FAILED = "FAILED"
 
     def __init__(self):  # noqa: E501
         """ImageStatusFilteringOption - a model defined in OpenAPI"""

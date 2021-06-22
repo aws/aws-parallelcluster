@@ -7,25 +7,15 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
-  LocalStorage:
-    RootVolume:
-      Size: 150
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
-    - Name: queue-0
-      ComputeSettings:
-        LocalStorage:
-          RootVolume:
-            Size: 150
+    - Name: compute
       ComputeResources:
-        - Name: compute-resource-0
-          {% if scheduler == "awsbatch" %}
-          InstanceTypes:
-            - {{ instance }}
-          {% else %}
+        - Name: compute-i1
           InstanceType: {{ instance }}
-          {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}

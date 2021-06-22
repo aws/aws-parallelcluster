@@ -5,16 +5,21 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-
 # pylint: disable=import-outside-toplevel
 
 import logging
+import os
+import re
 import textwrap
+import time
+from datetime import datetime
 from typing import List
 
 import argparse
 from argparse import ArgumentParser, Namespace
+from tabulate import tabulate
 
+from pcluster import utils
 from pcluster.api.models.cluster_status import ClusterStatusEnum
 from pcluster.cli.commands.common import (
     CliCommand,
@@ -25,6 +30,7 @@ from pcluster.cli.commands.common import (
     print_json,
 )
 from pcluster.constants import PCLUSTER_VERSION_TAG
+from pcluster.models.cluster import Cluster
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -70,7 +76,7 @@ class CreateClusterCommand(CliCommand):
             help="Specifies the URL for a custom CloudFormation template, if it was used at creation time.",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import create
 
         create(args)
@@ -112,7 +118,7 @@ class UpdateClusterCommand(CliCommand):
             "-f", "--force", action="store_true", help="Forces the update skipping security checks. Not recommended."
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands import update
 
         update.execute(args)
@@ -138,7 +144,7 @@ class DeleteClusterCommand(CliCommand):
             "deleted manually, but log events will still expire based on the previously configured retention time",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import delete
 
         delete(args)
@@ -158,7 +164,7 @@ class StartClusterCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Starts the compute fleet of the cluster name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import start
 
         start(args)
@@ -178,7 +184,7 @@ class StopClusterCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Stops the compute fleet of the cluster name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import stop
 
         stop(args)
@@ -198,7 +204,7 @@ class ClusterStatusCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Shows the status of the cluster with the name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import status
 
         status(args)
@@ -219,7 +225,7 @@ class ListClustersCommandV2(CliCommand):  # TODO: to be removed
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("--color", action="store_true", default=False, help="Display the cluster status in color.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import list_clusters
 
         list_clusters(args)
@@ -249,7 +255,7 @@ class ListClustersCommand(CliCommandV3):
             help=f"Comma separated status values to filter by. Available values are {cluster_status_values}",
         )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         query_string = [
             ("region", args.region),
             ("nextToken", args.next_token),
@@ -276,7 +282,7 @@ class InstancesCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="Display the instances for the cluster with the name provided here.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.commands import instances
 
         instances(args)
@@ -337,7 +343,7 @@ class ConfigureCommand(CliCommand):
     def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("-c", "--config", help="Path of the output config file.")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.configure.easyconfig import configure
 
         configure(args)
@@ -361,7 +367,299 @@ class DcvConnectCommand(DcvCommand):
         )
         parser.add_argument("--show-url", "-s", action="store_true", default=False, help="Print URL and exit")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
         from pcluster.cli_commands.dcv.connect import dcv_connect
 
         dcv_connect(args)
+
+
+class ExportClusterLogsCommand(CliCommand):
+    """Implement pcluster export-cluster-logs command."""
+
+    # CLI
+    name = "export-cluster-logs"
+    help = "Export the logs of the cluster to a local tar.gz archive by passing through an Amazon S3 Bucket."
+    description = help
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("cluster_name", help="Export the logs of the cluster name provided here.")
+        parser.add_argument("--output", help="File path to save log archive to.", type=os.path.realpath)
+        # Export options
+        parser.add_argument(
+            "--bucket",
+            required=True,
+            help="S3 bucket to export cluster logs data to. It must be in the same region of the cluster",
+        )
+        parser.add_argument(
+            "--bucket-prefix",
+            help="Keypath under which exported logs data will be stored in s3 bucket. "
+            "Also serves as top-level directory in resulting archive.",
+        )
+        parser.add_argument(
+            "--keep-s3-objects",
+            action="store_true",
+            help="Keep the exported objects exports to S3. The default behavior is to delete them.",
+        )
+        # Filters
+        parser.add_argument(
+            "--start-time",
+            help=(
+                "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to cluster's start time"
+            ),
+        )
+        parser.add_argument(
+            "--end-time",
+            help=(
+                "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
+            ),
+        )
+        filters_arg = _FiltersArg(accepted_filters=["private-dns-name", "node-type"])
+        parser.add_argument(
+            "--filters",
+            nargs="+",
+            type=filters_arg,
+            help=(
+                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
+                "private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\n"
+                "node-type - The node type, the only accepted value for this filter is HeadNode."
+            ),
+        )
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
+        try:
+            output_file_path = args.output or os.path.realpath(
+                f"{args.cluster_name}-logs-{datetime.now().timestamp()}.tar.gz"
+            )
+            self._validate_command_args(output_file_path)
+            self._export_cluster_logs(args, output_file_path)
+        except Exception as e:
+            utils.error(f"Unable to export cluster's logs.\n{e}")
+
+    @staticmethod
+    def _validate_command_args(output_file_path: str):
+        # Verify that a file can be written to the given path
+        file_dir = os.path.dirname(output_file_path)
+        if not os.path.isdir(file_dir):
+            try:
+                os.makedirs(file_dir)
+            except Exception as e:
+                utils.error(f"Failed to create parent directory {file_dir} for cluster's logs archive. Reason: {e}")
+        if not os.access(file_dir, os.W_OK):
+            utils.error(f"Cannot write cluster's log archive to {output_file_path}. {file_dir} is not writeable.")
+
+    @staticmethod
+    def _export_cluster_logs(args: Namespace, output_file_path: str):
+        """Export the logs associated to the cluster."""
+        LOGGER.info("Beginning export of logs for the cluster: %s", args.cluster_name)
+        cluster = Cluster(args.cluster_name)
+        cluster.export_logs(
+            output=output_file_path,
+            bucket=args.bucket,
+            bucket_prefix=args.bucket_prefix,
+            keep_s3_objects=args.keep_s3_objects,
+            start_time=args.start_time,
+            end_time=args.end_time,
+            filters=" ".join(args.filters) if args.filters else None,
+        )
+        LOGGER.info("Cluster's logs exported correctly to %s.", output_file_path)
+
+
+class ListClusterLogsCommand(CliCommand):
+    """Implement pcluster list-cluster-logs command."""
+
+    # CLI
+    name = "list-cluster-logs"
+    help = "List the logs of the cluster saved to CloudWatch."
+    description = help
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("cluster_name", help="List the logs of the cluster name provided here.")
+        # Filters
+        filters_arg = _FiltersArg(accepted_filters=["private-dns-name"])
+        parser.add_argument(
+            "--filters",
+            nargs="+",
+            type=filters_arg,
+            help=(
+                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
+                "private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\n"
+                "node-type - The node type, the only accepted value for this filter is HeadNode."
+            ),
+        )
+        parser.add_argument("--next-token", help="Token for paginated requests")
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
+        try:
+            self._list_cluster_logs(args)
+        except Exception as e:
+            utils.error(f"Unable to list cluster's logs.\n{e}")
+
+    @staticmethod
+    def _list_cluster_logs(args: Namespace):
+        if args.region:
+            os.environ["AWS_DEFAULT_REGION"] = args.region
+
+        cluster = Cluster(args.cluster_name)
+        response = cluster.list_logs(
+            filters=" ".join(args.filters) if args.filters else None,
+            next_token=args.next_token,
+        )
+        if not response.get("logStreams", None):
+            print("No logs found.")
+        else:
+            output_headers = {
+                "logStreamName": "Log Stream Name",
+                "firstEventTimestamp": "First Event",
+                "lastEventTimestamp": "Last Event",
+            }
+            filtered_result = []
+            for item in response.get("logStreams", []):
+                filtered_item = {}
+                for key, output_key in output_headers.items():
+                    value = item.get(key)
+                    if key.endswith("Timestamp"):
+                        value = utils.timestamp_to_isoformat(value)
+                    filtered_item[output_key] = value
+                filtered_result.append(filtered_item)
+            LOGGER.info(tabulate(filtered_result, headers="keys", tablefmt="plain"))
+            if response.get("nextToken", None):
+                LOGGER.info("\nnextToken is: %s", response["nextToken"])
+
+
+class _FiltersArg:
+    """Class to implement regex parsing for filters parameter."""
+
+    def __init__(self, accepted_filters: list):
+        filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
+        self._pattern = re.compile(fr"^({filter_regex})(\s+{filter_regex})*$")
+
+    def __call__(self, value):
+        if not self._pattern.match(value):
+            raise argparse.ArgumentTypeError(f"filters parameter must be in the form {self._pattern.pattern} ")
+        return value
+
+
+class GetClusterLogEventsCommand(CliCommand):
+    """Implement pcluster get-cluster-log-events command."""
+
+    # CLI
+    name = "get-cluster-log-events"
+    help = "Retrieve the events of a log stream of the cluster saved to CloudWatch."
+    description = help
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("cluster_name", help="Get the log stream of the cluster name provided here.")
+        parser.add_argument(
+            "--log-stream-name",
+            help="Log stream name, as reported by 'pcluster list-cluster-logs' command",
+            required=True,
+        )
+        # Filters
+        parser.add_argument(
+            "--start-time",
+            help=(
+                "Start time of interval of interest for log events, "
+                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+            ),
+            type=int,
+        )
+        parser.add_argument(
+            "--end-time",
+            help=(
+                "End time of interval of interest for log events, "
+                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+            ),
+            type=int,
+        )
+        parser.add_argument("--head", help="Gets the first <head> lines of the log stream", type=int)
+        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream", type=int)
+        parser.add_argument("--next-token", help="Token for paginated requests")
+        # Stream utilities
+        parser.add_argument(
+            "--stream",
+            help="Gets the log stream and waits for additional output to be produced. "
+            "It can be used in conjunction with --tail to start from the "
+            "latest <tail> lines of the log stream",
+            action="store_true",
+        )
+        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds", type=int)
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
+        try:
+            self._validate_args(args)
+            self._get_cluster_log_events(args)
+        except Exception as e:
+            utils.error(f"Unable to get cluster's log events.\n{e}")
+
+    @staticmethod
+    def _validate_args(args: Namespace):
+        if args.head and args.tail:
+            utils.error("Parameters validation error: 'tail' and 'head' options cannot be set at the same time")
+
+        if args.stream:
+            if args.next_token:
+                utils.error(
+                    "Parameters validation error: 'stream' and 'next-token' options cannot be set at the same time"
+                )
+            if args.head:
+                utils.error("Parameters validation error: 'stream' and 'head' options cannot be set at the same time")
+        else:
+            if args.stream_period:
+                utils.error("Parameters validation error: 'stream-period' can be used only with 'stream' option")
+
+    def _get_cluster_log_events(self, args: Namespace):
+        """Get log events for a specific log stream of the cluster saved in CloudWatch."""
+        if args.region:
+            os.environ["AWS_DEFAULT_REGION"] = args.region
+        kwargs = {
+            "log_stream_name": args.log_stream_name,
+            "start_time": args.start_time,
+            "end_time": args.end_time,
+            "start_from_head": args.head is not None,
+            "limit": args.head or args.tail or None,
+            "next_token": args.next_token,
+        }
+        cluster = Cluster(args.cluster_name)
+        response = cluster.get_log_events(**kwargs)
+        self._print_log_events(response.get("events", []))
+
+        if args.stream:
+            # stream content
+            next_token = response.get("nextForwardToken", None)
+            while next_token is not None and args.stream:
+                LOGGER.debug("NextToken is %s", next_token)
+                period = args.stream_period or 5
+                LOGGER.debug("Waiting other %s seconds...", period)
+                time.sleep(period)
+
+                kwargs["next_token"] = next_token
+                result = cluster.get_log_events(**kwargs)
+                next_token = result.get("nextForwardToken", None)
+                self._print_log_events(result.get("events", []))
+        else:
+            LOGGER.info("\nnextBackwardToken is: %s", response["nextBackwardToken"])
+            LOGGER.info("nextForwardToken is: %s", response["nextForwardToken"])
+
+    @staticmethod
+    def _print_log_events(events: list):
+        """
+        Print given events.
+
+        :param events: list of boto3 events
+        """
+        if not events:
+            print("No events found.")
+        else:
+            for event in events:
+                print("{0}: {1}".format(utils.timestamp_to_isoformat(event["timestamp"]), event["message"]))

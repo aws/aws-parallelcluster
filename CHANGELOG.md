@@ -20,7 +20,8 @@ CHANGELOG
 - Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
 - Add `delete-image` command with `--name`, `--region`, `--force` parameters.
 - Add `describe-image` command with `--name`, `--region` parameters.
-- Add`list-images` command with `--region`, `--color`parameters.
+- Add `list-images` command with `--region`, `--color`parameters.
+- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands.
 - Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
   as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
@@ -53,6 +54,10 @@ per cluster.
 - Remove tag: Application.
 - Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
 - Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file. 
+- Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
+- Add prompt for availability zone in pcluster configure automated subnets creation.
+- Remove support for CentOS8.
+- Add configuration HeadNode.Imds.Secured to enable/disable restricted access to IMDS.
 
 2.x.x
 ------

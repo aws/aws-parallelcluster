@@ -73,8 +73,7 @@ TEST_DEFAULTS = {
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
     "stackname_suffix": "",
-    "keep_logs_on_cluster_failure": False,
-    "keep_logs_on_test_failure": False,
+    "delete_logs_on_success": False,
     "tests_root_dir": "./tests",
     "instance_types_data": None,
 }
@@ -249,6 +248,11 @@ def _init_argparser():
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
     ami_group.add_argument(
+        "--pcluster-git-ref",
+        help="Git ref of the custom cli package used to build the AMI.",
+        default=TEST_DEFAULTS.get("pcluster_git_ref"),
+    )
+    ami_group.add_argument(
         "--cookbook-git-ref",
         help="Git ref of the custom cookbook package used to build the AMI.",
         default=TEST_DEFAULTS.get("cookbook_git_ref"),
@@ -308,16 +312,10 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("no_delete"),
     )
     debug_group.add_argument(
-        "--keep-logs-on-cluster-failure",
-        help="preserve CloudWatch logs when a cluster fails to be created",
+        "--delete-logs-on-success",
+        help="delete CloudWatch logs when a test succeeds",
         action="store_true",
-        default=TEST_DEFAULTS.get("keep_logs_on_cluster_failure"),
-    )
-    debug_group.add_argument(
-        "--keep-logs-on-test-failure",
-        help="preserve CloudWatch logs when a test fails",
-        action="store_true",
-        default=TEST_DEFAULTS.get("keep_logs_on_test_failure"),
+        default=TEST_DEFAULTS.get("delete_logs_on_success"),
     )
     debug_group.add_argument(
         "--stackname-suffix",
@@ -430,10 +428,8 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append("--schedulers")
         pytest_args.extend(args.schedulers)
 
-    if args.keep_logs_on_cluster_failure:
-        pytest_args.append("--keep-logs-on-cluster-failure")
-    if args.keep_logs_on_test_failure:
-        pytest_args.append("--keep-logs-on-test-failure")
+    if args.delete_logs_on_success:
+        pytest_args.append("--delete-logs-on-success")
 
     if args.credential:
         pytest_args.append("--credential")
@@ -487,6 +483,9 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
 def _set_ami_args(args, pytest_args):
     if args.custom_ami:
         pytest_args.extend(["--custom-ami", args.custom_ami])
+
+    if args.pcluster_git_ref:
+        pytest_args.extend(["--pcluster-git-ref", args.pcluster_git_ref])
 
     if args.cookbook_git_ref:
         pytest_args.extend(["--cookbook-git-ref", args.cookbook_git_ref])

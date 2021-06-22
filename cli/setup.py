@@ -26,7 +26,6 @@ REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
     "tabulate~=0.8",
-    "ipaddress>=1.0.22",
     "PyYAML>=5.3.1",
     "jinja2>=2.11.0",
     "marshmallow~=3.10",

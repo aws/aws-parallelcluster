@@ -56,6 +56,7 @@ from pcluster.config.cluster_config import (
     HeadNodeNetworking,
     Iam,
     Image,
+    Imds,
     IntelSelectSolutions,
     LocalStorage,
     Logs,
@@ -732,6 +733,17 @@ class IamSchema(BaseSchema):
         return Iam(**data)
 
 
+class ImdsSchema(BaseSchema):
+    """Represent the schema of IMDS for HeadNode."""
+
+    secured = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Imds(**data)
+
+
 class IntelSelectSolutionsSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
@@ -866,6 +878,7 @@ class HeadNodeSchema(BaseSchema):
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    imds = fields.Nested(ImdsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -1171,8 +1184,9 @@ class ClusterSchema(BaseSchema):
         error_message = validation_error.args[0]
         if "Scheduling" in error_message:
             scheduling = error_message["Scheduling"]
-            for scheduler in SUPPORTED_SCHEDULERS:
-                scheduler_settings = scheduling.get(scheduler.capitalize())
-                if scheduler_settings:
-                    error_message["Scheduling"] = scheduler_settings
-                    break
+            if isinstance(scheduling, dict):
+                for scheduler in SUPPORTED_SCHEDULERS:
+                    scheduler_settings = scheduling.get(scheduler.capitalize())
+                    if scheduler_settings:
+                        error_message["Scheduling"] = scheduler_settings
+                        break
