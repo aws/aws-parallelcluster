@@ -127,6 +127,7 @@ def create_cluster(
 
 
 @configure_aws_region()
+@convert_errors()
 @http_success_status_code(202)
 def delete_cluster(cluster_name, region=None):
     """
@@ -167,8 +168,6 @@ def delete_cluster(cluster_name, region=None):
             "In case you have running instances belonging to a deleted cluster please use the DeleteClusterInstances "
             "API."
         )
-    except ClusterActionError as e:
-        raise InternalServiceException(f"Failed when deleting cluster due to: {e}.")
 
 
 @configure_aws_region()
