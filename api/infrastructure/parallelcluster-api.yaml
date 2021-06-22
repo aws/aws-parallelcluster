@@ -73,7 +73,12 @@ Globals:
     TracingEnabled: True
     EndpointConfiguration:
       Type: REGIONAL
-
+    MethodSettings:
+      - HttpMethod: '*'
+        ResourcePath: '/*'
+        ThrottlingRateLimit: 100
+        ThrottlingBurstLimit: 10
+        MetricsEnabled: true
 
 Conditions:
   UseCustomEcrImageUri: !Not [!Equals [!Ref EcrImageUri, '']]
