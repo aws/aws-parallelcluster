@@ -486,7 +486,7 @@ class TestCluster:
             (True, True, False, ""),
         ],
     )
-    def test_get_cluster_log_events(
+    def test_get_log_events(
         self,
         cluster,
         mocker,

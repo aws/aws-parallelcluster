@@ -24,10 +24,10 @@ positional arguments:
     export-cluster-logs
                         Export the logs of the cluster to a local tar.gz
                         archive by passing through an Amazon S3 Bucket.
-    list-cluster-logs   List the logs of the cluster saved to CloudWatch.
+    list-cluster-logs   List the logs of the CloudFormation Stack and the logs
+                        saved in CloudWatch associated to a cluster.
     get-cluster-log-events
-                        Retrieve the events of a log stream of the cluster
-                        saved to CloudWatch.
+                        Retrieve the events of a log stream of the cluster.
     build-image         Creates a custom AMI to use with AWS ParallelCluster.
     delete-image        Deletes an image and related image builder stack.
     describe-image      Describes the specified ParallelCluster image.
@@ -36,10 +36,10 @@ positional arguments:
                         version.
     export-image-logs   Export the logs of the image builder stack to a local
                         tar.gz archive by passing through an Amazon S3 Bucket.
-    list-image-logs     List the logs of the image saved to CloudWatch.
+    list-image-logs     List the logs of the CloudFormation Stack and Image
+                        Builder process related associated to an image id.
     get-image-log-events
-                        Retrieve the events of a log stream of the image
-                        builder saved to CloudWatch.
+                        Retrieve the events of a log stream of the image.
     version             Displays the version of AWS ParallelCluster.
     list-clusters       Retrieves the list of existing AWS ParallelCluster
                         clusters.

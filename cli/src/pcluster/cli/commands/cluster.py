@@ -439,7 +439,7 @@ class ListClusterLogsCommand(CliCommand):
 
     # CLI
     name = "list-cluster-logs"
-    help = "List the logs of the cluster saved to CloudWatch."
+    help = "List the logs of the CloudFormation Stack and the logs saved in CloudWatch associated to a cluster."
     description = help
 
     def __init__(self, subparsers):
@@ -494,7 +494,7 @@ class GetClusterLogEventsCommand(GetLogEventsCommand, CliCommand):
 
     # CLI
     name = "get-cluster-log-events"
-    help = "Retrieve the events of a log stream of the cluster saved to CloudWatch."
+    help = "Retrieve the events of a log stream of the cluster."
     description = help
 
     def __init__(self, subparsers):

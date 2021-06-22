@@ -182,7 +182,7 @@ class ListImageLogsCommand(CliCommand):
 
     # CLI
     name = "list-image-logs"
-    help = "List the logs of the image saved to CloudWatch."
+    help = "List the logs of the CloudFormation Stack and Image Builder process related associated to an image id."
     description = help
 
     def __init__(self, subparsers):
@@ -211,7 +211,7 @@ class GetImageLogEventsCommand(GetLogEventsCommand, CliCommand):
 
     # CLI
     name = "get-image-log-events"
-    help = "Retrieve the events of a log stream of the image builder saved to CloudWatch."
+    help = "Retrieve the events of a log stream of the image."
     description = help
 
     def __init__(self, subparsers):
