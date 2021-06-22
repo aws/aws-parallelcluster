@@ -135,8 +135,10 @@ def configure(args):  # noqa: C901
 
     if scheduler == "awsbatch":
         base_os = "alinux2"
+        head_node_imds_secured = False
     else:
         base_os = prompt_iterable("Operating System", get_supported_os_for_scheduler(scheduler))
+        head_node_imds_secured = True
 
     default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
@@ -224,6 +226,7 @@ def configure(args):  # noqa: C901
             "InstanceType": head_node_instance_type,
             "Networking": {"SubnetId": vpc_parameters["head_node_subnet_id"]},
             "Ssh": {"KeyName": key_name},
+            "Imds": {"Secured": head_node_imds_secured},
         },
         "Scheduling": {"Scheduler": scheduler, "Queues": queues},
     }
