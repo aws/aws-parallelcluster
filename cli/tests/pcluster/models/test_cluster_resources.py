@@ -16,10 +16,10 @@ from assertpy import assert_that
 
 from pcluster.models.cluster_resources import (
     ClusterInstance,
+    ClusterLogsFiltersParser,
     ExportClusterLogsFiltersParser,
     FiltersParserError,
     ListClusterLogsFiltersParser,
-    ClusterLogsFiltersParser,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -123,15 +123,10 @@ class TestExportClusterLogsFiltersParser:
             ),
         ],
     )
-    def test_initialization_success(self, mocker, mock_head_node, params, expected_attrs):
+    def test_initialization_success(self, mock_head_node, params, expected_attrs):
         os.environ["TZ"] = "Europe/London"
         time.tzset()
         log_group_name = "log_group_name"
-        creation_time_mock = 1623061001000
-        mock_aws_api(mocker)
-        mocker.patch(
-            "pcluster.aws.logs.LogsClient.describe_log_group", return_value={"creationTime": creation_time_mock}
-        )
 
         export_logs_filters = ExportClusterLogsFiltersParser(
             mock_head_node,

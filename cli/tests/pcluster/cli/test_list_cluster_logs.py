@@ -12,6 +12,8 @@ import pytest
 from assertpy import assert_that
 from dateutil import tz
 
+from pcluster.models.common_resources import Logs
+
 BASE_COMMAND = ["pcluster", "list-cluster-logs"]
 REQUIRED_ARGS = {"cluster_name": "clustername"}
 
@@ -57,7 +59,8 @@ class TestListClusterLogsCommand:
         ],
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, args):
-        mocked_result = {
+        logs = Logs()
+        logs.cw_log_streams = {
             "logStreams": [
                 {
                     "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
@@ -88,15 +91,16 @@ class TestListClusterLogsCommand:
             ],
             "nextToken": "123-456",
             "ResponseMetadata": {},
-            "stackEventsStream": [
-                {
-                    "Stack Events Stream": "cloudformation-stack-events",
-                    "Cluster Creation Time": "2021-06-04T10:23:20+00:00",
-                    "Last Update Time": "2021-06-04T10:23:20+00:00",
-                }
-            ],
         }
-        list_logs_mock = mocker.patch("pcluster.cli.commands.cluster.Cluster.list_logs", return_value=mocked_result)
+        logs.stack_log_streams = [
+            {
+                "Stack Events Stream": "cloudformation-stack-events",
+                "Cluster Creation Time": "2021-06-04T10:23:20+00:00",
+                "Last Update Time": "2021-06-04T10:23:20+00:00",
+            }
+        ]
+
+        list_logs_mock = mocker.patch("pcluster.cli.commands.cluster.Cluster.list_logs", return_value=logs)
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})

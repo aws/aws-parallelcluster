@@ -14,11 +14,9 @@ from datetime import datetime
 from typing import List
 
 from argparse import ArgumentParser, Namespace
-from tabulate import tabulate
 
 from pcluster import utils
-from pcluster.aws.aws_api import AWSApi
-from pcluster.cli.commands.common import CliCommand, Iso8601Arg, validate_output_file_path
+from pcluster.cli.commands.common import CliCommand, ExportLogsCommand, GetLogEventsCommand
 from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME
 from pcluster.models.imagebuilder import ImageBuilder
 
@@ -128,7 +126,7 @@ class ListImagesCommand(CliCommand):
         list_images(args)
 
 
-class ExportImageLogsCommand(CliCommand):
+class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
     """Implement pcluster export-image-logs command."""
 
     # CLI
@@ -142,55 +140,24 @@ class ExportImageLogsCommand(CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        super()._register_common_command_args(parser)
         parser.add_argument("image_id", help="Export the logs related to the image id provided here.")
-        parser.add_argument("--output", help="File path to save log archive to.", type=os.path.realpath)
         # Export options
         parser.add_argument(
             "--bucket",
             required=True,
             help="S3 bucket to export image builder logs data to. It must be in the same region of the image",
         )
-        parser.add_argument(
-            "--bucket-prefix",
-            help="Keypath under which exported logs data will be stored in s3 bucket. "
-            "Also serves as top-level directory in resulting archive.",
-        )
-        parser.add_argument(
-            "--keep-s3-objects",
-            action="store_true",
-            help="Keep the exported objects exports to S3. The default behavior is to delete them.",
-        )
-        # Filters
-        parser.add_argument(
-            "--start-time",
-            type=Iso8601Arg(),
-            help=(
-                "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to image build start time"
-            ),
-        )
-        parser.add_argument(
-            "--end-time",
-            type=Iso8601Arg(),
-            help=(
-                "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
-            ),
-        )
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
             output_file_path = args.output or os.path.realpath(
                 f"{args.image_id}-logs-{datetime.now().timestamp()}.tar.gz"
             )
-            self._validate_command_args(output_file_path)
+            self._validate_output_file_path(output_file_path)
             self._export_image_logs(args, output_file_path)
         except Exception as e:
             utils.error(f"Unable to export image's logs.\n{e}")
-
-    @staticmethod
-    def _validate_command_args(output_file_path: str):
-        validate_output_file_path(output_file_path)
 
     @staticmethod
     def _export_image_logs(args: Namespace, output_file_path: str):
@@ -225,7 +192,7 @@ class ListImageLogsCommand(CliCommand):
         parser.add_argument("image_id", help="List the logs of the image id provided here.")
         parser.add_argument("--next-token", help="Token for paginated requests")
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
             self._list_image_logs(args)
         except Exception as e:
@@ -234,38 +201,12 @@ class ListImageLogsCommand(CliCommand):
     @staticmethod
     def _list_image_logs(args: Namespace):
         imagebuilder = ImageBuilder(image_id=args.image_id)
-        response = imagebuilder.list_logs(next_token=args.next_token)
-
-        # Print CFN Stack events stream
-        if not response.get("stackEventsStream", None):
-            print(f"There is no stack associated to the image id {args.image_id}")
-        elif not args.next_token:
-            print("{}\n".format(tabulate(response.get("stackEventsStream", []), headers="keys", tablefmt="plain")))
-
-        if not response.get("logStreams", None):
-            print("There are no cluster's logs saved in CloudWatch.")
-        else:
-            # List CW log streams
-            output_headers = {
-                "logStreamName": "Log Stream Name",
-                "firstEventTimestamp": "First Event",
-                "lastEventTimestamp": "Last Event",
-            }
-            filtered_result = []
-            for item in response.get("logStreams", []):
-                filtered_item = {}
-                for key, output_key in output_headers.items():
-                    value = item.get(key)
-                    if key.endswith("Timestamp"):
-                        value = utils.timestamp_to_isoformat(value)
-                    filtered_item[output_key] = value
-                filtered_result.append(filtered_item)
-            print(tabulate(filtered_result, headers="keys", tablefmt="plain"))
-            if response.get("nextToken", None):
-                print("\nnextToken is: %s", response["nextToken"])
+        logs = imagebuilder.list_logs(next_token=args.next_token)
+        logs.print_stack_log_streams()
+        logs.print_cw_log_streams()
 
 
-class GetImageLogEventsCommand(CliCommand):
+class GetImageLogEventsCommand(GetLogEventsCommand, CliCommand):
     """Implement pcluster get-image-log-events command."""
 
     # CLI
@@ -277,68 +218,23 @@ class GetImageLogEventsCommand(CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        super()._register_common_command_args(parser)
         parser.add_argument("image_id", help="Get the log stream of the image id provided here.")
         parser.add_argument(
             "--log-stream-name",
             help="Log stream name, as reported by 'pcluster list-image-logs' command.",
             required=True,
         )
-        # Filters
-        parser.add_argument(
-            "--start-time",
-            type=Iso8601Arg(),
-            help=(
-                "Start time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted."
-            ),
-        )
-        parser.add_argument(
-            "--end-time",
-            type=Iso8601Arg(),
-            help=(
-                "End time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. "
-            ),
-        )
-        parser.add_argument("--head", help="Gets the first <head> lines of the log stream.", type=int)
-        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream.", type=int)
-        parser.add_argument("--next-token", help="Token for paginated requests.")
-        # Stream utilities
-        parser.add_argument(
-            "--stream",
-            help=(
-                "Gets the log stream and waits for additional output to be produced. "
-                "It can be used in conjunction with --tail to start from the latest <tail> lines of the log stream. "
-                "It doesn't work for CloudFormation Stack Events log stream."
-            ),
-            action="store_true",
-        )
-        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds.", type=int)
 
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
-            self._validate_args(args)
+            self._validate_common_args(args)
             self._get_image_log_events(args)
         except Exception as e:
             utils.error(f"Unable to get cluster's log events.\n{e}")
 
     @staticmethod
-    def _validate_args(args: Namespace):
-        if args.head and args.tail:
-            utils.error("Parameters validation error: 'tail' and 'head' options cannot be set at the same time")
-
-        if args.stream:
-            if args.next_token:
-                utils.error(
-                    "Parameters validation error: 'stream' and 'next-token' options cannot be set at the same time"
-                )
-            if args.head:
-                utils.error("Parameters validation error: 'stream' and 'head' options cannot be set at the same time")
-        else:
-            if args.stream_period:
-                utils.error("Parameters validation error: 'stream-period' can be used only with 'stream' option")
-
-    def _get_image_log_events(self, args: Namespace):
+    def _get_image_log_events(args: Namespace):
         """Get log events for a specific log stream of the image saved in CloudWatch."""
         kwargs = {
             "log_stream_name": args.log_stream_name,
@@ -349,45 +245,20 @@ class GetImageLogEventsCommand(CliCommand):
             "next_token": args.next_token,
         }
         imagebuilder = ImageBuilder(image_id=args.image_id)
-        response = imagebuilder.get_log_events(**kwargs)
+        log_events = imagebuilder.get_log_events(**kwargs)
 
-        if args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
-            # Print log stream events
-            self._print_log_events(response.get("events", []), args.stream)
-            if args.stream:
-                # stream content
-                next_token = response.get("nextForwardToken", None)
-                while next_token is not None and args.stream:
-                    LOGGER.debug("NextToken is %s", next_token)
-                    period = args.stream_period or 5
-                    LOGGER.debug("Waiting other %s seconds...", period)
-                    time.sleep(period)
+        log_events.print_events()
+        if args.stream and args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
+            # stream content
+            next_token = log_events.next_ftoken
+            while next_token is not None:
+                period = args.stream_period or 5
+                LOGGER.debug("Waiting other %s seconds...", period)
+                time.sleep(period)
 
-                    kwargs["next_token"] = next_token
-                    response = imagebuilder.get_log_events(**kwargs)
-                    next_token = response.get("nextForwardToken", None)
-                    self._print_log_events(response.get("events", []), args.stream)
-            else:
-                LOGGER.info("\nnextBackwardToken is: %s", response["nextBackwardToken"])
-                LOGGER.info("nextForwardToken is: %s", response["nextForwardToken"])
+                kwargs["next_token"] = next_token
+                log_events = imagebuilder.get_log_events(**kwargs)
+                next_token = log_events.next_ftoken
+                log_events.print_events()
         else:
-            # Print CFN stack events
-            for event in response.get("events", []):
-                print(AWSApi.instance().cfn.format_event(event))
-
-    @staticmethod
-    def _print_log_events(events: list, stream=None):
-        """
-        Print given events.
-
-        :param events: list of boto3 events
-        """
-        if not events:
-            message = "No events found."
-            if stream:
-                LOGGER.debug(message)
-            else:
-                print(message)
-        else:
-            for event in events:
-                print("{0}: {1}".format(utils.timestamp_to_isoformat(event["timestamp"]), event["message"]))
+            log_events.print_next_tokens()
