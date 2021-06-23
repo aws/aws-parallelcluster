@@ -31,7 +31,6 @@ from dateutil import tz
 from dateutil.parser import parse
 from pkg_resources import packaging
 
-from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import get_region
 from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_FOR_SCHEDULER
 
@@ -144,6 +143,8 @@ def verify_stack_status(stack_name, waiting_states, successful_states):
     :param successful_states: list of final status considered as successful
     :return: True if the final status is in the successful_states list, False otherwise.
     """
+    from pcluster.aws.aws_api import AWSApi  # pylint: disable=import-outside-toplevel
+
     status = AWSApi.instance().cfn.describe_stack(stack_name).get("StackStatus")
     resource_status = ""
     while status in waiting_states:
@@ -166,6 +167,8 @@ def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
     if not failed_states:
         failed_states = ["CREATE_FAILED"]
 
+    from pcluster.aws.aws_api import AWSApi  # pylint: disable=import-outside-toplevel
+
     events = AWSApi.instance().cfn.get_stack_events(stack_name)
     for event in events:
         if event.get("ResourceStatus") in failed_states:
@@ -184,6 +187,8 @@ def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
 
 def _log_cfn_event(event, indent):
     """Log failed CFN events."""
+    from pcluster.aws.aws_api import AWSApi  # pylint: disable=import-outside-toplevel
+
     print("%s- %s", " " * indent, AWSApi.instance().cfn.format_event(event))
 
 
