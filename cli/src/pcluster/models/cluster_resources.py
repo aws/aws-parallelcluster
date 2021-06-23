@@ -141,7 +141,10 @@ class ClusterLogsFiltersParser:
             if self._private_dns_name:
                 self._log_stream_prefix = self._private_dns_name
             elif self._node_type:
-                self._log_stream_prefix = self._head_node.private_dns_name_short
+                if self._head_node:
+                    self._log_stream_prefix = self._head_node.private_dns_name_short
+                else:
+                    raise FiltersParserError("HeadNode instance not available. Node Type filter cannot be used.")
         return self._log_stream_prefix
 
     def validate(self):
