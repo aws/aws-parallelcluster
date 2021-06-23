@@ -796,7 +796,7 @@ class Cluster:
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
                 files_to_archive = []
-                if self.config.is_cw_logging_enabled:
+                if self.stack.log_group_name:
                     # Export logs from CloudWatch
                     export_logs_filters = self._init_export_logs_filters(start_time, end_time, filters)
                     logs_exporter = CloudWatchLogsExporter(
@@ -830,8 +830,14 @@ class Cluster:
 
     def _init_export_logs_filters(self, start_time, end_time, filters):
         try:
+            head_node = None
+            try:
+                head_node = self.head_node_instance
+            except ClusterActionError as e:
+                LOGGER.debug(e)
+
             export_logs_filters = ExportClusterLogsFiltersParser(
-                head_node=self.head_node_instance,
+                head_node=head_node,
                 log_group_name=self.stack.log_group_name,
                 start_time=start_time,
                 end_time=end_time,
@@ -858,7 +864,7 @@ class Cluster:
 
             LOGGER.debug("Listing log streams from log group %s", self.stack.log_group_name)
             cw_log_streams = None
-            if self.config.is_cw_logging_enabled:
+            if self.stack.log_group_name:
                 list_logs_filters = self._init_list_logs_filters(filters)
                 cw_log_streams = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self.stack.log_group_name,
@@ -885,8 +891,14 @@ class Cluster:
 
     def _init_list_logs_filters(self, filters):
         try:
+            head_node = None
+            try:
+                head_node = self.head_node_instance
+            except ClusterActionError as e:
+                LOGGER.debug(e)
+
             list_logs_filters = ListClusterLogsFiltersParser(
-                head_node=self.head_node_instance, log_group_name=self.stack.log_group_name, filters=filters
+                head_node=head_node, log_group_name=self.stack.log_group_name, filters=filters
             )
             list_logs_filters.validate()
         except FiltersParserError as e:
@@ -920,7 +932,7 @@ class Cluster:
 
         try:
             if log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
-                if not self.config.is_cw_logging_enabled:
+                if not self.stack.log_group_name:
                     raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
 
                 log_events_response = AWSApi.instance().logs.get_log_events(

@@ -402,9 +402,10 @@ class TestCluster:
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
         download_stack_events_mock = mocker.patch("pcluster.models.cluster.export_stack_events")
         create_logs_archive_mock = mocker.patch("pcluster.models.cluster.create_logs_archive")
-
-        cluster.config = dummy_slurm_cluster_config(mocker)
-        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name",
+            new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
+        )
 
         # Following mocks are used only if CW loggins is enabled
         logs_filter_mock = mocker.patch(
@@ -462,9 +463,10 @@ class TestCluster:
         mocker.patch(
             "pcluster.models.cluster.Cluster._init_list_logs_filters", return_value=_MockListClusterLogsFiltersParser()
         )
-
-        cluster.config = dummy_slurm_cluster_config(mocker)
-        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name",
+            new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
+        )
 
         if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
@@ -503,9 +505,10 @@ class TestCluster:
             "pcluster.aws.logs.LogsClient.get_log_events",
             side_effect=AWSClientError("get_log_events", "error") if client_error else None,
         )
-
-        cluster.config = dummy_slurm_cluster_config(mocker)
-        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name",
+            new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
+        )
 
         if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
