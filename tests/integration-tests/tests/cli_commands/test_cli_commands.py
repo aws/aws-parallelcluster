@@ -128,6 +128,14 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
         # check archive prefix and content
         with tarfile.open(output_file) as archive:
 
+            # check the cfn stack events file is present
+            stack_events_file_found = False
+            for file in archive:
+                if "cloudformation-stack-events" == file.name:
+                    stack_events_file_found = True
+                    break
+            assert_that(stack_events_file_found).is_true()
+
             # check there are the logs of all the instances
             for instance_id in set(instance_ids):
                 instance_found = False
@@ -154,10 +162,13 @@ def _test_pcluster_list_cluster_logs(cluster, instance_ids):
     logging.info("Testing that pcluster list-cluster-logs is working as expected")
     std_output = cluster.list_logs()
 
-    # check headers
-    assert_that(std_output).contains("Log Stream Name")
-    assert_that(std_output).contains("First Event")
-    assert_that(std_output).contains("Last Event")
+    # check cfn stack events headers and log stream name
+    for item in ["Stack Events Stream", "Cluster Creation Time", "Last Update Time", "cloudformation-stack-events"]:
+        assert_that(std_output).contains(item)
+
+    # check CW log streams headers
+    for item in ["Log Stream Name", "First Event", "Last Event"]:
+        assert_that(std_output).contains(item)
 
     # check there are the logs of all the instances
     for instance_id in set(instance_ids):
@@ -175,6 +186,14 @@ def _test_pcluster_list_cluster_logs(cluster, instance_ids):
 def _test_pcluster_get_cluster_log_events(cluster, cfn_init_log_stream):
     """Test pcluster get-cluster-log-events functionality."""
     logging.info("Testing that pcluster get-cluster-log-events is working as expected")
+    # Check cfn-init log stream
     std_output = cluster.get_log_events(cfn_init_log_stream, head=10)
-
     assert_that(std_output).contains("[DEBUG] CloudFormation client initialized with endpoint")
+
+    # Check CFN Stack events stream with tail option
+    std_output = cluster.get_log_events("cloudformation-stack-events", tail=10)
+    assert_that(std_output).contains(f"CREATE_COMPLETE AWS::CloudFormation::Stack {cluster.name}")
+
+    # Check CFN Stack events stream with head option
+    std_output = cluster.get_log_events("cloudformation-stack-events", head=10)
+    assert_that(std_output).contains(f"CREATE_IN_PROGRESS AWS::CloudFormation::Stack {cluster.name} User Initiated")

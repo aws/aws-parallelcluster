@@ -169,7 +169,7 @@ def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
     events = AWSApi.instance().cfn.get_stack_events(stack_name)
     for event in events:
         if event.get("ResourceStatus") in failed_states:
-            _log_failed_cfn_event(event, indent)
+            _log_cfn_event(event, indent)
             if event.get("ResourceType") == "AWS::CloudFormation::Stack":
                 # Sample substack error:
                 # "Embedded stack arn:aws:cloudformation:us-east-2:704743599507:stack/
@@ -182,17 +182,9 @@ def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
                     log_stack_failure_recursive(substack_name, indent=indent + 2)
 
 
-def _log_failed_cfn_event(event, indent):
+def _log_cfn_event(event, indent):
     """Log failed CFN events."""
-    LOGGER.info(
-        "%s- %s %s %s %s %s",
-        " " * indent,
-        event.get("Timestamp"),
-        event.get("ResourceStatus"),
-        event.get("ResourceType"),
-        event.get("LogicalResourceId"),
-        event.get("ResourceStatusReason"),
-    )
+    print("%s- %s", " " * indent, AWSApi.instance().cfn.format_event(event))
 
 
 def get_templates_bucket_path():
@@ -284,7 +276,7 @@ def timestamp_to_isoformat(timestamp, timezone=None):
     if not timezone:
         timezone = tz.tzlocal()
     # Forcing microsecond to 0 to avoid having them displayed.
-    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
+    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).isoformat(timespec="seconds")
 
 
 def isoformat_to_epoch(time_isoformat):

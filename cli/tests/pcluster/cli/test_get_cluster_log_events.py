@@ -37,8 +37,8 @@ class TestGetClusterLogEventsCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({"start_time": "wrong"}, "invalid int value"),
-            ({"end_time": "wrong"}, "invalid int value"),
+            ({"start_time": "wrong"}, "Start time and end time filters must be in the ISO 8601 format"),
+            ({"end_time": "1622802790248"}, "Start time and end time filters must be in the ISO 8601 format"),
             ({"head": "wrong"}, "invalid int value"),
             ({"tail": "wrong"}, "invalid int value"),
             ({"stream_period": "wrong"}, "invalid int value"),
@@ -61,7 +61,16 @@ class TestGetClusterLogEventsCommand:
             ({"stream_period": "5"}, "can be used only with"),
             # success
             ({}, None),
-            ({"head": "6", "start_time": "1622802790248", "end_time": "1622802790390", "next_token": "f/1234"}, None),
+            ({"tail": "6", "start_time": "2021-06-02", "end_time": "2021-06-02"}, None),
+            (
+                {
+                    "head": "6",
+                    "start_time": "2021-06-02T15:55:10+02:00",
+                    "end_time": "2021-06-02T17:55:10+02:00",
+                    "next_token": "f/1234",
+                },
+                None,
+            ),
             ({"tail": "2", "stream": True, "stream_period": "6"}, None),
         ],
     )

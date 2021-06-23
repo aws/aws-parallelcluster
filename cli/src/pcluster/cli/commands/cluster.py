@@ -21,6 +21,7 @@ from tabulate import tabulate
 
 from pcluster import utils
 from pcluster.api.models.cluster_status import ClusterStatusEnum
+from pcluster.aws.aws_api import AWSApi
 from pcluster.cli.commands.common import (
     CliCommand,
     CliCommandV3,
@@ -31,6 +32,7 @@ from pcluster.cli.commands.common import (
 )
 from pcluster.constants import PCLUSTER_VERSION_TAG
 from pcluster.models.cluster import Cluster
+from pcluster.utils import isoformat_to_epoch
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -406,6 +408,7 @@ class ExportClusterLogsCommand(CliCommand):
         # Filters
         parser.add_argument(
             "--start-time",
+            type=_Iso8601Arg(),
             help=(
                 "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to cluster's start time"
@@ -413,6 +416,7 @@ class ExportClusterLogsCommand(CliCommand):
         )
         parser.add_argument(
             "--end-time",
+            type=_Iso8601Arg(),
             help=(
                 "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
@@ -466,7 +470,7 @@ class ExportClusterLogsCommand(CliCommand):
             end_time=args.end_time,
             filters=" ".join(args.filters) if args.filters else None,
         )
-        LOGGER.info("Cluster's logs exported correctly to %s.", output_file_path)
+        LOGGER.info("Cluster's logs exported correctly to %s", output_file_path)
 
 
 class ListClusterLogsCommand(CliCommand):
@@ -483,7 +487,7 @@ class ListClusterLogsCommand(CliCommand):
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("cluster_name", help="List the logs of the cluster name provided here.")
         # Filters
-        filters_arg = _FiltersArg(accepted_filters=["private-dns-name"])
+        filters_arg = _FiltersArg(accepted_filters=["private-dns-name", "node-type"])
         parser.add_argument(
             "--filters",
             nargs="+",
@@ -504,17 +508,19 @@ class ListClusterLogsCommand(CliCommand):
 
     @staticmethod
     def _list_cluster_logs(args: Namespace):
-        if args.region:
-            os.environ["AWS_DEFAULT_REGION"] = args.region
-
         cluster = Cluster(args.cluster_name)
         response = cluster.list_logs(
             filters=" ".join(args.filters) if args.filters else None,
             next_token=args.next_token,
         )
+        # Print CFN Stack events stream
+        if not args.next_token:
+            print("{}\n".format(tabulate(response.get("stackEventsStream", []), headers="keys", tablefmt="plain")))
+
         if not response.get("logStreams", None):
-            print("No logs found.")
+            print("There are no cluster's logs saved in CloudWatch.")
         else:
+            # List CW log streams
             output_headers = {
                 "logStreamName": "Log Stream Name",
                 "firstEventTimestamp": "First Event",
@@ -529,9 +535,9 @@ class ListClusterLogsCommand(CliCommand):
                         value = utils.timestamp_to_isoformat(value)
                     filtered_item[output_key] = value
                 filtered_result.append(filtered_item)
-            LOGGER.info(tabulate(filtered_result, headers="keys", tablefmt="plain"))
+            print(tabulate(filtered_result, headers="keys", tablefmt="plain"))
             if response.get("nextToken", None):
-                LOGGER.info("\nnextToken is: %s", response["nextToken"])
+                print("\nnextToken is: %s", response["nextToken"])
 
 
 class _FiltersArg:
@@ -545,6 +551,20 @@ class _FiltersArg:
         if not self._pattern.match(value):
             raise argparse.ArgumentTypeError(f"filters parameter must be in the form {self._pattern.pattern} ")
         return value
+
+
+class _Iso8601Arg:
+    """Class to validate ISO8601 parameters."""
+
+    def __call__(self, value):
+        try:
+            isoformat_to_epoch(value)
+            return value
+        except Exception as e:
+            raise argparse.ArgumentTypeError(
+                "Start time and end time filters must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                f"(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15). {e}"
+            )
 
 
 class GetClusterLogEventsCommand(CliCommand):
@@ -562,38 +582,40 @@ class GetClusterLogEventsCommand(CliCommand):
         parser.add_argument("cluster_name", help="Get the log stream of the cluster name provided here.")
         parser.add_argument(
             "--log-stream-name",
-            help="Log stream name, as reported by 'pcluster list-cluster-logs' command",
+            help="Log stream name, as reported by 'pcluster list-cluster-logs' command.",
             required=True,
         )
         # Filters
         parser.add_argument(
             "--start-time",
+            type=_Iso8601Arg(),
             help=(
-                "Start time of interval of interest for log events, "
-                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+                "Start time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted."
             ),
-            type=int,
         )
         parser.add_argument(
             "--end-time",
+            type=_Iso8601Arg(),
             help=(
-                "End time of interval of interest for log events, "
-                "expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC."
+                "End time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
+                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. "
             ),
-            type=int,
         )
-        parser.add_argument("--head", help="Gets the first <head> lines of the log stream", type=int)
-        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream", type=int)
-        parser.add_argument("--next-token", help="Token for paginated requests")
+        parser.add_argument("--head", help="Gets the first <head> lines of the log stream.", type=int)
+        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream.", type=int)
+        parser.add_argument("--next-token", help="Token for paginated requests.")
         # Stream utilities
         parser.add_argument(
             "--stream",
-            help="Gets the log stream and waits for additional output to be produced. "
-            "It can be used in conjunction with --tail to start from the "
-            "latest <tail> lines of the log stream",
+            help=(
+                "Gets the log stream and waits for additional output to be produced. "
+                "It can be used in conjunction with --tail to start from the latest <tail> lines of the log stream. "
+                "It doesn't work for CloudFormation Stack Events log stream."
+            ),
             action="store_true",
         )
-        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds", type=int)
+        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds.", type=int)
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
@@ -620,8 +642,6 @@ class GetClusterLogEventsCommand(CliCommand):
 
     def _get_cluster_log_events(self, args: Namespace):
         """Get log events for a specific log stream of the cluster saved in CloudWatch."""
-        if args.region:
-            os.environ["AWS_DEFAULT_REGION"] = args.region
         kwargs = {
             "log_stream_name": args.log_stream_name,
             "start_time": args.start_time,
@@ -632,24 +652,30 @@ class GetClusterLogEventsCommand(CliCommand):
         }
         cluster = Cluster(args.cluster_name)
         response = cluster.get_log_events(**kwargs)
-        self._print_log_events(response.get("events", []))
 
-        if args.stream:
-            # stream content
-            next_token = response.get("nextForwardToken", None)
-            while next_token is not None and args.stream:
-                LOGGER.debug("NextToken is %s", next_token)
-                period = args.stream_period or 5
-                LOGGER.debug("Waiting other %s seconds...", period)
-                time.sleep(period)
+        if args.log_stream_name != Cluster.STACK_EVENTS_LOG_STREAM_NAME:
+            # Print log stream events
+            self._print_log_events(response.get("events", []))
+            if args.stream:
+                # stream content
+                next_token = response.get("nextForwardToken", None)
+                while next_token is not None and args.stream:
+                    LOGGER.debug("NextToken is %s", next_token)
+                    period = args.stream_period or 5
+                    LOGGER.debug("Waiting other %s seconds...", period)
+                    time.sleep(period)
 
-                kwargs["next_token"] = next_token
-                result = cluster.get_log_events(**kwargs)
-                next_token = result.get("nextForwardToken", None)
-                self._print_log_events(result.get("events", []))
+                    kwargs["next_token"] = next_token
+                    result = cluster.get_log_events(**kwargs)
+                    next_token = result.get("nextForwardToken", None)
+                    self._print_log_events(result.get("events", []))
+            else:
+                LOGGER.info("\nnextBackwardToken is: %s", response["nextBackwardToken"])
+                LOGGER.info("nextForwardToken is: %s", response["nextForwardToken"])
         else:
-            LOGGER.info("\nnextBackwardToken is: %s", response["nextBackwardToken"])
-            LOGGER.info("nextForwardToken is: %s", response["nextForwardToken"])
+            # Print CFN stack events
+            for event in response.get("events", []):
+                print(AWSApi.instance().cfn.format_event(event))
 
     @staticmethod
     def _print_log_events(events: list):

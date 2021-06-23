@@ -20,21 +20,24 @@ optional arguments:
                         AWS Region to use.
   --log-stream-name LOG_STREAM_NAME
                         Log stream name, as reported by 'pcluster list-
-                        cluster-logs' command
+                        cluster-logs' command.
   --start-time START_TIME
-                        Start time of interval of interest for log events,
-                        expressed as the number of milliseconds after Jan 1,
-                        1970 00:00:00 UTC.
-  --end-time END_TIME   End time of interval of interest for log events,
-                        expressed as the number of milliseconds after Jan 1,
-                        1970 00:00:00 UTC.
-  --head HEAD           Gets the first <head> lines of the log stream
-  --tail TAIL           Gets the last <tail> lines of the log stream
+                        Start time of interval of interest for log events, ISO
+                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
+                        1984-09-15T19:20:30+01:00), time elements might be
+                        omitted.
+  --end-time END_TIME   End time of interval of interest for log events, ISO
+                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
+                        1984-09-15T19:20:30+01:00), time elements might be
+                        omitted.
+  --head HEAD           Gets the first <head> lines of the log stream.
+  --tail TAIL           Gets the last <tail> lines of the log stream.
   --next-token NEXT_TOKEN
-                        Token for paginated requests
+                        Token for paginated requests.
   --stream              Gets the log stream and waits for additional output to
                         be produced. It can be used in conjunction with --tail
                         to start from the latest <tail> lines of the log
-                        stream
+                        stream. It doesn't work for CloudFormation Stack
+                        Events log stream.
   --stream-period STREAM_PERIOD
-                        Sets the streaming period. Default is 5 seconds
+                        Sets the streaming period. Default is 5 seconds.

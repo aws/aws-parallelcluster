@@ -49,9 +49,12 @@ class TestListClusterLogsCommand:
         assert_that(out + err).contains(error_message)
 
     @pytest.mark.parametrize(
-        "args",
-        [{}, {"filters": "Name=private-dns-name,Values=ip-10-10-10-10", "next_token": "123"}],
-        ids=["required", "all"],
+        "args, ",
+        [
+            {},
+            {"filters": "Name=private-dns-name,Values=ip-10-10-10-10", "next_token": "123"},
+            {"filters": "Name=node-type,Values=HeadNode"},
+        ],
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, args):
         mocked_result = {
@@ -85,6 +88,13 @@ class TestListClusterLogsCommand:
             ],
             "nextToken": "123-456",
             "ResponseMetadata": {},
+            "stackEventsStream": [
+                {
+                    "Stack Events Stream": "cloudformation-stack-events",
+                    "Cluster Creation Time": "2021-06-04T10:23:20+00:00",
+                    "Last Update Time": "2021-06-04T10:23:20+00:00",
+                }
+            ],
         }
         list_logs_mock = mocker.patch("pcluster.cli.commands.cluster.Cluster.list_logs", return_value=mocked_result)
         set_env("AWS_DEFAULT_REGION", "us-east-1")
@@ -93,7 +103,9 @@ class TestListClusterLogsCommand:
         run_cli(command, expect_failure=False)
 
         out_err = capsys.readouterr()
-        expected_out = [
+        # cfn stack events are not displayed if next-token is passed
+        expected_out = [] if "next_token" in args else ["cloudformation-stack-events", "2021-06-04T10:23:20+00:00"]
+        expected_out += [
             "ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
             self._timestamp_to_date(1622802790248),
             self._timestamp_to_date(1622802893126),
