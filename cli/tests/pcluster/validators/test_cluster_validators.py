@@ -751,10 +751,10 @@ def test_intel_hpc_os_validator(os, expected_message):
 @pytest.mark.parametrize(
     "imds_secured, scheduler, expected_message",
     [
-        (None, "slurm", None),
+        (None, "slurm", "Cannot validate IMDS configuration with Imds.Secured None."),
         (True, "slurm", None),
         (False, "slurm", None),
-        (None, "awsbatch", None),
+        (None, "awsbatch", "Cannot validate IMDS configuration with Imds.Secured None."),
         (False, "awsbatch", None),
         (
             True,
