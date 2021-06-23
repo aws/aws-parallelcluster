@@ -698,10 +698,10 @@ class ImageBuilder:
             if not stack_exists:
                 LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
 
-            response = Logs()
+            cw_log_streams = None
             try:
                 LOGGER.debug("Listing log streams from log group %s", self._log_group_name)
-                response.cw_log_streams = AWSApi.instance().logs.describe_log_streams(
+                cw_log_streams = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self._log_group_name, next_token=next_token
                 )
                 log_group_exist = True
@@ -714,15 +714,16 @@ class ImageBuilder:
                     f"Unable to find image logs, please double check if image id={self.image_id} is correct."
                 )
 
+            stack_log_streams = None
             if not next_token and stack_exists:
                 # add CFN Stack information only at the first request, when next-token is not specified
-                response.stack_streams = [
+                stack_log_streams = [
                     {
                         "Stack Events Stream": STACK_EVENTS_LOG_STREAM_NAME,
                         "Stack Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
                     }
                 ]
-            return response
+            return Logs(stack_log_streams, cw_log_streams)
 
         except AWSClientError as e:
             raise ImageBuilderActionError(f"Unexpected error when retrieving image's logs: {e}")

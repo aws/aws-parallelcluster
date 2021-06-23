@@ -857,10 +857,10 @@ class Cluster:
                 raise ClusterActionError(f"Cluster {self.name} does not exist")
 
             LOGGER.debug("Listing log streams from log group %s", self.stack.log_group_name)
-            response = Logs()
+            cw_log_streams = None
             if self.config.is_cw_logging_enabled:
                 list_logs_filters = self._init_list_logs_filters(filters)
-                response.cw_log_streams = AWSApi.instance().logs.describe_log_streams(
+                cw_log_streams = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self.stack.log_group_name,
                     log_stream_name_prefix=list_logs_filters.log_stream_prefix,
                     next_token=next_token,
@@ -868,16 +868,17 @@ class Cluster:
             else:
                 LOGGER.debug("CloudWatch logging is not enabled for cluster %s", self.name)
 
+            stack_log_streams = None
             if not next_token:
                 # add CFN Stack information only at the first request, when next-token is not specified
-                response.stack_log_streams = [
+                stack_log_streams = [
                     {
                         "Stack Events Stream": STACK_EVENTS_LOG_STREAM_NAME,
                         "Cluster Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
                         "Last Update Time": parse(self.stack.last_updated_time).isoformat(timespec="seconds"),
                     }
                 ]
-            return response
+            return Logs(stack_log_streams, cw_log_streams)
 
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving cluster's logs: {e}")

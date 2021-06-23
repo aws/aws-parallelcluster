@@ -241,9 +241,9 @@ def create_logs_archive(files_to_archive: list, archive_file_path: str):
 class Logs:
     """Class to manage list of logs, for both CW logs and Stack logs."""
 
-    def __init__(self):
-        self.cw_log_streams = None
-        self.stack_log_streams = None
+    def __init__(self, stack_log_streams: dict = None, cw_log_streams: dict = None):
+        self.stack_log_streams = stack_log_streams
+        self.cw_log_streams = cw_log_streams
 
     def print_stack_log_streams(self):
         """Print Stack Log streams."""
