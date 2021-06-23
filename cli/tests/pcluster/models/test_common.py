@@ -16,7 +16,7 @@ from assertpy import assert_that
 from dateutil.parser import parse
 
 from pcluster.aws.common import AWSClientError
-from pcluster.models.common_resources import (
+from pcluster.models.common import (
     CloudWatchLogsExporter,
     FiltersParserError,
     LogGroupTimeFiltersParser,
@@ -217,11 +217,9 @@ class TestCloudWatchLogsExporter:
         kwargs.update(params)
         cw_logs_exporter = CloudWatchLogsExporter(**kwargs)
 
-        mocker.patch(
-            "pcluster.models.common_resources.CloudWatchLogsExporter._export_logs_to_s3", return_value="task_id"
-        )
+        mocker.patch("pcluster.models.common.CloudWatchLogsExporter._export_logs_to_s3", return_value="task_id")
         download_objects_mock = mocker.patch(
-            "pcluster.models.common_resources.CloudWatchLogsExporter._download_s3_objects_with_prefix"
+            "pcluster.models.common.CloudWatchLogsExporter._download_s3_objects_with_prefix"
         )
         delete_objects_mock = mocker.patch(
             "pcluster.aws.s3_resource.S3Resource.delete_objects",
@@ -291,7 +289,7 @@ class TestCloudWatchLogsExporter:
         """Verify that _export_logs_to_s3 behaves as expected."""
         mock_aws_api(mocker)
         wait_for_completion_mock = mocker.patch(
-            "pcluster.models.common_resources.CloudWatchLogsExporter._wait_for_task_completion",
+            "pcluster.models.common.CloudWatchLogsExporter._wait_for_task_completion",
             return_value=task_result,
         )
         mocker.patch("pcluster.aws.logs.LogsClient.create_export_task", return_value="task_id")

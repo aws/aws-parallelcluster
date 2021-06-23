@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that
 from dateutil import tz
 
-from pcluster.models.common_resources import Logs
+from pcluster.models.common import Logs
 
 BASE_COMMAND = ["pcluster", "list-image-logs"]
 REQUIRED_ARGS = {"image_id": "id"}
