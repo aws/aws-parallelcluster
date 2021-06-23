@@ -12,7 +12,7 @@ import time
 import pytest
 from assertpy import assert_that
 
-from pcluster.models.common_resources import LogStream
+from pcluster.models.common import LogStream
 
 BASE_COMMAND = ["pcluster", "get-image-log-events"]
 REQUIRED_ARGS = {"image_id": "id", "log_stream_name": "log-stream-name"}

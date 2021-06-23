@@ -229,7 +229,6 @@ class ExportLogsCommand(ABC):
     @staticmethod
     def _validate_output_file_path(file_path: str):
         """Verify that a file can be written to the given path."""
-
         file_dir = os.path.dirname(file_path)
         if not os.path.isdir(file_dir):
             try:

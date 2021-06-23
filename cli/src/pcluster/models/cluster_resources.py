@@ -13,7 +13,7 @@ import re
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
-from pcluster.models.common_resources import FiltersParserError, LogGroupTimeFiltersParser
+from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser
 
 
 class ClusterStack(StackInfo):
@@ -169,10 +169,12 @@ class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser):
 
     @property
     def start_time(self):
+        """Get start time parameter."""
         return self.time_parser.start_time
 
     @property
     def end_time(self):
+        """Get end time parameter."""
         return self.time_parser.end_time
 
     def validate(self):
