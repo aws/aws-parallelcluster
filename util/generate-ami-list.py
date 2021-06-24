@@ -30,7 +30,6 @@ DISTROS = OrderedDict(
     [
         ("alinux2", "amzn2"),
         ("centos7", "centos7"),
-        ("centos8", "centos8"),
         ("ubuntu1804", "ubuntu-1804"),
         ("ubuntu2004", "ubuntu-2004"),
     ]
@@ -130,11 +129,14 @@ def get_amis_for_architecture(images, architecture):
     return OrderedDict(sorted(distro_to_image_id.items()))
 
 
-def get_ami_list_by_git_refs(main_region, regions, cookbook_git_ref, node_git_ref, build_date, owner, credentials):
+def get_ami_list_by_git_refs(
+    main_region, regions, cli_git_ref, cookbook_git_ref, node_git_ref, build_date, owner, credentials
+):
     """Get the ParallelCluster AMIs by querying EC2 based on git refs and build date."""
     filters = [
-        {"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]},
-        {"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]},
+        {"Name": "tag:build:parallelcluster:cli_ref", "Values": ["%s" % cli_git_ref]},
+        {"Name": "tag:build:parallelcluster:cookbook_ref", "Values": ["%s" % cookbook_git_ref]},
+        {"Name": "tag:build:parallelcluster:node_ref", "Values": ["%s" % node_git_ref]},
         {"Name": "name", "Values": ["aws-parallelcluster-*%s" % (build_date if build_date else "")]},
     ]
     return get_ami_list_from_ec2(main_region, regions, owner, credentials, filters)
@@ -314,6 +316,7 @@ def parse_args():
     git_ref_group = parser.add_argument_group(
         "Retrieve instances from EC2 searching by cookbook and node git reference"
     )
+    git_ref_group.add_argument("--cli-git-ref", type=str, help="cli git hash reference", required=False)
     git_ref_group.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
     git_ref_group.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
     git_ref_group.add_argument(
@@ -363,7 +366,7 @@ def main():
             if credential_tuple.strip()
         ]
 
-    if args.cookbook_git_ref and args.node_git_ref:
+    if args.cli_git_ref and args.cookbook_git_ref and args.node_git_ref:
         # This path is used by the build_and_test and retrive_ami_list pipelines.
         # Requiring all of the AMIs in the resulting mappings (for the applicable regions)
         # to be created from the same cookbook and node repo git refs on the same date
@@ -371,6 +374,7 @@ def main():
         amis_dict = get_ami_list_by_git_refs(
             main_region=region,
             regions=get_all_aws_regions_from_ec2(region),
+            cli_git_ref=args.cli_git_ref,
             cookbook_git_ref=args.cookbook_git_ref,
             node_git_ref=args.node_git_ref,
             build_date=args.build_date,
