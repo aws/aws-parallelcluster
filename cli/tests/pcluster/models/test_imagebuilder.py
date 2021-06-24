@@ -360,8 +360,8 @@ def test_delete_with_cfn_error(mocker, error, returned_error):
     "config, expected_result, expected_error_message",
     [
         (None, None, None),
-        ("notAYamldict", None, "configuration must be a valid YAML document"),
-        ("malformed\n\nyaml", None, "configuration must be a valid YAML document"),
+        ("notAYamldict", None, "Configuration must be a valid YAML document"),
+        ("malformed\n\nyaml", None, "Configuration must be a valid YAML document"),
         (
             "Build:\n  InstanceType: instanceType\n  ParentImage: arn:parentImage",
             ImageBuilderConfig(build=Build(instance_type="instanceType", parent_image="arn:parentImage")),

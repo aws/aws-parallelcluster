@@ -65,6 +65,8 @@ from pcluster.utils import generate_random_name_with_prefix, get_installed_versi
 from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
+# pylint: disable=C0302
+
 LOGGER = logging.getLogger(__name__)
 
 # pylint: disable=C0302
@@ -95,7 +97,7 @@ class ConfigValidationError(ClusterActionError):
         self.validation_failures = validation_failures or []
 
 
-class ClusterUpdateError(ClusterActionError):
+class ClusterUpdateError(ClusterActionError, BadRequest):
     """Represent an error during the update of the cluster."""
 
     def __init__(self, message: str, update_changes: list):
@@ -118,10 +120,17 @@ class BadRequestClusterActionError(ClusterActionError, BadRequest):
 
 
 class ConflictClusterActionError(ClusterActionError, Conflict):
-    """Represent an error due to another cluster with the same name already existing."""
+    """Represent an error due to a conflict, such as a stack already existing, or being in the wrong state."""
 
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class NotFoundClusterActionError(ClusterActionError):
+    """Represent an error if the cluster doesn't exist."""
+
+    def __init__(self, name):
+        super().__init__(f"Cluster {name} does not exist.")
 
 
 def _cluster_error_mapper(error, message=None):
@@ -129,6 +138,8 @@ def _cluster_error_mapper(error, message=None):
         message = str(error)
     if isinstance(error, (LimitExceeded, LimitExceededError)):
         return LimitExceededClusterActionError(message)
+    if isinstance(error, NotFoundClusterActionError):
+        return NotFoundClusterActionError(message)
     elif isinstance(error, (BadRequest, BadRequestError)):
         return BadRequestClusterActionError(message)
     elif isinstance(error, Conflict):
@@ -679,6 +690,43 @@ class Cluster:
         except Exception as e:
             raise _cluster_error_mapper(e, f"Failed when stopping compute fleet with error: {str(e)}")
 
+    def validate_update_request(
+        self,
+        target_source_config: str,
+        validator_suppressors: Set[ValidatorSuppressor] = None,
+        validation_failure_level: FailureLevel = FailureLevel.ERROR,
+        force: bool = False,
+    ):
+        """Validate a cluster update request."""
+        self._validate_cluster_exists()
+        self._validate_stack_status_not_in_progress()
+        target_config, ignored_validation_failures = self._validate_and_parse_config(
+            validator_suppressors, validation_failure_level, target_source_config
+        )
+        changes = self._validate_patch(force, target_config)
+
+        return target_config, changes, ignored_validation_failures
+
+    def _validate_patch(self, force, target_config):
+        patch = ConfigPatch(
+            cluster=self, base_config=self.config.source_config, target_config=target_config.source_config
+        )
+        patch_allowed, update_changes = patch.check()
+        if not (patch_allowed or force):
+            raise ClusterUpdateError("Update failure", update_changes=update_changes)
+        if len(update_changes) <= 1 and not force:
+            raise BadRequestClusterActionError("No changes found in your cluster configuration.")
+
+        return update_changes
+
+    def _validate_stack_status_not_in_progress(self):
+        if "IN_PROGRESS" in self.stack.status:
+            raise ConflictClusterActionError(f"Cannot execute update while stack is in {self.stack.status} status.")
+
+    def _validate_cluster_exists(self):
+        if not AWSApi.instance().cfn.stack_exists(self.stack_name):
+            raise NotFoundClusterActionError(self.name)
+
     def update(
         self,
         target_source_config: str,
@@ -694,27 +742,9 @@ class Cluster:
         raises ClusterUpdateError: if update is not allowed
         """
         try:
-            # check cluster existence
-            if not AWSApi.instance().cfn.stack_exists(self.stack_name):
-                raise BadRequestClusterActionError(f"Cluster {self.name} does not exist")
-
-            if "IN_PROGRESS" in self.stack.status:
-                raise BadRequestClusterActionError(
-                    f"Cannot execute update while stack is in {self.stack.status} status."
-                )
-
-            # validate target config
-            target_config, _ = self._validate_and_parse_config(
-                validator_suppressors, validation_failure_level, target_source_config
+            target_config, changes, ignored_validation_failures = self.validate_update_request(
+                target_source_config, validator_suppressors, validation_failure_level, force
             )
-
-            # verify changes
-            patch = ConfigPatch(
-                cluster=self, base_config=self.config.source_config, target_config=target_config.source_config
-            )
-            patch_allowed, update_changes = patch.check()
-            if not (patch_allowed or force):
-                raise ClusterUpdateError("Update failure", update_changes=update_changes)
 
             self.config = target_config
             self.__source_config_text = target_source_config
@@ -746,6 +776,8 @@ class Cluster:
             self.__stack = ClusterStack(AWSApi.instance().cfn.describe_stack(self.stack_name))
             LOGGER.debug("StackId: %s", self.stack.id)
             LOGGER.info("Status: %s", self.stack.status)
+
+            return changes, ignored_validation_failures
 
         except ClusterActionError as e:
             # It can be a ConfigValidationError or ClusterUpdateError
