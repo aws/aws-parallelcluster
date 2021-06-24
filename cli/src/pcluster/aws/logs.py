@@ -10,8 +10,6 @@
 # limitations under the License.
 import json
 
-from botocore.exceptions import ClientError
-
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client
 
 
@@ -22,11 +20,11 @@ class LogsClient(Boto3Client):
         super().__init__("logs")
 
     def log_group_exists(self, log_group_name):
-        """Delete log group by given log group name."""
+        """Return true if log group exists, false otherwise."""
         try:
-            self._client.describe_log_streams(logGroupName=log_group_name, limit=1)
+            self.describe_log_group(log_group_name)
             return True
-        except ClientError:
+        except AWSClientError:
             return False
 
     @AWSExceptionHandler.handle_client_exception

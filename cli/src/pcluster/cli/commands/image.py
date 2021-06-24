@@ -17,7 +17,7 @@ from argparse import ArgumentParser, Namespace
 
 from pcluster import utils
 from pcluster.cli.commands.common import CliCommand, ExportLogsCommand, GetLogEventsCommand
-from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME
+from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME_FORMAT
 from pcluster.models.imagebuilder import ImageBuilder
 
 LOGGER = logging.getLogger(__name__)
@@ -152,7 +152,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
             output_file_path = args.output or os.path.realpath(
-                f"{args.image_id}-logs-{datetime.now().timestamp()}.tar.gz"
+                f"{args.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}.tar.gz"
             )
             self._validate_output_file_path(output_file_path)
             self._export_image_logs(args, output_file_path)
@@ -182,7 +182,7 @@ class ListImageLogsCommand(CliCommand):
 
     # CLI
     name = "list-image-logs"
-    help = "List the logs of the CloudFormation Stack and Image Builder process related associated to an image id."
+    help = "List the log streams associated to an image id."
     description = help
 
     def __init__(self, subparsers):
@@ -231,7 +231,7 @@ class GetImageLogEventsCommand(GetLogEventsCommand, CliCommand):
             self._validate_common_args(args)
             self._get_image_log_events(args)
         except Exception as e:
-            utils.error(f"Unable to get cluster's log events.\n{e}")
+            utils.error(f"Unable to get image's log events.\n{e}")
 
     @staticmethod
     def _get_image_log_events(args: Namespace):
@@ -248,7 +248,7 @@ class GetImageLogEventsCommand(GetLogEventsCommand, CliCommand):
         log_events = imagebuilder.get_log_events(**kwargs)
 
         log_events.print_events()
-        if args.stream and args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
+        if args.stream and args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(imagebuilder.image_id):
             # stream content
             next_token = log_events.next_ftoken
             while next_token is not None:

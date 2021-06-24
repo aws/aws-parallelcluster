@@ -3,8 +3,7 @@ usage: pcluster list-image-logs [-h] [--debug]
                                 [--next-token NEXT_TOKEN]
                                 image_id
 
-List the logs of the CloudFormation Stack and Image Builder process related
-associated to an image id.
+List the log streams associated to an image id.
 
 positional arguments:
   image_id              List the logs of the image id provided here.

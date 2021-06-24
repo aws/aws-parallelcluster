@@ -43,7 +43,7 @@ from pcluster.constants import (
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
-    STACK_EVENTS_LOG_STREAM_NAME,
+    STACK_EVENTS_LOG_STREAM_NAME_FORMAT,
 )
 from pcluster.models.cluster_resources import FiltersParserError
 from pcluster.models.common import (
@@ -659,7 +659,7 @@ class ImageBuilder:
 
                 if stack_exists:
                     # Get stack events and write them into a file
-                    stack_events_file = os.path.join(output_tempdir, STACK_EVENTS_LOG_STREAM_NAME)
+                    stack_events_file = os.path.join(output_tempdir, self._stack_events_stream_name)
                     export_stack_events(self.stack.name, stack_events_file)
                     files_to_archive.append(stack_events_file)
 
@@ -699,13 +699,13 @@ class ImageBuilder:
                 LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
 
             cw_log_streams = None
-            try:
+            if AWSApi.instance().logs.log_group_exists(self._log_group_name):
                 LOGGER.debug("Listing log streams from log group %s", self._log_group_name)
                 cw_log_streams = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self._log_group_name, next_token=next_token
                 )
                 log_group_exist = True
-            except AWSClientError:
+            else:
                 LOGGER.debug("Log Group %s doesn't exist.", self._log_group_name)
                 log_group_exist = False
 
@@ -719,7 +719,7 @@ class ImageBuilder:
                 # add CFN Stack information only at the first request, when next-token is not specified
                 stack_log_streams = [
                     {
-                        "Stack Events Stream": STACK_EVENTS_LOG_STREAM_NAME,
+                        "Stack Events Stream": self._stack_events_stream_name,
                         "Stack Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
                     }
                 ]
@@ -749,16 +749,9 @@ class ImageBuilder:
             the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
         :param next_token: Token for paginated requests.
         """
-        # check stack
-        stack_exists = self._stack_exists()
-        if not stack_exists:
-            message = f"CloudFormation Stack for Image {self.image_id} does not exist."
-            if log_stream_name == STACK_EVENTS_LOG_STREAM_NAME:
-                raise ImageBuilderActionError(message)
-            LOGGER.debug(message)
-
         try:
-            if log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
+            if log_stream_name != self._stack_events_stream_name:
+                # get Image Builder log stream events
                 log_events_response = AWSApi.instance().logs.get_log_events(
                     log_group_name=self._log_group_name,
                     log_stream_name=log_stream_name,
@@ -768,8 +761,12 @@ class ImageBuilder:
                     start_from_head=start_from_head,
                     next_token=next_token,
                 )
-                return LogStream(log_stream_name, log_events_response)
+                return LogStream(self.image_id, log_stream_name, log_events_response)
             else:
+                # Get Stack Events log stream
+                if not self._stack_exists():
+                    raise ImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
+
                 stack_events = AWSApi.instance().cfn.get_stack_events(self.stack.name)
                 stack_events.reverse()
                 if limit:
@@ -777,6 +774,11 @@ class ImageBuilder:
                         stack_events = stack_events[:limit]
                     else:
                         stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
-                return LogStream(log_stream_name, {"events": stack_events})
+                return LogStream(self.image_id, log_stream_name, {"events": stack_events})
         except AWSClientError as e:
             raise ImageBuilderActionError(f"Unexpected error when retrieving log events: {e}")
+
+    @property
+    def _stack_events_stream_name(self):
+        """Return the name of the stack events log stream."""
+        return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.image_id)

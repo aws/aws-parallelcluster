@@ -480,12 +480,16 @@ class TestCluster:
         stack_exists_mock.assert_called_with(cluster.stack_name)
 
     @pytest.mark.parametrize(
-        "stack_exists, logging_enabled, client_error, expected_error",
+        "log_stream_name, stack_exists, logging_enabled, client_error, expected_error",
         [
-            (False, False, False, "Cluster .* does not exist"),
-            (True, False, False, "CloudWatch logging is not enabled"),
-            (True, True, True, "Unexpected error when retrieving log events"),
-            (True, True, False, ""),
+            (f"{FAKE_NAME}-cfn-events", False, False, False, "Cluster .* does not exist"),
+            (f"{FAKE_NAME}-cfn-events", True, False, False, ""),
+            (f"{FAKE_NAME}-cfn-events", True, True, True, "Unexpected error when retrieving log events"),
+            (f"{FAKE_NAME}-cfn-events", True, True, False, ""),
+            ("log-group-name", False, False, False, "Cluster .* does not exist"),
+            ("log-group-name", True, False, False, "CloudWatch logging is not enabled"),
+            ("log-group-name", True, True, True, "Unexpected error when retrieving log events"),
+            ("log-group-name", True, True, False, ""),
         ],
     )
     def test_get_log_events(
@@ -493,6 +497,7 @@ class TestCluster:
         cluster,
         mocker,
         set_env,
+        log_stream_name,
         stack_exists,
         logging_enabled,
         client_error,
@@ -501,6 +506,10 @@ class TestCluster:
         mock_aws_api(mocker)
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
+        get_stack_events_mock = mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_events",
+            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
+        )
         get_log_events_mock = mocker.patch(
             "pcluster.aws.logs.LogsClient.get_log_events",
             side_effect=AWSClientError("get_log_events", "error") if client_error else None,
@@ -512,12 +521,19 @@ class TestCluster:
 
         if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
-                cluster.get_log_events("log_stream_name")
+                cluster.get_log_events(log_stream_name)
         else:
-            cluster.get_log_events("log_stream_name")
-            get_log_events_mock.assert_called()
+            cluster.get_log_events(log_stream_name)
 
-        # check preliminary steps
+            if log_stream_name == f"{FAKE_NAME}-cfn-events":
+                if stack_exists:
+                    get_stack_events_mock.assert_called()
+                else:
+                    get_stack_events_mock.assert_not_called()
+            else:
+                get_stack_events_mock.assert_not_called()
+                get_log_events_mock.assert_called()
+
         stack_exists_mock.assert_called_with(cluster.stack_name)
 
 

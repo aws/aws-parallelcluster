@@ -37,7 +37,7 @@ from pcluster.constants import (
     PCLUSTER_NODE_TYPE_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
-    STACK_EVENTS_LOG_STREAM_NAME,
+    STACK_EVENTS_LOG_STREAM_NAME_FORMAT,
 )
 from pcluster.models.cluster_resources import (
     ClusterInstance,
@@ -820,7 +820,7 @@ class Cluster:
                     )
 
                 # Get stack events and write them into a file
-                stack_events_file = os.path.join(output_tempdir, STACK_EVENTS_LOG_STREAM_NAME)
+                stack_events_file = os.path.join(output_tempdir, self._stack_events_stream_name)
                 export_stack_events(self.stack_name, stack_events_file)
                 files_to_archive.append(stack_events_file)
 
@@ -879,7 +879,7 @@ class Cluster:
                 # add CFN Stack information only at the first request, when next-token is not specified
                 stack_log_streams = [
                     {
-                        "Stack Events Stream": STACK_EVENTS_LOG_STREAM_NAME,
+                        "Stack Events Stream": self._stack_events_stream_name,
                         "Cluster Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
                         "Last Update Time": parse(self.stack.last_updated_time).isoformat(timespec="seconds"),
                     }
@@ -931,7 +931,7 @@ class Cluster:
             raise ClusterActionError(f"Cluster {self.name} does not exist")
 
         try:
-            if log_stream_name != STACK_EVENTS_LOG_STREAM_NAME:
+            if log_stream_name != self._stack_events_stream_name:
                 if not self.stack.log_group_name:
                     raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
 
@@ -944,7 +944,7 @@ class Cluster:
                     start_from_head=start_from_head,
                     next_token=next_token,
                 )
-                return LogStream(log_stream_name, log_events_response)
+                return LogStream(self.stack_name, log_stream_name, log_events_response)
             else:
                 stack_events = AWSApi.instance().cfn.get_stack_events(self.stack_name)
                 stack_events.reverse()
@@ -953,6 +953,11 @@ class Cluster:
                         stack_events = stack_events[:limit]
                     else:
                         stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
-                return LogStream(log_stream_name, {"events": stack_events})
+                return LogStream(self.stack_name, log_stream_name, {"events": stack_events})
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}")
+
+    @property
+    def _stack_events_stream_name(self):
+        """Return the name of the stack events log stream."""
+        return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.stack_name)
