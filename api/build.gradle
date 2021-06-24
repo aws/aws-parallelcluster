@@ -24,11 +24,11 @@ task generatePythonServer(
     ]
 }
 
-task generatePythonClient(
+task basePythonClient(
         type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask,
         dependsOn: ['buildSmithyModel', 'openApiValidate']
 ) {
-    description "Generate a Python client using Open API Tools Generator."
+    description "Generate base Python client code using Open API Tools Generator."
     group "ParallelCluster API"
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
@@ -38,6 +38,13 @@ task generatePythonClient(
     configOptions = [
             packageName: "pcluster.api.client"
     ]
+}
+
+task generatePythonClient(type:Exec, dependsOn: ['basePythonClient']) {
+    description "Generate a Python client using Open API Tools Generator."
+    group "ParallelCluster API"
+    workingDir "$projectDir"
+    commandLine "./infrastructure/patch-client.sh"
 }
 
 task buildSmithyModel(type:Exec) {
