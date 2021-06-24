@@ -32,12 +32,12 @@ NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],
-    "arm64": ["centos8"],
+    "arm64": [],
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSES,
-    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2", "centos8"],
+    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2"],
 }
 
 FSX_MESSAGES = {
@@ -609,7 +609,7 @@ class IntelHpcOsValidator(Validator):
     """Intel HPC OS validator."""
 
     def _validate(self, os: str):
-        allowed_oses = ["centos7", "centos8"]
+        allowed_oses = ["centos7"]
         if os not in allowed_oses:
             self._add_failure(
                 "When enabling intel software, the operating system is required to be set "
