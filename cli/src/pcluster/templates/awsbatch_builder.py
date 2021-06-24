@@ -21,7 +21,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
-from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS
+from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS, PCLUSTER_DYNAMODB_PREFIX
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -53,6 +53,7 @@ class AwsBatchConstruct(Construct):
         shared_storage_mappings: dict,
         shared_storage_options: dict,
         head_node_instance: ec2.CfnInstance,
+        head_node_role_ref: str,
         **kwargs,
     ):
         super().__init__(scope, id)
@@ -65,6 +66,7 @@ class AwsBatchConstruct(Construct):
         self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
         self.head_node_instance = head_node_instance
+        self.head_node_role_ref = head_node_role_ref
 
         # Currently AWS batch integration supports a single queue and a single compute resource
         self.queue = self.config.scheduling.queues[0]
@@ -93,12 +95,18 @@ class AwsBatchConstruct(Construct):
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
 
+    def _stack_id(self):
+        return Stack.of(self).stack_id
+
     def _get_compute_env_prefix(self):
         Fn.select(1, Fn.split("compute-environment/", self._compute_env.ref))
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
     def _add_resources(self):
+
+        # Augment head node instance profile with Batch-specific policies
+        self._add_batch_head_node_policies_to_role()
 
         # Iam Roles
         self._batch_service_role = self._add_batch_service_role()
@@ -707,6 +715,97 @@ class AwsBatchConstruct(Construct):
             "DockerBuildWaitCondition",
             handle=self._docker_build_wait_condition_handle.ref,
             timeout="3600",
+        )
+
+    def _add_batch_head_node_policies_to_role(self):
+        iam.CfnPolicy(
+            self,
+            "ParallelClusterBatchPoliciesHeadNode",
+            policy_name="parallelcluster-awsbatch-head-node",
+            policy_document=iam.PolicyDocument(
+                statements=[
+                    iam.PolicyStatement(
+                        sid="Cloudformation",
+                        actions=[
+                            "cloudformation:DescribeStacks",
+                            "cloudformation:DescribeStackResource",
+                            "cloudformation:SignalResource",
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
+                            # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                            self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}-*/*"),
+                        ],
+                    ),
+                    iam.PolicyStatement(
+                        sid="EC2",
+                        effect=iam.Effect.ALLOW,
+                        actions=[
+                            "ec2:DescribeInstances",
+                            "ec2:DescribeInstanceStatus",
+                            "ec2:DescribeVolumes",
+                            "ec2:AttachVolume",
+                        ],
+                        resources=["*"],
+                    ),
+                    iam.PolicyStatement(
+                        sid="DynamoDBTable",
+                        actions=[
+                            "dynamodb:PutItem",
+                            "dynamodb:BatchWriteItem",
+                            "dynamodb:GetItem",
+                            "dynamodb:DeleteItem",
+                            "dynamodb:DescribeTable",
+                        ],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"
+                            )
+                        ],
+                    ),
+                    iam.PolicyStatement(
+                        sid="S3PutObj",
+                        actions=["s3:PutObject"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="s3",
+                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
+                                region="",
+                                account="",
+                            )
+                        ],
+                    ),
+                    iam.PolicyStatement(
+                        sid="BatchJobPassRole",
+                        actions=["iam:PassRole"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="iam",
+                                region="",
+                                resource=f"role/{self._stack_id}/*",
+                            )
+                        ],
+                    ),
+                    iam.PolicyStatement(
+                        sid="DcvLicense",
+                        actions=["s3:GetObject"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(
+                                service="s3",
+                                resource="dcv-license.{0}/*".format(self._stack_region),
+                                region="",
+                                account="",
+                            )
+                        ],
+                    ),
+                ]
+            ),
+            roles=[self.head_node_role_ref],
         )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #

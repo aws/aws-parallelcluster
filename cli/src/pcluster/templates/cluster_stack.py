@@ -246,7 +246,7 @@ class ClusterCdkStack(Stack):
         self.head_node_instance = self._add_head_node()
 
         # AWS Batch related resources
-        if self.config.scheduling.scheduler == "awsbatch":
+        if self._condition_is_batch():
             self.scheduler_resources = AwsBatchConstruct(
                 scope=self,
                 id="AwsBatch",
@@ -258,6 +258,7 @@ class ClusterCdkStack(Stack):
                 shared_storage_mappings=self.shared_storage_mappings,
                 shared_storage_options=self.shared_storage_options,
                 head_node_instance=self.head_node_instance,
+                head_node_role_ref=self.instance_roles.get("HeadNode").get("RoleRef"),
             )
 
         # CloudWatch Dashboard
@@ -528,7 +529,7 @@ class ClusterCdkStack(Stack):
             cloud_watch_policy_arn = policy_name_to_arn("CloudWatchAgentServerPolicy")
             if cloud_watch_policy_arn not in additional_iam_policies:
                 additional_iam_policies.append(cloud_watch_policy_arn)
-        if self.config.scheduling.scheduler == "awsbatch":
+        if self._condition_is_batch():
             awsbatch_full_access_arn = policy_name_to_arn("AWSBatchFullAccess")
             if awsbatch_full_access_arn not in additional_iam_policies:
                 additional_iam_policies.append(awsbatch_full_access_arn)
@@ -550,45 +551,10 @@ class ClusterCdkStack(Stack):
                     iam.PolicyStatement(
                         sid="Ec2",
                         actions=[
-                            "ec2:DescribeVolumes",
-                            "ec2:AttachVolume",
                             "ec2:DescribeInstanceAttribute",
-                            "ec2:DescribeInstanceStatus",
-                            "ec2:DescribeInstances",
-                            "ec2:DescribeInstanceTypes",
                         ],
                         effect=iam.Effect.ALLOW,
                         resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="Cloudformation",
-                        actions=[
-                            "cloudformation:DescribeStacks",
-                            "cloudformation:DescribeStackResource",
-                            "cloudformation:SignalResource",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self.format_arn(service="cloudformation", resource=f"stack/{self._stack_name}/*"),
-                            # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                            self.format_arn(service="cloudformation", resource=f"stack/{self._stack_name}-*/*"),
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="DynamoDBTable",
-                        actions=[
-                            "dynamodb:PutItem",
-                            "dynamodb:BatchWriteItem",
-                            "dynamodb:GetItem",
-                            "dynamodb:DeleteItem",
-                            "dynamodb:DescribeTable",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self.format_arn(
-                                service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self._stack_name}"
-                            )
-                        ],
                     ),
                     iam.PolicyStatement(
                         sid="S3GetObj",
@@ -598,47 +564,6 @@ class ClusterCdkStack(Stack):
                             self.format_arn(
                                 service="s3",
                                 resource="{0}-aws-parallelcluster/*".format(self.region),
-                                region="",
-                                account="",
-                            )
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="S3PutObj",
-                        actions=["s3:PutObject"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self.format_arn(
-                                service="s3",
-                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
-                                region="",
-                                account="",
-                            )
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="FSx", actions=["fsx:DescribeFileSystems"], effect=iam.Effect.ALLOW, resources=["*"]
-                    ),
-                    iam.PolicyStatement(
-                        sid="BatchJobPassRole",
-                        actions=["iam:PassRole"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self.format_arn(
-                                service="iam",
-                                region="",
-                                resource=f"role/{self._build_resource_path()}/*",
-                            )
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="DcvLicense",
-                        actions=["s3:GetObject"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self.format_arn(
-                                service="s3",
-                                resource="dcv-license.{0}/*".format(self.region),
                                 region="",
                                 account="",
                             )
@@ -1256,6 +1181,9 @@ class ClusterCdkStack(Stack):
 
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"
+
+    def _condition_is_batch(self):
+        return self.config.scheduling.scheduler == "awsbatch"
 
     def _condition_head_node_has_public_ip(self):
         head_node_networking = self.config.head_node.networking
