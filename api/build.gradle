@@ -29,7 +29,6 @@ task basePythonClient(
         dependsOn: ['buildSmithyModel', 'openApiValidate']
 ) {
     description "Generate base Python client code using Open API Tools Generator."
-    group "ParallelCluster API"
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
     generatorName = "python"
