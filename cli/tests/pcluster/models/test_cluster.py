@@ -15,10 +15,12 @@ import pytest
 import yaml
 from assertpy import assert_that
 
+from pcluster.api.models import ClusterStatus
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
+from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG
-from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
+from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -535,6 +537,63 @@ class TestCluster:
                 get_log_events_mock.assert_called()
 
         stack_exists_mock.assert_called_with(cluster.stack_name)
+
+    @pytest.mark.parametrize("force", [False, True])
+    def test_validate_empty_change_set(self, mocker, force):
+        mock_aws_api(mocker)
+        cluster = Cluster(
+            FAKE_NAME,
+            stack=ClusterStack(
+                {
+                    "StackName": FAKE_NAME,
+                    "CreationTime": "2021-06-04 10:23:20.199000+00:00",
+                    "StackStatus": ClusterStatus.CREATE_COMPLETE,
+                }
+            ),
+            config=OLD_CONFIGURATION,
+        )
+
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+
+        if force:
+            _, changes, _ = cluster.validate_update_request(
+                target_source_config=OLD_CONFIGURATION,
+                validator_suppressors={AllValidatorsSuppressor()},
+                force=force,
+            )
+            assert_that(changes).is_length(1)
+        else:
+            with pytest.raises(BadRequestClusterActionError, match="No changes found in your cluster configuration."):
+                cluster.validate_update_request(
+                    target_source_config=OLD_CONFIGURATION,
+                    validator_suppressors={AllValidatorsSuppressor()},
+                    force=force,
+                )
+
+
+OLD_CONFIGURATION = """
+Image:
+  Os: alinux2
+  CustomAmi: ami-08cf50b131bcd4db2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-08a5068070f6bc23d
+  Ssh:
+    KeyName: ermann-dub-ef
+Scheduling:
+  Scheduler: slurm
+  Queues:
+  - Name: queue2
+    ComputeResources:
+    - Name: queue1-t2micro
+      InstanceType: t2.small
+      MinCount: 0
+      MaxCount: 11
+    Networking:
+      SubnetIds:
+      - subnet-0f621591d5d0da380
+"""
 
 
 class _MockExportClusterLogsFiltersParser:

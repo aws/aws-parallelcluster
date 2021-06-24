@@ -55,7 +55,7 @@ def parse_config(config):
         return config_dict
     except Exception as e:
         LOGGER.error("Failed when parsing the configuration due to invalid YAML document: %s", e)
-        raise BadRequest("configuration must be a valid YAML document")
+        raise BadRequest("Configuration must be a valid YAML document")
 
 
 class FiltersParserError(Exception):
