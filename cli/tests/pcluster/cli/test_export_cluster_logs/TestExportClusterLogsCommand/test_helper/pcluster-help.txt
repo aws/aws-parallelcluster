@@ -24,8 +24,7 @@ optional arguments:
   --output OUTPUT       File path to save log archive to.
   --bucket-prefix BUCKET_PREFIX
                         Keypath under which exported logs data will be stored
-                        in s3 bucket. Also serves as top-level directory in
-                        resulting archive.
+                        in s3 bucket.
   --keep-s3-objects     Keep the exported objects exports to S3. The default
                         behavior is to delete them.
   --start-time START_TIME

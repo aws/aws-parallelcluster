@@ -238,7 +238,7 @@ class TestCloudWatchLogsExporter:
             bucket_prefix = params.get("bucket_prefix", None)
 
             if bucket_prefix:
-                download_objects_mock.assert_called_with("task_id", os.path.join("output_dir", bucket_prefix))
+                download_objects_mock.assert_called_with("task_id", os.path.join("output_dir", "cloudwatch-logs"))
 
             if not params.get("keep_s3_objects", False):
                 delete_objects_mock.assert_called()

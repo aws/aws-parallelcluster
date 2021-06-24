@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import tempfile
+from datetime import datetime
 from typing import Set
 
 import pkg_resources
@@ -634,8 +635,12 @@ class ImageBuilder:
 
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
+                # Create root folder for the archive
+                root_archive_dir = os.path.join(
+                    output_tempdir, f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                )
+                os.makedirs(root_archive_dir, exist_ok=True)
 
-                files_to_archive = []
                 if AWSApi.instance().logs.log_group_exists(self._log_group_name):
                     # Export logs from CloudWatch
                     export_logs_filters = self._init_export_logs_filters(start_time, end_time)
@@ -643,14 +648,13 @@ class ImageBuilder:
                         resource_id=self.image_id,
                         log_group_name=self._log_group_name,
                         bucket=bucket,
-                        output_dir=output_tempdir,
+                        output_dir=root_archive_dir,
                         bucket_prefix=bucket_prefix,
                         keep_s3_objects=keep_s3_objects,
                     )
-                    log_streams_dir = logs_exporter.execute(
+                    logs_exporter.execute(
                         start_time=export_logs_filters.start_time, end_time=export_logs_filters.end_time
                     )
-                    files_to_archive.append(log_streams_dir)
                 else:
                     LOGGER.debug(
                         "Log streams not yet available for %s, only CFN Stack events will be exported.",
@@ -659,12 +663,11 @@ class ImageBuilder:
 
                 if stack_exists:
                     # Get stack events and write them into a file
-                    stack_events_file = os.path.join(output_tempdir, self._stack_events_stream_name)
+                    stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                     export_stack_events(self.stack.name, stack_events_file)
-                    files_to_archive.append(stack_events_file)
 
-                create_logs_archive(files_to_archive, output)
-        except AWSClientError as e:
+                create_logs_archive(root_archive_dir, output)
+        except Exception as e:
             raise ImageBuilderActionError(f"Unexpected error when exporting image's logs: {e}")
 
     def _stack_exists(self):
