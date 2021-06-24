@@ -21,7 +21,7 @@ from tabulate import tabulate
 from pcluster import utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME
+from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME_FORMAT
 from pcluster.utils import isoformat_to_epoch
 
 LOGGER = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ class CloudWatchLogsExporter:
             self.bucket_prefix = bucket_prefix
             self.delete_everything_under_prefix = False
         else:
-            self.bucket_prefix = f"{resource_id}-logs-{datetime.now().timestamp()}"
+            self.bucket_prefix = f"{resource_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
             self.delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, self.bucket_prefix)
 
     def execute(self, log_stream_prefix=None, start_time=None, end_time=None):
@@ -280,8 +280,9 @@ class Logs:
 class LogStream:
     """Class to manage log events, for both CW logs and Stack logs."""
 
-    def __init__(self, log_stream_name: str, log_events_response: dict):
+    def __init__(self, resource_id: str, log_stream_name: str, log_events_response: dict):
         """Initialize log events starting from a dict with the form {"events": ..., "nextForwardToken": ..., }."""
+        self.resource_id = resource_id
         self.log_stream_name = log_stream_name
         self.events = log_events_response.get("events", [])
         # The next_tokens are not present when the log stream is the Stack Events log stream
@@ -290,7 +291,7 @@ class LogStream:
 
     def print_events(self):
         """Print log stream events."""
-        if self.log_stream_name == STACK_EVENTS_LOG_STREAM_NAME:
+        if self.log_stream_name == STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.resource_id):
             # Print CFN stack events
             for event in self.events:
                 print(AWSApi.instance().cfn.format_event(event))

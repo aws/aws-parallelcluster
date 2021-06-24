@@ -13,9 +13,10 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.models.common import LogStream
+from tests.pcluster.test_imagebuilder_utils import FAKE_ID
 
 BASE_COMMAND = ["pcluster", "get-image-log-events"]
-REQUIRED_ARGS = {"image_id": "id", "log_stream_name": "log-stream-name"}
+REQUIRED_ARGS = {"image_id": FAKE_ID, "log_stream_name": "log-stream-name"}
 
 
 class TestGetImageLogEventsCommand:
@@ -57,15 +58,34 @@ class TestGetImageLogEventsCommand:
         "args, expected_error",
         [
             # errors
-            ({"tail": "2", "head": "5"}, "options cannot be set at the same time"),
-            ({"stream": True, "next_token": "f/123456"}, "options cannot be set at the same time"),
-            ({"stream": True, "head": "5"}, "options cannot be set at the same time"),
-            ({"stream_period": "5"}, "can be used only with"),
+            (
+                {"log_stream_name": "log-stream-name", "tail": "2", "head": "5"},
+                "options cannot be set at the same time",
+            ),
+            (
+                {"log_stream_name": "log-stream-name", "stream": True, "next_token": "f/123456"},
+                "options cannot be set at the same time",
+            ),
+            (
+                {"log_stream_name": "log-stream-name", "stream": True, "head": "5"},
+                "options cannot be set at the same time",
+            ),
+            ({"log_stream_name": "log-stream-name", "stream_period": "5"}, "can be used only with"),
             # success
-            ({}, None),
-            ({"tail": "6", "start_time": "2021-06-02", "end_time": "2021-06-02"}, None),
+            ({"log_stream_name": "log-stream-name"}, None),
             (
                 {
+                    "log_stream_name": "log-stream-name",
+                    "tail": "6",
+                    "start_time": "2021-06-02",
+                    "end_time": "2021-06-02",
+                },
+                None,
+            ),
+            ({"log_stream_name": f"{FAKE_ID}-cfn-events", "tail": "6"}, None),
+            (
+                {
+                    "log_stream_name": "log-stream-name",
                     "head": "6",
                     "start_time": "2021-06-02T15:55:10+02:00",
                     "end_time": "2021-06-02T17:55:10+02:00",
@@ -73,12 +93,13 @@ class TestGetImageLogEventsCommand:
                 },
                 None,
             ),
-            ({"tail": "2", "stream": True, "stream_period": "6"}, None),
+            ({"log_stream_name": "log-stream-name", "tail": "2", "stream": True, "stream_period": "6"}, None),
         ],
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, test_datadir, assert_out_err, args, expected_error):
         mocked_result = [
             LogStream(
+                FAKE_ID,
                 "logstream",
                 {
                     "events": [
@@ -112,8 +133,8 @@ class TestGetImageLogEventsCommand:
                     "ResponseMetadata": {},
                 },
             )
-        ] * 2 + [LogStream("logstream", {})]
-        get_cluster_log_events_mock = mocker.patch(
+        ] * 2 + [LogStream(FAKE_ID, "logstream", {})]
+        get_image_log_events_mock = mocker.patch(
             "pcluster.cli.commands.image.ImageBuilder.get_log_events", side_effect=mocked_result
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
@@ -129,18 +150,18 @@ class TestGetImageLogEventsCommand:
             run_cli(command, expect_failure=False)
             expected_output = "pcluster-out-stream.txt" if args.get("stream") else "pcluster-out.txt"
             assert_out_err(expected_out=(test_datadir / expected_output).read_text().strip(), expected_err="")
-            assert_that(get_cluster_log_events_mock.call_args).is_length(2)
+            assert_that(get_image_log_events_mock.call_args).is_length(2)
 
             # verify arguments
             expected_params = {
-                "log_stream_name": "log-stream-name",
+                "log_stream_name": args.get("log_stream_name", None),
                 "start_time": args.get("start_time", None),
                 "end_time": args.get("end_time", None),
                 "start_from_head": True if args.get("head") else False,
                 "limit": args.get("head") or args.get("tail") or None,
                 "next_token": "f/3618" if args.get("stream") else args.get("next_token", None),
             }
-            self._check_params(get_cluster_log_events_mock, expected_params, args)
+            self._check_params(get_image_log_events_mock, expected_params, args)
 
     @staticmethod
     def _build_cli_args(args):

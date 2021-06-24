@@ -14,6 +14,8 @@ from assertpy import assert_that
 from pcluster import imagebuilder_utils
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
+FAKE_ID = "image-id"
+
 
 @pytest.mark.parametrize(
     "parent_image, response, ami_id",

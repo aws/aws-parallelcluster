@@ -13,9 +13,10 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.models.common import LogStream
+from tests.pcluster.test_utils import FAKE_NAME
 
 BASE_COMMAND = ["pcluster", "get-cluster-log-events"]
-REQUIRED_ARGS = {"cluster_name": "clustername", "log_stream_name": "log-stream-name"}
+REQUIRED_ARGS = {"cluster_name": FAKE_NAME, "log_stream_name": "log-stream-name"}
 
 
 class TestGetClusterLogEventsCommand:
@@ -79,6 +80,7 @@ class TestGetClusterLogEventsCommand:
     def test_execute(self, mocker, capsys, set_env, run_cli, test_datadir, assert_out_err, args, expected_error):
         mocked_result = [
             LogStream(
+                FAKE_NAME,
                 "logstream",
                 {
                     "events": [
@@ -112,7 +114,7 @@ class TestGetClusterLogEventsCommand:
                     "ResponseMetadata": {},
                 },
             )
-        ] * 2 + [LogStream("logstream", {})]
+        ] * 2 + [LogStream(FAKE_NAME, "logstream", {})]
         get_cluster_log_events_mock = mocker.patch(
             "pcluster.cli.commands.cluster.Cluster.get_log_events", side_effect=mocked_result
         )

@@ -4,8 +4,7 @@ usage: pcluster list-cluster-logs [-h] [--debug]
                                   [--next-token NEXT_TOKEN]
                                   cluster_name
 
-List the logs of the CloudFormation Stack and the logs saved in CloudWatch
-associated to a cluster.
+List the log streams associated to a cluster.
 
 positional arguments:
   cluster_name          List the logs of the cluster name provided here.
