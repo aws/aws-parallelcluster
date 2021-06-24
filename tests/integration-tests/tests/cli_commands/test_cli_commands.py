@@ -142,8 +142,6 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
                 for file in archive:
                     if instance_id in file.name:
                         instance_found = True
-                        # check bucket prefix
-                        assert_that(file.name).contains(bucket_prefix)
                         break
                 assert_that(instance_found).is_true()
 
