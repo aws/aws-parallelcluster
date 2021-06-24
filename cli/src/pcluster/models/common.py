@@ -130,13 +130,13 @@ class CloudWatchLogsExporter:
         self.output_dir = output_dir
         self.keep_s3_objects = keep_s3_objects
 
-        # If the default bucket prefix is being used and there's nothing underneath that prefix already
-        # then we can delete everything under that prefix after downloading the data
-        # (unless keep-s3-objects is specified)
         if bucket_prefix:
             self.bucket_prefix = bucket_prefix
             self.delete_everything_under_prefix = False
         else:
+            # If the default bucket prefix is being used and there's nothing underneath that prefix already
+            # then we can delete everything under that prefix after downloading the data
+            # (unless keep-s3-objects is specified)
             self.bucket_prefix = f"{resource_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
             self.delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, self.bucket_prefix)
 
@@ -146,10 +146,9 @@ class CloudWatchLogsExporter:
         task_id = self._export_logs_to_s3(log_stream_prefix=log_stream_prefix, start_time=start_time, end_time=end_time)
         # Download exported S3 objects to output dir subfolder
         try:
-            log_streams_dir = os.path.join(self.output_dir, self.bucket_prefix)
+            log_streams_dir = os.path.join(self.output_dir, "cloudwatch-logs")
             self._download_s3_objects_with_prefix(task_id, log_streams_dir)
             LOGGER.debug("Archive of CloudWatch logs saved to %s", self.output_dir)
-            return log_streams_dir
         except OSError:
             raise LogsExporterError("Unable to download archive logs from S3, double check your filters are correct.")
         finally:
@@ -231,11 +230,10 @@ def export_stack_events(stack_name: str, output_file: str):
             cfn_events_file.write("%s\n" % AWSApi.instance().cfn.format_event(event))
 
 
-def create_logs_archive(files_to_archive: list, archive_file_path: str):
+def create_logs_archive(folder_to_archive: str, archive_file_path: str):
     LOGGER.debug("Creating archive of logs and saving it to %s", archive_file_path)
     with tarfile.open(archive_file_path, "w:gz") as tar:
-        for file_name in files_to_archive:
-            tar.add(file_name, arcname=os.path.basename(file_name))
+        tar.add(folder_to_archive, arcname=os.path.basename(folder_to_archive))
 
 
 class Logs:

@@ -199,9 +199,7 @@ class ExportLogsCommand(ABC):
         parser.add_argument("--output", help="File path to save log archive to.", type=os.path.realpath)
         # Export options
         parser.add_argument(
-            "--bucket-prefix",
-            help="Keypath under which exported logs data will be stored in s3 bucket. "
-            "Also serves as top-level directory in resulting archive.",
+            "--bucket-prefix", help="Keypath under which exported logs data will be stored in s3 bucket."
         )
         parser.add_argument(
             "--keep-s3-objects",

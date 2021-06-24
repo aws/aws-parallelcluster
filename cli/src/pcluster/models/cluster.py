@@ -18,6 +18,7 @@ import os
 import tempfile
 import time
 from copy import deepcopy
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Set, Tuple
 
@@ -795,7 +796,12 @@ class Cluster:
 
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
-                files_to_archive = []
+                # Create root folder for the archive
+                root_archive_dir = os.path.join(
+                    output_tempdir, f"{self.name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                )
+                os.makedirs(root_archive_dir, exist_ok=True)
+
                 if self.stack.log_group_name:
                     # Export logs from CloudWatch
                     export_logs_filters = self._init_export_logs_filters(start_time, end_time, filters)
@@ -803,16 +809,15 @@ class Cluster:
                         resource_id=self.name,
                         log_group_name=self.stack.log_group_name,
                         bucket=bucket,
-                        output_dir=output_tempdir,
+                        output_dir=root_archive_dir,
                         bucket_prefix=bucket_prefix,
                         keep_s3_objects=keep_s3_objects,
                     )
-                    log_streams_dir = logs_exporter.execute(
+                    logs_exporter.execute(
                         log_stream_prefix=export_logs_filters.log_stream_prefix,
                         start_time=export_logs_filters.start_time,
                         end_time=export_logs_filters.end_time,
                     )
-                    files_to_archive.append(log_streams_dir)
                 else:
                     LOGGER.debug(
                         "CloudWatch logging is not enabled for cluster %s, only CFN Stack events will be exported.",
@@ -820,12 +825,11 @@ class Cluster:
                     )
 
                 # Get stack events and write them into a file
-                stack_events_file = os.path.join(output_tempdir, self._stack_events_stream_name)
+                stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                 export_stack_events(self.stack_name, stack_events_file)
-                files_to_archive.append(stack_events_file)
 
-                create_logs_archive(files_to_archive, output)
-        except AWSClientError as e:
+                create_logs_archive(root_archive_dir, output)
+        except Exception as e:
             raise ClusterActionError(f"Unexpected error when exporting cluster's logs: {e}")
 
     def _init_export_logs_filters(self, start_time, end_time, filters):
