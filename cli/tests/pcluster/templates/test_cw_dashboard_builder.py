@@ -135,7 +135,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
         assert_that(output_yaml).does_not_contain("NICE DCV integration logs")
 
     # Conditional System logs
-    if cluster_config.image.os in ["alinux2", "centos7", "centos8"]:
+    if cluster_config.image.os in ["alinux2", "centos7"]:
         assert_that(output_yaml).contains("system-messages")
         assert_that(output_yaml).does_not_contain("syslog")
     elif cluster_config.image.os in ["ubuntu1804"]:

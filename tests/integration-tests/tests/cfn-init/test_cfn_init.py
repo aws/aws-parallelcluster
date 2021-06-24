@@ -24,7 +24,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 @pytest.mark.regions(["eu-central-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["centos7", "centos8", "alinux2", "ubuntu1804"])
+@pytest.mark.oss(["centos7", "alinux2", "ubuntu1804"])
 @pytest.mark.usefixtures("os", "instance")
 def test_replace_compute_on_failure(
     region, scheduler, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir

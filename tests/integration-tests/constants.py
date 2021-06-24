@@ -11,7 +11,6 @@
 
 OS_TO_ROOT_VOLUME_DEVICE = {
     "centos7": "/dev/sda1",
-    "centos8": "/dev/sda1",
     "alinux2": "/dev/xvda",
     "ubuntu1804": "/dev/sda1",
     "ubuntu2004": "/dev/sda1",

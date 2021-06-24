@@ -7,6 +7,7 @@ CHANGELOG
 **CHANGES**
 
 - Drop support for SGE and Torque schedulers.
+- Drop support for CentOS8.
 - Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
 - Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
 - Deprecate `--cluster-template`, `--extra-parameters`, `--reset-desired` and `--yes` parameters for the `update` command.
@@ -59,7 +60,6 @@ per cluster.
 - Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file. 
 - Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
 - Add prompt for availability zone in pcluster configure automated subnets creation.
-- Remove support for CentOS8.
 - Add configuration HeadNode.Imds.Secured to enable/disable restricted access to IMDS.
 
 2.x.x
