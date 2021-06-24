@@ -123,78 +123,140 @@ class SlurmConstruct(Construct):
     def _add_policies_to_role(self, node_name, role):
         suffix = create_hash_suffix(node_name)
 
+        if node_name == "HeadNode":
+            policy_statements = [
+                {
+                    "sid": "DynamoDBTable",
+                    "actions": [
+                        "dynamodb:PutItem",
+                        "dynamodb:BatchWriteItem",
+                        "dynamodb:GetItem",
+                        "dynamodb:DeleteItem",
+                        "dynamodb:DescribeTable",
+                    ],
+                    "effect": iam.Effect.ALLOW,
+                    "resources": [
+                        self._format_arn(
+                            service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"
+                        )
+                    ],
+                },
+                {
+                    "sid": "EC2Terminate",
+                    "effect": iam.Effect.ALLOW,
+                    "actions": ["ec2:TerminateInstances"],
+                    "resources": ["*"],
+                    "conditions": {"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_CLUSTER_NAME_TAG}": self.stack_name}},
+                },
+                {
+                    "sid": "EC2RunInstances",
+                    "effect": iam.Effect.ALLOW,
+                    "actions": ["ec2:RunInstances"],
+                    "resources": [
+                        self._format_arn(service="ec2", resource=f"subnet/{subnet_id}")
+                        for subnet_id in self.config.compute_subnet_ids
+                    ]
+                    + [
+                        self._format_arn(service="ec2", resource="network-interface/*"),
+                        self._format_arn(service="ec2", resource="instance/*"),
+                        self._format_arn(service="ec2", resource="volume/*"),
+                        self._format_arn(service="ec2", resource=f"image/{self.config.ami_id}", account=""),
+                        self._format_arn(service="ec2", resource=f"key-pair/{self.config.head_node.ssh.key_name}"),
+                        self._format_arn(service="ec2", resource="security-group/*"),
+                        self._format_arn(service="ec2", resource="launch-template/*"),
+                        self._format_arn(service="ec2", resource="placement-group/*"),
+                    ],
+                },
+                {
+                    "sid": "PassRole",
+                    "actions": ["iam:PassRole"],
+                    "effect": iam.Effect.ALLOW,
+                    "resources": [
+                        self._format_arn(
+                            service="iam",
+                            region="",
+                            resource=f"role/{Stack.of(self).stack_id}/*",
+                        )
+                    ],
+                },
+                {
+                    "sid": "EC2",
+                    "effect": iam.Effect.ALLOW,
+                    "actions": [
+                        "ec2:DescribeInstances",
+                        "ec2:DescribeInstanceStatus",
+                        "ec2:CreateTags",
+                        "ec2:DescribeVolumes",
+                        "ec2:AttachVolume",
+                    ],
+                    "resources": ["*"],
+                },
+                {
+                    "sid": "ResourcesS3Bucket",
+                    "effect": iam.Effect.ALLOW,
+                    "actions": ["s3:*"],
+                    "resources": [
+                        self._format_arn(service="s3", resource=self.bucket.name, region="", account=""),
+                        self._format_arn(
+                            service="s3",
+                            resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/*",
+                            region="",
+                            account="",
+                        ),
+                    ],
+                },
+                {
+                    "sid": "Cloudformation",
+                    "actions": [
+                        "cloudformation:DescribeStackResource",
+                        "cloudformation:SignalResource",
+                    ],
+                    "effect": iam.Effect.ALLOW,
+                    "resources": [
+                        self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
+                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                        self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}-*/*"),
+                    ],
+                },
+                {
+                    "sid": "DcvLicense",
+                    "actions": ["s3:GetObject"],
+                    "effect": iam.Effect.ALLOW,
+                    "resources": [
+                        self._format_arn(
+                            service="s3",
+                            resource="dcv-license.{0}/*".format(self._stack_region),
+                            region="",
+                            account="",
+                        )
+                    ],
+                },
+            ]
+            policy_name = "parallelcluster-slurm-head-node"
+        else:
+            policy_statements = [
+                {
+                    "sid": "DynamoDBTableQuery",
+                    "effect": iam.Effect.ALLOW,
+                    "actions": ["dynamodb:Query"],
+                    "resources": [
+                        self._format_arn(
+                            service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"
+                        ),
+                        self._format_arn(
+                            service="dynamodb",
+                            resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}/index/*",
+                        ),
+                    ],
+                },
+            ]
+            policy_name = "parallelcluster-slurm-compute"
         iam.CfnPolicy(
             self.stack_scope,
             f"SlurmPolicies{suffix}",
-            policy_name="parallelcluster-slurm",
+            policy_name=policy_name,
             policy_document=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        sid="EC2Terminate",
-                        effect=iam.Effect.ALLOW,
-                        actions=["ec2:TerminateInstances"],
-                        resources=["*"],
-                        conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_CLUSTER_NAME_TAG}": self.stack_name}},
-                    ),
-                    iam.PolicyStatement(
-                        sid="EC2RunInstances",
-                        effect=iam.Effect.ALLOW,
-                        actions=["ec2:RunInstances"],
-                        resources=[
-                            self._format_arn(service="ec2", resource=f"subnet/{subnet_id}")
-                            for subnet_id in self.config.compute_subnet_ids
-                        ]
-                        + [
-                            self._format_arn(service="ec2", resource="network-interface/*"),
-                            self._format_arn(service="ec2", resource="instance/*"),
-                            self._format_arn(service="ec2", resource="volume/*"),
-                            self._format_arn(service="ec2", resource=f"image/{self.config.ami_id}", account=""),
-                            self._format_arn(service="ec2", resource=f"key-pair/{self.config.head_node.ssh.key_name}"),
-                            self._format_arn(service="ec2", resource="security-group/*"),
-                            self._format_arn(service="ec2", resource="launch-template/*"),
-                            self._format_arn(service="ec2", resource="placement-group/*"),
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="EC2",
-                        effect=iam.Effect.ALLOW,
-                        actions=[
-                            "ec2:DescribeInstances",
-                            "ec2:DescribeLaunchTemplates",
-                            "ec2:DescribeInstanceStatus",
-                            "ec2:CreateTags",
-                        ],
-                        resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="ResourcesS3Bucket",
-                        effect=iam.Effect.ALLOW,
-                        actions=["s3:*"],
-                        resources=[
-                            self._format_arn(service="s3", resource=self.bucket.name, region="", account=""),
-                            self._format_arn(
-                                service="s3",
-                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/*",
-                                region="",
-                                account="",
-                            ),
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="DynamoDBTableQuery",
-                        effect=iam.Effect.ALLOW,
-                        actions=["dynamodb:Query"],
-                        resources=[
-                            self._format_arn(
-                                service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"
-                            ),
-                            self._format_arn(
-                                service="dynamodb",
-                                resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}/index/*",
-                            ),
-                        ],
-                    ),
-                ]
+                statements=[iam.PolicyStatement(**statement) for statement in policy_statements]
             ),
             roles=[role],
         )
