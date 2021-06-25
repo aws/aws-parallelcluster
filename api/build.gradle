@@ -33,7 +33,7 @@ task basePythonClient(
     outputs.cacheIf { false }
     generatorName = "python"
     inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.yaml".toString()
-    outputDir = "$projectDir/generated/python-client".toString()
+    outputDir = "$projectDir/client/src".toString()
     configOptions = [
             packageName: "pcluster.api.client"
     ]
@@ -43,7 +43,7 @@ task generatePythonClient(type:Exec, dependsOn: ['basePythonClient']) {
     description "Generate a Python client using Open API Tools Generator."
     group "ParallelCluster API"
     workingDir "$projectDir"
-    commandLine "./infrastructure/patch-client.sh"
+    commandLine "./client/patch-client.sh"
 }
 
 task buildSmithyModel(type:Exec) {
