@@ -7,6 +7,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-cp resources/sigv4_auth.py generated/python-client/pcluster/api/client
-patch -u -N generated/python-client/pcluster/api/client/api_client.py < resources/api_client.py.diff
-patch -u -N generated/python-client/requirements.txt < resources/client-requirements.txt.diff
+cp client/resources/sigv4_auth.py client/src/pcluster/api/client
+patch -u -N client/src/pcluster/api/client/api_client.py < client/resources/api_client.py.diff
+patch -u -N client/src/requirements.txt < client/resources/client-requirements.txt.diff
