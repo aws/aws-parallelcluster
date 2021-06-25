@@ -1,0 +1,13 @@
+Build:
+  InstanceType: {{ instance_type }}
+  ParentImage: {{ parent_image }}
+  Components:
+    # Test arn custom component with combination (eu-west-1, m6g.xlarge, alinux2)
+    # Test script custom component with combination (ap-southeast-2, c5.xlarge, centos7) and (ap-southeast-2, c5.xlarge, ubuntu1804)
+    {% if region == "eu-west-1" %}
+    - Type: arn
+      Value: arn:aws:imagebuilder:eu-west-1:aws:component/docker-ce-linux/1.0.0
+    {% else %}
+    - Type: script
+      Value: s3://{{ bucket_name }}/scripts/custom_script.sh
+    {% endif %}

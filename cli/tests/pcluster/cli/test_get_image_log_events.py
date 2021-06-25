@@ -13,13 +13,13 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.models.common import LogStream
-from tests.pcluster.test_utils import FAKE_NAME
+from tests.pcluster.test_imagebuilder_utils import FAKE_ID
 
-BASE_COMMAND = ["pcluster", "get-cluster-log-events"]
-REQUIRED_ARGS = {"cluster_name": FAKE_NAME, "log_stream_name": "log-stream-name"}
+BASE_COMMAND = ["pcluster", "get-image-log-events"]
+REQUIRED_ARGS = {"image_id": FAKE_ID, "log_stream_name": "log-stream-name"}
 
 
-class TestGetClusterLogEventsCommand:
+class TestGetImageLogEventsCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
         command = BASE_COMMAND + ["--help"]
         run_cli(command, expect_failure=False)
@@ -28,7 +28,7 @@ class TestGetClusterLogEventsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({}, "the following arguments are required: cluster_name, --log-stream-name")],
+        [({}, "the following arguments are required: image_id, --log-stream-name")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -58,15 +58,34 @@ class TestGetClusterLogEventsCommand:
         "args, expected_error",
         [
             # errors
-            ({"tail": "2", "head": "5"}, "options cannot be set at the same time"),
-            ({"stream": True, "next_token": "f/123456"}, "options cannot be set at the same time"),
-            ({"stream": True, "head": "5"}, "options cannot be set at the same time"),
-            ({"stream_period": "5"}, "can be used only with"),
+            (
+                {"log_stream_name": "log-stream-name", "tail": "2", "head": "5"},
+                "options cannot be set at the same time",
+            ),
+            (
+                {"log_stream_name": "log-stream-name", "stream": True, "next_token": "f/123456"},
+                "options cannot be set at the same time",
+            ),
+            (
+                {"log_stream_name": "log-stream-name", "stream": True, "head": "5"},
+                "options cannot be set at the same time",
+            ),
+            ({"log_stream_name": "log-stream-name", "stream_period": "5"}, "can be used only with"),
             # success
-            ({}, None),
-            ({"tail": "6", "start_time": "2021-06-02", "end_time": "2021-06-02"}, None),
+            ({"log_stream_name": "log-stream-name"}, None),
             (
                 {
+                    "log_stream_name": "log-stream-name",
+                    "tail": "6",
+                    "start_time": "2021-06-02",
+                    "end_time": "2021-06-02",
+                },
+                None,
+            ),
+            ({"log_stream_name": f"{FAKE_ID}-cfn-events", "tail": "6"}, None),
+            (
+                {
+                    "log_stream_name": "log-stream-name",
                     "head": "6",
                     "start_time": "2021-06-02T15:55:10+02:00",
                     "end_time": "2021-06-02T17:55:10+02:00",
@@ -74,13 +93,13 @@ class TestGetClusterLogEventsCommand:
                 },
                 None,
             ),
-            ({"tail": "2", "stream": True, "stream_period": "6"}, None),
+            ({"log_stream_name": "log-stream-name", "tail": "2", "stream": True, "stream_period": "6"}, None),
         ],
     )
     def test_execute(self, mocker, capsys, set_env, run_cli, test_datadir, assert_out_err, args, expected_error):
         mocked_result = [
             LogStream(
-                FAKE_NAME,
+                FAKE_ID,
                 "logstream",
                 {
                     "events": [
@@ -114,12 +133,12 @@ class TestGetClusterLogEventsCommand:
                     "ResponseMetadata": {},
                 },
             )
-        ] * 2 + [LogStream(FAKE_NAME, "logstream", {})]
-        get_cluster_log_events_mock = mocker.patch(
-            "pcluster.cli.commands.cluster.Cluster.get_log_events", side_effect=mocked_result
+        ] * 2 + [LogStream(FAKE_ID, "logstream", {})]
+        get_image_log_events_mock = mocker.patch(
+            "pcluster.cli.commands.image.ImageBuilder.get_log_events", side_effect=mocked_result
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
-        mocker.patch("pcluster.cli.commands.cluster.time.sleep")  # so we don't actually have to wait
+        mocker.patch("pcluster.cli.commands.image.time.sleep")  # so we don't actually have to wait
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
 
@@ -131,24 +150,24 @@ class TestGetClusterLogEventsCommand:
             run_cli(command, expect_failure=False)
             expected_output = "pcluster-out-stream.txt" if args.get("stream") else "pcluster-out.txt"
             assert_out_err(expected_out=(test_datadir / expected_output).read_text().strip(), expected_err="")
-            assert_that(get_cluster_log_events_mock.call_args).is_length(2)
+            assert_that(get_image_log_events_mock.call_args).is_length(2)
 
             # verify arguments
             expected_params = {
-                "log_stream_name": "log-stream-name",
+                "log_stream_name": args.get("log_stream_name", None),
                 "start_time": args.get("start_time", None),
                 "end_time": args.get("end_time", None),
                 "start_from_head": True if args.get("head") else False,
                 "limit": args.get("head") or args.get("tail") or None,
                 "next_token": "f/3618" if args.get("stream") else args.get("next_token", None),
             }
-            self._check_params(get_cluster_log_events_mock, expected_params, args)
+            self._check_params(get_image_log_events_mock, expected_params, args)
 
     @staticmethod
     def _build_cli_args(args):
         cli_args = []
-        if "cluster_name" in args:
-            cli_args.extend([args["cluster_name"]])
+        if "image_id" in args:
+            cli_args.extend([args["image_id"]])
         if "log_stream_name" in args:
             cli_args.extend(["--log-stream-name", args["log_stream_name"]])
         if "start_time" in args:

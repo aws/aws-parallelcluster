@@ -9,13 +9,11 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
-from datetime import datetime
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
-from pcluster.aws.common import AWSClientError
 from pcluster.constants import CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_NODE_TYPE_TAG, PCLUSTER_VERSION_TAG
-from pcluster.utils import isoformat_to_epoch
+from pcluster.models.common import FiltersParserError, LogGroupTimeFiltersParser
 
 
 class ClusterStack(StackInfo):
@@ -110,14 +108,7 @@ class ClusterInstance(InstanceInfo):
         return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)
 
 
-class FiltersParserError(Exception):
-    """Represent export logs filter errors."""
-
-    def __init__(self, message: str):
-        super().__init__(message)
-
-
-class LogsFiltersParser:
+class ClusterLogsFiltersParser:
     """Class to parse filters."""
 
     def __init__(self, head_node: ClusterInstance, filters: str = None):
@@ -150,7 +141,10 @@ class LogsFiltersParser:
             if self._private_dns_name:
                 self._log_stream_prefix = self._private_dns_name
             elif self._node_type:
-                self._log_stream_prefix = self._head_node.private_dns_name_short
+                if self._head_node:
+                    self._log_stream_prefix = self._head_node.private_dns_name_short
+                else:
+                    raise FiltersParserError("HeadNode instance not available. Node Type filter cannot be used.")
         return self._log_stream_prefix
 
     def validate(self):
@@ -162,7 +156,7 @@ class LogsFiltersParser:
                 raise FiltersParserError("Private DNS Name and Node Type filters cannot be set at the same time.")
 
 
-class ExportClusterLogsFiltersParser(LogsFiltersParser):
+class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser):
     """Class to manage export cluster logs filters."""
 
     def __init__(
@@ -174,51 +168,25 @@ class ExportClusterLogsFiltersParser(LogsFiltersParser):
         filters: str = None,
     ):
         super().__init__(head_node, filters)
-        self._log_group_name = log_group_name
-        try:
-            self._start_time = isoformat_to_epoch(start_time) if start_time else None
-            self.end_time = isoformat_to_epoch(end_time) if end_time else int(datetime.now().timestamp() * 1000)
-        except Exception as e:
-            raise FiltersParserError(f"Unable to parse time. It must be in ISO8601 format. {e}")
+        self.time_parser = LogGroupTimeFiltersParser(log_group_name, start_time, end_time)
 
     @property
     def start_time(self):
-        """Get start time filter."""
-        if not self._start_time:
-            try:
-                self._start_time = AWSApi.instance().logs.describe_log_group(self._log_group_name).get("creationTime")
-            except AWSClientError as e:
-                raise FiltersParserError(
-                    f"Unable to retrieve creation time of log group {self._log_group_name}, {str(e)}"
-                )
-        return self._start_time
+        """Get start time parameter."""
+        return self.time_parser.start_time
 
-    @start_time.setter
-    def start_time(self, value):
-        """Set start_time value."""
-        self._start_time = value
+    @property
+    def end_time(self):
+        """Get end time parameter."""
+        return self.time_parser.end_time
 
     def validate(self):
         """Check filter consistency."""
         super().validate()
-        if self.start_time >= self.end_time:
-            raise FiltersParserError("Start time must be earlier than end time.")
-
-        event_in_window = AWSApi.instance().logs.filter_log_events(
-            log_group_name=self._log_group_name,
-            log_stream_name_prefix=self.log_stream_prefix,
-            start_time=self.start_time,
-            end_time=self.end_time,
-        )
-        if not event_in_window:
-            raise FiltersParserError(
-                f"No log events in the log group {self._log_group_name} in interval starting "
-                f"at {self.start_time} and ending at {self.end_time}, "
-                f"with log stream name prefix '{self.log_stream_prefix}'"
-            )
+        self.time_parser.validate(log_stream_prefix=self.log_stream_prefix)
 
 
-class ListClusterLogsFiltersParser(LogsFiltersParser):
+class ListClusterLogsFiltersParser(ClusterLogsFiltersParser):
     """Class to manage list cluster logs filters."""
 
     def __init__(self, head_node: ClusterInstance, log_group_name: str, filters: str = None):

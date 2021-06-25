@@ -55,6 +55,7 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
+    run_command,
     set_credentials,
     set_logger_formatter,
     unset_credentials,
@@ -968,7 +969,7 @@ def key_name(request):
     return request.config.getoption("key_name")
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture()
 def pcluster_ami_without_standard_naming(region, os, architecture):
     """
     Define a fixture to manage the creation and deletion of AMI without standard naming.
@@ -987,3 +988,34 @@ def pcluster_ami_without_standard_naming(region, os, architecture):
     if ami_id:
         client = boto3.client("ec2", region_name=region)
         client.deregister_image(ImageId=ami_id)
+
+
+@pytest.fixture()
+def build_image():
+    """Create a build image process."""
+    image_id_post_test = None
+    region_post_test = None
+
+    def _build_image(image_id, region, cluster_config):
+        nonlocal image_id_post_test
+        nonlocal region_post_test
+        image_id_post_test = image_id
+        region_post_test = region
+
+        pcluster_build_image_result = run_command(
+            ["pcluster", "build-image", "--id", image_id, "-r", region, "-c", cluster_config.as_posix()]
+        )
+        return pcluster_build_image_result.stdout
+
+    yield _build_image
+    if image_id_post_test:
+        pcluster_describe_image_result = run_command(
+            ["pcluster", "describe-image", "--id", image_id_post_test, "-r", region_post_test]
+        )
+        logging.info("Build image post process. Describe image result: %s" % pcluster_describe_image_result.stdout)
+
+        # FIXME once the command return proper JSON
+        if "build_failed" in pcluster_describe_image_result.stdout.lower():
+            run_command(["pcluster", "delete-image", "--id", image_id_post_test, "-r", region_post_test, "--force"])
+            # sleep 90 seconds for image deletion
+            time.sleep(90)

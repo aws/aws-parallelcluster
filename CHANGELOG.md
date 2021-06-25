@@ -23,6 +23,8 @@ CHANGELOG
 - Add `list-images` command with `--region`, `--color`parameters.
 - Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs 
   and CloudFormation Stack Events.
+  Add `export-image-logs`, `list-image-logs` and `get-image-log-events` commands to retrieve both Image Builder Logs
+  and CloudFormation Stack Events.
 - Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
   as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 

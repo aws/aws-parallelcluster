@@ -18,9 +18,11 @@ from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.common import AWSClientError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor
+from pcluster.config.update_policy import UpdatePolicy
 from pcluster.models.cluster import (
     BadRequestClusterActionError,
     ClusterActionError,
+    ClusterUpdateError,
     ConflictClusterActionError,
     LimitExceededClusterActionError,
 )
@@ -271,7 +273,7 @@ class TestCreateCluster:
                 None,
                 None,
                 None,
-                {"message": "Bad Request: invalid configuration. " "Please make sure the string is base64 encoded."},
+                {"message": "Bad Request: invalid configuration. Please make sure the string is base64 encoded."},
             ),
             (
                 {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
@@ -280,7 +282,7 @@ class TestCreateCluster:
                 None,
                 None,
                 None,
-                {"message": "Bad Request: configuration must be a valid YAML document"},
+                {"message": "Bad Request: Configuration must be a valid YAML document"},
             ),
             (
                 {
@@ -1033,29 +1035,661 @@ class TestListClusters:
 
 
 class TestUpdateCluster:
-    def test_update_cluster(self, client):
-        update_cluster_request_content = {"clusterConfiguration": "clusterConfiguration"}
-        query_string = [
-            ("suppressValidators", "ALL"),
-            ["validationFailureLevel", ValidationLevel.INFO],
-            ("region", "eu-west-1"),
-            ("dryrun", True),
-            ("forceUpdate", True),
-            ("clientToken", "client_token_example"),
-        ]
+    url = "/v3/clusters/{cluster_name}"
+    method = "PUT"
+
+    BASE64_ENCODED_CONFIG = "SW1hZ2U6CiAgT3M6IGFsaW51eDIKSGVhZE5vZGU6CiAgSW5zdGFuY2VUeXBlOiB0Mi5taWNybw=="
+
+    def _send_test_request(
+        self,
+        client,
+        cluster_name,
+        region="us-east-1",
+        update_cluster_request_content=None,
+        suppress_validators=None,
+        validation_failure_level=None,
+        dryrun=None,
+        force_update=None,
+    ):
+        query_string = []
+        if region:
+            query_string.append(("region", region))
+        if suppress_validators:
+            query_string.extend([("suppressValidators", validator) for validator in suppress_validators])
+        if validation_failure_level:
+            query_string.append(("validationFailureLevel", validation_failure_level))
+        if dryrun is not None:
+            query_string.append(("dryrun", dryrun))
+        if force_update is not None:
+            query_string.append(("forceUpdate", force_update))
+
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        response = client.open(
-            "/v3/clusters/{cluster_name}".format(cluster_name="clustername"),
-            method="PUT",
+        return client.open(
+            self.url.format(cluster_name=cluster_name),
+            method=self.method,
             headers=headers,
-            data=json.dumps(update_cluster_request_content),
-            content_type="application/json",
             query_string=query_string,
+            data=json.dumps(update_cluster_request_content) if update_cluster_request_content else None,
         )
-        assert_that(response.status_code).is_equal_to(200)
+
+    @pytest.mark.parametrize(
+        "update_cluster_request_content, suppress_validators, validation_failure_level, force_update",
+        [
+            (
+                {
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                None,
+                None,
+                None,
+            ),
+            (
+                {
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                ["type:type1", "type:type2"],
+                ValidationLevel.WARNING,
+                False,
+            ),
+        ],
+        ids=["required", "all"],
+    )
+    def test_successful_update_request(
+        self,
+        client,
+        mocker,
+        update_cluster_request_content,
+        suppress_validators,
+        validation_failure_level,
+        force_update,
+    ):
+        change_set = [
+            ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+            [["toplevel", "subpath"], "param", "oldval", "newval", None, None, None],
+        ]
+        stack_data = cfn_describe_stack_mock_response()
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+        cluster_update_mock = mocker.patch(
+            "pcluster.models.cluster.Cluster.update",
+            auto_spec=True,
+            return_value=(change_set, [ValidationResult("message", FailureLevel.WARNING, "type")]),
+        )
+
+        response = self._send_test_request(
+            client,
+            "clusterName",
+            "us-east-1",
+            update_cluster_request_content,
+            suppress_validators,
+            validation_failure_level,
+            False,
+            force_update,
+        )
+
+        expected_response = {
+            "cluster": {
+                "cloudformationStackArn": stack_data["StackId"],
+                "cloudformationStackStatus": "UPDATE_IN_PROGRESS",
+                "clusterName": "clusterName",
+                "clusterStatus": "UPDATE_IN_PROGRESS",
+                "region": "us-east-1",
+                "version": "3.0.0",
+            },
+            "validationMessages": [{"level": "WARNING", "message": "message", "type": "type"}],
+            "changeSet": [
+                {"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"}
+            ],
+        }
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(202)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+        cluster_update_mock.assert_called_with(
+            force=not (force_update or True),
+            target_source_config="Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t2.micro",
+            validator_suppressors=mocker.ANY,
+            validation_failure_level=FailureLevel[validation_failure_level or ValidationLevel.ERROR],
+        )
+        cluster_update_mock.assert_called_once()
+        if suppress_validators:
+            _, kwargs = cluster_update_mock.call_args
+            assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
+
+    def test_dryrun(self, mocker, client):
+        stack_data = cfn_describe_stack_mock_response()
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.validate_update_request",
+            auto_spec=True,
+            return_value=([]),
+        )
+
+        update_cluster_request_content = {
+            "region": "us-east-1",
+            "name": "cluster",
+            "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+        }
+
+        response = self._send_test_request(
+            client=client,
+            cluster_name="clusterName",
+            update_cluster_request_content=update_cluster_request_content,
+            dryrun=True,
+        )
+
+        expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(412)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "changes, change_set, error",
+        [
+            pytest.param(
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        ["toplevel", "subpath"],
+                        "param",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.SUCCEEDED,
+                        None,
+                        None,
+                    ],
+                ],
+                [{"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"}],
+                None,
+                id="test with nested path",
+            ),
+            pytest.param(
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        None,
+                        "param",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.SUCCEEDED,
+                        None,
+                        None,
+                    ],
+                ],
+                [{"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"}],
+                None,
+                id="test with top level path",
+            ),
+            pytest.param(
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        None,
+                        "param",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.FAILED,
+                        "Failure reason",
+                        None,
+                    ],
+                    [
+                        None,
+                        "param2",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.SUCCEEDED,
+                        None,
+                        None,
+                    ],
+                ],
+                [
+                    {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
+                    {"parameter": "param2", "requestedValue": "newval", "currentValue": "oldval"},
+                ],
+                [
+                    {
+                        "parameter": "param",
+                        "requestedValue": "newval",
+                        "currentValue": "oldval",
+                        "message": "Failure reason",
+                    }
+                ],
+                id="test with failure",
+            ),
+            pytest.param(
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        None,
+                        "param",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.ACTION_NEEDED,
+                        None,
+                        "Action needed",
+                    ],
+                    [
+                        None,
+                        "param2",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.SUCCEEDED,
+                        None,
+                        None,
+                    ],
+                ],
+                [
+                    {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
+                    {"parameter": "param2", "requestedValue": "newval", "currentValue": "oldval"},
+                ],
+                [
+                    {
+                        "parameter": "param",
+                        "requestedValue": "newval",
+                        "currentValue": "oldval",
+                        "message": "Action needed",
+                    }
+                ],
+                id="test with action needed",
+            ),
+            pytest.param(
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        None,
+                        "param",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.FAILED,
+                        "Failure reason",
+                        "Action needed",
+                    ],
+                    [
+                        None,
+                        "param2",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.SUCCEEDED,
+                        None,
+                        None,
+                    ],
+                ],
+                [
+                    {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
+                    {"parameter": "param2", "requestedValue": "newval", "currentValue": "oldval"},
+                ],
+                [
+                    {
+                        "parameter": "param",
+                        "requestedValue": "newval",
+                        "currentValue": "oldval",
+                        "message": "Failure reason. Action needed",
+                    }
+                ],
+                id="test with failure with action needed",
+            ),
+            pytest.param(
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        None,
+                        "param",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.FAILED,
+                        None,
+                        None,
+                    ],
+                    [
+                        None,
+                        "param2",
+                        "oldval",
+                        "newval",
+                        UpdatePolicy.CheckResult.SUCCEEDED,
+                        None,
+                        None,
+                    ],
+                ],
+                [
+                    {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
+                    {"parameter": "param2", "requestedValue": "newval", "currentValue": "oldval"},
+                ],
+                [
+                    {
+                        "parameter": "param",
+                        "requestedValue": "newval",
+                        "currentValue": "oldval",
+                        "message": "Error during update",
+                    }
+                ],
+                id="test with failure without reason or action needed",
+            ),
+            pytest.param(
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                ],
+                [],
+                [],
+                id="test with empty changeset",
+            ),
+        ],
+    )
+    def test_handling_of_change_sets(self, client, mocker, changes, change_set, error):
+        stack_data = cfn_describe_stack_mock_response()
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+        if error:
+            mocker.patch(
+                "pcluster.models.cluster.Cluster.update",
+                side_effect=ClusterUpdateError(message="Update failure", update_changes=changes),
+            )
+        else:
+            mocker.patch(
+                "pcluster.models.cluster.Cluster.update",
+                return_value=(changes, []),
+            )
+
+        response = self._send_test_request(
+            client, "clusterName", "us-east-1", {"clusterConfiguration": self.BASE64_ENCODED_CONFIG}
+        )
+
+        with soft_assertions():
+            assert_that(response.get_json()["changeSet"]).is_equal_to(change_set)
+            if error:
+                assert_that(response.get_json()["updateValidationErrors"]).is_equal_to(error)
+
+    @pytest.mark.parametrize(
+        "update_cluster_request_content, region, cluster_name, suppress_validators,"
+        " validation_failure_level, dryrun, force, expected_response",
+        [
+            pytest.param(
+                None,
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: request body is required"},
+                id="request without body",
+            ),
+            pytest.param(
+                {},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: request body is required"},
+                id="request with empty body",
+            ),
+            pytest.param(
+                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                "invalid",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: invalid or unsupported region 'invalid'"},
+                id="request with invalid region",
+            ),
+            pytest.param(
+                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                "us-east-1",
+                "clu",
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'clu' is too short"},
+                id="request with invalid name",
+            ),
+            pytest.param(
+                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                "us-east-1",
+                "clusterName",
+                ["ALL", "ALLL"],
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'ALLL' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
+                id="request with invalid validator",
+            ),
+            pytest.param(
+                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                "us-east-1",
+                "clusterName",
+                ["type:"],
+                None,
+                None,
+                None,
+                {"message": "Bad Request: 'type:' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
+                id="request with empty named validator",
+            ),
+            pytest.param(
+                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                "us-east-1",
+                "clusterName",
+                None,
+                "CRITICAL",
+                None,
+                None,
+                {"message": "Bad Request: 'CRITICAL' is not one of ['INFO', 'WARNING', 'ERROR']"},
+                id="request with invalid validation failure level",
+            ),
+            pytest.param(
+                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                "NO",
+                None,
+                {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'dryrun'"},
+                id="request with invalid dryrun value",
+            ),
+            pytest.param(
+                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                "NO",
+                {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'forceUpdate'"},
+                id="request with invalid forceUpdate value",
+            ),
+            pytest.param(
+                {"clusterConfiguration": "config"},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: invalid configuration. " "Please make sure the string is base64 encoded."},
+                id="request with configuration not encoded",
+            ),
+            pytest.param(
+                {"clusterConfiguration": "aW52YWxpZA=="},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: Cluster update failed.\nConfiguration must be a valid YAML document"},
+                id="request with single string configuration",
+            ),
+            pytest.param(
+                {"clusterConfiguration": "SW1hZ2U6CiAgSW52YWxpZEtleTogdGVzdA=="},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {
+                    "configurationValidationErrors": [
+                        {
+                            "level": "ERROR",
+                            "message": "[('HeadNode', ['Missing data for required field.']), "
+                            "('Image', {'Os': ['Missing data for required field.'], 'InvalidKey': "
+                            "['Unknown field.']}), ('Scheduling', ['Missing data for required field.'])]",
+                            "type": "ConfigSchemaValidator",
+                        }
+                    ],
+                    "message": "Invalid cluster configuration",
+                },
+                id="request with validation error",
+            ),
+            pytest.param(
+                {"clusterConfiguration": ""},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {"message": "Bad Request: configuration is required and cannot be empty"},
+                id="request with empty configuration",
+            ),
+        ],
+    )
+    def test_malformed_request(
+        self,
+        client,
+        mocker,
+        update_cluster_request_content,
+        region,
+        cluster_name,
+        suppress_validators,
+        validation_failure_level,
+        dryrun,
+        force,
+        expected_response,
+    ):
+        stack_data = cfn_describe_stack_mock_response()
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+
+        response = self._send_test_request(
+            client=client,
+            cluster_name=cluster_name,
+            region=region,
+            update_cluster_request_content=update_cluster_request_content,
+            suppress_validators=suppress_validators,
+            validation_failure_level=validation_failure_level,
+            dryrun=dryrun,
+            force_update=force,
+        )
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_cluster_not_found(self, client, mocker):
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("func", "stack"))
+
+        response = self._send_test_request(
+            client,
+            update_cluster_request_content={"clusterConfiguration": self.BASE64_ENCODED_CONFIG},
+            cluster_name="clusterName",
+        )
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(404)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "cluster 'clusterName' does not exist or belongs to "
+                    "an incompatible ParallelCluster major version."
+                }
+            )
+
+    @pytest.mark.parametrize(
+        "error_type, error_code",
+        [
+            (LimitExceededClusterActionError, 429),
+            (BadRequestClusterActionError, 400),
+            (ConflictClusterActionError, 409),
+            (ClusterActionError, 500),
+            (ClusterUpdateError, 400),
+        ],
+    )
+    def test_error_conversion(self, client, mocker, error_type, error_code):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(),
+        )
+
+        if error_type == ClusterUpdateError:
+            change_set = [
+                ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                [
+                    ["toplevel", "subpath"],
+                    "param",
+                    "oldval",
+                    "newval",
+                    UpdatePolicy.CheckResult.FAILED,
+                    "reason",
+                    "action",
+                ],
+                [["toplevel", "subpath"], "param2", "oldval", "newval", UpdatePolicy.CheckResult.SUCCEEDED, None, None],
+                [
+                    ["toplevel", "subpath"],
+                    "param3",
+                    "oldval",
+                    "newval",
+                    UpdatePolicy.CheckResult.FAILED,
+                    "other reason",
+                    None,
+                ],
+            ]
+            error = error_type("error message", change_set)
+        else:
+            error = error_type("error message")
+
+        mocker.patch(
+            "pcluster.models.cluster.Cluster.update",
+            auto_spec=True,
+            side_effect=error,
+        )
+
+        response = self._send_test_request(
+            client,
+            update_cluster_request_content={"clusterConfiguration": self.BASE64_ENCODED_CONFIG},
+            cluster_name="clusterName",
+        )
+
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestClusterActionError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+        elif error_type == ClusterUpdateError:
+            expected_response["changeSet"] = [
+                {"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"},
+                {"parameter": "toplevel.subpath.param2", "requestedValue": "newval", "currentValue": "oldval"},
+                {"parameter": "toplevel.subpath.param3", "requestedValue": "newval", "currentValue": "oldval"},
+            ]
+            expected_response["updateValidationErrors"] = [
+                {
+                    "parameter": "toplevel.subpath.param",
+                    "requestedValue": "newval",
+                    "currentValue": "oldval",
+                    "message": "reason. action",
+                },
+                {
+                    "parameter": "toplevel.subpath.param3",
+                    "requestedValue": "newval",
+                    "currentValue": "oldval",
+                    "message": "other reason",
+                },
+            ]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(error_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 @pytest.mark.parametrize(

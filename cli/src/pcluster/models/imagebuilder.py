@@ -14,10 +14,14 @@
 #
 import copy
 import logging
+import os
 import re
+import tempfile
+from datetime import datetime
 from typing import Set
 
 import pkg_resources
+from dateutil.parser import parse
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
@@ -40,8 +44,21 @@ from pcluster.constants import (
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
+    STACK_EVENTS_LOG_STREAM_NAME_FORMAT,
 )
-from pcluster.models.common import BadRequest, Conflict, LimitExceeded, parse_config
+from pcluster.models.cluster_resources import FiltersParserError
+from pcluster.models.common import (
+    BadRequest,
+    CloudWatchLogsExporter,
+    Conflict,
+    LimitExceeded,
+    LogGroupTimeFiltersParser,
+    Logs,
+    LogStream,
+    create_logs_archive,
+    export_stack_events,
+    parse_config,
+)
 from pcluster.models.imagebuilder_resources import (
     BadRequestStackError,
     ImageBuilderStack,
@@ -52,7 +69,7 @@ from pcluster.models.imagebuilder_resources import (
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition
+from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, isoformat_to_epoch
 from pcluster.validators.common import FailureLevel
 
 ImageBuilderStatusMapping = {
@@ -503,9 +520,9 @@ class ImageBuilder:
 
                 # Delete log group
                 try:
-                    AWSApi.instance().logs.delete_log_group(self._log_group_name())
+                    AWSApi.instance().logs.delete_log_group(self._log_group_name)
                 except AWSClientError:
-                    logging.warning("Unable to delete log group %s.", self._log_group_name())
+                    logging.warning("Unable to delete log group %s.", self._log_group_name)
 
             except (AWSClientError, ImageError) as e:
                 raise _imagebuilder_error_mapper(e, f"Unable to delete image and stack, due to {str(e)}")
@@ -572,20 +589,199 @@ class ImageBuilder:
             {"key": PCLUSTER_IMAGE_ID_TAG, "value": self.image_id},
             {"key": PCLUSTER_S3_BUCKET_TAG, "value": self.bucket.name},
             {"key": PCLUSTER_S3_IMAGE_DIR_TAG, "value": self.s3_artifact_dir},
-            {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn()},
+            {"key": PCLUSTER_IMAGE_BUILD_LOG_TAG, "value": self._get_log_group_arn},
             {"key": PCLUSTER_IMAGE_CONFIG_TAG, "value": self.config_url},
         ]
         for tag in tag_list:
             cfn_tags.append(BaseTag(key=tag.get("key"), value=tag.get("value")))
         return [{"Key": tag.key, "Value": tag.value} for tag in cfn_tags]
 
+    @property
     def _get_log_group_arn(self):
         """Get log group arn."""
         return "arn:{0}:logs:{1}:{2}:log-group:{3}".format(
-            get_partition(), get_region(), AWSApi.instance().sts.get_account_id(), self._log_group_name()
+            get_partition(), get_region(), AWSApi.instance().sts.get_account_id(), self._log_group_name
         )
 
+    @property
     def _log_group_name(self):
         """Get log group name."""
-        image_recipe_name = "{0}-{1}".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX, self.image_id)
-        return "/aws/imagebuilder/{0}".format(image_recipe_name)
+        return f"/aws/imagebuilder/{IMAGEBUILDER_RESOURCE_NAME_PREFIX}-{self.image_id}"
+
+    def export_logs(
+        self,
+        output: str,
+        bucket: str,
+        bucket_prefix: str = None,
+        keep_s3_objects: bool = False,
+        start_time: str = None,
+        end_time: str = None,
+    ):
+        """
+        Export image builder's logs in the given output path, by using given bucket as a temporary folder.
+
+        :param output: file path to save log file archive to
+        :param bucket: Temporary S3 bucket to be used to export cluster logs data
+        :param bucket_prefix: Key path under which exported logs data will be stored in s3 bucket,
+               also serves as top-level directory in resulting archive
+        :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
+        :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
+        :param end_time: End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
+        """
+        # check stack
+        stack_exists = self._stack_exists()
+        if not stack_exists:
+            LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
+
+        try:
+            with tempfile.TemporaryDirectory() as output_tempdir:
+                # Create root folder for the archive
+                root_archive_dir = os.path.join(
+                    output_tempdir, f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                )
+                os.makedirs(root_archive_dir, exist_ok=True)
+
+                if AWSApi.instance().logs.log_group_exists(self._log_group_name):
+                    # Export logs from CloudWatch
+                    export_logs_filters = self._init_export_logs_filters(start_time, end_time)
+                    logs_exporter = CloudWatchLogsExporter(
+                        resource_id=self.image_id,
+                        log_group_name=self._log_group_name,
+                        bucket=bucket,
+                        output_dir=root_archive_dir,
+                        bucket_prefix=bucket_prefix,
+                        keep_s3_objects=keep_s3_objects,
+                    )
+                    logs_exporter.execute(
+                        start_time=export_logs_filters.start_time, end_time=export_logs_filters.end_time
+                    )
+                else:
+                    LOGGER.debug(
+                        "Log streams not yet available for %s, only CFN Stack events will be exported.",
+                        {self.image_id},
+                    )
+
+                if stack_exists:
+                    # Get stack events and write them into a file
+                    stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
+                    export_stack_events(self.stack.name, stack_events_file)
+
+                create_logs_archive(root_archive_dir, output)
+        except Exception as e:
+            raise ImageBuilderActionError(f"Unexpected error when exporting image's logs: {e}")
+
+    def _stack_exists(self):
+        stack_exists = True
+        try:
+            _ = self.stack
+        except NonExistingStackError:
+            stack_exists = False
+        return stack_exists
+
+    def _init_export_logs_filters(self, start_time, end_time):
+        try:
+            export_logs_filters = LogGroupTimeFiltersParser(
+                log_group_name=self._log_group_name, start_time=start_time, end_time=end_time
+            )
+            export_logs_filters.validate()
+        except FiltersParserError as e:
+            raise ImageBuilderActionError(str(e))
+        return export_logs_filters
+
+    def list_logs(self, next_token: str = None):
+        """
+        List image builder's logs.
+
+        :param next_token: Token for paginated requests.
+        :returns ListLogsResponse
+        """
+        try:
+            # check stack
+            stack_exists = self._stack_exists()
+            if not stack_exists:
+                LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
+
+            cw_log_streams = None
+            if AWSApi.instance().logs.log_group_exists(self._log_group_name):
+                LOGGER.debug("Listing log streams from log group %s", self._log_group_name)
+                cw_log_streams = AWSApi.instance().logs.describe_log_streams(
+                    log_group_name=self._log_group_name, next_token=next_token
+                )
+                log_group_exist = True
+            else:
+                LOGGER.debug("Log Group %s doesn't exist.", self._log_group_name)
+                log_group_exist = False
+
+            if not stack_exists and not log_group_exist:
+                raise ImageBuilderActionError(
+                    f"Unable to find image logs, please double check if image id={self.image_id} is correct."
+                )
+
+            stack_log_streams = None
+            if not next_token and stack_exists:
+                # add CFN Stack information only at the first request, when next-token is not specified
+                stack_log_streams = [
+                    {
+                        "Stack Events Stream": self._stack_events_stream_name,
+                        "Stack Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
+                    }
+                ]
+            return Logs(stack_log_streams, cw_log_streams)
+
+        except AWSClientError as e:
+            raise ImageBuilderActionError(f"Unexpected error when retrieving image's logs: {e}")
+
+    def get_log_events(
+        self,
+        log_stream_name: str,
+        start_time: str = None,
+        end_time: str = None,
+        start_from_head: bool = False,
+        limit: int = None,
+        next_token: str = None,
+    ):
+        """
+        Get the log stream events.
+
+        :param log_stream_name: Log stream name
+        :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
+        :param end_time: End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
+        :param start_from_head: If the value is true, the earliest log events are returned first.
+            If the value is false, the latest log events are returned first. The default value is false.
+        :param limit: The maximum number of log events returned. If you don't specify a value,
+            the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
+        :param next_token: Token for paginated requests.
+        """
+        try:
+            if log_stream_name != self._stack_events_stream_name:
+                # get Image Builder log stream events
+                log_events_response = AWSApi.instance().logs.get_log_events(
+                    log_group_name=self._log_group_name,
+                    log_stream_name=log_stream_name,
+                    end_time=isoformat_to_epoch(end_time) if end_time else None,
+                    start_time=isoformat_to_epoch(start_time) if start_time else None,
+                    limit=limit,
+                    start_from_head=start_from_head,
+                    next_token=next_token,
+                )
+                return LogStream(self.image_id, log_stream_name, log_events_response)
+            else:
+                # Get Stack Events log stream
+                if not self._stack_exists():
+                    raise ImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
+
+                stack_events = AWSApi.instance().cfn.get_stack_events(self.stack.name)
+                stack_events.reverse()
+                if limit:
+                    if start_from_head:
+                        stack_events = stack_events[:limit]
+                    else:
+                        stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
+                return LogStream(self.image_id, log_stream_name, {"events": stack_events})
+        except AWSClientError as e:
+            raise ImageBuilderActionError(f"Unexpected error when retrieving log events: {e}")
+
+    @property
+    def _stack_events_stream_name(self):
+        """Return the name of the stack events log stream."""
+        return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.image_id)
