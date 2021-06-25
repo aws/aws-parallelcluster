@@ -150,7 +150,7 @@ class ConfigPatch:
 
         If update_key is not set we're considering Name as identifier.
         """
-        update_key = field_obj.metadata.get("update_key", "Name")
+        update_key = field_obj.metadata.get("update_key")
 
         # Compare items in the list by searching the right item to compare through update_key value
         # First, compare all sections from target vs base config and mark visited base sections.
@@ -184,29 +184,16 @@ class ConfigPatch:
         for base_nested_section in base_section.get(data_key, []):
             if not base_nested_section.get("visited", False):
                 update_key_value = base_nested_section.get(update_key)
-                target_nested_section = next(
-                    (
-                        nested_section
-                        for nested_section in target_section.get(data_key, [])
-                        if nested_section.get(update_key) == update_key_value
-                    ),
-                    None,
-                )
-                if base_nested_section and target_nested_section:
-                    nested_path = copy.deepcopy(param_path)
-                    nested_path.append(data_key)
-                    self._compare_section(base_nested_section, target_nested_section, field_obj.schema, nested_path)
-                else:
-                    self.changes.append(
-                        Change(
-                            param_path,
-                            data_key,
-                            base_nested_section,
-                            None,
-                            change_update_policy,
-                            is_list=True,
-                        )
+                self.changes.append(
+                    Change(
+                        param_path,
+                        data_key,
+                        base_nested_section,
+                        None,
+                        change_update_policy,
+                        is_list=True,
                     )
+                )
 
     @property
     def update_policy_level(self):
