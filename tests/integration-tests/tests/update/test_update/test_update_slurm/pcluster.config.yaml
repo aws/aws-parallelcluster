@@ -16,7 +16,7 @@ Scheduling:
   Scheduler: slurm
   SlurmSettings:
     ScaledownIdletime: 30
-  Queues:
+  SlurmQueues:
     - Name: queue1
       ComputeSettings:
         LocalStorage:

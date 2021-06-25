@@ -17,7 +17,7 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SlurmSchema, SharedStorageSchema
+from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -79,46 +79,70 @@ def test_image_schema(os, custom_ami, failure_message):
         assert_that(image.custom_ami).is_equal_to(custom_ami)
 
 
-DUMMY_REQUIRED_QUEUE = [
-    {
-        "Name": "queue1",
-        "Networking": {"SubnetIds": ["subnet-12345678"]},
-        "ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}],
-    }
-]
+DUMMY_AWSBATCH_QUEUE = {
+    "Name": "queue1",
+    "Networking": {"SubnetIds": ["subnet-12345678"]},
+    "ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}],
+}
 
-FAKE_QUEUE_LIST = [
-    {
-        "Name": "queue1",
-        "Networking": {"SubnetIds": ["subnet-12345678"]},
-        "ComputeResources": [{"InstanceType": "c5.xlarge"}, {"InstanceType": "c4.xlarge"}],
-    },
-    {
-        "Name": "queue2",
-        "Networking": {"SubnetIds": ["subnet-12345678"]},
-        "ComputeResources": [{"InstanceType": "c5.2xlarge", "MaxCount": 5}, {"InstanceType": "c4.2xlarge"}],
-    },
-]
+DUMMY_SLURM_QUEUE = {
+    "Name": "queue1",
+    "Networking": {"SubnetIds": ["subnet-12345678"]},
+    "ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}],
+}
 
 
 @pytest.mark.parametrize(
-    "queues, failure_message",
+    "config_dict, failure_message",
     [
-        (None, "Missing data for required field"),
-        (DUMMY_REQUIRED_QUEUE, None),
+        # failures
+        ({"Scheduler": "awsbatch"}, "AwsBatchQueues section must be specified"),
+        ({"Scheduler": "slurm"}, "SlurmQueues section must be specified"),
+        (
+            {"Scheduler": "slurm", "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
+            "Queues section is not appropriate to the Scheduler",
+        ),
+        (
+            {"Scheduler": "awsbatch", "SlurmQueues": [DUMMY_SLURM_QUEUE]},
+            "Queues section is not appropriate to the Scheduler",
+        ),
+        (
+            {"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE], "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
+            "Queues section is not appropriate to the Scheduler",
+        ),
+        (
+            {"Scheduler": "slurm", "SlurmSettings": {}, "AwsBatchSettings": {}},
+            "Multiple .*Settings sections cannot be specified in the Scheduling section",
+        ),
+        # success
+        ({"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE]}, None),
+        (
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [
+                    DUMMY_SLURM_QUEUE,
+                    {
+                        "Name": "queue2",
+                        "Networking": {"SubnetIds": ["subnet-12345678"]},
+                        "ComputeResources": [
+                            {"Name": "compute_resource3", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                            {"Name": "compute_resource4", "InstanceType": "c4.2xlarge"},
+                        ],
+                    },
+                ],
+            },
+            None,
+        ),
     ],
 )
-def test_slurm_scheduling_schema(mocker, queues, failure_message):
+def test_scheduling_schema(mocker, config_dict, failure_message):
     mock_aws_api(mocker)
-    scheduling_schema = {}
-    if queues:
-        scheduling_schema["Queues"] = queues
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SlurmSchema().load(scheduling_schema)
+            SchedulingSchema().load(config_dict)
     else:
-        SlurmSchema().load(scheduling_schema)
+        SchedulingSchema().load(config_dict)
 
 
 @pytest.mark.parametrize(

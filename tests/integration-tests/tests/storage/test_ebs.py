@@ -297,10 +297,10 @@ def _assert_root_volume_configuration(cluster, os, region, scheduler):
                 continue
             root_volume_id = utils.get_root_volume_id(instance, region, os)
             if utils.dict_has_nested_key(
-                cluster.config, ("Scheduling", "Queues", 0, "ComputeSettings", "LocalStorage", "RootVolume")
+                cluster.config, ("Scheduling", "SlurmQueues", 0, "ComputeSettings", "LocalStorage", "RootVolume")
             ):
                 logging.info("Checking compute node root volume settings")
-                expected_settings = cluster.config["Scheduling"]["Queues"][0]["ComputeSettings"]["LocalStorage"][
+                expected_settings = cluster.config["Scheduling"]["SlurmQueues"][0]["ComputeSettings"]["LocalStorage"][
                     "RootVolume"
                 ]
                 _assert_volume_configuration(expected_settings, root_volume_id, region)

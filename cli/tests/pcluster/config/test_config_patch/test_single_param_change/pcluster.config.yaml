@@ -9,19 +9,21 @@ HeadNode:
   Ssh:
     KeyName: test-key
 Scheduling:
-  Slurm:
-    Queues:
-      - Name: queue1
-        Networking:
-          SubnetIds:
-            - {{compute_subnet_id}}
-        ComputeResources:
-          - Name: compute-resource1
-            InstanceType: {{compute_instance_type}}
-            MinCount: 1
-            MaxCount: {{max_count}}
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{compute_subnet_id}}
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: {{compute_instance_type}}
+          MinCount: 1
+          MaxCount: {{max_count}}
 SharedStorage:
   - MountDir: vol1
     Name: ebs1
-    Ebs:
+    StorageType: Ebs
+    EbsSettings:
       VolumeType: gp2
+      Encrypted: {{ebs_encrypted}}

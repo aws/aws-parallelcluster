@@ -14,7 +14,7 @@ Scheduling:
     ScaledownIdletime: {{ scaledown_idletime }}
     Dns:
       DisableManagedDns: true
-  Queues:
+  SlurmQueues:
     - Name: default-queue
       Networking:
         SubnetIds:
