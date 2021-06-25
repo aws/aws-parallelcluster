@@ -30,7 +30,9 @@ from pcluster.api.errors import (
 from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
 from pcluster.constants import SUPPORTED_REGIONS
+from pcluster.models.cluster import Cluster
 from pcluster.models.common import BadRequest, Conflict, LimitExceeded
+from pcluster.utils import get_installed_version
 
 LOGGER = logging.getLogger(__name__)
 
@@ -88,10 +90,18 @@ def http_success_status_code(status_code: int = 200):
     return _decorator_http_success_status_code
 
 
-def check_cluster_version(cluster):
-    return cluster.stack.version and packaging.version.parse("4.0.0") > packaging.version.parse(
-        cluster.stack.version
-    ) >= packaging.version.parse("3.0.0")
+def check_cluster_version(cluster: Cluster, exact_match: bool = False) -> bool:
+    if not cluster.stack.version:
+        return False
+
+    if exact_match:
+        return packaging.version.parse(cluster.stack.version) == packaging.version.parse(get_installed_version())
+    else:
+        return (
+            packaging.version.parse("4.0.0")
+            > packaging.version.parse(cluster.stack.version)
+            >= packaging.version.parse("3.0.0")
+        )
 
 
 def read_config(base64_encoded_config: str) -> str:

@@ -19,6 +19,14 @@ class LogsClient(Boto3Client):
     def __init__(self):
         super().__init__("logs")
 
+    def log_group_exists(self, log_group_name):
+        """Return true if log group exists, false otherwise."""
+        try:
+            self.describe_log_group(log_group_name)
+            return True
+        except AWSClientError:
+            return False
+
     @AWSExceptionHandler.handle_client_exception
     def delete_log_group(self, log_group_name):
         """Delete log group by given log group name."""

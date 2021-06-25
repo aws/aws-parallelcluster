@@ -15,10 +15,12 @@ import pytest
 import yaml
 from assertpy import assert_that
 
+from pcluster.api.models import ClusterStatus
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
+from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG
-from pcluster.models.cluster import Cluster, ClusterActionError, NodeType
+from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -378,67 +380,13 @@ class TestCluster:
         assert_that(observed_return).is_equal_to(expected_return)
 
     @pytest.mark.parametrize(
-        "task_statuses",
+        "stack_exists, logging_enabled, expected_error, kwargs",
         [
-            [
-                "PENDING",
-                "PENDING",
-                "PENDING",
-                "RUNNING",
-                "COMPLETE",
-            ],
-            [
-                "PENDING_CANCEL",
-                "RUNNING",
-                "any value other than PENDING, PENDING_CANCEL or RUNNING",
-            ],
-        ],
-    )
-    def test_wait_for_task_completion(self, cluster, mocker, task_statuses):
-        """
-        Verify that _wait_for_task_completion behaves as expected.
-
-        _wait_for_task_completion should call updated_status until the StackStatus is anything besides
-        ("PENDING", "PENDING_CANCEL", "RUNNING") use that to get expected call count for updated_status
-        """
-        mock_aws_api(mocker)
-        wait_for_task_mock = mocker.patch(
-            "pcluster.aws.logs.LogsClient.get_export_task_status", side_effect=task_statuses
-        )
-
-        expected_call_count = len(task_statuses)
-        mocker.patch("pcluster.models.cluster.time.sleep")  # so we don't actually have to wait
-
-        cluster._wait_for_task_completion("task_id")
-        assert_that(wait_for_task_mock.call_count).is_equal_to(expected_call_count)
-
-    @pytest.mark.parametrize("task_result", ["COMPLETED", "ERROR"])
-    def test_export_logs_to_s3(self, cluster, mocker, task_result):
-        """Verify that _export_logs_to_s3 behaves as expected."""
-        mock_aws_api(mocker)
-        wait_for_completion_mock = mocker.patch(
-            "pcluster.models.cluster.Cluster._wait_for_task_completion", return_value=task_result
-        )
-        mocker.patch("pcluster.aws.logs.LogsClient.create_export_task", return_value="task_id")
-
-        if task_result != "COMPLETED":
-            with pytest.raises(ClusterActionError, match=f"export task task_id failed with status: {task_result}"):
-                cluster._export_logs_to_s3("log_group_name", "bucket")
-        else:
-            task_id = cluster._export_logs_to_s3("log_group_name", "bucket")
-            wait_for_completion_mock.assert_called_with(task_id)
-
-    @pytest.mark.parametrize(
-        "stack_exists, bucket_region, is_bucket_empty, logging_enabled, client_error, expected_error, kwargs",
-        [
-            (False, "us-east-2", True, False, False, "Cluster .* does not exist", {}),
-            (True, "us-east-2", True, False, False, "", {}),
-            (True, "eu-west-1", True, True, False, "The bucket used for exporting logs must be in the same region", {}),
-            (True, "us-east-2", True, True, True, "Unexpected error when exporting", {}),
-            (True, "us-east-2", False, True, False, "", {}),
-            (True, "us-east-2", True, True, False, "", {}),
-            (True, "us-east-2", True, True, False, "", {"keep_s3_objects": True}),
-            (True, "us-east-2", True, True, False, "", {"bucket_prefix": "test_prefix"}),
+            (False, False, "Cluster .* does not exist", {}),
+            (True, False, "", {}),
+            (True, True, "", {}),
+            (True, True, "", {"keep_s3_objects": True}),
+            (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
     )
     def test_export_logs(
@@ -447,38 +395,29 @@ class TestCluster:
         mocker,
         set_env,
         stack_exists,
-        bucket_region,
-        is_bucket_empty,
         logging_enabled,
-        client_error,
         expected_error,
         kwargs,
     ):
         mock_aws_api(mocker)
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
-        download_stack_events_mock = mocker.patch("pcluster.models.cluster.Cluster._download_stack_events_file")
-        create_logs_archive_mock = mocker.patch("pcluster.models.cluster.Cluster._create_logs_archive")
-
-        cluster.config = dummy_slurm_cluster_config(mocker)
-        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+        download_stack_events_mock = mocker.patch("pcluster.models.cluster.export_stack_events")
+        create_logs_archive_mock = mocker.patch("pcluster.models.cluster.create_logs_archive")
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name",
+            new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
+        )
 
         # Following mocks are used only if CW loggins is enabled
-        bucket_region_mock = mocker.patch("pcluster.aws.s3.S3Client.get_bucket_region", return_value=bucket_region)
-        bucket_empty_mock = mocker.patch("pcluster.aws.s3_resource.S3Resource.is_empty", return_value=is_bucket_empty)
-        mocker.patch(
+        logs_filter_mock = mocker.patch(
             "pcluster.models.cluster.Cluster._init_export_logs_filters",
             return_value=_MockExportClusterLogsFiltersParser(),
         )
-        export_logs_mock = mocker.patch("pcluster.models.cluster.Cluster._export_logs_to_s3", return_value="task_id")
-        download_objects_mock = mocker.patch("pcluster.models.cluster.Cluster._download_s3_objects_with_prefix")
-        delete_objects_mock = mocker.patch(
-            "pcluster.aws.s3_resource.S3Resource.delete_objects",
-            side_effect=AWSClientError("delete_objects", "error") if client_error else None,
-        )
+        cw_logs_exporter_mock = mocker.patch("pcluster.models.cluster.CloudWatchLogsExporter", autospec=True)
 
         kwargs.update({"output": "output_path", "bucket": "bucket_name"})
-        if expected_error or client_error:
+        if expected_error:
             with pytest.raises(ClusterActionError, match=expected_error):
                 cluster.export_logs(**kwargs)
         else:
@@ -491,28 +430,11 @@ class TestCluster:
             stack_exists_mock.assert_called_with(cluster.stack_name)
 
             if logging_enabled:
-                bucket_region_mock.assert_called_with(bucket_name=kwargs.get("bucket"))
-                if not kwargs.get("bucket_prefix", None):
-                    bucket_empty_mock.assert_called()
-
-                export_logs_mock.assert_called()
-                download_objects_mock.assert_called()
-                # check final steps
-                if logging_enabled and not kwargs.get("keep_s3_objects", False):
-                    if kwargs.get("bucket_prefix", None):
-                        prefix = "/".join((kwargs.get("bucket_prefix"), "task_id"))
-                        delete_objects_mock.assert_called_with(bucket_name=kwargs.get("bucket"), prefix=prefix)
-                    else:
-                        delete_objects_mock.assert_called()
-                else:
-                    delete_objects_mock.assert_not_called()
-
+                cw_logs_exporter_mock.assert_called()
+                logs_filter_mock.assert_called()
             else:
-                bucket_region_mock.assert_not_called()
-                bucket_empty_mock.assert_not_called()
-                export_logs_mock.assert_not_called()
-                download_objects_mock.assert_not_called()
-                delete_objects_mock.assert_not_called()
+                cw_logs_exporter_mock.assert_not_called()
+                logs_filter_mock.assert_not_called()
 
     @pytest.mark.parametrize(
         "stack_exists, logging_enabled, client_error, expected_error",
@@ -543,9 +465,10 @@ class TestCluster:
         mocker.patch(
             "pcluster.models.cluster.Cluster._init_list_logs_filters", return_value=_MockListClusterLogsFiltersParser()
         )
-
-        cluster.config = dummy_slurm_cluster_config(mocker)
-        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name",
+            new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
+        )
 
         if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
@@ -559,19 +482,24 @@ class TestCluster:
         stack_exists_mock.assert_called_with(cluster.stack_name)
 
     @pytest.mark.parametrize(
-        "stack_exists, logging_enabled, client_error, expected_error",
+        "log_stream_name, stack_exists, logging_enabled, client_error, expected_error",
         [
-            (False, False, False, "Cluster .* does not exist"),
-            (True, False, False, "CloudWatch logging is not enabled"),
-            (True, True, True, "Unexpected error when retrieving log events"),
-            (True, True, False, ""),
+            (f"{FAKE_NAME}-cfn-events", False, False, False, "Cluster .* does not exist"),
+            (f"{FAKE_NAME}-cfn-events", True, False, False, ""),
+            (f"{FAKE_NAME}-cfn-events", True, True, True, "Unexpected error when retrieving log events"),
+            (f"{FAKE_NAME}-cfn-events", True, True, False, ""),
+            ("log-group-name", False, False, False, "Cluster .* does not exist"),
+            ("log-group-name", True, False, False, "CloudWatch logging is not enabled"),
+            ("log-group-name", True, True, True, "Unexpected error when retrieving log events"),
+            ("log-group-name", True, True, False, ""),
         ],
     )
-    def test_get_cluster_log_events(
+    def test_get_log_events(
         self,
         cluster,
         mocker,
         set_env,
+        log_stream_name,
         stack_exists,
         logging_enabled,
         client_error,
@@ -580,23 +508,92 @@ class TestCluster:
         mock_aws_api(mocker)
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
+        get_stack_events_mock = mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_events",
+            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
+        )
         get_log_events_mock = mocker.patch(
             "pcluster.aws.logs.LogsClient.get_log_events",
             side_effect=AWSClientError("get_log_events", "error") if client_error else None,
         )
-
-        cluster.config = dummy_slurm_cluster_config(mocker)
-        cluster.config.monitoring.logs.cloud_watch.enabled = logging_enabled
+        mocker.patch(
+            "pcluster.models.cluster.ClusterStack.log_group_name",
+            new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
+        )
 
         if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
-                cluster.get_log_events("log_stream_name")
+                cluster.get_log_events(log_stream_name)
         else:
-            cluster.get_log_events("log_stream_name")
-            get_log_events_mock.assert_called()
+            cluster.get_log_events(log_stream_name)
 
-        # check preliminary steps
+            if log_stream_name == f"{FAKE_NAME}-cfn-events":
+                if stack_exists:
+                    get_stack_events_mock.assert_called()
+                else:
+                    get_stack_events_mock.assert_not_called()
+            else:
+                get_stack_events_mock.assert_not_called()
+                get_log_events_mock.assert_called()
+
         stack_exists_mock.assert_called_with(cluster.stack_name)
+
+    @pytest.mark.parametrize("force", [False, True])
+    def test_validate_empty_change_set(self, mocker, force):
+        mock_aws_api(mocker)
+        cluster = Cluster(
+            FAKE_NAME,
+            stack=ClusterStack(
+                {
+                    "StackName": FAKE_NAME,
+                    "CreationTime": "2021-06-04 10:23:20.199000+00:00",
+                    "StackStatus": ClusterStatus.CREATE_COMPLETE,
+                }
+            ),
+            config=OLD_CONFIGURATION,
+        )
+
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+
+        if force:
+            _, changes, _ = cluster.validate_update_request(
+                target_source_config=OLD_CONFIGURATION,
+                validator_suppressors={AllValidatorsSuppressor()},
+                force=force,
+            )
+            assert_that(changes).is_length(1)
+        else:
+            with pytest.raises(BadRequestClusterActionError, match="No changes found in your cluster configuration."):
+                cluster.validate_update_request(
+                    target_source_config=OLD_CONFIGURATION,
+                    validator_suppressors={AllValidatorsSuppressor()},
+                    force=force,
+                )
+
+
+OLD_CONFIGURATION = """
+Image:
+  Os: alinux2
+  CustomAmi: ami-08cf50b131bcd4db2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-08a5068070f6bc23d
+  Ssh:
+    KeyName: ermann-dub-ef
+Scheduling:
+  Scheduler: slurm
+  Queues:
+  - Name: queue2
+    ComputeResources:
+    - Name: queue1-t2micro
+      InstanceType: t2.small
+      MinCount: 0
+      MaxCount: 11
+    Networking:
+      SubnetIds:
+      - subnet-0f621591d5d0da380
+"""
 
 
 class _MockExportClusterLogsFiltersParser:

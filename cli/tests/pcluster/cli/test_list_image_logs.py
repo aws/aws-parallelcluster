@@ -14,11 +14,11 @@ from dateutil import tz
 
 from pcluster.models.common import Logs
 
-BASE_COMMAND = ["pcluster", "list-cluster-logs"]
-REQUIRED_ARGS = {"cluster_name": "clustername"}
+BASE_COMMAND = ["pcluster", "list-image-logs"]
+REQUIRED_ARGS = {"image_id": "id"}
 
 
-class TestListClusterLogsCommand:
+class TestListImageLogsCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
         command = BASE_COMMAND + ["--help"]
         run_cli(command, expect_failure=False)
@@ -27,7 +27,7 @@ class TestListClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({}, "the following arguments are required: cluster_name")],
+        [({}, "the following arguments are required: image_id")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -36,28 +36,7 @@ class TestListClusterLogsCommand:
         out, err = capsys.readouterr()
         assert_that(out + err).contains(error_message)
 
-    @pytest.mark.parametrize(
-        "args, error_message",
-        [
-            ({"filters": "Name=wrong,Value=test"}, "filters parameter must be in the form"),
-            ({"filters": "private-dns-name=test"}, "filters parameter must be in the form"),
-        ],
-    )
-    def test_invalid_args(self, args, error_message, run_cli, capsys):
-        command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
-        run_cli(command, expect_failure=True)
-
-        out, err = capsys.readouterr()
-        assert_that(out + err).contains(error_message)
-
-    @pytest.mark.parametrize(
-        "args, ",
-        [
-            {},
-            {"filters": "Name=private-dns-name,Values=ip-10-10-10-10", "next_token": "123"},
-            {"filters": "Name=node-type,Values=HeadNode"},
-        ],
-    )
+    @pytest.mark.parametrize("args", [{}, {"next_token": "123"}])
     def test_execute(self, mocker, capsys, set_env, run_cli, args):
         logs = Logs()
         logs.cw_log_streams = {
@@ -95,12 +74,11 @@ class TestListClusterLogsCommand:
         logs.stack_log_streams = [
             {
                 "Stack Events Stream": "cloudformation-stack-events",
-                "Cluster Creation Time": "2021-06-04T10:23:20+00:00",
-                "Last Update Time": "2021-06-04T10:23:20+00:00",
+                "Stack Creation Time": "2021-06-04T10:23:20+00:00",
             }
         ]
 
-        list_logs_mock = mocker.patch("pcluster.cli.commands.cluster.Cluster.list_logs", return_value=logs)
+        list_logs_mock = mocker.patch("pcluster.cli.commands.image.ImageBuilder.list_logs", return_value=logs)
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
@@ -122,17 +100,15 @@ class TestListClusterLogsCommand:
         assert_that(list_logs_mock.call_args).is_length(2)
 
         # verify arguments
-        expected_params = {"filters": None, "next_token": None}
+        expected_params = {"next_token": None}
         expected_params.update(args)
         self._check_params(list_logs_mock, expected_params, args)
 
     @staticmethod
     def _build_cli_args(args):
         cli_args = []
-        if "cluster_name" in args:
-            cli_args.extend([args["cluster_name"]])
-        if "filters" in args:
-            cli_args.extend(["--filters", args["filters"]])
+        if "image_id" in args:
+            cli_args.extend([args["image_id"]])
         if "next_token" in args:
             cli_args.extend(["--next-token", args["next_token"]])
         return cli_args

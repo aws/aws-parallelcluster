@@ -19,13 +19,14 @@ from utils import retrieve_cfn_outputs, retrieve_cfn_resources, set_credentials,
 class CfnStack:
     """Identify a CloudFormation stack."""
 
-    def __init__(self, name, region, template, parameters=None, capabilities=None):
+    def __init__(self, name, region, template, parameters=None, capabilities="CAPABILITY_IAM"):
         self.name = name
         self.region = region
         self.template = template
         self.parameters = parameters or []
         self.capabilities = capabilities or []
         self.cfn_stack_id = None
+        self.capabilities = capabilities
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
@@ -78,7 +79,7 @@ class CfnStacksFactory:
                 StackName=name,
                 TemplateBody=stack.template,
                 Parameters=stack.parameters,
-                Capabilities=stack.capabilities,
+                Capabilities=[stack.capabilities],
             )
             stack.cfn_stack_id = result["StackId"]
             final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)

@@ -98,6 +98,8 @@ class AWSExceptionHandler:
 
                 if error_code in AWSClientError.ErrorCode.throttling_error_codes():
                     error = LimitExceededError(func.__name__, message, error_code)
+                elif error_code == AWSClientError.ErrorCode.VALIDATION_ERROR:
+                    error = BadRequestError(func.__name__, message, error_code)
                 else:
                     error = AWSClientError(func.__name__, message, error_code)
             LOGGER.error("Encountered error when performing boto3 call in %s: %s", error.function_name, error.message)

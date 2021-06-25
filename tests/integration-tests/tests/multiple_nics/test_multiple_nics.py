@@ -33,7 +33,7 @@ def test_multiple_nics(scheduler, region, pcluster_config_reader, clusters_facto
 
 def _get_private_ip_addresses(instance_id, region, remote_command_executor):
     result = remote_command_executor.run_remote_command(
-        "sudo aws ec2 describe-instances --instance-id {0} --region {1} "
+        "aws ec2 describe-instances --instance-id {0} --region {1} "
         '--query "Reservations[0].Instances[0].NetworkInterfaces[*].PrivateIpAddresses[*].PrivateIpAddress" '
         "--output text".format(instance_id, region)
     )
