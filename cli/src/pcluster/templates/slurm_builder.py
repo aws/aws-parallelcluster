@@ -15,7 +15,7 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
-from aws_cdk.core import CfnOutput, CfnParameter, CfnTag, Construct, CustomResource, Fn, Stack
+from aws_cdk.core import CfnCustomResource, CfnOutput, CfnParameter, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
 from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX
@@ -253,12 +253,14 @@ class SlurmConstruct(Construct):
                     queue_placement_group,
                 )
 
-        CustomResource(
+        self.terminate_compute_fleet_custom_resource = CfnCustomResource(
             self.stack_scope,
             "TerminateComputeFleetCustomResource",
             service_token=self.cleanup_lambda.attr_arn,
-            properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"},
         )
+        self.terminate_compute_fleet_custom_resource.add_property_override("StackName", self.stack_name)
+        self.terminate_compute_fleet_custom_resource.add_property_override("Action", "TERMINATE_EC2_INSTANCES")
+        self.terminate_compute_fleet_custom_resource.add_depends_on(self.cleanup_route53_custom_resource)
         # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
         # terminate_compute_fleet_custom_resource.add_depends_on()
 
@@ -338,12 +340,13 @@ class SlurmConstruct(Construct):
             handler_func="cleanup_resources",
         ).lambda_func
 
-        CustomResource(
+        self.cleanup_route53_custom_resource = CfnCustomResource(
             self.stack_scope,
             "CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
-            properties={"ClusterHostedZone": cluster_hosted_zone.ref, "Action": "DELETE_DNS_RECORDS"},
         )
+        self.cleanup_route53_custom_resource.add_property_override("ClusterHostedZone", cluster_hosted_zone.ref)
+        self.cleanup_route53_custom_resource.add_property_override("Action", "DELETE_DNS_RECORDS")
 
         CfnOutput(
             self.stack_scope,
@@ -396,15 +399,13 @@ class SlurmConstruct(Construct):
             handler_func="wait_for_update",
         ).lambda_func
 
-        CustomResource(
+        self.update_waiter_custom_resource = CfnCustomResource(
             self.stack_scope,
             "UpdateWaiterCustomResource",
             service_token=update_waiter_lambda.attr_arn,
-            properties={
-                "ConfigVersion": self.config.config_version,
-                "DynamoDBTable": self.dynamodb_table.ref,
-            },
         )
+        self.update_waiter_custom_resource.add_property_override("ConfigVersion", self.config.config_version)
+        self.update_waiter_custom_resource.add_property_override("DynamoDBTable", self.dynamodb_table.ref)
 
         CfnOutput(self.stack_scope, "UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
