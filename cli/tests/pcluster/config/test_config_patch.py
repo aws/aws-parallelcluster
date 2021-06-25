@@ -80,7 +80,7 @@ def _compare_changes(changes, expected_changes):
 @pytest.mark.parametrize(
     "change_path, template_rendering_key, param_key, src_param_value, dst_param_value, change_update_policy, is_list",
     [
-        (
+        pytest.param(
             ["HeadNode", "Networking"],
             "head_node_subnet_id",
             "SubnetId",
@@ -88,8 +88,9 @@ def _compare_changes(changes, expected_changes):
             "subnet-1234567a",
             UpdatePolicy.UNSUPPORTED,
             False,
+            id="change subnet id",
         ),
-        (
+        pytest.param(
             ["HeadNode", "Networking"],
             "additional_sg",
             "AdditionalSecurityGroups",
@@ -97,24 +98,27 @@ def _compare_changes(changes, expected_changes):
             "sg-1234567a",
             UpdatePolicy.SUPPORTED,
             True,
+            id="change additional security group",
         ),
-        (
-            ["Scheduling", "Slurm", "Queues", "ComputeResources"],
+        pytest.param(
+            ["Scheduling", "Slurm", "Queues[queue1]", "ComputeResources[compute-resource1]"],
             "max_count",
             "MaxCount",
             0,
             1,
             UpdatePolicy.MAX_COUNT,
             False,
+            id="change compute resources max count",
         ),
-        (
-            ["Scheduling", "Slurm", "Queues", "ComputeResources"],
+        pytest.param(
+            ["Scheduling", "Slurm", "Queues[queue1]", "ComputeResources[compute-resource1]"],
             "compute_instance_type",
             "InstanceType",
             "t2.micro",
             "c4.xlarge",
             UpdatePolicy.COMPUTE_FLEET_STOP,
             False,
+            id="change compute resources instance type",
         ),
     ],
 )
@@ -188,7 +192,7 @@ def test_multiple_param_changes(pcluster_config_reader, test_datadir):
             is_list=False,
         ),
         Change(
-            ["Scheduling", "Slurm", "Queues", "Networking"],
+            ["Scheduling", "Slurm", "Queues[queue1]", "Networking"],
             "SubnetIds",
             ["subnet-12345678"],
             ["subnet-1234567a"],
@@ -240,9 +244,9 @@ def _test_less_target_sections(base_conf, target_conf):
                 ),
                 is_list=True,
             ),
-            Change(["SharedStorage"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
-            Change(["SharedStorage", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
-            Change(["SharedStorage", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -287,9 +291,9 @@ def _test_more_target_sections(base_conf, target_conf):
                 ),
                 is_list=True,
             ),
-            Change(["SharedStorage"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
-            Change(["SharedStorage", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
-            Change(["SharedStorage", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -303,7 +307,11 @@ def _test_incompatible_ebs_sections(base_conf, target_conf):
     _check_patch(
         base_conf,
         target_conf,
-        [Change(["SharedStorage"], "MountDir", "vol1", "new_value", UpdatePolicy(UpdatePolicy.UNSUPPORTED), False)],
+        [
+            Change(
+                ["SharedStorage[ebs1]"], "MountDir", "vol1", "new_value", UpdatePolicy(UpdatePolicy.UNSUPPORTED), False
+            )
+        ],
         UpdatePolicy.UNSUPPORTED,
     )
 

@@ -166,7 +166,7 @@ class ConfigPatch:
             )
             if base_nested_section:
                 nested_path = copy.deepcopy(param_path)
-                nested_path.append(data_key)
+                nested_path.append(f"{data_key}[{update_key_value}]")
                 self._compare_section(base_nested_section, target_nested_section, field_obj.schema, nested_path)
                 base_nested_section["visited"] = True
             else:
