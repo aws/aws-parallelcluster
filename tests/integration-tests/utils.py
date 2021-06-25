@@ -183,6 +183,11 @@ def get_compute_nodes_instance_ids(stack_name, region, instance_types=None):
     return get_cluster_nodes_instance_ids(stack_name, region, instance_types, node_type="Compute")
 
 
+def get_head_node_instance_id(stack_name, region):
+    """Return a list of Head node Instance Id."""
+    return get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type="Master")
+
+
 def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None):
     """Return a list of cluster Instances Id's."""
     try:

@@ -19,7 +19,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import InstanceTypesData, get_compute_nodes_instance_ids
+from utils import InstanceTypesData, get_compute_nodes_instance_ids, get_head_node_instance_id
 
 from tests.common.assertions import (
     assert_errors_in_logs,
@@ -221,6 +221,17 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
     # Next test will introduce error in logs, assert no error now
     assert_no_errors_in_logs(remote_command_executor, scheduler)
     _test_clustermgtd_down_logic(
+        remote_command_executor,
+        scheduler_commands,
+        cluster.cfn_name,
+        region,
+        test_datadir,
+        partition="ondemand1",
+        num_static_nodes=1,
+        num_dynamic_nodes=1,
+        dynamic_instance_type=instance,
+    )
+    _test_head_node_down(
         remote_command_executor,
         scheduler_commands,
         cluster.cfn_name,
@@ -580,6 +591,48 @@ def _test_clustermgtd_down_logic(
         ["/var/log/parallelcluster/slurm_resume.log"],
         ["No valid clustermgtd heartbeat detected"],
     )
+
+
+def _test_head_node_down(
+    remote_command_executor,
+    scheduler_commands,
+    cluster_name,
+    region,
+    test_datadir,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+):
+    # Make sure clustermgtd and slurmctld are running
+    remote_command_executor.run_remote_script(str(test_datadir / "slurm_start_clustermgtd.sh"), run_as_root=True)
+    remote_command_executor.run_remote_script(str(test_datadir / "slurm_start_slurmctld.sh"), run_as_root=True)
+    # Sleep for 60 seconds to make sure clustermgtd finishes 1 iteration and write a valid heartbeat
+    # Otherwise ResumeProgram will not be able to launch dynamic nodes due to invalid heartbeat
+    time.sleep(60)
+    submit_initial_job(
+        scheduler_commands,
+        "sleep infinity",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    # On slurmctld restart, offline nodes might still show as responding for a short time, breaking assertions
+    # Add some retries to avoid failing due to this case
+    _, _ = retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_initial_conditions)(
+        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition
+    )
+    _stop_head_node(cluster_name, region)
+    # Default computemgtd clustermgtd_timeout is 10 mins, check that compute instances are terminated around this time
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(15))(assert_num_instances_in_cluster)(cluster_name, region, 0)
+
+
+def _stop_head_node(cluster_name, region):
+    """Stop head node instance."""
+    head_node_id = get_head_node_instance_id(cluster_name, region)
+    ec2_client = boto3.client("ec2", region_name=region)
+    ec2_client.stop_instances(InstanceIds=head_node_id)
 
 
 def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
