@@ -58,7 +58,7 @@ generator can be invoked by running: `./gradlew generatePythonServer`. The code 
 
 In order to generate the client in Python language the [python](https://openapi-generator.tech/docs/generators/python)
 generator can be invoked by running: `./gradlew generatePythonClient`. The code is generated under the
-`generated/python-client` directory.
+`client/src` directory.
 
 ### Development Workflow
 
