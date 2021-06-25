@@ -1238,6 +1238,8 @@ class ClusterCdkStack(Stack):
                 version=head_node_launch_template.attr_latest_version_number,
             ),
         )
+        if isinstance(self.scheduler_resources, SlurmConstruct):
+            head_node_instance.add_depends_on(self.scheduler_resources.terminate_compute_fleet_custom_resource)
         head_node_instance.cfn_options.creation_policy = CfnCreationPolicy(
             resource_signal=CfnResourceSignal(count=1, timeout="PT30M")
         )
