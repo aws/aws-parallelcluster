@@ -603,7 +603,7 @@ HeadNode:
     KeyName: {{ key_name }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  Queues:
+  <scheduler-specific>Queues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0
@@ -681,7 +681,7 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   ...
 Scheduling:
-  Queues:
+  <scheduler-specific>Queues:
     - Name: queue-0
       Networking:
         SubnetIds:

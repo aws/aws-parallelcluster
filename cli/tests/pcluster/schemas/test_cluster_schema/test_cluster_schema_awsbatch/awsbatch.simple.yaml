@@ -8,7 +8,7 @@ HeadNode:
     SubnetId: subnet-12345678
 Scheduling:
   Scheduler: awsbatch
-  Queues:
+  AwsBatchQueues:
     - Name: queue1
       Networking:
         SubnetIds:
@@ -21,19 +21,8 @@ Scheduling:
             - c4
           MaxvCpus: 10
 SharedStorage:
-  - MountDir: /shared
-    Name: ebs1
-    StorageType: Ebs
-    EbsSettings:
-      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-      Iops: 100
-      Size: 150
-      Encrypted: True
-      KmsKeyId: String
-      SnapshotId: snap-12345678
-      VolumeId: vol-12345678
   - MountDir: /shared2
-    Name: ebs1
+    Name: ebs2
     StorageType: Ebs
   - MountDir: /shared3
     Name: efs

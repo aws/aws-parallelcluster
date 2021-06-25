@@ -49,7 +49,7 @@ Scheduling:
     ScaledownIdletime: 10
     Dns:
       DisableManagedDns: true
-  Queues:
+  SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND
       Networking:

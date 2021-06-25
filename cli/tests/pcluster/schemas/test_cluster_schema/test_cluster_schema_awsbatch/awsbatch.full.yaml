@@ -40,7 +40,7 @@ HeadNode:
     AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
 Scheduling:
   Scheduler: awsbatch
-  Queues:
+  AwsBatchQueues:
     - Name: String  # queue
       CapacityType: ONDEMAND  # ONDEMAND | SPOT
       Networking:

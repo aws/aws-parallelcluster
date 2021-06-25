@@ -9,7 +9,7 @@ HeadNode:
     AllowedIps: 1.2.3.4/32
 Scheduling:
   Scheduler: slurm
-  Queues:
+  SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND
       Networking:

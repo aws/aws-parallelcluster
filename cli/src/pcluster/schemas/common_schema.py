@@ -86,11 +86,8 @@ class BaseSchema(Schema):
         if kwargs.get("partial"):
             # If the schema is to be loaded partially, do not check existence constrain.
             return True
-        if one_required:
-            result = len([data.get(field_name) for field_name in field_list if data.get(field_name)]) != 1
-        else:
-            result = len([data.get(field_name) for field_name in field_list if data.get(field_name)]) > 1
-        return result
+        num_of_fields = len([data.get(field_name) for field_name in field_list if data.get(field_name)])
+        return num_of_fields != 1 if one_required else num_of_fields > 1
 
     @pre_dump
     def prepare_objects(self, data, **kwargs):
@@ -118,7 +115,7 @@ class BaseSchema(Schema):
     def remove_none_values(self, data, **kwargs):
         """Remove None values before creating the Yaml format."""
         if self.context.get("delete_defaults_when_dump"):
-            return {key: value for key, value in data.items() if value is not None and value != []}
+            return {key: value for key, value in data.items() if value not in (None, [], {})}
         return data
 
 
