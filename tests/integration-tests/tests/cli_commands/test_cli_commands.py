@@ -131,7 +131,7 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
             # check the cfn stack events file is present
             stack_events_file_found = False
             for file in archive:
-                if f"{cluster.name}-cfn-events" == file.name:
+                if f"{cluster.name}-cfn-events" in file.name:
                     stack_events_file_found = True
                     break
             assert_that(stack_events_file_found).is_true()
