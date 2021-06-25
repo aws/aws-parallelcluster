@@ -17,7 +17,7 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SlurmSchema
+from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SlurmSchema, SharedStorageSchema
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -121,43 +121,60 @@ def test_slurm_scheduling_schema(mocker, queues, failure_message):
         SlurmSchema().load(scheduling_schema)
 
 
-DUMMY_EBS_STORAGE = {
-    "MountDir": "/my/mount/point",
-    "StorageType": "EBS",
-    "Settings": {
-        "VolumeType": "String",
-        "Iops": 100,
-        "Size": 150,
-        "Encrypted": True,
-        "KmsKeyId": "String",
-        "SnapshotId": "String",
-        "VolumeId": "String",
-    },
-}
-
-"""
-# Mount directory is going to be tested in test for shared storage
 @pytest.mark.parametrize(
-    "mount_dir, volume_type, failure_message",
+    "config_dict, failure_message",
     [
-        (None, None, "Missing MountDir"),
-        ("mount-point", None, "Missing Settings"),
-        ("mount-point", "gp2", None),
+        # failures
+        ({"StorageType": "Ebs"}, "Missing data for required field."),
+        ({"StorageType": "Ebs", "MountDir": "mount/tmp"}, "Missing data for required field."),
+        ({"StorageType": "Ebs", "Name": "name"}, "Missing data for required field."),
+        ({"StorageType": "Efs", "Name": "name"}, "Missing data for required field."),
+        (
+            {
+                "StorageType": "Ebs",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxLustreSettings": {"CopyTagsToBackups": True},
+            },
+            "SharedStorage > .*Settings section is not appropriate to the",
+        ),
+        (
+            {"StorageType": "Efs", "Name": "name", "MountDir": "mount/tmp", "EbsSettings": {"Encrypted": True}},
+            "SharedStorage > .*Settings section is not appropriate to the",
+        ),
+        (
+            {"StorageType": "FsxLustre", "Name": "name", "MountDir": "mount/tmp", "EfsSettings": {"Encrypted": True}},
+            "SharedStorage > .*Settings section is not appropriate to the",
+        ),
+        (
+            {
+                "StorageType": "Efs",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "EbsSettings": {"Encrypted": True},
+                "EfsSettings": {"Encrypted": True},
+            },
+            "Multiple .*Settings sections cannot be specified in the SharedStorage items",
+        ),
+        # success
+        (
+            {
+                "StorageType": "FsxLustre",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxLustreSettings": {"CopyTagsToBackups": True},
+            },
+            None,
+        ),
+        ({"StorageType": "Efs", "Name": "name", "MountDir": "mount/tmp", "EfsSettings": {"Encrypted": True}}, None),
+        ({"StorageType": "Ebs", "Name": "name", "MountDir": "mount/tmp", "EbsSettings": {"Encrypted": True}}, None),
     ],
 )
-def test_ebs_schema(mount_dir, volume_type, failure_message):
-    ebs_schema = {"StorageType": "EBS"}
-    if mount_dir:
-        ebs_schema["MountDir"] = mount_dir
-    if volume_type:
-        ebs_schema["Settings"] = {"VolumeType": volume_type}
+def test_shared_storage_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SharedStorageSchema().load(ebs_schema)
+            SharedStorageSchema().load(config_dict)
     else:
-        ebs_config = SharedStorageSchema().load(ebs_schema)
-        assert_that(ebs_config).is_instance_of(EbsConfig)
-        assert_that(ebs_config.mount_dir).is_equal_to(mount_dir)
-        assert_that(ebs_config.volume_type).is_equal_to(volume_type)
-"""
+        SharedStorageSchema().load(config_dict)

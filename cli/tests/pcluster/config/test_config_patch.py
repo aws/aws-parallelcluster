@@ -101,6 +101,16 @@ def _compare_changes(changes, expected_changes):
             id="change additional security group",
         ),
         pytest.param(
+            ["SharedStorage[ebs1]", "EbsSettings"],
+            "ebs_encrypted",
+            "Encrypted",
+            True,
+            False,
+            UpdatePolicy.UNSUPPORTED,
+            False,
+            id="change ebs settings encrypted",
+        ),
+        pytest.param(
             ["Scheduling", "Slurm", "Queues[queue1]", "ComputeResources[compute-resource1]"],
             "max_count",
             "MaxCount",
@@ -246,7 +256,14 @@ def _test_less_target_sections(base_conf, target_conf):
             ),
             Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
             Change(["SharedStorage[ebs2]", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
-            Change(["SharedStorage[ebs2]", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(
+                ["SharedStorage[ebs2]", "Ebs"],
+                "VolumeType",
+                "gp3",
+                "gp2",
+                UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -293,7 +310,14 @@ def _test_more_target_sections(base_conf, target_conf):
             ),
             Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
             Change(["SharedStorage[ebs2]", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
-            Change(["SharedStorage[ebs2]", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(
+                ["SharedStorage[ebs2]", "Ebs"],
+                "VolumeType",
+                "gp3",
+                "gp2",
+                UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
         ],
         UpdatePolicy.UNSUPPORTED,
     )

@@ -17,17 +17,7 @@
 import copy
 import re
 
-from marshmallow import (
-    ValidationError,
-    fields,
-    post_dump,
-    post_load,
-    pre_dump,
-    pre_load,
-    validate,
-    validates,
-    validates_schema,
-)
+from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
 from pcluster.config.cluster_config import (
     AdditionalPackages,
@@ -178,7 +168,7 @@ class RaidSchema(BaseSchema):
         return Raid(**data)
 
 
-class EbsSchema(BaseSchema):
+class EbsSettingsSchema(BaseSchema):
     """Represent the schema of EBS."""
 
     volume_type = fields.Str(
@@ -269,7 +259,7 @@ class QueueStorageSchema(BaseSchema):
         return LocalStorage(**data)
 
 
-class EfsSchema(BaseSchema):
+class EfsSettingsSchema(BaseSchema):
     """Represent the EFS schema."""
 
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -310,7 +300,7 @@ class EfsSchema(BaseSchema):
             )
 
 
-class FsxSchema(BaseSchema):
+class FsxLustreSettingsSchema(BaseSchema):
     """Represent the FSX schema."""
 
     storage_capacity = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -406,61 +396,65 @@ class SharedStorageSchema(BaseSchema):
         validate=validate.OneOf(["Ebs", "FsxLustre", "Efs"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
-    ebs = fields.Nested(EbsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    efs = fields.Nested(EfsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    fsx = fields.Nested(FsxSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    ebs_settings = fields.Nested(EbsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    efs_settings = fields.Nested(EfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    fsx_lustre_settings = fields.Nested(FsxLustreSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
-    @pre_load
-    def preprocess(self, data, **kwargs):
-        """Before load the data into schema, change the settings to adapt different storage types."""
-        adapted_data = copy.deepcopy(data)
-        if adapted_data.get("StorageType") == "Efs":
-            adapted_data["Efs"] = adapted_data.pop("EfsSettings", {})
-        elif adapted_data.get("StorageType") == "Ebs":
-            adapted_data["Ebs"] = adapted_data.pop("EbsSettings", {})
-        elif adapted_data.get("StorageType") == "FsxLustre":
-            adapted_data["Fsx"] = adapted_data.pop("FsxLustreSettings", {})
-        return adapted_data
+    @validates_schema
+    def no_coexist_storage_settings(self, data, **kwargs):
+        """Validate that *_settings for different storage types do not co-exist."""
+        if self.fields_coexist(data, ["ebs_settings", "efs_settings", "fsx_lustre_settings"], **kwargs):
+            raise ValidationError("Multiple *Settings sections cannot be specified in the SharedStorage items.")
+
+    @validates_schema
+    def right_storage_settings(self, data, **kwargs):
+        for storage_type, settings in [
+            ("Ebs", "ebs_settings"),
+            ("Efs", "efs_settings"),
+            ("FsxLustre", "fsx_lustre_settings"),
+        ]:
+            # Verify the settings section is associated to the right storage type
+            if data.get(settings, None) and storage_type != data.get("storage_type"):
+                raise ValidationError(
+                    "SharedStorage > *Settings section is not appropriate to the "
+                    f"StorageType {data.get('storage_type')}."
+                )
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FsxLustre)."""
-        if data.get("efs") is not None:
-            return SharedEfs(data.get("mount_dir"), data.get("name"), **data.get("efs"))
-        if data.get("fsx") is not None:
-            return SharedFsx(data.get("mount_dir"), data.get("name"), **data.get("fsx"))
-        if data.get("ebs") is not None:
-            return SharedEbs(data.get("mount_dir"), data.get("name"), **data.get("ebs"))
+        storage_type = data.get("storage_type")
+        shared_volume_attributes = {"mount_dir": data.get("mount_dir"), "name": data.get("name")}
+        settings = (
+            data.get("efs_settings", None) or data.get("fsx_lustre_settings", None) or data.get("ebs_settings", None)
+        )
+        if settings:
+            shared_volume_attributes.update(**settings)
+        if storage_type == "Efs":
+            return SharedEfs(**shared_volume_attributes)
+        elif storage_type == "FsxLustre":
+            return SharedFsx(**shared_volume_attributes)
+        elif storage_type == "Ebs":
+            return SharedEbs(**shared_volume_attributes)
         return None
 
     @pre_dump
     def restore_child(self, data, **kwargs):
-        """Restore back the child in the schema. Note: Enums are converted back to string from BaseSchema."""
+        """Restore back the child in the schema."""
         adapted_data = copy.deepcopy(data)
-        # Move SharedXxx as a child to be automatically managed by marshmallow
-        storage_type = "ebs" if adapted_data.shared_storage_type == "raid" else adapted_data.shared_storage_type
-        setattr(adapted_data, storage_type, copy.copy(adapted_data))
-        # Restore storage type
+        # Move SharedXxx as a child to be automatically managed by marshmallow, see post_load action
+        if adapted_data.shared_storage_type in ["raid", "ebs"]:
+            storage_type = "ebs"
+        elif adapted_data.shared_storage_type == "efs":
+            storage_type = "efs"
+        elif adapted_data.shared_storage_type == "fsx":
+            storage_type = "fsx_lustre"
+        setattr(adapted_data, f"{storage_type}_settings", copy.copy(adapted_data))
+        # Restore storage type attribute
         adapted_data.storage_type = (
             "FsxLustre" if adapted_data.shared_storage_type == "fsx" else storage_type.capitalize()
         )
         return adapted_data
-
-    @post_dump
-    def post_processed(self, data, **kwargs):
-        """Restore the SharedStorage Schema back to its origin."""
-        if data.get("Efs") is not None:
-            storage_type, storage_settings = "Efs", "EfsSettings"
-        elif data.get("Ebs") is not None:
-            storage_type, storage_settings = "Ebs", "EbsSettings"
-        elif data.get("Fsx") is not None:
-            storage_type, storage_settings = "Fsx", "FsxLustreSettings"
-        if data.get(storage_type):
-            data[storage_settings] = data.pop(storage_type)
-        else:
-            data.pop(storage_type)
-
-        return data
 
     @validates("mount_dir")
     def shared_dir_validator(self, value):

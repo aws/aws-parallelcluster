@@ -19,9 +19,9 @@ from pcluster.schemas.cluster_schema import (
     CloudWatchLogsSchema,
     ClusterSchema,
     DcvSchema,
-    EbsSchema,
-    EfsSchema,
-    FsxSchema,
+    EbsSettingsSchema,
+    EfsSettingsSchema,
+    FsxLustreSettingsSchema,
     HeadNodeEphemeralVolumeSchema,
     HeadNodeNetworkingSchema,
     HeadNodeRootVolumeSchema,
@@ -293,7 +293,7 @@ def test_cidr_validator(section_dict, expected_message):
 )
 def test_ebs_validator(section_dict, expected_message):
     """Verify that cw_log behaves as expected when parsed in a config file."""
-    _validate_and_assert_error(EbsSchema(), section_dict, expected_message)
+    _validate_and_assert_error(EbsSettingsSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -332,7 +332,7 @@ def test_ebs_validator(section_dict, expected_message):
 )
 def test_efs_validator(section_dict, expected_message):
     """Verify that cw_log behaves as expected when parsed in a config file."""
-    _validate_and_assert_error(EfsSchema(), section_dict, expected_message)
+    _validate_and_assert_error(EfsSettingsSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -350,7 +350,7 @@ def test_efs_validator(section_dict, expected_message):
     ],
 )
 def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expected_message):
-    _validate_and_assert_error(EfsSchema(), section_dict, expected_message, partial=False)
+    _validate_and_assert_error(EfsSettingsSchema(), section_dict, expected_message, partial=False)
 
 
 @pytest.mark.parametrize(
@@ -474,7 +474,7 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
     ],
 )
 def test_fsx_validator(section_dict, expected_message):
-    _validate_and_assert_error(FsxSchema(), section_dict, expected_message)
+    _validate_and_assert_error(FsxLustreSettingsSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
