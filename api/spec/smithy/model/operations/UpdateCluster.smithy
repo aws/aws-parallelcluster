@@ -36,10 +36,6 @@ structure UpdateClusterRequest {
     @httpQuery("forceUpdate")
     @documentation("Force update by ignoring the update validation errors.")
     forceUpdate: Boolean,
-    @idempotencyToken
-    @httpQuery("clientToken")
-    @documentation("Idempotency token that can be set by the client so that retries for the same request are idempotent")
-    clientToken: String,
 
     @required
     clusterConfiguration: ClusterConfigurationData,

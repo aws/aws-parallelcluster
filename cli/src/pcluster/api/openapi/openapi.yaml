@@ -139,17 +139,6 @@ paths:
           nullable: true
           type: boolean
         style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
-          type: string
-        style: form
       requestBody:
         content:
           application/json:
@@ -429,17 +418,6 @@ paths:
           description: Force update by ignoring the update validation errors.
           nullable: true
           type: boolean
-        style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
-          type: string
         style: form
       requestBody:
         content:
@@ -963,17 +941,6 @@ paths:
           nullable: true
           type: boolean
         style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
-          type: string
-        style: form
       requestBody:
         content:
           application/json:
@@ -1059,17 +1026,6 @@ paths:
         required: false
         schema:
           description: AWS Region. Defaults to the region the API is deployed to.
-          type: string
-        style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
           type: string
         style: form
       - description: Force deletion in case there are instances using the AMI or in
