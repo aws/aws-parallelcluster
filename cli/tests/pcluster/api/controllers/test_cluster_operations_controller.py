@@ -64,7 +64,6 @@ class TestCreateCluster:
         validation_failure_level=None,
         dryrun=None,
         rollback_on_failure=None,
-        client_token=None,
     ):
         query_string = []
         if suppress_validators:
@@ -75,8 +74,6 @@ class TestCreateCluster:
             query_string.append(("dryrun", dryrun))
         if rollback_on_failure is not None:
             query_string.append(("rollbackOnFailure", rollback_on_failure))
-        if client_token:
-            query_string.append(("clientToken", client_token))
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -190,13 +187,12 @@ class TestCreateCluster:
 
     @pytest.mark.parametrize(
         "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, rollback_on_failure, "
-        "client_token, expected_response",
+        "expected_response",
         [
-            (None, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
-            ({}, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            (None, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            ({}, None, None, None, None, {"message": "Bad Request: request body is required"}),
             (
                 {"region": "us-east-1", "name": "cluster"},
-                None,
                 None,
                 None,
                 None,
@@ -209,12 +205,10 @@ class TestCreateCluster:
                 None,
                 None,
                 None,
-                None,
                 {"message": "Bad Request: invalid or unsupported region 'invalid'"},
             ),
             (
                 {"clusterConfiguration": "config", "region": "us-east-1"},
-                None,
                 None,
                 None,
                 None,
@@ -227,13 +221,11 @@ class TestCreateCluster:
                 None,
                 None,
                 None,
-                None,
                 {"message": "Bad Request: 'ALLL' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
             ),
             (
                 {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
                 ["type:"],
-                None,
                 None,
                 None,
                 None,
@@ -245,7 +237,6 @@ class TestCreateCluster:
                 "CRITICAL",
                 None,
                 None,
-                None,
                 {"message": "Bad Request: 'CRITICAL' is not one of ['INFO', 'WARNING', 'ERROR']"},
             ),
             (
@@ -253,7 +244,6 @@ class TestCreateCluster:
                 None,
                 None,
                 "NO",
-                None,
                 None,
                 {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'dryrun'"},
             ),
@@ -263,12 +253,10 @@ class TestCreateCluster:
                 None,
                 None,
                 "NO",
-                None,
                 {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'rollbackOnFailure'"},
             ),
             (
                 {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
-                None,
                 None,
                 None,
                 None,
@@ -281,7 +269,6 @@ class TestCreateCluster:
                 None,
                 None,
                 None,
-                None,
                 {"message": "Bad Request: Configuration must be a valid YAML document"},
             ),
             (
@@ -290,7 +277,6 @@ class TestCreateCluster:
                     "name": "cluster",
                     "region": "us-east-1",
                 },
-                None,
                 None,
                 None,
                 None,
@@ -314,17 +300,7 @@ class TestCreateCluster:
                 None,
                 None,
                 None,
-                None,
                 {"message": "Bad Request: configuration is required and cannot be empty"},
-            ),
-            (
-                {"clusterConfiguration": "", "name": "cluster", "region": "us-east-1"},
-                None,
-                None,
-                None,
-                None,
-                "token",
-                {"message": "Bad Request: clientToken is currently not supported for this operation"},
             ),
         ],
         ids=[
@@ -342,7 +318,6 @@ class TestCreateCluster:
             "invalid_config_format",
             "invalid_config_schema",
             "empty_config",
-            "client_token",
         ],
     )
     def test_malformed_request(
@@ -354,7 +329,6 @@ class TestCreateCluster:
         validation_failure_level,
         dryrun,
         rollback_on_failure,
-        client_token,
         expected_response,
     ):
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
@@ -366,7 +340,6 @@ class TestCreateCluster:
             validation_failure_level,
             dryrun,
             rollback_on_failure,
-            client_token,
         )
 
         with soft_assertions():
