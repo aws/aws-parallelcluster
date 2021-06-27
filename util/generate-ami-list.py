@@ -137,7 +137,15 @@ def get_ami_list_by_git_refs(
         {"Name": "tag:build:parallelcluster:cli_ref", "Values": ["%s" % cli_git_ref]},
         {"Name": "tag:build:parallelcluster:cookbook_ref", "Values": ["%s" % cookbook_git_ref]},
         {"Name": "tag:build:parallelcluster:node_ref", "Values": ["%s" % node_git_ref]},
-        {"Name": "name", "Values": ["aws-parallelcluster-*%s" % (build_date if build_date else "")]},
+        {"Name": "name", "Values": ["aws-parallelcluster-*%s*" % (build_date if build_date else "")]},
+    ]
+    return get_ami_list_from_ec2(main_region, regions, owner, credentials, filters)
+
+
+def get_first_stage_ami_list(main_region, regions, build_date, owner, credentials):
+    """Get the first stage ParallelCluster AMIs by querying EC2 based on git refs and build date."""
+    filters = [
+        {"Name": "name", "Values": ["first-stage-aws-parallelcluster-*%s*" % (build_date if build_date else "")]},
     ]
     return get_ami_list_from_ec2(main_region, regions, owner, credentials, filters)
 
@@ -347,6 +355,7 @@ def parse_args():
     )
     parser.add_argument("--account-id", type=str, help="AWS account id owning the AMIs", required=False)
     parser.add_argument("--json-file", type=str, help="path to output json file", required=False, default="amis.json")
+    parser.add_argument("--first-stage", dest="first_stage", help="Get first stage ami list.", action="store_true")
     args = parser.parse_args()
     if args.cookbook_git_ref and args.node_git_ref and not args.account_id:
         raise Exception("Must specify value for --account-id when using --cookbook-git-ref and --node-git-ref.")
@@ -366,28 +375,38 @@ def main():
             if credential_tuple.strip()
         ]
 
-    if args.cli_git_ref and args.cookbook_git_ref and args.node_git_ref:
-        # This path is used by the build_and_test and retrive_ami_list pipelines.
-        # Requiring all of the AMIs in the resulting mappings (for the applicable regions)
-        # to be created from the same cookbook and node repo git refs on the same date
-        # ensures that the AMIs were all produced by the same run of the build pipeline.
-        amis_dict = get_ami_list_by_git_refs(
+    if args.first_stage:
+        # This path is used by build first stage pipeline
+        amis_dict = get_first_stage_ami_list(
             main_region=region,
-            regions=get_all_aws_regions_from_ec2(region),
-            cli_git_ref=args.cli_git_ref,
-            cookbook_git_ref=args.cookbook_git_ref,
-            node_git_ref=args.node_git_ref,
+            regions=[region],
             build_date=args.build_date,
             owner=args.account_id,
             credentials=credentials,
         )
     else:
-        # This path is used by the pre_release_flow pipeline, which uses the
-        # retrieve_ami_list pipeline to generate json file with updated mappings
-        # for each partition and then aggregates the mappings from each those files
-        # into a single json file.
-        regions = get_aws_regions_from_file(args.json_regions)
-        amis_dict = get_ami_list_from_file(regions, args.json_amis)
+        if args.cli_git_ref and args.cookbook_git_ref and args.node_git_ref:
+            # This path is used by the build second stage and retrive_ami_list pipelines.
+            # Requiring all of the AMIs in the resulting mappings (for the applicable regions)
+            # to be created from the same cookbook and node repo git refs on the same date
+            # ensures that the AMIs were all produced by the same run of the build pipeline.
+            amis_dict = get_ami_list_by_git_refs(
+                main_region=region,
+                regions=get_all_aws_regions_from_ec2(region),
+                cli_git_ref=args.cli_git_ref,
+                cookbook_git_ref=args.cookbook_git_ref,
+                node_git_ref=args.node_git_ref,
+                build_date=args.build_date,
+                owner=args.account_id,
+                credentials=credentials,
+            )
+        else:
+            # This path is used by the pre_release_flow pipeline, which uses the
+            # retrieve_ami_list pipeline to generate json file with updated mappings
+            # for each partition and then aggregates the mappings from each those files
+            # into a single json file.
+            regions = get_aws_regions_from_file(args.json_regions)
+            amis_dict = get_ami_list_from_file(regions, args.json_amis)
 
     update_json_file(json_file_path=args.json_file, amis_to_update=amis_dict)
     write_amis_txt(amis_txt_file=args.txt_file, json_file=args.json_file)
