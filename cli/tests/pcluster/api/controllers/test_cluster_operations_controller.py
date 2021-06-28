@@ -735,7 +735,8 @@ class TestDescribeCluster:
     ):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
         mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.describe_instances", return_value=[headnode_data] if headnode_data else []
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([headnode_data], "") if headnode_data else ([], ""),
         )
         mocker.patch(
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
