@@ -115,7 +115,7 @@ class ComponentSchema(BaseSchema):
 class DistributionConfigurationSchema(BaseSchema):
     """Represent the schema of the ImageBuilder distribution configuration."""
 
-    regions = fields.Str()
+    regions = fields.Str(validate=validate.Regexp("^[a-z0-9-]+(,[a-z0-9-]+)*$"))
     launch_permission = fields.Str()
 
     @post_load()
