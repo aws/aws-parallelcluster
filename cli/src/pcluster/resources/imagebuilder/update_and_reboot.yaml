@@ -103,8 +103,10 @@ phases:
               if [[ ${!PLATFORM} == RHEL ]]; then
                 if [[ ${!OS} == centos8 ]]; then
                   dnf -y update && dnf -y remove $(dnf repoquery --installonly --latest-limit=-2 -q)
+                  dnf -y install kernel-devel
                 else
                   yum -y update && package-cleanup -y --oldkernels --count=1
+                  yum -y install kernel-devel
                 fi
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done
