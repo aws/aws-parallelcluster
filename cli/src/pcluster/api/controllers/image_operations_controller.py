@@ -60,7 +60,6 @@ def build_image(
     validation_failure_level=None,
     dryrun=None,
     rollback_on_failure=None,
-    client_token=None,
 ):
     """
     Create a custom ParallelCluster image in a given region.
@@ -78,20 +77,9 @@ def build_image(
     :param rollback_on_failure: When set it automatically initiates an image stack rollback on failures.
     Defaults to true.
     :type rollback_on_failure: bool
-    :param client_token: Idempotency token that can be set by the client so that retries for the same request are
-    idempotent
-    :type client_token: str
 
     :rtype: BuildImageResponseContent
     """
-    if client_token:
-        raise BuildImageBadRequestException(
-            BuildImageBadRequestExceptionResponseContent(
-                message="clientToken is currently not supported for this operation",
-                configuration_validation_errors=[],
-            )
-        )
-
     rollback_on_failure = rollback_on_failure or False
     disable_rollback = not rollback_on_failure
     validation_failure_level = validation_failure_level or FailureLevel.ERROR
@@ -131,7 +119,7 @@ def build_image(
 @configure_aws_region()
 @http_success_status_code(202)
 @convert_errors()
-def delete_image(image_id, region=None, client_token=None, force=None):
+def delete_image(image_id, region=None, force=None):
     """
     Initiate the deletion of the custom ParallelCluster image.
 
@@ -139,17 +127,11 @@ def delete_image(image_id, region=None, client_token=None, force=None):
     :type image_id: str
     :param region: AWS Region. Defaults to the region the API is deployed to.
     :type region: str
-    :param client_token: Idempotency token that can be set by the client so that retries for the same request are
-    idempotent
-    :type client_token: str
     :param force: Force deletion in case there are instances using the AMI or in case the AMI is shared
     :type force: bool
 
     :rtype: DeleteImageResponseContent
     """
-    if client_token:
-        raise BadRequestException("clientToken is currently not supported for this operation")
-
     force = force or False
     imagebuilder = ImageBuilder(image_id=image_id)
     image, stack = _get_underlying_image_or_stack(imagebuilder)

@@ -67,7 +67,6 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. Defaults to 'error'. (optional)
     dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200 (optional)
     rollback_on_failure = True # bool, none_type | When set it automatically initiates an image stack rollback on failures. Defaults to true. (optional)
-    client_token = "clientToken_example" # str | Idempotency token that can be set by the client so that retries for the same request are idempotent (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -79,7 +78,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_response = api_instance.build_image(build_image_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure, client_token=client_token)
+        api_response = api_instance.build_image(build_image_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
         pprint(api_response)
     except pcluster.api.client.ApiException as e:
         print("Exception when calling ImageOperationsApi->build_image: %s\n" % e)
@@ -95,7 +94,6 @@ Name | Type | Description  | Notes
  **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. Defaults to &#39;error&#39;. | [optional]
  **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200 | [optional]
  **rollback_on_failure** | **bool, none_type**| When set it automatically initiates an image stack rollback on failures. Defaults to true. | [optional]
- **client_token** | **str**| Idempotency token that can be set by the client so that retries for the same request are idempotent | [optional]
 
 ### Return type
 
@@ -168,7 +166,6 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     image_id = "AqWzy" # str | Id of the image
     region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
-    client_token = "clientToken_example" # str | Idempotency token that can be set by the client so that retries for the same request are idempotent (optional)
     force = True # bool, none_type | Force deletion in case there are instances using the AMI or in case the AMI is shared (optional)
 
     # example passing only required values which don't have defaults set
@@ -181,7 +178,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_response = api_instance.delete_image(image_id, region=region, client_token=client_token, force=force)
+        api_response = api_instance.delete_image(image_id, region=region, force=force)
         pprint(api_response)
     except pcluster.api.client.ApiException as e:
         print("Exception when calling ImageOperationsApi->delete_image: %s\n" % e)
@@ -194,7 +191,6 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **image_id** | **str**| Id of the image |
  **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
- **client_token** | **str**| Idempotency token that can be set by the client so that retries for the same request are idempotent | [optional]
  **force** | **bool, none_type**| Force deletion in case there are instances using the AMI or in case the AMI is shared | [optional]
 
 ### Return type

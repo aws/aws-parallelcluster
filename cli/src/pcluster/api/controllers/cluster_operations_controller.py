@@ -78,7 +78,6 @@ def create_cluster(
     validation_failure_level: str = None,
     dryrun: bool = None,
     rollback_on_failure: bool = None,
-    client_token: str = None,
 ) -> CreateClusterResponseContent:
     """
     Create a ParallelCluster managed cluster in a given region.
@@ -92,18 +91,12 @@ def create_cluster(
     configuration. Response code: 200
     :param rollback_on_failure: When set it automatically initiates a cluster stack rollback on failures.
     Defaults to true.
-    :param client_token: Idempotency token that can be set by the client so that retries for the same request are
-    idempotent
     """
     # Set defaults
     rollback_on_failure = rollback_on_failure or True
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun or False
     create_cluster_request_content = CreateClusterRequestContent.from_dict(create_cluster_request_content)
-
-    # Validate inputs
-    if client_token:
-        raise BadRequestException("clientToken is currently not supported for this operation")
     cluster_config = read_config(create_cluster_request_content.cluster_configuration)
 
     try:
@@ -290,7 +283,6 @@ def update_cluster(
     region=None,
     dryrun=None,
     force_update=None,
-    client_token=None,
 ):
     """
     Update cluster.
@@ -311,9 +303,6 @@ def update_cluster(
     :type dryrun: bool
     :param force_update: Force update by ignoring the update validation errors.
     :type force_update: bool
-    :param client_token: Idempotency token that can be set by the client so that retries for the same request are
-    idempotent
-    :type client_token: str
 
     :rtype: UpdateClusterResponseContent
     """
@@ -322,10 +311,6 @@ def update_cluster(
     dryrun = dryrun or False
     force_update = force_update or False
     update_cluster_request_content = UpdateClusterRequestContent.from_dict(update_cluster_request_content)
-
-    # Validate inputs
-    if client_token:
-        raise BadRequestException("clientToken is currently not supported for this operation")
     cluster_config = read_config(update_cluster_request_content.cluster_configuration)
 
     try:

@@ -73,7 +73,6 @@ class ImageOperationsApi(object):
                 validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. Defaults to 'error'.. [optional]
                 dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200. [optional]
                 rollback_on_failure (bool, none_type): When set it automatically initiates an image stack rollback on failures. Defaults to true.. [optional]
-                client_token (str): Idempotency token that can be set by the client so that retries for the same request are idempotent. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -140,7 +139,6 @@ class ImageOperationsApi(object):
                     'validation_failure_level',
                     'dryrun',
                     'rollback_on_failure',
-                    'client_token',
                 ],
                 'required': [
                     'build_image_request_content',
@@ -174,15 +172,12 @@ class ImageOperationsApi(object):
                         (bool, none_type,),
                     'rollback_on_failure':
                         (bool, none_type,),
-                    'client_token':
-                        (str,),
                 },
                 'attribute_map': {
                     'suppress_validators': 'suppressValidators',
                     'validation_failure_level': 'validationFailureLevel',
                     'dryrun': 'dryrun',
                     'rollback_on_failure': 'rollbackOnFailure',
-                    'client_token': 'clientToken',
                 },
                 'location_map': {
                     'build_image_request_content': 'body',
@@ -190,7 +185,6 @@ class ImageOperationsApi(object):
                     'validation_failure_level': 'query',
                     'dryrun': 'query',
                     'rollback_on_failure': 'query',
-                    'client_token': 'query',
                 },
                 'collection_format_map': {
                     'suppress_validators': 'multi',
@@ -227,7 +221,6 @@ class ImageOperationsApi(object):
 
             Keyword Args:
                 region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
-                client_token (str): Idempotency token that can be set by the client so that retries for the same request are idempotent. [optional]
                 force (bool, none_type): Force deletion in case there are instances using the AMI or in case the AMI is shared. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
@@ -292,7 +285,6 @@ class ImageOperationsApi(object):
                 'all': [
                     'image_id',
                     'region',
-                    'client_token',
                     'force',
                 ],
                 'required': [
@@ -324,21 +316,17 @@ class ImageOperationsApi(object):
                         (str,),
                     'region':
                         (str,),
-                    'client_token':
-                        (str,),
                     'force':
                         (bool, none_type,),
                 },
                 'attribute_map': {
                     'image_id': 'imageId',
                     'region': 'region',
-                    'client_token': 'clientToken',
                     'force': 'force',
                 },
                 'location_map': {
                     'image_id': 'path',
                     'region': 'query',
-                    'client_token': 'query',
                     'force': 'query',
                 },
                 'collection_format_map': {

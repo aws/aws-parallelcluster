@@ -30,10 +30,6 @@ structure BuildImageRequest {
     @httpQuery("rollbackOnFailure")
     @documentation("When set it automatically initiates an image stack rollback on failures. Defaults to true.")
     rollbackOnFailure: Boolean,
-    @idempotencyToken
-    @httpQuery("clientToken")
-    @documentation("Idempotency token that can be set by the client so that retries for the same request are idempotent")
-    clientToken: String,
 
     @required
     id: ImageId,

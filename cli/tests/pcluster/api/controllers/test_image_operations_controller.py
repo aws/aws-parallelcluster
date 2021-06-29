@@ -249,13 +249,11 @@ class TestDeleteImage:
     url = "/v3/images/custom/{image_name}"
     method = "DELETE"
 
-    def _send_test_request(self, client, image_name, region="us-east-1", force=True, client_token=None):
+    def _send_test_request(self, client, image_name, region="us-east-1", force=True):
         query_string = [
             ("force", force),
             ("region", region),
         ]
-        if client_token:
-            query_string.append(("clientToken", client_token))
         headers = {
             "Accept": "application/json",
         }
@@ -410,14 +408,6 @@ class TestDeleteImage:
             assert_that(response.status_code).is_equal_to(500)
             assert_that(response.get_json()).is_equal_to(expected_error)
 
-    def test_that_call_with_client_token_throws_bad_request(self, client):
-        expected_error = {"message": "Bad Request: clientToken is currently not supported for this operation"}
-        response = self._send_test_request(client, "image1", client_token="clientToken")
-
-        with soft_assertions():
-            assert_that(response.status_code).is_equal_to(400)
-            assert_that(response.get_json()).is_equal_to(expected_error)
-
 
 class TestBuildImage:
     url = "/v3/images/custom"
@@ -434,7 +424,7 @@ class TestBuildImage:
         "ZWxjbHVzdGVyL3RhcmJhbGwvZDVjMmExZWMyNjdhODY1Y2ZmM2NmMzUwYWYzMGQ0NGU2OGYwZWYxOA===="
     )
 
-    def _send_test_request(self, client, dryrun=False, client_token=None, suppress_validators=None):
+    def _send_test_request(self, client, dryrun=False, suppress_validators=None):
         build_image_request_content = {
             "imageConfiguration": self.encoded_config,
             "id": "imageid",
@@ -445,9 +435,6 @@ class TestBuildImage:
             ("dryrun", dryrun),
             ("rollbackOnFailure", True),
         ]
-
-        if client_token:
-            query_string.append(("clientToken", client_token))
 
         if suppress_validators:
             query_string.extend([("suppressValidators", validator) for validator in suppress_validators])
@@ -572,17 +559,6 @@ class TestBuildImage:
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
-            assert_that(response.get_json()).is_equal_to(expected_error)
-
-    def test_that_call_with_client_token_throws_bad_request(self, client):
-        expected_error = {
-            "configurationValidationErrors": [],
-            "message": "clientToken is currently not supported for this operation",
-        }
-        response = self._send_test_request(client, client_token="clientToken")
-
-        with soft_assertions():
-            assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_error)
 
 

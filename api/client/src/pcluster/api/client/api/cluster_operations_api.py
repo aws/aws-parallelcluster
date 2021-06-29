@@ -75,7 +75,6 @@ class ClusterOperationsApi(object):
                 validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. Defaults to 'ERROR'.. [optional]
                 dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the cluster configuration. Response code: 200. [optional]
                 rollback_on_failure (bool, none_type): When set it automatically initiates a cluster stack rollback on failures. Defaults to true.. [optional]
-                client_token (str): Idempotency token that can be set by the client so that retries for the same request are idempotent. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -142,7 +141,6 @@ class ClusterOperationsApi(object):
                     'validation_failure_level',
                     'dryrun',
                     'rollback_on_failure',
-                    'client_token',
                 ],
                 'required': [
                     'create_cluster_request_content',
@@ -176,15 +174,12 @@ class ClusterOperationsApi(object):
                         (bool, none_type,),
                     'rollback_on_failure':
                         (bool, none_type,),
-                    'client_token':
-                        (str,),
                 },
                 'attribute_map': {
                     'suppress_validators': 'suppressValidators',
                     'validation_failure_level': 'validationFailureLevel',
                     'dryrun': 'dryrun',
                     'rollback_on_failure': 'rollbackOnFailure',
-                    'client_token': 'clientToken',
                 },
                 'location_map': {
                     'create_cluster_request_content': 'body',
@@ -192,7 +187,6 @@ class ClusterOperationsApi(object):
                     'validation_failure_level': 'query',
                     'dryrun': 'query',
                     'rollback_on_failure': 'query',
-                    'client_token': 'query',
                 },
                 'collection_format_map': {
                     'suppress_validators': 'multi',
@@ -630,7 +624,6 @@ class ClusterOperationsApi(object):
                 region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
                 dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the cluster configuration and update requirements. Response code: 200. [optional]
                 force_update (bool, none_type): Force update by ignoring the update validation errors.. [optional]
-                client_token (str): Idempotency token that can be set by the client so that retries for the same request are idempotent. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -701,7 +694,6 @@ class ClusterOperationsApi(object):
                     'region',
                     'dryrun',
                     'force_update',
-                    'client_token',
                 ],
                 'required': [
                     'cluster_name',
@@ -748,8 +740,6 @@ class ClusterOperationsApi(object):
                         (bool, none_type,),
                     'force_update':
                         (bool, none_type,),
-                    'client_token':
-                        (str,),
                 },
                 'attribute_map': {
                     'cluster_name': 'clusterName',
@@ -758,7 +748,6 @@ class ClusterOperationsApi(object):
                     'region': 'region',
                     'dryrun': 'dryrun',
                     'force_update': 'forceUpdate',
-                    'client_token': 'clientToken',
                 },
                 'location_map': {
                     'cluster_name': 'path',
@@ -768,7 +757,6 @@ class ClusterOperationsApi(object):
                     'region': 'query',
                     'dryrun': 'query',
                     'force_update': 'query',
-                    'client_token': 'query',
                 },
                 'collection_format_map': {
                     'suppress_validators': 'multi',
