@@ -189,7 +189,7 @@ def _log_cfn_event(event, indent):
     """Log failed CFN events."""
     from pcluster.aws.aws_api import AWSApi  # pylint: disable=import-outside-toplevel
 
-    print("%s- %s", " " * indent, AWSApi.instance().cfn.format_event(event))
+    print("{}- {}".format(" " * indent, AWSApi.instance().cfn.format_event(event)))
 
 
 def get_templates_bucket_path():
