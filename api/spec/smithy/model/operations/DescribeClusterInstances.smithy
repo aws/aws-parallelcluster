@@ -11,7 +11,6 @@ operation DescribeClusterInstances {
     errors: [
         InternalServiceException,
         BadRequestException,
-        NotFoundException,
         UnauthorizedClientError,
         LimitExceededException,
     ]
@@ -37,6 +36,24 @@ structure DescribeClusterInstancesResponse {
     instances: InstanceSummaries,
 }
 
+structure ClusterInstance {
+    @required
+    instanceId: String,
+    @required
+    instanceType: String,
+    @required
+    @timestampFormat("date-time")
+    launchTime: Timestamp,
+    @required
+    privateIpAddress: String, // only primary?
+    publicIpAddress: String,
+    @required
+    state: InstanceState,
+    @required
+    nodeType: NodeType,
+    queueName: String
+}
+
 list InstanceSummaries {
-    member: EC2Instance
+    member: ClusterInstance
 }

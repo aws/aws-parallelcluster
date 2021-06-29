@@ -678,12 +678,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
-        "404":
-          description: NotFoundException 404 response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -1202,6 +1196,33 @@ components:
         - clusterStatus
         - region
         - version
+    ClusterInstance:
+      type: object
+      properties:
+        launchTime:
+          type: string
+          format: date-time
+        instanceId:
+          type: string
+        queueName:
+          type: string
+        publicIpAddress:
+          type: string
+        instanceType:
+          type: string
+        state:
+          $ref: '#/components/schemas/InstanceState'
+        nodeType:
+          $ref: '#/components/schemas/NodeType'
+        privateIpAddress:
+          type: string
+      required:
+        - instanceId
+        - instanceType
+        - launchTime
+        - nodeType
+        - privateIpAddress
+        - state
     ClusterStatus:
       type: string
       enum:
@@ -1318,7 +1339,7 @@ components:
         instances:
           type: array
           items:
-            $ref: '#/components/schemas/EC2Instance'
+            $ref: '#/components/schemas/ClusterInstance'
         nextToken:
           type: string
           description: Token to use for paginated requests.
