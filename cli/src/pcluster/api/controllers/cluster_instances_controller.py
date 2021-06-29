@@ -11,7 +11,7 @@
 from datetime import datetime
 
 from pcluster.api.controllers.common import configure_aws_region
-from pcluster.api.models import DescribeClusterInstancesResponseContent, EC2Instance, InstanceState
+from pcluster.api.models import ClusterInstance, DescribeClusterInstancesResponseContent, InstanceState, NodeType
 
 
 @configure_aws_region()
@@ -51,13 +51,14 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
     """
     return DescribeClusterInstancesResponseContent(
         [
-            EC2Instance(
+            ClusterInstance(
                 instance_id="id",
                 launch_time=datetime.now(),
                 public_ip_address="1.2.3.4",
                 instance_type="c5.xlarge",
                 state=InstanceState.RUNNING,
                 private_ip_address="1.2.3.4",
+                node_type=NodeType.HEAD,
             )
         ]
     )

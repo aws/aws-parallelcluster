@@ -12,6 +12,7 @@ docs/CloudFormationStatus.md
 docs/ClusterComputeFleetApi.md
 docs/ClusterConfigurationStructure.md
 docs/ClusterInfoSummary.md
+docs/ClusterInstance.md
 docs/ClusterInstancesApi.md
 docs/ClusterOperationsApi.md
 docs/ClusterStatus.md
@@ -76,6 +77,7 @@ pcluster_client/model/change.py
 pcluster_client/model/cloud_formation_status.py
 pcluster_client/model/cluster_configuration_structure.py
 pcluster_client/model/cluster_info_summary.py
+pcluster_client/model/cluster_instance.py
 pcluster_client/model/cluster_status.py
 pcluster_client/model/cluster_status_filtering_option.py
 pcluster_client/model/compute_fleet_status.py

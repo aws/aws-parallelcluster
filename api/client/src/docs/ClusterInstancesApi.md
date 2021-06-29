@@ -121,7 +121,6 @@ from pcluster_client.model.unauthorized_client_error_response_content import Una
 from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
 from pcluster_client.model.node_type import NodeType
 from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster_client.model.describe_cluster_instances_response_content import DescribeClusterInstancesResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
@@ -198,7 +197,6 @@ Name | Type | Description  | Notes
 **200** | DescribeClusterInstances 200 response |  -  |
 **400** | BadRequestException 400 response |  -  |
 **401** | UnauthorizedClientError 401 response |  -  |
-**404** | NotFoundException 404 response |  -  |
 **429** | LimitExceededException 429 response |  -  |
 **500** | InternalServiceException 500 response |  -  |
 
