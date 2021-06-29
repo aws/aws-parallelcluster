@@ -260,7 +260,8 @@ class SlurmConstruct(Construct):
         )
         self.terminate_compute_fleet_custom_resource.add_property_override("StackName", self.stack_name)
         self.terminate_compute_fleet_custom_resource.add_property_override("Action", "TERMINATE_EC2_INSTANCES")
-        self.terminate_compute_fleet_custom_resource.add_depends_on(self.cleanup_route53_custom_resource)
+        if not self._condition_disable_cluster_dns():
+            self.terminate_compute_fleet_custom_resource.add_depends_on(self.cleanup_route53_custom_resource)
         # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
         # terminate_compute_fleet_custom_resource.add_depends_on()
 
