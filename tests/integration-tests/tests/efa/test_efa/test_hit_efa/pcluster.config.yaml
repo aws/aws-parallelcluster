@@ -7,6 +7,8 @@ HeadNode:
     {% if instance == "p4d.24xlarge" %}ElasticIp: true{% endif %}
   Ssh:
     KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

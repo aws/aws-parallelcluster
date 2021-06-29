@@ -8,6 +8,8 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     InstanceRole: {{ ec2_iam_role }} # TODO: change the role name in the test into role arn
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

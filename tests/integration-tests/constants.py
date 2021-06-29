@@ -15,3 +15,5 @@ OS_TO_ROOT_VOLUME_DEVICE = {
     "ubuntu1804": "/dev/sda1",
     "ubuntu2004": "/dev/sda1",
 }
+
+SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
