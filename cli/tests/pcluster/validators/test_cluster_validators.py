@@ -332,14 +332,6 @@ def test_disable_simultaneous_multithreading_architecture_validator(
     [
         (True, "alinux2", "x86_64", None),
         (True, "alinux2", "arm64", None),
-        (True, "centos8", "x86_64", None),
-        (
-            True,
-            "centos8",
-            "arm64",
-            "EFA is currently not supported on centos8 for arm64 architecture",
-        ),
-        (False, "centos8", "arm64", None),
         (True, "ubuntu1804", "x86_64", None),
         (True, "ubuntu1804", "arm64", None),
         (True, "ubuntu2004", "x86_64", None),
@@ -743,7 +735,6 @@ def test_intel_hpc_architecture_validator(architecture, expected_message):
     "os, expected_message",
     [
         ("centos7", None),
-        ("centos8", None),
         ("alinux2", "the operating system is required to be set"),
         ("ubuntu1804", "the operating system is required to be set"),
         ("ubuntu2004", "the operating system is required to be set"),

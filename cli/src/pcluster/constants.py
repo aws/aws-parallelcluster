@@ -27,7 +27,6 @@ SUPPORTED_OSES_FOR_ARCHITECTURE = {
 
 OS_MAPPING = {
     "centos7": {"user": "centos", "root-device": "/dev/sda1"},
-    "centos8": {"user": "centos", "root-device": "/dev/sda1"},
     "alinux2": {"user": "ec2-user", "root-device": "/dev/xvda"},
     "ubuntu1804": {"user": "ubuntu", "root-device": "/dev/sda1"},
     "ubuntu2004": {"user": "ubuntu", "root-device": "/dev/sda1"},
@@ -36,7 +35,6 @@ OS_MAPPING = {
 OS_TO_IMAGE_NAME_PART_MAP = {
     "alinux2": "amzn2-hvm",
     "centos7": "centos7-hvm",
-    "centos8": "centos8-hvm",
     "ubuntu1804": "ubuntu-1804-lts-hvm",
     "ubuntu2004": "ubuntu-2004-lts-hvm",
 }

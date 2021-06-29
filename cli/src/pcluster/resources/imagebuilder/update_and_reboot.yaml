@@ -10,7 +10,7 @@ constants:
 phases:
   - name: build
     steps:
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | amzn.2 | ubuntu.18.04
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:
@@ -39,8 +39,6 @@ phases:
                 OS='alinux2'
               elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
-              elif [ `echo "${!RELEASE}" | grep '^centos\.8'` ]; then
-                OS='centos8'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.18'` ]; then
                 OS='ubuntu1804'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
@@ -82,10 +80,10 @@ phases:
                 exit {{ FailExitCode }}
               fi
 
-              # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004, Centos7 and Centos8
+              # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004 and Centos7
               ARCH=$(uname -m)
               if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|centos\.8|ubuntu\.18\.04|ubuntu\.20\.04)'` ]; then
+                if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|ubuntu\.18\.04|ubuntu\.20\.04)'` ]; then
                   echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
                   exit {{ FailExitCode }}
                 fi
@@ -101,13 +99,8 @@ phases:
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
               if [[ ${!PLATFORM} == RHEL ]]; then
-                if [[ ${!OS} == centos8 ]]; then
-                  dnf -y update && dnf -y remove $(dnf repoquery --installonly --latest-limit=-2 -q)
-                  dnf -y install kernel-devel
-                else
-                  yum -y update && package-cleanup -y --oldkernels --count=1
-                  yum -y install kernel-devel
-                fi
+                yum -y update && package-cleanup -y --oldkernels --count=1
+                yum -y install kernel-devel
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
                 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done
                 flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl stop apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
