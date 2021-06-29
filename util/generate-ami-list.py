@@ -66,7 +66,6 @@ def get_ami_list_from_file(regions, json_amis):
         "af-south-1": {
           "alinux2": "ami-xxx",
           "centos7": "UNSUPPORTED",
-          "centos8": "ami-yyy",
           "ubuntu1804": "ami-zzz",
           "ubuntu2004": "ami-www"
         },

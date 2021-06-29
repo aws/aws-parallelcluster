@@ -23,7 +23,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5n.18xlarge"])
-@pytest.mark.oss(["centos7", "centos8"])
+@pytest.mark.oss(["centos7"])
 @pytest.mark.schedulers(["slurm"])
 def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Intel Cluster Checker"""
@@ -104,13 +104,7 @@ def _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir, 
     # Run Cluster Checker
     result = remote_command_executor.run_remote_script(str(test_datadir / "run_clck.sh"))
     try:
-        if os == "centos8":
-            # Centos 8 is not supported by Cluster Checker.
-            # The tool is looking for libstdc++.so.5 and is unable to detect libstdc++.so.6
-            assert_that(result.stdout).contains("Overall Result: 1 issue found - FUNCTIONALITY (1)")
-            assert_that(result.stdout).contains("The 'LP64' version of 'libstdc++.so.5' is missing")
-        else:
-            assert_that(result.stdout).contains("Overall Result: No issues found")
+        assert_that(result.stdout).contains("Overall Result: No issues found")
     except AssertionError as e:
         logging.error(remote_command_executor.run_remote_command("cat clck_results.log").stdout)
         raise e

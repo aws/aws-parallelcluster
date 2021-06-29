@@ -57,7 +57,7 @@ phases:
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL="${CfnParamCincInstaller}"
               echo "${!CINC_URL}"
 
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04 | ubuntu.20.04
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | amzn.2 | ubuntu.18.04 | ubuntu.20.04
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:
@@ -86,8 +86,6 @@ phases:
                 OS='alinux2'
               elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
-              elif [ `echo "${!RELEASE}" | grep '^centos\.8'` ]; then
-                OS='centos8'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.18'` ]; then
                 OS='ubuntu1804'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.20'` ]; then
@@ -128,7 +126,7 @@ phases:
 
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-              if [[ ${!OS} =~ ^(centos8|ubuntu2004)$ ]]; then
+              if [[ ${!OS} =~ ^(ubuntu2004)$ ]]; then
                 echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"
               else
                 echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz"
@@ -169,10 +167,10 @@ phases:
                   exit {{ FailExitCode }}
                 fi
 
-                # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004, Centos7 and Centos8
+                # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804, Ubuntu2004 and Centos7
                 ARCH=$(uname -m)
                 if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
-                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|centos\.8|ubuntu\.18\.04|ubuntu\.20\.04)'` ]; then
+                  if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.7|ubuntu\.18\.04|ubuntu\.20\.04)'` ]; then
                     echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
                     exit {{ FailExitCode }}
                   fi
@@ -193,14 +191,7 @@ phases:
                 if [[ ${!OS} == centos7 ]]; then
                   yum -y install epel-release
                 fi
-
-                if [[ ${!OS} == centos8 ]]; then
-                  dnf -y install epel-release
-                  dnf -y groupinstall development && sudo dnf -y install curl wget jq
-                else
-                  # all RHEL except centos8
-                  yum -y groupinstall development && sudo yum -y install curl wget jq
-                fi
+                yum -y groupinstall development && sudo yum -y install curl wget jq
 
                 if [[ ${!OS} =~ ^centos ]]; then
                   /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
@@ -279,11 +270,8 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-              if [[ ${!OS} =~ ^(centos[7-8]|ubuntu(18|20)04)$ ]]; then
-                if [[ ${!OS} == centos8 ]]; then
-                  dnf install -y python3-pip
-                  PIP_COMMAND="pip3"
-                elif [[ ${!OS} == centos7 ]]; then
+              if [[ ${!OS} =~ ^(centos7|ubuntu(18|20)04)$ ]]; then
+                if [[ ${!OS} == centos7 ]]; then
                   which pip2
                   if [ $? -eq 0 ]; then
                     PIP_COMMAND="pip2"

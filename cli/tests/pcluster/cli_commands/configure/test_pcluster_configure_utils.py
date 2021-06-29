@@ -14,7 +14,7 @@ from pcluster.cli_commands.configure.utils import get_default_suggestion
         ("Scheduler", ["awsbatch"], "slurm", None),
         ("Operating System", None, "alinux2", None),
         ("Operating System", [], "alinux2", None),
-        ("Operating System", ["centos8", "centos7", "ubuntu1804"], "alinux2", None),
+        ("Operating System", ["centos7", "ubuntu1804"], "alinux2", None),
         # Ensure first item is selected from first nested list/tuple
         ("fake-parameter", [{"id": "a", "key2": "b"}, {"id": "c", "key3": "d"}], "a", None),
         ("fake-parameter", ({"id": "a", "key2": "b"}, {"id": "c", "key3": "d"}), "a", None),

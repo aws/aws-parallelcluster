@@ -33,11 +33,9 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "centos7", "slurm")
-@pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "centos8", "slurm")
 @pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "centos7", "slurm")
-@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "centos8", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "ubuntu1804", "slurm")
 def test_dcv_configuration(
     region,
@@ -63,7 +61,6 @@ def test_dcv_configuration(
 
 @pytest.mark.parametrize("dcv_port, access_from", [(8443, "0.0.0.0/0"), (5678, "192.168.1.1/32")])
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos8", "slurm")
 def test_dcv_with_remote_access(
     dcv_port,
     access_from,
