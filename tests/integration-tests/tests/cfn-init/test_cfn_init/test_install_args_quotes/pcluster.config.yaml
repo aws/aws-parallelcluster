@@ -19,6 +19,8 @@ HeadNode:
     S3Access:
       - BucketName: {{ bucket_name }}
         EnableWriteAccess: false
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

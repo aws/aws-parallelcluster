@@ -11,6 +11,8 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  Imds:
+    Secured: False
 Scheduling:
   Scheduler: awsbatch
   Queues:
