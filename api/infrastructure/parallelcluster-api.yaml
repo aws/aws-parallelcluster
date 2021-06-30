@@ -63,7 +63,6 @@ Mappings:
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 256
     Tags:
       'parallelcluster:version': !FindInMap [ParallelCluster, Constants, Version]
 
@@ -181,6 +180,7 @@ Resources:
     Properties:
       Tracing: Active
       PackageType: Image
+      MemorySize: 512
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt DefaultParallelClusterFunctionRole.Arn]
       ImageUri: !If
         - UseCustomEcrImageUri
@@ -641,6 +641,7 @@ Resources:
     Condition: DoNotUseCustomEcrImageUri
     Type: AWS::Lambda::Function
     Properties:
+      MemorySize: 128
       Code:
         ZipFile: |
           import cfnresponse
