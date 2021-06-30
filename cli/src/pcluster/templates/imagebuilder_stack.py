@@ -30,8 +30,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk import aws_sns as sns
 from aws_cdk.core import CfnParameter, CfnTag, Construct, Fn, Stack
 
-import pcluster.utils as utils
-from pcluster import imagebuilder_utils
+from pcluster import imagebuilder_utils, utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import get_region
 from pcluster.config.common import BaseTag
