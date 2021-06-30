@@ -15,6 +15,13 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1804"]
           schedulers: ["slurm"]
+  create:
+    test_create.py::test_create_imds_secured:
+      dimensions:
+        - regions: [ "us-east-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "alinux2" ]
+          schedulers: [ "slurm" ]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -99,9 +106,3 @@ test-suites:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
-    test_update.py::test_update_imds_secured:
-      dimensions:
-        - regions: [ "us-east-1" ]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: [ "alinux2" ]
-          schedulers: ["slurm"]
