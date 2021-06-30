@@ -373,7 +373,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
         default_values = _get_default_template_values(vpc_stack, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
-        rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
+        rendered_template = env.get_template(config_file).render(**{**default_values, **kwargs})
         config_file_path.write_text(rendered_template)
         if not config_file.endswith("image.config.yaml"):
             inject_additional_config_settings(config_file_path, request, region)
