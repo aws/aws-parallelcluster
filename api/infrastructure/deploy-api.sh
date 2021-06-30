@@ -66,7 +66,7 @@ aws s3 cp "${SCRIPT_DIR}/../spec/openapi/ParallelCluster.openapi.yaml" "${S3_UPL
 
 echo "Deploying API template"
 aws cloudformation deploy \
-    --stack-name "ParallelClusterApi2" \
+    --stack-name "ParallelClusterApi" \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
     --capabilities CAPABILITY_IAM
