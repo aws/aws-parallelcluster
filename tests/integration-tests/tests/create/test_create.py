@@ -82,11 +82,11 @@ def test_create_wrong_pcluster_version(
     [
         (
             True,
-            {"root": True, "pcluster": True, "slurm": False},
+            {"root": True, "pcluster-admin": True, "slurm": False},
         ),
         (
             False,
-            {"root": True, "pcluster": True, "slurm": True},
+            {"root": True, "pcluster-admin": True, "slurm": True},
         ),
     ],
 )
