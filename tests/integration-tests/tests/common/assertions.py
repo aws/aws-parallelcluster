@@ -16,7 +16,7 @@ from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_count, get_compute_nodes_instance_ids, get_username_for_os
+from utils import get_compute_nodes_count, get_compute_nodes_instance_ids
 
 from tests.common.scaling_common import get_compute_nodes_allocation
 
@@ -141,10 +141,11 @@ def assert_head_node_is_running(region, cluster):
     assert_that(head_node_state).is_equal_to("running")
 
 
-def assert_aws_identity_access_is_correct(cluster, users_allow_list):
+def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_command_executor=None):
     logging.info("Asserting access to AWS caller identity is correct")
-    username = get_username_for_os(cluster.os)
-    remote_command_executor = RemoteCommandExecutor(cluster, username=username)
+
+    if not remote_command_executor:
+        remote_command_executor = RemoteCommandExecutor(cluster)
 
     for user, allowed in users_allow_list.items():
         logging.info(f"Asserting access to AWS caller identity is {'allowed' if allowed else 'denied'} for user {user}")
