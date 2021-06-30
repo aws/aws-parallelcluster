@@ -11,18 +11,18 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cloud_formation_status import CloudFormationStatus
-from pcluster.api.client.model.ec2_ami_info import Ec2AmiInfo
-from pcluster.api.client.model.image_build_status import ImageBuildStatus
-from pcluster.api.client.model.image_builder_image_status import ImageBuilderImageStatus
-from pcluster.api.client.model.image_configuration_structure import ImageConfigurationStructure
+import pcluster.client
+from pcluster.client.model.cloud_formation_status import CloudFormationStatus
+from pcluster.client.model.ec2_ami_info import Ec2AmiInfo
+from pcluster.client.model.image_build_status import ImageBuildStatus
+from pcluster.client.model.image_builder_image_status import ImageBuilderImageStatus
+from pcluster.client.model.image_configuration_structure import ImageConfigurationStructure
 globals()['CloudFormationStatus'] = CloudFormationStatus
 globals()['Ec2AmiInfo'] = Ec2AmiInfo
 globals()['ImageBuildStatus'] = ImageBuildStatus
 globals()['ImageBuilderImageStatus'] = ImageBuilderImageStatus
 globals()['ImageConfigurationStructure'] = ImageConfigurationStructure
-from pcluster.api.client.model.describe_image_response_content import DescribeImageResponseContent
+from pcluster.client.model.describe_image_response_content import DescribeImageResponseContent
 
 
 class TestDescribeImageResponseContent(unittest.TestCase):

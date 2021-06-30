@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.validation_level import ValidationLevel
+import pcluster.client
+from pcluster.client.model.validation_level import ValidationLevel
 
 
 class TestValidationLevel(unittest.TestCase):

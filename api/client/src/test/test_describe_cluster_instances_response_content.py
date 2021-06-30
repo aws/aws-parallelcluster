@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.ec2_instance import EC2Instance
+import pcluster.client
+from pcluster.client.model.ec2_instance import EC2Instance
 globals()['EC2Instance'] = EC2Instance
-from pcluster.api.client.model.describe_cluster_instances_response_content import DescribeClusterInstancesResponseContent
+from pcluster.client.model.describe_cluster_instances_response_content import DescribeClusterInstancesResponseContent
 
 
 class TestDescribeClusterInstancesResponseContent(unittest.TestCase):

@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.node_type import NodeType
+import pcluster.client
+from pcluster.client.model.node_type import NodeType
 
 
 class TestNodeType(unittest.TestCase):

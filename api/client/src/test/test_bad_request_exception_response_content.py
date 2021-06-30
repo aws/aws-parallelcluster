@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+import pcluster.client
+from pcluster.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
 
 
 class TestBadRequestExceptionResponseContent(unittest.TestCase):

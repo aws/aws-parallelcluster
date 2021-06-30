@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.ami_info import AmiInfo
+import pcluster.client
+from pcluster.client.model.ami_info import AmiInfo
 globals()['AmiInfo'] = AmiInfo
-from pcluster.api.client.model.describe_official_images_response_content import DescribeOfficialImagesResponseContent
+from pcluster.client.model.describe_official_images_response_content import DescribeOfficialImagesResponseContent
 
 
 class TestDescribeOfficialImagesResponseContent(unittest.TestCase):

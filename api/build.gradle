@@ -35,7 +35,7 @@ task basePythonClient(
     inputSpec = "$projectDir/spec/openapi/ParallelCluster.openapi.yaml".toString()
     outputDir = "$projectDir/client/src".toString()
     configOptions = [
-            packageName: "pcluster.api.client"
+            packageName: "pcluster_client"
     ]
 }
 

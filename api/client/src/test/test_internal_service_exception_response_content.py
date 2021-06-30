@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+import pcluster.client
+from pcluster.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 
 
 class TestInternalServiceExceptionResponseContent(unittest.TestCase):

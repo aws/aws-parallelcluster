@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.change import Change
+import pcluster.client
+from pcluster.client.model.change import Change
 
 
 class TestChange(unittest.TestCase):

@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cluster_configuration_structure import ClusterConfigurationStructure
+import pcluster.client
+from pcluster.client.model.cluster_configuration_structure import ClusterConfigurationStructure
 
 
 class TestClusterConfigurationStructure(unittest.TestCase):

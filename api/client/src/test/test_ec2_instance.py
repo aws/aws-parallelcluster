@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.instance_state import InstanceState
+import pcluster.client
+from pcluster.client.model.instance_state import InstanceState
 globals()['InstanceState'] = InstanceState
-from pcluster.api.client.model.ec2_instance import EC2Instance
+from pcluster.client.model.ec2_instance import EC2Instance
 
 
 class TestEC2Instance(unittest.TestCase):

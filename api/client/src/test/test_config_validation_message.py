@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.validation_level import ValidationLevel
+import pcluster.client
+from pcluster.client.model.validation_level import ValidationLevel
 globals()['ValidationLevel'] = ValidationLevel
-from pcluster.api.client.model.config_validation_message import ConfigValidationMessage
+from pcluster.client.model.config_validation_message import ConfigValidationMessage
 
 
 class TestConfigValidationMessage(unittest.TestCase):

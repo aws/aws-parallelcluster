@@ -11,12 +11,12 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.ec2_ami_state import Ec2AmiState
-from pcluster.api.client.model.tag import Tag
+import pcluster.client
+from pcluster.client.model.ec2_ami_state import Ec2AmiState
+from pcluster.client.model.tag import Tag
 globals()['Ec2AmiState'] = Ec2AmiState
 globals()['Tag'] = Tag
-from pcluster.api.client.model.ec2_ami_info import Ec2AmiInfo
+from pcluster.client.model.ec2_ami_info import Ec2AmiInfo
 
 
 class TestEc2AmiInfo(unittest.TestCase):

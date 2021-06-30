@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
+import pcluster.client
+from pcluster.client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
 
 
 class TestDryrunOperationExceptionResponseContent(unittest.TestCase):

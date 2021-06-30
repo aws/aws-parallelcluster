@@ -1,4 +1,4 @@
-# pcluster.api.client.ClusterOperationsApi
+# pcluster_client.ClusterOperationsApi
 
 All URIs are relative to *http://localhost*
 
@@ -23,21 +23,21 @@ Create a ParallelCluster managed cluster in a given region.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import cluster_operations_api
-from pcluster.api.client.model.conflict_exception_response_content import ConflictExceptionResponseContent
-from pcluster.api.client.model.create_cluster_bad_request_exception_response_content import CreateClusterBadRequestExceptionResponseContent
-from pcluster.api.client.model.create_cluster_response_content import CreateClusterResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
-from pcluster.api.client.model.validation_level import ValidationLevel
-from pcluster.api.client.model.create_cluster_request_content import CreateClusterRequestContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import cluster_operations_api
+from pcluster_client.model.create_cluster_bad_request_exception_response_content import CreateClusterBadRequestExceptionResponseContent
+from pcluster_client.model.create_cluster_request_content import CreateClusterRequestContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.create_cluster_response_content import CreateClusterResponseContent
+from pcluster_client.model.conflict_exception_response_content import ConflictExceptionResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.validation_level import ValidationLevel
+from pcluster_client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -53,7 +53,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     create_cluster_request_content = CreateClusterRequestContent(
@@ -72,7 +72,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.create_cluster(create_cluster_request_content)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->create_cluster: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -80,7 +80,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.create_cluster(create_cluster_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->create_cluster: %s\n" % e)
 ```
 
@@ -134,18 +134,18 @@ Initiate the deletion of a cluster.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import cluster_operations_api
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
-from pcluster.api.client.model.delete_cluster_response_content import DeleteClusterResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import cluster_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.delete_cluster_response_content import DeleteClusterResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -161,7 +161,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
@@ -171,7 +171,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.delete_cluster(cluster_name)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->delete_cluster: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -179,7 +179,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.delete_cluster(cluster_name, region=region)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->delete_cluster: %s\n" % e)
 ```
 
@@ -229,18 +229,18 @@ Get detailed information about an existing cluster.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import cluster_operations_api
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.describe_cluster_response_content import DescribeClusterResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import cluster_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
+from pcluster_client.model.describe_cluster_response_content import DescribeClusterResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -256,7 +256,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
@@ -266,7 +266,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.describe_cluster(cluster_name)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->describe_cluster: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -274,7 +274,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.describe_cluster(cluster_name, region=region)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->describe_cluster: %s\n" % e)
 ```
 
@@ -324,18 +324,18 @@ Retrieve the list of existing clusters managed by the API. Deleted clusters are 
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import cluster_operations_api
-from pcluster.api.client.model.cluster_status_filtering_option import ClusterStatusFilteringOption
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.list_clusters_response_content import ListClustersResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import cluster_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.cluster_status_filtering_option import ClusterStatusFilteringOption
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.list_clusters_response_content import ListClustersResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -351,7 +351,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     region = "region_example" # str | List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to. (optional)
@@ -365,7 +365,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.list_clusters(region=region, next_token=next_token, cluster_status=cluster_status)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->list_clusters: %s\n" % e)
 ```
 
@@ -413,22 +413,22 @@ Name | Type | Description  | Notes
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import cluster_operations_api
-from pcluster.api.client.model.conflict_exception_response_content import ConflictExceptionResponseContent
-from pcluster.api.client.model.update_cluster_request_content import UpdateClusterRequestContent
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.update_cluster_response_content import UpdateClusterResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
-from pcluster.api.client.model.validation_level import ValidationLevel
-from pcluster.api.client.model.update_cluster_bad_request_exception_response_content import UpdateClusterBadRequestExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import cluster_operations_api
+from pcluster_client.model.update_cluster_request_content import UpdateClusterRequestContent
+from pcluster_client.model.update_cluster_response_content import UpdateClusterResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.conflict_exception_response_content import ConflictExceptionResponseContent
+from pcluster_client.model.update_cluster_bad_request_exception_response_content import UpdateClusterBadRequestExceptionResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.validation_level import ValidationLevel
+from pcluster_client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
+from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -444,7 +444,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
@@ -463,7 +463,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.update_cluster(cluster_name, update_cluster_request_content)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->update_cluster: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -471,7 +471,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.update_cluster(cluster_name, update_cluster_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, region=region, dryrun=dryrun, force_update=force_update)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->update_cluster: %s\n" % e)
 ```
 

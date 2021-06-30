@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.image_status_filtering_option import ImageStatusFilteringOption
+import pcluster.client
+from pcluster.client.model.image_status_filtering_option import ImageStatusFilteringOption
 
 
 class TestImageStatusFilteringOption(unittest.TestCase):

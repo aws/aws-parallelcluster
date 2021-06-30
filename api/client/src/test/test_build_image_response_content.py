@@ -11,12 +11,12 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.config_validation_message import ConfigValidationMessage
-from pcluster.api.client.model.image_info_summary import ImageInfoSummary
+import pcluster.client
+from pcluster.client.model.config_validation_message import ConfigValidationMessage
+from pcluster.client.model.image_info_summary import ImageInfoSummary
 globals()['ConfigValidationMessage'] = ConfigValidationMessage
 globals()['ImageInfoSummary'] = ImageInfoSummary
-from pcluster.api.client.model.build_image_response_content import BuildImageResponseContent
+from pcluster.client.model.build_image_response_content import BuildImageResponseContent
 
 
 class TestBuildImageResponseContent(unittest.TestCase):

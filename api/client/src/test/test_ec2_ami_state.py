@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.ec2_ami_state import Ec2AmiState
+import pcluster.client
+from pcluster.client.model.ec2_ami_state import Ec2AmiState
 
 
 class TestEc2AmiState(unittest.TestCase):

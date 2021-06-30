@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cloud_formation_status import CloudFormationStatus
+import pcluster.client
+from pcluster.client.model.cloud_formation_status import CloudFormationStatus
 
 
 class TestCloudFormationStatus(unittest.TestCase):

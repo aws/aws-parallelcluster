@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.config_validation_message import ConfigValidationMessage
+import pcluster.client
+from pcluster.client.model.config_validation_message import ConfigValidationMessage
 globals()['ConfigValidationMessage'] = ConfigValidationMessage
-from pcluster.api.client.model.build_image_bad_request_exception_response_content import BuildImageBadRequestExceptionResponseContent
+from pcluster.client.model.build_image_bad_request_exception_response_content import BuildImageBadRequestExceptionResponseContent
 
 
 class TestBuildImageBadRequestExceptionResponseContent(unittest.TestCase):

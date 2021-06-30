@@ -11,20 +11,20 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cloud_formation_status import CloudFormationStatus
-from pcluster.api.client.model.cluster_configuration_structure import ClusterConfigurationStructure
-from pcluster.api.client.model.cluster_status import ClusterStatus
-from pcluster.api.client.model.compute_fleet_status import ComputeFleetStatus
-from pcluster.api.client.model.ec2_instance import EC2Instance
-from pcluster.api.client.model.tag import Tag
+import pcluster.client
+from pcluster.client.model.cloud_formation_status import CloudFormationStatus
+from pcluster.client.model.cluster_configuration_structure import ClusterConfigurationStructure
+from pcluster.client.model.cluster_status import ClusterStatus
+from pcluster.client.model.compute_fleet_status import ComputeFleetStatus
+from pcluster.client.model.ec2_instance import EC2Instance
+from pcluster.client.model.tag import Tag
 globals()['CloudFormationStatus'] = CloudFormationStatus
 globals()['ClusterConfigurationStructure'] = ClusterConfigurationStructure
 globals()['ClusterStatus'] = ClusterStatus
 globals()['ComputeFleetStatus'] = ComputeFleetStatus
 globals()['EC2Instance'] = EC2Instance
 globals()['Tag'] = Tag
-from pcluster.api.client.model.describe_cluster_response_content import DescribeClusterResponseContent
+from pcluster.client.model.describe_cluster_response_content import DescribeClusterResponseContent
 
 
 class TestDescribeClusterResponseContent(unittest.TestCase):

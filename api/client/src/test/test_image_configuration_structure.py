@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.image_configuration_structure import ImageConfigurationStructure
+import pcluster.client
+from pcluster.client.model.image_configuration_structure import ImageConfigurationStructure
 
 
 class TestImageConfigurationStructure(unittest.TestCase):

@@ -1,4 +1,4 @@
-# pcluster.api.client.ImageOperationsApi
+# pcluster_client.ImageOperationsApi
 
 All URIs are relative to *http://localhost*
 
@@ -23,21 +23,21 @@ Create a custom ParallelCluster image in a given region.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import image_operations_api
-from pcluster.api.client.model.conflict_exception_response_content import ConflictExceptionResponseContent
-from pcluster.api.client.model.build_image_response_content import BuildImageResponseContent
-from pcluster.api.client.model.build_image_bad_request_exception_response_content import BuildImageBadRequestExceptionResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
-from pcluster.api.client.model.validation_level import ValidationLevel
-from pcluster.api.client.model.build_image_request_content import BuildImageRequestContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import image_operations_api
+from pcluster_client.model.build_image_request_content import BuildImageRequestContent
+from pcluster_client.model.build_image_bad_request_exception_response_content import BuildImageBadRequestExceptionResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.conflict_exception_response_content import ConflictExceptionResponseContent
+from pcluster_client.model.build_image_response_content import BuildImageResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.validation_level import ValidationLevel
+from pcluster_client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -53,7 +53,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     build_image_request_content = BuildImageRequestContent(
@@ -72,7 +72,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.build_image(build_image_request_content)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->build_image: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -80,7 +80,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.build_image(build_image_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->build_image: %s\n" % e)
 ```
 
@@ -134,18 +134,18 @@ Initiate the deletion of the custom ParallelCluster image.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import image_operations_api
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.delete_image_response_content import DeleteImageResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import image_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.delete_image_response_content import DeleteImageResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -161,7 +161,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     image_id = "AqWzy" # str | Id of the image
@@ -172,7 +172,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.delete_image(image_id)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->delete_image: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -180,7 +180,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.delete_image(image_id, region=region, force=force)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->delete_image: %s\n" % e)
 ```
 
@@ -231,18 +231,18 @@ Get detailed information about an existing image.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import image_operations_api
-from pcluster.api.client.model.describe_image_response_content import DescribeImageResponseContent
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import image_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.describe_image_response_content import DescribeImageResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -258,7 +258,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     image_id = "AqWzy" # str | Id of the image
@@ -268,7 +268,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.describe_image(image_id)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->describe_image: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -276,7 +276,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.describe_image(image_id, region=region)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->describe_image: %s\n" % e)
 ```
 
@@ -326,17 +326,17 @@ Describe ParallelCluster AMIs.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import image_operations_api
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.describe_official_images_response_content import DescribeOfficialImagesResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import image_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.describe_official_images_response_content import DescribeOfficialImagesResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -352,7 +352,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
@@ -364,7 +364,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.describe_official_images(region=region, os=os, architecture=architecture)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->describe_official_images: %s\n" % e)
 ```
 
@@ -414,18 +414,18 @@ Retrieve the list of existing custom images managed by the API. Deleted images a
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import image_operations_api
-from pcluster.api.client.model.image_status_filtering_option import ImageStatusFilteringOption
-from pcluster.api.client.model.list_images_response_content import ListImagesResponseContent
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import image_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.image_status_filtering_option import ImageStatusFilteringOption
+from pcluster_client.model.list_images_response_content import ListImagesResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -441,7 +441,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     image_status = ImageStatusFilteringOption("AVAILABLE") # ImageStatusFilteringOption | Filter by image status.
@@ -452,7 +452,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.list_images(image_status)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->list_images: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -460,7 +460,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.list_images(image_status, region=region, next_token=next_token)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->list_images: %s\n" % e)
 ```
 
