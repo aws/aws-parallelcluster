@@ -7,7 +7,7 @@ CHANGELOG
 
 - Add support for Ubuntu 20.04.
 - Add support for using FSx Lustre in subnet with no internet access.
-- Add support for Centos 7 ARM.
+- Add support for building Centos 7 AMIs on ARM.
 - Add support for FSx Lustre DataCompressionType feature.
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
 - Install SSM agent on CentOS 7 and 8.
@@ -25,13 +25,13 @@ CHANGELOG
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
 - Add sanity check to prevent cluster creation in an AWS region not officially supported by ParallelCluster.
 - Restrict IAM permissions to only allow cluster IAM instance role to launch instances via `run-instances` in cluster compute subnet.
-- Upgrade EFA installer to version 1.12.1.
-  - EFA configuration: ``efa-config-1.8`` (from ``efa-config-1.7``)
-  - EFA profile: ``efa-profile-1.5`` (from ``efa-profile-1.4``)
-  - EFA kernel module: ``efa-1.12.1`` (from ``efa-1.10.2``)
+- Upgrade EFA installer to version 1.12.2
+  - EFA configuration: ``efa-config-1.8-1`` (from ``efa-config-1.7``)
+  - EFA profile: ``efa-profile-1.5-1`` (from ``efa-profile-1.4``)
+  - EFA kernel module: ``efa-1.12.3`` (from ``efa-1.10.2``)
   - RDMA core: ``rdma-core-32.1amzn`` (from ``rdma-core-31.2amzn``)
-  - Libfabric: ``libfabric-1.11.2amzon1.1`` (from ``libfabric-1.11.1amzn1.0``)
-  - Open MPI: ``openmpi40-aws-4.1.1`` (from ``openmpi40-aws-4.1.0``)
+  - Libfabric: ``libfabric-1.11.2amzon1.1-1`` (from ``libfabric-1.11.1amzn1.0``)
+  - Open MPI: ``openmpi40-aws-4.1.1-2`` (from ``openmpi40-aws-4.1.0``)
 - Upgrade Slurm to version 20.11.7.
   - Update slurmctld and slurmd systemd unit files according to latest provided by slurm.
   - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds.
