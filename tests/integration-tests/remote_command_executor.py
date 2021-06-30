@@ -27,14 +27,16 @@ class RemoteCommandExecutionError(Exception):
 class RemoteCommandExecutor:
     """Execute remote commands on the cluster head node."""
 
-    def __init__(self, cluster, username=None, bastion=None):
+    def __init__(self, cluster, username=None, bastion=None, ssh_key=None):
         if not username:
             username = get_username_for_os(cluster.os)
+        if not ssh_key:
+            ssh_key = cluster.ssh_key
         connection_kwargs = {
             "host": cluster.head_node_ip,
             "user": username,
             "forward_agent": False,
-            "connect_kwargs": {"key_filename": [cluster.ssh_key]},
+            "connect_kwargs": {"key_filename": [ssh_key]},
         }
         if bastion:
             # Need to execute simple ssh command before using Connection to avoid Paramiko _check_banner error
@@ -42,7 +44,7 @@ class RemoteCommandExecutor:
                 "ssh -tt -i {key_path} -o StrictHostKeyChecking=no "
                 '-o ProxyCommand="ssh -tt -o StrictHostKeyChecking=no -W %h:%p -A {bastion}" '
                 "-A {user}@{head_node} hostname".format(
-                    key_path=cluster.ssh_key, bastion=bastion, user=username, head_node=cluster.head_node_ip
+                    key_path=ssh_key, bastion=bastion, user=username, head_node=cluster.head_node_ip
                 ),
                 timeout=30,
                 shell=True,

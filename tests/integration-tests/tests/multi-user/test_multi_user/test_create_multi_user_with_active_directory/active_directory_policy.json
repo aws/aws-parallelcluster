@@ -1,0 +1,140 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "ec2:DescribeVolumes",
+        "ec2:AttachVolume",
+        "ec2:DescribeInstanceAttribute",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeInstances",
+        "ec2:DescribeRegions"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "dynamodb:ListTables"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueUrl"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:sqs:*:*:parallelcluster-*"
+    },
+    {
+      "Action": [
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:TerminateInstanceInAutoScalingGroup",
+        "autoscaling:SetDesiredCapacity",
+        "autoscaling:DescribeTags",
+        "autoScaling:UpdateAutoScalingGroup",
+        "autoscaling:SetInstanceHealth"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackResource"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:cloudformation:*:*:stack/parallelcluster-*/*"
+    },
+    {
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:dynamodb:*:*:table/parallelcluster-*"
+    },
+    {
+      "Action": "s3:GetObject",
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::parallelcluster*/*"
+    },
+    {
+      "Action": [
+        "cloudformation:DescribeStacks"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:cloudformation:*:*:stack/*"
+    },
+    {
+      "Action": [
+        "sqs:ListQueues"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "ssm:DescribeAssociation",
+        "ssm:GetDeployablePatchSnapshotForInstance",
+        "ssm:GetDocument",
+        "ssm:DescribeDocument",
+        "ssm:GetManifest",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:ListAssociations",
+        "ssm:ListInstanceAssociations",
+        "ssm:PutInventory",
+        "ssm:PutComplianceItems",
+        "ssm:PutConfigurePackageResult",
+        "ssm:UpdateAssociationStatus",
+        "ssm:UpdateInstanceAssociationStatus",
+        "ssm:UpdateInstanceInformation"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "ec2messages:AcknowledgeMessage",
+        "ec2messages:DeleteMessage",
+        "ec2messages:FailMessage",
+        "ec2messages:GetEndpoint",
+        "ec2messages:GetMessages",
+        "ec2messages:SendReply"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": "lambda:InvokeFunction",
+      "Effect": "Allow",
+      "Resource": "arn:aws:lambda:*:*:function:*"
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ],
+  "Version": "2012-10-17"
+}

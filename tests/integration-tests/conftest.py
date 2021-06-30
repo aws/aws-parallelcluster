@@ -799,11 +799,12 @@ def role_factory(region):
                 }
             ],
         }
-        iam_client.create_role(
+        response = iam_client.create_role(
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
         )
+        iam_role_arn = response["Role"]["Arn"]
 
         logging.info(f"Attaching iam policy to the role {iam_role_name}...")
         for policy in policies:
@@ -815,7 +816,7 @@ def role_factory(region):
         time.sleep(60)
         logging.info(f"Iam role is ready: {iam_role_name}")
         roles.append({"role_name": iam_role_name, "policies": policies})
-        return iam_role_name
+        return iam_role_name, iam_role_arn
 
     yield create_role
 
@@ -826,6 +827,333 @@ def role_factory(region):
             iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy)
         logging.info(f"Deleting iam role {role_name}")
         iam_client.delete_role(RoleName=role_name)
+
+
+@pytest.fixture(scope="class")
+def instance_profile_factory(region):
+    instance_profiles = []
+
+    iam = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_instance_profile():
+        instance_profile_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating iam instance profile: {instance_profile_name}")
+
+        response = iam.create_instance_profile(InstanceProfileName=instance_profile_name)
+        instance_profile_arn = response["InstanceProfile"]["Arn"]
+        instance_profile_name = response["InstanceProfile"]["InstanceProfileName"]
+
+        logging.info(f"Iam instance profile created: {instance_profile_arn}")
+        instance_profiles.append(instance_profile_name)
+        return instance_profile_arn
+
+    yield create_instance_profile
+
+    for instance_profile_name in instance_profiles:
+        logging.info(f"Deleting iam instance profile: {instance_profile_name}")
+        iam.delete_instance_profile(InstanceProfileName=instance_profile_name)
+
+
+@pytest.fixture(scope="class")
+def user_factory(region):
+    users = []
+
+    iam = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_user():
+        user_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating iam user: {user_name}")
+
+        response = iam.create_user(UserName=user_name)
+        user_arn = response["User"]["Arn"]
+
+        logging.info(f"Iam user created: {user_arn}")
+        users.append(user_name)
+        return user_arn, user_name
+
+    yield create_user
+
+    for user in users:
+        logging.info(f"Deleting iam user: {user}")
+        iam.delete_user(UserName=user)
+
+
+@pytest.fixture(scope="class")
+def policy_factory(region):
+    policies = []
+
+    iam = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_policy(policy_document):
+        policy_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating iam policy: {policy_name}")
+
+        response = iam.create_policy(PolicyName=policy_name, PolicyDocument=policy_document)
+        policy_arn = response["Policy"]["Arn"]
+
+        logging.info(f"Iam policy created: {policy_arn}")
+        policies.append(policy_arn)
+        return policy_arn
+
+    yield create_policy
+
+    for policy_arn in policies:
+        response = iam.list_entities_for_policy(PolicyArn=policy_arn)
+        for role in response["PolicyRoles"]:
+            role_name = role["RoleName"]
+            logging.info(f"Detaching policy {policy_arn} from role {role_name}")
+            iam.detach_role_policy(PolicyArn=policy_arn, RoleName=role_name)
+        logging.info(f"Deleting iam policy: {policy_arn}")
+        iam.delete_policy(PolicyArn=policy_arn)
+
+
+@pytest.fixture(scope="class")
+def ssm_parameter_factory(region):
+    parameters = []
+
+    ssm = boto3.client(
+        "ssm",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_parameter(value, type):
+        parameter_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating ssm parameter: {parameter_name}")
+
+        ssm.put_parameter(Name=parameter_name, Value=value, Type=type)
+
+        logging.info(f"SSM parameter created: {parameter_name}")
+        parameters.append(parameter_name)
+        return parameter_name
+
+    yield create_parameter
+
+    for parameter in parameters:
+        logging.info(f"Deleting ssm parameter: {parameter}")
+        ssm.delete_parameters(Names=[parameter])
+
+
+@pytest.fixture(scope="class")
+def dhcp_options_set_factory(region):
+    dhcp_options_sets = []
+
+    ec2 = boto3.client(
+        "ec2",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_dhcp_options_set(vpc_id, dhcp_configurations):
+        logging.info(f"Creating dhcp options set for vpc: {vpc_id}")
+
+        response = ec2.create_dhcp_options(DhcpConfigurations=dhcp_configurations)
+        dhcp_options_id = response["DhcpOptions"]["DhcpOptionsId"]
+
+        response = ec2.describe_vpcs(VpcIds=[vpc_id])
+        current_dhcp_options_id = response["Vpcs"][0]["DhcpOptionsId"]
+        logging.info(f"Current dhcp options set: {current_dhcp_options_id}")
+
+        logging.info(f"Dhcp options set created: {dhcp_options_id}")
+        dhcp_options_sets.append(
+            {"vpc_id": vpc_id, "dhcp_options_id": dhcp_options_id, "previous_dhcp_options_id": current_dhcp_options_id}
+        )
+
+        ec2.associate_dhcp_options(DhcpOptionsId=dhcp_options_id, VpcId=vpc_id)
+        logging.info(f"Dhcp options set {dhcp_options_id} associated to vpc {vpc_id}")
+
+        return dhcp_options_id
+
+    yield create_dhcp_options_set
+
+    for entry in dhcp_options_sets:
+        vpc_id = entry["vpc_id"]
+        dhcp_options_set = entry["dhcp_options_id"]
+        previous_dhcp_options_set = entry["previous_dhcp_options_id"]
+
+        ec2.associate_dhcp_options(DhcpOptionsId=previous_dhcp_options_set, VpcId=vpc_id)
+        logging.info(f"Dhcp options set {previous_dhcp_options_set} associated to vpc {vpc_id}")
+
+        logging.info(f"Deleting dhcp options set: {dhcp_options_set}")
+        ec2.delete_dhcp_options(DhcpOptionsId=dhcp_options_set)
+
+
+@pytest.fixture(scope="class")
+def opsworks_stack_factory(region):
+    stacks = []
+
+    opsworks = boto3.client(
+        "opsworks",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_stack(vpc_id, subnet_id, service_role_arn, instance_profile_arn):
+        stack_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating opsworks stack: {stack_name}")
+
+        response = opsworks.create_stack(
+            Name=stack_name,
+            Region=region,
+            VpcId=vpc_id,
+            DefaultSubnetId=subnet_id,
+            ServiceRoleArn=service_role_arn,
+            DefaultInstanceProfileArn=instance_profile_arn,
+            ConfigurationManager={"Name": "Chef", "Version": "12"},
+        )
+        stack_id = response["StackId"]
+
+        logging.info(f"Opsworks stack created: {stack_id}")
+        stacks.append(stack_id)
+
+        return stack_id
+
+    yield create_stack
+
+    for stack_id in stacks:
+        logging.info(f"Deleting opsworks stack: {stack_id}")
+        opsworks.delete_stack(StackId=stack_id)
+
+
+@pytest.fixture(scope="class")
+def opsworks_user_profile_factory(region):
+    iam_users = []
+
+    opsworks = boto3.client(
+        "opsworks",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_user_profile(user_arn, user_name, public_key):
+        logging.info(f"Creating opsworks user profile: {user_arn}")
+
+        ssh_user_name = user_name[:32]
+
+        opsworks.create_user_profile(IamUserArn=user_arn, SshUsername=ssh_user_name, SshPublicKey=public_key)
+
+        logging.info(f"Opsworks user profile created: {user_arn}")
+        iam_users.append(user_arn)
+
+        return user_arn, ssh_user_name
+
+    yield create_user_profile
+
+    for iam_user_arn in iam_users:
+        logging.info(f"Deleting opsworks user profile: {iam_user_arn}")
+        opsworks.delete_user_profile(IamUserArn=iam_user_arn)
+
+
+@pytest.fixture(scope="class")
+def active_directory_factory(region):
+    directories = []
+
+    ds = boto3.client(
+        "ds",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_directory(vpc_id, public_subnet_id, private_subnet_id):
+        directory_name = f"{random_alphanumeric()}.integ-tests.pcluster.com"
+        directory_password = "@dm1np@ss"
+        logging.info(f"Creating active directory: {directory_name}")
+
+        response = ds.create_directory(
+            Name=directory_name,
+            Password=directory_password,
+            VpcSettings={"VpcId": vpc_id, "SubnetIds": [public_subnet_id, private_subnet_id]},
+            Size="Small",
+        )
+        directory_id = response["DirectoryId"]
+
+        logging.info(f"Active directory created: {directory_id}")
+        directories.append(directory_id)
+
+        return directory_id, directory_name, directory_password
+
+    yield create_directory
+
+    for directory_id in directories:
+        logging.info(f"Deleting active directory: {directory_id}")
+        ds.delete_directory(DirectoryId=directory_id)
+
+
+@pytest.fixture(scope="class")
+def lambda_function_factory(region):
+    functions = []
+
+    _lambda = boto3.client(
+        "lambda",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_function(**kwargs):
+        function_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating lambda function: {function_name}")
+
+        response = _lambda.create_function(FunctionName=function_name, **kwargs)
+        function_arn = response["FunctionArn"]
+
+        logging.info(f"Lambda function created: {function_arn}")
+        functions.append(function_arn)
+
+        return function_arn, function_name
+
+    yield create_function
+
+    for function_arn in functions:
+        logging.info(f"Deleting lambda function: {function_arn}")
+        _lambda.delete_function(FunctionName=function_arn)
 
 
 def _create_iam_policies(iam_policy_name, region, policy_filename):

@@ -1,0 +1,20 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:DescribeAlarms",
+        "ec2:*",
+        "ecs:*",
+        "elasticloadbalancing:*",
+        "iam:PassRole",
+        "rds:*"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "*"
+      ]
+    }
+  ],
+  "Version": "2012-10-17"
+}

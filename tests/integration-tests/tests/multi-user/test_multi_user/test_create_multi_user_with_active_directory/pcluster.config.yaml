@@ -1,0 +1,46 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ custom_ami }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+      - Policy: {{ active_directory_policy_arn }}
+  CustomActions:
+    OnNodeStart:
+      Script: s3://{{ bucket_name }}/pre_install.sh
+      Args:
+        - {{ lambda_function_name }}
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/post_install.sh
+
+Scheduling:
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: compute
+      ComputeResources:
+        - Name: compute-i1
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+          - Policy: {{ active_directory_policy_arn }}
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket_name }}/pre_install.sh
+          Args:
+            - {{ lambda_function_name }}
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/post_install.sh

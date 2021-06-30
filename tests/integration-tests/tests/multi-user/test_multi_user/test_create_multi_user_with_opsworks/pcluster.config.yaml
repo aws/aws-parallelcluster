@@ -1,0 +1,31 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ custom_ami }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - Policy: arn:aws:iam::aws:policy/AWSOpsWorksInstanceRegistration
+      - Policy: arn:aws:iam::aws:policy/AWSOpsWorksRegisterCLI_EC2
+  CustomActions:
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/post_install.sh
+      Args:
+        - {{ opsworks_stack_id }}
+
+Scheduling:
+  Scheduler: {{ scheduler }}
+  Queues:
+    - Name: compute
+      ComputeResources:
+        - Name: compute-i1
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

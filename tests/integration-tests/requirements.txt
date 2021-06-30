@@ -5,8 +5,9 @@ boto3
 fabric
 jinja2
 junitparser
-pykwalify
 pexpect
+pycryptodome
+pykwalify
 pytest
 pytest-datadir
 pytest-html
@@ -14,7 +15,7 @@ pytest-rerunfailures
 pytest-sugar
 pytest-xdist
 PyYAML
+requests
 retrying
 troposphere
 untangle
-requests
