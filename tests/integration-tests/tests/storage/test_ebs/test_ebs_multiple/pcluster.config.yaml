@@ -12,6 +12,8 @@ HeadNode:
       VolumeType: gp3
       Iops: 3400
       Throughput: 135
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

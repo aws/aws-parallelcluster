@@ -38,6 +38,7 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
+from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from jinja2 import Environment, FileSystemLoader
@@ -519,6 +520,9 @@ def _get_default_template_values(vpc_stack, request):
     default_values = get_vpc_snakecase_value(vpc_stack)
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
+
+    scheduler = request.node.funcargs.get("scheduler")
+    default_values["imds_secured"] = scheduler in SCHEDULERS_SUPPORTING_IMDS_SECURED
 
     return default_values
 

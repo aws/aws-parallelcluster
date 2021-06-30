@@ -11,7 +11,7 @@
 import pytest
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, SCHEDULERS_SUPPORTING_IMDS_SECURED
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
@@ -751,20 +751,19 @@ def test_intel_hpc_os_validator(os, expected_message):
 @pytest.mark.parametrize(
     "imds_secured, scheduler, expected_message",
     [
-        (None, "slurm", None),
+        (None, "slurm", "Cannot validate IMDS configuration if IMDS Secured is not set."),
         (True, "slurm", None),
         (False, "slurm", None),
-        (None, "awsbatch", None),
+        (None, "awsbatch", "Cannot validate IMDS configuration if IMDS Secured is not set."),
         (False, "awsbatch", None),
         (
             True,
             "awsbatch",
-            f"IMDS secured cannot be enabled in Head Node when using scheduler awsbatch. "
-            f"Supported schedulers are: {','.join(SCHEDULERS_SUPPORTING_IMDS_SECURED)}",
+            "IMDS Secured cannot be enabled when using scheduler awsbatch. Please, disable IMDS Secured.",
         ),
-        (None, None, "Cannot validate IMDS configuration with scheduler None."),
-        (True, None, "Cannot validate IMDS configuration with scheduler None."),
-        (False, None, "Cannot validate IMDS configuration with scheduler None."),
+        (None, None, "Cannot validate IMDS configuration if scheduler is not set."),
+        (True, None, "Cannot validate IMDS configuration if scheduler is not set."),
+        (False, None, "Cannot validate IMDS configuration if scheduler is not set."),
     ],
 )
 def test_head_node_imds_validator(imds_secured, scheduler, expected_message):

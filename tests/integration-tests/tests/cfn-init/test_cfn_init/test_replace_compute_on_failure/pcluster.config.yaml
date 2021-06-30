@@ -12,6 +12,8 @@ HeadNode:
   CustomActions:
     OnNodeConfigured:
       Script: s3://{{ bucket_name }}/post_install.sh
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   SlurmSettings:

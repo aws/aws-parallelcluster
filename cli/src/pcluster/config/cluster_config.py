@@ -597,7 +597,7 @@ class Imds(Resource):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.secured = Resource.init_param(secured)
+        self.secured = Resource.init_param(secured, default=True)
 
 
 class ClusterIam(Resource):

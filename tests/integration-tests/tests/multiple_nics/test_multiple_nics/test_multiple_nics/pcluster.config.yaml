@@ -7,6 +7,8 @@ HeadNode:
     ElasticIp: true
   Ssh:
     KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

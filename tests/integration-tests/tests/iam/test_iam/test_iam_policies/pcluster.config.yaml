@@ -11,6 +11,8 @@ HeadNode:
       {% for policy in iam_policies %}
       - Policy: {{ policy }} # Todo: change it to arn instead of name
       {% endfor %}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

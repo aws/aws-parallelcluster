@@ -34,7 +34,6 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
-    SCHEDULERS_SUPPORTING_IMDS_SECURED,
 )
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.utils import get_installed_version
@@ -254,11 +253,6 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
             ),
         ],
     )
-
-
-def get_property_head_node_imds_secured(imds_secured, scheduler):
-    """Return the value for property imds secured."""
-    return imds_secured or (imds_secured is None and scheduler in SCHEDULERS_SUPPORTING_IMDS_SECURED)
 
 
 class PclusterLambdaConstruct(Construct):
