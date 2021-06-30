@@ -11,14 +11,14 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.change import Change
-from pcluster.api.client.model.config_validation_message import ConfigValidationMessage
-from pcluster.api.client.model.update_error import UpdateError
+import pcluster.client
+from pcluster.client.model.change import Change
+from pcluster.client.model.config_validation_message import ConfigValidationMessage
+from pcluster.client.model.update_error import UpdateError
 globals()['Change'] = Change
 globals()['ConfigValidationMessage'] = ConfigValidationMessage
 globals()['UpdateError'] = UpdateError
-from pcluster.api.client.model.update_cluster_bad_request_exception_response_content import UpdateClusterBadRequestExceptionResponseContent
+from pcluster.client.model.update_cluster_bad_request_exception_response_content import UpdateClusterBadRequestExceptionResponseContent
 
 
 class TestUpdateClusterBadRequestExceptionResponseContent(unittest.TestCase):

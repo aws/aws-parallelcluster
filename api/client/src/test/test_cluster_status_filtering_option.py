@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cluster_status_filtering_option import ClusterStatusFilteringOption
+import pcluster.client
+from pcluster.client.model.cluster_status_filtering_option import ClusterStatusFilteringOption
 
 
 class TestClusterStatusFilteringOption(unittest.TestCase):

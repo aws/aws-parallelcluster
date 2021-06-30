@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.compute_fleet_status import ComputeFleetStatus
+import pcluster.client
+from pcluster.client.model.compute_fleet_status import ComputeFleetStatus
 
 
 class TestComputeFleetStatus(unittest.TestCase):

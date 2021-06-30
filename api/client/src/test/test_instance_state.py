@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.instance_state import InstanceState
+import pcluster.client
+from pcluster.client.model.instance_state import InstanceState
 
 
 class TestInstanceState(unittest.TestCase):

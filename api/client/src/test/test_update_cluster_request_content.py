@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.update_cluster_request_content import UpdateClusterRequestContent
+import pcluster.client
+from pcluster.client.model.update_cluster_request_content import UpdateClusterRequestContent
 
 
 class TestUpdateClusterRequestContent(unittest.TestCase):

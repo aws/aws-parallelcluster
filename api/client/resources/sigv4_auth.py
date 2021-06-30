@@ -14,6 +14,7 @@
 
 import boto3
 import botocore
+import json
 
 
 def sigv4_auth(method, host, path, querys, body, headers):
@@ -25,7 +26,9 @@ def sigv4_auth(method, host, path, querys, body, headers):
     url = f"{host}{path}?{request_parameters}"
 
     session = botocore.session.Session()
-    request = botocore.awsrequest.AWSRequest(method=method, url=url, data=body)
+    request = botocore.awsrequest.AWSRequest(method=method,
+                                             url=url,
+                                             data=json.dumps(body))
     botocore.auth.SigV4Auth(session.get_credentials(),
                             "execute-api", region).add_auth(request)
     prepared_request = request.prepare()

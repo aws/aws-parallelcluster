@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.requested_compute_fleet_status import RequestedComputeFleetStatus
+import pcluster.client
+from pcluster.client.model.requested_compute_fleet_status import RequestedComputeFleetStatus
 globals()['RequestedComputeFleetStatus'] = RequestedComputeFleetStatus
-from pcluster.api.client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
+from pcluster.client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
 
 
 class TestUpdateComputeFleetStatusRequestContent(unittest.TestCase):

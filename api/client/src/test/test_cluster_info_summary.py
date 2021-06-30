@@ -11,12 +11,12 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cloud_formation_status import CloudFormationStatus
-from pcluster.api.client.model.cluster_status import ClusterStatus
+import pcluster.client
+from pcluster.client.model.cloud_formation_status import CloudFormationStatus
+from pcluster.client.model.cluster_status import ClusterStatus
 globals()['CloudFormationStatus'] = CloudFormationStatus
 globals()['ClusterStatus'] = ClusterStatus
-from pcluster.api.client.model.cluster_info_summary import ClusterInfoSummary
+from pcluster.client.model.cluster_info_summary import ClusterInfoSummary
 
 
 class TestClusterInfoSummary(unittest.TestCase):

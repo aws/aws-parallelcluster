@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cluster_status import ClusterStatus
+import pcluster.client
+from pcluster.client.model.cluster_status import ClusterStatus
 
 
 class TestClusterStatus(unittest.TestCase):

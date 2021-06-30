@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.tag import Tag
+import pcluster.client
+from pcluster.client.model.tag import Tag
 
 
 class TestTag(unittest.TestCase):

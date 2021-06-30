@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
+import pcluster.client
+from pcluster.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 
 
 class TestNotFoundExceptionResponseContent(unittest.TestCase):

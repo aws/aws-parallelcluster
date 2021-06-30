@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+import pcluster.client
+from pcluster.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
 
 
 class TestLimitExceededExceptionResponseContent(unittest.TestCase):

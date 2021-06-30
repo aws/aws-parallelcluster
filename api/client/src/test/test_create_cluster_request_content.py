@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.create_cluster_request_content import CreateClusterRequestContent
+import pcluster.client
+from pcluster.client.model.create_cluster_request_content import CreateClusterRequestContent
 
 
 class TestCreateClusterRequestContent(unittest.TestCase):

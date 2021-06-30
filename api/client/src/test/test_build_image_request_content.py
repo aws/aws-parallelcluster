@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.build_image_request_content import BuildImageRequestContent
+import pcluster.client
+from pcluster.client.model.build_image_request_content import BuildImageRequestContent
 
 
 class TestBuildImageRequestContent(unittest.TestCase):

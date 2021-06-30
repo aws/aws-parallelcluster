@@ -4,7 +4,7 @@
      none_type,
      validate_and_convert_types
  )
-+from pcluster.api.client.sigv4_auth import sigv4_auth
++from pcluster_client.sigv4_auth import sigv4_auth
  
  
  class ApiClient(object):

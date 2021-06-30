@@ -11,12 +11,12 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cluster_info_summary import ClusterInfoSummary
-from pcluster.api.client.model.config_validation_message import ConfigValidationMessage
+import pcluster.client
+from pcluster.client.model.cluster_info_summary import ClusterInfoSummary
+from pcluster.client.model.config_validation_message import ConfigValidationMessage
 globals()['ClusterInfoSummary'] = ClusterInfoSummary
 globals()['ConfigValidationMessage'] = ConfigValidationMessage
-from pcluster.api.client.model.create_cluster_response_content import CreateClusterResponseContent
+from pcluster.client.model.create_cluster_response_content import CreateClusterResponseContent
 
 
 class TestCreateClusterResponseContent(unittest.TestCase):

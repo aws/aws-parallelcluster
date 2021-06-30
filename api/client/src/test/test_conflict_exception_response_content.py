@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.conflict_exception_response_content import ConflictExceptionResponseContent
+import pcluster.client
+from pcluster.client.model.conflict_exception_response_content import ConflictExceptionResponseContent
 
 
 class TestConflictExceptionResponseContent(unittest.TestCase):

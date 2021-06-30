@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.update_error import UpdateError
+import pcluster.client
+from pcluster.client.model.update_error import UpdateError
 
 
 class TestUpdateError(unittest.TestCase):

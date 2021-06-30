@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.image_build_status import ImageBuildStatus
+import pcluster.client
+from pcluster.client.model.image_build_status import ImageBuildStatus
 
 
 class TestImageBuildStatus(unittest.TestCase):

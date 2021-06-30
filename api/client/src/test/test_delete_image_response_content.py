@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.image_info_summary import ImageInfoSummary
+import pcluster.client
+from pcluster.client.model.image_info_summary import ImageInfoSummary
 globals()['ImageInfoSummary'] = ImageInfoSummary
-from pcluster.api.client.model.delete_image_response_content import DeleteImageResponseContent
+from pcluster.client.model.delete_image_response_content import DeleteImageResponseContent
 
 
 class TestDeleteImageResponseContent(unittest.TestCase):

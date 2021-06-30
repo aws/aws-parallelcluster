@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.ami_info import AmiInfo
+import pcluster.client
+from pcluster.client.model.ami_info import AmiInfo
 
 
 class TestAmiInfo(unittest.TestCase):

@@ -11,10 +11,10 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.cluster_info_summary import ClusterInfoSummary
+import pcluster.client
+from pcluster.client.model.cluster_info_summary import ClusterInfoSummary
 globals()['ClusterInfoSummary'] = ClusterInfoSummary
-from pcluster.api.client.model.delete_cluster_response_content import DeleteClusterResponseContent
+from pcluster.client.model.delete_cluster_response_content import DeleteClusterResponseContent
 
 
 class TestDeleteClusterResponseContent(unittest.TestCase):

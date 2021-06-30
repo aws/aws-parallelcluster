@@ -10,8 +10,8 @@
 
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.api.image_operations_api import ImageOperationsApi  # noqa: E501
+import pcluster.client
+from pcluster.client.api.image_operations_api import ImageOperationsApi  # noqa: E501
 
 
 class TestImageOperationsApi(unittest.TestCase):

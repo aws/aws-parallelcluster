@@ -11,8 +11,8 @@
 import sys
 import unittest
 
-import pcluster.api.client
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster.client
+from pcluster.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
 
 
 class TestUnauthorizedClientErrorResponseContent(unittest.TestCase):

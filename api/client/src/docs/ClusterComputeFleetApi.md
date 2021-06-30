@@ -1,4 +1,4 @@
-# pcluster.api.client.ClusterComputeFleetApi
+# pcluster_client.ClusterComputeFleetApi
 
 All URIs are relative to *http://localhost*
 
@@ -20,18 +20,18 @@ Describe the status of the compute fleet
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import cluster_compute_fleet_api
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
-from pcluster.api.client.model.describe_compute_fleet_status_response_content import DescribeComputeFleetStatusResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import cluster_compute_fleet_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.describe_compute_fleet_status_response_content import DescribeComputeFleetStatusResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -47,7 +47,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
@@ -57,7 +57,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.describe_compute_fleet_status(cluster_name)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet_status: %s\n" % e)
 
     # example passing only required values which don't have defaults set
@@ -65,7 +65,7 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     try:
         api_response = api_instance.describe_compute_fleet_status(cluster_name, region=region)
         pprint(api_response)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet_status: %s\n" % e)
 ```
 
@@ -115,18 +115,18 @@ Update the status of the cluster compute fleet.
 * Api Key Authentication (aws.auth.sigv4):
 ```python
 import time
-import pcluster.api.client
-from pcluster.api.client.api import cluster_compute_fleet_api
-from pcluster.api.client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster.api.client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
-from pcluster.api.client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster.api.client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pcluster.api.client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
-from pcluster.api.client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+import pcluster_client
+from pcluster_client.api import cluster_compute_fleet_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster.api.client.Configuration(
+configuration = pcluster_client.Configuration(
     host = "http://localhost"
 )
 
@@ -142,7 +142,7 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 # configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
 
 # Enter a context with an instance of the API client
-with pcluster.api.client.ApiClient(configuration) as api_client:
+with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
@@ -154,14 +154,14 @@ with pcluster.api.client.ApiClient(configuration) as api_client:
     # example passing only required values which don't have defaults set
     try:
         api_instance.update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterComputeFleetApi->update_compute_fleet_status: %s\n" % e)
 
     # example passing only required values which don't have defaults set
     # and optional values
     try:
         api_instance.update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content, region=region)
-    except pcluster.api.client.ApiException as e:
+    except pcluster_client.ApiException as e:
         print("Exception when calling ClusterComputeFleetApi->update_compute_fleet_status: %s\n" % e)
 ```
 
