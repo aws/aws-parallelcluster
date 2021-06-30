@@ -21,11 +21,9 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 
-from tests.common.assertions import assert_aws_identity_access_is_correct, assert_head_node_is_running
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.utils import retrieve_latest_ami
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
@@ -190,42 +188,6 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # - Check compute root volume size
     # - Check pre/post install scripts
     # - Test extra json
-
-
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
-@pytest.mark.usefixtures("instance", "scheduler")
-@pytest.mark.parametrize(
-    "imds_secured, imds_secured_updated, users_allow_list",
-    [
-        (True, False, {"root": True, "pcluster": True, "slurm": True}),
-        (False, True, {"root": True, "pcluster": True, "slurm": False}),
-    ],
-)
-def test_update_imds_secured(
-    imds_secured,
-    imds_secured_updated,
-    users_allow_list,
-    region,
-    os,
-    pcluster_config_reader,
-    clusters_factory,
-    architecture,
-    test_datadir,
-):
-    """Test IMDS access with different configurations"""
-    custom_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
-    cluster_config = pcluster_config_reader(custom_ami=custom_ami, imds_secured=imds_secured)
-    cluster = clusters_factory(cluster_config, raise_on_error=False)
-
-    assert_head_node_is_running(region, cluster)
-
-    cluster_config_updated = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml", custom_ami=custom_ami, imds_secured=imds_secured_updated
-    )
-    cluster.update(str(cluster_config_updated), force=True)
-
-    assert_head_node_is_running(region, cluster)
-    assert_aws_identity_access_is_correct(cluster, users_allow_list)
 
 
 def _assert_launch_templates_config(queues_config, cluster_name, region):
