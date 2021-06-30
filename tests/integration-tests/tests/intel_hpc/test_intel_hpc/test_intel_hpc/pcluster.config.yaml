@@ -9,6 +9,8 @@ HeadNode:
   LocalStorage:
     RootVolume:
       Size: 80
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

@@ -257,7 +257,7 @@ class AWSBatchCliConfig:
 
                 # get proxy
                 self.proxy = config.get(cluster_section, "proxy")
-                if not self.proxy == "NONE":
+                if self.proxy != "NONE":
                     log.info("Configured proxy is: %s" % self.proxy)
             except NoSectionError:
                 # initialize by getting stack info

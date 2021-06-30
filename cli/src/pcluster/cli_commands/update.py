@@ -15,7 +15,7 @@ from typing import List
 
 from tabulate import tabulate
 
-import pcluster.utils as utils
+from pcluster import utils
 from pcluster.api.pcluster_api import ClusterInfo, PclusterApi
 from pcluster.aws.common import get_region
 from pcluster.cli_commands.commands import print_stack_outputs, read_config_file

@@ -6,6 +6,8 @@ HeadNode:
     SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
@@ -28,4 +30,3 @@ SharedStorage:
   - MountDir: {{ mount_dir }}
     StorageType: Ebs
     Name: ebs
-

@@ -10,6 +10,8 @@ HeadNode:
     Enabled: true
     Port: {{ dcv_port }}
     AllowedIps: {{ access_from }}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

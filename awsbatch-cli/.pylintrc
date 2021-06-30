@@ -158,6 +158,8 @@ disable=print-statement,
         unused-argument,
         wrong-import-order,
         too-many-branches,
+        arguments-renamed,
+        unused-private-member,
 
 
 # Enable the message, report, category or checker with the given id(s). You can
