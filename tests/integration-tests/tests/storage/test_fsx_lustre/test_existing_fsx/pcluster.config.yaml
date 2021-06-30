@@ -9,6 +9,8 @@ HeadNode:
   Iam:
     S3Access:
       - BucketName: {{ bucket_name }}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

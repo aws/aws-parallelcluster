@@ -160,6 +160,8 @@ disable=print-statement,
         unused-import, # handled by flake8
         no-else-return, # A complete if else block can improve readability even with returns in the body
         wrong-import-order,
+        # FIXME Refactor/cleanup cli code to solve following warnings
+        duplicate-code
 
 
 # Enable the message, report, category or checker with the given id(s). You can
