@@ -135,10 +135,12 @@ class ParallelClusterFlaskApp:
     @log_response_error
     def _handle_problem_exception(exception: ProblemException):
         """Render a ProblemException according to ParallelCluster API specs."""
-        # Connexion does not return a clear error message on missing request body
-        if "None is not of type 'object'" in exception.detail:
-            exception.detail = "request body is required"
-        message = f"{exception.title}: {exception.detail}"
+        message = f"{exception.title}"
+        if exception.detail:
+            # Connexion does not return a clear error message on missing request body
+            if "None is not of type 'object'" in exception.detail:
+                exception.detail = "request body is required"
+            message += f": {exception.detail}"
         response = jsonify({"message": message})
         response.status_code = exception.status
         return response
