@@ -11,11 +11,13 @@
 import logging
 import random
 import string
+import time
 
 import boto3
 import pkg_resources
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
 from utils import get_instance_info
@@ -155,3 +157,23 @@ def generate_random_string():
     Example: 4htvo26lchkqeho1
     """
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
+
+
+def reboot_head_node(cluster, remote_command_executor=None):
+    logging.info(f"Rebooting head node for cluster: {cluster.name}")
+    if not remote_command_executor:
+        remote_command_executor = RemoteCommandExecutor(cluster)
+    command = "sudo reboot"
+    result = remote_command_executor.run_remote_command(command, raise_on_error=False)
+    logging.info(f"result.failed={result.failed}")
+    logging.info(f"result.stdout={result.stdout}")
+    wait_head_node_running(cluster)
+    time.sleep(120)  # Wait time is required for the head node to complete the reboot
+    logging.info(f"Rebooted head node for cluster: {cluster.name}")
+
+
+def wait_head_node_running(cluster):
+    logging.info(f"Waiting for head node to be running for cluster: {cluster.name}")
+    boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
+        Filters=[{"Name": "ip-address", "Values": [cluster.head_node_ip]}], WaiterConfig={"Delay": 60, "MaxAttempts": 5}
+    )

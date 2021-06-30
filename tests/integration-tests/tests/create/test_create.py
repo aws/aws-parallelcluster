@@ -21,7 +21,7 @@ from tests.common.assertions import (
     assert_errors_in_logs,
     assert_head_node_is_running,
 )
-from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
+from tests.common.utils import get_installed_parallelcluster_version, reboot_head_node, retrieve_latest_ami
 
 
 @pytest.mark.dimensions("eu-central-1", "c5.xlarge", "ubuntu1804", "*")
@@ -93,10 +93,18 @@ def test_create_wrong_pcluster_version(
 def test_create_imds_secured(
     imds_secured, users_allow_list, region, os, pcluster_config_reader, clusters_factory, architecture
 ):
-    """Test IMDS access with different configurations"""
+    """
+    Test IMDS access with different configurations.
+    In particular, it also verifies that IMDS access is preserved on instance reboot.
+    """
     custom_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
     cluster_config = pcluster_config_reader(custom_ami=custom_ami, imds_secured=imds_secured)
     cluster = clusters_factory(cluster_config, raise_on_error=False)
+
+    assert_head_node_is_running(region, cluster)
+    assert_aws_identity_access_is_correct(cluster, users_allow_list)
+
+    reboot_head_node(cluster)
 
     assert_head_node_is_running(region, cluster)
     assert_aws_identity_access_is_correct(cluster, users_allow_list)
