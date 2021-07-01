@@ -483,6 +483,13 @@ storage:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
+  # Ephemeral test requires instance type with instance store
+  test_ephemeral.py::test_head_node_stop:
+    dimensions:
+      - regions: ["us-east-1"]
+        instances: ["m5d.xlarge", "h1.2xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
 tags:
   test_tag_propagation.py::test_tag_propagation:
     dimensions:
