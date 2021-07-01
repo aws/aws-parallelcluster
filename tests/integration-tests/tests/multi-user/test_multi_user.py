@@ -204,7 +204,7 @@ def test_create_multi_user_with_opsworks(
     # assert_ssh_login(cluster=cluster, username=ssh_user_name, ssh_key=private_key_path)
 
     # Need to delete the cluster before deleting OpsWorks stack
-    cluster.delete()
+    # cluster.delete()
 
 
 def _get_head_node_instance(cluster):
