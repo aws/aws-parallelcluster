@@ -488,7 +488,7 @@ class Cluster:
         except StackNotFoundError:
             raise
         except Exception as e:
-            self._terminate_nodes()
+            self.terminate_nodes()
             raise _cluster_error_mapper(e, f"Cluster {self.name} did not delete successfully. {e}")
 
     def _persist_cloudwatch_log_groups(self):
