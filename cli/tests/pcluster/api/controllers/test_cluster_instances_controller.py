@@ -9,6 +9,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 
 from pcluster.api.models import NodeType
+from pcluster.aws.common import StackNotFoundError
 
 
 def cfn_describe_instances_mock_response(
@@ -175,3 +176,96 @@ class TestDescribeClusterInstances:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_response)
+
+
+def cfn_describe_stack_mock_response(scheduler="slurm", version="3.0.0", **kwargs):
+    stack_data = {
+        "StackName": "clustername",
+        "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": scheduler}],
+        "Tags": [{"Key": "parallelcluster:version", "Value": version}],
+    }
+    return stack_data
+
+
+class TestDeleteClusterInstances:
+    url = "/v3/clusters/{cluster_name}/instances"
+    method = "DELETE"
+
+    def _send_test_request(self, client, cluster_name="clustername", region="us-east-1", force=False):
+        query_string = []
+        if region:
+            query_string.append(("region", region))
+        if force:
+            query_string.append(("force", force))
+
+        headers = {
+            "Accept": "application/json",
+        }
+        return client.open(
+            self.url.format(cluster_name=cluster_name), method=self.method, headers=headers, query_string=query_string
+        )
+
+    @pytest.mark.parametrize("stack_exists, force", [(True, False), (False, True), (True, True)])
+    def test_successful_request(self, mocker, client, stack_exists, force):
+        if stack_exists:
+            mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response())
+        else:
+            mocker.patch(
+                "pcluster.aws.cfn.CfnClient.describe_stack",
+                side_effect=StackNotFoundError(function_name="describestack", stack_name="stack_name"),
+            )
+        instance_ids = ["fakeinstanceid1", "fakeinstanceid2"]
+        mocker.patch("pcluster.aws.ec2.Ec2Client.list_instance_ids", return_value=instance_ids)
+        terminate_instance_mock = mocker.patch("pcluster.aws.ec2.Ec2Client.terminate_instances")
+        response = self._send_test_request(client, force=force)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(202)
+            terminate_instance_mock.assert_called_with(tuple(instance_ids))
+
+    @pytest.mark.parametrize(
+        "stack_param, force, expected_response",
+        [
+            (
+                {"scheduler": "awsbatch"},
+                False,
+                {"message": "Bad Request: the delete cluster instances operation does not support AWS Batch clusters."},
+            ),
+            (
+                {"version": "2.11.0"},
+                True,
+                {
+                    "message": "Bad Request: cluster 'clustername' belongs to "
+                    "an incompatible ParallelCluster major version."
+                },
+            ),
+            (
+                {},
+                "wrongforce",
+                {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'force'"},
+            ),
+        ],
+    )
+    def test_malformed_request(self, mocker, client, stack_param, force, expected_response):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response(**stack_param)
+        )
+        response = self._send_test_request(client, force=force)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_stack_not_exist_request(self, mocker, client):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            side_effect=StackNotFoundError(function_name="describestack", stack_name="stack_name"),
+        )
+        response = self._send_test_request(client)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(404)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "cluster 'clustername' does not exist or belongs to an "
+                    "incompatible ParallelCluster major version. To force the deletion of all compute nodes,"
+                    " please use the `force` param."
+                }
+            )

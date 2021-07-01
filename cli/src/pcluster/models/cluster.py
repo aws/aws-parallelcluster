@@ -565,6 +565,7 @@ class Cluster:
             LOGGER.info("Compute fleet cleaned up.")
         except Exception as e:
             LOGGER.error("Failed when checking for running EC2 instances with error: %s", str(e))
+            raise _cluster_error_mapper(e, f"Unable to delete running EC2 instances with error: {e}")
 
     @property
     def compute_instances(self) -> List[ClusterInstance]:
