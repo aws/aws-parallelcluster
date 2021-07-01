@@ -149,6 +149,8 @@ def test_create_multi_user_with_opsworks(
 ):
     """Test the creation of a cluster whose users are managed with OpsWorks."""
 
+    logging.info("TROUBLESHOOTING log")
+
     # Create IAM resources required by OpsWorks stack
     opsworks_service_role_policy_arn = create_policy_from_file(
         policy_factory, f"{test_datadir}/opsworks_service_role_policy.json"
