@@ -9,21 +9,23 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 from itertools import product
 from re import escape
 
 import pytest
 from assertpy import assert_that
-from botocore.exceptions import ClientError, EndpointConnectionError
+from botocore.exceptions import EndpointConnectionError
 
 import pcluster.validators.awsbatch_validators as awsbatch_validators
+from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.aws.batch import BatchErrorMessageParsingException
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
     AwsBatchInstancesArchitectureCompatibilityValidator,
     AwsBatchRegionValidator,
-    BatchErrorMessageParsingException,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import MockedBoto3Request
@@ -34,7 +36,7 @@ from .utils import assert_failure_messages
 @pytest.fixture()
 def boto3_stubber_path():
     """Specify that boto3_mocker should stub calls to boto3 for the pcluster.utils module."""
-    return "pcluster.validators.awsbatch_validators.boto3"
+    return "pcluster.aws.common.boto3"
 
 
 @pytest.mark.parametrize(
@@ -140,31 +142,23 @@ def test_awsbatch_instances_architecture_compatibility_validator(
 
 
 @pytest.mark.parametrize(
-    "raise_error_api_function, raise_error_parsing_function, types_parsed_from_emsg_are_known",
-    product([True, False], repeat=3),
+    "raise_error_parsing_function, types_parsed_from_emsg_are_known", product([True, False], repeat=2)
 )
-def test_get_supported_batch_instance_types(
-    mocker, raise_error_api_function, raise_error_parsing_function, types_parsed_from_emsg_are_known
-):
+def test_get_supported_batch_instance_types(mocker, raise_error_parsing_function, types_parsed_from_emsg_are_known):
     """Verify functions are called and errors are handled as expected when getting supported batch instance types."""
     # Dummy values
-    dummy_error_message = "dummy error message"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     dummy_batch_instance_types = ["batch-instance-type"]
     dummy_batch_instance_families = ["batch-instance-family"]
     dummy_all_instance_types = dummy_batch_instance_types + ["non-batch-instance-type"]
     dummy_all_instance_families = dummy_batch_instance_families + ["non-batch-instance-family"]
     # Mock all functions called by the function
-    api_function_patch = mocker.patch(
-        "pcluster.validators.awsbatch_validators._get_cce_emsg_containing_supported_instance_types",
-        side_effect=BatchErrorMessageParsingException if raise_error_api_function else lambda: dummy_error_message,
-    )
     parsing_function_patch = mocker.patch(
-        "pcluster.validators.awsbatch_validators._parse_supported_instance_types_and_families_from_cce_emsg",
+        "pcluster.aws.batch.BatchClient.get_supported_instance_types_and_families",
         side_effect=BatchErrorMessageParsingException
         if raise_error_parsing_function
-        else lambda emsg: dummy_batch_instance_types + dummy_batch_instance_families,
+        else lambda: dummy_batch_instance_types + dummy_batch_instance_families,
     )
-    mock_aws_api(mocker)
     supported_instance_types_patch = mocker.patch(
         "pcluster.aws.ec2.Ec2Client.list_instance_types", return_value=dummy_all_instance_types
     )
@@ -181,18 +175,14 @@ def test_get_supported_batch_instance_types(
     returned_value = awsbatch_validators._get_supported_batch_instance_types()
     # The functions that call the Batch CreateComputeEnvironment API, and those that get all
     # supported instance types and families should always be called.
-    assert_that(api_function_patch.call_count).is_equal_to(1)
     assert_that(supported_instance_types_patch.call_count).is_equal_to(1)
     get_instance_families_patch.assert_called_with(dummy_all_instance_types)
     # The function that parses the error message returned by the Batch API is only called if the
     # function that calls the API succeeds.
-    if raise_error_api_function:
-        parsing_function_patch.assert_not_called()
-    else:
-        parsing_function_patch.assert_called_with(dummy_error_message)
+    parsing_function_patch.assert_called()
     # The function that ensures the values parsed from the CCE error message are valid is only called if
     # the API call and parsing succeed.
-    if any([raise_error_api_function, raise_error_parsing_function]):
+    if raise_error_parsing_function:
         candidates_are_supported_patch.assert_not_called()
     else:
         candidates_are_supported_patch.assert_called_with(
@@ -203,7 +193,7 @@ def test_get_supported_batch_instance_types(
     # used as a fallback.
     assert_that(returned_value).is_equal_to(
         dummy_all_instance_types + dummy_all_instance_families + assumed_supported
-        if any([raise_error_api_function, raise_error_parsing_function, not types_parsed_from_emsg_are_known])
+        if any([raise_error_parsing_function, not types_parsed_from_emsg_are_known])
         else dummy_batch_instance_types + dummy_batch_instance_families
     )
 
@@ -237,72 +227,75 @@ def test_get_supported_batch_instance_types(
     ],
 )
 def test_parse_supported_instance_types_and_families_from_cce_emsg(
-    caplog, api_emsg, match_expected, expected_return_value
+    mocker, caplog, api_emsg, match_expected, expected_return_value
 ):
     """Verify parsing supported instance types from the CreateComputeEnvironment error message works as expected."""
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    mocker.patch(
+        "pcluster.aws.batch.BatchClient._get_cce_emsg_containing_supported_instance_types", return_value=api_emsg
+    )
     results_log_msg_preamble = "Parsed the following instance types and families from Batch CCE error message:"
     caplog.set_level(logging.DEBUG, logger="pcluster")
     if match_expected:
-        assert_that(
-            awsbatch_validators._parse_supported_instance_types_and_families_from_cce_emsg(api_emsg)
-        ).is_equal_to(expected_return_value)
+        assert_that(AWSApi.instance().batch.get_supported_instance_types_and_families()).is_equal_to(
+            expected_return_value
+        )
         assert_that(caplog.text).contains(results_log_msg_preamble)
     else:
         with pytest.raises(
             BatchErrorMessageParsingException,
             match="Could not parse supported instance types from the following: {0}".format(escape(api_emsg)),
         ):
-            awsbatch_validators._parse_supported_instance_types_and_families_from_cce_emsg(api_emsg)
+            AWSApi.instance().batch.get_supported_instance_types_and_families()
         assert_that(caplog.text).does_not_contain(results_log_msg_preamble)
 
 
-@pytest.mark.parametrize("error_type", [ClientError, EndpointConnectionError(endpoint_url="dummy_endpoint"), None])
-def test_get_cce_emsg_containing_supported_instance_types(mocker, aws_api_mock, boto3_stubber, error_type):
+@pytest.mark.parametrize("error_type", [EndpointConnectionError(endpoint_url="dummy_endpoint"), None])
+def test_get_cce_emsg_containing_supported_instance_types(mocker, error_type):
+    """Verify CreateComputeEnvironment call to get error message with supported instance types behaves as expected."""
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    call_api_patch = mocker.patch(
+        "pcluster.aws.batch.BatchClient._call_create_compute_environment_with_bad_instance_type",
+        side_effect=error_type,
+    )
+    mocker.patch("pcluster.aws.batch.get_region", return_value="eu-west-2")
+    expected_message = (
+        "Could not connect to the batch endpoint for region eu-west-2"
+        if isinstance(error_type, EndpointConnectionError)
+        else "did not result in an error as expected"
+    )
+    with pytest.raises(BatchErrorMessageParsingException, match=expected_message):
+        AWSApi.instance().batch._get_cce_emsg_containing_supported_instance_types()
+    assert_that(call_api_patch.call_count).is_equal_to(1)
+
+
+def test_get_cce_emsg_containing_supported_instance_types_client_error(boto3_stubber):
     """Verify CreateComputeEnvironment call to get error message with supported instance types behaves as expected."""
     dummy_error_message = "dummy message"
-    call_api_patch = None
-    if error_type == ClientError:
-        mocked_requests = [
-            MockedBoto3Request(
-                method="create_compute_environment",
-                expected_params={
-                    "computeEnvironmentName": "dummy",
-                    "type": "MANAGED",
-                    "computeResources": {
-                        "type": "EC2",
-                        "minvCpus": 0,
-                        "maxvCpus": 0,
-                        "instanceTypes": ["p8.84xlarge"],
-                        "subnets": ["subnet-12345"],
-                        "securityGroupIds": ["sg-12345"],
-                        "instanceRole": "ecsInstanceRole",
-                    },
-                    "serviceRole": "AWSBatchServiceRole",
+    mocked_requests = [
+        MockedBoto3Request(
+            method="create_compute_environment",
+            expected_params={
+                "computeEnvironmentName": "dummy",
+                "type": "MANAGED",
+                "computeResources": {
+                    "type": "EC2",
+                    "minvCpus": 0,
+                    "maxvCpus": 0,
+                    "instanceTypes": ["p8.84xlarge"],
+                    "subnets": ["subnet-12345"],
+                    "securityGroupIds": ["sg-12345"],
+                    "instanceRole": "ecsInstanceRole",
                 },
-                response=dummy_error_message,
-                generate_error=True,
-            )
-        ]
-        boto3_stubber("batch", mocked_requests)
-    else:
-        call_api_patch = mocker.patch(
-            "pcluster.validators.awsbatch_validators._call_create_compute_environment_with_bad_instance_type",
-            side_effect=error_type,
+                "serviceRole": "AWSBatchServiceRole",
+            },
+            response=dummy_error_message,
+            generate_error=True,
         )
-
-    if error_type == ClientError:
-        return_value = awsbatch_validators._get_cce_emsg_containing_supported_instance_types()
-        assert_that(return_value).is_equal_to(dummy_error_message)
-    else:
-        mocker.patch("pcluster.validators.awsbatch_validators.get_region", return_value="eu-west-2")
-        expected_message = (
-            "Could not connect to the batch endpoint for region eu-west-2"
-            if isinstance(error_type, EndpointConnectionError)
-            else "did not result in an error as expected"
-        )
-        with pytest.raises(BatchErrorMessageParsingException, match=expected_message):
-            awsbatch_validators._get_cce_emsg_containing_supported_instance_types()
-        assert_that(call_api_patch.call_count).is_equal_to(1)
+    ]
+    boto3_stubber("batch", mocked_requests)
+    return_value = AWSApi.instance().batch._get_cce_emsg_containing_supported_instance_types()
+    assert_that(return_value).is_equal_to(dummy_error_message)
 
 
 @pytest.mark.parametrize(

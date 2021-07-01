@@ -24,6 +24,14 @@ def clear_env():
         del os.environ["AWS_DEFAULT_REGION"]
 
 
+@pytest.fixture(autouse=True)
+def reset_aws_api():
+    """Reset AWSApi singleton to remove dependencies between tests."""
+    from pcluster.aws.aws_api import AWSApi
+
+    AWSApi._instance = None
+
+
 @pytest.fixture
 def failed_with_message(capsys):
     """Assert that the command exited with a specific error message."""
@@ -55,24 +63,6 @@ def test_datadir(request, datadir):
 
     class_name = request.cls.__name__
     return datadir / "{0}/{1}".format(class_name, function_name)
-
-
-@pytest.fixture()
-def convert_to_date_mock(request, mocker):
-    """Mock convert_to_date function by enforcing the timezone to UTC."""
-    module_under_test = request.node.fspath.purebasename.replace("test_", "")
-
-    def _convert_to_date_utc(*args, **kwargs):
-        from dateutil import tz
-
-        from awsbatch.utils import convert_to_date
-
-        # executes convert_to_date but overrides arguments so that timezone is enforced to utc
-        if "timezone" in kwargs:
-            del kwargs["timezone"]
-        return convert_to_date(timezone=tz.tzutc(), *args, **kwargs)
-
-    return mocker.patch("awsbatch." + module_under_test + ".convert_to_date", wraps=_convert_to_date_utc)
 
 
 @pytest.fixture()
@@ -138,25 +128,6 @@ def boto3_stubber(mocker, boto3_stubber_path):
     for stubber in created_stubbers:
         stubber.assert_no_pending_responses()
         stubber.deactivate()
-
-
-DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG = {
-    "region": "region",
-    "proxy": None,
-    "aws_access_key_id": "aws_access_key_id",
-    "aws_secret_access_key": "aws_secret_access_key",
-    "job_queue": "job_queue",
-}
-
-
-@pytest.fixture()
-def awsbatchcliconfig_mock(request, mocker):
-    """Mock AWSBatchCliConfig object with a default mock."""
-    module_under_test = request.node.fspath.purebasename.replace("test_", "")
-    mock = mocker.patch("awsbatch." + module_under_test + ".AWSBatchCliConfig", autospec=True)
-    for key, value in DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG.items():
-        setattr(mock.return_value, key, value)
-    return mock
 
 
 @pytest.fixture()
@@ -227,12 +198,15 @@ def unset_env():
 
 @pytest.fixture()
 def run_cli(mocker, capsys):
-    def _run_cli(command, expect_failure=False):
+    def _run_cli(command, expect_failure=False, expect_message=None):
         mocker.patch.object(sys, "argv", command)
         with pytest.raises(SystemExit) as sysexit:
             ParallelClusterCli().handle_command()
         if expect_failure:
-            assert_that(sysexit.value.code).is_greater_than(0)
+            if expect_message:
+                assert_that(sysexit.value.code).contains(expect_message)
+            else:
+                assert_that(sysexit.value.code).is_greater_than(0)
         else:
             assert_that(sysexit.value.code).is_equal_to(0)
 
@@ -244,8 +218,8 @@ def assert_out_err(capsys):
     def _assert_out_err(expected_out, expected_err):
         out_err = capsys.readouterr()
         with soft_assertions():
-            assert_that(out_err.out.strip()).is_equal_to(expected_out)
-            assert_that(out_err.err.strip()).is_equal_to(expected_err)
+            assert_that(out_err.out.strip()).contains(expected_out)
+            assert_that(out_err.err.strip()).contains(expected_err)
 
     return _assert_out_err
 

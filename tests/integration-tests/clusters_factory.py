@@ -18,6 +18,7 @@ import boto3
 import yaml
 from retrying import retry
 from utils import (
+    dict_add_nested_key,
     retrieve_cfn_outputs,
     retrieve_cfn_parameters,
     retrieve_cfn_resources,
@@ -35,7 +36,7 @@ class Cluster:
         self.ssh_key = ssh_key
         self.region = region
         with open(config_file) as conf_file:
-            self.config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+            self.config = yaml.safe_load(conf_file)
         self.has_been_deleted = False
         self.create_complete = False
         self.__cfn_parameters = None
@@ -46,14 +47,14 @@ class Cluster:
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
         return "{class_name}({attrs})".format(class_name=self.__class__.__name__, attrs=attrs)
 
-    def update(self, force=True):
+    def update(self, config_file, force=True):
         """
         Update a cluster with an already updated config.
         :param force: if to use --force flag when update
         """
         # update the cluster
-        logging.info("Updating cluster {0} with config {1}".format(self.name, self.config_file))
-        command = ["pcluster", "update", "--config", self.config_file]
+        logging.info("Updating cluster {0} with config {1}".format(self.name, config_file))
+        command = ["pcluster", "update", "--config", config_file]
         if force:
             command.append("--force")
         command.append(self.name)
@@ -63,20 +64,39 @@ class Cluster:
             logging.error(error)
             raise Exception(error)
         logging.info("Cluster {0} updated successfully".format(self.name))
+        # Only update config file attribute if update is successful
+        self.config_file = config_file
+        with open(self.config_file) as conf_file:
+            self.config = yaml.safe_load(conf_file)
 
         # reset cached properties
         self._reset_cached_properties()
 
         return result
 
-    def delete(self, keep_logs=False):
+    def delete(self, delete_logs=False):
         """Delete this cluster."""
         if self.has_been_deleted:
             return
         cmd_args = ["pcluster", "delete", self.name]
-        if keep_logs:
+        if delete_logs:
+            logging.warning("Updating stack %s to delete CloudWatch logs on stack deletion.", self.name)
+            try:
+                dict_add_nested_key(
+                    self.config,
+                    False,
+                    ("Monitoring", "Logs", "CloudWatch", "RetainOnDelete"),
+                )
+                with open(self.config_file, "w") as conf_file:
+                    yaml.dump(self.config, conf_file)
+                self.update(self.config_file, force=True)
+            except subprocess.CalledProcessError as e:
+                logging.error(
+                    "Failed updating cluster to delete log with error:\n%s\nand output:\n%s", e.stderr, e.stdout
+                )
+                raise
+        else:
             logging.warning("CloudWatch logs for cluster %s are preserved due to failure.", self.name)
-            cmd_args.append("--keep-logs")
         try:
             result = run_command(cmd_args, log_error=False)
             if "DELETE_FAILED" in result.stdout:
@@ -85,10 +105,10 @@ class Cluster:
                 raise Exception(error)
             logging.info("Cluster {0} deleted successfully".format(self.name))
         except subprocess.CalledProcessError as e:
-            if re.search(r"Stack with id parallelcluster-.+ does not exist", e.stdout):
+            if re.search(f"Stack with id {self.name} does not exist", e.stdout):
                 pass
             else:
-                logging.error("Failed destroying cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+                logging.error("Failed destroying cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
                 raise
         self.has_been_deleted = True
 
@@ -100,7 +120,7 @@ class Cluster:
             logging.info("Cluster {0} started successfully".format(self.name))
             return result.stdout
         except subprocess.CalledProcessError as e:
-            logging.error("Failed starting cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            logging.error("Failed starting cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
     def stop(self):
@@ -111,7 +131,7 @@ class Cluster:
             logging.info("Cluster {0} stopped successfully".format(self.name))
             return result.stdout
         except subprocess.CalledProcessError as e:
-            logging.error("Failed stopping cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
     def status(self):
@@ -122,9 +142,7 @@ class Cluster:
             logging.info("Get cluster {0} status successfully".format(self.name))
             return result.stdout
         except subprocess.CalledProcessError as e:
-            logging.error(
-                "Failed when getting cluster status with with error:\n%s\nand output:\n%s", e.stderr, e.stdout
-            )
+            logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
     def instances(self, desired_instance_role=None):
@@ -143,15 +161,52 @@ class Cluster:
                     cluster_instances.append(instance_id)
             return cluster_instances
         except subprocess.CalledProcessError as e:
-            logging.error(
-                "Failed when getting cluster instances with with error:\n%s\nand output:\n%s", e.stderr, e.stdout
-            )
+            logging.error("Failed when getting cluster instances with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
+    def export_logs(self, bucket, output, bucket_prefix=None):
+        """Run pcluster export-cluster-logs and return the result."""
+        cmd_args = ["pcluster", "export-cluster-logs", self.name, "--bucket", bucket, "--output", output]
+        if bucket_prefix:
+            cmd_args += ["--bucket-prefix", bucket_prefix]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Cluster's logs exported successfully")
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed exporting cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
+    def list_logs(self):
+        """Run pcluster list-cluster-logs and return the result."""
+        cmd_args = ["pcluster", "list-cluster-logs", self.name]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Cluster's logs listed successfully")
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed listing cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
+    def get_log_events(self, log_stream, head=None, tail=None):
+        """Run pcluster get-cluster-log-events and return the result."""
+        cmd_args = ["pcluster", "get-cluster-log-events", self.name, "--log-stream-name", log_stream]
+        if head:
+            cmd_args += ["--head", str(head)]
+        if tail:
+            cmd_args += ["--tail", str(tail)]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Log events listed successfully")
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed listing log events with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
     @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""
-        return "parallelcluster-" + self.name
+        return self.name
 
     @property
     def head_node_ip(self):
@@ -161,7 +216,7 @@ class Cluster:
         else:
             ec2 = boto3.client("ec2")
             filters = [
-                {"Name": "tag:parallelcluster:application", "Values": [self.cfn_name]},
+                {"Name": "tag:parallelcluster:cluster-name", "Values": [self.cfn_name]},
                 {"Name": "instance-state-name", "Values": ["running"]},
                 {"Name": "tag:parallelcluster:node-type", "Values": ["HeadNode"]},
             ]
@@ -215,9 +270,9 @@ class Cluster:
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
 
-    def __init__(self, keep_logs_on_failure=False):
+    def __init__(self, delete_logs_on_success=False):
         self.__created_clusters = {}
-        self._keep_logs_on_failure = keep_logs_on_failure
+        self._delete_logs_on_success = delete_logs_on_success
 
     def create_cluster(self, cluster, extra_args=None, raise_on_error=True):
         """
@@ -259,29 +314,32 @@ class ClustersFactory:
         logging.info("Sleeping for 30 seconds in case cluster is not ready yet")
         time.sleep(30)
 
-    @retry(stop_max_attempt_number=5, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
-    def destroy_cluster(self, name, keep_logs=False):
+    def destroy_cluster(self, name, test_passed):
         """Destroy a created cluster."""
         logging.info("Destroying cluster {0}".format(name))
         if name in self.__created_clusters:
-            keep_logs = keep_logs or (self._keep_logs_on_failure and not self.__created_clusters[name].create_complete)
+            delete_logs = test_passed and self._delete_logs_on_success and self.__created_clusters[name].create_complete
             try:
-                self.__created_clusters[name].delete(keep_logs=keep_logs)
-            except subprocess.CalledProcessError as e:
+                self.__created_clusters[name].delete(delete_logs=delete_logs)
+            except Exception as e:
                 logging.error(
-                    "Failed when deleting cluster %s with error %s. Retrying deletion without --keep-logs.", name, e
+                    "Failed when deleting cluster %s with error %s. Retrying deletion without deleting logs.", name, e
                 )
-                self.__created_clusters[name].delete(keep_logs=False)
+                self._destroy_cluster(name)
             del self.__created_clusters[name]
             logging.info("Cluster {0} deleted successfully".format(name))
         else:
             logging.warning("Couldn't find cluster with name {0}. Skipping deletion.".format(name))
 
-    def destroy_all_clusters(self, keep_logs=False):
+    @retry(stop_max_attempt_number=5, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
+    def _destroy_cluster(self, name):
+        self.__created_clusters[name].delete(delete_logs=False)
+
+    def destroy_all_clusters(self, test_passed):
         """Destroy all created clusters."""
         logging.debug("Destroying all clusters")
         for key in list(self.__created_clusters.keys()):
             try:
-                self.destroy_cluster(key, keep_logs)
+                self.destroy_cluster(key, test_passed)
             except Exception as e:
                 logging.error("Failed when destroying cluster {0} with exception {1}.".format(key, e))

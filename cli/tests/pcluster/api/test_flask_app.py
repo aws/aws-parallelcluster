@@ -60,7 +60,7 @@ class TestParallelClusterFlaskApp:
         self._assert_log_message(
             caplog,
             logging.INFO,
-            "Handling exception (status code 405): The method is not allowed for the requested URL.",
+            "Handling exception (status code 405): {'message': 'The method is not allowed for the requested URL.'}",
         )
 
         caplog.clear()
@@ -76,7 +76,11 @@ class TestParallelClusterFlaskApp:
             code=500,
         )
         self._assert_log_message(
-            caplog, logging.ERROR, "Handling exception (status code 500): The server encountered an internal error"
+            caplog,
+            logging.ERROR,
+            "Handling exception (status code 500): {'message': 'The server encountered an "
+            "internal error and was unable to complete your request. Either the server is "
+            "overloaded or there is an error in the application.'}",
         )
 
     def test_handle_parallel_cluster_api_exception(self, caplog, flask_app_with_error_route):
@@ -87,7 +91,7 @@ class TestParallelClusterFlaskApp:
         self._assert_log_message(
             caplog,
             logging.INFO,
-            'Handling exception (status code 400): {"message": "Bad Request: invalid request"}',
+            "Handling exception (status code 400): {'message': 'Bad Request: invalid request'}",
         )
 
         caplog.clear()
@@ -99,7 +103,7 @@ class TestParallelClusterFlaskApp:
             body={"message": "failure"},
             code=500,
         )
-        self._assert_log_message(caplog, logging.ERROR, 'Handling exception (status code 500): {"message": "failure"}')
+        self._assert_log_message(caplog, logging.ERROR, "Handling exception (status code 500): {'message': 'failure'}")
 
     def test_handle_unexpected_exception(self, caplog, flask_app_with_error_route):
         with flask_app_with_error_route(Exception("error")).test_client() as client:
@@ -126,7 +130,7 @@ class TestParallelClusterFlaskApp:
         self._assert_log_message(
             caplog,
             logging.INFO,
-            "Handling exception (status code 400): Bad Request: malformed",
+            "Handling exception (status code 400): {'message': 'Bad Request: malformed'}",
         )
 
     @pytest.mark.parametrize(
@@ -166,4 +170,24 @@ class TestParallelClusterFlaskApp:
             caplog,
             logging.ERROR if expected_status == 500 else logging.INFO,
             expected_response["message"],
+        )
+
+    def test_unsupported_content_type(self, caplog, flask_app_with_error_route):
+        flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).flask_app
+        with flask_app.test_client() as client:
+            headers = {
+                "Content-Type": "text/plain",
+            }
+            query_string = [("region", "eu-west-1")]
+            response = client.post("/v3/clusters", headers=headers, query_string=query_string, data="text")
+        self._assert_response(
+            response,
+            body={"message": "Invalid Content-type (text/plain), expected JSON data"},
+            code=415,
+        )
+        self._assert_log_message(
+            caplog,
+            logging.INFO,
+            "Handling exception (status code 415): {'message': 'Invalid Content-type (text/plain), expected JSON "
+            "data'}",
         )

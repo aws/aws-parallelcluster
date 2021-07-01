@@ -14,6 +14,7 @@ from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
 from pcluster.validators.iam_validators import (
+    AdditionalIamPolicyValidator,
     InstanceProfileValidator,
     RoleValidator,
     _get_resource_name_from_resource_arn,
@@ -90,3 +91,25 @@ def test_instance_profile_validator(mocker, instance_profile_arn, side_effect, e
 def test_get_resource_name_from_resource_arn(resource_arn, expected_resource_name):
     """Verify function that return resource name from resource arn."""
     assert_that(_get_resource_name_from_resource_arn(resource_arn)).is_equal_to(expected_resource_name)
+
+
+@pytest.mark.parametrize(
+    "policy_arn, expected_get_policy_side_effect, expected_message",
+    [
+        (
+            "arn:aws:iam::aws:policy/FakePolicy",
+            AWSClientError(
+                function_name="get_policy", message="Policy arn:aws:iam::aws:policy/FakePolicy was not found."
+            ),
+            "Policy arn:aws:iam::aws:policy/FakePolicy was not found.",
+        ),
+        ("arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess", None, None),
+        ("arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy", None, None),
+        ("arn:aws:iam::aws:policy/AWSBatchFullAccess", None, None),
+    ],
+)
+def test_additional_iam_policy_validator(mocker, policy_arn, expected_get_policy_side_effect, expected_message):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.iam.IamClient.get_policy", side_effect=expected_get_policy_side_effect)
+    actual_failures = AdditionalIamPolicyValidator().execute(policy=policy_arn)
+    assert_failure_messages(actual_failures, expected_message)

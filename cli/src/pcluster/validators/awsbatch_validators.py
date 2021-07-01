@@ -12,11 +12,8 @@ import logging
 import re
 from typing import List
 
-import boto3
-from botocore.exceptions import ClientError, EndpointConnectionError
-
 from pcluster.aws.aws_api import AWSApi
-from pcluster.utils import get_region
+from pcluster.aws.common import get_region
 from pcluster.validators.common import FailureLevel, Validator
 
 LOGGER = logging.getLogger(__name__)
@@ -60,12 +57,6 @@ class AwsBatchComputeResourceSizeValidator(Validator):
                 "Max vCPUs must be greater than or equal to min vCPUs.",
                 FailureLevel.ERROR,
             )
-
-
-class BatchErrorMessageParsingException(Exception):
-    """Exception for errors getting supported Batch instance types from CreateComputeEnvironment."""
-
-    pass
 
 
 class AwsBatchComputeInstanceTypeValidator(Validator):
@@ -122,8 +113,7 @@ def _get_supported_batch_instance_types():
     known_exceptions = ["optimal"]
     supported_instance_types_and_families = supported_instance_types + supported_instance_families + known_exceptions
     try:
-        emsg = _get_cce_emsg_containing_supported_instance_types()
-        parsed_instance_types_and_families = _parse_supported_instance_types_and_families_from_cce_emsg(emsg)
+        parsed_instance_types_and_families = AWSApi.instance().batch.get_supported_instance_types_and_families()
         if _batch_instance_types_and_families_are_supported(
             parsed_instance_types_and_families, supported_instance_types_and_families
         ):
@@ -159,71 +149,6 @@ def _batch_instance_types_and_families_are_supported(candidate_types_and_familie
     if unknowns:
         LOGGER.debug("Found the following unknown instance types/families: %s", " ".join(unknowns))
     return not unknowns
-
-
-def _call_create_compute_environment_with_bad_instance_type():
-    """
-    Call CreateComputeEnvironment with a nonexistent instance type.
-
-    For more information on why this would be done, see the docstring for
-    _get_supported_instance_types_create_compute_environment_error_message.
-    """
-    nonexistent_instance_type = "p8.84xlarge"
-    boto3.client("batch").create_compute_environment(
-        computeEnvironmentName="dummy",
-        type="MANAGED",
-        computeResources={
-            "type": "EC2",
-            "minvCpus": 0,
-            "maxvCpus": 0,
-            "instanceTypes": [nonexistent_instance_type],
-            "subnets": ["subnet-12345"],  # security group, subnet and role aren't checked
-            "securityGroupIds": ["sg-12345"],
-            "instanceRole": "ecsInstanceRole",
-        },
-        serviceRole="AWSBatchServiceRole",
-    )
-
-
-def _get_cce_emsg_containing_supported_instance_types():
-    """
-    Call CreateComputeEnvironment with nonexistent instance type and return error message.
-
-    The returned error message is expected to have a list of supported instance types.
-    """
-    try:
-        _call_create_compute_environment_with_bad_instance_type()
-    except ClientError as e:
-        # This is the expected behavior
-        return e.response.get("Error").get("Message")
-    except EndpointConnectionError:
-        raise BatchErrorMessageParsingException(
-            f"Could not connect to the batch endpoint for region {get_region()}. Probably Batch is not available."
-        )
-    else:
-        # TODO: need to delete the compute environment?
-        raise BatchErrorMessageParsingException(
-            "Attempting to create a Batch ComputeEnvironment using a nonexistent instance type did not result "
-            "in an error as expected."
-        )
-
-
-def _parse_supported_instance_types_and_families_from_cce_emsg(emsg):
-    """
-    Parse the supported instance types emsg, obtained by calling CreateComputeEnvironment.
-
-    The string is expected to have the following format:
-    Instance type can only be one of [r3, r4, m6g.xlarge, r5, optimal, ...]
-    """
-    match = re.search(r"be\s+one\s+of\s*\[(.*[0-9a-z.\-]+.*,.*)\]", emsg)
-    if match:
-        parsed_values = [instance_type_token.strip() for instance_type_token in match.group(1).split(",")]
-        LOGGER.debug(
-            "Parsed the following instance types and families from Batch CCE error message: %s", " ".join(parsed_values)
-        )
-        return parsed_values
-
-    raise BatchErrorMessageParsingException(f"Could not parse supported instance types from the following: {emsg}")
 
 
 class AwsBatchInstancesArchitectureCompatibilityValidator(Validator):

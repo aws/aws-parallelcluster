@@ -117,10 +117,16 @@ class S3Client(Boto3Client):
         self._client.upload_file(Filename=file_path, Bucket=bucket_name, Key=key)
 
     @AWSExceptionHandler.handle_client_exception
-    def create_presigned_url(self, bucket_name, object_name, expiration=3600):
+    def create_presigned_url(self, bucket_name, object_name, version_id=None, expiration=3600):
         """Generate a pre-signed URL to share an S3 object."""
+        optional_get_object_args = {}
+        if version_id:
+            optional_get_object_args["VersionId"] = version_id
+
         return self._client.generate_presigned_url(
-            "get_object", Params={"Bucket": bucket_name, "Key": object_name}, ExpiresIn=expiration
+            "get_object",
+            Params={"Bucket": bucket_name, "Key": object_name, **optional_get_object_args},
+            ExpiresIn=expiration,
         )
 
 

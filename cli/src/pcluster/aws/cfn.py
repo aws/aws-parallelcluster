@@ -87,15 +87,33 @@ class CfnClient(Boto3Client):
         )
 
     @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_throttling
     def describe_stack(self, stack_name: str):
         """Get information for the given stack."""
         try:
             return self._client.describe_stacks(StackName=stack_name).get("Stacks")[0]
         except ClientError as e:
             if e.response["Error"]["Code"] == AWSClientError.ErrorCode.VALIDATION_ERROR.value:
-                LOGGER.error("Could not describe CloudFormation stack %s: %s", stack_name, e)
+                LOGGER.info("Could not describe CloudFormation stack %s: %s", stack_name, e)
                 raise StackNotFoundError(function_name="describe_stack", stack_name=stack_name)
             raise
+
+    @AWSExceptionHandler.handle_client_exception
+    @AWSExceptionHandler.retry_on_boto3_throttling
+    def get_stack_events(self, stack_name):
+        """Return all the events of a stack."""
+        return list(self._paginate_results(self._client.describe_stack_events, StackName=stack_name))
+
+    @staticmethod
+    def format_event(event):
+        """Format CFN Stack event."""
+        return "{} {} {} {} {}".format(
+            event.get("Timestamp").isoformat(timespec="seconds"),
+            event.get("ResourceStatus"),
+            event.get("ResourceType"),
+            event.get("LogicalResourceId"),
+            event.get("ResourceStatusReason", ""),
+        )
 
     def stack_exists(self, stack_name: str):
         """Return a boolean describing whether or not a stack by the given name exists."""
@@ -113,6 +131,23 @@ class CfnClient(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def list_pcluster_stacks(self, next_token=None):
         """List existing pcluster stacks."""
+        return self._list_parentless_stacks_with_tag(PCLUSTER_VERSION_TAG, next_token)
+
+    def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
+        """Get stack resource information."""
+        try:
+            return self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
+        except Exception:
+            raise AWSClientError(
+                function_name="describe_stack_resource", message=f"No resource {logic_resource_id} found."
+            )
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_imagebuilder_stacks(self, next_token=None):
+        """List existing imagebuilder stacks."""
+        return self._list_parentless_stacks_with_tag(PCLUSTER_IMAGE_ID_TAG, next_token)
+
+    def _list_parentless_stacks_with_tag(self, tag, next_token=None):
         describe_stacks_kwargs = {}
         if next_token:
             describe_stacks_kwargs["NextToken"] = next_token
@@ -120,20 +155,6 @@ class CfnClient(Boto3Client):
         result = self._client.describe_stacks(**describe_stacks_kwargs)
         stack_list = []
         for stack in result.get("Stacks", []):
-            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_VERSION_TAG):
+            if stack.get("ParentId") is None and StackInfo(stack).get_tag(tag):
                 stack_list.append(stack)
         return stack_list, result.get("NextToken")
-
-    @AWSExceptionHandler.handle_client_exception
-    def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
-        """Get stack resource information."""
-        return self._client.describe_stack_resource(StackName=stack_name, LogicalResourceId=logic_resource_id)
-
-    @AWSExceptionHandler.handle_client_exception
-    def get_imagebuilder_stacks(self):
-        """List existing imagebuilder stacks."""
-        stack_list = []
-        for stack in self._paginate_results(self._client.describe_stacks):
-            if stack.get("ParentId") is None and StackInfo(stack).get_tag(PCLUSTER_IMAGE_ID_TAG):
-                stack_list.append(stack)
-        return stack_list

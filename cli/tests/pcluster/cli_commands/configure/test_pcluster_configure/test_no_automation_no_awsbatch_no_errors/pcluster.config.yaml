@@ -6,14 +6,16 @@ HeadNode:
     SubnetId: subnet-12345678
   Ssh:
     KeyName: key1
+  Imds:
+    Secured: true
 Scheduling:
   Scheduler: slurm
   Queues:
-    - Name: queue0
+    - Name: myqueue
       ComputeResources:
-        - Name: queue0-i0
+        - Name: myqueue-t2micro
           InstanceType: t2.micro
-          MinCount: 13
+          MinCount: 0
           MaxCount: 14
       Networking:
         SubnetIds:

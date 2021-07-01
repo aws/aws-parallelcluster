@@ -25,7 +25,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_buc
 @pytest.mark.parametrize(
     "config_file_name",
     [
-        "centos8.slurm.full.yaml",
+        "centos7.slurm.full.yaml",
         "alinux2.slurm.conditional_vol.yaml",
         "ubuntu18.slurm.simple.yaml",
         "alinux2.batch.no_headnode_log.yaml",
@@ -135,7 +135,7 @@ def _verify_head_node_logs_conditions(cluster_config, output_yaml):
         assert_that(output_yaml).does_not_contain("NICE DCV integration logs")
 
     # Conditional System logs
-    if cluster_config.image.os in ["alinux2", "centos7", "centos8"]:
+    if cluster_config.image.os in ["alinux2", "centos7"]:
         assert_that(output_yaml).contains("system-messages")
         assert_that(output_yaml).does_not_contain("syslog")
     elif cluster_config.image.os in ["ubuntu1804"]:

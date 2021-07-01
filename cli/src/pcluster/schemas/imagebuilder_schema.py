@@ -27,10 +27,12 @@ from pcluster.config.imagebuilder_config import (
     ImagebuilderDevSettings,
     Volume,
 )
+from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_IMAGE_NAME_REGEX
 from pcluster.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.schemas.common_schema import (
     ALLOWED_VALUES,
+    AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
     BaseSchema,
     TagSchema,
@@ -113,7 +115,7 @@ class ComponentSchema(BaseSchema):
 class DistributionConfigurationSchema(BaseSchema):
     """Represent the schema of the ImageBuilder distribution configuration."""
 
-    regions = fields.Str()
+    regions = fields.Str(validate=validate.Regexp("^[a-z0-9-]+(,[a-z0-9-]+)*$"))
     launch_permission = fields.Str()
 
     @post_load()
@@ -133,6 +135,17 @@ class IamSchema(BaseSchema):
 
     instance_role = fields.Str(validate=validate.Regexp("^arn:.*:(role|instance-profile)/"))
     cleanup_lambda_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
+    additional_iam_policies = fields.Nested(
+        AdditionalIamPolicySchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Policy"},
+    )
+
+    @validates_schema
+    def no_coexist_role_policies(self, data, **kwargs):
+        """Validate that instance_role and additional_security_groups do not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
+            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -175,6 +188,7 @@ class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
     disable_pcluster_component = fields.Bool()
     distribution_configuration = fields.Nested(DistributionConfigurationSchema)
     terminate_instance_on_failure = fields.Bool()
+    disable_validate_and_test = fields.Bool()
 
     @post_load
     def make_resource(self, data, **kwargs):

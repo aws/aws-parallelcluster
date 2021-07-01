@@ -23,6 +23,7 @@ from pcluster.constants import (
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
 )
+from pcluster.models.common import BadRequest, LimitExceeded
 
 
 class StackError(Exception):
@@ -37,6 +38,20 @@ class NonExistingStackError(StackError):
 
     def __init__(self, stack_name):
         super().__init__(f"ImageBuilder stack {stack_name} does not exist.")
+
+
+class LimitExceededStackError(StackError, LimitExceeded):
+    """Represent an error if we exceeded the limit of some downstream AWS service."""
+
+    def __init__(self, message: str):
+        super().__init__(message=message)
+
+
+class BadRequestStackError(StackError, BadRequest):
+    """Represent an error due to a problem in the request."""
+
+    def __init__(self, message: str):
+        super().__init__(message=message)
 
 
 class ImageBuilderStack(StackInfo):
@@ -68,8 +83,8 @@ class ImageBuilderStack(StackInfo):
         return self.get_tag(PCLUSTER_IMAGE_CONFIG_TAG)
 
     @property
-    def image_name(self):
-        """Return image name tag value."""
+    def pcluster_image_id(self):
+        """Return image id tag value."""
         return self.get_tag(PCLUSTER_IMAGE_ID_TAG)
 
     @property
@@ -101,7 +116,7 @@ class ImageBuilderStack(StackInfo):
             if imagebuilder_image_status == "CREATE_IN_PROGRESS":
                 return True
             return False
-        except KeyError:
+        except (TypeError, KeyError):
             return False
 
     @property
@@ -111,6 +126,17 @@ class ImageBuilderStack(StackInfo):
             try:
                 image_build_version_arn = self._imagebuilder_image_resource["StackResourceDetail"]["PhysicalResourceId"]
                 return AWSApi.instance().imagebuilder.get_image_id(image_build_version_arn)
+            except (AWSClientError, KeyError):
+                return None
+        return None
+
+    @property
+    def image_state(self):
+        """Return the ImageBuilder image state."""
+        if self._imagebuilder_image_resource:
+            try:
+                image_build_version_arn = self._imagebuilder_image_resource["StackResourceDetail"]["PhysicalResourceId"]
+                return AWSApi.instance().imagebuilder.get_image_state(image_build_version_arn)
             except (AWSClientError, KeyError):
                 return None
         return None

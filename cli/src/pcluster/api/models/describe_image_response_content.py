@@ -10,7 +10,6 @@
 
 
 from datetime import datetime
-from typing import List
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -19,7 +18,6 @@ from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.api.models.image_builder_image_status import ImageBuilderImageStatus
 from pcluster.api.models.image_configuration_structure import ImageConfigurationStructure
-from pcluster.api.models.tag import Tag
 
 
 class DescribeImageResponseContent(Model):
@@ -31,34 +29,38 @@ class DescribeImageResponseContent(Model):
     def __init__(
         self,
         image_configuration=None,
-        image_name=None,
+        image_id=None,
         imagebuilder_image_status=None,
+        imagebuilder_image_status_reason=None,
         creation_time=None,
         image_build_status=None,
-        failure_reason=None,
         cloudformation_stack_status=None,
+        cloudformation_stack_status_reason=None,
         cloudformation_stack_arn=None,
         region=None,
         ec2_ami_info=None,
         version=None,
-        tags=None,
     ):
         """DescribeImageResponseContent - a model defined in OpenAPI
 
         :param image_configuration: The image_configuration of this DescribeImageResponseContent.
         :type image_configuration: ImageConfigurationStructure
-        :param image_name: The image_name of this DescribeImageResponseContent.
-        :type image_name: str
+        :param image_id: The image_id of this DescribeImageResponseContent.
+        :type image_id: str
         :param imagebuilder_image_status: The imagebuilder_image_status of this DescribeImageResponseContent.
         :type imagebuilder_image_status: ImageBuilderImageStatus
+        :param imagebuilder_image_status_reason: The imagebuilder_image_status_reason
+                                                 of this DescribeImageResponseContent.
+        :type imagebuilder_image_status_reason: str
         :param creation_time: The creation_time of this DescribeImageResponseContent.
         :type creation_time: datetime
         :param image_build_status: The image_build_status of this DescribeImageResponseContent.
         :type image_build_status: ImageBuildStatus
-        :param failure_reason: The failure_reason of this DescribeImageResponseContent.
-        :type failure_reason: str
         :param cloudformation_stack_status: The cloudformation_stack_status of this DescribeImageResponseContent.
         :type cloudformation_stack_status: CloudFormationStatus
+        :param cloudformation_stack_status_reason: The cloudformation_stack_status_reason
+                                                   of this DescribeImageResponseContent.
+        :type cloudformation_stack_status_reason: str
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this DescribeImageResponseContent.
         :type cloudformation_stack_arn: str
         :param region: The region of this DescribeImageResponseContent.
@@ -67,51 +69,49 @@ class DescribeImageResponseContent(Model):
         :type ec2_ami_info: Ec2AmiInfo
         :param version: The version of this DescribeImageResponseContent.
         :type version: str
-        :param tags: The tags of this DescribeImageResponseContent.
-        :type tags: List[Tag]
         """
         self.openapi_types = {
             "image_configuration": ImageConfigurationStructure,
-            "image_name": str,
+            "image_id": str,
             "imagebuilder_image_status": ImageBuilderImageStatus,
+            "imagebuilder_image_status_reason": str,
             "creation_time": datetime,
             "image_build_status": ImageBuildStatus,
-            "failure_reason": str,
             "cloudformation_stack_status": CloudFormationStatus,
+            "cloudformation_stack_status_reason": str,
             "cloudformation_stack_arn": str,
             "region": str,
             "ec2_ami_info": Ec2AmiInfo,
             "version": str,
-            "tags": List[Tag],
         }
 
         self.attribute_map = {
             "image_configuration": "imageConfiguration",
-            "image_name": "imageName",
+            "image_id": "imageId",
             "imagebuilder_image_status": "imagebuilderImageStatus",
+            "imagebuilder_image_status_reason": "imagebuilderImageStatusReason",
             "creation_time": "creationTime",
             "image_build_status": "imageBuildStatus",
-            "failure_reason": "failureReason",
             "cloudformation_stack_status": "cloudformationStackStatus",
+            "cloudformation_stack_status_reason": "cloudformationStackStatusReason",
             "cloudformation_stack_arn": "cloudformationStackArn",
             "region": "region",
             "ec2_ami_info": "ec2AmiInfo",
             "version": "version",
-            "tags": "tags",
         }
 
         self._image_configuration = image_configuration
-        self._image_name = image_name
+        self._image_id = image_id
         self._imagebuilder_image_status = imagebuilder_image_status
+        self._imagebuilder_image_status_reason = imagebuilder_image_status_reason
         self._creation_time = creation_time
         self._image_build_status = image_build_status
-        self._failure_reason = failure_reason
         self._cloudformation_stack_status = cloudformation_stack_status
+        self._cloudformation_stack_status_reason = cloudformation_stack_status_reason
         self._cloudformation_stack_arn = cloudformation_stack_arn
         self._region = region
         self._ec2_ami_info = ec2_ami_info
         self._version = version
-        self._tags = tags
 
     @classmethod
     def from_dict(cls, dikt) -> "DescribeImageResponseContent":
@@ -148,29 +148,29 @@ class DescribeImageResponseContent(Model):
         self._image_configuration = image_configuration
 
     @property
-    def image_name(self):
-        """Gets the image_name of this DescribeImageResponseContent.
+    def image_id(self):
+        """Gets the image_id of this DescribeImageResponseContent.
 
-        Name of the Image
+        id of the Image
 
-        :return: The image_name of this DescribeImageResponseContent.
+        :return: The image_id of this DescribeImageResponseContent.
         :rtype: str
         """
-        return self._image_name
+        return self._image_id
 
-    @image_name.setter
-    def image_name(self, image_name):
-        """Sets the image_name of this DescribeImageResponseContent.
+    @image_id.setter
+    def image_id(self, image_id):
+        """Sets the image_id of this DescribeImageResponseContent.
 
-        Name of the Image
+        id of the Image
 
-        :param image_name: The image_name of this DescribeImageResponseContent.
-        :type image_name: str
+        :param image_id: The image_id of this DescribeImageResponseContent.
+        :type image_id: str
         """
-        if image_name is None:
-            raise ValueError("Invalid value for `image_name`, must not be `None`")
+        if image_id is None:
+            raise ValueError("Invalid value for `image_id`, must not be `None`")
 
-        self._image_name = image_name
+        self._image_id = image_id
 
     @property
     def imagebuilder_image_status(self):
@@ -194,6 +194,30 @@ class DescribeImageResponseContent(Model):
         self._imagebuilder_image_status = imagebuilder_image_status
 
     @property
+    def imagebuilder_image_status_reason(self):
+        """Gets the imagebuilder_image_status_reason of this DescribeImageResponseContent.
+
+        Reason for the ImageBuilder Image status.
+
+        :return: The imagebuilder_image_status_reason of this DescribeImageResponseContent.
+        :rtype: str
+        """
+        return self._imagebuilder_image_status_reason
+
+    @imagebuilder_image_status_reason.setter
+    def imagebuilder_image_status_reason(self, imagebuilder_image_status_reason):
+        """Sets the imagebuilder_image_status_reason of this DescribeImageResponseContent.
+
+        Reason for the ImageBuilder Image status.
+
+        :param imagebuilder_image_status_reason: The imagebuilder_image_status_reason
+                                                 of this DescribeImageResponseContent.
+        :type imagebuilder_image_status_reason: str
+        """
+
+        self._imagebuilder_image_status_reason = imagebuilder_image_status_reason
+
+    @property
     def creation_time(self):
         """Gets the creation_time of this DescribeImageResponseContent.
 
@@ -213,9 +237,6 @@ class DescribeImageResponseContent(Model):
         :param creation_time: The creation_time of this DescribeImageResponseContent.
         :type creation_time: datetime
         """
-        if creation_time is None:
-            raise ValueError("Invalid value for `creation_time`, must not be `None`")
-
         self._creation_time = creation_time
 
     @property
@@ -242,29 +263,6 @@ class DescribeImageResponseContent(Model):
         self._image_build_status = image_build_status
 
     @property
-    def failure_reason(self):
-        """Gets the failure_reason of this DescribeImageResponseContent.
-
-        Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status
-
-        :return: The failure_reason of this DescribeImageResponseContent.
-        :rtype: str
-        """
-        return self._failure_reason
-
-    @failure_reason.setter
-    def failure_reason(self, failure_reason):
-        """Sets the failure_reason of this DescribeImageResponseContent.
-
-        Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status
-
-        :param failure_reason: The failure_reason of this DescribeImageResponseContent.
-        :type failure_reason: str
-        """
-
-        self._failure_reason = failure_reason
-
-    @property
     def cloudformation_stack_status(self):
         """Gets the cloudformation_stack_status of this DescribeImageResponseContent.
 
@@ -282,10 +280,31 @@ class DescribeImageResponseContent(Model):
         :param cloudformation_stack_status: The cloudformation_stack_status of this DescribeImageResponseContent.
         :type cloudformation_stack_status: CloudFormationStatus
         """
-        if cloudformation_stack_status is None:
-            raise ValueError("Invalid value for `cloudformation_stack_status`, must not be `None`")
-
         self._cloudformation_stack_status = cloudformation_stack_status
+
+    @property
+    def cloudformation_stack_status_reason(self):
+        """Gets the cloudformation_stack_status_reason of this DescribeImageResponseContent.
+
+        Reason for the CloudFormation stack status
+
+        :return: The cloudformation_stack_status_reason of this DescribeImageResponseContent.
+        :rtype: str
+        """
+        return self._cloudformation_stack_status_reason
+
+    @cloudformation_stack_status_reason.setter
+    def cloudformation_stack_status_reason(self, cloudformation_stack_status_reason):
+        """Sets the cloudformation_stack_status_reason of this DescribeImageResponseContent.
+
+        Reason for the CloudFormation stack status
+
+        :param cloudformation_stack_status_reason: The cloudformation_stack_status_reason
+                                                   of this DescribeImageResponseContent.
+        :type cloudformation_stack_status_reason: str
+        """
+
+        self._cloudformation_stack_status_reason = cloudformation_stack_status_reason
 
     @property
     def cloudformation_stack_arn(self):
@@ -307,9 +326,6 @@ class DescribeImageResponseContent(Model):
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this DescribeImageResponseContent.
         :type cloudformation_stack_arn: str
         """
-        if cloudformation_stack_arn is None:
-            raise ValueError("Invalid value for `cloudformation_stack_arn`, must not be `None`")
-
         self._cloudformation_stack_arn = cloudformation_stack_arn
 
     @property
@@ -382,28 +398,3 @@ class DescribeImageResponseContent(Model):
             raise ValueError("Invalid value for `version`, must not be `None`")
 
         self._version = version
-
-    @property
-    def tags(self):
-        """Gets the tags of this DescribeImageResponseContent.
-
-        Tags of the infrastructure to build the Image
-
-        :return: The tags of this DescribeImageResponseContent.
-        :rtype: List[Tag]
-        """
-        return self._tags
-
-    @tags.setter
-    def tags(self, tags):
-        """Sets the tags of this DescribeImageResponseContent.
-
-        Tags of the infrastructure to build the Image
-
-        :param tags: The tags of this DescribeImageResponseContent.
-        :type tags: List[Tag]
-        """
-        if tags is None:
-            raise ValueError("Invalid value for `tags`, must not be `None`")
-
-        self._tags = tags

@@ -1,7 +1,7 @@
 namespace parallelcluster
 
 @readonly
-@http(method: "GET", uri: "/v3/images/custom/{imageName}", code: 200)
+@http(method: "GET", uri: "/v3/images/custom/{imageId}", code: 200)
 @tags(["Image Operations"])
 @documentation("Get detailed information about an existing image.")
 operation DescribeImage {
@@ -19,15 +19,15 @@ operation DescribeImage {
 structure DescribeImageRequest {
     @httpLabel
     @required
-    imageName: ImageName,
+    imageId: ImageId,
     @httpQuery("region")
     region: Region,
 }
 
 structure DescribeImageResponse {
     @required
-    @documentation("Name of the Image")
-    imageName: String,
+    @documentation("Id of the Image")
+    imageId: String,
     @required
     @documentation("AWS region where the image is created")
     region: Region,
@@ -37,27 +37,23 @@ structure DescribeImageResponse {
     @required
     @documentation("Status of the image build.")
     imageBuildStatus: ImageBuildStatus,
-    @required
     @documentation("Status of the CloudFormation stack for the image build process.")
     cloudformationStackStatus: CloudFormationStatus,
-    @required
+    @documentation("Reason for the CloudFormation stack status")
+    cloudformationStackStatusReason: String,
     @documentation("ARN of the main CloudFormation stack")
     cloudformationStackArn: String,
-    @required
     @documentation("Timestamp representing the image creation time")
     @timestampFormat("date-time")
     creationTime: Timestamp,
     @required
     @documentation("Configuration for the image build process")
     imageConfiguration: ImageConfigurationStructure,
-    @required
-    @documentation("Tags of the infrastructure to build the Image")
-    tags: Tags,
     @documentation("Status of the ImageBuilder Image resource for the image build process.")
     imagebuilderImageStatus: ImageBuilderImageStatus,
+    @documentation("Reason for the ImageBuilder Image status.")
+    imagebuilderImageStatusReason: String,
     // ImageBuilderImageArn or ImageBuilderImageInfo structure
     @documentation("EC2 ami info")
     ec2AmiInfo: Ec2AmiInfo,
-    @documentation("Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status")
-    failureReason: String,
 }

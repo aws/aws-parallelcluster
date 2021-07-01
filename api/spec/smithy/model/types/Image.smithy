@@ -2,8 +2,8 @@ namespace parallelcluster
 
 @pattern("^[a-zA-Z][a-zA-Z0-9-]+$")
 @length(min: 5, max: 60)
-@documentation("Name of the image")
-string ImageName
+@documentation("Id of the image")
+string ImageId
 
 structure Ec2AmiInfo {
     @required
@@ -20,26 +20,27 @@ structure Ec2AmiInfo {
     architecture: String,
     @required
     @documentation("EC2 AMI state")
-    state: Ec2AmiState
+    state: Ec2AmiState,
+    @required
+    @documentation("EC2 AMI description")
+    description: String,
 }
 
 structure ImageInfoSummary {
     @required
-    @documentation("Name of the image")
-    imageName: ImageName,
+    @documentation("Id of the image")
+    imageId: ImageId,
     @required
     @documentation("AWS region where the image is built")
     region: Region,
     @required
     @documentation("ParallelCluster version used to build the image")
     version: Version,
-    @required
     @documentation("ARN of the main CloudFormation stack")
     cloudformationStackArn: String,
     @required
     @documentation("Status of the image build.")
     imageBuildStatus: ImageBuildStatus,
-    @required
     @documentation("Status of the CloudFormation stack for the image build process.")
     cloudformationStackStatus: CloudFormationStatus,
 }

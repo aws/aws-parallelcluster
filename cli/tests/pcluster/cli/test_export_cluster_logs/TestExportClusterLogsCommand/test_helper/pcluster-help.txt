@@ -1,0 +1,45 @@
+usage: pcluster export-cluster-logs [-h] [--debug]
+                                    [-r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}]
+                                    --bucket BUCKET [--output OUTPUT]
+                                    [--bucket-prefix BUCKET_PREFIX]
+                                    [--keep-s3-objects]
+                                    [--start-time START_TIME]
+                                    [--end-time END_TIME]
+                                    [--filters FILTERS [FILTERS ...]]
+                                    cluster_name
+
+Export the logs of the cluster to a local tar.gz archive by passing through an
+Amazon S3 Bucket.
+
+positional arguments:
+  cluster_name          Export the logs of the cluster name provided here.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --debug               Turn on debug logging.
+  -r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}, --region {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}
+                        AWS Region to use.
+  --bucket BUCKET       S3 bucket to export cluster logs data to. It must be
+                        in the same region of the cluster
+  --output OUTPUT       File path to save log archive to.
+  --bucket-prefix BUCKET_PREFIX
+                        Keypath under which exported logs data will be stored
+                        in s3 bucket.
+  --keep-s3-objects     Keep the exported objects exports to S3. The default
+                        behavior is to delete them.
+  --start-time START_TIME
+                        Start time of interval of interest for log events. ISO
+                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
+                        1984-09-15T19:20:30+01:00), time elements might be
+                        omitted. Defaults to creation time
+  --end-time END_TIME   End time of interval of interest for log events. ISO
+                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
+                        1984-09-15T19:20:30+01:00), time elements might be
+                        omitted. Defaults to current time
+  --filters FILTERS [FILTERS ...]
+                        The filters in the form Name=a,Values=1
+                        Name=b,Values=2,3. Accepted filters are: private-dns-
+                        name - The short form of the private DNS name of the
+                        instance (e.g. ip-10-0-0-101). node-type - The node
+                        type, the only accepted value for this filter is
+                        HeadNode.

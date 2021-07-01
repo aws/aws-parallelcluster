@@ -12,6 +12,9 @@
 #
 # This module contains all the classes required to convert a ImageBuilder into a CFN template by using CDK.
 #
+
+# pylint: disable=too-many-lines
+
 import copy
 import json
 import os
@@ -27,9 +30,9 @@ from aws_cdk import aws_logs as logs
 from aws_cdk import aws_sns as sns
 from aws_cdk.core import CfnParameter, CfnTag, Construct, Fn, Stack
 
-import pcluster.utils as utils
-from pcluster import imagebuilder_utils
+from pcluster import imagebuilder_utils, utils
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import get_region
 from pcluster.config.common import BaseTag
 from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.constants import (
@@ -109,7 +112,7 @@ class ImageBuilderCdkStack(Stack):
         log_group_arn = self.format_arn(
             service="logs",
             resource="log-group",
-            region=utils.get_region(),
+            region=get_region(),
             sep=":",
             resource_name=f"/aws/imagebuilder/{self._build_image_recipe_name()}",
         )
@@ -275,7 +278,7 @@ class ImageBuilderCdkStack(Stack):
         # ImageBuilderImage
         image_resource = imagebuilder.CfnImage(
             self,
-            id=IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
             tags=build_tags,
             image_recipe_arn=Fn.ref("ImageRecipe"),
             infrastructure_configuration_arn=Fn.ref("InfrastructureConfiguration"),
@@ -320,7 +323,7 @@ class ImageBuilderCdkStack(Stack):
             )
         distribution_configuration_resource = imagebuilder.CfnDistributionConfiguration(
             self,
-            id="DistributionConfiguration",
+            "DistributionConfiguration",
             name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             tags=build_tags,
             distributions=distributions,
@@ -346,7 +349,7 @@ class ImageBuilderCdkStack(Stack):
         # ImageBuilderImageRecipe
         image_recipe_resource = imagebuilder.CfnImageRecipe(
             self,
-            id="ImageRecipe",
+            "ImageRecipe",
             name=self._build_image_recipe_name(),
             version=utils.get_installed_version(),
             tags=build_tags,
@@ -383,7 +386,7 @@ class ImageBuilderCdkStack(Stack):
         if self.config.dev_settings and self.config.dev_settings.update_os_and_reboot:
             update_os_component_resource = imagebuilder.CfnComponent(
                 self,
-                id="UpdateOSComponent",
+                "UpdateOSComponent",
                 name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX + "-UpdateOS"),
                 version=utils.get_installed_version(),
                 tags=build_tags,
@@ -420,7 +423,7 @@ class ImageBuilderCdkStack(Stack):
         if not disable_pcluster_component:
             parallelcluster_component_resource = imagebuilder.CfnComponent(
                 self,
-                id="ParallelClusterComponent",
+                "ParallelClusterComponent",
                 name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                 version=utils.get_installed_version(),
                 tags=build_tags,
@@ -451,7 +454,7 @@ class ImageBuilderCdkStack(Stack):
 
         tag_component_resource = imagebuilder.CfnComponent(
             self,
-            id="ParallelClusterTagComponent",
+            "ParallelClusterTagComponent",
             name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX + "-Tag"),
             version=utils.get_installed_version(),
             tags=build_tags,
@@ -483,6 +486,76 @@ class ImageBuilderCdkStack(Stack):
         if self.config.build.components:
             self._add_custom_components(components, lambda_cleanup_policy_statements, components_resources)
 
+        disable_validate_and_test_component = (
+            self.config.dev_settings.disable_validate_and_test
+            if self.config.dev_settings and self.config.dev_settings.disable_validate_and_test
+            else False
+        )
+        if not disable_pcluster_component and not disable_validate_and_test_component:
+            validate_component_resource = imagebuilder.CfnComponent(
+                self,
+                id="ParallelClusterValidateComponent",
+                name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX + "-Validate"),
+                version=utils.get_installed_version(),
+                tags=build_tags,
+                description="Validate ParallelCluster AMI",
+                platform="Linux",
+                data=_load_yaml(imagebuilder_resources_dir, "parallelcluster_validate.yaml"),
+            )
+            components.append(
+                imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                    component_arn=Fn.ref("ParallelClusterValidateComponent")
+                )
+            )
+            components_resources.append(validate_component_resource)
+            if not self.custom_cleanup_lambda_role:
+                self._add_resource_delete_policy(
+                    lambda_cleanup_policy_statements,
+                    ["imagebuilder:DeleteComponent"],
+                    [
+                        self.format_arn(
+                            service="imagebuilder",
+                            resource="component",
+                            resource_name="{0}/*".format(
+                                self._build_resource_name(
+                                    IMAGEBUILDER_RESOURCE_NAME_PREFIX + "-Validate", to_lower=True
+                                )
+                            ),
+                        )
+                    ],
+                )
+
+            test_component_resource = imagebuilder.CfnComponent(
+                self,
+                id="ParallelClusterTestComponent",
+                name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX + "-Test"),
+                version=utils.get_installed_version(),
+                tags=build_tags,
+                description="Test ParallelCluster AMI",
+                platform="Linux",
+                data=_load_yaml(imagebuilder_resources_dir, "parallelcluster_test.yaml"),
+            )
+            components.append(
+                imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                    component_arn=Fn.ref("ParallelClusterTestComponent")
+                )
+            )
+            components_resources.append(test_component_resource)
+            if not self.custom_cleanup_lambda_role:
+                self._add_resource_delete_policy(
+                    lambda_cleanup_policy_statements,
+                    ["imagebuilder:DeleteComponent"],
+                    [
+                        self.format_arn(
+                            service="imagebuilder",
+                            resource="component",
+                            resource_name="{0}/*".format(
+                                self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX + "-Test", to_lower=True)
+                            ),
+                        )
+                    ],
+                )
+
         return components, components_resources
 
     def _add_imagebuilder_infrastructure_configuration(
@@ -491,7 +564,7 @@ class ImageBuilderCdkStack(Stack):
         # ImageBuilderInfrastructureConfiguration
         infrastructure_configuration_resource = imagebuilder.CfnInfrastructureConfiguration(
             self,
-            id="InfrastructureConfiguration",
+            "InfrastructureConfiguration",
             name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             tags=build_tags,
             instance_profile_name=instance_profile_name or Fn.ref("InstanceProfile"),
@@ -653,10 +726,10 @@ class ImageBuilderCdkStack(Stack):
 
             # LambdaCleanupExecutionRole
             lambda_cleanup_execution_role = iam.CfnRole(
-                scope=self,
-                id="DeleteStackFunctionExecutionRole",
+                self,
+                "DeleteStackFunctionExecutionRole",
                 managed_policy_arns=managed_lambda_policy,
-                assume_role_policy_document=get_assume_role_policy_document("lambda.{0}".format(self.url_suffix)),
+                assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
                 path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                 policies=[
                     iam.CfnRole.PolicyProperty(
@@ -676,18 +749,18 @@ class ImageBuilderCdkStack(Stack):
         # LambdaCWLogGroup
         lambda_log = logs.CfnLogGroup(
             self,
-            id="DeleteStackFunctionLog",
+            "DeleteStackFunctionLog",
             log_group_name="/aws/lambda/{0}".format(self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX)),
         )
 
         # LambdaCleanupFunction
         lambda_cleanup = awslambda.CfnFunction(
-            scope=self,
-            id="DeleteStackFunction",
+            self,
+            "DeleteStackFunction",
             function_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             code=awslambda.CfnFunction.CodeProperty(
                 s3_bucket=self.config.custom_s3_bucket
-                or S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), utils.get_region()),
+                or S3Bucket.get_bucket_name(AWSApi.instance().sts.get_account_id(), get_region()),
                 s3_key=self.bucket.get_object_key(S3FileType.CUSTOM_RESOURCES, "artifacts.zip"),
             ),
             handler="delete_image_stack.handler",
@@ -700,9 +773,9 @@ class ImageBuilderCdkStack(Stack):
         )
         permission = awslambda.CfnPermission(
             self,
-            id="DeleteStackFunctionPermission",
+            "DeleteStackFunctionPermission",
             action="lambda:InvokeFunction",
-            principal="sns.{0}".format(self.url_suffix),
+            principal="sns.amazonaws.com",
             function_name=lambda_cleanup.attr_arn,
             source_arn=Fn.ref("BuildNotificationTopic"),
         )
@@ -715,7 +788,7 @@ class ImageBuilderCdkStack(Stack):
         subscription = sns.CfnTopic.SubscriptionProperty(endpoint=lambda_cleanup.attr_arn, protocol="lambda")
         sns_topic_resource = sns.CfnTopic(
             self,
-            id="BuildNotificationTopic",
+            "BuildNotificationTopic",
             subscription=[subscription],
             topic_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             tags=build_tags,
@@ -728,6 +801,9 @@ class ImageBuilderCdkStack(Stack):
             Fn.sub("arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"),
             Fn.sub("arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"),
         ]
+        if self.config.build.iam and self.config.build.iam.additional_iam_policies:
+            for policy in self.config.build.iam.additional_iam_policy_arns:
+                managed_policy_arns.append(policy)
 
         instancerole_policy_document = iam.PolicyDocument(
             statements=[
@@ -776,7 +852,7 @@ class ImageBuilderCdkStack(Stack):
 
         instance_role_resource = iam.CfnRole(
             self,
-            id="InstanceRole",
+            "InstanceRole",
             managed_policy_arns=managed_policy_arns,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
             path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
@@ -809,7 +885,7 @@ class ImageBuilderCdkStack(Stack):
         """Set default instance profile in imagebuilder cfn template."""
         instance_profile_resource = iam.CfnInstanceProfile(
             self,
-            id="InstanceProfile",
+            "InstanceProfile",
             path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             roles=[instance_role.split("/")[-1] if instance_role else Fn.ref("InstanceRole")],
             instance_profile_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
@@ -850,7 +926,7 @@ class ImageBuilderCdkStack(Stack):
                 component_id = "ScriptComponent" + str(custom_components_len)
                 custom_component_resource = imagebuilder.CfnComponent(
                     self,
-                    id=component_id,
+                    component_id,
                     name=self._build_resource_name(
                         IMAGEBUILDER_RESOURCE_NAME_PREFIX + "-Script-{0}".format(str(custom_components_len))
                     ),

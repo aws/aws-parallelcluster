@@ -9,6 +9,8 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
     AllowedIps: {{ ssh_from }}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

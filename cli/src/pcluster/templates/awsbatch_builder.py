@@ -21,11 +21,11 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
+from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
-    cluster_name,
     get_assume_role_policy_document,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
@@ -33,6 +33,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_default_instance_tags,
     get_mount_dirs_by_type,
     get_queue_security_groups_full,
+    get_retain_log_on_delete,
     get_shared_storage_ids_by_type,
 )
 
@@ -137,8 +138,8 @@ class AwsBatchConstruct(Construct):
 
     def _add_compute_env(self):
         return batch.CfnComputeEnvironment(
-            scope=self.stack_scope,
-            id="ComputeEnvironment",
+            self.stack_scope,
+            "ComputeEnvironment",
             type="MANAGED",
             service_role=self._batch_service_role.ref,
             state="ENABLED",
@@ -170,8 +171,8 @@ class AwsBatchConstruct(Construct):
 
     def _add_job_queue(self):
         return batch.CfnJobQueue(
-            scope=self.stack_scope,
-            id="JobQueue",
+            self.stack_scope,
+            "JobQueue",
             priority=1,
             compute_environment_order=[
                 batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
@@ -183,8 +184,8 @@ class AwsBatchConstruct(Construct):
 
     def _add_ecs_instance_role_and_profile(self):
         ecs_instance_role = iam.CfnRole(
-            scope=self.stack_scope,
-            id="EcsInstanceRole",
+            self.stack_scope,
+            "EcsInstanceRole",
             managed_policy_arns=[
                 self._format_arn(
                     service="iam",
@@ -197,15 +198,15 @@ class AwsBatchConstruct(Construct):
         )
 
         iam_instance_profile = iam.CfnInstanceProfile(
-            scope=self.stack_scope, id="IamInstanceProfile", roles=[ecs_instance_role.ref]
+            self.stack_scope, "IamInstanceProfile", roles=[ecs_instance_role.ref]
         )
 
         return ecs_instance_role, iam_instance_profile
 
     def _add_job_role(self):
         return iam.CfnRole(
-            scope=self.stack_scope,
-            id="JobRole",
+            self.stack_scope,
+            "JobRole",
             managed_policy_arns=[
                 self._format_arn(service="iam", account="aws", region="", resource="policy/AmazonS3ReadOnlyAccess"),
                 self._format_arn(
@@ -247,10 +248,13 @@ class AwsBatchConstruct(Construct):
                                 resources=[
                                     self._format_arn(
                                         service="cloudformation",
-                                        resource="stack/parallelcluster-*/*",
-                                        region=self._stack_region,
-                                        account=self._stack_account,
-                                    )
+                                        resource=f"stack/{self.stack_name}/*",
+                                    ),
+                                    self._format_arn(
+                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                                        service="cloudformation",
+                                        resource=f"stack/{self.stack_name}-*/*",
+                                    ),
                                 ],
                                 sid="CloudWatchLogsPolicy",
                             ),
@@ -261,20 +265,20 @@ class AwsBatchConstruct(Construct):
         )
 
     def _add_docker_images_repo(self):
-        return ecr.CfnRepository(scope=self.stack_scope, id="DockerImagesRepo")
+        return ecr.CfnRepository(self.stack_scope, "DockerImagesRepo")
 
     def _add_job_definition_serial(self):
         return batch.CfnJobDefinition(
-            scope=self.stack_scope,
-            id="JobDefinitionSerial",
+            self.stack_scope,
+            "JobDefinitionSerial",
             type="container",
             container_properties=self._get_container_properties(),
         )
 
     def _add_job_definition_mnp(self):
         return batch.CfnJobDefinition(
-            scope=self.stack_scope,
-            id="JobDefinitionMNP",
+            self.stack_scope,
+            "JobDefinitionMNP",
             type="multinode",
             node_properties=batch.CfnJobDefinition.NodePropertiesProperty(
                 main_node=0,
@@ -289,8 +293,8 @@ class AwsBatchConstruct(Construct):
 
     def _add_batch_service_role(self):
         return iam.CfnRole(
-            scope=self.stack_scope,
-            id="BatchServiceRole",
+            self.stack_scope,
+            "BatchServiceRole",
             managed_policy_arns=[
                 self._format_arn(
                     service="iam", account="aws", region="", resource="policy/service-role/AWSBatchServiceRole"
@@ -304,8 +308,8 @@ class AwsBatchConstruct(Construct):
         batch_user_role_statement.add_account_root_principal()
 
         return iam.CfnRole(
-            scope=self.stack_scope,
-            id="PclusterBatchUserRole",
+            self.stack_scope,
+            "PclusterBatchUserRole",
             max_session_duration=36000,
             assume_role_policy_document=iam.PolicyDocument(statements=[batch_user_role_statement]),
             policies=[
@@ -332,7 +336,9 @@ class AwsBatchConstruct(Construct):
                                     self._job_definition_mnp.ref,
                                     self._job_queue.ref,
                                     self._job_role.attr_arn,
-                                    self._format_arn(service="cloudformation", resource="stack/parallelcluster-*/*"),
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
+                                    # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}-*/*"),
                                     self._format_arn(
                                         service="s3",
                                         resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
@@ -393,10 +399,13 @@ class AwsBatchConstruct(Construct):
                                 resources=[
                                     self._format_arn(
                                         service="cloudformation",
-                                        resource="stack/parallelcluster-*/*",
-                                        region=self._stack_region,
-                                        account=self._stack_account,
-                                    )
+                                        resource=f"stack/{self.stack_name}/*",
+                                    ),
+                                    self._format_arn(
+                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
+                                        service="cloudformation",
+                                        resource=f"stack/{self.stack_name}-*/*",
+                                    ),
                                 ],
                                 sid="CloudWatchLogsPolicy",
                             ),
@@ -408,8 +417,8 @@ class AwsBatchConstruct(Construct):
 
     def _add_spot_fleet_iam_role(self):
         return iam.CfnRole(
-            scope=self.stack_scope,
-            id="BatchSpotRole",
+            self.stack_scope,
+            "BatchSpotRole",
             managed_policy_arns=[
                 self._format_arn(
                     service="iam",
@@ -436,9 +445,7 @@ class AwsBatchConstruct(Construct):
             privileged=True,
             environment=[
                 batch.CfnJobDefinition.EnvironmentProperty(name="PCLUSTER_AWS_REGION", value=self._stack_region),
-                batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_STACK_NAME", value=cluster_name(self.stack_name)
-                ),
+                batch.CfnJobDefinition.EnvironmentProperty(name="PCLUSTER_STACK_NAME", value=self.stack_name),
                 batch.CfnJobDefinition.EnvironmentProperty(
                     name="PCLUSTER_SHARED_DIRS",
                     value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.EBS),
@@ -463,15 +470,15 @@ class AwsBatchConstruct(Construct):
 
     def _add_code_build_role(self):
         return iam.CfnRole(
-            scope=self.stack_scope,
-            id="CodeBuildRole",
+            self.stack_scope,
+            "CodeBuildRole",
             assume_role_policy_document=get_assume_role_policy_document("codebuild.amazonaws.com"),
         )
 
     def _add_code_build_policy(self):
         return iam.CfnPolicy(
-            scope=self.stack_scope,
-            id="CodeBuildPolicy",
+            self.stack_scope,
+            "CodeBuildPolicy",
             policy_name="CodeBuildPolicy",
             policy_document=iam.PolicyDocument(
                 statements=[
@@ -512,18 +519,19 @@ class AwsBatchConstruct(Construct):
         )
 
     def _add_code_build_docker_image_builder_project(self):
-        log_group_name = f"/aws/codebuild/{cluster_name(self.stack_name)}-CodeBuildDockerImageBuilderProject"
+        log_group_name = f"/aws/codebuild/{self.stack_name}-CodeBuildDockerImageBuilderProject"
 
-        logs.CfnLogGroup(
-            scope=self.stack_scope,
-            id="CodeBuildLogGroup",
+        log_group = logs.CfnLogGroup(
+            self.stack_scope,
+            "CodeBuildLogGroup",
             log_group_name=log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
+        log_group.cfn_options.deletion_policy = get_retain_log_on_delete(self.config)
 
         return codebuild.CfnProject(
-            scope=self.stack_scope,
-            id="CodeBuildDockerImageBuilderProj",
+            self.stack_scope,
+            "CodeBuildDockerImageBuilderProj",
             artifacts=codebuild.CfnProject.ArtifactsProperty(type="NO_ARTIFACTS"),
             environment=codebuild.CfnProject.EnvironmentProperty(
                 compute_type="BUILD_GENERAL1_LARGE"
@@ -557,7 +565,7 @@ class AwsBatchConstruct(Construct):
                 type="ARM_CONTAINER" if self._condition_use_arm_code_build_image() else "LINUX_CONTAINER",
                 privileged_mode=True,
             ),
-            name=f"{cluster_name(self.stack_name)}-build-docker-images-project",
+            name=f"{self.stack_name}-build-docker-images-project",
             service_role=self._code_build_role.ref,
             source=codebuild.CfnProject.SourceProperty(
                 location=f"{self.bucket.name}/{self.bucket.artifact_directory}"
@@ -617,8 +625,8 @@ class AwsBatchConstruct(Construct):
 
     def _add_code_build_notification_rule(self):
         code_build_notification_rule = events.CfnRule(
-            scope=self.stack_scope,
-            id="CodeBuildNotificationRule",
+            self.stack_scope,
+            "CodeBuildNotificationRule",
             event_pattern={
                 "detail": {
                     "build-status": ["FAILED", "STOPPED", "SUCCEEDED"],
@@ -637,8 +645,8 @@ class AwsBatchConstruct(Construct):
         )
 
         awslambda.CfnPermission(
-            scope=self.stack_scope,
-            id="BuildNotificationFunctionInvokePermission",
+            self.stack_scope,
+            "BuildNotificationFunctionInvokePermission",
             action="lambda:InvokeFunction",
             function_name=self._code_build_notification_lambda.attr_arn,
             principal="events.amazonaws.com",
@@ -680,8 +688,8 @@ class AwsBatchConstruct(Construct):
 
     def _add_manage_docker_images_custom_resource(self):
         return CfnResource(
-            scope=self.stack_scope,
-            id="ManageDockerImagesCustomResource",
+            self.stack_scope,
+            "ManageDockerImagesCustomResource",
             type="AWS::CloudFormation::CustomResource",
             properties={
                 "ServiceToken": self._manage_docker_images_lambda.attr_arn,
@@ -691,12 +699,12 @@ class AwsBatchConstruct(Construct):
         )
 
     def _add_docker_build_wait_condition_handle(self):
-        return cfn.CfnWaitConditionHandle(scope=self.stack_scope, id="DockerBuildWaitHandle")
+        return cfn.CfnWaitConditionHandle(self.stack_scope, "DockerBuildWaitHandle")
 
     def _add_docker_build_wait_condition(self):
         return cfn.CfnWaitCondition(
-            scope=self.stack_scope,
-            id="DockerBuildWaitCondition",
+            self.stack_scope,
+            "DockerBuildWaitCondition",
             handle=self._docker_build_wait_condition_handle.ref,
             timeout="3600",
         )
@@ -712,43 +720,49 @@ class AwsBatchConstruct(Construct):
 
         CfnOutput(
             scope=self.stack_scope,
-            id="BatchComputeEnvironmentArn",
+            id="BatchCliRequirements",
+            description="List of requirements for the ParallelCluster AWS Batch CLI.",
+            value=AWSBATCH_CLI_REQUIREMENTS,
+        )
+        CfnOutput(
+            self.stack_scope,
+            "BatchComputeEnvironmentArn",
             description="Compute Environment created within the cluster.",
             value=self._compute_env.ref,
         )
         CfnOutput(
-            scope=self.stack_scope,
-            id="BatchJobQueueArn",
+            self.stack_scope,
+            "BatchJobQueueArn",
             description="Job Queue created within the cluster.",
             value=self._job_queue.ref,
         )
         CfnOutput(
-            scope=self.stack_scope,
-            id="BatchJobDefinitionArn",
+            self.stack_scope,
+            "BatchJobDefinitionArn",
             description="Job Definition for serial submission.",
             value=self._job_definition_serial.ref,
         )
         CfnOutput(
-            scope=self.stack_scope,
-            id="ECRRepoName",
+            self.stack_scope,
+            "ECRRepoName",
             description="Name of the ECR repository where docker images used by AWS Batch are located.",
             value=self._docker_images_repo.ref,
         )
         CfnOutput(
-            scope=self.stack_scope,
-            id="CodeBuildDockerImageBuilderProject",
+            self.stack_scope,
+            "CodeBuildDockerImageBuilderProject",
             description="CodeBuild project used to bake docker images.",
             value=self._code_build_image_builder_project.ref,
         )
         CfnOutput(
-            scope=self.stack_scope,
-            id="BatchJobDefinitionMnpArn",
+            self.stack_scope,
+            "BatchJobDefinitionMnpArn",
             description="Job Definition for MNP submission.",
             value=self._job_definition_mnp.ref,
         )
         CfnOutput(
-            scope=self.stack_scope,
-            id="BatchUserRole",
+            self.stack_scope,
+            "BatchUserRole",
             description="Role to be used to contact AWS Batch resources created within the cluster.",
             value=self._batch_user_role.ref,
         )

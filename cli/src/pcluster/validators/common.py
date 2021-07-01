@@ -31,9 +31,10 @@ class FailureLevel(Enum):
 class ValidationResult:
     """Represent the result of the validation."""
 
-    def __init__(self, message: str, level: FailureLevel):
+    def __init__(self, message: str, level: FailureLevel, validator_type: str):
         self.message = message
         self.level = level
+        self.validator_type = validator_type
 
 
 class Validator(ABC):
@@ -43,8 +44,13 @@ class Validator(ABC):
         self._failures = []
 
     def _add_failure(self, message: str, level: FailureLevel):
-        result = ValidationResult(message, level)
+        result = ValidationResult(message, level, self.type)
         self._failures.append(result)
+
+    @property
+    def type(self):
+        """Identify the type of validator."""
+        return self.__class__.__name__
 
     def execute(self, *arg, **kwargs):
         """Entry point of all validators to verify all input params are valid."""

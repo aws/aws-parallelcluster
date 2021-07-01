@@ -1,5 +1,5 @@
 Image:
-  Os: centos8
+  Os: centos7
   CustomAmi: ami-12345678
 HeadNode:
   InstanceType: t2.micro  # t2.micro
@@ -41,7 +41,7 @@ HeadNode:
   Iam:
     InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
-      - BucketName: String
+      - BucketName: string
         EnableWriteAccess: True
 Scheduling:
   Scheduler: slurm
@@ -73,10 +73,10 @@ Scheduling:
             - stirng2
       Iam:
         S3Access:
-          - BucketName: String
+          - BucketName: string
             EnableWriteAccess: False
         AdditionalIamPolicies:
-          - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+          - Policy: arn:aws:iam::aws:policy/AdministratorAccess
     - Name: queue2
       ComputeSettings:
         LocalStorage:

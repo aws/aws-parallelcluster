@@ -1,4 +1,4 @@
 usage: pcluster [-h]
-                {create,update,delete,start,stop,status,list,instances,ssh,configure,build-image,delete-image,describe-image,list-images,version,list-clusters,dcv}
+                {create,update,delete,start,stop,status,list,instances,ssh,configure,export-cluster-logs,list-cluster-logs,get-cluster-log-events,build-image,delete-image,describe-image,list-images,export-image-logs,list-image-logs,get-image-log-events,version,list-clusters,dcv}
                 ...
 pcluster: error: the following arguments are required: command

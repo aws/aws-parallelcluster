@@ -9,8 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from pcluster.aws.aws_resources import FsxFileSystemInfo
-from pcluster.aws.common import AWSExceptionHandler, Boto3Client
-from pcluster.utils import Cache
+from pcluster.aws.common import AWSExceptionHandler, Boto3Client, Cache
 
 
 class FSxClient(Boto3Client):
@@ -29,3 +28,8 @@ class FSxClient(Boto3Client):
         :return: filesystem info
         """
         return FsxFileSystemInfo(self._client.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0])
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_backup(self, backup_id):
+        """Describe backup."""
+        return self._client.describe_backups(BackupIds=[backup_id]).get("Backups")[0]

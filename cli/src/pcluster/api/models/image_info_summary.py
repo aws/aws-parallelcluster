@@ -25,7 +25,7 @@ class ImageInfoSummary(Model):
 
     def __init__(
         self,
-        image_name=None,
+        image_id=None,
         image_build_status=None,
         cloudformation_stack_status=None,
         cloudformation_stack_arn=None,
@@ -34,8 +34,8 @@ class ImageInfoSummary(Model):
     ):
         """ImageInfoSummary - a model defined in OpenAPI
 
-        :param image_name: The image_name of this ImageInfoSummary.
-        :type image_name: str
+        :param image_id: The image_id of this ImageInfoSummary.
+        :type image_id: str
         :param image_build_status: The image_build_status of this ImageInfoSummary.
         :type image_build_status: ImageBuildStatus
         :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
@@ -48,7 +48,7 @@ class ImageInfoSummary(Model):
         :type version: str
         """
         self.openapi_types = {
-            "image_name": str,
+            "image_id": str,
             "image_build_status": ImageBuildStatus,
             "cloudformation_stack_status": CloudFormationStatus,
             "cloudformation_stack_arn": str,
@@ -57,7 +57,7 @@ class ImageInfoSummary(Model):
         }
 
         self.attribute_map = {
-            "image_name": "imageName",
+            "image_id": "imageId",
             "image_build_status": "imageBuildStatus",
             "cloudformation_stack_status": "cloudformationStackStatus",
             "cloudformation_stack_arn": "cloudformationStackArn",
@@ -65,7 +65,7 @@ class ImageInfoSummary(Model):
             "version": "version",
         }
 
-        self._image_name = image_name
+        self._image_id = image_id
         self._image_build_status = image_build_status
         self._cloudformation_stack_status = cloudformation_stack_status
         self._cloudformation_stack_arn = cloudformation_stack_arn
@@ -84,37 +84,37 @@ class ImageInfoSummary(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def image_name(self):
-        """Gets the image_name of this ImageInfoSummary.
+    def image_id(self):
+        """Gets the image_id of this ImageInfoSummary.
 
-        Name of the image
+        Id of the image
 
-        :return: The image_name of this ImageInfoSummary.
+        :return: The image_id of this ImageInfoSummary.
         :rtype: str
         """
-        return self._image_name
+        return self._image_id
 
-    @image_name.setter
-    def image_name(self, image_name):
-        """Sets the image_name of this ImageInfoSummary.
+    @image_id.setter
+    def image_id(self, image_id):
+        """Sets the image_id of this ImageInfoSummary.
 
-        Name of the image
+        Id of the image
 
-        :param image_name: The image_name of this ImageInfoSummary.
-        :type image_name: str
+        :param image_id: The image_id of this ImageInfoSummary.
+        :type image_id: str
         """
-        if image_name is None:
-            raise ValueError("Invalid value for `image_name`, must not be `None`")
-        if image_name is not None and len(image_name) > 60:
-            raise ValueError("Invalid value for `image_name`, length must be less than or equal to `60`")
-        if image_name is not None and len(image_name) < 5:
-            raise ValueError("Invalid value for `image_name`, length must be greater than or equal to `5`")
-        if image_name is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", image_name):
+        if image_id is None:
+            raise ValueError("Invalid value for `image_id`, must not be `None`")
+        if image_id is not None and len(image_id) > 60:
+            raise ValueError("Invalid value for `image_id`, length must be less than or equal to `60`")
+        if image_id is not None and len(image_id) < 5:
+            raise ValueError("Invalid value for `image_id`, length must be greater than or equal to `5`")
+        if image_id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", image_id):
             raise ValueError(
-                "Invalid value for `image_name`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
+                "Invalid value for `image_id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
             )
 
-        self._image_name = image_name
+        self._image_id = image_id
 
     @property
     def image_build_status(self):
@@ -157,9 +157,6 @@ class ImageInfoSummary(Model):
         :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
         :type cloudformation_stack_status: CloudFormationStatus
         """
-        if cloudformation_stack_status is None:
-            raise ValueError("Invalid value for `cloudformation_stack_status`, must not be `None`")
-
         self._cloudformation_stack_status = cloudformation_stack_status
 
     @property
@@ -182,9 +179,6 @@ class ImageInfoSummary(Model):
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
         :type cloudformation_stack_arn: str
         """
-        if cloudformation_stack_arn is None:
-            raise ValueError("Invalid value for `cloudformation_stack_arn`, must not be `None`")
-
         self._cloudformation_stack_arn = cloudformation_stack_arn
 
     @property

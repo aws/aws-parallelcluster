@@ -9,6 +9,11 @@ HeadNode:
   LocalStorage:
     RootVolume:
       Encrypted: false # Test turning off root volume encryption
+      VolumeType: gp3
+      Iops: 3400
+      Throughput: 135
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:
@@ -18,6 +23,9 @@ Scheduling:
         LocalStorage:
           RootVolume:
             Encrypted: false  # Test turning off root volume encryption
+            VolumeType: gp3
+            Iops: 3200
+            Throughput: 130
       {% endif %}
       ComputeResources:
         - Name: compute-resource-0

@@ -33,7 +33,7 @@ def test_multiple_nics(scheduler, region, pcluster_config_reader, clusters_facto
 
 def _get_private_ip_addresses(instance_id, region, remote_command_executor):
     result = remote_command_executor.run_remote_command(
-        "aws ec2 describe-instances --instance-id {0} --region {1} "
+        "sudo aws ec2 describe-instances --instance-id {0} --region {1} "
         '--query "Reservations[0].Instances[0].NetworkInterfaces[*].PrivateIpAddresses[*].PrivateIpAddress" '
         "--output text".format(instance_id, region)
     )
@@ -43,12 +43,12 @@ def _get_private_ip_addresses(instance_id, region, remote_command_executor):
 def _test_head_node_nics(remote_command_executor, region):
     # On the head node we just check that all the private IPs have been assigned to NICs
     token = remote_command_executor.run_remote_command(
-        "curl --retry 3 --retry-delay 0  --fail -s -X PUT 'http://169.254.169.254/latest/api/token' "
+        "sudo curl --retry 3 --retry-delay 0  --fail -s -X PUT 'http://169.254.169.254/latest/api/token' "
         "-H 'X-aws-ec2-metadata-token-ttl-seconds: 300'"
     ).stdout
 
     head_node_instance_id = remote_command_executor.run_remote_command(
-        f'curl --retry 3 --retry-delay 0  --fail -s -H "X-aws-ec2-metadata-token: {token}" '
+        f'sudo curl --retry 3 --retry-delay 0  --fail -s -H "X-aws-ec2-metadata-token: {token}" '
         "http://169.254.169.254/latest/meta-data/instance-id"
     ).stdout
 

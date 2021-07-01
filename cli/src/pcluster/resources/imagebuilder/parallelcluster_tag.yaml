@@ -44,8 +44,6 @@ phases:
                 OS='alinux2'
               elif [ $(echo "${RELEASE}" | grep '^centos\.7') ]; then
                 OS='centos7'
-              elif [ $(echo "${RELEASE}" | grep '^centos\.8') ]; then
-                OS='centos8'
               elif [ $(echo "${RELEASE}" | grep '^ubuntu\.18') ]; then
                 OS='ubuntu1804'
               elif [ $(echo "${RELEASE}" | grep '^ubuntu\.20') ]; then
@@ -61,12 +59,28 @@ phases:
             - |
               set -v
 
+              # Install AWS CLI
+              which aws
+              if [[ $? -ne 0 ]]; then
+                echo "Installing unzip"
+                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux) ]]; then
+                  yum -y install unzip
+                elif [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^ubuntu ]]; then
+                  apt-get -y install unzip
+                fi
+                echo "Installing AWS CLI"
+                curl --retry 3 -L -o /tmp/awscliv2.zip "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip"
+                cd /tmp/ && unzip awscliv2.zip
+                ./aws/install
+              fi
+
               DESCRIPTION="AWS ParallelCluster AMI for {{ test.OperatingSystemName.outputs.stdout }}"
               append_description () {
-                VALUE="$1"
+                KEY="$1"
+                VALUE="$2"
                 if [[ -n "${VALUE}" ]] && [[ ! "${VALUE}" =~ NOT_INSTALLED ]]; then
-                  echo "Appending ${VALUE} to decription"
-                  DESCRIPTION="${DESCRIPTION}, ${VALUE}"
+                  echo "Appending ${KEY}-${VALUE} to decription"
+                  DESCRIPTION="${DESCRIPTION}, ${KEY}-${VALUE}"
                 fi
               }
 
@@ -128,7 +142,7 @@ phases:
               # Kernel
               KERNEL_VERSION="$(uname -r)"
               add_tag "parallelcluster:kernel_version" "${KERNEL_VERSION}"
-              append_description "kernel-${KERNEL_VERSION}"
+              append_description "kernel" "${KERNEL_VERSION}"
 
               # sudo
               add_tag "parallelcluster:sudo_version" "$(get_package_version "sudo")"
@@ -136,35 +150,35 @@ phases:
               # Lustre
               LUSTRE_VERSION="$(get_package_version "lustre-client")"
               add_tag "parallelcluster:lustre_version" "${LUSTRE_VERSION}"
-              append_description "lustre-${LUSTRE_VERSION}"
+              append_description "lustre" "${LUSTRE_VERSION}"
               LUSTRE_VERSION="$(get_package_version "lustre-client-modules-aws")"
               add_tag "parallelcluster:lustre_version" "${LUSTRE_VERSION}"
-              append_description "lustre-${LUSTRE_VERSION}"
+              append_description "lustre" "${LUSTRE_VERSION}"
 
               # EFA
               EFA_VERSION="$(get_package_version "efa")"
               add_tag "parallelcluster:efa_version" "${EFA_VERSION}"
-              append_description "efa-${EFA_VERSION}"
+              append_description "efa" "${EFA_VERSION}"
 
               # DCV
               DCV_VERSION="$(get_package_version "nice-dcv-server")"
               add_tag "parallelcluster:dcv_version" "${DCV_VERSION}"
-              append_description "dcv-${DCV_VERSION}"
+              append_description "dcv" "${DCV_VERSION}"
 
               # Slurm, Munge and PMIx
               SLURM_VERSION="$(get_source_version "slurm")"
               add_tag "parallelcluster:slurm_version" "${SLURM_VERSION}"
-              append_description "slurm-${SLURM_VERSION}"
+              append_description "slurm" "${SLURM_VERSION}"
               add_tag "parallelcluster:munge_version" "$(get_source_version "munge")"
               add_tag "parallelcluster:pmix_version" "$(get_source_version "pmix")"
 
               # Nvidia, Cuda and Nvidia FabricManager
               NVIDIA_VERSION="$(get_modinfo "nvidia")"
               add_tag "parallelcluster:nvidia_version" "${NVIDIA_VERSION}"
-              append_description "nvidia-${NVIDIA_VERSION}"
+              append_description "nvidia" "${NVIDIA_VERSION}"
               CUDA_VERSION="$(cat /usr/local/cuda/version.txt | cut -d' ' -f3)"
               add_tag "parallelcluster:cuda_version" "${CUDA_VERSION}"
-              append_description "cuda-${CUDA_VERSION}"
+              append_description "cuda" "${CUDA_VERSION}"
               add_tag "parallelcluster:nvidia_fabricmanager_version" "$(get_package_version "nvidia-fabricmanager")"
 
               # Add description

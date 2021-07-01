@@ -48,8 +48,8 @@ def test_raid_fault_tolerance_mode(scheduler, pcluster_config_reader, clusters_f
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     mount_dir = "/raid_dir"
-    _test_raid_correctly_configured(remote_command_executor, raid_type="1", volume_size=20, raid_devices=2)
-    _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
+    _test_raid_correctly_configured(remote_command_executor, raid_type="1", volume_size=35, raid_devices=2)
+    _test_raid_correctly_mounted(remote_command_executor, mount_dir, volume_size=35)
     _test_raid_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
@@ -80,7 +80,6 @@ def _test_raid_correctly_configured(remote_command_executor, raid_type, volume_s
 
     # Compare rounded size to match output from different mdadm version
     # Array Size : 41942912 (40.00 GiB 42.95 GB) --> on Centos7 with mdadm-4.1-4.el7
-    # Array Size : 41908224 (39.97 GiB 42.91 GB) --> on Centos8 with mdadm-4.1-13.el8
     array_size = re.search(r"Array Size : .*\((.*) GiB", result.stdout).group(1)
     expected_size = volume_size - 0.1
     assert_that(float(array_size)).is_greater_than_or_equal_to(expected_size)

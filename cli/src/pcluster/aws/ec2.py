@@ -8,13 +8,21 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 from typing import List
+
+from botocore.exceptions import ClientError
 
 from pcluster import utils
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
-from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, ImageNotFoundError
-from pcluster.constants import PCLUSTER_IMAGE_BUILD_STATUS_TAG, PCLUSTER_IMAGE_ID_TAG, SUPPORTED_ARCHITECTURES
-from pcluster.utils import Cache
+from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError
+from pcluster.constants import (
+    IMAGE_NAME_PART_TO_OS_MAP,
+    OS_TO_IMAGE_NAME_PART_MAP,
+    PCLUSTER_IMAGE_BUILD_STATUS_TAG,
+    PCLUSTER_IMAGE_ID_TAG,
+    SUPPORTED_ARCHITECTURES,
+)
 
 
 class Ec2Client(Boto3Client):
@@ -22,12 +30,15 @@ class Ec2Client(Boto3Client):
 
     def __init__(self):
         super().__init__("ec2")
+        self.additional_instance_types_data = {}
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def list_instance_types(self) -> List[str]:
         """Return a list of instance types."""
-        return [offering.get("InstanceType") for offering in self.describe_instance_type_offerings()]
+        return [offering.get("InstanceType") for offering in self.describe_instance_type_offerings()] + list(
+            self.additional_instance_types_data.keys()
+        )
 
     @AWSExceptionHandler.handle_client_exception
     def describe_instance_type_offerings(self, filters=None, location_type=None):
@@ -188,7 +199,8 @@ class Ec2Client(Boto3Client):
     def get_instance_type_info(self, instance_type):
         """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
         return InstanceTypeInfo(
-            self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+            self.additional_instance_types_data.get(instance_type)
+            or self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
         )
 
     @AWSExceptionHandler.handle_client_exception
@@ -218,6 +230,16 @@ class Ec2Client(Boto3Client):
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
         return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
 
+    def get_official_images(self, os=None, architecture=None):
+        """Get the list of official images, optionally filtered by os and architecture."""
+        try:
+            owners = ["amazon"]
+            name = f"{self._get_official_image_name_prefix(os, architecture)}*"
+            filters = [{"Name": "name", "Values": [name]}]
+            return self.describe_images(ami_ids=[], owners=owners, filters=filters)
+        except ImageNotFoundError:
+            return []
+
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def get_eip_allocation_id(self, eip):
@@ -225,18 +247,20 @@ class Ec2Client(Boto3Client):
         return self._client.describe_addresses(PublicIps=[eip])["Addresses"][0]["AllocationId"]
 
     @staticmethod
-    def _get_official_image_name_prefix(os, architecture):
+    def extract_os_from_official_image_name(name):
+        """Return the os from the os part in an official image name."""
+        name_pattern = "aws-parallelcluster-[^-]+-(?P<OsPart>.+-hvm)-.*"
+        matches = re.match(name_pattern, name)
+        os_part = matches.groupdict().get("OsPart") if matches else None
+        return IMAGE_NAME_PART_TO_OS_MAP.get(os_part, "linux")
+
+    @staticmethod
+    def _get_official_image_name_prefix(os=None, architecture=None):
         """Return the prefix of the current official image, for the provided os-architecture combination."""
-        suffixes = {
-            "alinux2": "amzn2-hvm",
-            "centos7": "centos7-hvm",
-            "centos8": "centos8-hvm",
-            "ubuntu1804": "ubuntu-1804-lts-hvm",
-            "ubuntu2004": "ubuntu-2004-lts-hvm",
-        }
-        return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
-            version=utils.get_installed_version(), suffix=suffixes[os], arch=architecture
-        )
+        version = utils.get_installed_version()
+        os = "*" if os is None else OS_TO_IMAGE_NAME_PART_MAP.get(os, "")
+        architecture = architecture or "*"
+        return f"aws-parallelcluster-{version}-{os}-{architecture}"
 
     @AWSExceptionHandler.handle_client_exception
     def terminate_instances(self, instance_ids):
@@ -312,3 +336,54 @@ class Ec2Client(Boto3Client):
     def delete_snapshot(self, snapshot_id: str):
         """Delete snapshot."""
         self._client.delete_snapshot(SnapshotId=snapshot_id)
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_ebs_snapshot_info(self, ebs_snapshot_id):
+        """
+        Return a dict described the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
+
+        Example of output:
+        {
+            "Description": "This is my snapshot",
+            "Encrypted": False,
+            "VolumeId": "vol-049df61146c4d7901",
+            "State": "completed",
+            "VolumeSize": 120,
+            "StartTime": "2014-02-28T21:28:32.000Z",
+            "Progress": "100%",
+            "OwnerId": "012345678910",
+            "SnapshotId": "snap-1234567890abcdef0",
+        }
+        """
+        return self._client.describe_snapshots(SnapshotIds=[ebs_snapshot_id]).get("Snapshots")[0]
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_security_group(self, security_group_id):
+        """Describe a single security group."""
+        return self.describe_security_groups([security_group_id]).get("SecurityGroups")[0]
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_security_groups(self, security_group_ids):
+        """Describe a single security group."""
+        return self._client.describe_security_groups(GroupIds=security_group_ids)
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_network_interfaces(self, network_interface_ids):
+        """Describe network interfaces."""
+        return self._client.describe_network_interfaces(NetworkInterfaceIds=network_interface_ids).get(
+            "NetworkInterfaces"
+        )
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_volume(self, volume_id):
+        """Describe a volume."""
+        return self._client.describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+
+    @AWSExceptionHandler.handle_client_exception
+    def run_instances(self, **kwargs):
+        """Describe network interfaces."""
+        try:
+            self._client.run_instances(**kwargs)
+        except ClientError as e:
+            if e.response.get("Error").get("Code") != "DryRunOperation":
+                raise

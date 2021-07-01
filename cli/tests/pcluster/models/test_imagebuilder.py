@@ -12,15 +12,25 @@ import json
 from urllib.error import URLError
 
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 
 from pcluster.aws.aws_resources import ImageInfo
-from pcluster.aws.common import AWSClientError
-from pcluster.config.imagebuilder_config import ImageBuilderExtraChefAttributes
+from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError
+from pcluster.config.imagebuilder_config import Build, ImageBuilderConfig, ImageBuilderExtraChefAttributes
+from pcluster.models.common import BadRequest
+from pcluster.models.imagebuilder import (
+    BadRequestImageBuilderActionError,
+    ImageBuilder,
+    ImageBuilderActionError,
+    LimitExceededImageBuilderActionError,
+)
+from pcluster.models.imagebuilder_resources import ImageBuilderStack
 from pcluster.validators.common import FailureLevel
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_imagebuilder_config import imagebuilder_factory
 from tests.pcluster.config.test_common import assert_validation_result
+from tests.pcluster.test_imagebuilder_utils import FAKE_ID
+from tests.pcluster.test_utils import FAKE_NAME
 
 
 @pytest.mark.parametrize(
@@ -313,3 +323,215 @@ def _test_dev_settings(
         validation_failures, expected_failure_levels, expected_failure_messages
     ):
         assert_validation_result(validation_failure, expected_failure_level, expected_failure_message)
+
+
+@pytest.mark.parametrize(
+    "error, returned_error",
+    [
+        (BadRequestError(function_name="image_exists", message="test error"), BadRequestImageBuilderActionError),
+        (LimitExceededError(function_name="image_exists", message="test error"), LimitExceededImageBuilderActionError),
+        (AWSClientError(function_name="image_exists", message="test error"), ImageBuilderActionError),
+    ],
+)
+def test_delete_with_ec2_error(mocker, error, returned_error):
+    with pytest.raises(returned_error):
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", side_effect=(error))
+        ImageBuilder("imageId").delete(force=True)
+
+
+@pytest.mark.parametrize(
+    "error, returned_error",
+    [
+        (BadRequestError(function_name="image_exists", message="test error"), BadRequestImageBuilderActionError),
+        (LimitExceededError(function_name="image_exists", message="test error"), LimitExceededImageBuilderActionError),
+        (AWSClientError(function_name="image_exists", message="test error"), ImageBuilderActionError),
+    ],
+)
+def test_delete_with_cfn_error(mocker, error, returned_error):
+    with pytest.raises(returned_error):
+        mock_aws_api(mocker)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", side_effect=(error))
+        ImageBuilder("imageId").delete(force=True)
+
+
+@pytest.mark.parametrize(
+    "config, expected_result, expected_error_message",
+    [
+        (None, None, None),
+        ("notAYamldict", None, "Configuration must be a valid YAML document"),
+        ("malformed\n\nyaml", None, "Configuration must be a valid YAML document"),
+        (
+            "Build:\n  InstanceType: instanceType\n  ParentImage: arn:parentImage",
+            ImageBuilderConfig(build=Build(instance_type="instanceType", parent_image="arn:parentImage")),
+            None,
+        ),
+    ],
+    ids=["config text is None", "not a YAML dict", "config text is not valid YAML", "valid config text"],
+)
+def test_config_object_initialization(config, expected_result, expected_error_message):
+    if expected_error_message:
+        with pytest.raises(BadRequest, match=expected_error_message):
+            ImageBuilder(config=config).config
+    elif config is None:
+        result = ImageBuilder(config=config).config
+        assert_that(result).is_none()
+    else:
+        result = ImageBuilder(config=config).config
+        with soft_assertions():
+            assert_that(result.build.instance_type).is_equal_to(expected_result.build.instance_type)
+            assert_that(result.build.parent_image).is_equal_to(expected_result.build.parent_image)
+
+
+class TestImageBuilder:
+    @pytest.fixture()
+    def image_builder(self, set_env):
+        set_env("AWS_DEFAULT_REGION", "us-east-2")
+        return ImageBuilder(
+            image_id=FAKE_ID,
+            stack=ImageBuilderStack({"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"}),
+        )
+
+    @pytest.mark.parametrize(
+        "stack_exists, log_group_exists, expected_error, kwargs",
+        [
+            (False, False, "", {}),
+            (True, False, "", {}),
+            (True, True, "", {}),
+            (False, True, "", {}),
+            (True, False, "", {"keep_s3_objects": True}),
+            (True, False, "", {"bucket_prefix": "test_prefix"}),
+            (True, True, "", {"bucket_prefix": "test_prefix"}),
+        ],
+    )
+    def test_export_logs(
+        self,
+        mocker,
+        image_builder,
+        stack_exists,
+        log_group_exists,
+        expected_error,
+        kwargs,
+    ):
+        mock_aws_api(mocker)
+        stack_exists_mock = mocker.patch(
+            "pcluster.models.imagebuilder.ImageBuilder._stack_exists", return_value=stack_exists
+        )
+        mocker.patch("pcluster.aws.logs.LogsClient.log_group_exists", return_value=log_group_exists)
+        download_stack_events_mock = mocker.patch("pcluster.models.imagebuilder.export_stack_events")
+        create_logs_archive_mock = mocker.patch("pcluster.models.imagebuilder.create_logs_archive")
+
+        # Following mocks are used only if CW loggins is enabled
+        logs_filter_mock = mocker.patch(
+            "pcluster.models.imagebuilder.ImageBuilder._init_export_logs_filters",
+            return_value=_MockExportImageLogsFiltersParser(),
+        )
+        cw_logs_exporter_mock = mocker.patch("pcluster.models.imagebuilder.CloudWatchLogsExporter", autospec=True)
+
+        kwargs.update({"output": "output_path", "bucket": "bucket_name"})
+        if expected_error:
+            with pytest.raises(ImageBuilderActionError, match=expected_error):
+                image_builder.export_logs(**kwargs)
+        else:
+            image_builder.export_logs(**kwargs)
+            stack_exists_mock.assert_called()
+            if stack_exists:
+                download_stack_events_mock.assert_called()
+            else:
+                download_stack_events_mock.assert_not_called()
+
+            if log_group_exists:
+                cw_logs_exporter_mock.assert_called()
+                logs_filter_mock.assert_called()
+            else:
+                cw_logs_exporter_mock.assert_not_called()
+                logs_filter_mock.assert_not_called()
+            create_logs_archive_mock.assert_called()
+
+    @pytest.mark.parametrize(
+        "stack_exists, log_group_exists, client_error, expected_error",
+        [
+            (False, False, False, "Unable to find image logs"),
+            (True, False, False, ""),
+            (True, True, False, ""),
+            (True, False, True, ""),
+        ],
+    )
+    def test_list_logs(self, image_builder, mocker, stack_exists, log_group_exists, client_error, expected_error):
+        mock_aws_api(mocker)
+        stack_exists_mock = mocker.patch(
+            "pcluster.models.imagebuilder.ImageBuilder._stack_exists", return_value=stack_exists
+        )
+        cw_log_exists_mock = mocker.patch(
+            "pcluster.aws.logs.LogsClient.log_group_exists", return_value=log_group_exists
+        )
+        describe_log_streams_mock = mocker.patch(
+            "pcluster.aws.logs.LogsClient.describe_log_streams",
+            side_effect=AWSClientError("describe_log_streams", "error") if client_error else None,
+        )
+
+        if expected_error:
+            with pytest.raises(ImageBuilderActionError, match=expected_error):
+                image_builder.list_logs()
+        else:
+            # Note: client error for describe_log_streams doesn't raise an exception
+            image_builder.list_logs()
+
+        # check steps
+        stack_exists_mock.assert_called()
+        cw_log_exists_mock.assert_called()
+        if log_group_exists:
+            describe_log_streams_mock.assert_called()
+        else:
+            describe_log_streams_mock.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "log_stream_name, stack_exists, client_error, expected_error",
+        [
+            (f"{FAKE_ID}-cfn-events", False, False, "CloudFormation Stack for Image .* does not exist"),
+            (f"{FAKE_ID}-cfn-events", True, False, ""),
+            (f"{FAKE_ID}-cfn-events", True, True, "Unexpected error when retrieving log events"),
+            ("log-stream", False, False, ""),
+            ("log-stream", True, True, "Unexpected error when retrieving log events"),
+            ("log-stream", True, False, ""),
+        ],
+    )
+    def test_get_log_events(self, image_builder, mocker, log_stream_name, stack_exists, client_error, expected_error):
+        mock_aws_api(mocker)
+        stack_exists_mock = mocker.patch(
+            "pcluster.models.imagebuilder.ImageBuilder._stack_exists", return_value=stack_exists
+        )
+        get_stack_events_mock = mocker.patch(
+            "pcluster.aws.cfn.CfnClient.get_stack_events",
+            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
+        )
+        get_log_events_mock = mocker.patch(
+            "pcluster.aws.logs.LogsClient.get_log_events",
+            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
+        )
+
+        if expected_error or client_error:
+            with pytest.raises(ImageBuilderActionError, match=expected_error):
+                image_builder.get_log_events(log_stream_name)
+        else:
+            image_builder.get_log_events(log_stream_name)
+
+        if log_stream_name == f"{FAKE_ID}-cfn-events":
+            stack_exists_mock.assert_called()
+            if stack_exists:
+                get_stack_events_mock.assert_called()
+            else:
+                get_stack_events_mock.assert_not_called()
+        else:
+            stack_exists_mock.assert_not_called()
+            get_stack_events_mock.assert_not_called()
+            get_log_events_mock.assert_called()
+
+
+class _MockExportImageLogsFiltersParser:
+    def __init__(self):
+        self._log_group_name = None
+        self.log_stream_prefix = None
+        self.start_time = 0
+        self.end_time = 0

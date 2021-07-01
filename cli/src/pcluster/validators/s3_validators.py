@@ -23,7 +23,8 @@ class UrlValidator(Validator):
                 self._validate_s3_uri(url)
             else:
                 try:
-                    urlopen(url)  # nosec nosemgrep
+                    with urlopen(url):  # nosec nosemgrep
+                        pass
                 except HTTPError as e:
                     self._add_failure(
                         f"The url '{url}' causes HTTPError, the error code is '{e.code}',"

@@ -1,5 +1,6 @@
 namespace parallelcluster
 
+@suppress(["MissingPaginatedTrait"])
 @paginated
 @readonly
 @http(method: "GET", uri: "/v3/images/custom", code: 200)
@@ -22,9 +23,10 @@ structure ListImagesRequest {
     region: Region,
     @httpQuery("nextToken")
     nextToken: PaginationToken,
+    @required
     @httpQuery("imageStatus")
     @documentation("Filter by image status.")
-    imageStatus: ImageStatusFilteringOptions,
+    imageStatus: ImageStatusFilteringOption,
 }
 
 structure ListImagesResponse {
@@ -39,14 +41,8 @@ list ImageInfoSummaries {
 }
 
 @enum([
-    {name: "BUILD_IN_PROGRESS", value: "BUILD_IN_PROGRESS"},
-    {name: "BUILD_FAILED", value: "BUILD_FAILED"},
-    {name: "BUILD_COMPLETE", value: "BUILD_COMPLETE"},
-    {name: "DELETE_IN_PROGRESS", value: "DELETE_IN_PROGRESS"},
-    {name: "DELETE_FAILED", value: "DELETE_FAILED"},
+    {name: "AVAILABLE", value: "AVAILABLE"},
+    {name: "PENDING", value: "PENDING"},
+    {name: "FAILED", value: "FAILED"},
 ])
 string ImageStatusFilteringOption
-
-set ImageStatusFilteringOptions {
-    member: ImageStatusFilteringOption
-}

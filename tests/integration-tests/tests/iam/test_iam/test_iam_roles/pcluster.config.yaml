@@ -11,6 +11,8 @@ HeadNode:
     KeyName: {{ key_name }}
   Iam:
     InstanceRole: {{ ec2_iam_role }}
+  Imds:
+    Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
   Queues:

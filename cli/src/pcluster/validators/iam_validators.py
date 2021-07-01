@@ -10,6 +10,8 @@
 # limitations under the License.
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
+from pcluster.aws.iam import IamClient
+from pcluster.utils import policy_name_to_arn
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -39,6 +41,25 @@ class InstanceProfileValidator(Validator):
             AWSApi.instance().iam.get_instance_profile(_get_resource_name_from_resource_arn(instance_profile_arn))
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class AdditionalIamPolicyValidator(Validator):
+    """
+    EC2 IAM Policy validator.
+
+    Verify the given policy is correct.
+    """
+
+    def _validate(self, policy: str):
+        try:
+            if policy not in self._get_base_additional_iam_policies():
+                IamClient().get_policy(policy)
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
+
+    @staticmethod
+    def _get_base_additional_iam_policies():
+        return [policy_name_to_arn("CloudWatchAgentServerPolicy"), policy_name_to_arn("AWSBatchFullAccess")]
 
 
 def _get_resource_name_from_resource_arn(resource_arn):

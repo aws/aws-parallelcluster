@@ -13,6 +13,7 @@ operation UpdateCluster {
         UnauthorizedClientError,
         NotFoundException,
         LimitExceededException,
+        DryrunOperationException,
     ]
 }
 
@@ -22,7 +23,7 @@ structure UpdateClusterRequest {
     clusterName: ClusterName,
 
     @httpQuery("suppressValidators")
-    @documentation("Identifies one or more config validators to suppress. Format: ALL|id:$value|level:(info|error|warning)|type:$value")
+    @documentation("Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)")
     suppressValidators: SuppressValidatorsList,
     @httpQuery("validationFailureLevel")
     @documentation("Min validation level that will cause the update to fail. Defaults to 'error'.")
@@ -35,10 +36,6 @@ structure UpdateClusterRequest {
     @httpQuery("forceUpdate")
     @documentation("Force update by ignoring the update validation errors.")
     forceUpdate: Boolean,
-    @idempotencyToken
-    @httpQuery("clientToken")
-    @documentation("Idempotency token that can be set by the client so that retries for the same request are idempotent")
-    clientToken: String,
 
     @required
     clusterConfiguration: ClusterConfigurationData,

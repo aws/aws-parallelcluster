@@ -28,7 +28,7 @@
         "cloudformation:SignalResource"
       ],
       "Resource": [
-        "arn:{{ partition }}:cloudformation:{{ region }}:{{ account_id }}:stack/parallelcluster-*/*"
+        "arn:{{ partition }}:cloudformation:{{ region }}:{{ account_id }}:stack/*/*"
       ],
       "Effect": "Allow",
       "Sid": "CloudFormation"

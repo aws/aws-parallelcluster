@@ -7,6 +7,7 @@ CHANGELOG
 **CHANGES**
 
 - Drop support for SGE and Torque schedulers.
+- Drop support for CentOS8.
 - Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
 - Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
 - Deprecate `--cluster-template`, `--extra-parameters`, `--reset-desired` and `--yes` parameters for the `update` command.
@@ -16,11 +17,17 @@ CHANGELOG
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
 - Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 
   `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
-   `--subnet-id`.
+  `--subnet-id`.
 - Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
 - Add `delete-image` command with `--name`, `--region`, `--force` parameters.
 - Add `describe-image` command with `--name`, `--region` parameters.
-- Add`list-images` command with `--region`, `--color`parameters.
+- Add `list-images` command with `--region`, `--color`parameters.
+- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs 
+  and CloudFormation Stack Events.
+  Add `export-image-logs`, `list-image-logs` and `get-image-log-events` commands to retrieve both Image Builder Logs
+  and CloudFormation Stack Events.
+- Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
+  as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role 
   for each queue.
 - Add possibility to configure different security groups for each queue.
@@ -41,10 +48,19 @@ per cluster.
 - Add support for associating an existing Elastic IP to the head node.
 - Encrypt root EBS volumes and shared EBS volumes by default. 
   Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
-- Change tags prefix from `aws-parallelcluster-` to `parallelcluster:`.
 - Enable EFA for a compute resource by default if the instance type supports EFA.
-- Use tags prefix `parallelcluster:`.
+- Remove parallelcluster- prefix from CloudFormation stack created by ParallelCluster.
+- Rename tags (Note: the following tags are crucial for ParallelCluster scaling logic): 
+   - aws-parallelcluster-node-type -> parallelcluster:node-type
+   - ClusterName -> parallelcluster:cluster-name
+   - aws-parallelcluster-attributes -> parallelcluster:attributes
+   - Version -> parallelcluster:version
+- Remove tag: Application.
 - Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
+- Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file. 
+- Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
+- Add prompt for availability zone in pcluster configure automated subnets creation.
+- Add configuration HeadNode.Imds.Secured to enable/disable restricted access to IMDS.
 
 2.x.x
 ------

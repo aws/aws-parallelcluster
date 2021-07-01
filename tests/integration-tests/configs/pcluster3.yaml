@@ -8,6 +8,20 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
+  cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
+      dimensions:
+        - regions: ["us-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+  create:
+    test_create.py::test_create_imds_secured:
+      dimensions:
+        - regions: [ "us-east-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "alinux2" ]
+          schedulers: [ "slurm" ]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -21,6 +35,13 @@ test-suites:
         - regions: ["ap-northeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
+          schedulers: ["slurm"]
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   iam:
     test_iam.py::test_iam_policies:
@@ -46,7 +67,7 @@ test-suites:
       dimensions:
         - regions: ["ap-northeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: ["centos8"]
+          oss: ["ubuntu2004"]
           schedulers: ["slurm"]
   storage:
     test_efs.py::test_efs_compute_az:
@@ -61,6 +82,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["slurm"]
+    test_ebs.py::test_ebs_single:
+      dimensions:
+        - regions: ["eu-west-3"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
   dcv:
     test_dcv.py::test_dcv_configuration:
       dimensions:
@@ -74,9 +101,8 @@ test-suites:
         - regions: ["eu-south-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
-          schedulers: ["awsbatch"]
     test_update.py::test_update_slurm:
       dimensions:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos8"]
+          oss: ["centos7"]

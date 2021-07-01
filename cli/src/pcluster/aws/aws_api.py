@@ -12,12 +12,14 @@ import os
 
 from pcluster.aws.batch import BatchClient
 from pcluster.aws.cfn import CfnClient
+from pcluster.aws.dynamo import DynamoResource
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.aws.efs import EfsClient
 from pcluster.aws.fsx import FSxClient
 from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
+from pcluster.aws.logs import LogsClient
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
 from pcluster.aws.sts import StsClient
@@ -49,6 +51,8 @@ class AWSApi:
         self._sts = None
         self._s3_resource = None
         self._iam = None
+        self._ddb_resource = None
+        self._logs = None
 
     @property
     def cfn(self):
@@ -126,6 +130,20 @@ class AWSApi:
         if not self._iam:
             self._iam = IamClient()
         return self._iam
+
+    @property
+    def ddb_resource(self):
+        """DynamoResource client."""  # noqa: D403
+        if not self._ddb_resource:
+            self._ddb_resource = DynamoResource()
+        return self._ddb_resource
+
+    @property
+    def logs(self):
+        """Log client."""
+        if not self._logs:
+            self._logs = LogsClient()
+        return self._logs
 
     @staticmethod
     def instance():

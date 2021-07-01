@@ -8,8 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.aws.common import AWSExceptionHandler, Boto3Resource
-from pcluster.utils import Cache
+from pcluster.aws.common import AWSExceptionHandler, Boto3Resource, Cache
 
 
 class S3Resource(Boto3Resource):
@@ -25,14 +24,27 @@ class S3Resource(Boto3Resource):
         return self._resource.Bucket(bucket_name)
 
     @AWSExceptionHandler.handle_client_exception
-    def delete_object(self, bucket_name, prefix=None):
-        """Delete objects by filter."""
-        self.get_bucket(bucket_name).objects.filter(Prefix=prefix).delete()
+    def download_file(self, bucket_name, key, output):
+        """Download file."""
+        self.get_bucket(bucket_name).download_file(key, output)
 
     @AWSExceptionHandler.handle_client_exception
-    def delete_all_objects(self, bucket_name):
-        """Delete all objects."""
-        self.get_bucket(bucket_name).objects.all().delete()
+    def get_objects(self, bucket_name, prefix=None):
+        """Get objects."""
+        return self.get_bucket(bucket_name).objects.filter(Prefix=prefix)
+
+    @AWSExceptionHandler.handle_client_exception
+    def delete_objects(self, bucket_name, prefix=None):
+        """Delete objects."""
+        if prefix:
+            self.get_bucket(bucket_name).objects.filter(Prefix=prefix).delete()
+        else:
+            self.get_bucket(bucket_name).objects.all().delete()
+
+    @AWSExceptionHandler.handle_client_exception
+    def delete_object(self, bucket_name, prefix=None):
+        """Delete object versions by filter."""
+        self.get_bucket(bucket_name).object_versions.filter(Prefix=prefix).delete()
 
     @AWSExceptionHandler.handle_client_exception
     def delete_object_versions(self, bucket_name, prefix=None):
@@ -43,3 +55,8 @@ class S3Resource(Boto3Resource):
     def delete_all_object_versions(self, bucket_name):
         """Delete all object versions."""
         self.get_bucket(bucket_name).object_versions.delete()
+
+    @AWSExceptionHandler.handle_client_exception
+    def is_empty(self, bucket_name, prefix=None):
+        """Return true whether the given bucket doesn't have any objects under the given key prefix."""
+        return not any(self.get_bucket(bucket_name).objects.filter(Prefix=prefix).limit(1))

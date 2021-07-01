@@ -11,8 +11,6 @@
 from pcluster import imagebuilder_utils
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.aws.iam import IamClient
-from pcluster.utils import policy_name_to_arn
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -62,25 +60,6 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
             )
             return []
         return AWSApi.instance().ec2.get_supported_architectures(instance_type)
-
-
-class AdditionalIamPolicyValidator(Validator):  # TODO add test
-    """
-    EC2 IAM Policy validator.
-
-    Verify the given policy is correct.
-    """
-
-    def _validate(self, policy: str):
-        try:
-            if policy not in self._get_base_additional_iam_policies():
-                IamClient().get_policy(policy)
-        except AWSClientError as e:
-            self._add_failure(str(e), FailureLevel.ERROR)
-
-    @staticmethod
-    def _get_base_additional_iam_policies():
-        return [policy_name_to_arn("CloudWatchAgentServerPolicy"), policy_name_to_arn("AWSBatchFullAccess")]
 
 
 class KeyPairValidator(Validator):

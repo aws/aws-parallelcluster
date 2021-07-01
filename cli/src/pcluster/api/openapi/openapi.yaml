@@ -91,17 +91,19 @@ paths:
       operationId: create_cluster
       parameters:
       - description: "Identifies one or more config validators to suppress. Format:\
-          \ ALL|id:$value|level:(info|error|warning)|type:$value"
+          \ (ALL|type:[A-Za-z0-9]+)"
         explode: true
         in: query
         name: suppressValidators
         required: false
         schema:
           description: "Identifies one or more config validators to suppress. Format:\
-            \ ALL|id:$value|level:(info|error|warning)|type:$value"
+            \ (ALL|type:[A-Za-z0-9]+)"
           items:
+            pattern: "^(ALL|type:[A-Za-z0-9]+)$"
             type: string
           type: array
+          uniqueItems: true
         style: form
       - description: Min validation level that will cause the creation to fail. Defaults
           to 'ERROR'.
@@ -137,17 +139,6 @@ paths:
           nullable: true
           type: boolean
         style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
-          type: string
-        style: form
       requestBody:
         content:
           application/json:
@@ -180,6 +171,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
           description: ConflictException 409 response
+        "412":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
+          description: DryrunOperationException 412 response
         "429":
           content:
             application/json:
@@ -227,27 +224,6 @@ paths:
         required: false
         schema:
           description: AWS Region. Defaults to the region the API is deployed to.
-          type: string
-        style: form
-      - description: Retain cluster logs on delete. Defaults to True.
-        explode: true
-        in: query
-        name: retainLogs
-        required: false
-        schema:
-          description: Retain cluster logs on delete. Defaults to True.
-          nullable: true
-          type: boolean
-        style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
           type: string
         style: form
       responses:
@@ -387,17 +363,19 @@ paths:
           type: string
         style: simple
       - description: "Identifies one or more config validators to suppress. Format:\
-          \ ALL|id:$value|level:(info|error|warning)|type:$value"
+          \ (ALL|type:[A-Za-z0-9]+)"
         explode: true
         in: query
         name: suppressValidators
         required: false
         schema:
           description: "Identifies one or more config validators to suppress. Format:\
-            \ ALL|id:$value|level:(info|error|warning)|type:$value"
+            \ (ALL|type:[A-Za-z0-9]+)"
           items:
+            pattern: "^(ALL|type:[A-Za-z0-9]+)$"
             type: string
           type: array
+          uniqueItems: true
         style: form
       - description: Min validation level that will cause the update to fail. Defaults
           to 'error'.
@@ -441,17 +419,6 @@ paths:
           nullable: true
           type: boolean
         style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
-          type: string
-        style: form
       requestBody:
         content:
           application/json:
@@ -490,6 +457,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
           description: ConflictException 409 response
+        "412":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
+          description: DryrunOperationException 412 response
         "429":
           content:
             application/json:
@@ -870,13 +843,9 @@ paths:
         explode: true
         in: query
         name: imageStatus
-        required: false
+        required: true
         schema:
-          description: Filter by image status.
-          items:
-            $ref: '#/components/schemas/ImageStatusFilteringOption'
-          type: array
-          uniqueItems: true
+          $ref: '#/components/schemas/ImageStatusFilteringOption'
         style: form
       responses:
         "200":
@@ -925,17 +894,19 @@ paths:
       operationId: build_image
       parameters:
       - description: "Identifies one or more config validators to suppress. Format:\
-          \ ALL|id:$value|level:(info|error|warning)|type:$value"
+          \ (ALL|type:[A-Za-z0-9]+)"
         explode: true
         in: query
         name: suppressValidators
         required: false
         schema:
           description: "Identifies one or more config validators to suppress. Format:\
-            \ ALL|id:$value|level:(info|error|warning)|type:$value"
+            \ (ALL|type:[A-Za-z0-9]+)"
           items:
+            pattern: "^(ALL|type:[A-Za-z0-9]+)$"
             type: string
           type: array
+          uniqueItems: true
         style: form
       - description: Min validation level that will cause the creation to fail. Defaults
           to 'error'.
@@ -970,17 +941,6 @@ paths:
           nullable: true
           type: boolean
         style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
-          type: string
-        style: form
       requestBody:
         content:
           application/json:
@@ -1013,6 +973,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictExceptionResponseContent'
           description: ConflictException 409 response
+        "412":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DryrunOperationExceptionResponseContent'
+          description: DryrunOperationException 412 response
         "429":
           content:
             application/json:
@@ -1036,18 +1002,18 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
-  /v3/images/custom/{imageName}:
+  /v3/images/custom/{imageId}:
     delete:
       description: Initiate the deletion of the custom ParallelCluster image.
       operationId: delete_image
       parameters:
-      - description: Name of the image
+      - description: Id of the image
         explode: false
         in: path
-        name: imageName
+        name: imageId
         required: true
         schema:
-          description: Name of the image
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
@@ -1060,17 +1026,6 @@ paths:
         required: false
         schema:
           description: AWS Region. Defaults to the region the API is deployed to.
-          type: string
-        style: form
-      - description: Idempotency token that can be set by the client so that retries
-          for the same request are idempotent
-        explode: true
-        in: query
-        name: clientToken
-        required: false
-        schema:
-          description: Idempotency token that can be set by the client so that retries
-            for the same request are idempotent
           type: string
         style: form
       - description: Force deletion in case there are instances using the AMI or in
@@ -1137,13 +1092,13 @@ paths:
       description: Get detailed information about an existing image.
       operationId: describe_image
       parameters:
-      - description: Name of the image
+      - description: Id of the image
         explode: false
         in: path
-        name: imageName
+        name: imageId
         required: true
         schema:
-          description: Name of the image
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
@@ -1211,15 +1166,6 @@ paths:
       description: Describe ParallelCluster AMIs.
       operationId: describe_official_images
       parameters:
-      - description: ParallelCluster version to retrieve AMIs for.
-        explode: true
-        in: query
-        name: version
-        required: false
-        schema:
-          description: ParallelCluster version to retrieve AMIs for.
-          type: string
-        style: form
       - description: AWS Region. Defaults to the region the API is deployed to.
         explode: true
         in: query
@@ -1245,15 +1191,6 @@ paths:
         required: false
         schema:
           description: Filter by architecture
-          type: string
-        style: form
-      - description: Token to use for paginated requests.
-        explode: true
-        in: query
-        name: nextToken
-        required: false
-        schema:
-          description: Token to use for paginated requests.
           type: string
         style: form
       responses:
@@ -1305,6 +1242,7 @@ components:
         amiId: amiId
         os: os
         name: name
+        version: version
         architecture: architecture
       properties:
         amiId:
@@ -1316,6 +1254,9 @@ components:
         name:
           title: name
           type: string
+        version:
+          title: version
+          type: string
         architecture:
           title: architecture
           type: string
@@ -1323,6 +1264,7 @@ components:
       - amiId
       - architecture
       - name
+      - version
       - os
       title: AmiInfo
       type: object
@@ -1352,15 +1294,15 @@ components:
     BuildImageRequestContent:
       example:
         imageConfiguration: imageConfiguration
-        name: name
+        id: id
         region: region
       properties:
         imageConfiguration:
           description: Image configuration as a YAML document
           format: byte
           type: string
-        name:
-          description: Name of the image
+        id:
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
@@ -1369,13 +1311,13 @@ components:
           description: AWS Region. Defaults to the region the API is deployed to.
           type: string
       required:
+      - id
       - imageConfiguration
-      - name
       type: object
     BuildImageResponseContent:
       example:
         image:
-          imageName: imageName
+          imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -1652,7 +1594,7 @@ components:
     DeleteImageResponseContent:
       example:
         image:
-          imageName: imageName
+          imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -1807,17 +1749,19 @@ components:
       example:
         imageConfiguration:
           s3Url: s3Url
-        imageName: imageName
+        imageId: imageId
         imagebuilderImageStatus: null
+        imagebuilderImageStatusReason: imagebuilderImageStatusReason
         creationTime: 2000-01-23T04:56:07.000+00:00
         imageBuildStatus: null
-        failureReason: failureReason
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
+        cloudformationStackStatusReason: cloudformationStackStatusReason
         region: region
         ec2AmiInfo:
           amiName: amiName
           amiId: amiId
+          description: description
           state: null
           tags:
           - value: value
@@ -1826,17 +1770,12 @@ components:
             key: key
           architecture: architecture
         version: version
-        tags:
-        - value: value
-          key: key
-        - value: value
-          key: key
       properties:
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
-        imageName:
-          description: Name of the Image
-          title: imageName
+        imageId:
+          description: Id of the Image
+          title: imageId
           type: string
         imagebuilderImageStatus:
           $ref: '#/components/schemas/ImageBuilderImageStatus'
@@ -1847,13 +1786,16 @@ components:
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
-        failureReason:
-          description: "Describe the reason of the failure when the stack is in CREATE_FAILED,\
-            \ UPDATE_FAILED or DELETE_FAILED status"
-          title: failureReason
+        cloudformationStackStatusReason:
+          description: Reason for the CloudFormation stack status
+          title: cloudformationStackStatusReason
           type: string
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStatus'
+        imagebuilderImageStatusReason:
+          description: Reason for the ImageBuilder Image status.
+          title: imagebuilderImageStatusReason
+          type: string
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack
           title: cloudformationStackArn
@@ -1868,41 +1810,28 @@ components:
           description: ParallelCluster version used to build the image
           title: version
           type: string
-        tags:
-          description: Tags of the infrastructure to build the Image
-          items:
-            $ref: '#/components/schemas/Tag'
-          title: tags
-          type: array
       required:
-      - cloudformationStackArn
-      - cloudformationStackStatus
-      - creationTime
       - imageBuildStatus
       - imageConfiguration
-      - imageName
+      - imageId
       - region
-      - tags
       - version
       title: DescribeImageResponseContent
       type: object
     DescribeOfficialImagesResponseContent:
       example:
-        nextToken: nextToken
         items:
         - amiId: amiId
           os: os
           name: name
+          version: version
           architecture: architecture
         - amiId: amiId
           os: os
           name: name
+          version: version
           architecture: architecture
       properties:
-        nextToken:
-          description: Token to use for paginated requests.
-          title: nextToken
-          type: string
         items:
           items:
             $ref: '#/components/schemas/AmiInfo'
@@ -1911,6 +1840,15 @@ components:
       required:
       - items
       title: DescribeOfficialImagesResponseContent
+      type: object
+    DryrunOperationExceptionResponseContent:
+      description: Communicates that the operation would have succeeded without the
+        dryrun flag.
+      properties:
+        message:
+          title: message
+          type: string
+      title: DryrunOperationExceptionResponseContent
       type: object
     EC2Instance:
       example:
@@ -1951,6 +1889,7 @@ components:
       example:
         amiName: amiName
         amiId: amiId
+        description: description
         state: null
         tags:
         - value: value
@@ -1967,6 +1906,10 @@ components:
           description: EC2 AMI id
           title: amiId
           type: string
+        description:
+          description: EC2 AMI description
+          title: description
+          type: string
         state:
           $ref: '#/components/schemas/Ec2AmiState'
         tags:
@@ -1982,6 +1925,7 @@ components:
       required:
       - amiId
       - amiName
+      - description
       - architecture
       - state
       - tags
@@ -2035,19 +1979,19 @@ components:
       type: object
     ImageInfoSummary:
       example:
-        imageName: imageName
+        imageId: imageId
         imageBuildStatus: null
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
         region: region
         version: version
       properties:
-        imageName:
-          description: Name of the image
+        imageId:
+          description: Id of the image
           maxLength: 60
           minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
-          title: imageName
+          title: imageId
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
@@ -2066,21 +2010,17 @@ components:
           title: version
           type: string
       required:
-      - cloudformationStackArn
-      - cloudformationStackStatus
       - imageBuildStatus
-      - imageName
+      - imageId
       - region
       - version
       title: ImageInfoSummary
       type: object
     ImageStatusFilteringOption:
       enum:
-      - BUILD_IN_PROGRESS
-      - BUILD_FAILED
-      - BUILD_COMPLETE
-      - DELETE_IN_PROGRESS
-      - DELETE_FAILED
+      - AVAILABLE
+      - PENDING
+      - FAILED
       title: ImageStatusFilteringOption
       type: string
     InstanceState:
@@ -2144,13 +2084,13 @@ components:
       example:
         nextToken: nextToken
         items:
-        - imageName: imageName
+        - imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
           region: region
           version: version
-        - imageName: imageName
+        - imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -2329,6 +2269,5 @@ components:
       - INFO
       - WARNING
       - ERROR
-      - CRITICAL
       title: ValidationLevel
       type: string

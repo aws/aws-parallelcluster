@@ -11,6 +11,8 @@
 
 import functools
 import logging
+import os
+import time
 from abc import ABC
 from enum import Enum
 
@@ -29,6 +31,7 @@ class AWSClientError(Exception):
         VALIDATION_ERROR = "ValidationError"
         REQUEST_LIMIT_EXCEEDED = "RequestLimitExceeded"
         THROTTLING_EXCEPTION = "ThrottlingException"
+        CONDITIONAL_CHECK_FAILED_EXCEPTION = "ConditionalCheckFailedException"
 
         @classmethod
         def throttling_error_codes(cls):
@@ -56,6 +59,20 @@ class StackNotFoundError(AWSClientError):
         super().__init__(function_name=function_name, message=f"Stack with id {stack_name} does not exist")
 
 
+class LimitExceededError(AWSClientError):
+    """Error caused by exceeding the limits of a downstream AWS service."""
+
+    def __init__(self, function_name: str, message: str, error_code: str = None):
+        super().__init__(function_name=function_name, message=message, error_code=error_code)
+
+
+class BadRequestError(AWSClientError):
+    """Error caused by a problem in the request."""
+
+    def __init__(self, function_name: str, message: str, error_code: str = None):
+        super().__init__(function_name=function_name, message=message, error_code=error_code)
+
+
 class AWSExceptionHandler:
     """AWS Exception handler."""
 
@@ -68,7 +85,7 @@ class AWSExceptionHandler:
             try:
                 return func(*args, **kwargs)
             except ParamValidationError as validation_error:
-                error = AWSClientError(
+                error = BadRequestError(
                     func.__name__,
                     "Error validating parameter. Failed with exception: {0}".format(str(validation_error)),
                 )
@@ -76,9 +93,34 @@ class AWSExceptionHandler:
                 error = AWSClientError(func.__name__, str(e))
             except ClientError as e:
                 # add request id
-                error = AWSClientError(func.__name__, e.response["Error"]["Message"], e.response["Error"]["Code"])
+                message = e.response["Error"]["Message"]
+                error_code = e.response["Error"]["Code"]
+
+                if error_code in AWSClientError.ErrorCode.throttling_error_codes():
+                    error = LimitExceededError(func.__name__, message, error_code)
+                elif error_code == AWSClientError.ErrorCode.VALIDATION_ERROR:
+                    error = BadRequestError(func.__name__, message, error_code)
+                else:
+                    error = AWSClientError(func.__name__, message, error_code)
             LOGGER.error("Encountered error when performing boto3 call in %s: %s", error.function_name, error.message)
             raise error
+
+        return wrapper
+
+    @staticmethod
+    def retry_on_boto3_throttling(func):
+        """Retry boto3 calls on throttling, can be used as a decorator."""
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except ClientError as e:
+                    if e.response["Error"]["Code"] != "Throttling":
+                        raise
+                    LOGGER.debug("Throttling when calling %s function. Will retry in %d seconds.", func.__name__, 5)
+                    time.sleep(5)
 
         return wrapper
 
@@ -119,3 +161,60 @@ class Boto3Resource(ABC):
     def __init__(self, resource_name: str):
         self._resource = boto3.resource(resource_name)
         self._resource.meta.client.meta.events.register("provide-client-params.*.*", _log_boto3_calls)
+
+
+class Cache:
+    """Simple utility class providing a cache mechanism for expensive functions."""
+
+    _caches = []
+
+    @staticmethod
+    def is_enabled():
+        """Tell if the cache is enabled."""
+        return not os.environ.get("PCLUSTER_CACHE_DISABLED")
+
+    @staticmethod
+    def clear_all():
+        """Clear the content of all caches."""
+        for cache in Cache._caches:
+            cache.clear()
+
+    @staticmethod
+    def _make_key(args, kwargs):
+        key = args
+        if kwargs:
+            for item in kwargs.items():
+                key += item
+        return hash(key)
+
+    @staticmethod
+    def cached(function):
+        """
+        Decorate a function to make it use a results cache based on passed arguments.
+
+        Note: all arguments must be hashable for this function to work properly.
+        """
+        cache = {}
+        Cache._caches.append(cache)
+
+        @functools.wraps(function)
+        def wrapper(*args, **kwargs):
+            cache_key = Cache._make_key(args, kwargs)
+
+            if Cache.is_enabled() and cache_key in cache:
+                return cache[cache_key]
+            else:
+                return_value = function(*args, **kwargs)
+                if Cache.is_enabled():
+                    cache[cache_key] = return_value
+                return return_value
+
+        return wrapper
+
+
+def get_region():
+    """Get region used internally for all the AWS calls."""
+    region = boto3.session.Session().region_name
+    if region is None:
+        raise AWSClientError("get_region", "AWS region not configured")
+    return region

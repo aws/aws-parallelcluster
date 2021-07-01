@@ -64,8 +64,8 @@ def test_fsx_lustre_configuration_options(
     auto_import_policy,
     region,
     pcluster_config_reader,
-    clusters_factory,
     s3_bucket_factory,
+    clusters_factory,
     test_datadir,
     os,
     scheduler,
@@ -144,8 +144,8 @@ def _test_fsx_lustre_configuration_options(
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
-    clusters_factory,
     s3_bucket_factory,
+    clusters_factory,
     test_datadir,
     os,
     scheduler,
@@ -310,7 +310,7 @@ def test_existing_fsx(
     _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
     """
     Define a fixture to manage the creation and destruction of fsx.
@@ -444,7 +444,7 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name, region):
         "sudo lfs hsm_archive {mount_dir}/file_to_export && sleep 5".format(mount_dir=mount_dir)
     )
     remote_command_executor.run_remote_command(
-        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
             region=region, bucket_name=bucket_name
         )
     )
@@ -518,7 +518,7 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(task.get("Lifecycle")).is_equal_to("SUCCEEDED")
 
     remote_command_executor.run_remote_command(
-        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
             region=region, bucket_name=bucket_name
         )
     )

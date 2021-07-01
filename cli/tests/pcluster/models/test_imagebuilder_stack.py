@@ -58,7 +58,9 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                             "VolumeType": "gp2",
                             "Encrypted": False,
                         },
-                    }
+                    },
+                    {"DeviceName": "/dev/sdb", "VirtualName": "ephemeral0"},
+                    {"DeviceName": "/dev/sdc", "VirtualName": "ephemeral1"},
                 ],
                 "Description": "AWS ParallelCluster AMI for alinux2, kernel-4.14.203-156.332.amzn2.x86_64, "
                 "lustre-client-2.10.8-5.amzn2.x86_64, nice-dcv-server-2020.2.9662-1.el7.x86_64, "

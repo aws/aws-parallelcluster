@@ -1,5 +1,5 @@
 Image:
-  Os: alinux2  # alinux2 | centos7 | centos8 | ubuntu1804 | ubuntu2004
+  Os: alinux2  # alinux2 | centos7 | ubuntu1804 | ubuntu2004
   CustomAmi: ami-12345678  # ami-xxx
 HeadNode:
   InstanceType: String  # t2.micro

@@ -12,6 +12,7 @@ import os
 
 import pytest
 
+from pcluster.aws.common import AWSClientError
 from pcluster.validators.fsx_validators import (
     FsxAutoImportValidator,
     FsxBackupIdValidator,
@@ -23,7 +24,6 @@ from pcluster.validators.fsx_validators import (
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
-from tests.utils import MockedBoto3Request
 
 
 @pytest.fixture()
@@ -392,11 +392,19 @@ def test_fsx_storage_capacity_validator(
         ("backup-0ff8da96d57f3b4e3", None),
     ],
 )
-def test_fsx_backup_id_validator(boto3_stubber, backup_id, expected_message):
+def test_fsx_backup_id_validator(mocker, backup_id, expected_message):
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     valid_key_id = "backup-0ff8da96d57f3b4e3"
-    describe_backups_response = {
-        "Backups": [
-            {
+    generate_describe_backups_error = backup_id != valid_key_id
+    if generate_describe_backups_error:
+        describe_backup_mock = mocker.patch(
+            "pcluster.aws.fsx.FSxClient.describe_backup",
+            side_effect=AWSClientError(function_name="describe_backup", message=expected_message),
+        )
+    else:
+        describe_backup_mock = mocker.patch(
+            "pcluster.aws.fsx.FSxClient.describe_backup",
+            return_value={
                 "BackupId": valid_key_id,
                 "Lifecycle": "AVAILABLE",
                 "Type": "USER_INITIATED",
@@ -406,22 +414,11 @@ def test_fsx_backup_id_validator(boto3_stubber, backup_id, expected_message):
                     "StorageType": "SSD",
                     "LustreConfiguration": {"DeploymentType": "PERSISTENT_1", "PerUnitStorageThroughput": 200},
                 },
-            }
-        ]
-    }
-
-    generate_describe_backups_error = backup_id != valid_key_id
-    fsx_mocked_requests = [
-        MockedBoto3Request(
-            method="describe_backups",
-            response=expected_message if generate_describe_backups_error else describe_backups_response,
-            expected_params={"BackupIds": [backup_id]},
-            generate_error=generate_describe_backups_error,
+            },
         )
-    ]
-    boto3_stubber("fsx", fsx_mocked_requests)
     actual_failures = FsxBackupIdValidator().execute(backup_id)
     assert_failure_messages(actual_failures, expected_message)
+    describe_backup_mock.assert_called_with(backup_id)
 
 
 @pytest.mark.parametrize(

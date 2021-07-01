@@ -30,7 +30,6 @@ from marshmallow import (
 )
 
 from pcluster.config.cluster_config import (
-    AdditionalIamPolicy,
     AdditionalPackages,
     AmiSearchFilters,
     AwsBatchClusterConfig,
@@ -57,6 +56,7 @@ from pcluster.config.cluster_config import (
     HeadNodeNetworking,
     Iam,
     Image,
+    Imds,
     IntelSelectSolutions,
     LocalStorage,
     Logs,
@@ -78,8 +78,15 @@ from pcluster.config.cluster_config import (
     Ssh,
 )
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
+from pcluster.constants import (
+    EBS_VOLUME_SIZE_DEFAULT,
+    FSX_HDD_THROUGHPUT,
+    FSX_SSD_THROUGHPUT,
+    SUPPORTED_OSES,
+    SUPPORTED_SCHEDULERS,
+)
 from pcluster.schemas.common_schema import (
+    AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
     BaseSchema,
     TagSchema,
@@ -137,6 +144,9 @@ class QueueRootVolumeSchema(BaseSchema):
 
     size = fields.Int(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    volume_type = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    iops = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -602,6 +612,7 @@ class CloudWatchLogsSchema(BaseSchema):
         validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
+    retain_on_delete = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -672,24 +683,18 @@ class RolesSchema(BaseSchema):
 class S3AccessSchema(BaseSchema):
     """Represent the schema of S3 access."""
 
-    bucket_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    bucket_name = fields.Str(
+        required=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.Regexp(r"^[a-z0-9\-\.]+$"),
+    )
+    key_name = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     enable_write_access = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return S3Access(**data)
-
-
-class AdditionalIamPolicySchema(BaseSchema):
-    """Represent the schema of Additional IAM policy."""
-
-    policy = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return AdditionalIamPolicy(**data)
 
 
 class ClusterIamSchema(BaseSchema):
@@ -728,6 +733,17 @@ class IamSchema(BaseSchema):
         return Iam(**data)
 
 
+class ImdsSchema(BaseSchema):
+    """Represent the schema of IMDS for HeadNode."""
+
+    secured = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Imds(**data)
+
+
 class IntelSelectSolutionsSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
@@ -755,7 +771,9 @@ class AdditionalPackagesSchema(BaseSchema):
 class AmiSearchFiltersSchema(BaseSchema):
     """Represent the schema of the AmiSearchFilters section."""
 
-    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    tags = fields.Nested(
+        TagSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Key"}
+    )
     owner = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load()
@@ -769,6 +787,7 @@ class ClusterDevSettingsSchema(BaseDevSettingsSchema):
 
     cluster_template = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     ami_search_filters = fields.Nested(AmiSearchFiltersSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    instance_types_data = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -859,6 +878,7 @@ class HeadNodeSchema(BaseSchema):
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    imds = fields.Nested(ImdsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -931,7 +951,7 @@ class ComputeSettingsSchema(BaseSchema):
 class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
-    name = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     networking = fields.Nested(
         QueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
@@ -1152,3 +1172,21 @@ class ClusterSchema(BaseSchema):
 
         cluster.source_config = original_data
         return cluster
+
+    @staticmethod
+    def process_validation_message(validation_error: ValidationError):
+        """
+        Process error message.
+
+        Because there are some @pre_load(s) changing the structure of the schema,
+        """
+        # We need to modify the error message to be aligned with the structure before @pre_load(s)
+        error_message = validation_error.args[0]
+        if "Scheduling" in error_message:
+            scheduling = error_message["Scheduling"]
+            if isinstance(scheduling, dict):
+                for scheduler in SUPPORTED_SCHEDULERS:
+                    scheduler_settings = scheduling.get(scheduler.capitalize())
+                    if scheduler_settings:
+                        error_message["Scheduling"] = scheduler_settings
+                        break

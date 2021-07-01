@@ -22,19 +22,16 @@ class DescribeOfficialImagesResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, next_token=None, items=None):
+    def __init__(self, items=None):
         """DescribeOfficialImagesResponseContent - a model defined in OpenAPI
 
-        :param next_token: The next_token of this DescribeOfficialImagesResponseContent.
-        :type next_token: str
         :param items: The items of this DescribeOfficialImagesResponseContent.
         :type items: List[AmiInfo]
         """
-        self.openapi_types = {"next_token": str, "items": List[AmiInfo]}
+        self.openapi_types = {"items": List[AmiInfo]}
 
-        self.attribute_map = {"next_token": "nextToken", "items": "items"}
+        self.attribute_map = {"items": "items"}
 
-        self._next_token = next_token
         self._items = items
 
     @classmethod
@@ -47,29 +44,6 @@ class DescribeOfficialImagesResponseContent(Model):
         :rtype: DescribeOfficialImagesResponseContent
         """
         return util.deserialize_model(dikt, cls)
-
-    @property
-    def next_token(self):
-        """Gets the next_token of this DescribeOfficialImagesResponseContent.
-
-        Token to use for paginated requests.
-
-        :return: The next_token of this DescribeOfficialImagesResponseContent.
-        :rtype: str
-        """
-        return self._next_token
-
-    @next_token.setter
-    def next_token(self, next_token):
-        """Sets the next_token of this DescribeOfficialImagesResponseContent.
-
-        Token to use for paginated requests.
-
-        :param next_token: The next_token of this DescribeOfficialImagesResponseContent.
-        :type next_token: str
-        """
-
-        self._next_token = next_token
 
     @property
     def items(self):

@@ -6,16 +6,18 @@ HeadNode:
     SubnetId: subnet-12345678
   Ssh:
     KeyName: key1
+  Imds:
+    Secured: false
 Scheduling:
   Scheduler: awsbatch
   Queues:
-    - Name: queue0
+    - Name: myqueue
       ComputeResources:
-        - Name: queue0-i0
+        - Name: myqueue-optimal
           InstanceTypes:
             - optimal
-          MinvCpus: 13
-          DesiredvCpus: 13
+          MinvCpus: 0
+          DesiredvCpus: 0
           MaxvCpus: 14
       Networking:
         SubnetIds:

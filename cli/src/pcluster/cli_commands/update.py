@@ -15,9 +15,10 @@ from typing import List
 
 from tabulate import tabulate
 
-import pcluster.utils as utils
+from pcluster import utils
 from pcluster.api.pcluster_api import ClusterInfo, PclusterApi
-from pcluster.cli_commands.commands import _parse_config_file, print_stack_outputs
+from pcluster.aws.common import get_region
+from pcluster.cli_commands.commands import print_stack_outputs, read_config_file
 from pcluster.config.update_policy import UpdatePolicy
 
 LOGGER = logging.getLogger(__name__)
@@ -34,11 +35,11 @@ def execute(args):
                 "your cluster may become unstable."
             )
 
-        cluster_config = _parse_config_file(config_file=args.config_file)
+        cluster_config = read_config_file(config_file=args.config_file)
         result = PclusterApi().update_cluster(
             cluster_config,
             args.cluster_name,
-            utils.get_region(),
+            get_region(),
             suppress_validators=args.suppress_validators,
             force=args.force,
         )
@@ -53,10 +54,10 @@ def execute(args):
                 )
                 if not verified:
                     LOGGER.critical("\nCluster update failed.  Failed events:")
-                    utils.log_stack_failure_recursive(result.stack_name)
+                    utils.log_stack_failure_recursive(result.stack_name, failed_states=["UPDATE_FAILED"])
                     sys.exit(1)
 
-                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+                result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=get_region())
                 if isinstance(result, ClusterInfo):
                     print_stack_outputs(result.stack_outputs)
                 else:

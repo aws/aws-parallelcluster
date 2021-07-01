@@ -27,6 +27,7 @@ from framework.tests_configuration.config_renderer import dump_rendered_config_f
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
 from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
+from utils import InstanceTypesData
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
@@ -65,14 +66,16 @@ TEST_DEFAULTS = {
     "post_install": None,
     "vpc_stack": None,
     "cluster": None,
+    "api_definition_s3_uri": None,
+    "public_ecr_image_uri": None,
     "no_delete": False,
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
     "stackname_suffix": "",
-    "keep_logs_on_cluster_failure": False,
-    "keep_logs_on_test_failure": False,
+    "delete_logs_on_success": False,
     "tests_root_dir": "./tests",
+    "instance_types_data": None,
 }
 
 
@@ -123,7 +126,6 @@ def _init_argparser():
         "Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. "
         "Refer to the docs for further details on the config format: "
         "https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md",
-        type=_test_config_file,
     )
     dimensions_group.add_argument(
         "-i",
@@ -233,10 +235,22 @@ def _init_argparser():
     custom_group.add_argument(
         "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install")
     )
+    custom_group.add_argument(
+        "--instance-types-data",
+        help="Additional information about instance types used in the tests. The format is a JSON map "
+        "instance_type -> data, where data must respect the same structure returned by ec2 "
+        "describe-instance-types",
+        default=TEST_DEFAULTS.get("instance_types_data"),
+    )
 
     ami_group = parser.add_argument_group("AMI selection parameters")
     ami_group.add_argument(
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
+    )
+    ami_group.add_argument(
+        "--pcluster-git-ref",
+        help="Git ref of the custom cli package used to build the AMI.",
+        default=TEST_DEFAULTS.get("pcluster_git_ref"),
     )
     ami_group.add_argument(
         "--cookbook-git-ref",
@@ -282,22 +296,26 @@ def _init_argparser():
         "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
     )
     debug_group.add_argument(
+        "--api-definition-s3-uri",
+        help="URI of the Docker image for the Lambda of the ParallelCluster API",
+        default=TEST_DEFAULTS.get("api_definition_s3_uri"),
+    )
+    debug_group.add_argument(
+        "--public-ecr-image-uri",
+        help="S3 URI of the ParallelCluster API spec",
+        default=TEST_DEFAULTS.get("public_ecr_image_uri"),
+    )
+    debug_group.add_argument(
         "--no-delete",
         action="store_true",
         help="Don't delete stacks after tests are complete.",
         default=TEST_DEFAULTS.get("no_delete"),
     )
     debug_group.add_argument(
-        "--keep-logs-on-cluster-failure",
-        help="preserve CloudWatch logs when a cluster fails to be created",
+        "--delete-logs-on-success",
+        help="delete CloudWatch logs when a test succeeds",
         action="store_true",
-        default=TEST_DEFAULTS.get("keep_logs_on_cluster_failure"),
-    )
-    debug_group.add_argument(
-        "--keep-logs-on-test-failure",
-        help="preserve CloudWatch logs when a test fails",
-        action="store_true",
-        default=TEST_DEFAULTS.get("keep_logs_on_test_failure"),
+        default=TEST_DEFAULTS.get("delete_logs_on_success"),
     )
     debug_group.add_argument(
         "--stackname-suffix",
@@ -394,6 +412,9 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append(" or ".join(list(_join_with_not(args.features))))
     if args.tests_config:
         _set_tests_config_args(args, pytest_args, out_dir)
+    if args.instance_types_data:
+        pytest_args.append("--instance-types-data-file={0}".format(args.instance_types_data))
+
     if regions:
         pytest_args.append("--regions")
         pytest_args.extend(regions)
@@ -407,10 +428,8 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append("--schedulers")
         pytest_args.extend(args.schedulers)
 
-    if args.keep_logs_on_cluster_failure:
-        pytest_args.append("--keep-logs-on-cluster-failure")
-    if args.keep_logs_on_test_failure:
-        pytest_args.append("--keep-logs-on-test-failure")
+    if args.delete_logs_on_success:
+        pytest_args.append("--delete-logs-on-success")
 
     if args.credential:
         pytest_args.append("--credential")
@@ -465,6 +484,9 @@ def _set_ami_args(args, pytest_args):
     if args.custom_ami:
         pytest_args.extend(["--custom-ami", args.custom_ami])
 
+    if args.pcluster_git_ref:
+        pytest_args.extend(["--pcluster-git-ref", args.pcluster_git_ref])
+
     if args.cookbook_git_ref:
         pytest_args.extend(["--cookbook-git-ref", args.cookbook_git_ref])
 
@@ -481,6 +503,12 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.cluster:
         pytest_args.extend(["--cluster", args.cluster])
+
+    if args.api_definition_s3_uri:
+        pytest_args.extend(["--api-definition-s3-uri", args.api_definition_s3_uri])
+
+    if args.public_ecr_image_uri:
+        pytest_args.extend(["--public-ecr-image-uri", args.public_ecr_image_uri])
 
     if args.no_delete:
         pytest_args.append("--no-delete")
@@ -565,6 +593,7 @@ def _check_args(args):
         assert_that(args.schedulers).described_as("--schedulers cannot be empty").is_not_empty()
     else:
         try:
+            args.tests_config = _test_config_file(args.tests_config)
             assert_valid_config(args.tests_config, args.tests_root_dir)
             logger.info("Found valid config file:\n%s", dump_rendered_config_file(args.tests_config))
         except Exception:
@@ -588,6 +617,12 @@ def main():
         exit(1)
 
     args = _init_argparser().parse_args()
+
+    # Load additional instance types data, if provided.
+    # This step must be done before loading test config files in order to resolve instance type placeholders.
+    if args.instance_types_data:
+        InstanceTypesData.load_additional_instance_types_data(args.instance_types_data)
+
     _check_args(args)
     logger.info("Parsed test_runner parameters {0}".format(args))
 

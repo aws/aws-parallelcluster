@@ -18,7 +18,7 @@ import pytest
 import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_bucket_name
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 
 from tests.common.assertions import assert_no_errors_in_logs
 
@@ -49,28 +49,28 @@ def test_iam_roles(
     )
     cluster = clusters_factory(cluster_config)
 
-    main_stack_name = "parallelcluster-" + cluster.name
     cfn_client = boto3.client("cloudformation", region_name=region)
     lambda_client = boto3.client("lambda", region_name=region)
 
     # Check all CloudFormation stacks after creation
     # If scheduler is awsbatch, there will still be IAM roles created.
-    _check_lambda_role(cfn_client, lambda_client, main_stack_name, lambda_role_name, not is_awsbatch)
+    _check_lambda_role(cfn_client, lambda_client, cluster.name, lambda_role_name, not is_awsbatch)
 
     # Test updating the iam_lambda_role
     updated_lambda_role_name = role_factory("lambda", [lambda_policies])
     assert_that(updated_lambda_role_name == lambda_role_name).is_false()
-    cluster.config_file = str(
-        pcluster_config_reader(
-            config_file=updated_config_file_name,
-            ec2_iam_role=cluster_role_name,
-            iam_lambda_role=updated_lambda_role_name,
+    cluster.update(
+        str(
+            pcluster_config_reader(
+                config_file=updated_config_file_name,
+                ec2_iam_role=cluster_role_name,
+                iam_lambda_role=updated_lambda_role_name,
+            )
         )
     )
-    cluster.update()
 
     # Check all CloudFormation stacks after update
-    _check_lambda_role(cfn_client, lambda_client, main_stack_name, updated_lambda_role_name, not is_awsbatch)
+    _check_lambda_role(cfn_client, lambda_client, cluster.name, updated_lambda_role_name, not is_awsbatch)
 
 
 def _check_lambda_role(cfn_client, lambda_client, stack_name, lambda_role_name, check_no_role_is_created):
@@ -114,7 +114,7 @@ def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factor
 
 def _test_s3_access(remote_command_executor, region):
     logging.info("Testing S3 Access")
-    result = remote_command_executor.run_remote_command(f"AWS_DEFAULT_REGION={region} aws s3 ls").stdout
+    result = remote_command_executor.run_remote_command(f"AWS_DEFAULT_REGION={region} sudo aws s3 ls").stdout
     # An error occurred (AccessDenied) when calling the ListBuckets operation: Access Denied
     assert_that(result).does_not_contain("AccessDenied")
 
@@ -131,10 +131,8 @@ def _test_batch_access(remote_command_executor, region):
 @pytest.mark.regions(["eu-central-1"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.oss(["alinux2"])
-@pytest.mark.usefixtures("os", "instance")
-def test_s3_read_write_resource(
-    region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir, scheduler
-):
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_s3_read_write_resource(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for testing s3_read_resource and s3_read_write_resource
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -146,8 +144,8 @@ def test_s3_read_write_resource(
     cluster = clusters_factory(cluster_config)
 
     with open(cluster_config) as conf_file:
-        config = yaml.load(conf_file, Loader=yaml.SafeLoader)
+        config = yaml.safe_load(conf_file)
 
     # Check S3 resources
-    check_s3_read_resource(region, cluster, get_bucket_name(config, enable_write_access=False))
-    check_s3_read_write_resource(region, cluster, get_bucket_name(config, enable_write_access=True))
+    check_s3_read_resource(region, cluster, get_policy_resources(config, enable_write_access=False))
+    check_s3_read_write_resource(region, cluster, get_policy_resources(config, enable_write_access=True))

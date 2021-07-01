@@ -23,6 +23,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
 # TODO missing tests for the following configuration parameters:
 # UpdateOsAndReboot
 # DisablePclusterComponent
+# DisableValidateAndTest
 # Cookbook
 # NodePackage
 # AwsBatchCliPackage
@@ -39,6 +40,104 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                         "instance_type": "c5.xlarge",
                     },
                     "dev_settings": {"update_os_and_reboot": True},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 25,
+                        },
+                    }
+                ],
+            },
+            {
+                "Parameters": {
+                    "CfnParamChefDnaJson": {},
+                    "CfnParamChefCookbook": {},
+                    "CfnParamCincInstaller": {},
+                    "CfnParamCookbookVersion": {},
+                    "CfnParamUpdateOsAndReboot": {},
+                },
+                "Resources": {
+                    "InstanceRole": {},
+                    "InstanceProfile": {},
+                    "InfrastructureConfiguration": {},
+                    "UpdateOSComponent": {},
+                    "ParallelClusterComponent": {},
+                    "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
+                    "ImageRecipe": {},
+                    "ParallelClusterImage": {},
+                    "BuildNotificationTopic": {},
+                    "DistributionConfiguration": {},
+                    "DeleteStackFunctionExecutionRole": {},
+                    "DeleteStackFunction": {},
+                    "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
+                },
+            },
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {"update_os_and_reboot": True, "disable_pcluster_component": True},
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 25,
+                        },
+                    }
+                ],
+            },
+            {
+                "Parameters": {
+                    "CfnParamChefDnaJson": {},
+                    "CfnParamChefCookbook": {},
+                    "CfnParamCincInstaller": {},
+                    "CfnParamCookbookVersion": {},
+                    "CfnParamUpdateOsAndReboot": {},
+                },
+                "Resources": {
+                    "InstanceRole": {},
+                    "InstanceProfile": {},
+                    "InfrastructureConfiguration": {},
+                    "UpdateOSComponent": {},
+                    "ParallelClusterTagComponent": {},
+                    "ImageRecipe": {},
+                    "ParallelClusterImage": {},
+                    "BuildNotificationTopic": {},
+                    "DistributionConfiguration": {},
+                    "DeleteStackFunctionExecutionRole": {},
+                    "DeleteStackFunction": {},
+                    "DeleteStackFunctionPermission": {},
+                    "DeleteStackFunctionLog": {},
+                },
+            },
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                    "dev_settings": {
+                        "update_os_and_reboot": True,
+                        "disable_validate_and_test": True,
+                    },
                 }
             },
             {
@@ -114,6 +213,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
@@ -160,6 +261,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
@@ -208,6 +311,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunction": {},
@@ -250,6 +355,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InstanceProfile": {},
                     "InfrastructureConfiguration": {},
                     "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
@@ -300,6 +407,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
@@ -346,6 +455,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
@@ -400,6 +511,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "ParallelClusterComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
@@ -445,6 +558,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InfrastructureConfiguration": {},
                     "ParallelClusterComponent": {},
                     "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
@@ -491,6 +606,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InfrastructureConfiguration": {},
                     "ParallelClusterComponent": {},
                     "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
@@ -537,6 +654,8 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "InfrastructureConfiguration": {},
                     "ParallelClusterComponent": {},
                     "ParallelClusterTagComponent": {},
+                    "ParallelClusterValidateComponent": {},
+                    "ParallelClusterTestComponent": {},
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
@@ -630,6 +749,115 @@ def _test_resources(generated_resources, expected_resources):
                     "ManagedPolicyArns": [
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"},
+                    ],
+                    "Path": "/ParallelClusterImage/",
+                    "Policies": [
+                        {
+                            "PolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Effect": "Allow",
+                                        "Action": ["ec2:CreateTags", "ec2:ModifyImageAttribute"],
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":ec2:",
+                                                    {"Ref": "AWS::Region"},
+                                                    "::image/*",
+                                                ],
+                                            ]
+                                        },
+                                    }
+                                ],
+                            },
+                            "PolicyName": "InstanceRoleInlinePolicy",
+                        },
+                    ],
+                    "Tags": [
+                        {
+                            "Key": "parallelcluster:image_id",
+                            "Value": "Pcluster",
+                        },
+                        {
+                            "Key": "parallelcluster:image_name",
+                            "Value": "Pcluster",
+                        },
+                    ],
+                },
+            },
+            {
+                "Type": "AWS::IAM::InstanceProfile",
+                "DependsOn": ["DeleteStackFunctionExecutionRole"],
+                "Properties": {
+                    "Roles": [{"Ref": "InstanceRole"}],
+                    "Path": "/ParallelClusterImage/",
+                    "InstanceProfileName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImage-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
+                },
+            },
+            {"Ref": "InstanceProfile"},
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "iam": {
+                            "additional_iam_policies": [{"policy": "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"}]
+                        },
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            {
+                "Type": "AWS::IAM::Role",
+                "DependsOn": ["DeleteStackFunctionExecutionRole"],
+                "Properties": {
+                    "RoleName": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "ParallelClusterImage-",
+                                {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                            ],
+                        ]
+                    },
+                    "AssumeRolePolicyDocument": {
+                        "Statement": [
+                            {
+                                "Action": "sts:AssumeRole",
+                                "Effect": "Allow",
+                                "Principal": {"Service": {"Fn::Join": ["", ["ec2.", {"Ref": "AWS::URLSuffix"}]]}},
+                            }
+                        ],
+                        "Version": "2012-10-17",
+                    },
+                    "ManagedPolicyArns": [
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
+                        {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"},
+                        "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess",
                     ],
                     "Path": "/ParallelClusterImage/",
                     "Policies": [
@@ -837,7 +1065,7 @@ def test_imagebuilder_instance_role(
                             {
                                 "Action": "sts:AssumeRole",
                                 "Effect": "Allow",
-                                "Principal": {"Service": {"Fn::Join": ["", ["lambda.", {"Ref": "AWS::URLSuffix"}]]}},
+                                "Principal": {"Service": "lambda.amazonaws.com"},
                             }
                         ],
                         "Version": "2012-10-17",
@@ -997,6 +1225,46 @@ def test_imagebuilder_instance_role(
                                                     ":",
                                                     {"Ref": "AWS::AccountId"},
                                                     ":component/parallelclusterimage-script-1-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                                                    "/*",
+                                                ],
+                                            ]
+                                        },
+                                    },
+                                    {
+                                        "Action": "imagebuilder:DeleteComponent",
+                                        "Effect": "Allow",
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":imagebuilder:",
+                                                    {"Ref": "AWS::Region"},
+                                                    ":",
+                                                    {"Ref": "AWS::AccountId"},
+                                                    ":component/parallelclusterimage-validate-",
+                                                    {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
+                                                    "/*",
+                                                ],
+                                            ]
+                                        },
+                                    },
+                                    {
+                                        "Action": "imagebuilder:DeleteComponent",
+                                        "Effect": "Allow",
+                                        "Resource": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {"Ref": "AWS::Partition"},
+                                                    ":imagebuilder:",
+                                                    {"Ref": "AWS::Region"},
+                                                    ":",
+                                                    {"Ref": "AWS::AccountId"},
+                                                    ":component/parallelclusterimage-test-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                     "/*",
                                                 ],
@@ -1322,6 +1590,8 @@ def test_imagebuilder_lambda_execution_role(
                 {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
+                {"ComponentArn": {"Ref": "ParallelClusterValidateComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTestComponent"}},
             ],
         ),
         (
@@ -1362,6 +1632,8 @@ def test_imagebuilder_lambda_execution_role(
                 {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
+                {"ComponentArn": {"Ref": "ParallelClusterValidateComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTestComponent"}},
             ],
         ),
         (
@@ -1401,6 +1673,91 @@ def test_imagebuilder_lambda_execution_role(
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": {"Ref": "ScriptComponent0"}},
                 {"ComponentArn": {"Ref": "ScriptComponent1"}},
+                {"ComponentArn": {"Ref": "ParallelClusterValidateComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTestComponent"}},
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                        "components": [
+                            {
+                                "type": "arn",
+                                "value": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0",
+                            },
+                            {
+                                "type": "arn",
+                                "value": "arn:aws:imagebuilder:us-east-1:"
+                                "aws:component/amazon-cloudwatch-agent-linux/1.0.0",
+                            },
+                        ],
+                    },
+                    "dev_settings": {
+                        "update_os_and_reboot": True,
+                        "disable_pcluster_component": True,
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            [
+                {"ComponentArn": {"Ref": "UpdateOSComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
+                {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
+                {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                        "components": [
+                            {
+                                "type": "arn",
+                                "value": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0",
+                            },
+                            {
+                                "type": "arn",
+                                "value": "arn:aws:imagebuilder:us-east-1:"
+                                "aws:component/amazon-cloudwatch-agent-linux/1.0.0",
+                            },
+                        ],
+                    },
+                    "dev_settings": {
+                        "disable_validate_and_test": True,
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            [
+                {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
+                {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
+                {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
             ],
         ),
     ],
@@ -2493,7 +2850,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
                     }
                 ],
             },
-            {"Encrypted": False, "VolumeSize": 23, "VolumeType": "gp2"},
+            {"Encrypted": False, "VolumeSize": 35, "VolumeType": "gp2"},
         ),
         (
             {
@@ -2575,7 +2932,7 @@ def test_imagebuilder_distribution_configuraton(mocker, resource, response, expe
             },
             {
                 "Encrypted": True,
-                "VolumeSize": 65,
+                "VolumeSize": 77,
                 "VolumeType": "gp2",
                 "KmsKeyId": "arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab",
             },

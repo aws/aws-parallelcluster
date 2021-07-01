@@ -83,7 +83,7 @@ class CWDashboardConstruct(Construct):
 
         # Initialize a cloudwatch dashboard
         self.cloudwatch_dashboard = cloudwatch.Dashboard(
-            scope=self.stack_scope, id="CloudwatchDashboard", dashboard_name=self.dashboard_name
+            self.stack_scope, "CloudwatchDashboard", dashboard_name=self.dashboard_name
         )
 
         # Create a text widget for title "Head Node EC2 metrics"
@@ -420,7 +420,7 @@ class CWDashboardConstruct(Construct):
                 [
                     self._new_cw_log_widget(
                         title="system-messages",
-                        conditions=[Condition(["alinux2", "centos7", "centos8"], base_os)],
+                        conditions=[Condition(["alinux2", "centos7"], base_os)],
                         filters=[self._new_filter(pattern=f"{head_private_ip}.*system-messages")],
                     ),
                     self._new_cw_log_widget(

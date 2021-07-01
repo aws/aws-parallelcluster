@@ -12,8 +12,11 @@ import logging
 import time
 from enum import Enum
 
-import boto3
 from boto3.dynamodb.conditions import Attr
+
+from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
+from pcluster.constants import PCLUSTER_DYNAMODB_PREFIX
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,14 +68,14 @@ class ComputeFleetStatusManager:
         pass
 
     def __init__(self, cluster_name):
-        self._table_name = "parallelcluster-" + cluster_name
-        self._ddb_resource = boto3.resource("dynamodb")
-        self._table = self._ddb_resource.Table(self._table_name)
+        self._table_name = PCLUSTER_DYNAMODB_PREFIX + cluster_name
 
     def get_status(self, fallback=ComputeFleetStatus.UNKNOWN):
         """Get compute fleet status."""
         try:
-            compute_fleet_status = self._table.get_item(ConsistentRead=True, Key={"Id": self.COMPUTE_FLEET_STATUS_KEY})
+            compute_fleet_status = AWSApi.instance().ddb_resource.get_item(
+                self._table_name, {"Id": self.COMPUTE_FLEET_STATUS_KEY}
+            )
             if not compute_fleet_status or "Item" not in compute_fleet_status:
                 raise Exception("COMPUTE_FLEET status not found in db table")
             return ComputeFleetStatus(compute_fleet_status["Item"][self.COMPUTE_FLEET_STATUS_ATTRIBUTE])
@@ -87,12 +90,16 @@ class ComputeFleetStatusManager:
     def put_status(self, current_status, next_status):
         """Set compute fleet status."""
         try:
-            self._table.put_item(
-                Item={"Id": self.COMPUTE_FLEET_STATUS_KEY, self.COMPUTE_FLEET_STATUS_ATTRIBUTE: str(next_status)},
-                ConditionExpression=Attr(self.COMPUTE_FLEET_STATUS_ATTRIBUTE).eq(str(current_status)),
+            AWSApi.instance().ddb_resource.put_item(
+                self._table_name,
+                item={"Id": self.COMPUTE_FLEET_STATUS_KEY, self.COMPUTE_FLEET_STATUS_ATTRIBUTE: str(next_status)},
+                condition_expression=Attr(self.COMPUTE_FLEET_STATUS_ATTRIBUTE).eq(str(current_status)),
             )
-        except self._ddb_resource.meta.client.exceptions.ConditionalCheckFailedException as e:
-            raise ComputeFleetStatusManager.ConditionalStatusUpdateFailed(e)
+        except AWSClientError as e:
+            if e.error_code == AWSClientError.ErrorCode.CONDITIONAL_CHECK_FAILED_EXCEPTION.value:
+                raise ComputeFleetStatusManager.ConditionalStatusUpdateFailed(e)
+            LOGGER.error("Failed when updating fleet status with error: %s", e)
+            raise
 
     def update_status(self, request_status, in_progress_status, final_status, wait_transition=False):
         """

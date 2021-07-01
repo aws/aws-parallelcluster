@@ -15,15 +15,14 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
-from aws_cdk.core import CfnOutput, CfnParameter, CfnTag, Construct, CustomResource, Fn, Stack
+from aws_cdk.core import CfnCustomResource, CfnOutput, CfnParameter, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
-from pcluster.constants import OS_MAPPING, PCLUSTER_APPLICATION_TAG
+from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
-    cluster_name,
     create_hash_suffix,
     get_block_device_mappings,
     get_cloud_watch_logs_policy_statement,
@@ -100,10 +99,10 @@ class SlurmConstruct(Construct):
 
     def _add_parameters(self):
         self.cluster_dns_domain = CfnParameter(
-            scope=self.stack_scope,
-            id="ClusterDNSDomain",
+            self.stack_scope,
+            "ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
-            default=f"{cluster_name(self.stack_name)}.pcluster",
+            default=f"{self.stack_name}.pcluster",
         )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -125,8 +124,8 @@ class SlurmConstruct(Construct):
         suffix = create_hash_suffix(node_name)
 
         iam.CfnPolicy(
-            scope=self.stack_scope,
-            id=f"SlurmPolicies{suffix}",
+            self.stack_scope,
+            f"SlurmPolicies{suffix}",
             policy_name="parallelcluster-slurm",
             policy_document=iam.PolicyDocument(
                 statements=[
@@ -135,7 +134,7 @@ class SlurmConstruct(Construct):
                         effect=iam.Effect.ALLOW,
                         actions=["ec2:TerminateInstances"],
                         resources=["*"],
-                        conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_APPLICATION_TAG}": self.stack_name}},
+                        conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_CLUSTER_NAME_TAG}": self.stack_name}},
                     ),
                     iam.PolicyStatement(
                         sid="EC2RunInstances",
@@ -186,8 +185,13 @@ class SlurmConstruct(Construct):
                         effect=iam.Effect.ALLOW,
                         actions=["dynamodb:Query"],
                         resources=[
-                            self._format_arn(service="dynamodb", resource="table/{0}".format(self.stack_name)),
-                            self._format_arn(service="dynamodb", resource="table/{0}/index/*".format(self.stack_name)),
+                            self._format_arn(
+                                service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"
+                            ),
+                            self._format_arn(
+                                service="dynamodb",
+                                resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}/index/*",
+                            ),
                         ],
                     ),
                 ]
@@ -207,7 +211,7 @@ class SlurmConstruct(Construct):
                 actions=["ec2:TerminateInstances"],
                 resources=["*"],
                 effect=iam.Effect.ALLOW,
-                conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_APPLICATION_TAG}": self.stack_name}},
+                conditions={"StringEquals": {f"ec2:ResourceTag/{PCLUSTER_CLUSTER_NAME_TAG}": self.stack_name}},
                 sid="FleetTerminatePolicy",
             ),
         )
@@ -228,7 +232,7 @@ class SlurmConstruct(Construct):
                 else:
                     # Create Placement Group
                     queue_placement_group = ec2.CfnPlacementGroup(
-                        scope=self.stack_scope, id=f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
+                        self.stack_scope, f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
                     ).ref
 
             queue_pre_install_action, queue_post_install_action = (None, None)
@@ -249,19 +253,22 @@ class SlurmConstruct(Construct):
                     queue_placement_group,
                 )
 
-        CustomResource(
-            scope=self.stack_scope,
-            id="TerminateComputeFleetCustomResource",
+        self.terminate_compute_fleet_custom_resource = CfnCustomResource(
+            self.stack_scope,
+            "TerminateComputeFleetCustomResource",
             service_token=self.cleanup_lambda.attr_arn,
-            properties={"StackName": self.stack_name, "Action": "TERMINATE_EC2_INSTANCES"},
         )
+        self.terminate_compute_fleet_custom_resource.add_property_override("StackName", self.stack_name)
+        self.terminate_compute_fleet_custom_resource.add_property_override("Action", "TERMINATE_EC2_INSTANCES")
+        if not self._condition_disable_cluster_dns():
+            self.terminate_compute_fleet_custom_resource.add_depends_on(self.cleanup_route53_custom_resource)
         # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
         # terminate_compute_fleet_custom_resource.add_depends_on()
 
     def _add_private_hosted_zone(self):
         cluster_hosted_zone = route53.CfnHostedZone(
-            scope=self.stack_scope,
-            id="Route53HostedZone",
+            self.stack_scope,
+            "Route53HostedZone",
             name=self.cluster_dns_domain.value_as_string,
             vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
         )
@@ -269,8 +276,8 @@ class SlurmConstruct(Construct):
         head_node_role_info = self.instance_roles.get("HeadNode")
         if head_node_role_info.get("IsNew"):
             iam.CfnPolicy(
-                scope=self.stack_scope,
-                id="ParallelClusterSlurmRoute53Policies",
+                self.stack_scope,
+                "ParallelClusterSlurmRoute53Policies",
                 policy_name="parallelcluster-slurm-route53",
                 policy_document=iam.PolicyDocument(
                     statements=[
@@ -334,16 +341,17 @@ class SlurmConstruct(Construct):
             handler_func="cleanup_resources",
         ).lambda_func
 
-        CustomResource(
-            scope=self.stack_scope,
-            id="CleanupRoute53CustomResource",
+        self.cleanup_route53_custom_resource = CfnCustomResource(
+            self.stack_scope,
+            "CleanupRoute53CustomResource",
             service_token=cleanup_route53_lambda.attr_arn,
-            properties={"ClusterHostedZone": cluster_hosted_zone.ref, "Action": "DELETE_DNS_RECORDS"},
         )
+        self.cleanup_route53_custom_resource.add_property_override("ClusterHostedZone", cluster_hosted_zone.ref)
+        self.cleanup_route53_custom_resource.add_property_override("Action", "DELETE_DNS_RECORDS")
 
         CfnOutput(
-            scope=self.stack_scope,
-            id="ClusterHostedZone",
+            self.stack_scope,
+            "ClusterHostedZone",
             description="Id of the private hosted zone created within the cluster",
             value=cluster_hosted_zone.ref,
         )
@@ -392,17 +400,15 @@ class SlurmConstruct(Construct):
             handler_func="wait_for_update",
         ).lambda_func
 
-        CustomResource(
+        self.update_waiter_custom_resource = CfnCustomResource(
             self.stack_scope,
             "UpdateWaiterCustomResource",
             service_token=update_waiter_lambda.attr_arn,
-            properties={
-                "ConfigVersion": self.config.config_version,
-                "DynamoDBTable": self.dynamodb_table.ref,
-            },
         )
+        self.update_waiter_custom_resource.add_property_override("ConfigVersion", self.config.config_version)
+        self.update_waiter_custom_resource.add_property_override("DynamoDBTable", self.dynamodb_table.ref)
 
-        CfnOutput(scope=self.stack_scope, id="UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
+        CfnOutput(self.stack_scope, "UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
     def _add_compute_resource_launch_template(
         self,
@@ -449,9 +455,9 @@ class SlurmConstruct(Construct):
             )
 
         ec2.CfnLaunchTemplate(
-            scope=self.stack_scope,
-            id=f"ComputeServerLaunchTemplate{create_hash_suffix(queue.name + instance_type)}",
-            launch_template_name=f"{cluster_name(self.stack_name)}-{queue.name}-{instance_type}",
+            self.stack_scope,
+            f"ComputeServerLaunchTemplate{create_hash_suffix(queue.name + instance_type)}",
+            launch_template_name=f"{self.stack_name}-{queue.name}-{instance_type}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=instance_type,
                 cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(
@@ -459,7 +465,9 @@ class SlurmConstruct(Construct):
                 )
                 if compute_resource.pass_cpu_options_in_launch_template
                 else None,
-                block_device_mappings=get_block_device_mappings(queue, self.config.image.os),
+                block_device_mappings=get_block_device_mappings(
+                    queue.compute_settings.local_storage, self.config.image.os
+                ),
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
                 placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=queue_placement_group),
