@@ -1050,10 +1050,11 @@ def opsworks_stack_factory(region):
         logging.info(f"Retrieving registered instances from opsworks stack: {stack_id}")
         result = opsworks.describe_instances(StackId=stack_id)
         instances = [instance["Ec2InstanceId"] for instance in result["Instances"]]
+        logging.info(f"Retrieved registered instances from opsworks stack {stack_id}: {instances}")
         for instance in instances:
-            logging.info(f"Deregistering instance #{instance} from opsworks stack: {stack_id}")
+            logging.info(f"Deregistering instance {instance} from opsworks stack: {stack_id}")
             opsworks.deregister_instance(InstanceId=instance)
-            logging.info(f"Deregistered instance #{instance} from opsworks stack: {stack_id}")
+            logging.info(f"Deregistered instance {instance} from opsworks stack: {stack_id}")
         logging.info(f"Deleting opsworks stack: {stack_id}")
         opsworks.delete_stack(StackId=stack_id)
 

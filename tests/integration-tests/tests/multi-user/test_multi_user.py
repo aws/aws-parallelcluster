@@ -194,10 +194,11 @@ def test_create_multi_user_with_opsworks(
     user_arn, user_name = user_factory()
     _, ssh_user_name = opsworks_user_profile_factory(user_arn, user_name, public_key)
 
+    logging.info("Waiting for opsworks stack to import users")
     time.sleep(120)  # TODO: implement a waiter here
 
     assert_aws_identity_access_is_correct(
-        cluster=cluster, users_allow_list={"root": True, "pcluster-admin": True, ssh_user_name: False}
+        cluster=cluster, users_allow_list={"root": True, "pcluster-admin": True, "slurm": False, ssh_user_name: False}
     )
 
     # TODO add assertions about ssh access and job submission
