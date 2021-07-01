@@ -171,3 +171,23 @@ class TestParallelClusterFlaskApp:
             logging.ERROR if expected_status == 500 else logging.INFO,
             expected_response["message"],
         )
+
+    def test_unsupported_content_type(self, caplog, flask_app_with_error_route):
+        flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).flask_app
+        with flask_app.test_client() as client:
+            headers = {
+                "Content-Type": "text/plain",
+            }
+            query_string = [("region", "eu-west-1")]
+            response = client.post("/v3/clusters", headers=headers, query_string=query_string, data="text")
+        self._assert_response(
+            response,
+            body={"message": "Invalid Content-type (text/plain), expected JSON data"},
+            code=415,
+        )
+        self._assert_log_message(
+            caplog,
+            logging.INFO,
+            "Handling exception (status code 415): {'message': 'Invalid Content-type (text/plain), expected JSON "
+            "data'}",
+        )
