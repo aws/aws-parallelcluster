@@ -33,7 +33,6 @@ HeadNode:
       Encrypted: true
       DeleteOnTermination: true
     EphemeralVolume:
-      Encrypted: true
       MountDir: /scratch
   Dcv:
     Enabled: true

@@ -938,11 +938,6 @@ class ClusterCdkStack(Stack):
                     ),
                     "volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
                     "scheduler": self.config.scheduling.scheduler,
-                    "encrypted_ephemeral": "true"
-                    if head_node.local_storage
-                    and head_node.local_storage.ephemeral_volume
-                    and head_node.local_storage.ephemeral_volume.encrypted
-                    else "NONE",
                     "ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
                     if head_node.local_storage and head_node.local_storage.ephemeral_volume
                     else "/scratch",

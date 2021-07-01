@@ -174,9 +174,8 @@ class Raid(Resource):
 class EphemeralVolume(Resource):
     """Represent the Ephemeral Volume resource."""
 
-    def __init__(self, encrypted: bool = None, mount_dir: str = None):
+    def __init__(self, mount_dir: str = None):
         super().__init__()
-        self.encrypted = Resource.init_param(encrypted, default=False)
         self.mount_dir = Resource.init_param(mount_dir, default="/scratch")
 
 
