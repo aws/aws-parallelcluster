@@ -309,7 +309,8 @@ class ImageInfo:
         """Return snapshot ids."""
         snapshot_ids = []
         for block_device_mapping in self.block_device_mappings:
-            snapshot_ids.append(block_device_mapping.get("Ebs").get("SnapshotId"))
+            if block_device_mapping.get("Ebs"):
+                snapshot_ids.append(block_device_mapping.get("Ebs").get("SnapshotId"))
         return snapshot_ids
 
     @property

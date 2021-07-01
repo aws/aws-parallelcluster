@@ -736,7 +736,7 @@ class IamSchema(BaseSchema):
 class ImdsSchema(BaseSchema):
     """Represent the schema of IMDS for HeadNode."""
 
-    secured = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    secured = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

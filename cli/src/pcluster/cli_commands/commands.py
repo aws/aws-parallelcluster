@@ -21,7 +21,7 @@ from builtins import str
 from botocore.exceptions import ClientError
 from tabulate import tabulate
 
-import pcluster.utils as utils
+from pcluster import utils
 from pcluster.api.pcluster_api import ApiFailure, ClusterInfo, ImageBuilderInfo, PclusterApi
 from pcluster.aws.common import get_region
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
@@ -164,9 +164,9 @@ def _colorize(stack_status, args):
     if args.color:
         end = "0m"
         status_to_color = {"COMPLETE": "0;32m", "FAILED": "0;31m", "IN_PROGRESS": "10;33m"}
-        for status_label in status_to_color:
+        for status_label, status_color in status_to_color.items():
             if status_label in stack_status:
-                return "\033[%s%s\033[%s" % (status_to_color[status_label], stack_status, end)
+                return "\033[%s%s\033[%s" % (status_color, stack_status, end)
     return stack_status
 
 

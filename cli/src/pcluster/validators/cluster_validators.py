@@ -794,13 +794,17 @@ class HeadNodeImdsValidator(Validator):
     def _validate(self, imds_secured: bool, scheduler: str):
         if scheduler is None:
             self._add_failure(
-                f"Cannot validate IMDS configuration with scheduler {scheduler}.",
+                "Cannot validate IMDS configuration if scheduler is not set.",
+                FailureLevel.ERROR,
+            )
+        elif imds_secured is None:
+            self._add_failure(
+                "Cannot validate IMDS configuration if IMDS Secured is not set.",
                 FailureLevel.ERROR,
             )
         elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
             self._add_failure(
-                f"IMDS secured cannot be enabled in Head Node when using scheduler {scheduler}. "
-                f"Supported schedulers are: {','.join(SCHEDULERS_SUPPORTING_IMDS_SECURED)}",
+                f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
                 FailureLevel.ERROR,
             )
 
