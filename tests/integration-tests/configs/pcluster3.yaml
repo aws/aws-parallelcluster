@@ -56,11 +56,13 @@ test-suites:
         - regions: [ "us-east-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [ "alinux2" ]
+          schedulers: ["slurm"]
     test_multi_user.py::test_create_multi_user_with_opsworks:
       dimensions:
         - regions: [ "eu-west-1" ]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: [ "alinux2" ]
+          schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:
       dimensions:
