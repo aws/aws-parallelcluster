@@ -36,6 +36,7 @@ from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
+    PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
     STACK_EVENTS_LOG_STREAM_NAME_FORMAT,
@@ -590,7 +591,7 @@ class Cluster:
         if node_type:
             filters.append({"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": [node_type.value]})
         if queue_name:
-            filters.append({"Name": "tag:QueueName", "Values": [queue_name]})
+            filters.append({"Name": f"tag:{PCLUSTER_QUEUE_NAME_TAG}", "Values": [queue_name]})
         return filters
 
     def describe_instances(self, node_type: NodeType = None, next_token: str = None, queue_name: str = None):
