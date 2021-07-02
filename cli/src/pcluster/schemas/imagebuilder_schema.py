@@ -163,6 +163,7 @@ class BuildSchema(BaseSchema):
     tags = fields.List(fields.Nested(TagSchema))
     security_group_ids = fields.List(fields.Str)
     subnet_id = fields.Str(validate=get_field_validator("subnet_id"))
+    update_os_and_reboot = fields.Bool()
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -184,7 +185,6 @@ class BuildSchema(BaseSchema):
 class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of the ImageBuilder Dev Setting."""
 
-    update_os_and_reboot = fields.Bool()
     disable_pcluster_component = fields.Bool()
     distribution_configuration = fields.Nested(DistributionConfigurationSchema)
     terminate_instance_on_failure = fields.Bool()
