@@ -261,7 +261,7 @@ intel_hpc:
     dimensions:
       - regions: ["us-east-1"]
         instances: ["c5n.18xlarge"]
-        oss: ["centos7"]
+        oss: ["centos7", "centos8"]
         schedulers: ["slurm"]
 networking:
   test_cluster_networking.py::test_cluster_in_private_subnet:
