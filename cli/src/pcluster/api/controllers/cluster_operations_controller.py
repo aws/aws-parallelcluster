@@ -123,7 +123,7 @@ def create_cluster(
                 version=get_installed_version(),
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.CREATE_IN_PROGRESS),
             ),
-            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
+            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures),
         )
     except ConfigValidationError as e:
         raise _handle_config_validation_error(e)

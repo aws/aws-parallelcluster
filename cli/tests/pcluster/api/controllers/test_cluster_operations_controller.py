@@ -87,36 +87,52 @@ class TestCreateCluster:
         )
 
     @pytest.mark.parametrize(
-        "create_cluster_request_content, suppress_validators, validation_failure_level, rollback_on_failure",
+        "create_cluster_request_content, errors, suppress_validators, validation_failure_level, rollback_on_failure",
         [
-            (
+            pytest.param(
                 {
                     "region": "us-east-1",
                     "name": "cluster",
                     "clusterConfiguration": BASE64_ENCODED_CONFIG,
                 },
+                [ValidationResult("message", FailureLevel.WARNING, "type")],
                 None,
                 None,
                 None,
+                id="test with all error messages",
             ),
-            (
+            pytest.param(
                 {
                     "region": "us-east-1",
                     "name": "cluster",
                     "clusterConfiguration": BASE64_ENCODED_CONFIG,
                 },
+                [ValidationResult("message", FailureLevel.WARNING, "type")],
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
                 False,
+                id="test with filtered error messages",
+            ),
+            pytest.param(
+                {
+                    "region": "us-east-1",
+                    "name": "cluster",
+                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                },
+                [],
+                ["type:type1", "type:type2"],
+                ValidationLevel.WARNING,
+                False,
+                id="test with no error messages",
             ),
         ],
-        ids=["required", "all"],
     )
     def test_successful_create_request(
         self,
         client,
         mocker,
         create_cluster_request_content,
+        errors,
         suppress_validators,
         validation_failure_level,
         rollback_on_failure,
@@ -124,7 +140,7 @@ class TestCreateCluster:
         cluster_create_mock = mocker.patch(
             "pcluster.models.cluster.Cluster.create",
             auto_spec=True,
-            return_value=("id", [ValidationResult("message", FailureLevel.WARNING, "type")]),
+            return_value=("id", errors),
         )
 
         response = self._send_test_request(
@@ -136,6 +152,8 @@ class TestCreateCluster:
             rollback_on_failure,
         )
 
+        messages = [{"level": "WARNING", "message": "message", "type": "type"}] if errors else []
+
         expected_response = {
             "cluster": {
                 "cloudformationStackArn": "id",
@@ -145,7 +163,7 @@ class TestCreateCluster:
                 "region": create_cluster_request_content["region"],
                 "version": "3.0.0",
             },
-            "validationMessages": [{"level": "WARNING", "message": "message", "type": "type"}],
+            "validationMessages": messages,
         }
 
         with soft_assertions():
