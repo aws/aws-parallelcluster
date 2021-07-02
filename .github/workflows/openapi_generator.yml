@@ -22,15 +22,10 @@ jobs:
           sudo npm install -g redoc-cli
           sudo snap install yq
       - working-directory: api
-        run: ./gradlew buildSmithyModel openApiValidate redoc generatePythonClient
+        run: ./gradlew buildSmithyModel openApiValidate redoc
       - uses: EndBug/add-and-commit@v7
         with:
           add: 'api/spec/openapi'
           message: 'Generate OpenAPI model'
-          signoff: true
-      - uses: EndBug/add-and-commit@v7
-        with:
-          add: 'api/client/src'
-          message: 'Generate API Client'
           signoff: true
 
