@@ -146,8 +146,12 @@ def test_imagebuilder_url_validator(
     [
         (
             {
-                "dev_settings": {
+                "build": {
+                    "parent_image": "ami-0185634c5a8a37250",
+                    "instance_type": "c5.xlarge",
                     "update_os_and_reboot": True,
+                },
+                "dev_settings": {
                     "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                     "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
                 },
@@ -157,7 +161,7 @@ def test_imagebuilder_url_validator(
                     "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
-                    "is_official_ami_build": "true",
+                    "is_official_ami_build": "false",
                     "nvidia": {"enabled": "no"},
                     "region": "{{ build.AWSRegion.outputs.stdout }}",
                 }
@@ -214,7 +218,7 @@ def test_imagebuilder_url_validator(
                 "dev_settings": {
                     "cookbook": {
                         "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
-                        "extra_chef_attributes": '{"nfs": "true"}',
+                        "extra_chef_attributes": '{"cluster": {"is_official_ami_build": "true"},"nfs": "true"}',
                     },
                     "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
                 },
@@ -224,7 +228,7 @@ def test_imagebuilder_url_validator(
                     "base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "custom_node_package": "",
-                    "is_official_ami_build": "false",
+                    "is_official_ami_build": "true",
                     "nvidia": {"enabled": "no"},
                     "region": "{{ build.AWSRegion.outputs.stdout }}",
                 },
