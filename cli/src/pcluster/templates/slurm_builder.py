@@ -18,7 +18,7 @@ from aws_cdk import aws_route53 as route53
 from aws_cdk.core import CfnCustomResource, CfnOutput, CfnParameter, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
-from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX
+from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX, PCLUSTER_QUEUE_NAME_TAG
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -628,13 +628,13 @@ class SlurmConstruct(Construct):
                         tags=get_default_instance_tags(
                             self.stack_name, self.config, compute_resource, "Compute", self.shared_storage_mappings
                         )
-                        + [CfnTag(key="QueueName", value=queue.name)]
+                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + get_custom_tags(self.config),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "Compute")
-                        + [CfnTag(key="QueueName", value=queue.name)]
+                        + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
                         + get_custom_tags(self.config),
                     ),
                 ],

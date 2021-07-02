@@ -30,7 +30,7 @@ def cfn_describe_instances_mock_response(
         ],
     }
     if queue_name:
-        instance_data["Tags"].append({"Key": "QueueName", "Value": queue_name})
+        instance_data["Tags"].append({"Key": "parallelcluster:queue-name", "Value": queue_name})
 
     return instance_data
 
@@ -152,7 +152,7 @@ class TestDescribeClusterInstances:
             else:
                 expected_value = None
             assert_that(actual_filters_dict.get("tag:parallelcluster:node-type")).is_equal_to(expected_value)
-            assert_that(actual_filters_dict.get("tag:QueueName")).is_equal_to(queue_name)
+            assert_that(actual_filters_dict.get("tag:parallelcluster:queue-name")).is_equal_to(queue_name)
 
     @pytest.mark.parametrize(
         "params, expected_response",
