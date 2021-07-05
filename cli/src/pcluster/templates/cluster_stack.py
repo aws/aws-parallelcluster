@@ -68,7 +68,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import join_shell_args, policy_name_to_arn
+from pcluster.utils import get_resource_name_from_resource_arn, join_shell_args, policy_name_to_arn
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -219,7 +219,7 @@ class ClusterCdkStack(Stack):
                 cluster_config=self.config,
                 bucket=self.bucket,
                 log_group=self.log_group,
-                instance_roles=self.instance_roles,
+                instance_roles=self.instance_roles,  # Empty dict if provided by the user
                 instance_profiles=self.instance_profiles,
                 cleanup_lambda_role=cleanup_lambda_role,  # None if provided by the user
                 cleanup_lambda=cleanup_lambda,
@@ -245,7 +245,7 @@ class ClusterCdkStack(Stack):
                 shared_storage_mappings=self.shared_storage_mappings,
                 shared_storage_options=self.shared_storage_options,
                 head_node_instance=self.head_node_instance,
-                head_node_role_ref=self.instance_roles.get("HeadNode").get("RoleRef"),
+                instance_roles=self.instance_roles,  # Empty dict if provided by the user
             )
 
         # CloudWatch Dashboard
@@ -274,11 +274,14 @@ class ClusterCdkStack(Stack):
         """Create role and policies for the given node/queue."""
         suffix = create_hash_suffix(name)
         if node.instance_role:
-            node_role_ref = node.instance_role
-            is_new = False
+            if node.instance_role.split("/", 1)[0].endswith("instance-profile"):
+                # If existing InstanceProfile provided, do not create InstanceRole
+                self.instance_profiles[name] = get_resource_name_from_resource_arn(node.instance_role)
+            else:
+                node_role_ref = get_resource_name_from_resource_arn(node.instance_role)
+                self.instance_profiles[name] = self._add_instance_profile(node_role_ref, f"InstanceProfile{suffix}")
         else:
             node_role_ref = self._add_node_role(node, f"Role{suffix}")
-            is_new = True
 
             # ParallelCluster Policies
             self._add_pcluster_policies_to_role(node_role_ref, f"ParallelClusterPolicies{suffix}")
@@ -286,11 +289,11 @@ class ClusterCdkStack(Stack):
             # S3 Access Policies
             if self._condition_create_s3_access_policies(node):
                 self._add_s3_access_policies_to_role(node, node_role_ref, f"S3AccessPolicies{suffix}")
+            # Only add it it instance_roles if it is created by ParallelCluster
+            self.instance_roles[name] = {"RoleRef": node_role_ref}
 
-        self.instance_roles[name] = {"RoleRef": node_role_ref, "IsNew": is_new}
-
-        # Head node Instance Profile
-        self.instance_profiles[name] = self._add_instance_profile(node_role_ref, f"InstanceProfile{suffix}")
+            # Head node Instance Profile
+            self.instance_profiles[name] = self._add_instance_profile(node_role_ref, f"InstanceProfile{suffix}")
 
     def _add_cleanup_resources_lambda(self):
         """Create Lambda cleanup resources function and its role."""
@@ -330,12 +333,7 @@ class ClusterCdkStack(Stack):
             config=self.config,
             execution_role=cleanup_resources_lambda_role.attr_arn
             if cleanup_resources_lambda_role
-            else self.format_arn(
-                service="iam",
-                region="",
-                account=self.account,
-                resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
-            ),
+            else self.config.iam.roles.custom_lambda_resources,
             handler_func="cleanup_resources",
         ).lambda_func
 
@@ -856,7 +854,6 @@ class ClusterCdkStack(Stack):
                     Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
                         {
-                            **{"IamRoleName": self.instance_roles["HeadNode"]["RoleRef"]},
                             **get_common_user_data_env(head_node, self.config),
                         },
                     )
@@ -1019,14 +1016,13 @@ class ClusterCdkStack(Stack):
                                 "triggers=post.update\n"
                                 "path=Resources.HeadNodeLaunchTemplate.Metadata.AWS::CloudFormation::Init\n"
                                 "action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; "
-                                "cfn-init -v --stack ${StackName} --role=${IamRoleName} "
+                                "cfn-init -v --stack ${StackName} "
                                 "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
                                 "runas=root\n"
                             ),
                             {
                                 "StackName": self._stack_name,
                                 "Region": self.region,
-                                "IamRoleName": self.instance_roles["HeadNode"]["RoleRef"],
                             },
                         ),
                         "mode": "000400",
@@ -1035,11 +1031,10 @@ class ClusterCdkStack(Stack):
                     },
                     "/etc/cfn/cfn-hup.conf": {
                         "content": Fn.sub(
-                            "[main]\nstack=${StackId}\nregion=${Region}\nrole=${IamRoleName}\ninterval=2",
+                            "[main]\nstack=${StackId}\nregion=${Region}\ninterval=2",
                             {
                                 "StackId": self.stack_id,
                                 "Region": self.region,
-                                "IamRoleName": self.instance_roles["HeadNode"]["RoleRef"],
                             },
                         ),
                         "mode": "000400",
