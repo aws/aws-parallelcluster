@@ -35,6 +35,7 @@ def test_iam_roles(
         instance_policies = common_pcluster_policies["traditional_instance_policy"]
         lambda_policies = common_pcluster_policies["traditional_lambda_policy"]
     cluster_role_name = role_factory("ec2", [instance_policies])
+    queue_instance_profile = role_factory("ec2", [instance_policies], is_instance_profile=True)
     lambda_role_name = role_factory("lambda", [lambda_policies])
 
     # Copy the config file template for reuse in update.
@@ -45,7 +46,10 @@ def test_iam_roles(
     copyfile(config_file_path, updated_config_file_path)
 
     cluster_config = pcluster_config_reader(
-        config_file=config_file_name, ec2_iam_role=cluster_role_name, iam_lambda_role=lambda_role_name
+        config_file=config_file_name,
+        ec2_iam_role=cluster_role_name,
+        iam_lambda_role=lambda_role_name,
+        queue_instance_profile=queue_instance_profile,
     )
     cluster = clusters_factory(cluster_config)
 
@@ -65,6 +69,7 @@ def test_iam_roles(
                 config_file=updated_config_file_name,
                 ec2_iam_role=cluster_role_name,
                 iam_lambda_role=updated_lambda_role_name,
+                queue_instance_profile=queue_instance_profile,
             )
         )
     )

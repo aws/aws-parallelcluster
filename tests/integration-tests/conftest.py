@@ -837,6 +837,7 @@ def common_pcluster_policies(region):
 @pytest.fixture(scope="class")
 def role_factory(region):
     roles = []
+    instance_profiles = []
     iam_client = boto3.client(
         "iam",
         region_name=region,
@@ -847,7 +848,7 @@ def role_factory(region):
         ),
     )
 
-    def create_role(trusted_service, policies=()):
+    def create_role(trusted_service, policies=(), is_instance_profile=False):
         iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
         logging.info(f"Creating iam role {iam_role_name} for {trusted_service}")
 
@@ -864,11 +865,11 @@ def role_factory(region):
                 }
             ],
         }
-        iam_client.create_role(
+        role_arn = iam_client.create_role(
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
-        )
+        )["Role"]["Arn"]
 
         logging.info(f"Attaching iam policy to the role {iam_role_name}...")
         for policy in policies:
@@ -878,12 +879,23 @@ def role_factory(region):
         # put_key_policy step for creating KMS key, read the following link for reference :
         # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
         time.sleep(60)
-        logging.info(f"Iam role is ready: {iam_role_name}")
+        logging.info(f"Iam role is ready: {role_arn}")
         roles.append({"role_name": iam_role_name, "policies": policies})
-        return iam_role_name
+        if is_instance_profile:
+            instance_profile_arn, instance_profile_name = _create_instance_profile(iam_role_name, iam_client)
+            logging.info(f"Iam instance profile is ready: {instance_profile_arn}")
+            instance_profiles.append({"profile_name": instance_profile_name, "role_name": iam_role_name})
+            return instance_profile_arn
+        return role_arn
 
     yield create_role
 
+    for instance_profile in instance_profiles:
+        profile_name = instance_profile["profile_name"]
+        role_name = instance_profile["role_name"]
+        iam_client.remove_role_from_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
+        logging.info(f"Deleting instance profile {profile_name}")
+        iam_client.delete_instance_profile(InstanceProfileName=profile_name)
     for role in roles:
         role_name = role["role_name"]
         policies = role["policies"]
@@ -912,6 +924,16 @@ def _create_iam_policies(iam_policy_name, region, policy_filename):
     return boto3.client("iam", region_name=region).create_policy(
         PolicyName=iam_policy_name, PolicyDocument=parallel_cluster_instance_policy
     )["Policy"]["Arn"]
+
+
+def _create_instance_profile(iam_role_name, iam_client):
+    logging.info("Creating Instance Profile...")
+    instance_profile_name = f"integ-tests_{random_alphanumeric()}"
+    instance_profile_arn = iam_client.create_instance_profile(InstanceProfileName=instance_profile_name)[
+        "InstanceProfile"
+    ]["Arn"]
+    iam_client.add_role_to_instance_profile(InstanceProfileName=instance_profile_name, RoleName=iam_role_name)
+    return instance_profile_arn, instance_profile_name
 
 
 @pytest.fixture(scope="class")

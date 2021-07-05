@@ -92,6 +92,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
+from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import (
@@ -540,6 +541,10 @@ class Roles(Resource):
         super().__init__()
         self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
 
+    def _register_validators(self):
+        if self.custom_lambda_resources:
+            self._register_validator(RoleValidator, role_arn=self.custom_lambda_resources)
+
 
 class S3Access(Resource):
     """Represent the S3 Access configuration."""
@@ -586,6 +591,13 @@ class Iam(Resource):
         for policy in self.additional_iam_policies:
             arns.append(policy.policy)
         return arns
+
+    def _register_validators(self):
+        if self.instance_role:
+            if self.instance_role.split("/", 1)[0].endswith("instance-profile"):
+                self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_role)
+            else:
+                self._register_validator(RoleValidator, role_arn=self.instance_role)
 
 
 class Imds(Resource):
