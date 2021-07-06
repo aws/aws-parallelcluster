@@ -1780,7 +1780,6 @@ components:
         status:
           $ref: '#/components/schemas/ComputeFleetStatus'
       required:
-      - lastUpdatedTime
       - status
       title: DescribeComputeFleetStatusResponseContent
       type: object

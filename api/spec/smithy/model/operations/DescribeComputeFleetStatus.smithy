@@ -27,7 +27,6 @@ structure DescribeComputeFleetStatusRequest {
 structure DescribeComputeFleetStatusResponse {
     @required
     status: ComputeFleetStatus,
-    @required
     @documentation("Timestamp representing the last status update time")
     @timestampFormat("date-time")
     lastUpdatedTime: Timestamp,

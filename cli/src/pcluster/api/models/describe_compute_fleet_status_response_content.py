@@ -68,8 +68,6 @@ class DescribeComputeFleetStatusResponseContent(Model):
         :param last_updated_time: The last_updated_time of this DescribeComputeFleetStatusResponseContent.
         :type last_updated_time: datetime
         """
-        if last_updated_time is None:
-            raise ValueError("Invalid value for `last_updated_time`, must not be `None`")
 
         self._last_updated_time = last_updated_time
 
