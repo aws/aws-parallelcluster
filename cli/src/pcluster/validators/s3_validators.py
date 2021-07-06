@@ -58,7 +58,9 @@ class UrlValidator(Validator):
 
         except AWSClientError:
             # Todo: Check that bucket is in s3_read_resource or s3_read_write_resource.
-            self._add_failure(("The S3 object does not exist or you do not have access to it."), FailureLevel.ERROR)
+            self._add_failure(
+                (f"The S3 object '{url}' does not exist or you do not have access to it."), FailureLevel.ERROR
+            )
 
 
 class S3BucketUriValidator(Validator):
