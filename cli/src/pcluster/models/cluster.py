@@ -627,73 +627,81 @@ class Cluster:
     def start(self):
         """Start the cluster."""
         try:
+            stack_status = self.stack.status
+            if not self.stack.is_working_status:
+                raise BadRequestClusterActionError(
+                    f"Cannot start/enable compute fleet while stack is in {stack_status} status."
+                )
             scheduler = self.config.scheduling.scheduler
             if scheduler == "awsbatch":
-                LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
-                try:
-                    compute_resource = self.config.scheduling.queues[0].compute_resources[0]
-
-                    AWSApi.instance().batch.enable_compute_environment(
-                        ce_name=self.stack.batch_compute_environment,
-                        min_vcpus=compute_resource.min_vcpus,
-                        max_vcpus=compute_resource.max_vcpus,
-                        desired_vcpus=compute_resource.desired_vcpus,
-                    )
-                except Exception as e:
-                    raise _cluster_error_mapper(e, f"Unable to enable Batch compute environment. {str(e)}")
-
+                self.enable_awsbatch_compute_environment()
             else:  # scheduler == "slurm"
-                stack_status = self.stack.status
-                if "IN_PROGRESS" in stack_status:
-                    raise ClusterActionError(f"Cannot start compute fleet while stack is in {stack_status} status.")
-                if "FAILED" in stack_status:
-                    LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
-
-                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-                compute_fleet_status_manager.update_status(
-                    ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
-                )
+                self.start_slurm_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
-            raise ClusterActionError(
+            raise BadRequestClusterActionError(
                 "Failed when starting compute fleet due to a concurrent update of the status. "
                 "Please retry the operation."
             )
-        except ClusterActionError as e:
-            raise e
         except Exception as e:
             raise _cluster_error_mapper(e, f"Failed when starting compute fleet with error: {str(e)}")
+
+    def start_slurm_compute_fleet(self):
+        """Start Slurm compute fleet."""
+        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+        compute_fleet_status_manager.update_status(
+            ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
+        )
+
+    def enable_awsbatch_compute_environment(self):
+        """Enable AWS Batch compute environment."""
+        LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
+        try:
+            compute_resource = self.config.scheduling.queues[0].compute_resources[0]
+
+            AWSApi.instance().batch.enable_compute_environment(
+                ce_name=self.stack.batch_compute_environment,
+                min_vcpus=compute_resource.min_vcpus,
+                max_vcpus=compute_resource.max_vcpus,
+                desired_vcpus=compute_resource.desired_vcpus,
+            )
+        except Exception as e:
+            raise _cluster_error_mapper(e, f"Unable to enable Batch compute environment. {str(e)}")
 
     def stop(self):
         """Stop compute fleet of the cluster."""
         try:
+            stack_status = self.stack.status
+            if not self.stack.is_working_status:
+                raise BadRequestClusterActionError(
+                    f"Cannot stop/disable compute fleet while stack is in {stack_status} status."
+                )
             scheduler = self.config.scheduling.scheduler
             if scheduler == "awsbatch":
-                LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
-                try:
-                    AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
-                except Exception as e:
-                    raise _cluster_error_mapper(e, f"Unable to disable Batch compute environment. {str(e)}")
-
+                self.disable_awsbatch_compute_environment()
             else:  # scheduler == "slurm"
-                stack_status = self.stack.status
-                if "IN_PROGRESS" in stack_status:
-                    raise ClusterActionError(f"Cannot stop compute fleet while stack is in {stack_status} status.")
-                if "FAILED" in stack_status:
-                    LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
-
-                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-                compute_fleet_status_manager.update_status(
-                    ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
-                )
+                self.stop_slurm_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
-            raise ClusterActionError(
+            raise BadRequestClusterActionError(
                 "Failed when stopping compute fleet due to a concurrent update of the status. "
                 "Please retry the operation."
             )
-        except ClusterActionError as e:
-            raise e
         except Exception as e:
             raise _cluster_error_mapper(e, f"Failed when stopping compute fleet with error: {str(e)}")
+
+    def stop_slurm_compute_fleet(self):
+        """Stop Slurm compute fleet."""
+        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+        compute_fleet_status_manager.update_status(
+            ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
+        )
+
+    def disable_awsbatch_compute_environment(self):
+        """Disable AWS Batch compute environment."""
+        LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
+        try:
+            AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
+        except Exception as e:
+            raise _cluster_error_mapper(e, f"Unable to disable Batch compute environment. {str(e)}")
 
     def validate_update_request(
         self,

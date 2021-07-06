@@ -10,6 +10,7 @@
 # limitations under the License.
 import logging
 import time
+from datetime import datetime, timezone
 from enum import Enum
 
 from boto3.dynamodb.conditions import Attr
@@ -30,6 +31,8 @@ class ComputeFleetStatus(Enum):
     STARTING = "STARTING"  # clustermgtd is handling the start request.
     STOP_REQUESTED = "STOP_REQUESTED"  # A request to stop the fleet has been submitted.
     START_REQUESTED = "START_REQUESTED"  # A request to start the fleet has been submitted.
+    ENABLED = "ENABLED"  # AWS Batch only. The compute environment is enabled
+    DISABLED = "DISABLED"  # AWS Batch only. The compute environment is disabled
     UNKNOWN = "UNKNOWN"  # Cannot determine fleet status
     # PROTECTED indicates that some partitions have consistent bootstrap failures. Affected partitions are inactive.
     PROTECTED = "PROTECTED"
@@ -94,7 +97,11 @@ class ComputeFleetStatusManager:
         try:
             AWSApi.instance().ddb_resource.put_item(
                 self._table_name,
-                item={"Id": self.COMPUTE_FLEET_STATUS_KEY, self.COMPUTE_FLEET_STATUS_ATTRIBUTE: str(next_status)},
+                item={
+                    "Id": self.COMPUTE_FLEET_STATUS_KEY,
+                    self.COMPUTE_FLEET_STATUS_ATTRIBUTE: str(next_status),
+                    self.LAST_UPDATED_TIME_ATTRIBUTE: str(datetime.now(tz=timezone.utc)),
+                },
                 condition_expression=Attr(self.COMPUTE_FLEET_STATUS_ATTRIBUTE).eq(str(current_status)),
             )
         except AWSClientError as e:
