@@ -316,11 +316,11 @@ def set_credentials(region, credential_arg):
 
         if region in credentials:
             credential_endpoint, credential_arn, credential_external_id = credentials.get(region)
-            aws_credentials = _retrieve_sts_credential(
+            aws_credentials, assumed_role = _retrieve_sts_credential(
                 credential_endpoint, credential_arn, credential_external_id, region
             )
 
-            logging.info(f"Setting AWS credentials for region: {region}")
+            logging.info(f"Setting AWS credentials in region {region} for role: {assumed_role}")
 
             # Set credential for all boto3 client
             boto3.setup_default_session(
@@ -347,8 +347,9 @@ def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_ext
         RoleArn=credential_arn, ExternalId=credential_external_id, RoleSessionName=region + "_integration_tests_session"
     )
     aws_credentials = assumed_role_object["Credentials"]
+    assumed_role = assumed_role_object["AssumedRoleUser"]["Arn"]
 
-    return aws_credentials
+    return aws_credentials, assumed_role
 
 
 def unset_credentials():
@@ -512,6 +513,48 @@ def read_json_file(file):
     except Exception as e:
         logging.exception("Failed when reading json file %s", file)
         raise e
+
+
+def get_arn_partition(region):
+    if region.startswith("us-gov-"):
+        return "aws-us-gov"
+    elif region.startswith("cn-"):
+        return "aws-cn"
+    else:
+        return "aws"
+
+
+def get_service_domain(service, region):
+    partition = get_arn_partition(region)
+    domain_suffix = ".cn" if partition == "aws-cn" else ""
+    return f"{service}.amazonaws.com{domain_suffix}"
+
+
+def get_assume_role_policy_document(region, services, arns):
+    statements = []
+
+    for service in services:
+        statements.append(
+            {
+                "Action": "sts:AssumeRole",
+                "Effect": "Allow",
+                "Principal": {"Service": get_service_domain(service, region)},
+            }
+        )
+
+    for arn in arns:
+        statements.append(
+            {
+                "Action": "sts:AssumeRole",
+                "Effect": "Allow",
+                "Principal": {"AWS": arn},
+            }
+        )
+
+    return {
+        "Version": "2012-10-17",
+        "Statement": statements,
+    }
 
 
 def get_stack_id_tag_filter(stack_arn):
