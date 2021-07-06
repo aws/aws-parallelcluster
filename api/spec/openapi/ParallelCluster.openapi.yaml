@@ -1409,7 +1409,6 @@ components:
         status:
           $ref: '#/components/schemas/ComputeFleetStatus'
       required:
-        - lastUpdatedTime
         - status
     DescribeImageResponseContent:
       type: object
