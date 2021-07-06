@@ -61,6 +61,7 @@ per cluster.
 - Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
 - Add prompt for availability zone in pcluster configure automated subnets creation.
 - Add configuration HeadNode.Imds.Secured to enable/disable restricted access to IMDS.
+- Use different permissions in instance roles based on the scheduler and the node's role in the cluster.
 
 2.x.x
 ------
