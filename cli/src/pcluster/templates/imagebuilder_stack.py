@@ -156,7 +156,11 @@ class ImageBuilderCdkStack(Stack):
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_cfn_parameters(self):
-        if self.config.dev_settings and self.config.dev_settings.cookbook:
+        if (
+            self.config.dev_settings
+            and self.config.dev_settings.cookbook
+            and self.config.dev_settings.cookbook.chef_cookbook
+        ):
             dev_settings_cookbook_value = self.config.dev_settings.cookbook.chef_cookbook
             custom_chef_cookbook = (
                 create_s3_presigned_url(dev_settings_cookbook_value)
