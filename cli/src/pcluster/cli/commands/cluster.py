@@ -354,7 +354,7 @@ class DcvConnectCommand(DcvCommand):
     """Implement pcluster dcv connect command."""
 
     # CLI
-    name = "connect"
+    name = "dcv-connect"
     help = "Permits to connect to the head node through an interactive session by using NICE DCV."
     description = help
 

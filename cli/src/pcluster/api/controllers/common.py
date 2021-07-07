@@ -51,7 +51,7 @@ def configure_aws_region(is_query_string_arg: bool = True):
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            region = kwargs.get("region") if is_query_string_arg else request.get_json().get("region")
+            region = kwargs.get("region") if is_query_string_arg else args[0].get("region")
             if not region:
                 region = os.environ.get("AWS_DEFAULT_REGION")
 
