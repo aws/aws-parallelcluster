@@ -8,12 +8,9 @@
 
 # pylint: disable=W0613
 
-from datetime import datetime
-
 from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, convert_errors
 from pcluster.api.errors import BadRequestException, NotFoundException
 from pcluster.api.models import (
-    ComputeFleetStatus,
     DescribeComputeFleetStatusResponseContent,
     RequestedComputeFleetStatus,
     UpdateComputeFleetStatusRequestContent,
@@ -23,6 +20,7 @@ from pcluster.models.cluster import Cluster
 
 
 @configure_aws_region()
+@convert_errors()
 def describe_compute_fleet_status(cluster_name, region=None):
     """
     Describe the status of the compute fleet.
@@ -34,9 +32,18 @@ def describe_compute_fleet_status(cluster_name, region=None):
 
     :rtype: DescribeComputeFleetStatusResponseContent
     """
-    return DescribeComputeFleetStatusResponseContent(
-        last_updated_time=datetime.now(), status=ComputeFleetStatus.RUNNING
-    )
+    try:
+        cluster = Cluster(cluster_name)
+        if not check_cluster_version(cluster):
+            raise BadRequestException(
+                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
+            )
+        status, last_updated_time = cluster.compute_fleet_status_with_last_updated_time
+        return DescribeComputeFleetStatusResponseContent(last_updated_time=last_updated_time, status=status.value)
+    except StackNotFoundError:
+        raise NotFoundException(
+            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
+        )
 
 
 @configure_aws_region()
@@ -59,7 +66,7 @@ def update_compute_fleet_status(cluster_name, update_compute_fleet_status_reques
             update_compute_fleet_status_request_content
         )
         cluster = Cluster(cluster_name)
-        if not check_cluster_version(cluster, exact_match=True):
+        if not check_cluster_version(cluster):
             raise BadRequestException(
                 f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
             )
