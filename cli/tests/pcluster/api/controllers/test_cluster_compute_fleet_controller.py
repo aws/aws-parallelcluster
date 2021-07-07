@@ -6,6 +6,7 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
+from datetime import datetime
 
 import pytest
 from assertpy import assert_that, soft_assertions
@@ -235,3 +236,125 @@ class TestUpdateComputeFleetStatus:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_response)
+
+
+class TestDescribeComputeFleetStatus:
+    url = "/v3/clusters/{cluster_name}/computefleet/status"
+    method = "GET"
+
+    def _send_test_request(self, client, cluster_name="clustername", region="us-east-1"):
+        query_string = []
+        if region:
+            query_string.append(("region", region))
+
+        headers = {
+            "Accept": "application/json",
+        }
+        return client.open(
+            self.url.format(cluster_name=cluster_name), method=self.method, headers=headers, query_string=query_string
+        )
+
+    @pytest.mark.parametrize(
+        "scheduler, status, last_updated_time",
+        [
+            ("slurm", "RUNNING", datetime.now()),
+            ("slurm", "STOPPED", datetime.now()),
+            ("slurm", "STOPPING", datetime.now()),
+            ("slurm", "STARTING", datetime.now()),
+            ("slurm", "STOP_REQUESTED", datetime.now()),
+            ("slurm", "START_REQUESTED", datetime.now()),
+            ("slurm", "UNKNOWN", None),
+            ("awsbatch", "ENABLED", None),
+            ("awsbatch", "DISABLED", None),
+        ],
+    )
+    def test_successful_request(self, mocker, client, scheduler, status, last_updated_time):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response(scheduler)
+        )
+        if scheduler == "slurm":
+            if status == "UNKNOWN":
+                dynamodb_item = {}  # Test dynamodb item not exist
+            else:
+                dynamodb_item = {"Item": {"Status": status}}
+                if last_updated_time:
+                    last_updated_time = str(last_updated_time)
+                    dynamodb_item["Item"]["LastUpdatedTime"] = last_updated_time
+            mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", return_value=dynamodb_item)
+        elif scheduler == "awsbatch":
+            mocker.patch("pcluster.aws.batch.BatchClient.get_compute_environment_state", return_value=status)
+        response = self._send_test_request(client)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            expected_response = {"status": status}
+            if last_updated_time:
+                expected_response["lastUpdatedTime"] = last_updated_time
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_slurm_dynamo_table_not_exist(self, mocker, client):
+        """When stack exists but the dynamodb table to store the status does not exist, the status should be UNKNOWN."""
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response("slurm")
+        )
+        mocker.patch(
+            "pcluster.aws.dynamo.DynamoResource.get_item",
+            side_effect=AWSClientError(
+                function_name="get_item",
+                message="An error occurred (ResourceNotFoundException) when"
+                " calling the GetItem operation: Requested resource not found",
+            ),
+        )
+        response = self._send_test_request(client)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            expected_response = {"status": "UNKNOWN"}
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "scheduler, stack_status", [("slurm", "CREATE_IN_PROGRESS"), ("awsbatch", "DELETE_IN_PROGRESS")]
+    )
+    def test_unknown_status_on_unstable_stack(self, mocker, client, scheduler, stack_status):
+        """When stack is in unstable status, the status should be UNKNOWN."""
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            return_value=cfn_describe_stack_mock_response(scheduler, stack_status),
+        )
+        response = self._send_test_request(client)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(200)
+            expected_response = {"status": "UNKNOWN"}
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    @pytest.mark.parametrize(
+        "params, expected_response",
+        [
+            (
+                {"region": "eu-west-"},
+                {"message": "Bad Request: invalid or unsupported region 'eu-west-'"},
+            ),
+            (
+                {"region": None},
+                {"message": "Bad Request: region needs to be set"},
+            ),
+        ],
+    )
+    def test_malformed_request(self, client, params, expected_response):
+        response = self._send_test_request(client, **params)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_stack_not_exist_request(self, mocker, client):
+        mocker.patch(
+            "pcluster.aws.cfn.CfnClient.describe_stack",
+            side_effect=StackNotFoundError(function_name="describestack", stack_name="stack_name"),
+        )
+        response = self._send_test_request(client)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(404)
+            assert_that(response.get_json()).is_equal_to(
+                {
+                    "message": "cluster 'clustername' does not exist or belongs to an "
+                    "incompatible ParallelCluster major version."
+                }
+            )

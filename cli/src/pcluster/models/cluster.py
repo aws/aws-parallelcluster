@@ -254,20 +254,27 @@ class Cluster:
     @property
     def compute_fleet_status(self) -> ComputeFleetStatus:
         """Status of the cluster compute fleet."""
-        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-        status = compute_fleet_status_manager.get_status()
-        if status == ComputeFleetStatus.UNKNOWN:
-            stack_status_to_fleet_status = {
-                "CREATE_IN_PROGRESS": ComputeFleetStatus.STARTING,
-                "DELETE_IN_PROGRESS": ComputeFleetStatus.STOPPING,
-                "CREATE_FAILED": ComputeFleetStatus.STOPPED,
-                "ROLLBACK_IN_PROGRESS": ComputeFleetStatus.STOPPING,
-                "ROLLBACK_FAILED": ComputeFleetStatus.STOPPED,
-                "ROLLBACK_COMPLETE": ComputeFleetStatus.STOPPED,
-                "DELETE_FAILED": ComputeFleetStatus.STOPPING,
-            }
-            return stack_status_to_fleet_status.get(self.status, status)
+        status, _ = self.compute_fleet_status_with_last_updated_time
         return status
+
+    @property
+    def compute_fleet_status_with_last_updated_time(self):
+        """Status of the cluster compute fleet and the last compute fleet status updated time."""
+        if self.stack.is_working_status or self.stack.status == "UPDATE_IN_PROGRESS":
+            if self.stack.scheduler == "slurm":
+                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+                status, last_updated_time = compute_fleet_status_manager.get_status_with_last_updated_time()
+            else:  # scheduler is AWS Batch:
+                status = ComputeFleetStatus(
+                    AWSApi.instance().batch.get_compute_environment_state(self.stack.batch_compute_environment)
+                )
+                last_updated_time = None
+            return status, last_updated_time
+        else:
+            LOGGER.info(
+                "stack %s is in status %s. Cannot retrieve compute fleet status.", self.stack_name, self.stack.status
+            )
+            return ComputeFleetStatus.UNKNOWN, None
 
     @property
     def stack_name(self):
