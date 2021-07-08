@@ -156,7 +156,11 @@ class ImageBuilderCdkStack(Stack):
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_cfn_parameters(self):
-        if self.config.dev_settings and self.config.dev_settings.cookbook:
+        if (
+            self.config.dev_settings
+            and self.config.dev_settings.cookbook
+            and self.config.dev_settings.cookbook.chef_cookbook
+        ):
             dev_settings_cookbook_value = self.config.dev_settings.cookbook.chef_cookbook
             custom_chef_cookbook = (
                 create_s3_presigned_url(dev_settings_cookbook_value)
@@ -188,7 +192,7 @@ class ImageBuilderCdkStack(Stack):
             self,
             "CfnParamUpdateOsAndReboot",
             type="String",
-            default="true" if self.config.dev_settings and self.config.dev_settings.update_os_and_reboot else "false",
+            default="true" if self.config.build and self.config.build.update_os_and_reboot else "false",
             description="UpdateOsAndReboot",
         )
 
@@ -383,7 +387,7 @@ class ImageBuilderCdkStack(Stack):
         # ImageBuilderComponents
         components = []
         components_resources = []
-        if self.config.dev_settings and self.config.dev_settings.update_os_and_reboot:
+        if self.config.build and self.config.build.update_os_and_reboot:
             update_os_component_resource = imagebuilder.CfnComponent(
                 self,
                 "UpdateOSComponent",

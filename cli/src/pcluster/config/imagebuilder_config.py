@@ -129,6 +129,7 @@ class Build(Resource):
         tags: List[BaseTag] = None,
         security_group_ids: List[str] = None,
         components: List[Component] = None,
+        update_os_and_reboot: bool = None,
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
@@ -138,6 +139,7 @@ class Build(Resource):
         self.subnet_id = Resource.init_param(subnet_id)
         self.security_group_ids = security_group_ids
         self.components = components
+        self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
 
     def _register_validators(self):
         self._register_validator(
@@ -163,7 +165,6 @@ class ImagebuilderDevSettings(BaseDevSettings):
 
     def __init__(
         self,
-        update_os_and_reboot: bool = None,
         disable_pcluster_component: bool = None,
         distribution_configuration: DistributionConfiguration = None,
         terminate_instance_on_failure: bool = None,
@@ -171,7 +172,6 @@ class ImagebuilderDevSettings(BaseDevSettings):
         **kwargs
     ):
         super().__init__(**kwargs)
-        self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
         self.disable_pcluster_component = Resource.init_param(disable_pcluster_component, default=False)
         self.distribution_configuration = distribution_configuration
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
@@ -237,7 +237,7 @@ class ImageBuilderExtraChefAttributes(ExtraChefAttributes):
     def _set_default(self, dev_settings: ImagebuilderDevSettings):
         self.region = "{{ build.AWSRegion.outputs.stdout }}"
         self.nvidia = {"enabled": "no"}
-        self.is_official_ami_build = "true" if dev_settings and dev_settings.update_os_and_reboot else "false"
+        self.is_official_ami_build = "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         self.custom_awsbatchcli_package = (
             dev_settings.aws_batch_cli_package if dev_settings and dev_settings.aws_batch_cli_package else ""
