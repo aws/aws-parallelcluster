@@ -62,13 +62,9 @@ def bool_converter(in_str):
 
 def re_validator(rexp_str, param, in_str):
     """Takes a string and validates the input format."""
-    regxp_str = '^(ALL|type:[A-Za-z0-9]+)$'
     rexp = re.compile(rexp_str)
     if rexp.match(in_str) is None:
-        pprint({'message': "Invalid format for parameter.",
-                'parameter': param,
-                'expected_format': rexp_str,
-                'got': in_str})
+        pprint({'message': f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'"})
         sys.exit(1)
 
 
