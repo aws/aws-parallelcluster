@@ -59,6 +59,18 @@ def bool_converter(in_str):
     return in_str not in {'false', 'False', 'FALSE', False}
 
 
+def re_validator(rexp_str, param, in_str):
+    """Takes a string and validates the input format."""
+    regxp_str = '^(ALL|type:[A-Za-z0-9]+)$'
+    rexp = re.compile(rexp_str)
+    if rexp.match(in_str) is None:
+        pprint({'message': "Invalid format for parameter.",
+                'parameter': param,
+                'expected_format': rexp_str,
+                'got': in_str})
+        sys.exit(1)
+
+
 def read_file_b64(path):
     """Takes file path, reads the file and converts to base64 encoded string"""
     with open(path) as file:
@@ -81,14 +93,14 @@ def _resolve_param(spec, param):
     copy_keys = {'description', 'required'}
     new_param.update({k: v for k, v in param.items() if k in copy_keys})
 
-    schema_keys = {'enum', 'type'}
-    new_param.update({k: v for k, v in param['schema'].items() if k in schema_keys})
-
+    schema = param['schema']
     if 'items' in param['schema']:
         new_param['multi'] = True
         schema = _resolve_ref(spec, param['schema']['items'])
-        if 'enum' in schema:
-            new_param['enum'] = schema['enum']
+
+    schema_keys = {'enum', 'type', 'pattern'}
+    new_param.update({k: v for k, v in schema.items() if k in schema_keys})
+
     return new_param
 
 
@@ -104,9 +116,8 @@ def _resolve_body(spec, operation):
         new_param = {'name': to_kebab_case(param_name),
                      'body': True,
                      'required': param_name in required}
-        copy_keys = {'description', 'type', 'enum'}
+        copy_keys = {'description', 'type', 'enum', 'pattern'}
         new_param.update({k: v for k, v in param_data.items() if k in copy_keys})
-
         if param_data.get('format', None) == 'byte':
             new_param['type'] = 'byte'
         new_params.append(new_param)
@@ -226,11 +237,16 @@ def gen_parser(model):
         for param in operation['params']:
             help = param.get('description', '')
             metavar = param['name'].upper() if len(param.get('enum', [])) > 4 else None
+            if 'pattern' in param:
+                type_coerce = partial(re_validator, param['pattern'], param['name'])
+            else:
+                type_coerce = type_map.get(param.get('type'))
+
             subparser.add_argument(f"--{param['name']}",
                                    required=param.get('required', False),
                                    choices=param.get('enum', None),
                                    nargs='+' if 'multi' in param else None,
-                                   type=type_map.get(param.get('type')),
+                                   type=type_coerce,
                                    metavar=metavar,
                                    help=help)
 
