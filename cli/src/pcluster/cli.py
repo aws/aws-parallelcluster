@@ -347,11 +347,13 @@ def main():
         del args.__dict__['debug']
 
     try:
-        if args.operation in model:
+        v2_implemented = {'list-images', 'build-image', 'delete-image',
+                          'describe-image', 'list-clusters'}
+        if args.operation in model and args.operation not in v2_implemented:
             LOGGER.debug("Handling CLI operation %s", args.operation)
             args.func(args)
         else:
-            LOGGER.debug("Handling CLI command %s", args.command)
+            LOGGER.debug("Handling CLI command %s", args.operation)
             args.func(args, extra_args)
         sys.exit(0)
     except NoCredentialsError:  # TODO: remove from here
