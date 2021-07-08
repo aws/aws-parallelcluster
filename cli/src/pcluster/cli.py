@@ -121,7 +121,7 @@ def load_model():
     with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
         spec = yaml.safe_load(spec_file.read())
 
-    model = {'ops': {}}
+    model = {}
 
     for _path, eps in spec['paths'].items():
         for _method, operation in eps.items():
@@ -138,9 +138,9 @@ def load_model():
             func_name = to_snake_case(op_name)
             func = get_function_from_name(f"{module_name}.{func_name}")
 
-            model['ops'][op_name] = {'params': params, 'func': func}
+            model[op_name] = {'params': params, 'func': func}
             if 'description' in operation:
-                model['ops'][op_name]['description'] = operation['description']
+                model[op_name]['description'] = operation['description']
 
     return model
 
@@ -152,7 +152,7 @@ def convert_args(model, op_name, args_in):
     body = {}
     kwargs = {}
     pos_args = []
-    for param in model['ops'][op_name]['params']:
+    for param in model[op_name]['params']:
         param_name = to_snake_case(param['name'])
         value = args_in.pop(param_name)
 
@@ -187,7 +187,7 @@ def dispatch(model, args):
     operation specified."""
     args_dict = args.__dict__
     operation = args.operation
-    dispatch_func = model['ops'][operation]['func']
+    dispatch_func = model[operation]['func']
     del args_dict['func']
     del args_dict['operation']
     body, pos_args, kwargs = convert_args(model, operation, args_dict)
@@ -213,12 +213,12 @@ def gen_parser(model):
             "launching and management of HPC clusters in the AWS cloud.")
     epilog = 'For command specific flags, please run: "pcluster [command] --help"'
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
-    subparsers = parser.add_subparsers(help="DESCRIPTION", required=True,
-                                       dest='operation', metavar="COMMAND")
+    subparsers = parser.add_subparsers(help="", required=True, title='COMMANDS',
+                                       dest='operation', metavar="")
     type_map = {'int': int, 'boolean': bool_converter, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 
-    for op_name, operation in model['ops'].items():
+    for op_name, operation in model.items():
         op_help = operation.get('description', f"{op_name} command help")
         subparser = subparsers.add_parser(op_name, help=op_help, description=op_help)
         parser_map[op_name] = subparser
@@ -246,7 +246,7 @@ def add_cluster_commands(model, subparsers):
     for _name, obj in inspect.getmembers(cluster_commands):
         if inspect.isclass(obj) and issubclass(obj, CliCommand):
             if (hasattr(obj, 'name')
-                    and obj.name not in model['ops']
+                    and obj.name not in model
                     and obj.name not in api_implemented):
                 obj(subparsers)
 
@@ -273,7 +273,7 @@ def main():
         print("Invalid arguments %s" % extra_args)
         sys.exit(1)
 
-    if args.operation in model['ops']:
+    if args.operation in model:
         args.func(args)
     else:
         args.func(args, extra_args)
