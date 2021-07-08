@@ -169,7 +169,34 @@ def _resolve_body(spec, operation):
 def load_model():
     """Reads the openapi specification and converts it into a model, resolving
     references and pulling out relevant properties for CLI parsing and function
-    invocation."""
+    invocation.
+
+    The output data structure is a map for operationId to data shaped liked the
+    following:
+{'list-clusters': {'description': 'Retrieve the list of existing clusters ...',
+                   'func': <function list_clusters at 0x7f1445b87040>,
+                   'params': [{'body': False,
+                               'description': 'List clusters deployed to ...',
+                               'name': 'region',
+                               'required': False,
+                               'type': 'string'},
+                              {'body': False,
+                               'description': 'Filter by cluster status.',
+                               'enum': ['CREATE_IN_PROGRESS',
+                                        'CREATE_FAILED',
+                                        'CREATE_COMPLETE',
+                                        'DELETE_IN_PROGRESS',
+                                        'DELETE_FAILED',
+                                        'UPDATE_IN_PROGRESS',
+                                        'UPDATE_COMPLETE',
+                                        'UPDATE_FAILED'],
+                               'multi': True,
+                               'name': 'cluster-status',
+                               'required': False,
+                               'type': 'string'}]},
+                               ...
+}
+    """
     with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
         spec = yaml.safe_load(spec_file.read())
 
@@ -193,6 +220,8 @@ def load_model():
             model[op_name] = {'params': params, 'func': func}
             if 'description' in operation:
                 model[op_name]['description'] = operation['description']
+
+    pprint(model)
 
     return model
 
