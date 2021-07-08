@@ -16,6 +16,7 @@ import argparse
 import base64
 from functools import partial
 import inspect
+import json
 import re
 import time
 import sys
@@ -32,7 +33,7 @@ from connexion.utils import get_function_from_name
 from pcluster.utils import camelcase
 import pcluster.cli.commands.cluster as cluster_commands
 from pcluster.cli.entrypoint import VersionCommand
-from pcluster.api import openapi
+from pcluster.api import openapi, encoder
 from pcluster.cli.commands.common import CliCommand
 
 # Controllers
@@ -214,7 +215,8 @@ def dispatch(model, args):
         ret = dispatch_func(*pos_args, **kwargs)
 
     if ret:
-        pprint(ret)
+        model_encoded = encoder.JSONEncoder().encode(ret)
+        print(json.dumps(json.loads(model_encoded), indent=2))
 
 
 def gen_parser(model):
