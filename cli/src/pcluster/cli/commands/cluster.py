@@ -37,6 +37,26 @@ from pcluster.validators.common import FailureLevel
 LOGGER = logging.getLogger(__name__)
 
 
+class VersionCommand(CliCommand):
+    """Implement pcluster version command."""
+
+    # CLI
+    name = "version"
+    help = "Displays the version of AWS ParallelCluster."
+    description = "Displays the version of AWS ParallelCluster."
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description, region_arg=False)
+
+    def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
+        pass
+
+    def execute(  # noqa: D102
+        self, args: argparse.Namespace, extra_args: List[str]  # pylint: disable=unused-argument
+    ) -> None:
+        print(get_installed_version())
+
+
 class CreateClusterCommand(CliCommand):
     """Implement pcluster create command."""
 
