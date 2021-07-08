@@ -36,6 +36,7 @@ from connexion.utils import get_function_from_name
 from pcluster.api import openapi, encoder
 import pcluster.api.errors
 import pcluster.cli.commands.cluster as cluster_commands
+import pcluster.cli.commands.image as image_commands
 from pcluster.cli.entrypoint import VersionCommand
 from pcluster.cli.commands.common import CliCommand
 from pcluster.utils import camelcase, get_cli_log_file
@@ -309,15 +310,11 @@ def gen_parser(model):
 
 def add_cluster_commands(model, subparsers):
     """Generically adds CLI commmands by instantiating the objects."""
-    # TODO: remove this once the implementations have been deleted
-    api_implemented = {'status', 'create', 'delete', 'instances',
-                       'list', 'start', 'stop', 'update'}
-    for _name, obj in inspect.getmembers(cluster_commands):
-        if inspect.isclass(obj) and issubclass(obj, CliCommand):
-            if (hasattr(obj, 'name')
-                    and obj.name not in model
-                    and obj.name not in api_implemented):
-                obj(subparsers)
+    for _name, obj in inspect.getmembers(cluster_commands) + inspect.getmembers(image_commands):
+        if (inspect.isclass(obj)
+                and issubclass(obj, CliCommand)
+                and not inspect.isabstract(obj)):
+            obj(subparsers)
 
 
 def add_cli_commands(model, parser_map):
