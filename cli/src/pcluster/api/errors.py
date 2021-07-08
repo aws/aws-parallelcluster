@@ -28,6 +28,8 @@ from pcluster.api.models.update_cluster_bad_request_exception_response_content i
 
 from pcluster.aws.common import AWSClientError
 from werkzeug.exceptions import HTTPException
+from connexion import ProblemException
+
 
 def exception_message(exception):
     if isinstance(exception, AWSClientError):
