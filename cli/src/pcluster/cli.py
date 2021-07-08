@@ -60,62 +60,58 @@ def bool_converter(in_str):
 
 
 def read_file_b64(path):
-    """Takes a file path, reads the file and converts it into a base64
-    encoded string"""
+    """Takes file path, reads the file and converts to base64 encoded string"""
     with open(path) as file:
         file_data = file.read()
     return base64.b64encode(file_data.encode('utf-8')).decode('utf-8')
 
 
+def _resolve_ref(spec, subspec):
+    if '$ref' in subspec:
+        schema_ref = subspec['$ref'].replace('#/components/schemas/', '')
+        subspec.update(spec['components']['schemas'][schema_ref])
+    return subspec
+
+
 def _resolve_param(spec, param):
+    _resolve_ref(spec, param['schema'])
+
     new_param = {'name': to_kebab_case(param['name']),
                  'body': False}
-    if 'description' in param:
-        new_param['description'] = param['description']
-    if 'required' in param:
-        new_param['required'] = param['required']
-    if '$ref' in param['schema']:
-        schema_ref = param['schema']['$ref'].replace('#/components/schemas/', '')
-        schema = spec['components']['schemas'][schema_ref]
-        if 'enum' in schema:
-            new_param['enum'] = schema['enum']
+    copy_keys = {'description', 'required'}
+    new_param.update({k: v for k, v in param.items() if k in copy_keys})
+
+    schema_keys = {'enum', 'type'}
+    new_param.update({k: v for k, v in param['schema'].items() if k in schema_keys})
+
     if 'items' in param['schema']:
         new_param['multi'] = True
-        if '$ref' in param['schema']['items']:
-            schema_ref = param['schema']['items']['$ref'].replace('#/components/schemas/', '')
-            schema = spec['components']['schemas'][schema_ref]
-            if 'enum' in schema:
-                new_param['enum'] = schema['enum']
-    if 'type' in param['schema']:
-        new_param['type'] = param['schema']['type']
+        schema = _resolve_ref(spec, param['schema']['items'])
+        if 'enum' in schema:
+            new_param['enum'] = schema['enum']
     return new_param
 
 
 def _resolve_body(spec, operation):
-    schema_ref = operation['requestBody']['content']['application/json']['schema']['$ref']
-    schema_ref = schema_ref.replace('#/components/schemas/', '')
-    body_content = spec['components']['schemas'][schema_ref]
+    body_content = _resolve_ref(spec, operation['requestBody']['content']
+                                ['application/json']['schema'])
 
     required = set(body_content.get('required', []))
-
+    new_params = []
     for param_name, param_data in body_content['properties'].items():
-        new_param = {'name': to_kebab_case(param_name),
-                     'body': True}
-        if 'description' in param_data:
-            new_param['description'] = param_data['description']
-        if 'type' in param_data:
-            new_param['type'] = param_data['type']
-            if param_data.get('format', None) == 'byte':
-                new_param['type'] = 'byte'
-        if '$ref' in param_data:
-            schema_ref = param_data['$ref'].replace('#/components/schemas/', '')
-            schema = spec['components']['schemas'][schema_ref]
-            if 'enum' in schema:
-                new_param['enum'] = schema['enum']
+        _resolve_ref(spec, param_data)
 
-        if param_name in required:
-            new_param['required'] = True
-    return new_param
+        new_param = {'name': to_kebab_case(param_name),
+                     'body': True,
+                     'required': param_name in required}
+        copy_keys = {'description', 'type', 'enum'}
+        new_param.update({k: v for k, v in param_data.items() if k in copy_keys})
+
+        if param_data.get('format', None) == 'byte':
+            new_param['type'] = 'byte'
+        new_params.append(new_param)
+
+    return new_params
 
 
 def load_model():
@@ -136,7 +132,7 @@ def load_model():
                 params.append(_resolve_param(spec, param))
 
             if 'requestBody' in operation:
-                params.append(_resolve_body(spec, operation))
+                params.extend(_resolve_body(spec, operation))
 
             module_name = operation['x-openapi-router-controller']
             func_name = to_snake_case(op_name)
@@ -197,7 +193,6 @@ def dispatch(model, args):
     body, pos_args, kwargs = convert_args(model, operation, args_dict)
 
     if len(body):
-        pprint(body)
         dispatch_func = partial(dispatch_func, body)
 
     middleware = {'list-clusters': list_clusters_middleware}
@@ -220,10 +215,7 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="DESCRIPTION", required=True,
                                        dest='operation', metavar="COMMAND")
-    type_map = {'int': int,
-                'boolean': bool_converter,
-                'byte': read_file_b64}
-
+    type_map = {'int': int, 'boolean': bool_converter, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 
     for op_name, operation in model['ops'].items():
@@ -243,7 +235,6 @@ def gen_parser(model):
                                    help=help)
 
         subparser.set_defaults(func=partial(dispatch, model))
-
     return parser, parser_map
 
 
