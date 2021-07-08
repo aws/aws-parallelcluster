@@ -46,7 +46,7 @@ import pcluster.api.controllers.cluster_instances_controller
 import pcluster.api.controllers.cluster_operations_controller
 import pcluster.api.controllers.image_operations_controller
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger('pcluster')
 
 
 def _config_logger():
@@ -227,7 +227,8 @@ def list_clusters_middleware(func, _body, pos_args, kwargs):
     start = time.time()
     ret = func(*pos_args, **kwargs)
     if time_func:
-        pprint(ret)
+        model_encoded = encoder.JSONEncoder().encode(ret)
+        print(json.dumps(json.loads(model_encoded), indent=2))
         print(f"Took: {time.time() - start} ms", )
         return None  # supress default print
     else:
@@ -249,16 +250,18 @@ def dispatch(model, args):
 
     middleware = {'list-clusters': list_clusters_middleware}
 
-    if operation in middleware:
-        ret = middleware[operation](dispatch_func, body, pos_args, kwargs)
-    else:
-        try:
+    try:
+        if operation in middleware:
+            ret = middleware[operation](dispatch_func, body, pos_args, kwargs)
+        else:
             ret = dispatch_func(*pos_args, **kwargs)
-        except Exception as e:
-            message = pcluster.api.errors.exception_message(e)
-            error_encoded = encoder.JSONEncoder().encode(message)
-            print(json.dumps(json.loads(error_encoded), indent=2))
-            sys.exit(1)
+            if isinstance(ret, tuple):
+                ret = ret[0]
+    except Exception as e:
+        message = pcluster.api.errors.exception_message(e)
+        error_encoded = encoder.JSONEncoder().encode(message)
+        print(json.dumps(json.loads(error_encoded), indent=2))
+        sys.exit(1)
 
     if ret:
         model_encoded = encoder.JSONEncoder().encode(ret)
@@ -343,6 +346,7 @@ def main():
 
     if args.debug:
         logging.getLogger("pcluster").setLevel(logging.DEBUG)
+    if 'debug' in args.__dict__:
         del args.__dict__['debug']
 
     try:
