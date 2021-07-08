@@ -54,7 +54,7 @@ class VersionCommand(CliCommand):
     def execute(  # noqa: D102
         self, args: argparse.Namespace, extra_args: List[str]  # pylint: disable=unused-argument
     ) -> None:
-        print(get_installed_version())
+        print_json({'version': utils.get_installed_version()})
 
 
 class CreateClusterCommand(CliCommand):
