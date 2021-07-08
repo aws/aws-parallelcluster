@@ -34,6 +34,7 @@ from pcluster.utils import camelcase
 import pcluster.cli.commands.cluster as cluster_commands
 from pcluster.cli.entrypoint import VersionCommand
 from pcluster.api import openapi, encoder
+import pcluster.api.errors
 from pcluster.cli.commands.common import CliCommand
 
 # Controllers
@@ -66,6 +67,7 @@ def re_validator(rexp_str, param, in_str):
     if rexp.match(in_str) is None:
         pprint({'message': f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'"})
         sys.exit(1)
+    return in_str
 
 
 def read_file_b64(path):
@@ -208,7 +210,14 @@ def dispatch(model, args):
     if operation in middleware:
         ret = middleware[operation](dispatch_func, body, pos_args, kwargs)
     else:
-        ret = dispatch_func(*pos_args, **kwargs)
+        try:
+            ret = dispatch_func(*pos_args, **kwargs)
+        except Exception as e:
+            message = pcluster.api.errors.exception_message(e)
+            error_encoded = encoder.JSONEncoder().encode(message)
+            print(json.dumps(json.loads(error_encoded), indent=2))
+            sys.exit(1)
+
 
     if ret:
         model_encoded = encoder.JSONEncoder().encode(ret)

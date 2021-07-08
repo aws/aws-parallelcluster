@@ -17,10 +17,11 @@ from werkzeug.exceptions import HTTPException
 
 from pcluster.api import encoder
 from pcluster.api.errors import (
+    exception_message,
     BadRequestException,
     InternalServiceException,
     LimitExceededException,
-    ParallelClusterApiException,
+    ParallelClusterApiException
 )
 from pcluster.aws.common import AWSClientError, Cache
 
@@ -127,7 +128,7 @@ class ParallelClusterFlaskApp:
     @log_response_error
     def _handle_http_exception(exception: HTTPException):
         """Render a HTTPException according to ParallelCluster API specs."""
-        response = jsonify({"message": exception.description})
+        response = jsonify(exception_message(exception))
         response.status_code = exception.code
         return response
 
@@ -135,13 +136,7 @@ class ParallelClusterFlaskApp:
     @log_response_error
     def _handle_problem_exception(exception: ProblemException):
         """Render a ProblemException according to ParallelCluster API specs."""
-        message = f"{exception.title}"
-        if exception.detail:
-            # Connexion does not return a clear error message on missing request body
-            if "None is not of type 'object'" in exception.detail:
-                exception.detail = "request body is required"
-            message += f": {exception.detail}"
-        response = jsonify({"message": message})
+        response = jsonify(exception_message(exception))
         response.status_code = exception.status
         return response
 
@@ -149,7 +144,7 @@ class ParallelClusterFlaskApp:
     @log_response_error
     def _handle_parallel_cluster_api_exception(exception: ParallelClusterApiException):
         """Render a ParallelClusterApiException according to ParallelCluster API specs."""
-        response = jsonify(exception.content)
+        response = jsonify(exception_message(exception))
         response.status_code = exception.code
         return response
 
@@ -157,12 +152,7 @@ class ParallelClusterFlaskApp:
     def _handle_unexpected_exception(exception: Exception):
         """Handle an unexpected exception."""
         LOGGER.critical("Unexpected exception: %s", exception, exc_info=True)
-        response = jsonify(
-            {
-                "message": "Unexpected fatal exception. "
-                "Please look at the application logs for details on the encountered failure."
-            }
-        )
+        response = jsonify(exception_message(exception))
         response.status_code = 500
         return response
 
