@@ -156,7 +156,11 @@ class ImageBuilderCdkStack(Stack):
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_cfn_parameters(self):
-        if self.config.dev_settings and self.config.dev_settings.cookbook:
+        if (
+            self.config.dev_settings
+            and self.config.dev_settings.cookbook
+            and self.config.dev_settings.cookbook.chef_cookbook
+        ):
             dev_settings_cookbook_value = self.config.dev_settings.cookbook.chef_cookbook
             custom_chef_cookbook = (
                 create_s3_presigned_url(dev_settings_cookbook_value)
@@ -243,7 +247,7 @@ class ImageBuilderCdkStack(Stack):
         )
         resource_dependency_list.extend([lambda_cleanup, permission, lambda_log])
 
-        resource_dependency_list.append(self._add_sns_topic(lambda_cleanup, build_tags_list))
+        resource_dependency_list.extend(self._add_sns_topic_and_subscription(lambda_cleanup, build_tags_list))
 
         if lambda_cleanup_execution_role:
             for resource in resource_dependency_list:
@@ -710,7 +714,7 @@ class ImageBuilderCdkStack(Stack):
 
             self._add_resource_delete_policy(
                 policy_statements,
-                ["SNS:GetTopicAttributes", "SNS:DeleteTopic"],
+                ["SNS:GetTopicAttributes", "SNS:DeleteTopic", "SNS:Unsubscribe"],
                 [
                     self.format_arn(
                         service="sns",
@@ -783,17 +787,24 @@ class ImageBuilderCdkStack(Stack):
 
         return lambda_cleanup, permission, lambda_cleanup_execution_role, lambda_log
 
-    def _add_sns_topic(self, lambda_cleanup, build_tags):
+    def _add_sns_topic_and_subscription(self, lambda_cleanup, build_tags):
         # SNSTopic
-        subscription = sns.CfnTopic.SubscriptionProperty(endpoint=lambda_cleanup.attr_arn, protocol="lambda")
         sns_topic_resource = sns.CfnTopic(
             self,
             "BuildNotificationTopic",
-            subscription=[subscription],
             topic_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             tags=build_tags,
         )
-        return sns_topic_resource
+        # SNSSubscription
+        sns_subscription_resource = sns.CfnSubscription(
+            self,
+            "BuildNotificationSubscription",
+            protocol="lambda",
+            topic_arn=sns_topic_resource.ref,
+            endpoint=lambda_cleanup.attr_arn,
+        )
+
+        return sns_subscription_resource, sns_topic_resource
 
     def _add_default_instance_role(self, cleanup_policy_statements, build_tags):
         """Set default instance role in imagebuilder cfn template."""

@@ -250,7 +250,6 @@ class Cookbook(Resource):
         super().__init__()
         self.chef_cookbook = Resource.init_param(chef_cookbook)
         self.extra_chef_attributes = Resource.init_param(extra_chef_attributes)
-        # TODO: add validator
 
     def _register_validators(self):
         if self.chef_cookbook is not None:

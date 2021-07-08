@@ -8,6 +8,7 @@ ignore =
     W503, # line break before binary operator => Conflicts with black style.
     D413, # Missing blank line after last section
     F821, # undefined name
+    N818, # exception name should be named with an Error suffix
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method
 # D202 No blank lines allowed after function docstring

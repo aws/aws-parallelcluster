@@ -73,6 +73,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -120,6 +121,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -170,6 +172,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -217,6 +220,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterValidateComponent": {},
                     "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -265,6 +269,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterValidateComponent": {},
                     "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -315,6 +320,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterValidateComponent": {},
                     "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunction": {},
                     "DeleteStackFunctionPermission": {},
@@ -361,6 +367,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -411,6 +418,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterValidateComponent": {},
                     "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -459,6 +467,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterValidateComponent": {},
                     "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -515,6 +524,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ParallelClusterValidateComponent": {},
                     "ParallelClusterTestComponent": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -564,6 +574,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -612,6 +623,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -660,6 +672,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "ImageRecipe": {},
                     "ParallelClusterImage": {},
                     "BuildNotificationTopic": {},
+                    "BuildNotificationSubscription": {},
                     "DistributionConfiguration": {},
                     "DeleteStackFunctionExecutionRole": {},
                     "DeleteStackFunction": {},
@@ -1458,7 +1471,11 @@ def test_imagebuilder_instance_role(
                                         },
                                     },
                                     {
-                                        "Action": ["SNS:GetTopicAttributes", "SNS:DeleteTopic"],
+                                        "Action": [
+                                            "SNS:GetTopicAttributes",
+                                            "SNS:DeleteTopic",
+                                            "SNS:Unsubscribe",
+                                        ],
                                         "Effect": "Allow",
                                         "Resource": {
                                             "Fn::Join": [
@@ -2104,8 +2121,10 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
             resource_name == "InstanceProfile"
             or resource_name == "DeleteStackFunctionPermission"
             or resource_name == "DeleteStackFunctionLog"
+            or resource_name == "BuildNotificationSubscription"
         ):
-            # InstanceProfile, DeleteStackFunctionPermission and DeleteStackFunctionLog have no tags
+            # InstanceProfile, DeleteStackFunctionPermission,
+            # DeleteStackFunctionLog and BuildNotificationSubscription have no tags
             continue
         elif (
             resource_name == "InstanceRole"
