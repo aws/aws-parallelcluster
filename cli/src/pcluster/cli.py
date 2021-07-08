@@ -13,15 +13,18 @@
 # limitations under the License.
 
 import argparse
+from botocore.exceptions import NoCredentialsError # TODO: remove
 import base64
 from functools import partial
 import inspect
 import json
+import os
 import re
-import time
 import sys
+import time
 import yaml
 from pprint import pprint
+import logging.config
 
 # For importing package resources
 try:
@@ -30,18 +33,57 @@ except ImportError:
     import importlib_resources as pkg_resources
 
 from connexion.utils import get_function_from_name
-from pcluster.utils import camelcase
-import pcluster.cli.commands.cluster as cluster_commands
-from pcluster.cli.entrypoint import VersionCommand
 from pcluster.api import openapi, encoder
 import pcluster.api.errors
+import pcluster.cli.commands.cluster as cluster_commands
+from pcluster.cli.entrypoint import VersionCommand
 from pcluster.cli.commands.common import CliCommand
+from pcluster.utils import camelcase, get_cli_log_file
 
 # Controllers
 import pcluster.api.controllers.cluster_compute_fleet_controller
 import pcluster.api.controllers.cluster_instances_controller
 import pcluster.api.controllers.cluster_operations_controller
 import pcluster.api.controllers.image_operations_controller
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _config_logger():
+    logfile = get_cli_log_file()
+    logging_config = {
+        "version": 1,
+        "disable_existing_loggers": True,
+        "formatters": {
+            "standard": {
+                "format": "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s:%(funcName)s() - %(message)s"
+            },
+            "console": {"format": "%(message)s"},
+        },
+        "handlers": {
+            "default": {
+                "level": "DEBUG",
+                "formatter": "standard",
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": logfile,
+                "maxBytes": 5 * 1024 * 1024,
+                "backupCount": 3,
+
+            },
+            "console": {  # TODO: remove console logger
+                        "level": "DEBUG",
+                        "formatter": "console",
+                        "class": "logging.StreamHandler",
+                        "stream": sys.stdout,
+                        },
+        },
+        "loggers": {
+            "": {"handlers": ["default"], "level": "WARNING", "propagate": False},  # root logger
+            "pcluster": {"handlers": ["default", "console"], "level": "INFO", "propagate": False},
+        },
+    }
+    os.makedirs(os.path.dirname(logfile), exist_ok=True)
+    logging.config.dictConfig(logging_config)
 
 
 def to_kebab_case(input):
@@ -218,7 +260,6 @@ def dispatch(model, args):
             print(json.dumps(json.loads(error_encoded), indent=2))
             sys.exit(1)
 
-
     if ret:
         model_encoded = encoder.JSONEncoder().encode(ret)
         print(json.dumps(json.loads(model_encoded), indent=2))
@@ -257,7 +298,9 @@ def gen_parser(model):
                                    metavar=metavar,
                                    help=help)
 
+        subparser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
         subparser.set_defaults(func=partial(dispatch, model))
+
     return parser, parser_map
 
 
@@ -291,15 +334,34 @@ def main():
     add_cli_commands(model, parser_map)
     args, extra_args = parser.parse_known_args()
 
+    _config_logger()
+
     if extra_args and (not hasattr(args, 'expects_extra_args') or not args.expects_extra_args):
         parser.print_usage()
         print("Invalid arguments %s" % extra_args)
         sys.exit(1)
 
-    if args.operation in model:
-        args.func(args)
-    else:
-        args.func(args, extra_args)
+    if args.debug:
+        logging.getLogger("pcluster").setLevel(logging.DEBUG)
+        del args.__dict__['debug']
+
+    try:
+        if args.operation in model:
+            LOGGER.debug("Handling CLI operation %s", args.operation)
+            args.func(args)
+        else:
+            LOGGER.debug("Handling CLI command %s", args.command)
+            args.func(args, extra_args)
+        sys.exit(0)
+    except NoCredentialsError:  # TODO: remove from here
+        LOGGER.error("AWS Credentials not found.")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        LOGGER.debug("Received KeyboardInterrupt. Exiting.")
+        sys.exit(1)
+    except Exception as e:
+        LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
