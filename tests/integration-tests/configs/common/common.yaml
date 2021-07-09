@@ -213,9 +213,9 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-east-1"]
+      - regions: ["eu-west-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos8", "ubuntu2004"]
+        oss: ["ubuntu2004"]
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
@@ -233,10 +233,6 @@ efa:
         # Torque is not supported by OpenMPI distributed with EFA
         # Slurm test is to verify EFA works correctly when using the SIT model in the config file
         schedulers: ["sge", "slurm"]
-      - regions: ["us-west-2"]
-        instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "centos7"]
-        schedulers: ["sge"]
 iam:
   test_iam.py::test_iam_policies:
     dimensions:
@@ -600,17 +596,6 @@ update:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["sge"]
-multiple_nics:
-  test_multiple_nics.py::test_multiple_nics:
-    dimensions:
-      - regions: ["us-east-1"]
-        instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos8"]
-        schedulers: ["slurm"]
-      - regions: ["us-west-2"]
-        instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "centos7", "ubuntu2004"]
-        schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
     dimensions:
@@ -621,7 +606,7 @@ resource_bucket:
 nccl:
   test_nccl.py::test_nccl:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["eu-west-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "ubuntu2004"]
+        oss: ["ubuntu1804"]
         schedulers: ["slurm"]
