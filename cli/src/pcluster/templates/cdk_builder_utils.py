@@ -220,8 +220,18 @@ def get_cloud_watch_logs_retention_days(config: BaseClusterConfig) -> int:
     )
 
 
-def get_retain_log_on_delete(config: BaseClusterConfig):
-    return CfnDeletionPolicy.RETAIN if config.monitoring.logs.cloud_watch.retain_on_delete else CfnDeletionPolicy.DELETE
+def get_log_group_deletion_policy(config: BaseClusterConfig):
+    return convert_deletion_policy(config.monitoring.logs.cloud_watch.deletion_policy)
+
+
+def convert_deletion_policy(deletion_policy: str):
+    if deletion_policy == "Retain":
+        return CfnDeletionPolicy.RETAIN
+    elif deletion_policy == "Delete":
+        return CfnDeletionPolicy.DELETE
+    elif deletion_policy == "Snapshot":
+        return CfnDeletionPolicy.SNAPSHOT
+    return None
 
 
 def get_queue_security_groups_full(compute_security_groups: dict, queue: BaseQueue):
@@ -288,7 +298,7 @@ class PclusterLambdaConstruct(Construct):
             log_group_name=f"/aws/lambda/{function_name}",
             retention_in_days=get_cloud_watch_logs_retention_days(config),
         )
-        self.log_group.cfn_options.deletion_policy = get_retain_log_on_delete(config)
+        self.log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(config)
 
         self.lambda_func = awslambda.CfnFunction(
             scope,

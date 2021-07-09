@@ -166,6 +166,7 @@ Monitoring:
     CloudWatch:
       Enabled: true  # true
       RetentionInDays: 30  # 14
+      DeletionPolicy: Retain
   Dashboards:
     CloudWatch:
       Enabled: true  # true
