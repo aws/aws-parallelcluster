@@ -32,9 +32,9 @@ from pcluster.templates.cdk_builder_utils import (
     get_cloud_watch_logs_retention_days,
     get_custom_tags,
     get_default_instance_tags,
+    get_log_group_deletion_policy,
     get_mount_dirs_by_type,
     get_queue_security_groups_full,
-    get_retain_log_on_delete,
     get_shared_storage_ids_by_type,
 )
 
@@ -532,7 +532,7 @@ class AwsBatchConstruct(Construct):
             log_group_name=log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
-        log_group.cfn_options.deletion_policy = get_retain_log_on_delete(self.config)
+        log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(self.config)
 
         return codebuild.CfnProject(
             self.stack_scope,

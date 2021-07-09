@@ -68,7 +68,13 @@ from pcluster.config.cluster_config import (
     Ssh,
 )
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
+from pcluster.constants import (
+    DELETION_POLICIES,
+    EBS_VOLUME_SIZE_DEFAULT,
+    FSX_HDD_THROUGHPUT,
+    FSX_SSD_THROUGHPUT,
+    SUPPORTED_OSES,
+)
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
@@ -604,7 +610,9 @@ class CloudWatchLogsSchema(BaseSchema):
         validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-    retain_on_delete = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    deletion_policy = fields.Str(
+        validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

@@ -69,7 +69,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_retain_log_on_delete,
+    get_log_group_deletion_policy,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -280,7 +280,7 @@ class ClusterCdkStack(Stack):
             log_group_name=self.log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
-        log_group.cfn_options.deletion_policy = get_retain_log_on_delete(self.config)
+        log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(self.config)
         return log_group
 
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
