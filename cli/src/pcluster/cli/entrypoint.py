@@ -99,6 +99,8 @@ def dispatch(model, args):
     if len(body):
         dispatch_func = partial(dispatch_func, body)
 
+    # middleware provides an opportunity to customize the calling of the
+    # underlying API function on a per-operation basis
     middleware_funcs = inspect.getmembers(pcluster.cli.middleware,
                                           inspect.isfunction)
     middleware = {to_kebab_case(f[0]): f[1] for f in middleware_funcs}
