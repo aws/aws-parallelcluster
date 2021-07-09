@@ -263,7 +263,14 @@ def dispatch(model, args):
     operation specified."""
     args_dict = args.__dict__
     operation = args.operation
-    dispatch_func = model[operation]['func']
+
+    # Ignore status-codes on the command line as errors are handled
+    # through exceptions, but some functions return 202 which causes
+    # the return to be a tuple (instead of an object)
+    def dispatch_func(*args, **kwargs):
+        ret = model[operation]['func'](*args, **kwargs)
+        return ret[0] if isinstance(ret, tuple) else ret
+
     del args_dict['func']
     del args_dict['operation']
     body, kwargs = convert_args(model, operation, args_dict)
@@ -278,8 +285,6 @@ def dispatch(model, args):
             ret = middleware[operation](dispatch_func, body, kwargs)
         else:
             ret = dispatch_func(**kwargs)
-            if isinstance(ret, tuple):
-                ret = ret[0]
     except Exception as e:
 
         # format exception messages in the same manner as the api
