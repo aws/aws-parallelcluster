@@ -221,8 +221,6 @@ def load_model():
             if 'description' in operation:
                 model[op_name]['description'] = operation['description']
 
-    pprint(model)
-
     return model
 
 
