@@ -106,9 +106,6 @@ class UpdateClusterResponseContent(Model):
         :param validation_messages: The validation_messages of this UpdateClusterResponseContent.
         :type validation_messages: List[ConfigValidationMessage]
         """
-        if validation_messages is None:
-            raise ValueError("Invalid value for `validation_messages`, must not be `None`")
-
         self._validation_messages = validation_messages
 
     @property
