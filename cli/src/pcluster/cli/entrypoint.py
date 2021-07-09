@@ -18,7 +18,6 @@ import base64
 from functools import partial
 import inspect
 import json
-import os
 import re
 import sys
 import time
@@ -37,8 +36,9 @@ from pcluster.api import openapi, encoder
 import pcluster.api.errors
 import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
+import pcluster.cli.logging as pcluster_logging
 from pcluster.cli.commands.common import CliCommand
-from pcluster.utils import camelcase, get_cli_log_file
+from pcluster.utils import camelcase
 
 # Controllers
 import pcluster.api.controllers.cluster_compute_fleet_controller
@@ -47,43 +47,6 @@ import pcluster.api.controllers.cluster_operations_controller
 import pcluster.api.controllers.image_operations_controller
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _config_logger():
-    logfile = get_cli_log_file()
-    logging_config = {
-        "version": 1,
-        "disable_existing_loggers": True,
-        "formatters": {
-            "standard": {
-                "format": "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s:%(funcName)s() - %(message)s"
-            },
-            "console": {"format": "%(message)s"},
-        },
-        "handlers": {
-            "default": {
-                "level": "DEBUG",
-                "formatter": "standard",
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": logfile,
-                "maxBytes": 5 * 1024 * 1024,
-                "backupCount": 3,
-
-            },
-            "console": {  # TODO: remove console logger
-                "level": "DEBUG",
-                "formatter": "console",
-                "class": "logging.StreamHandler",
-                "stream": sys.stdout,
-            },
-        },
-        "loggers": {
-            "": {"handlers": ["default"], "level": "WARNING", "propagate": False},  # root logger
-            "pcluster": {"handlers": ["default", "console"], "level": "INFO", "propagate": False},
-        },
-    }
-    os.makedirs(os.path.dirname(logfile), exist_ok=True)
-    logging.config.dictConfig(logging_config)
 
 
 def to_kebab_case(input):
@@ -364,7 +327,7 @@ def main():
     add_cli_commands(parser_map)
     args, extra_args = parser.parse_known_args()
 
-    _config_logger()
+    pcluster_logging.config_logger()
 
     # some commands (e.g. ssh and those defined as CliCommand objects) require 'extra_args'
     if extra_args and (not hasattr(args, 'expects_extra_args') or not args.expects_extra_args):
