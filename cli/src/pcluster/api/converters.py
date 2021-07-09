@@ -7,13 +7,10 @@
 #  limitations under the License.
 from typing import List
 
-from pcluster.api.models import (
-    CloudFormationStatus,
-    ClusterStatus,
-    ConfigValidationMessage,
-    ImageBuildStatus,
-    ValidationLevel,
-)
+from pcluster.api.models import CloudFormationStatus, ClusterStatus, ConfigValidationMessage, ImageBuildStatus
+from pcluster.api.models import NodeType as ApiNodeType
+from pcluster.api.models import ValidationLevel
+from pcluster.models.cluster import NodeType
 from pcluster.validators.common import ValidationResult
 
 
@@ -67,3 +64,8 @@ def validation_results_to_config_validation_errors(
                 )
             )
     return configuration_validation_messages
+
+
+def api_node_type_to_cluster_node_type(node_type: ApiNodeType):
+    mapping = {ApiNodeType.HEAD: NodeType.HEAD_NODE, ApiNodeType.COMPUTE: NodeType.COMPUTE}
+    return mapping.get(node_type)

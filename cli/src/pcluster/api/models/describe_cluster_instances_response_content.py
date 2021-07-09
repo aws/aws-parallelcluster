@@ -13,7 +13,7 @@ from typing import List
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.ec2_instance import EC2Instance
+from pcluster.api.models.cluster_instance import ClusterInstance
 
 
 class DescribeClusterInstancesResponseContent(Model):
@@ -26,11 +26,11 @@ class DescribeClusterInstancesResponseContent(Model):
         """DescribeClusterInstancesResponseContent - a model defined in OpenAPI
 
         :param instances: The instances of this DescribeClusterInstancesResponseContent.
-        :type instances: List[EC2Instance]
+        :type instances: List[ClusterInstance]
         :param next_token: The next_token of this DescribeClusterInstancesResponseContent.
         :type next_token: str
         """
-        self.openapi_types = {"instances": List[EC2Instance], "next_token": str}
+        self.openapi_types = {"instances": List[ClusterInstance], "next_token": str}
 
         self.attribute_map = {"instances": "instances", "next_token": "nextToken"}
 
@@ -54,7 +54,7 @@ class DescribeClusterInstancesResponseContent(Model):
 
 
         :return: The instances of this DescribeClusterInstancesResponseContent.
-        :rtype: List[EC2Instance]
+        :rtype: List[ClusterInstance]
         """
         return self._instances
 
@@ -64,7 +64,7 @@ class DescribeClusterInstancesResponseContent(Model):
 
 
         :param instances: The instances of this DescribeClusterInstancesResponseContent.
-        :type instances: List[EC2Instance]
+        :type instances: List[ClusterInstance]
         """
         if instances is None:
             raise ValueError("Invalid value for `instances`, must not be `None`")

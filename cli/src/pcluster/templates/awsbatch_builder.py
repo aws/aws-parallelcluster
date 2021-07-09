@@ -168,7 +168,7 @@ class AwsBatchConstruct(Construct):
                         self.stack_name,
                         self.config,
                         self.compute_resource,
-                        "Batch Compute",
+                        "Compute",
                         self.shared_storage_mappings,
                         raw_dict=True,
                     ),

@@ -122,6 +122,7 @@ Class | Method | HTTP request | Description
  - [CloudFormationStatus](docs/CloudFormationStatus.md)
  - [ClusterConfigurationStructure](docs/ClusterConfigurationStructure.md)
  - [ClusterInfoSummary](docs/ClusterInfoSummary.md)
+ - [ClusterInstance](docs/ClusterInstance.md)
  - [ClusterStatus](docs/ClusterStatus.md)
  - [ClusterStatusFilteringOption](docs/ClusterStatusFilteringOption.md)
  - [ComputeFleetStatus](docs/ComputeFleetStatus.md)

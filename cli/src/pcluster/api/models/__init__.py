@@ -23,6 +23,7 @@ from pcluster.api.models.change import Change
 from pcluster.api.models.cloud_formation_status import CloudFormationStatus
 from pcluster.api.models.cluster_configuration_structure import ClusterConfigurationStructure
 from pcluster.api.models.cluster_info_summary import ClusterInfoSummary
+from pcluster.api.models.cluster_instance import ClusterInstance
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.cluster_status_filtering_option import ClusterStatusFilteringOption
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
