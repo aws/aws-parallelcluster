@@ -120,6 +120,7 @@ def read_file_b64(path):
 
 
 def _resolve_ref(spec, subspec):
+    """Looks up a reference in the specification"""
     if '$ref' in subspec:
         schema_ref = subspec['$ref'].replace('#/components/schemas/', '')
         subspec.update(spec['components']['schemas'][schema_ref])
@@ -197,6 +198,8 @@ def load_model():
                                ...
 }
     """
+
+    # load the specification from the package
     with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
         spec = yaml.safe_load(spec_file.read())
 
@@ -207,12 +210,13 @@ def load_model():
             op_name = to_kebab_case(operation['operationId'])
 
             params = []
-            for param in operation['parameters']:
+            for param in operation['parameters']:               # add query params
                 params.append(_resolve_param(spec, param))
 
-            if 'requestBody' in operation:
+            if 'requestBody' in operation:                      # add body
                 params.extend(_resolve_body(spec, operation))
 
+            # add controller function
             module_name = operation['x-openapi-router-controller']
             func_name = to_snake_case(op_name)
             func = get_function_from_name(f"{module_name}.{func_name}")
@@ -285,11 +289,14 @@ def dispatch(model, args):
             if isinstance(ret, tuple):
                 ret = ret[0]
     except Exception as e:
+
+        # format exception messages in the same manner as the api
         message = pcluster.api.errors.exception_message(e)
         error_encoded = encoder.JSONEncoder().encode(message)
         print(json.dumps(json.loads(error_encoded), indent=2))
         sys.exit(1)
 
+    # format regular output in the same manner as the api
     if ret:
         model_encoded = encoder.JSONEncoder().encode(ret)
         print(json.dumps(json.loads(model_encoded), indent=2))
@@ -307,6 +314,7 @@ def gen_parser(model):
     type_map = {'int': int, 'boolean': bool_converter, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 
+    # Add each operation as it's onn parser with params / body as arguments
     for op_name, operation in model.items():
         op_help = operation.get('description', f"{op_name} command help")
         subparser = subparsers.add_parser(op_name, help=op_help, description=op_help)
@@ -315,11 +323,14 @@ def gen_parser(model):
         for param in operation['params']:
             help = param.get('description', '')
             metavar = param['name'].upper() if len(param.get('enum', [])) > 4 else None
+
+            # handle regexp parameter validation (or perform type coercion)
             if 'pattern' in param:
                 type_coerce = partial(re_validator, param['pattern'], param['name'])
             else:
                 type_coerce = type_map.get(param.get('type'))
 
+            # add teh parameter to the parser based on type from model / specification
             subparser.add_argument(f"--{param['name']}",
                                    required=param.get('required', False),
                                    choices=param.get('enum', None),
@@ -338,6 +349,7 @@ def add_cli_commands(parser_map):
     """Adds additional CLI arguments that don't belong to the API."""
     subparsers = parser_map['subparser']
 
+    # add all non-api commands via introspection
     for _name, obj in inspect.getmembers(cluster_commands) + inspect.getmembers(image_commands):
         if (inspect.isclass(obj)
                 and issubclass(obj, CliCommand)
@@ -357,6 +369,7 @@ def main():
 
     _config_logger()
 
+    # some commands (e.g. ssh and those defined as CliCommand objects) require 'extra_args'
     if extra_args and (not hasattr(args, 'expects_extra_args') or not args.expects_extra_args):
         parser.print_usage()
         print("Invalid arguments %s" % extra_args)
@@ -368,6 +381,7 @@ def main():
         del args.__dict__['debug']
 
     try:
+        # TODO: remove when ready to switch over to spec-based implementations
         v2_implemented = {'list-images', 'build-image', 'delete-image',
                           'describe-image', 'list-clusters'}
         if args.operation in model and args.operation not in v2_implemented:
