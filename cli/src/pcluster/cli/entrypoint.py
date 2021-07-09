@@ -11,6 +11,7 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=import-outside-toplevel
 
 import argparse
 from botocore.exceptions import NoCredentialsError  # TODO: remove
