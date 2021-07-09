@@ -15,7 +15,7 @@ from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
-from pcluster.aws.common import AWSClientError, StackNotFoundError
+from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor
 from pcluster.config.update_policy import UpdatePolicy
@@ -817,6 +817,28 @@ class TestDescribeCluster:
                 }
             )
 
+    @pytest.mark.parametrize(
+        "error_type, error_code, http_code",
+        [
+            (BadRequestError, AWSClientError.ErrorCode.VALIDATION_ERROR.value, 400),
+            (LimitExceededError, AWSClientError.ErrorCode.THROTTLING_EXCEPTION.value, 429),
+            (LimitExceededError, AWSClientError.ErrorCode.REQUEST_LIMIT_EXCEEDED.value, 429),
+        ],
+    )
+    def test_error_conversion(self, client, mocker, error_type, error_code, http_code):
+        error = error_type("describe_stack", "error message", error_code)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=error)
+
+        response = self._send_test_request(client, "us-east-1")
+
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(http_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
+
 
 class TestListClusters:
     url = "/v3/clusters"
@@ -1010,20 +1032,27 @@ class TestListClusters:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
-    def test_aws_api_errors(self, client, mocker):
-        # Generic AWSClientError error handling is tested in test_flask_app
-        error = (
-            AWSClientError(
-                "list_pcluster_stacks", "Testing validation error", AWSClientError.ErrorCode.VALIDATION_ERROR.value
-            ),
-        )
+    @pytest.mark.parametrize(
+        "error_type, error_code, http_code",
+        [
+            (BadRequestError, AWSClientError.ErrorCode.VALIDATION_ERROR.value, 400),
+            (LimitExceededError, AWSClientError.ErrorCode.THROTTLING_EXCEPTION.value, 429),
+            (LimitExceededError, AWSClientError.ErrorCode.REQUEST_LIMIT_EXCEEDED.value, 429),
+        ],
+    )
+    def test_error_conversion(self, client, mocker, error_type, error_code, http_code):
+        error = error_type("list_pcluster_stacks", "error message", error_code)
         mocker.patch("pcluster.aws.cfn.CfnClient.list_pcluster_stacks", side_effect=error)
 
         response = self._send_test_request(client, "us-east-1")
 
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(400)
-            assert_that(response.get_json()).is_equal_to({"message": "Bad Request: Testing validation error"})
+            assert_that(response.status_code).is_equal_to(http_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 class TestUpdateCluster:

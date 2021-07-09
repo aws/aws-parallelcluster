@@ -174,6 +174,7 @@ def delete_cluster(cluster_name, region=None):
 
 
 @configure_aws_region()
+@convert_errors()
 def describe_cluster(cluster_name, region=None):
     """
     Get detailed information about an existing cluster.
@@ -239,6 +240,7 @@ def describe_cluster(cluster_name, region=None):
 
 
 @configure_aws_region()
+@convert_errors()
 def list_clusters(region=None, next_token=None, cluster_status=None):
     """
     Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.
