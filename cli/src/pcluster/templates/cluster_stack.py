@@ -19,7 +19,6 @@ from collections import namedtuple
 from datetime import datetime
 from typing import Union
 
-from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
@@ -27,7 +26,6 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import (
     CfnCreationPolicy,
-    CfnDeletionPolicy,
     CfnOutput,
     CfnParameter,
     CfnResourceSignal,
@@ -48,13 +46,7 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.constants import (
-    CW_LOG_GROUP_NAME_PREFIX,
-    CW_LOGS_CFN_PARAM_NAME,
-    OS_MAPPING,
-    PCLUSTER_DYNAMODB_PREFIX,
-    PCLUSTER_S3_ARTIFACTS_DICT,
-)
+from pcluster.constants import CW_LOG_GROUP_NAME_PREFIX, CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_S3_ARTIFACTS_DICT
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
@@ -213,10 +205,6 @@ class ClusterCdkStack(Stack):
         # Cleanup Resources Lambda Function
         cleanup_lambda_role, cleanup_lambda = self._add_cleanup_resources_lambda()
 
-        # DynamoDB to store cluster states
-        # ToDo: evaluate other approaches to store cluster states
-        self.dynamodb_table = self._add_dynamodb_table()
-
         if self.config.shared_storage:
             for storage in self.config.shared_storage:
                 self._add_shared_storage(storage)
@@ -230,7 +218,6 @@ class ClusterCdkStack(Stack):
                 stack_name=self._stack_name,
                 cluster_config=self.config,
                 bucket=self.bucket,
-                dynamodb_table=self.dynamodb_table,
                 log_group=self.log_group,
                 instance_roles=self.instance_roles,
                 instance_profiles=self.instance_profiles,
@@ -826,29 +813,6 @@ class ClusterCdkStack(Stack):
             volume_type=shared_ebs.volume_type,
         ).ref
 
-    def _add_dynamodb_table(self):
-        table = dynamodb.CfnTable(
-            self,
-            "DynamoDBTable",
-            table_name=PCLUSTER_DYNAMODB_PREFIX + self._stack_name,
-            attribute_definitions=[
-                dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
-                dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
-            ],
-            key_schema=[dynamodb.CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
-            global_secondary_indexes=[
-                dynamodb.CfnTable.GlobalSecondaryIndexProperty(
-                    index_name="InstanceId",
-                    key_schema=[dynamodb.CfnTable.KeySchemaProperty(attribute_name="InstanceId", key_type="HASH")],
-                    projection=dynamodb.CfnTable.ProjectionProperty(projection_type="ALL"),
-                )
-            ],
-            billing_mode="PAY_PER_REQUEST",
-        )
-        table.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
-        table.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
-        return table
-
     def _add_head_node(self):
         head_node = self.config.head_node
         head_lt_security_groups = self._get_head_node_security_groups_full()
@@ -976,7 +940,7 @@ class ClusterCdkStack(Stack):
                     else "",
                     "node_type": "HeadNode",
                     "cluster_user": OS_MAPPING[self.config.image.os]["user"],
-                    "ddb_table": self.dynamodb_table.ref,
+                    "ddb_table": self.scheduler_resources.dynamodb_table.ref if self._condition_is_slurm() else "NONE",
                     "log_group_name": self.log_group.log_group_name
                     if self.config.monitoring.logs.cloud_watch.enabled
                     else "NONE",
