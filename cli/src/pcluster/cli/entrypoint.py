@@ -176,9 +176,8 @@ def add_cli_commands(parser_map):
                 and not inspect.isabstract(obj)):
             obj(subparsers)
 
-    # TODO: just for testing purposes
-    parser_map['list-clusters'].add_argument("--time", action='store_true',
-                                             help="Time the command to finish.")
+    parser_map['create-cluster'].add_argument("--wait", action='store_true', help=argparse.SUPPRESS)
+    parser_map['delete-cluster'].add_argument("--wait", action='store_true', help=argparse.SUPPRESS)
 
 
 def main():

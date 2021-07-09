@@ -18,17 +18,38 @@ and then calling the function that is provided as the first argument
 and passing the **kwargs provided.
 """
 
-import time
-import json
+import pcluster.cli.model
+import boto3
 
 
-def list_clusters(func, _body, kwargs):
-    time_func = kwargs.pop('time', False)
-    start = time.time()
+def _cluster_status(cluster_name):
+    controller = "cluster_operations_controller"
+    func_name = "describe_cluster"
+    full_func_name = f"pcluster.api.controllers.{controller}.{func_name}"
+    return pcluster.cli.model.call(full_func_name,
+                                   cluster_name=cluster_name)
+
+
+def create_cluster(func, body, kwargs):
+    wait = kwargs.pop('wait', False)
     ret = func(**kwargs)
-    if time_func:
-        ret['time'] = f"{time.time() - start} ms"
-        print(json.dumps(ret, indent=2))
-        return None  # supress default print
+    if wait:
+        cloud_formation = boto3.client("cloudformation")
+        waiter = cloud_formation.get_waiter("stack_create_complete")
+        waiter.wait(StackName=body['name'])
+        ret = _cluster_status(body['name'])
+
+    return ret
+
+
+def delete_cluster(func, _body, kwargs):
+    wait = kwargs.pop('wait', False)
+    ret = func(**kwargs)
+    if wait:
+        cloud_formation = boto3.client("cloudformation")
+        waiter = cloud_formation.get_waiter("stack_delete_complete")
+        waiter.wait(StackName=kwargs['cluster_name'])
+        ret = _cluster_status(kwargs['cluster_name'])
+        return {'message': f"Successfully deleted cluster '{kwargs['cluster_name']}'."}
     else:
         return ret
