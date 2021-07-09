@@ -174,30 +174,25 @@ def load_model():
 
     The output data structure is a map for operationId to data shaped liked the
     following:
-{'list-clusters': {'description': 'Retrieve the list of existing clusters ...',
-                   'func': <function list_clusters at 0x7f1445b87040>,
-                   'params': [{'body': False,
-                               'description': 'List clusters deployed to ...',
-                               'name': 'region',
-                               'required': False,
-                               'type': 'string'},
-                              {'body': False,
-                               'description': 'Filter by cluster status.',
-                               'enum': ['CREATE_IN_PROGRESS',
-                                        'CREATE_FAILED',
-                                        'CREATE_COMPLETE',
-                                        'DELETE_IN_PROGRESS',
-                                        'DELETE_FAILED',
-                                        'UPDATE_IN_PROGRESS',
-                                        'UPDATE_COMPLETE',
-                                        'UPDATE_FAILED'],
-                               'multi': True,
-                               'name': 'cluster-status',
-                               'required': False,
-                               'type': 'string'}]},
-                               ...
-}
-    """
+
+    {'list-clusters':
+      {'description': 'Retrieve the list of existing clusters ...',
+       'func': <function list_clusters at 0x7f1445b87040>,
+       'params': [{'body': False,
+                   'description': 'List clusters deployed to ...',
+                   'name': 'region',
+                   'required': False,
+                   'type': 'string'},
+                  {'body': False,
+                   'description': 'Filter by cluster status.',
+                   'enum': ['CREATE_IN_PROGRESS',
+                            'CREATE_COMPLETE',
+                            ...],
+                   'multi': True,
+                   'name': 'cluster-status',
+                   'required': False,
+                   'type': 'string'}]},
+       ...}"""
 
     # load the specification from the package
     with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
