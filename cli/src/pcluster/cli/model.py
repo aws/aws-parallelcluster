@@ -120,7 +120,7 @@ def load_model():
             # add controller function
             module_name = operation['x-openapi-router-controller']
             func_name = to_snake_case(op_name)
-            func = get_function_from_name(f"{module_name}.{func_name}")
+            func = f"{module_name}.{func_name}"
 
             model[op_name] = {'params': params, 'func': func}
             if 'description' in operation:
