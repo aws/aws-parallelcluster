@@ -12,9 +12,11 @@
 # limitations under the License.
 
 import yaml
+import json
 from connexion.utils import get_function_from_name
 from pcluster.utils import to_kebab_case, to_snake_case
 from pcluster.api import openapi
+from pcluster.api import encoder
 
 # For importing package resources
 try:
@@ -125,3 +127,19 @@ def load_model():
                 model[op_name]['description'] = operation['description']
 
     return model
+
+
+def call(func_str, *args, **kwargs):
+    """Looks up the function by controller.func string (e.g.
+    pcluster.cli.controllers.cluster_operations_controller.list_clusters),
+    Then calls the function.
+
+    Ignore status-codes on the command line as errors are handled through
+    exceptions, but some functions return 202 which causes the return to be a
+    tuple (instead of an object). Also uses the flask json-ifier to ensure data
+    is converted the same as the API.
+    """
+    func = get_function_from_name(func_str)
+    ret = func(*args, **kwargs)
+    ret = ret[0] if isinstance(ret, tuple) else ret
+    return json.loads(encoder.JSONEncoder().encode(ret))

@@ -29,7 +29,7 @@ import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
 import pcluster.cli.logging as pcluster_logging
 import pcluster.cli.middleware
-import pcluster.cli.spec
+import pcluster.cli.model
 from pcluster.cli.commands.common import CliCommand
 from pcluster.utils import camelcase, to_kebab_case, to_snake_case
 
@@ -85,18 +85,6 @@ def convert_args(model, op_name, args_in):
     return body, kwargs
 
 
-def dispatch_wrapper(func, *args, **kwargs):
-    """Wraps the call to the controller function
-    Ignore status-codes on the command line as errors are handled through
-    exceptions, but some functions return 202 which causes the return to be a
-    tuple (instead of an object). Also uses the flask json-ifier to ensure data
-    is converted the same as the API.
-    """
-    ret = func(*args, **kwargs)
-    ret = ret[0] if isinstance(ret, tuple) else ret
-    return json.loads(encoder.JSONEncoder().encode(ret))
-
-
 def dispatch(model, args):
     """Dispatches to a controller function when the arguments have an
     operation specified."""
@@ -106,7 +94,7 @@ def dispatch(model, args):
     del args_dict['operation']
     body, kwargs = convert_args(model, operation, args_dict)
 
-    dispatch_func = partial(dispatch_wrapper, model[operation]['func'])
+    dispatch_func = partial(pcluster.cli.model.call, model[operation]['func'])
     if len(body):
         dispatch_func = partial(dispatch_func, body)
 
@@ -191,7 +179,7 @@ def add_cli_commands(parser_map):
 
 
 def main():
-    model = pcluster.cli.spec.load_model()
+    model = pcluster.cli.model.load_model()
     parser, parser_map = gen_parser(model)
     add_cli_commands(parser_map)
     args, extra_args = parser.parse_known_args()
