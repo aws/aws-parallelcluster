@@ -49,7 +49,6 @@ def delete_cluster(func, _body, kwargs):
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_delete_complete")
         waiter.wait(StackName=kwargs['cluster_name'])
-        ret = _cluster_status(kwargs['cluster_name'])
         return {'message': f"Successfully deleted cluster '{kwargs['cluster_name']}'."}
     else:
         return ret
