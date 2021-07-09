@@ -77,7 +77,7 @@ def test_all_validators_are_called(test_datadir, mocker):
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     mocker.patch(
-        "pcluster.config.cluster_config.BaseClusterConfig.ami_id",
+        "pcluster.config.cluster_config.BaseClusterConfig.headnode_ami",
         new_callable=PropertyMock(return_value="ami-12345678"),
     )
     mock_aws_api(mocker)

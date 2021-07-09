@@ -14,6 +14,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_CONFIG_TAG,
     PCLUSTER_IMAGE_ID_TAG,
+    PCLUSTER_IMAGE_OS_TAG,
     PCLUSTER_NODE_TYPE_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_BUCKET_TAG,
@@ -340,6 +341,11 @@ class ImageInfo:
     def device_name(self) -> str:
         """Return root volume device name."""
         return self.block_device_mappings[0].get("DeviceName")
+
+    @property
+    def image_os(self) -> str:
+        """Return os of image."""
+        return self._get_tag(PCLUSTER_IMAGE_OS_TAG)
 
     @property
     def s3_bucket_name(self) -> str:

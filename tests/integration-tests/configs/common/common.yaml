@@ -508,6 +508,11 @@ update:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
+  test_update.py::test_update_compute_ami:
+    dimensions:
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
 multiple_nics:
   test_multiple_nics.py::test_multiple_nics:
     dimensions:
