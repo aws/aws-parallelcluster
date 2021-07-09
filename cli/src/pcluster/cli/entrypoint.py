@@ -20,25 +20,18 @@ import inspect
 import json
 import re
 import sys
-import yaml
 from pprint import pprint
 import logging.config
 
-# For importing package resources
-try:
-    import importlib.resources as pkg_resources
-except ImportError:
-    import importlib_resources as pkg_resources
-
-from connexion.utils import get_function_from_name
-from pcluster.api import openapi, encoder
+from pcluster.api import encoder
 import pcluster.api.errors
 import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
 import pcluster.cli.logging as pcluster_logging
 import pcluster.cli.middleware
+import pcluster.cli.spec
 from pcluster.cli.commands.common import CliCommand
-from pcluster.utils import camelcase
+from pcluster.utils import camelcase, to_kebab_case, to_snake_case
 
 # Controllers
 import pcluster.api.controllers.cluster_compute_fleet_controller
@@ -47,18 +40,6 @@ import pcluster.api.controllers.cluster_operations_controller
 import pcluster.api.controllers.image_operations_controller
 
 LOGGER = logging.getLogger(__name__)
-
-
-def to_kebab_case(input):
-    """Convert a string into its snake case representation."""
-    str1 = re.sub("(.)([A-Z][a-z]+)", r"\1-\2", input).replace('_', '-')
-    return re.sub("([a-z0-9])([A-Z])", r"\1-\2", str1).lower()
-
-
-def to_snake_case(input):
-    """Convert a string into its snake case representation."""
-    str1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input).replace('-', '_')
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", str1).lower()
 
 
 def bool_converter(in_str):
@@ -80,110 +61,6 @@ def read_file_b64(path):
     with open(path) as file:
         file_data = file.read()
     return base64.b64encode(file_data.encode('utf-8')).decode('utf-8')
-
-
-def _resolve_ref(spec, subspec):
-    """Looks up a reference in the specification"""
-    if '$ref' in subspec:
-        schema_ref = subspec['$ref'].replace('#/components/schemas/', '')
-        subspec.update(spec['components']['schemas'][schema_ref])
-    return subspec
-
-
-def _resolve_param(spec, param):
-    _resolve_ref(spec, param['schema'])
-
-    new_param = {'name': to_kebab_case(param['name']),
-                 'body': False}
-    copy_keys = {'description', 'required'}
-    new_param.update({k: v for k, v in param.items() if k in copy_keys})
-
-    schema = param['schema']
-    if 'items' in param['schema']:
-        new_param['multi'] = True
-        schema = _resolve_ref(spec, param['schema']['items'])
-
-    schema_keys = {'enum', 'type', 'pattern'}
-    new_param.update({k: v for k, v in schema.items() if k in schema_keys})
-
-    return new_param
-
-
-def _resolve_body(spec, operation):
-    body_content = _resolve_ref(spec, operation['requestBody']['content']
-                                ['application/json']['schema'])
-
-    required = set(body_content.get('required', []))
-    new_params = []
-    for param_name, param_data in body_content['properties'].items():
-        _resolve_ref(spec, param_data)
-
-        new_param = {'name': to_kebab_case(param_name),
-                     'body': True,
-                     'required': param_name in required}
-        copy_keys = {'description', 'type', 'enum', 'pattern'}
-        new_param.update({k: v for k, v in param_data.items() if k in copy_keys})
-        if param_data.get('format', None) == 'byte':
-            new_param['type'] = 'byte'
-        new_params.append(new_param)
-
-    return new_params
-
-
-def load_model():
-    """Reads the openapi specification and converts it into a model, resolving
-    references and pulling out relevant properties for CLI parsing and function
-    invocation.
-
-    The output data structure is a map for operationId to data shaped liked the
-    following:
-
-    {'list-clusters':
-      {'description': 'Retrieve the list of existing clusters ...',
-       'func': <function list_clusters at 0x7f1445b87040>,
-       'params': [{'body': False,
-                   'description': 'List clusters deployed to ...',
-                   'name': 'region',
-                   'required': False,
-                   'type': 'string'},
-                  {'body': False,
-                   'description': 'Filter by cluster status.',
-                   'enum': ['CREATE_IN_PROGRESS',
-                            'CREATE_COMPLETE',
-                            ...],
-                   'multi': True,
-                   'name': 'cluster-status',
-                   'required': False,
-                   'type': 'string'}]},
-       ...}"""
-
-    # load the specification from the package
-    with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
-        spec = yaml.safe_load(spec_file.read())
-
-    model = {}
-
-    for _path, eps in spec['paths'].items():
-        for _method, operation in eps.items():
-            op_name = to_kebab_case(operation['operationId'])
-
-            params = []
-            for param in operation['parameters']:               # add query params
-                params.append(_resolve_param(spec, param))
-
-            if 'requestBody' in operation:                      # add body
-                params.extend(_resolve_body(spec, operation))
-
-            # add controller function
-            module_name = operation['x-openapi-router-controller']
-            func_name = to_snake_case(op_name)
-            func = get_function_from_name(f"{module_name}.{func_name}")
-
-            model[op_name] = {'params': params, 'func': func}
-            if 'description' in operation:
-                model[op_name]['description'] = operation['description']
-
-    return model
 
 
 def convert_args(model, op_name, args_in):
@@ -314,7 +191,7 @@ def add_cli_commands(parser_map):
 
 
 def main():
-    model = load_model()
+    model = pcluster.cli.spec.load_model()
     parser, parser_map = gen_parser(model)
     add_cli_commands(parser_map)
     args, extra_args = parser.parse_known_args()
