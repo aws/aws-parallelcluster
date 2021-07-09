@@ -42,6 +42,7 @@ from pcluster.config.cluster_config import (
     Efa,
     EphemeralVolume,
     HeadNode,
+    HeadNodeImage,
     HeadNodeNetworking,
     Iam,
     Image,
@@ -52,6 +53,7 @@ from pcluster.config.cluster_config import (
     Monitoring,
     PlacementGroup,
     Proxy,
+    QueueImage,
     QueueNetworking,
     Raid,
     Roles,
@@ -828,6 +830,33 @@ class ImageSchema(BaseSchema):
         return Image(**data)
 
 
+class BaseImageSchema(BaseSchema):
+    """Represent the common attributes in HeadNode Image and Queue Image."""
+
+    custom_ami = fields.Str(
+        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
+
+
+class HeadNodeImageSchema(BaseImageSchema):
+    """Represent the schema of the HeadNode Image."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return HeadNodeImage(**data)
+
+
+class QueueImageSchema(BaseImageSchema):
+    """Represent the schema of the Queue Image."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return QueueImage(**data)
+
+
 class HeadNodeCustomActionSchema(BaseSchema):
     """Represent the schema of the custom action."""
 
@@ -892,6 +921,7 @@ class HeadNodeSchema(BaseSchema):
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     imds = fields.Nested(ImdsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    image = fields.Nested(HeadNodeImageSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -988,6 +1018,7 @@ class SlurmQueueSchema(BaseQueueSchema):
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
