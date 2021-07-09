@@ -208,6 +208,16 @@ def convert_args(model, op_name, args_in):
     return body, kwargs
 
 
+def dispatch_wrapper(func, *args, **kwargs):
+    """Wraps the call to the controller function
+    Ignore status-codes on the command line as errors are handled through
+    exceptions, but some functions return 202 which causes the return to be a
+    tuple (instead of an object). Also uses the flask json-ifier to ensure data
+    is converted the same as the API.
+    """
+    ret = func(*args, **kwargs)
+    ret = ret[0] if isinstance(ret, tuple) else ret
+    return json.loads(encoder.JSONEncoder().encode(ret))
 
 
 def dispatch(model, args):
@@ -215,18 +225,11 @@ def dispatch(model, args):
     operation specified."""
     args_dict = args.__dict__
     operation = args.operation
-
-    # Ignore status-codes on the command line as errors are handled
-    # through exceptions, but some functions return 202 which causes
-    # the return to be a tuple (instead of an object)
-    def dispatch_func(*args, **kwargs):
-        ret = model[operation]['func'](*args, **kwargs)
-        return ret[0] if isinstance(ret, tuple) else ret
-
     del args_dict['func']
     del args_dict['operation']
     body, kwargs = convert_args(model, operation, args_dict)
 
+    dispatch_func = partial(dispatch_wrapper, model[operation]['func'])
     if len(body):
         dispatch_func = partial(dispatch_func, body)
 
@@ -247,10 +250,8 @@ def dispatch(model, args):
         print(json.dumps(json.loads(error_encoded), indent=2))
         sys.exit(1)
 
-    # format regular output in the same manner as the api
     if ret:
-        model_encoded = encoder.JSONEncoder().encode(ret)
-        print(json.dumps(json.loads(model_encoded), indent=2))
+        print(json.dumps(ret, indent=2))
 
 
 def gen_parser(model):
