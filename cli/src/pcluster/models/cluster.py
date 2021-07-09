@@ -36,6 +36,7 @@ from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
+    PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_VERSION_TAG,
     STACK_EVENTS_LOG_STREAM_NAME_FORMAT,
@@ -565,35 +566,40 @@ class Cluster:
             LOGGER.info("Compute fleet cleaned up.")
         except Exception as e:
             LOGGER.error("Failed when checking for running EC2 instances with error: %s", str(e))
+            raise _cluster_error_mapper(e, f"Unable to delete running EC2 instances with error: {e}")
 
     @property
     def compute_instances(self) -> List[ClusterInstance]:
         """Get compute instances."""
-        return [
-            ClusterInstance(instance_data) for instance_data in self._describe_instances(node_type=NodeType.COMPUTE)
-        ]
+        instances, _ = self.describe_instances(node_type=NodeType.COMPUTE)
+        return instances
 
     @property
     def head_node_instance(self) -> ClusterInstance:
         """Get head node instance."""
-        instances = self._describe_instances(node_type=NodeType.HEAD_NODE)
+        instances, _ = self.describe_instances(node_type=NodeType.HEAD_NODE)
         if instances:
-            return ClusterInstance(instances[0])
+            return instances[0]
         else:
             raise ClusterActionError("Unable to retrieve head node information.")
 
-    def _get_instance_filters(self, node_type: NodeType):
-        return [
+    def _get_instance_filters(self, node_type: NodeType, queue_name: str = None):
+        filters = [
             {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": [self.stack_name]},
             {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
-            {"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": [node_type.value]},
         ]
+        if node_type:
+            filters.append({"Name": f"tag:{PCLUSTER_NODE_TYPE_TAG}", "Values": [node_type.value]})
+        if queue_name:
+            filters.append({"Name": f"tag:{PCLUSTER_QUEUE_NAME_TAG}", "Values": [queue_name]})
+        return filters
 
-    def _describe_instances(self, node_type: NodeType):
+    def describe_instances(self, node_type: NodeType = None, next_token: str = None, queue_name: str = None):
         """Return the cluster instances filtered by node type."""
         try:
-            filters = self._get_instance_filters(node_type)
-            return AWSApi.instance().ec2.describe_instances(filters)
+            filters = self._get_instance_filters(node_type, queue_name)
+            instances, token = AWSApi.instance().ec2.describe_instances(filters, next_token)
+            return [ClusterInstance(instance) for instance in instances], token
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Failed to retrieve cluster instances. {e}")
 

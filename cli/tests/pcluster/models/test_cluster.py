@@ -60,7 +60,7 @@ class TestCluster:
         mock_aws_api(mocker)
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_instances",
-            return_value=expected_response,
+            return_value=(expected_response, None),
             expected_params=[
                 {"Name": f"tag:{PCLUSTER_CLUSTER_NAME_TAG}", "Values": ["test-cluster"]},
                 {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]},
@@ -68,7 +68,7 @@ class TestCluster:
             ],
         )
 
-        instances = cluster._describe_instances(node_type=node_type)
+        instances, _ = cluster.describe_instances(node_type=node_type)
         assert_that(instances).is_length(expected_instances)
 
     @pytest.mark.parametrize(
