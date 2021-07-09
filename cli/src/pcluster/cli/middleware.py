@@ -26,8 +26,7 @@ def _cluster_status(cluster_name):
     controller = "cluster_operations_controller"
     func_name = "describe_cluster"
     full_func_name = f"pcluster.api.controllers.{controller}.{func_name}"
-    return pcluster.cli.model.call(full_func_name,
-                                   cluster_name=cluster_name)
+    return pcluster.cli.model.call(full_func_name, cluster_name=cluster_name)
 
 
 def create_cluster(func, body, kwargs):
@@ -38,7 +37,6 @@ def create_cluster(func, body, kwargs):
         waiter = cloud_formation.get_waiter("stack_create_complete")
         waiter.wait(StackName=body['name'])
         ret = _cluster_status(body['name'])
-
     return ret
 
 
