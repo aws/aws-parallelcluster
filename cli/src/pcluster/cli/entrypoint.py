@@ -31,7 +31,7 @@ import pcluster.cli.logging as pcluster_logging
 import pcluster.cli.middleware
 import pcluster.cli.model
 from pcluster.cli.commands.common import CliCommand
-from pcluster.utils import camelcase, to_kebab_case, to_snake_case
+from pcluster.utils import camelcase, to_kebab_case, to_snake_case, get_cli_log_file
 
 # Controllers
 import pcluster.api.controllers.cluster_compute_fleet_controller
@@ -108,6 +108,9 @@ def dispatch(model, args):
         else:
             ret = dispatch_func(**kwargs)
     except Exception as e:
+        import traceback
+        with open(get_cli_log_file(), 'a+') as outfile:
+            traceback.print_exc(file=outfile)
 
         # format exception messages in the same manner as the api
         message = pcluster.api.errors.exception_message(e)
