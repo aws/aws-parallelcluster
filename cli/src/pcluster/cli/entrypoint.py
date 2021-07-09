@@ -229,7 +229,6 @@ def convert_args(model, op_name, args_in):
     that is suitable to be called in the controllers."""
     body = {}
     kwargs = {}
-    pos_args = []
     for param in model[op_name]['params']:
         param_name = to_snake_case(param['name'])
         value = args_in.pop(param_name)
@@ -238,20 +237,18 @@ def convert_args(model, op_name, args_in):
             param_name = camelcase(param_name)
             param_name = param_name[0].lower() + param_name[1:]
             body[param_name] = value
-        elif param.get('required', False):
-            pos_args.append(value)
         else:
             kwargs[param_name] = value
 
     kwargs.update(args_in)
 
-    return body, pos_args, kwargs
+    return body, kwargs
 
 
-def list_clusters_middleware(func, _body, pos_args, kwargs):
+def list_clusters_middleware(func, _body, kwargs):
     time_func = kwargs.pop('time', False)
     start = time.time()
-    ret = func(*pos_args, **kwargs)
+    ret = func(**kwargs)
     if time_func:
         model_encoded = encoder.JSONEncoder().encode(ret)
         print(json.dumps(json.loads(model_encoded), indent=2))
@@ -269,7 +266,7 @@ def dispatch(model, args):
     dispatch_func = model[operation]['func']
     del args_dict['func']
     del args_dict['operation']
-    body, pos_args, kwargs = convert_args(model, operation, args_dict)
+    body, kwargs = convert_args(model, operation, args_dict)
 
     if len(body):
         dispatch_func = partial(dispatch_func, body)
@@ -278,9 +275,9 @@ def dispatch(model, args):
 
     try:
         if operation in middleware:
-            ret = middleware[operation](dispatch_func, body, pos_args, kwargs)
+            ret = middleware[operation](dispatch_func, body, kwargs)
         else:
-            ret = dispatch_func(*pos_args, **kwargs)
+            ret = dispatch_func(**kwargs)
             if isinstance(ret, tuple):
                 ret = ret[0]
     except Exception as e:
