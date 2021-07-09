@@ -515,46 +515,33 @@ def read_json_file(file):
         raise e
 
 
-def get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
+def get_identity(region):
+    """Return the current AWS identity."""
+    return boto3.client("sts", region_name=region).get_caller_identity()["Arn"]
 
 
-def get_service_domain(service, region):
-    partition = get_arn_partition(region)
-    domain_suffix = ".cn" if partition == "aws-cn" else ""
-    return f"{service}.amazonaws.com{domain_suffix}"
+def get_resources(*paths):
+    """Return the absolute path path to resources, joined with the given sub paths."""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(current_dir, "resources", *paths)
 
 
-def get_assume_role_policy_document(region, services, arns):
-    statements = []
+def list_files_in_path(path):
+    """Return the absolute paths of all files within the given path."""
+    abspath = os.path.abspath(path)
+    files = [file for file in os.listdir(path) if os.path.isfile(os.path.join(abspath, file))]
+    result = [os.path.join(abspath, file) for file in files]
+    return result
 
-    for service in services:
-        statements.append(
-            {
-                "Action": "sts:AssumeRole",
-                "Effect": "Allow",
-                "Principal": {"Service": get_service_domain(service, region)},
-            }
-        )
 
-    for arn in arns:
-        statements.append(
-            {
-                "Action": "sts:AssumeRole",
-                "Effect": "Allow",
-                "Principal": {"AWS": arn},
-            }
-        )
+def snake_to_camel(s):
+    """Return the camel case version of the given snake case string."""
+    return "".join(x for x in s.title() if x != "_")
 
-    return {
-        "Version": "2012-10-17",
-        "Statement": statements,
-    }
+
+def filename_without_extension(path):
+    """Return the file name without the extensions for the given file path."""
+    return os.path.basename(os.path.splitext(path)[0])
 
 
 def get_stack_id_tag_filter(stack_arn):

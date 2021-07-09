@@ -1,0 +1,13 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "ssm:GetParametersByPath"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "SSMDescribe"
+    }
+  ],
+  "Version": "2012-10-17"
+}

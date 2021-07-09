@@ -1,0 +1,20 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "route53:ChangeResourceRecordSets",
+        "route53:ChangeTagsForResource",
+        "route53:CreateHostedZone",
+        "route53:DeleteHostedZone",
+        "route53:GetChange",
+        "route53:GetHostedZone",
+        "route53:ListResourceRecordSets",
+        "route53:ListQueryLoggingConfigs"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "Route53HostedZones"
+    }
+  ],
+  "Version": "2012-10-17"
+}

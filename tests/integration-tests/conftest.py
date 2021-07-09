@@ -43,6 +43,7 @@ from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
+from permissions_template_builder import PermissionsTemplateBuilder
 from retrying import retry
 from utils import (
     InstanceTypesData,
@@ -52,6 +53,7 @@ from utils import (
     dict_has_nested_key,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
+    get_identity,
     get_instance_info,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
@@ -1149,3 +1151,75 @@ def build_image():
             )
             # sleep 90 seconds for image deletion
             time.sleep(90)
+
+
+@pytest.fixture(scope="class", autouse=True)
+def aws_user_credentials(region, scheduler, permissions_stack):
+    """
+    Define a fixture to create and assume the AWS credentials with the expected user policy.
+    :param region: region where the test is running
+    :param scheduler: scheduler used by the test
+    :param permissions_stack: the stack containing permissions resources
+    :return: a function to create and assume the AWS credentials with the expected user policy.
+    """
+
+    def get_role_arn(scheduler):
+        output_key = f"CustomerRole{scheduler.title()}"
+        return permissions_stack.cfn_outputs[output_key]
+
+    def assume_role(region, role_arn):
+        logging.info(f"Setting AWS credentials in region {region} for role: {role_arn}")
+        set_credentials(region, [f"{region},https://sts.{region}.amazonaws.com,{role_arn},jenkins"])
+        logging.info(f"Identity assumed in region {region}: {get_identity(region)}")
+
+    def reset_role():
+        logging.info("Restoring default AWS credentials")
+        unset_credentials()
+        logging.info(f"Identity restored in region {region}: {get_identity(region)}")
+
+    logging.info(f"Configuring AWS credentials in region {region} for scheduler: {scheduler}")
+
+    role_arn = get_role_arn(scheduler)
+    assume_role(region, role_arn)
+
+    yield
+
+    reset_role()
+
+
+@pytest.fixture(scope="class")
+def permissions_stack(permissions_stacks, region):
+    return permissions_stacks[region]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def permissions_stacks(cfn_stacks_factory, request):
+    """Create permissions resources used by integration tests in all configured regions."""
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    permissions_stacks = {}
+
+    template = PermissionsTemplateBuilder().build()
+
+    for region in regions:
+        permissions_stacks[region] = _create_permissions_stack(request, template, region, cfn_stacks_factory)
+
+    return permissions_stacks
+
+
+@retry(
+    stop_max_attempt_number=2,
+    wait_fixed=5000,
+    retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
+)
+def _create_permissions_stack(request, template, region, cfn_stacks_factory):
+    try:
+        set_credentials(region, request.config.getoption("credential"))
+        stack = CfnStack(
+            name=generate_stack_name("integ-tests-permissions", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(stack)
+    finally:
+        unset_credentials()
+    return stack

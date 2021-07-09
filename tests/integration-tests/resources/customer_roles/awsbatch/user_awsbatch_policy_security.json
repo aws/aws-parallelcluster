@@ -1,0 +1,51 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "iam:PassRole",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:TagRole",
+        "iam:SimulatePrincipalPolicy"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*" }
+      ],
+      "Sid": "IAMRole"
+    },
+    {
+      "Action": [
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:PassRole"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*" }
+      ],
+      "Sid": "IAMInstanceProfile"
+    },
+    {
+      "Action": [
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetPolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "IAM"
+    }
+  ],
+  "Version": "2012-10-17"
+}

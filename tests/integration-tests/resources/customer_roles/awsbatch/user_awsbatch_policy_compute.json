@@ -1,0 +1,133 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "ec2:DescribeKeyPairs",
+        "ec2:DescribeRegions",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribePlacementGroups",
+        "ec2:DescribeImages",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeInstanceTypeOfferings",
+        "ec2:DescribeSnapshots",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DescribeAddresses",
+        "ec2:CreateTags",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeAvailabilityZones"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EC2Describe"
+    },
+    {
+      "Action": [
+        "ec2:CreateLaunchTemplate",
+        "ec2:CreateLaunchTemplateVersion",
+        "ec2:ModifyLaunchTemplate",
+        "ec2:DeleteLaunchTemplate",
+        "ec2:DescribeLaunchTemplates",
+        "ec2:DescribeLaunchTemplateVersions"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EC2LaunchTemplate"
+    },
+    {
+      "Action": [
+        "ec2:CreateVpc",
+        "ec2:ModifyVpcAttribute",
+        "ec2:DescribeNatGateways",
+        "ec2:CreateNatGateway",
+        "ec2:DescribeInternetGateways",
+        "ec2:CreateInternetGateway",
+        "ec2:AttachInternetGateway",
+        "ec2:DescribeRouteTables",
+        "ec2:CreateRoute",
+        "ec2:CreateRouteTable",
+        "ec2:AssociateRouteTable",
+        "ec2:CreateSubnet",
+        "ec2:ModifySubnetAttribute"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "NetworkingEasyConfig"
+    },
+    {
+      "Action": [
+        "ec2:CreateVolume",
+        "ec2:RunInstances",
+        "ec2:AllocateAddress",
+        "ec2:AssociateAddress",
+        "ec2:AttachNetworkInterface",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:CreateNetworkInterface",
+        "ec2:CreateSecurityGroup",
+        "ec2:ModifyVolumeAttribute",
+        "ec2:ModifyNetworkInterfaceAttribute",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DeleteVolume",
+        "ec2:TerminateInstances",
+        "ec2:DeleteSecurityGroup",
+        "ec2:DisassociateAddress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:ReleaseAddress",
+        "ec2:CreatePlacementGroup",
+        "ec2:DeletePlacementGroup"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EC2Modify"
+    },
+    {
+      "Action": [
+        "batch:*"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "Batch"
+    },
+    {
+      "Action": [
+        "ecs:DescribeContainerInstances",
+        "ecs:ListContainerInstances"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "ECS"
+    },
+    {
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:InvokeFunction",
+        "lambda:AddPermission",
+        "lambda:RemovePermission"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:pcluster-*" }
+      ],
+      "Sid": "Lambda"
+    },
+    {
+      "Action": [
+        "ecr:*"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "ECR"
+    }
+  ],
+  "Version": "2012-10-17"
+}

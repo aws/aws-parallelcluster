@@ -1,0 +1,65 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "iam:PassRole",
+        "iam:CreateRole",
+        "iam:CreateServiceLinkedRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:TagRole",
+        "iam:SimulatePrincipalPolicy"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*" }
+      ],
+      "Sid": "IAMModify"
+    },
+    {
+      "Action": [
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*" }
+      ],
+      "Sid": "IAMCreateInstanceProfile"
+    },
+    {
+      "Action": [
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:GetRolePolicy",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:GetPolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "IAMInstanceProfile"
+    },
+    {
+      "Action": [
+        "kms:CreateAlias",
+        "kms:CreateKey",
+        "kms:DeleteKey",
+        "kms:ListAliases",
+        "kms:PutKeyPolicy",
+        "kms:ScheduleKeyDeletion",
+        "kms:DescribeKey"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "KMS"
+    }
+  ],
+  "Version": "2012-10-17"
+}

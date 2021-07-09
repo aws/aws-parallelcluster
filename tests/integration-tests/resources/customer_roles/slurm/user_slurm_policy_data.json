@@ -1,0 +1,91 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "dynamodb:DescribeTable",
+        "dynamodb:ListTagsOfResource"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "DynamoDBDescribe"
+    },
+    {
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:TagResource"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "DynamoDBModify"
+    },
+    {
+      "Action": [
+        "elasticfilesystem:DescribeMountTargets",
+        "elasticfilesystem:DescribeMountTargetSecurityGroups",
+        "ec2:DescribeNetworkInterfaceAttribute"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EFSDescribe"
+    },
+    {
+      "Action": [
+        "elasticfilesystem:*"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EFS"
+    },
+    {
+      "Action": [
+        "fsx:*"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "FSx"
+    },
+    {
+      "Action": [
+        "s3:*"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-parallelcluster-*/*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*/*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::integ-tests-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::integ-tests-*/*" }
+      ],
+      "Sid": "S3ResourcesBucket"
+    },
+    {
+      "Action": [
+        "s3:Get*",
+        "s3:List*"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*" }
+      ],
+      "Sid": "S3ParallelClusterReadOnly"
+    },
+    {
+      "Action": [
+        "s3:DeleteBucket",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*" }
+      ],
+      "Sid": "S3Delete"
+    }
+  ],
+  "Version": "2012-10-17"
+}

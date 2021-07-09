@@ -1,0 +1,16 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "codebuild:*"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/integ-tests-*" }
+      ],
+      "Sid": "CodeBuild"
+    }
+  ],
+  "Version": "2012-10-17"
+}

@@ -1,0 +1,29 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResource",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:DescribeStacks",
+        "cloudformation:ListStacks",
+        "cloudformation:ListStackResources",
+        "cloudformation:GetTemplate"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "CloudFormationDescribe"
+    },
+    {
+      "Action": [
+        "cloudformation:CreateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:UpdateStack"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "CloudFormationModify"
+    }
+  ],
+  "Version": "2012-10-17"
+}

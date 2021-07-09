@@ -1,0 +1,44 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "sns:ListTopics",
+        "sns:GetTopicAttributes",
+        "sns:CreateTopic",
+        "sns:Subscribe",
+        "sns:Unsubscribe",
+        "sns:DeleteTopic"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "SNS"
+    },
+    {
+      "Action": [
+        "sqs:GetQueueAttributes",
+        "sqs:CreateQueue",
+        "sqs:SetQueueAttributes",
+        "sqs:DeleteQueue",
+        "sqs:TagQueue"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "SQS"
+    },
+    {
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueUrl"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:parallelcluster-*" }
+      ],
+      "Sid": "SQSQueue"
+    }
+  ],
+  "Version": "2012-10-17"
+}

@@ -1,5 +1,6 @@
 argparse
 assertpy
+awacs
 aws-parallelcluster
 boto3
 cfn_flip

@@ -1,0 +1,68 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "dynamodb:DescribeTable",
+        "dynamodb:CreateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:TagResource"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*" }
+      ],
+      "Sid": "DynamoDB"
+    },
+    {
+      "Action": [
+        "elasticfilesystem:CreateFileSystem",
+        "elasticfilesystem:CreateMountTarget",
+        "elasticfilesystem:DeleteFileSystem",
+        "elasticfilesystem:DeleteMountTarget",
+        "elasticfilesystem:DescribeFileSystems",
+        "elasticfilesystem:DescribeMountTargets"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EFS"
+    },
+    {
+      "Action": [
+        "fsx:*"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "FSx"
+    },
+    {
+      "Action": [
+        "s3:*"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-parallelcluster-*/*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::parallelcluster-*/*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::integ-tests-*" },
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::integ-tests-*/*" }
+      ],
+      "Sid": "S3ResourcesBucket"
+    },
+    {
+      "Action": [
+        "s3:Get*",
+        "s3:List*"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        { "Fn::Sub": "arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*" }
+      ],
+      "Sid": "S3ParallelClusterReadOnly"
+    }
+  ],
+  "Version": "2012-10-17"
+}
