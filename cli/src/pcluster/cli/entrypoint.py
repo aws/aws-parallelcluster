@@ -20,7 +20,6 @@ import inspect
 import json
 import re
 import sys
-import time
 import yaml
 from pprint import pprint
 import logging.config
@@ -37,6 +36,7 @@ import pcluster.api.errors
 import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
 import pcluster.cli.logging as pcluster_logging
+import pcluster.cli.middleware
 from pcluster.cli.commands.common import CliCommand
 from pcluster.utils import camelcase
 
@@ -208,17 +208,6 @@ def convert_args(model, op_name, args_in):
     return body, kwargs
 
 
-def list_clusters_middleware(func, _body, kwargs):
-    time_func = kwargs.pop('time', False)
-    start = time.time()
-    ret = func(**kwargs)
-    if time_func:
-        model_encoded = encoder.JSONEncoder().encode(ret)
-        print(json.dumps(json.loads(model_encoded), indent=2))
-        print(f"Took: {time.time() - start} ms", )
-        return None  # supress default print
-    else:
-        return ret
 
 
 def dispatch(model, args):
@@ -241,7 +230,9 @@ def dispatch(model, args):
     if len(body):
         dispatch_func = partial(dispatch_func, body)
 
-    middleware = {'list-clusters': list_clusters_middleware}
+    middleware_funcs = inspect.getmembers(pcluster.cli.middleware,
+                                          inspect.isfunction)
+    middleware = {to_kebab_case(f[0]): f[1] for f in middleware_funcs}
 
     try:
         if operation in middleware:
