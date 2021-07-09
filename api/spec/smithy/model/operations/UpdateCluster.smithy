@@ -44,7 +44,6 @@ structure UpdateClusterRequest {
 structure UpdateClusterResponse {
     @required
     cluster: ClusterInfoSummary,
-    @required
     @documentation("List of messages collected during cluster config validation whose level is lower than the validationFailureLevel set by the user")
     validationMessages: ValidationMessages,
     @required

@@ -1338,7 +1338,6 @@ components:
           type: array
       required:
       - image
-      - validationMessages
       title: BuildImageResponseContent
       type: object
     Change:
@@ -1609,7 +1608,6 @@ components:
           type: array
       required:
       - cluster
-      - validationMessages
       title: CreateClusterResponseContent
       type: object
     DeleteClusterResponseContent:
@@ -2277,7 +2275,6 @@ components:
       required:
       - changeSet
       - cluster
-      - validationMessages
       title: UpdateClusterResponseContent
       type: object
     UpdateComputeFleetStatusRequestContent:

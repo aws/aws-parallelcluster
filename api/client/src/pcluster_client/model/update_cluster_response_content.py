@@ -82,8 +82,8 @@ class UpdateClusterResponseContent(ModelNormal):
         lazy_import()
         return {
             'cluster': (ClusterInfoSummary,),  # noqa: E501
-            'validation_messages': ([ConfigValidationMessage],),  # noqa: E501
             'change_set': ([Change],),  # noqa: E501
+            'validation_messages': ([ConfigValidationMessage],),  # noqa: E501
         }
 
     @cached_property
@@ -93,8 +93,8 @@ class UpdateClusterResponseContent(ModelNormal):
 
     attribute_map = {
         'cluster': 'cluster',  # noqa: E501
-        'validation_messages': 'validationMessages',  # noqa: E501
         'change_set': 'changeSet',  # noqa: E501
+        'validation_messages': 'validationMessages',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -109,12 +109,11 @@ class UpdateClusterResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, cluster, validation_messages, change_set, *args, **kwargs):  # noqa: E501
+    def __init__(self, cluster, change_set, *args, **kwargs):  # noqa: E501
         """UpdateClusterResponseContent - a model defined in OpenAPI
 
         Args:
             cluster (ClusterInfoSummary):
-            validation_messages ([ConfigValidationMessage]): List of messages collected during cluster config validation whose level is lower than the validationFailureLevel set by the user
             change_set ([Change]): List of configuration changes requested by the update operation
 
         Keyword Args:
@@ -148,6 +147,7 @@ class UpdateClusterResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            validation_messages ([ConfigValidationMessage]): List of messages collected during cluster config validation whose level is lower than the validationFailureLevel set by the user. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -174,7 +174,6 @@ class UpdateClusterResponseContent(ModelNormal):
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
         self.cluster = cluster
-        self.validation_messages = validation_messages
         self.change_set = change_set
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \

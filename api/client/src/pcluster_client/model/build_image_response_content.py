@@ -105,12 +105,11 @@ class BuildImageResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, image, validation_messages, *args, **kwargs):  # noqa: E501
+    def __init__(self, image, *args, **kwargs):  # noqa: E501
         """BuildImageResponseContent - a model defined in OpenAPI
 
         Args:
             image (ImageInfoSummary):
-            validation_messages ([ConfigValidationMessage]): List of messages collected during image config validation whose level is lower than the validationFailureLevel set by the user
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -143,6 +142,7 @@ class BuildImageResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            validation_messages ([ConfigValidationMessage]): List of messages collected during image config validation whose level is lower than the validationFailureLevel set by the user. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -169,7 +169,6 @@ class BuildImageResponseContent(ModelNormal):
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
         self.image = image
-        self.validation_messages = validation_messages
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \
