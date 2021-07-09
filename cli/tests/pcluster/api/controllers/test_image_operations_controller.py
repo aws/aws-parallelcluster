@@ -455,7 +455,7 @@ class TestBuildImage:
     @pytest.mark.parametrize(
         "suppress_validators, suppressed_validation_errors",
         [
-            (None, []),
+            (None, None),
             (["type:type1", "type:type2"], [ValidationResult("suppressed failure", FailureLevel.INFO, "type1")]),
         ],
         ids=["test with no validation errors", "test with suppressed validators"],
@@ -480,10 +480,12 @@ class TestBuildImage:
                 "region": "eu-west-1",
                 "version": "3.0.0",
             },
-            "validationMessages": [{"level": "INFO", "type": "type1", "message": "suppressed failure"}]
-            if suppressed_validation_errors
-            else [],
         }
+
+        if suppressed_validation_errors:
+            expected_response["validationMessages"] = [
+                {"level": "INFO", "type": "type1", "message": "suppressed failure"}
+            ]
 
         response = self._send_test_request(client, dryrun=False, suppress_validators=suppress_validators)
 
@@ -539,22 +541,33 @@ class TestBuildImage:
     @pytest.mark.parametrize(
         "error, error_code",
         [
-            (LimitExceededImageError, 429),
-            (LimitExceededStackError, 429),
-            (LimitExceededImageBuilderActionError, 429),
-            (BadRequestImageError, 400),
-            (BadRequestStackError, 400),
-            (BadRequestImageBuilderActionError, 400),
-            (ConflictImageBuilderActionError, 409),
+            (LimitExceededImageError("test error"), 429),
+            (LimitExceededStackError("test error"), 429),
+            (LimitExceededImageBuilderActionError("test error"), 429),
+            (BadRequestImageError("test error"), 400),
+            (BadRequestStackError("test error"), 400),
+            (BadRequestImageBuilderActionError("test error", []), 400),
+            (
+                BadRequestImageBuilderActionError(
+                    "test error", [ValidationResult("message", FailureLevel.WARNING, "type")]
+                ),
+                400,
+            ),
+            (ConflictImageBuilderActionError("test error"), 409),
         ],
     )
     def test_that_errors_are_converted(self, client, mocker, error, error_code):
-        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", side_effect=(error("test error")))
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.create", side_effect=error)
         expected_error = {"message": "test error"}
-        if error in {BadRequestImageError, BadRequestStackError}:
+
+        if isinstance(error, (BadRequestImageError, BadRequestStackError)):
             expected_error["message"] = "Bad Request: " + expected_error["message"]
-        if error == BadRequestImageBuilderActionError:
-            expected_error["configurationValidationErrors"] = []
+
+        if isinstance(error, BadRequestImageBuilderActionError) and error.validation_failures:
+            expected_error["configurationValidationErrors"] = [
+                {"level": "WARNING", "message": "message", "type": "type"}
+            ]
+
         response = self._send_test_request(client, dryrun=False)
 
         with soft_assertions():
