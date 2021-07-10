@@ -19,7 +19,7 @@ Scheduling:
     - Name: queue-0
       {% if scheduler != "awsbatch" %}
       Iam:
-        InstanceRole: {{ queue_instance_profile }}
+        InstanceProfile: {{ instance_profile }}
       {% endif %}
       ComputeResources:
         - Name: compute-resource-0

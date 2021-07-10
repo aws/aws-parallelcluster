@@ -447,7 +447,15 @@ def test_patch_check_cluster_resource_bucket(
     expected_message_rows = [
         ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
         # ec2_iam_role is to make sure other parameters are not affected by cluster_resource_bucket custom logic
-        [["HeadNode", "Iam"], "InstanceRole", "some_old_role", "some_new_role", "SUCCEEDED", "-", None],
+        [
+            ["HeadNode", "Iam"],
+            "InstanceRole",
+            "arn:aws:iam::aws:role/some_old_role",
+            "arn:aws:iam::aws:role/some_new_role",
+            "SUCCEEDED",
+            "-",
+            None,
+        ],
     ]
     if expected_error_row:
         error_message_row = [
@@ -465,9 +473,9 @@ def test_patch_check_cluster_resource_bucket(
             f"Restore the value of parameter 'CustomS3Bucket' to '{old_bucket_name}'",
         ]
         expected_message_rows.append(error_message_row)
-    src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "some_old_role"}
+    src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "arn:aws:iam::aws:role/some_old_role"}
     src_dict.update(default_cluster_params)
-    dst_dict = {"cluster_resource_bucket": new_bucket_name, "ec2_iam_role": "some_new_role"}
+    dst_dict = {"cluster_resource_bucket": new_bucket_name, "ec2_iam_role": "arn:aws:iam::aws:role/some_new_role"}
     dst_dict.update(default_cluster_params)
     dst_config_file = "pcluster.config.dst.yaml"
     _duplicate_config_file(dst_config_file, test_datadir)

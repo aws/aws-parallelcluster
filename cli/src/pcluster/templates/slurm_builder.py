@@ -359,8 +359,8 @@ class SlurmConstruct(Construct):
         )
 
         # If Headnode InstanceRole is created by ParallelCluster, add Route53 policy for InstanceRole
-        if self.instance_roles.get("HeadNode"):
-            head_node_role_info = self.instance_roles.get("HeadNode")
+        head_node_role_info = self.instance_roles.get("HeadNode")
+        if head_node_role_info:
             iam.CfnPolicy(
                 self.stack_scope,
                 "ParallelClusterSlurmRoute53Policies",

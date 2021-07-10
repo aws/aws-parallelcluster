@@ -273,13 +273,12 @@ class ClusterCdkStack(Stack):
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
         """Create role and policies for the given node/queue."""
         suffix = create_hash_suffix(name)
-        if node.instance_role:
-            if node.instance_role.split("/", 1)[0].endswith("instance-profile"):
-                # If existing InstanceProfile provided, do not create InstanceRole
-                self.instance_profiles[name] = get_resource_name_from_resource_arn(node.instance_role)
-            else:
-                node_role_ref = get_resource_name_from_resource_arn(node.instance_role)
-                self.instance_profiles[name] = self._add_instance_profile(node_role_ref, f"InstanceProfile{suffix}")
+        if node.instance_profile:
+            # If existing InstanceProfile provided, do not create InstanceRole
+            self.instance_profiles[name] = get_resource_name_from_resource_arn(node.instance_profile)
+        elif node.instance_role:
+            node_role_ref = get_resource_name_from_resource_arn(node.instance_role)
+            self.instance_profiles[name] = self._add_instance_profile(node_role_ref, f"InstanceProfile{suffix}")
         else:
             node_role_ref = self._add_node_role(node, f"Role{suffix}")
 
@@ -289,7 +288,8 @@ class ClusterCdkStack(Stack):
             # S3 Access Policies
             if self._condition_create_s3_access_policies(node):
                 self._add_s3_access_policies_to_role(node, node_role_ref, f"S3AccessPolicies{suffix}")
-            # Only add it it instance_roles if it is created by ParallelCluster
+
+            # Only add role to instance_roles if it is created by ParallelCluster
             self.instance_roles[name] = {"RoleRef": node_role_ref}
 
             # Head node Instance Profile
