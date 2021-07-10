@@ -91,9 +91,10 @@ class ComputeFleetStatusManager:
             )
             if not compute_fleet_status or "Item" not in compute_fleet_status:
                 raise Exception("COMPUTE_FLEET status not found in db table")
-            return ComputeFleetStatus(
-                compute_fleet_status["Item"][self.COMPUTE_FLEET_STATUS_ATTRIBUTE]
-            ), compute_fleet_status["Item"].get(self.LAST_UPDATED_TIME_ATTRIBUTE)
+            return (
+                ComputeFleetStatus(compute_fleet_status["Item"][self.COMPUTE_FLEET_STATUS_ATTRIBUTE]),
+                compute_fleet_status["Item"].get(self.LAST_UPDATED_TIME_ATTRIBUTE),
+            )
         except Exception as e:
             LOGGER.warning(
                 "Failed when retrieving fleet status from DynamoDB with error %s. "

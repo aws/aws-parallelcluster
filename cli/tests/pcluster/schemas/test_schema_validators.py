@@ -25,6 +25,7 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeEphemeralVolumeSchema,
     HeadNodeNetworkingSchema,
     HeadNodeRootVolumeSchema,
+    IamSchema,
     ImageSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
@@ -575,3 +576,17 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
         assert_that(contain).is_true()
     else:
         schema.validate(section_dict, partial=partial)
+
+
+@pytest.mark.parametrize(
+    "instance_role, expected_message",
+    [
+        ("", "does not match expected pattern"),
+        ("arn:aws:iam::aws:role/CustomHeadNodeRole", None),
+        ("CustomHeadNodeRole", "does not match expected pattern"),
+        ("arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile", "does not match expected pattern"),
+    ],
+)
+def test_instance_role_validator(instance_role, expected_message):
+    """Verify that cw_log behaves as expected when parsed in a config file."""
+    _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)

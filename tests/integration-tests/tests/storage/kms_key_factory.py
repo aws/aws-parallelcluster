@@ -19,7 +19,8 @@ class KMSKeyFactory:
         self.account_id = None
         self.region = None
         self.partition = None
-        self.iam_role = None
+        self.iam_role_name = None
+        self.iam_role_arn = None
         self.iam_policy_arn_batch = None
         self.iam_policy_arn_traditional = None
 
@@ -38,7 +39,7 @@ class KMSKeyFactory:
         if self.kms_key_id:
             return self.kms_key_id
 
-        self.iam_role = self._create_role(region)
+        self.iam_role_name, self.iam_role_arn = self._create_role(region)
         self.kms_key_id = self._create_kms_key(region)
         return self.kms_key_id
 
@@ -76,11 +77,11 @@ class KMSKeyFactory:
                 }
             ],
         }
-        self.iam_client.create_role(
+        iam_role_arn = self.iam_client.create_role(
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
-        )
+        )["Role"]["Arn"]
         # Having time.sleep here because because it take a while for the the IAM role to become valid for use in the
         # put_key_policy step for creating KMS key, read the following link for reference :
         # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
@@ -100,7 +101,7 @@ class KMSKeyFactory:
         self.iam_client.attach_role_policy(RoleName=iam_role_name, PolicyArn=self.iam_policy_arn_traditional)
 
         logging.info("Iam role is ready: {0}".format(iam_role_name))
-        return iam_role_name
+        return iam_role_name, iam_role_arn
 
     def _create_iam_policies(self, iam_policy_name, scheduler):
         # the param "scheduler" here can have the value "awsbatch" and "traditional"
@@ -154,7 +155,7 @@ class KMSKeyFactory:
         file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/../../resources"))
         env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
         key_policy = env.get_template("key_policy.json").render(
-            partition=self.partition, account_id=self.account_id, iam_role_name=self.iam_role
+            partition=self.partition, account_id=self.account_id, iam_role_name=self.iam_role_name
         )
 
         # attach key policy to the key
@@ -184,23 +185,23 @@ class KMSKeyFactory:
         if self.iam_policy_arn_batch or self.iam_policy_arn_traditional:
             logging.info("Deleting iam policy for awsbatch %s" % self.iam_policy_arn_batch)
             # detach iam policy for awsbatch from iam role
-            self.iam_client.detach_role_policy(RoleName=self.iam_role, PolicyArn=self.iam_policy_arn_batch)
+            self.iam_client.detach_role_policy(RoleName=self.iam_role_name, PolicyArn=self.iam_policy_arn_batch)
             # delete the awsbatch policy
             self.iam_client.delete_policy(PolicyArn=self.iam_policy_arn_batch)
             logging.info("Deleting iam policy for traditional scheduler %s" % self.iam_policy_arn_traditional)
             # detach iam policy for traditional schedluer from iam role
-            self.iam_client.detach_role_policy(RoleName=self.iam_role, PolicyArn=self.iam_policy_arn_traditional)
+            self.iam_client.detach_role_policy(RoleName=self.iam_role_name, PolicyArn=self.iam_policy_arn_traditional)
             # delete the traditional schedluer policy
             self.iam_client.delete_policy(PolicyArn=self.iam_policy_arn_traditional)
 
     def _release_iam_role(self):
-        logging.info("Deleting iam role %s" % self.iam_role)
+        logging.info("Deleting iam role %s" % self.iam_role_name)
         self.iam_client.delete_role(
-            RoleName=self.iam_role,
+            RoleName=self.iam_role_name,
         )
 
     def _release_kms_key(self):
-        logging.info("Scheduling delete Kms key %s" % self.iam_role)
+        logging.info("Scheduling delete Kms key %s" % self.iam_role_name)
         self.kms_client.schedule_key_deletion(
             KeyId=self.kms_key_id,
             # The waiting period, specified in number of days. After the waiting period ends, AWS KMS deletes the CMK.

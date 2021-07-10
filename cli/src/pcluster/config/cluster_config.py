@@ -577,12 +577,14 @@ class Iam(Resource):
         s3_access: List[S3Access] = None,
         additional_iam_policies: List[AdditionalIamPolicy] = (),
         instance_role: str = None,
+        instance_profile: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.s3_access = s3_access
         self.additional_iam_policies = additional_iam_policies
         self.instance_role = Resource.init_param(instance_role)
+        self.instance_profile = Resource.init_param(instance_profile)
 
     @property
     def additional_iam_policy_arns(self) -> List[str]:
@@ -594,10 +596,9 @@ class Iam(Resource):
 
     def _register_validators(self):
         if self.instance_role:
-            if self.instance_role.split("/", 1)[0].endswith("instance-profile"):
-                self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_role)
-            else:
-                self._register_validator(RoleValidator, role_arn=self.instance_role)
+            self._register_validator(RoleValidator, role_arn=self.instance_role)
+        elif self.instance_profile:
+            self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
 
 
 class Imds(Resource):
@@ -801,6 +802,11 @@ class HeadNode(Resource):
     def instance_role(self):
         """Return the IAM role for head node, if set."""
         return self.iam.instance_role if self.iam else None
+
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for head node, if set."""
+        return self.iam.instance_profile if self.iam else None
 
 
 class BaseComputeResource(Resource):
@@ -1358,6 +1364,11 @@ class SlurmQueue(BaseQueue):
     def instance_role(self):
         """Return the IAM role for compute nodes, if set."""
         return self.iam.instance_role if self.iam else None
+
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for compute nodes, if set."""
+        return self.iam.instance_profile if self.iam else None
 
 
 class Dns(Resource):

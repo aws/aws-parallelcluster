@@ -555,10 +555,13 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
         additional_iam_policies = {"Policy": f"arn:{_get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
-        if dict_has_nested_key(node_config, ("Iam", "InstanceRole")):
-            # AdditionalIamPolicies and InstanceRole can not co-exist
+        if dict_has_nested_key(node_config, ("Iam", "InstanceRole")) or dict_has_nested_key(
+            node_config, ("Iam", "InstanceProfile")
+        ):
+            # AdditionalIamPolicies, InstanceRole or InstanceProfile can not co-exist
             logging.info(
-                f"InstanceRole is specified, skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
+                "InstanceRole/InstanceProfile is specified, "
+                f"skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
             )
         else:
             logging.info(
@@ -837,7 +840,6 @@ def common_pcluster_policies(region):
 @pytest.fixture(scope="class")
 def role_factory(region):
     roles = []
-    instance_profiles = []
     iam_client = boto3.client(
         "iam",
         region_name=region,
@@ -848,7 +850,7 @@ def role_factory(region):
         ),
     )
 
-    def create_role(trusted_service, policies=(), is_instance_profile=False):
+    def create_role(trusted_service, policies=()):
         iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
         logging.info(f"Creating iam role {iam_role_name} for {trusted_service}")
 
@@ -881,21 +883,10 @@ def role_factory(region):
         time.sleep(60)
         logging.info(f"Iam role is ready: {role_arn}")
         roles.append({"role_name": iam_role_name, "policies": policies})
-        if is_instance_profile:
-            instance_profile_arn, instance_profile_name = _create_instance_profile(iam_role_name, iam_client)
-            logging.info(f"Iam instance profile is ready: {instance_profile_arn}")
-            instance_profiles.append({"profile_name": instance_profile_name, "role_name": iam_role_name})
-            return instance_profile_arn
-        return role_arn
+        return iam_role_name, role_arn
 
     yield create_role
 
-    for instance_profile in instance_profiles:
-        profile_name = instance_profile["profile_name"]
-        role_name = instance_profile["role_name"]
-        iam_client.remove_role_from_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
-        logging.info(f"Deleting instance profile {profile_name}")
-        iam_client.delete_instance_profile(InstanceProfileName=profile_name)
     for role in roles:
         role_name = role["role_name"]
         policies = role["policies"]
@@ -903,6 +894,41 @@ def role_factory(region):
             iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy)
         logging.info(f"Deleting iam role {role_name}")
         iam_client.delete_role(RoleName=role_name)
+
+
+@pytest.fixture(scope="class")
+def instance_profile_factory(region, role_factory):
+    instance_profiles = []
+    iam_client = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_instance_profile(policies=()):
+        instance_profile_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating instance profile {instance_profile_name}")
+        instance_profile_arn = iam_client.create_instance_profile(InstanceProfileName=instance_profile_name)[
+            "InstanceProfile"
+        ]["Arn"]
+        role_name, _ = role_factory("ec2", policies)
+        iam_client.add_role_to_instance_profile(InstanceProfileName=instance_profile_name, RoleName=role_name)
+        logging.info(f"Iam profile is ready: {instance_profile_arn}")
+        instance_profiles.append({"profile_name": instance_profile_name, "role_name": role_name})
+        return instance_profile_arn
+
+    yield create_instance_profile
+
+    for instance_profile in instance_profiles:
+        profile_name = instance_profile["profile_name"]
+        role_name = instance_profile["role_name"]
+        iam_client.remove_role_from_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
+        logging.info(f"Deleting instance profile {profile_name}")
+        iam_client.delete_instance_profile(InstanceProfileName=profile_name)
 
 
 def _create_iam_policies(iam_policy_name, region, policy_filename):
@@ -924,16 +950,6 @@ def _create_iam_policies(iam_policy_name, region, policy_filename):
     return boto3.client("iam", region_name=region).create_policy(
         PolicyName=iam_policy_name, PolicyDocument=parallel_cluster_instance_policy
     )["Policy"]["Arn"]
-
-
-def _create_instance_profile(iam_role_name, iam_client):
-    logging.info("Creating Instance Profile...")
-    instance_profile_name = f"integ-tests_{random_alphanumeric()}"
-    instance_profile_arn = iam_client.create_instance_profile(InstanceProfileName=instance_profile_name)[
-        "InstanceProfile"
-    ]["Arn"]
-    iam_client.add_role_to_instance_profile(InstanceProfileName=instance_profile_name, RoleName=iam_role_name)
-    return instance_profile_arn, instance_profile_name
 
 
 @pytest.fixture(scope="class")
