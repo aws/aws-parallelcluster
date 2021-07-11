@@ -96,7 +96,7 @@ def dispatch(model, args):
     body, kwargs = convert_args(model, operation, args_dict)
 
     dispatch_func = partial(pcluster.cli.model.call, model[operation]['func'])
-    if len(body):
+    if len(body) > 0:
         dispatch_func = partial(dispatch_func, body)
 
     # middleware provides an opportunity to customize the calling of the
@@ -179,8 +179,7 @@ def add_cli_commands(parser_map):
                 and not inspect.isabstract(obj)):
             obj(subparsers)
 
-    parser_map['create-cluster'].add_argument("--wait", action='store_true', help=argparse.SUPPRESS)
-    parser_map['delete-cluster'].add_argument("--wait", action='store_true', help=argparse.SUPPRESS)
+    pcluster.cli.middleware.add_additional_args(parser_map)
 
 
 def main():

@@ -11,15 +11,16 @@
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module defines middleware functions for command line operations.
-This allows the ability to provide custom logic either before or
-after running an operation by specifying the name of the operation,
-and then calling the function that is provided as the first argument
-and passing the **kwargs provided.
+This module defines middleware functions for command line operations.  This
+allows the ability to provide custom logic either before or after running an
+operation by specifying the name of the operation, and then calling the
+function that is provided as the first argument and passing the **kwargs
+provided.
 """
 
-import pcluster.cli.model
+import argparse
 import boto3
+import pcluster.cli.model
 
 
 def _cluster_status(cluster_name):
@@ -27,6 +28,17 @@ def _cluster_status(cluster_name):
     func_name = "describe_cluster"
     full_func_name = f"pcluster.api.controllers.{controller}.{func_name}"
     return pcluster.cli.model.call(full_func_name, cluster_name=cluster_name)
+
+
+def add_additional_args(parser_map):
+    """Takes a parser map and adds any additional arguments to parsers for
+    individual operations.
+
+    NOTE: these additional arguments will also need to be removed before
+    calling the underlying function for the situation where they are not a part
+    of the specification."""
+    parser_map['create-cluster'].add_argument("--wait", action='store_true', help=argparse.SUPPRESS)
+    parser_map['delete-cluster'].add_argument("--wait", action='store_true', help=argparse.SUPPRESS)
 
 
 def create_cluster(func, body, kwargs):
