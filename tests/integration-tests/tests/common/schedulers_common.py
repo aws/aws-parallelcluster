@@ -414,6 +414,18 @@ class SlurmCommands(SchedulerCommands):
         result = self.submit_command(**submit_command_args)
         return self.assert_job_submitted(result.stdout)
 
+    def get_partition_state(self, partition):
+        """Get the state of the partition."""
+        return self._remote_command_executor.run_remote_command(
+            f'/opt/slurm/bin/scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
+        ).stdout
+
+    @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+    def wait_job_running(self, job_id):
+        """Wait till job starts running."""
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        assert_that(result.stdout).contains("JobState=RUNNING")
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
