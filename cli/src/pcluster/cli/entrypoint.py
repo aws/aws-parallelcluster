@@ -173,13 +173,12 @@ def add_cli_commands(parser_map):
     pcluster.cli.middleware.add_additional_args(parser_map)
 
 
-def run(sys_args):
-    model = pcluster.cli.model.load_model()
+def run(sys_args, spec=None):
+    spec = spec or pcluster.cli.model.package_spec()
+    model = pcluster.cli.model.load_model(spec)
     parser, parser_map = gen_parser(model)
     add_cli_commands(parser_map)
     args, extra_args = parser.parse_known_args(sys_args)
-
-    pcluster_logging.config_logger()
 
     # some commands (e.g. ssh and those defined as CliCommand objects) require 'extra_args'
     if extra_args and (not hasattr(args, 'expects_extra_args') or not args.expects_extra_args):
@@ -211,6 +210,7 @@ def run(sys_args):
 
 
 def main():
+    pcluster_logging.config_logger()
     try:
         ret = run(sys.argv[1:])
         print(json.dumps(ret, indent=2))

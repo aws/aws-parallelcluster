@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import yaml
+from functools import lru_cache
 import json
 from connexion.utils import get_function_from_name
 from pcluster.utils import to_kebab_case, to_snake_case
@@ -73,7 +74,15 @@ def _resolve_body(spec, operation):
     return new_params
 
 
-def load_model():
+@lru_cache
+def package_spec():
+    """Load the OpenAPI specification from the package."""
+    with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
+        return yaml.safe_load(spec_file.read())
+
+
+@lru_cache
+def load_model(spec):
     """Reads the openapi specification and converts it into a model, resolving
     references and pulling out relevant properties for CLI parsing and function
     invocation.
@@ -99,10 +108,6 @@ def load_model():
                    'required': False,
                    'type': 'string'}]},
        ...}"""
-
-    # load the specification from the package
-    with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
-        spec = yaml.safe_load(spec_file.read())
 
     model = {}
 
