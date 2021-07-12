@@ -27,7 +27,6 @@ from pcluster.config.imagebuilder_config import (
     ImagebuilderDevSettings,
     Volume,
 )
-from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_IMAGE_NAME_REGEX
 from pcluster.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
 from pcluster.schemas.common_schema import (
@@ -135,11 +134,7 @@ class IamSchema(BaseSchema):
 
     instance_role = fields.Str(validate=validate.Regexp("^arn:.*:(role|instance-profile)/"))
     cleanup_lambda_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
-    additional_iam_policies = fields.Nested(
-        AdditionalIamPolicySchema,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Policy"},
-    )
+    additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):
