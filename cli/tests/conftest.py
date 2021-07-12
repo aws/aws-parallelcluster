@@ -15,7 +15,7 @@ from flask.testing import FlaskClient
 from jinja2 import Environment, FileSystemLoader
 
 from pcluster.api.flask_app import ParallelClusterFlaskApp
-from pcluster.cli.entrypoint import ParallelClusterCli
+from pcluster.cli.entrypoint import main, run
 
 
 @pytest.fixture(autouse=True)
@@ -197,11 +197,19 @@ def unset_env():
 
 
 @pytest.fixture()
+def run_cli_command():
+    def _run_cli_command(command):
+        run(command)
+
+    return _run_cli_command
+
+
+@pytest.fixture()
 def run_cli(mocker, capsys):
     def _run_cli(command, expect_failure=False, expect_message=None):
         mocker.patch.object(sys, "argv", command)
         with pytest.raises(SystemExit) as sysexit:
-            ParallelClusterCli().handle_command()
+            main()
         if expect_failure:
             if expect_message:
                 assert_that(sysexit.value.code).contains(expect_message)

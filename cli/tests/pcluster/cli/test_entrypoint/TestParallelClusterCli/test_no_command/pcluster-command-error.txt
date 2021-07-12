@@ -1,4 +1,4 @@
 usage: pcluster [-h]
-                {create,update,delete,start,stop,status,list,instances,ssh,configure,export-cluster-logs,list-cluster-logs,get-cluster-log-events,build-image,delete-image,describe-image,list-images,export-image-logs,list-image-logs,get-image-log-events,version,list-clusters,dcv}
+                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet-status,update-compute-fleet-status,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,status,configure,create,dcv-connect,delete,export-cluster-logs,get-cluster-log-events,instances,list-cluster-logs,list,ssh,start,stop,update,version,export-image-logs,get-image-log-events,list-image-logs}
                 ...
-pcluster: error: the following arguments are required: command
+pcluster: error: the following arguments are required: operation

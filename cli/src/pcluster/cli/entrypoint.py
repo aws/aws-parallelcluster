@@ -124,7 +124,7 @@ def gen_parser(model):
     epilog = 'For command specific flags, please run: "pcluster [command] --help"'
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", required=True, title='COMMANDS',
-                                       dest='operation', metavar="")
+                                       dest='operation')
     type_map = {'int': int, 'boolean': bool_converter, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 
