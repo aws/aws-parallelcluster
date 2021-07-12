@@ -81,7 +81,6 @@ def package_spec():
         return yaml.safe_load(spec_file.read())
 
 
-@lru_cache
 def load_model(spec):
     """Reads the openapi specification and converts it into a model, resolving
     references and pulling out relevant properties for CLI parsing and function
@@ -92,7 +91,7 @@ def load_model(spec):
 
     {'list-clusters':
       {'description': 'Retrieve the list of existing clusters ...',
-       'func': <function list_clusters at 0x7f1445b87040>,
+       'func': 'pcluster.api.controllers.cluster_operations_controller',
        'params': [{'body': False,
                    'description': 'List clusters deployed to ...',
                    'name': 'region',
