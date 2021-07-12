@@ -583,7 +583,7 @@ HeadNode:
     KeyName: ermann-dub-ef
 Scheduling:
   Scheduler: slurm
-  Queues:
+  SlurmQueues:
   - Name: queue2
     ComputeResources:
     - Name: queue1-t2micro

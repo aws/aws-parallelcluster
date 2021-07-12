@@ -465,8 +465,9 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
                 )
                 _add_policy_for_pre_post_install(config_content["HeadNode"], option, request, region)
 
-            if config_content["Scheduling"]["Scheduler"] != "awsbatch":
-                for queue in config_content["Scheduling"]["Queues"]:
+            scheduler = config_content["Scheduling"]["Scheduler"]
+            if scheduler != "awsbatch":
+                for queue in config_content["Scheduling"][f"{scheduler.capitalize()}Queues"]:
                     if not dict_has_nested_key(queue, ("CustomActions", config_param)):
                         dict_add_nested_key(
                             queue, request.config.getoption(option), ("CustomActions", config_param, "Script")

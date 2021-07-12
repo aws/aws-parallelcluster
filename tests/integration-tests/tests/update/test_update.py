@@ -414,9 +414,13 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
 def _verify_initialization(region, cluster, config):
     # Verify initial settings
-    _test_max_vcpus(region, cluster.cfn_name, config["Scheduling"]["Queues"][0]["ComputeResources"][0]["MaxvCpus"])
-    _test_min_vcpus(region, cluster.cfn_name, config["Scheduling"]["Queues"][0]["ComputeResources"][0]["MinvCpus"])
-    spot_bid_percentage = config["Scheduling"]["Queues"][0]["ComputeResources"][0]["SpotBidPercentage"]
+    _test_max_vcpus(
+        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"]
+    )
+    _test_min_vcpus(
+        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MinvCpus"]
+    )
+    spot_bid_percentage = config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["SpotBidPercentage"]
     assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
 
 

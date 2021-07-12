@@ -10,7 +10,7 @@ Scheduling:
   Scheduler: {{ scheduler }}
   SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
-  Queues:
+  SlurmQueues:
     - Name: queue-0
       ComputeResources:
         - Name: compute-resource-0

@@ -140,7 +140,7 @@ UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
     ),
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
     condition_checker=lambda change, patch: patch.cluster.get_running_capacity()
-    <= patch.target_config["Scheduling"]["Queues"][0]["ComputeResources"][0]["MaxvCpus"],
+    <= patch.target_config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"],
 )
 
 # Checks resize of max_count
