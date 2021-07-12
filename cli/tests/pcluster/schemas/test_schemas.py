@@ -49,5 +49,4 @@ def _validate_module_schemas(module):
 def test_schemas():
     with soft_assertions():
         _validate_module_schemas(pcluster.schemas.cluster_schema)
-        _validate_module_schemas(pcluster.schemas.imagebuilder_schema)
         _validate_module_schemas(pcluster.schemas.common_schema)
