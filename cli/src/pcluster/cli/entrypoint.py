@@ -43,6 +43,11 @@ import pcluster.api.controllers.image_operations_controller
 LOGGER = logging.getLogger(__name__)
 
 
+class APIOperationException(Exception):
+    def __init__(self, data):
+        self.data = data
+
+
 def bool_converter(in_str):
     """Takes a boolean string and converts it into a boolean value."""
     return in_str not in {'false', 'False', 'FALSE', False}
@@ -105,24 +110,10 @@ def dispatch(model, args):
                                           inspect.isfunction)
     middleware = {to_kebab_case(f[0]): f[1] for f in middleware_funcs}
 
-    try:
-        if operation in middleware:
-            ret = middleware[operation](dispatch_func, body, kwargs)
-        else:
-            ret = dispatch_func(**kwargs)
-    except Exception as e:
-        import traceback
-        with open(get_cli_log_file(), 'a+') as outfile:
-            traceback.print_exc(file=outfile)
-
-        # format exception messages in the same manner as the api
-        message = pcluster.api.errors.exception_message(e)
-        error_encoded = encoder.JSONEncoder().encode(message)
-        print(json.dumps(json.loads(error_encoded), indent=2))
-        sys.exit(1)
-
-    if ret:
-        print(json.dumps(ret, indent=2))
+    if operation in middleware:
+        return middleware[operation](dispatch_func, body, kwargs)
+    else:
+        return dispatch_func(**kwargs)
 
 
 def gen_parser(model):
@@ -182,11 +173,11 @@ def add_cli_commands(parser_map):
     pcluster.cli.middleware.add_additional_args(parser_map)
 
 
-def main():
+def run(sys_args):
     model = pcluster.cli.model.load_model()
     parser, parser_map = gen_parser(model)
     add_cli_commands(parser_map)
-    args, extra_args = parser.parse_known_args()
+    args, extra_args = parser.parse_known_args(sys_args)
 
     pcluster_logging.config_logger()
 
@@ -201,16 +192,28 @@ def main():
     if 'debug' in args.__dict__:
         del args.__dict__['debug']
 
+    # TODO: remove when ready to switch over to spec-based implementations
+    v2_implemented = {'list-images', 'build-image', 'delete-image',
+                      'describe-image', 'list-clusters'}
+    if args.operation in model and args.operation not in v2_implemented:
+        LOGGER.debug("Handling CLI operation %s", args.operation)
+        try:
+            return args.func(args)
+        except Exception as e:
+            # format exception messages in the same manner as the api
+            message = pcluster.api.errors.exception_message(e)
+            error_encoded = encoder.JSONEncoder().encode(message)
+            raise APIOperationException(json.loads(error_encoded))
+
+    else:
+        LOGGER.debug("Handling CLI command %s", args.operation)
+        return args.func(args, extra_args)
+
+
+def main():
     try:
-        # TODO: remove when ready to switch over to spec-based implementations
-        v2_implemented = {'list-images', 'build-image', 'delete-image',
-                          'describe-image', 'list-clusters'}
-        if args.operation in model and args.operation not in v2_implemented:
-            LOGGER.debug("Handling CLI operation %s", args.operation)
-            args.func(args)
-        else:
-            LOGGER.debug("Handling CLI command %s", args.operation)
-            args.func(args, extra_args)
+        ret = run(sys.argv[1:])
+        print(json.dumps(ret, indent=2))
         sys.exit(0)
     except NoCredentialsError:  # TODO: remove from here
         LOGGER.error("AWS Credentials not found.")
@@ -218,8 +221,14 @@ def main():
     except KeyboardInterrupt:
         LOGGER.debug("Received KeyboardInterrupt. Exiting.")
         sys.exit(1)
+    except APIOperationException as e:
+        import traceback
+        with open(get_cli_log_file(), 'a+') as outfile:
+            traceback.print_exc(file=outfile)
+        print(json.dumps(e.data, indent=2))
     except Exception as e:
         LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
+
         sys.exit(1)
 
 
