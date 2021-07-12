@@ -1001,6 +1001,7 @@ class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
     disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    hosted_zone_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
