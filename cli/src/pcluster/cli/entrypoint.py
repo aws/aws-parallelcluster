@@ -121,7 +121,7 @@ def convert_args(model, op_name, args_in):
             kwargs[param_name] = value
 
     kwargs.update(args_in)
-    body_name = model['op_name'].get('body_name')
+    body_name = model[op_name].get('body_name')
     if body_name:
         kwargs[body_name] = body
 
@@ -174,6 +174,8 @@ def gen_parser(model):
                 type_coerce = partial(re_validator, param['pattern'], param['name'])
             elif param.get('type') in type_map:
                 type_coerce = partial(type_map[param['type']], param['name'])
+            else:
+                type_coerce = None
 
             # add teh parameter to the parser based on type from model / specification
             subparser.add_argument(f"--{param['name']}",
@@ -236,6 +238,8 @@ def run(sys_args, spec=None):
     v2_implemented = {'list-images', 'build-image', 'delete-image',
                       'describe-image', 'list-clusters'}
     if args.operation in model and args.operation not in v2_implemented:
+        # TODO: remove once all commands are converted
+        logging.getLogger("pcluster").removeHandler(logging.getLogger("pcluster").handlers[1])
         try:
             return args.func(args)
         except Exception as e:
