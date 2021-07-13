@@ -74,7 +74,7 @@ def re_validator(rexp_str, param, in_str):
     return in_str
 
 
-def read_file_b64(path):
+def read_file_b64(param, path):
     """Takes file path, reads the file and converts to base64 encoded string"""
     try:
         with open(path) as file:
@@ -85,6 +85,22 @@ def read_file_b64(path):
         _exit_msg(f"Bad Request: Unicode error: Perhaps input file '{path}' is not yaml.")
 
     return base64.b64encode(file_data.encode('utf-8')).decode('utf-8')
+
+
+def to_number(param, in_str):
+    """Takes a string and converts it into a double."""
+    try:
+        return float(in_str)
+    except ValueError:
+        _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
+
+
+def to_int(param, in_str):
+    """Takes a string and converts it into an int."""
+    try:
+        return int(in_str)
+    except ValueError:
+        _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
 
 
 def convert_args(model, op_name, args_in):
@@ -141,7 +157,7 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", title='COMMANDS', dest='operation')
     subparsers.required = True
-    type_map = {'int': int, 'byte': read_file_b64}
+    type_map = {'number': to_number, 'boolean': bool_converter, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments
@@ -156,10 +172,8 @@ def gen_parser(model):
             # handle regexp parameter validation (or perform type coercion)
             if 'pattern' in param:
                 type_coerce = partial(re_validator, param['pattern'], param['name'])
-            elif param.get('type') == 'boolean':
-                type_coerce = partial(bool_converter, param['name'])
-            else:
-                type_coerce = type_map.get(param.get('type'))
+            elif param.get('type') in type_map:
+                type_coerce = partial(type_map[param['type']], param['name'])
 
             # add teh parameter to the parser based on type from model / specification
             subparser.add_argument(f"--{param['name']}",
@@ -210,11 +224,13 @@ def run(sys_args, spec=None):
     if 'debug' in args.__dict__:
         del args.__dict__['debug']
 
+    LOGGER.debug("Handling CLI command %s", args.operation)  # ToDo: change the level to info after finishing API.
+    LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
+
     # TODO: remove when ready to switch over to spec-based implementations
     v2_implemented = {'list-images', 'build-image', 'delete-image',
                       'describe-image', 'list-clusters'}
     if args.operation in model and args.operation not in v2_implemented:
-        LOGGER.debug("Handling CLI operation %s", args.operation)
         try:
             return args.func(args)
         except Exception as e:
@@ -222,9 +238,7 @@ def run(sys_args, spec=None):
             message = pcluster.api.errors.exception_message(e)
             error_encoded = encoder.JSONEncoder().encode(message)
             raise APIOperationException(json.loads(error_encoded))
-
     else:
-        LOGGER.debug("Handling CLI command %s", args.operation)
         return args.func(args, extra_args)
 
 
