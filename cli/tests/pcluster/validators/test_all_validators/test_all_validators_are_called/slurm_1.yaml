@@ -48,7 +48,8 @@ Scheduling:
   SlurmSettings:
     ScaledownIdletime: 10
     Dns:
-      DisableManagedDns: true
+      DisableManagedDns: false
+      HostedZoneId: 12345ABC
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND

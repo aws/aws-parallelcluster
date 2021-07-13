@@ -20,6 +20,7 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
+    DNSVPCValidator,
     DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
@@ -48,27 +49,71 @@ def boto3_stubber_path():
 
 
 @pytest.mark.parametrize(
-    "cluster_name, should_trigger_error",
+    "cluster_name, config_dict, should_trigger_name_error, should_trigger_dns_error, custom_dns",
     [
-        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),
-        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", True),
-        ("2AClusterCanNotBeginByANumber", True),
-        ("ClusterCanNotContainUnderscores_LikeThis", True),
-        ("ClusterCanNotContainSpaces LikeThis", True),
+        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", {}, False, False, False),
+        (
+            "ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk",
+            {"Scheduling": {"SlurmSettings": {}}},
+            True,
+            False,
+            False,
+        ),
+        ("2AClusterCanNotBeginByANumber", {"Scheduling": {"SlurmSettings": {"Dns": {}}}}, True, False, False),
+        ("ClusterCanNotContainUnderscores_LikeThis", {}, True, False, False),
+        ("ClusterCanNotContainSpaces LikeThis", {}, True, False, False),
+        (
+            "ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12",
+            {"Scheduling": {"SlurmSettings": {"Dns": {"HostedZoneId": "12345"}}}},
+            False,
+            False,
+            True,
+        ),
+        (
+            "ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12",
+            {"Scheduling": {"SlurmSettings": {"Dns": {"HostedZoneId": "1234"}}}},
+            False,
+            True,
+            True,
+        ),
     ],
 )
-def test_cluster_name_validator(cluster_name, should_trigger_error):
-    expected_message = (
-        (
+def test_cluster_name_validator(
+    mocker, cluster_name, config_dict, should_trigger_name_error, should_trigger_dns_error, custom_dns
+):
+    if should_trigger_dns_error:
+        get_hosted_zone_info = {
+            "HostedZone": {
+                "Name": "a_long_name_together_with_stackname_longer_than_190_"
+                "characters_0123456789_0123456789_0123456789_0123456789_"
+                "0123456789_0123456789_0123456789_0123456789_0123456789_"
+                "0123456789.com"
+            }
+        }
+    else:
+        get_hosted_zone_info = {"HostedZone": {"Name": "shortname.com"}}
+
+    mock_aws_api(mocker)
+    get_domain_name = mocker.patch(
+        "pcluster.aws.route53.Route53Client.get_hosted_zone", return_value=get_hosted_zone_info
+    )
+
+    expected_message = None
+    if should_trigger_name_error:
+        expected_message = (
             "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
             "It must start with an alphabetic character and can't be longer "
             f"than {PCLUSTER_NAME_MAX_LENGTH} characters."
         )
-        if should_trigger_error
-        else None
-    )
-    actual_failures = ClusterNameValidator().execute(cluster_name)
+    if should_trigger_dns_error:
+        expected_message = "Error: When specifying HostedZoneId"
+
+    actual_failures = ClusterNameValidator().execute(cluster_name, config_dict)
     assert_failure_messages(actual_failures, expected_message)
+    if custom_dns:
+        get_domain_name.assert_called_once()
+    else:
+        get_domain_name.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -764,4 +809,31 @@ def test_intel_hpc_os_validator(os, expected_message):
 )
 def test_head_node_imds_validator(imds_secured, scheduler, expected_message):
     actual_failures = HeadNodeImdsValidator().execute(imds_secured=imds_secured, scheduler=scheduler)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "vpcs, is_private_zone, expected_message",
+    [
+        (None, False, None),  # Public hosted zone
+        (
+            [{"VPCRegiion": "us-east-1", "VPCId": "vpc-123"}, {"VPCRegiion": "us-east-1", "VPCId": "vpc-456"}],
+            True,
+            None,
+        ),  # Private hosted zone associated with cluster VPC
+        (
+            [{"VPCRegiion": "us-east-1", "VPCId": "vpc-456"}],
+            True,
+            "Private Route53 hosted zone need to be associated with the VPC of the cluster",
+        ),
+    ],
+)
+def test_dns_vpc_validator(mocker, vpcs, is_private_zone, expected_message):
+    get_hosted_zone_info = {
+        "HostedZone": {"Name": "domain.com", "Config": {"PrivateZone": is_private_zone}},
+        "VPCs": vpcs,
+    }
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.route53.Route53Client.get_hosted_zone", return_value=get_hosted_zone_info)
+    actual_failures = DNSVPCValidator().execute(hosted_zone_id="12345Z", headnode_vpc="vpc-123")
     assert_failure_messages(actual_failures, expected_message)

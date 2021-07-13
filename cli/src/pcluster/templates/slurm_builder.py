@@ -100,11 +100,18 @@ class SlurmConstruct(Construct):
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_parameters(self):
+        if self._condition_custom_cluster_dns():
+            subdomain = self.stack_name
+            hosted_zone_id = self.config.scheduling.settings.dns.hosted_zone_id
+            domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(hosted_zone_id)
+            cluster_dns_domain = subdomain + "." + domain_name
+        else:
+            cluster_dns_domain = f"{self.stack_name}.pcluster"
         self.cluster_dns_domain = CfnParameter(
             self.stack_scope,
             "ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
-            default=f"{self.stack_name}.pcluster",
+            default=cluster_dns_domain,
         )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -356,10 +363,8 @@ class SlurmConstruct(Construct):
 
     def _add_private_hosted_zone(self):
         if self._condition_custom_cluster_dns():
-            subdomain = self.stack_name
             hosted_zone_id = self.config.scheduling.settings.dns.hosted_zone_id
-            domain_name = AWSApi.instance().route53.get_domain_name(hosted_zone_id)
-            cluster_hosted_zone = CustomDns(ref=hosted_zone_id, name=subdomain + domain_name)
+            cluster_hosted_zone = CustomDns(ref=hosted_zone_id, name=self.cluster_dns_domain.value_as_string)
         else:
             cluster_hosted_zone = route53.CfnHostedZone(
                 self.stack_scope,
@@ -439,6 +444,7 @@ class SlurmConstruct(Construct):
         )
         self.cleanup_route53_custom_resource.add_property_override("ClusterHostedZone", cluster_hosted_zone.ref)
         self.cleanup_route53_custom_resource.add_property_override("Action", "DELETE_DNS_RECORDS")
+        self.cleanup_route53_custom_resource.add_property_override("ClusterDNSDomain", cluster_hosted_zone.name)
 
         CfnOutput(
             self.stack_scope,

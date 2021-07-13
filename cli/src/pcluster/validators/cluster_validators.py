@@ -16,6 +16,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
+    CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
@@ -57,7 +58,7 @@ FSX_MESSAGES = {
 class ClusterNameValidator(Validator):
     """Cluster name validator."""
 
-    def _validate(self, name):
+    def _validate(self, name, config):
         if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), name):
             self._add_failure(
                 (
@@ -67,6 +68,26 @@ class ClusterNameValidator(Validator):
                 ),
                 FailureLevel.ERROR,
             )
+        if (
+            config.get("Scheduling")
+            and config.get("Scheduling").get("SlurmSettings")
+            and config.get("Scheduling").get("SlurmSettings").get("Dns")
+        ):
+
+            hosted_zone_id = config.get("Scheduling").get("SlurmSettings").get("Dns").get("HostedZoneId")
+            if hosted_zone_id:
+                domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(hosted_zone_id)
+                total_length = len(name) + len(domain_name)
+                if total_length > CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH:
+                    self._add_failure(
+                        (
+                            "Error: When specifying HostedZoneId, "
+                            f"the total length of cluster name {name} and domain name {domain_name} can not be "
+                            f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
+                            f"current length is {total_length}"
+                        ),
+                        FailureLevel.ERROR,
+                    )
 
 
 class RegionValidator(Validator):
@@ -880,3 +901,17 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             NetworkInterfaces=network_interfaces,
             DryRun=True,
         )
+
+
+class DNSVPCValidator(Validator):
+    """Validate custom private domain in the same VPC as headnode."""
+
+    def _validate(self, hosted_zone_id, headnode_vpc):
+        if AWSApi.instance().route53.is_private_zone(hosted_zone_id):
+            vpc_ids = AWSApi.instance().route53.get_vpc_ids(hosted_zone_id)
+            if headnode_vpc not in vpc_ids:
+                self._add_failure(
+                    f"Private Route53 hosted zone need to be associated with the VPC of the cluster: {headnode_vpc} "
+                    f"The VPCs associated with hosted zone are {vpc_ids}.",
+                    FailureLevel.ERROR,
+                )
