@@ -70,7 +70,7 @@ def test_generate_random_prefix():
     "architecture, supported_oses",
     [
         ("x86_64", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
-        ("arm64", ["alinux2", "ubuntu1804", "ubuntu2004"]),
+        ("arm64", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
     ],
 )
 def test_get_supported_os_for_architecture(architecture, supported_oses):

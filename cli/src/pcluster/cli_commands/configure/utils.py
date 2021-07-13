@@ -17,8 +17,9 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from tabulate import tabulate
 
+from pcluster.constants import SUPPORTED_REGIONS
+
 LOGGER = logging.getLogger(__name__)
-unsupported_regions = ["ap-northeast-3"]
 
 
 def handle_client_exception(func):
@@ -197,7 +198,7 @@ def get_rows_and_header(items):
 def get_regions():
     ec2 = boto3.client("ec2")
     regions = ec2.describe_regions().get("Regions")
-    regions = [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
+    regions = [region.get("RegionName") for region in regions if region.get("RegionName") in SUPPORTED_REGIONS]
     regions.sort()
     return regions
 
