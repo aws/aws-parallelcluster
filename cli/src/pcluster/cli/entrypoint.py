@@ -105,6 +105,9 @@ def convert_args(model, op_name, args_in):
             kwargs[param_name] = value
 
     kwargs.update(args_in)
+    body_name = model['op_name'].get('body_name')
+    if body_name:
+        kwargs[body_name] = body
 
     return body, kwargs
 
@@ -119,8 +122,6 @@ def dispatch(model, args):
     body, kwargs = convert_args(model, operation, args_dict)
 
     dispatch_func = partial(pcluster.cli.model.call, model[operation]['func'])
-    if len(body) > 0:
-        dispatch_func = partial(dispatch_func, body)
 
     # middleware provides an opportunity to customize the calling of the
     # underlying API function on a per-operation basis
@@ -138,8 +139,8 @@ def gen_parser(model):
             "launching and management of HPC clusters in the AWS cloud.")
     epilog = 'For command specific flags, please run: "pcluster [command] --help"'
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
-    subparsers = parser.add_subparsers(help="", required=True, title='COMMANDS',
-                                       dest='operation')
+    subparsers = parser.add_subparsers(help="", title='COMMANDS', dest='operation')
+    subparsers.required = True
     type_map = {'int': int, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 

@@ -11,6 +11,7 @@
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+from contextlib import suppress
 import yaml
 import json
 from connexion.utils import get_function_from_name
@@ -127,6 +128,12 @@ def load_model(spec):
             model[op_name] = {'params': params, 'func': func}
             if 'description' in operation:
                 model[op_name]['description'] = operation['description']
+            try:
+                body_name = (operation['requestBody']['content']['application/json']
+                             ['schema']['x-body-name'])
+                model[op_name]['body_name'] = body_name
+            except KeyError:
+                pass
 
     return model
 
