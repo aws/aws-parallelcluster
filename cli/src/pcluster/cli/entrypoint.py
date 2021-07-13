@@ -216,7 +216,8 @@ def main():
     pcluster_logging.config_logger()
     try:
         ret = run(sys.argv[1:])
-        print(json.dumps(ret, indent=2))
+        if ret:
+            print(json.dumps(ret, indent=2))
         sys.exit(0)
     except NoCredentialsError:  # TODO: remove from here
         LOGGER.error("AWS Credentials not found.")
