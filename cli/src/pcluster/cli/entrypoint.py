@@ -29,7 +29,7 @@ import pcluster.api.errors
 import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
 import pcluster.cli.logging as pcluster_logging
-import pcluster.cli.middleware
+from pcluster.cli.middleware refer get_middleware_hooks, add_additional_args
 import pcluster.cli.model
 from pcluster.cli.commands.common import CliCommand
 from pcluster.utils import camelcase, to_kebab_case, to_snake_case, get_cli_log_file
@@ -106,11 +106,7 @@ def dispatch(model, args):
 
     # middleware provides an opportunity to customize the calling of the
     # underlying API function on a per-operation basis
-    middleware_funcs = inspect.getmembers(pcluster.cli.middleware,
-                                          inspect.isfunction)
-    middleware = {to_kebab_case(f[0]): f[1] for f in middleware_funcs}
-
-    if operation in middleware:
+    if operation in middleware_hooks():
         return middleware[operation](dispatch_func, body, kwargs)
     else:
         return dispatch_func(**kwargs)
@@ -170,7 +166,7 @@ def add_cli_commands(parser_map):
                 and not inspect.isabstract(obj)):
             obj(subparsers)
 
-    pcluster.cli.middleware.add_additional_args(parser_map)
+    add_additional_args(parser_map)
 
 
 def run(sys_args, spec=None):

@@ -41,6 +41,14 @@ def add_additional_args(parser_map):
     parser_map['delete-cluster'].add_argument("--wait", action='store_true', help=argparse.SUPPRESS)
 
 
+def middleware_hooks():
+    """Takes a map and registers a function that can be called to wrap the
+    underlying operation. The map has operation names as the keys and functions
+    as values."""
+    return {'create-cluster': create_cluster,
+            'delete-cluster': delete_cluster}
+
+
 def create_cluster(func, body, kwargs):
     wait = kwargs.pop('wait', False)
     ret = func(**kwargs)
