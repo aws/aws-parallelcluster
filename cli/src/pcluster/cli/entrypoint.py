@@ -29,7 +29,7 @@ import pcluster.api.errors
 import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
 import pcluster.cli.logging as pcluster_logging
-from pcluster.cli.middleware refer get_middleware_hooks, add_additional_args
+from pcluster.cli.middleware import middleware_hooks, add_additional_args
 import pcluster.cli.model
 from pcluster.cli.commands.common import CliCommand
 from pcluster.utils import camelcase, to_kebab_case, to_snake_case, get_cli_log_file
@@ -48,16 +48,24 @@ class APIOperationException(Exception):
         self.data = data
 
 
-def bool_converter(in_str):
+def bool_converter(param, in_str):
     """Takes a boolean string and converts it into a boolean value."""
-    return in_str not in {'false', 'False', 'FALSE', False}
+    if in_str in {'false', 'False', 'FALSE', False}:
+        return False
+    elif in_str in {'true', 'True', 'TRUE', True}:
+        return True
+
+    out = {'message': f"Bad Request: '{in_str}' should be  '{rexp_str}' - '{param}'"}
+    print(json.dumps(ret, indent=2))
+    sys.exit(1)
 
 
 def re_validator(rexp_str, param, in_str):
     """Takes a string and validates the input format."""
     rexp = re.compile(rexp_str)
     if rexp.match(in_str) is None:
-        pprint({'message': f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'"})
+        out = {'message': f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'"}
+        print(json.dumps(ret, indent=2))
         sys.exit(1)
     return in_str
 
@@ -121,7 +129,7 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", required=True, title='COMMANDS',
                                        dest='operation')
-    type_map = {'int': int, 'boolean': bool_converter, 'byte': read_file_b64}
+    type_map = {'int': int, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments
@@ -136,6 +144,8 @@ def gen_parser(model):
             # handle regexp parameter validation (or perform type coercion)
             if 'pattern' in param:
                 type_coerce = partial(re_validator, param['pattern'], param['name'])
+            elif param.get('type') == 'boolean':
+                type_coerce = partial(bool_converter, param['name'])
             else:
                 type_coerce = type_map.get(param.get('type'))
 
