@@ -19,9 +19,9 @@ import base64
 from functools import partial
 import inspect
 import json
+import os
 import re
 import sys
-from pprint import pprint
 import logging.config
 
 from pcluster.api import encoder
@@ -32,7 +32,7 @@ import pcluster.cli.logging as pcluster_logging
 from pcluster.cli.middleware import middleware_hooks, add_additional_args
 import pcluster.cli.model
 from pcluster.cli.commands.common import CliCommand
-from pcluster.utils import camelcase, to_kebab_case, to_snake_case, get_cli_log_file
+from pcluster.utils import camelcase, to_snake_case, get_cli_log_file
 
 # Controllers
 import pcluster.api.controllers.cluster_compute_fleet_controller
@@ -223,6 +223,11 @@ def run(sys_args, spec=None):
     # operations (the above setting should be sufficient.)
     if 'debug' in args.__dict__:
         del args.__dict__['debug']
+
+    # TODO: remove this logic from here
+    # set region in the environment to make it available to all the boto3 calls
+    if "region" in args and args.region:
+        os.environ["AWS_DEFAULT_REGION"] = args.region
 
     LOGGER.debug("Handling CLI command %s", args.operation)  # ToDo: change the level to info after finishing API.
     LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
