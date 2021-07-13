@@ -48,9 +48,13 @@ class APIOperationException(Exception):
         self.data = data
 
 
+class ParameterException(Exception):
+    def __init__(self, data):
+        self.data = data
+
+
 def _exit_msg(msg):
-    print(json.dumps({'message': msg}, indent=2))
-    sys.exit(1)
+    raise ParameterException({'message': msg})
 
 
 def bool_converter(param, in_str):
@@ -72,8 +76,11 @@ def re_validator(rexp_str, param, in_str):
 
 def read_file_b64(path):
     """Takes file path, reads the file and converts to base64 encoded string"""
-    with open(path) as file:
-        file_data = file.read()
+    try:
+        with open(path) as file:
+            file_data = file.read()
+    except FileNotFoundError:
+        _exit_msg(f"Bad Request: File not found: '{path}'")
     return base64.b64encode(file_data.encode('utf-8')).decode('utf-8')
 
 
@@ -229,14 +236,17 @@ def main():
     except KeyboardInterrupt:
         LOGGER.debug("Received KeyboardInterrupt. Exiting.")
         sys.exit(1)
+    except ParameterException as e:
+        print(json.dumps(e.data, indent=2))
+        sys.exit(1)
     except APIOperationException as e:
         import traceback
         with open(get_cli_log_file(), 'a+') as outfile:
             traceback.print_exc(file=outfile)
         print(json.dumps(e.data, indent=2))
+        sys.exit(1)
     except Exception as e:
         LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
-
         sys.exit(1)
 
 
