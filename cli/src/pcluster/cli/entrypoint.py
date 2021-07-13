@@ -81,6 +81,9 @@ def read_file_b64(path):
             file_data = file.read()
     except FileNotFoundError:
         _exit_msg(f"Bad Request: File not found: '{path}'")
+    except UnicodeDecodeError:
+        _exit_msg(f"Bad Request: Unicode error: Perhaps input file '{path}' is not yaml.")
+
     return base64.b64encode(file_data.encode('utf-8')).decode('utf-8')
 
 
@@ -121,7 +124,8 @@ def dispatch(model, args):
 
     # middleware provides an opportunity to customize the calling of the
     # underlying API function on a per-operation basis
-    if operation in middleware_hooks():
+    middleware = middleware_hooks()
+    if operation in middleware:
         return middleware[operation](dispatch_func, body, kwargs)
     else:
         return dispatch_func(**kwargs)
