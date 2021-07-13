@@ -20,7 +20,7 @@ def readme():
         return f.read()
 
 
-VERSION = "2.11.0"
+VERSION = "2.11.1"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
