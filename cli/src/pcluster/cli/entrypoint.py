@@ -188,6 +188,9 @@ def run(sys_args, spec=None):
 
     if args.debug:
         logging.getLogger("pcluster").setLevel(logging.DEBUG)
+
+    # Remove the debug parameter from args since it should not persist to api
+    # operations (the above setting should be sufficient.)
     if 'debug' in args.__dict__:
         del args.__dict__['debug']
 
