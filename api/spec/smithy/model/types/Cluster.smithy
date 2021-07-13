@@ -47,12 +47,13 @@ structure ClusterInfoSummary {
 string ClusterStatus
 
 @enum([
-    {name: "START_REQUESTED", value: "START_REQUESTED"},
-    {name: "STARTING", value: "STARTING"},
-    {name: "RUNNING", value: "RUNNING"},
-    {name: "STOP_REQUESTED", value: "STOP_REQUESTED"},
-    {name: "STOPPING", value: "STOPPING"},
-    {name: "STOPPED", value: "STOPPED"},
+    {name: "START_REQUESTED", value: "START_REQUESTED"},  // works only with Slurm
+    {name: "STARTING", value: "STARTING"},  // works only with Slurm
+    {name: "RUNNING", value: "RUNNING"},  // works only with Slurm
+    {name: "STOP_REQUESTED", value: "STOP_REQUESTED"},  // works only with Slurm
+    {name: "STOPPING", value: "STOPPING"},  // works only with Slurm
+    {name: "STOPPED", value: "STOPPED"},  // works only with Slurm
+    {name: "UNKNOWN", value: "UNKNOWN"},  // works only with Slurm
     {name: "ENABLED", value: "ENABLED"},  // works only with AWS Batch
     {name: "DISABLED", value: "DISABLED"},  // works only with AWS Batch
 ])
