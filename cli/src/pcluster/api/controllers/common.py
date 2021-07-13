@@ -37,7 +37,7 @@ from pcluster.utils import get_installed_version
 LOGGER = logging.getLogger(__name__)
 
 
-def configure_aws_region(is_query_string_arg: bool = True):
+def configure_aws_region(body_name: str = None):
     """
     Handle region validation and configuration for API controllers.
 
@@ -51,18 +51,11 @@ def configure_aws_region(is_query_string_arg: bool = True):
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            region = None
-            # the region may either be specified in the query parameters, in
-            # which case we can simply look into the keyword arguments.
-            # Otherwise, it may be specified in the body -- which may either be
-            # in the flask request if called via flask or in the body which is
-            # the fisrt arg
-            if is_query_string_arg:
+            if body_name is not None:
+                body = kwargs.get(body_name, request and request.get_json())
+                region = body.get("region")
+            else:
                 region = kwargs.get("region")
-            elif request:
-                region = request.get_json().get("region")
-            elif len(args) > 0:
-                region = args[0].get("region")
 
             if not region:
                 region = os.environ.get("AWS_DEFAULT_REGION")
