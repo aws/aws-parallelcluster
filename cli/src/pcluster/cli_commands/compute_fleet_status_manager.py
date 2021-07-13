@@ -31,6 +31,8 @@ class ComputeFleetStatus(Enum):
     STOP_REQUESTED = "STOP_REQUESTED"  # A request to stop the fleet has been submitted.
     START_REQUESTED = "START_REQUESTED"  # A request to start the fleet has been submitted.
     UNKNOWN = "UNKNOWN"  # Cannot determine fleet status
+    # PROTECTED indicates that some partitions have consistent bootstrap failures. Affected partitions are inactive.
+    PROTECTED = "PROTECTED"
 
     def __str__(self):
         return str(self.value)

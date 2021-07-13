@@ -16,7 +16,9 @@ from assertpy import assert_that
 
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.update_policy import UpdatePolicy
+from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.utils import load_yaml_dict
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.test_utils import dummy_cluster
 
 default_cluster_params = {
@@ -25,6 +27,8 @@ default_cluster_params = {
     "additional_sg": "sg-12345678",
     "max_count": 10,
     "compute_instance_type": "t2.micro",
+    "shared_dir": "mountdir1",
+    "ebs_encrypted": True,
 }
 
 
@@ -101,17 +105,27 @@ def _compare_changes(changes, expected_changes):
             id="change additional security group",
         ),
         pytest.param(
-            ["Scheduling", "Slurm", "Queues[queue1]", "ComputeResources[compute-resource1]"],
+            ["SharedStorage[ebs1]", "EbsSettings"],
+            "ebs_encrypted",
+            "Encrypted",
+            True,
+            False,
+            UpdatePolicy.UNSUPPORTED,
+            False,
+            id="change ebs settings encrypted",
+        ),
+        pytest.param(
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
             "max_count",
             "MaxCount",
-            0,
             1,
+            2,
             UpdatePolicy.MAX_COUNT,
             False,
             id="change compute resources max count",
         ),
         pytest.param(
-            ["Scheduling", "Slurm", "Queues[queue1]", "ComputeResources[compute-resource1]"],
+            ["Scheduling", "SlurmQueues[queue1]", "ComputeResources[compute-resource1]"],
             "compute_instance_type",
             "InstanceType",
             "t2.micro",
@@ -123,6 +137,7 @@ def _compare_changes(changes, expected_changes):
     ],
 )
 def test_single_param_change(
+    mocker,
     test_datadir,
     pcluster_config_reader,
     change_path,
@@ -133,6 +148,7 @@ def test_single_param_change(
     change_update_policy,
     is_list,
 ):
+    mock_aws_api(mocker)
     dst_config_file = "pcluster.config.dst.yaml"
     _duplicate_config_file(dst_config_file, test_datadir)
 
@@ -141,13 +157,13 @@ def test_single_param_change(
     src_dict[template_rendering_key] = src_param_value
 
     src_config_file = pcluster_config_reader(**src_dict)
-    src_conf = load_yaml_dict(src_config_file)
+    src_conf = _load_config(src_config_file)
 
     dst_dict = {}
     dst_dict.update(default_cluster_params)
     dst_dict[template_rendering_key] = dst_param_value
     dst_config_file = pcluster_config_reader(dst_config_file, **dst_dict)
-    dst_conf = load_yaml_dict(dst_config_file)
+    dst_conf = _load_config(dst_config_file)
 
     if is_list:
         expected_change = Change(
@@ -157,10 +173,15 @@ def test_single_param_change(
         expected_change = Change(
             change_path, param_key, src_param_value, dst_param_value, change_update_policy, is_list=False
         )
-    _check_patch(src_conf, dst_conf, [expected_change], change_update_policy)
+    _check_patch(src_conf.source_config, dst_conf.source_config, [expected_change], change_update_policy)
 
 
-def test_multiple_param_changes(pcluster_config_reader, test_datadir):
+def _load_config(config_file):
+    return ClusterSchema().load(load_yaml_dict(config_file))
+
+
+def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
+    mock_aws_api(mocker)
     dst_config_file = "pcluster.config.dst.yaml"
     _duplicate_config_file(dst_config_file, test_datadir)
 
@@ -171,7 +192,7 @@ def test_multiple_param_changes(pcluster_config_reader, test_datadir):
     src_dict["additional_sg"] = "sg-12345678"
 
     src_config_file = pcluster_config_reader(**src_dict)
-    src_conf = load_yaml_dict(src_config_file)
+    src_conf = _load_config(src_config_file)
 
     dst_dict = {}
     dst_dict.update(default_cluster_params)
@@ -180,7 +201,7 @@ def test_multiple_param_changes(pcluster_config_reader, test_datadir):
     dst_dict["additional_sg"] = "sg-1234567a"
 
     dst_config_file = pcluster_config_reader(dst_config_file, **dst_dict)
-    dst_conf = load_yaml_dict(dst_config_file)
+    dst_conf = _load_config(dst_config_file)
 
     expected_changes = [
         Change(
@@ -192,7 +213,7 @@ def test_multiple_param_changes(pcluster_config_reader, test_datadir):
             is_list=False,
         ),
         Change(
-            ["Scheduling", "Slurm", "Queues[queue1]", "Networking"],
+            ["Scheduling", "SlurmQueues[queue1]", "Networking"],
             "SubnetIds",
             ["subnet-12345678"],
             ["subnet-1234567a"],
@@ -209,7 +230,7 @@ def test_multiple_param_changes(pcluster_config_reader, test_datadir):
         ),
     ]
 
-    _check_patch(src_conf, dst_conf, expected_changes, UpdatePolicy.UNSUPPORTED)
+    _check_patch(src_conf.source_config, dst_conf.source_config, expected_changes, UpdatePolicy.UNSUPPORTED)
 
 
 def _test_equal_configs(base_conf, target_conf):
@@ -225,8 +246,8 @@ def _test_less_target_sections(base_conf, target_conf):
 
     # update some values in the target config for the remaining ebs
     target_conf["SharedStorage"][0]["MountDir"] = "vol1"
-    target_conf["SharedStorage"][0]["Ebs"]["Iops"] = 20
-    target_conf["SharedStorage"][0]["Ebs"]["VolumeType"] = "gp2"
+    target_conf["SharedStorage"][0]["EbsSettings"]["Iops"] = 20
+    target_conf["SharedStorage"][0]["EbsSettings"]["VolumeType"] = "gp2"
 
     # The patch must show multiple differences: one for EBS settings and one for missing ebs section in target conf
     _check_patch(
@@ -245,8 +266,15 @@ def _test_less_target_sections(base_conf, target_conf):
                 is_list=True,
             ),
             Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
-            Change(["SharedStorage[ebs2]", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
-            Change(["SharedStorage[ebs2]", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]", "EbsSettings"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
+            Change(
+                ["SharedStorage[ebs2]", "EbsSettings"],
+                "VolumeType",
+                "gp3",
+                "gp2",
+                UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -272,8 +300,8 @@ def _test_more_target_sections(base_conf, target_conf):
     # update some values in the target config for the remaining ebs
     target_storage = _get_storage_by_name(target_conf, "ebs2")
     target_storage["MountDir"] = "vol1"
-    target_storage["Ebs"]["Iops"] = 20
-    target_storage["Ebs"]["VolumeType"] = "gp2"
+    target_storage["EbsSettings"]["Iops"] = 20
+    target_storage["EbsSettings"]["VolumeType"] = "gp2"
 
     # The patch must show multiple differences: changes for EBS settings and one for missing ebs section in base conf
     _check_patch(
@@ -292,8 +320,15 @@ def _test_more_target_sections(base_conf, target_conf):
                 is_list=True,
             ),
             Change(["SharedStorage[ebs2]"], "MountDir", "vol2", "vol1", UpdatePolicy.UNSUPPORTED, is_list=False),
-            Change(["SharedStorage[ebs2]", "Ebs"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
-            Change(["SharedStorage[ebs2]", "Ebs"], "VolumeType", "gp3", "gp2", UpdatePolicy.UNSUPPORTED, is_list=False),
+            Change(["SharedStorage[ebs2]", "EbsSettings"], "Iops", None, 20, UpdatePolicy.SUPPORTED, is_list=False),
+            Change(
+                ["SharedStorage[ebs2]", "EbsSettings"],
+                "VolumeType",
+                "gp3",
+                "gp2",
+                UpdatePolicy.UNSUPPORTED,
+                is_list=False,
+            ),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -367,7 +402,8 @@ def _test_different_names(base_conf, target_conf):
         _test_different_names,
     ],
 )
-def test_adaptation(test_datadir, pcluster_config_reader, test):
+def test_adaptation(mocker, test_datadir, pcluster_config_reader, test):
+    mock_aws_api(mocker)
     base_config_file_name = "pcluster.config.base.yaml"
     _duplicate_config_file(base_config_file_name, test_datadir)
     target_config_file_name = "pcluster.config.dst.yaml"
@@ -376,10 +412,10 @@ def test_adaptation(test_datadir, pcluster_config_reader, test):
     base_config_file = pcluster_config_reader(base_config_file_name, **default_cluster_params)
     target_config_file = pcluster_config_reader(target_config_file_name, **default_cluster_params)
 
-    base_conf = load_yaml_dict(base_config_file)
-    target_conf = load_yaml_dict(target_config_file)
+    base_conf = _load_config(base_config_file)
+    target_conf = _load_config(target_config_file)
 
-    test(base_conf, target_conf)
+    test(base_conf.source_config, target_conf.source_config)
 
 
 @pytest.mark.parametrize(
@@ -400,12 +436,14 @@ def test_adaptation(test_datadir, pcluster_config_reader, test):
     ],
 )
 def test_patch_check_cluster_resource_bucket(
+    mocker,
     old_bucket_name,
     new_bucket_name,
     expected_error_row,
     test_datadir,
     pcluster_config_reader,
 ):
+    mock_aws_api(mocker)
     expected_message_rows = [
         ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
         # ec2_iam_role is to make sure other parameters are not affected by cluster_resource_bucket custom logic
@@ -428,15 +466,17 @@ def test_patch_check_cluster_resource_bucket(
         ]
         expected_message_rows.append(error_message_row)
     src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "some_old_role"}
+    src_dict.update(default_cluster_params)
     dst_dict = {"cluster_resource_bucket": new_bucket_name, "ec2_iam_role": "some_new_role"}
+    dst_dict.update(default_cluster_params)
     dst_config_file = "pcluster.config.dst.yaml"
     _duplicate_config_file(dst_config_file, test_datadir)
 
     src_config_file = pcluster_config_reader(**src_dict)
-    src_conf = load_yaml_dict(src_config_file)
+    src_conf = _load_config(src_config_file)
     dst_config_file = pcluster_config_reader(dst_config_file, **dst_dict)
-    dst_conf = load_yaml_dict(dst_config_file)
-    patch = ConfigPatch(dummy_cluster(), base_config=src_conf, target_config=dst_conf)
+    dst_conf = _load_config(dst_config_file)
+    patch = ConfigPatch(dummy_cluster(), base_config=src_conf.source_config, target_config=dst_conf.source_config)
 
     patch_allowed, rows = patch.check()
     assert_that(len(rows)).is_equal_to(len(expected_message_rows))

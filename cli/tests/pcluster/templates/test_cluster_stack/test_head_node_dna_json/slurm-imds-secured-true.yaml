@@ -10,7 +10,7 @@ HeadNode:
     Secured: True
 Scheduling:
   Scheduler: slurm
-  Queues:
+  SlurmQueues:
     - Name: queue1
       Networking:
         SubnetIds:

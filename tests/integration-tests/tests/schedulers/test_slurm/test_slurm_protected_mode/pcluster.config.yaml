@@ -1,0 +1,55 @@
+Image:
+  Os: {{ os }}
+CustomS3Bucket: {{ bucket }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket }}
+        EnableWriteAccess: true
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: broken
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: broken-static
+          InstanceType: c5.large # instance type has bootstrap failure
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket }}
+            EnableWriteAccess: true
+    - Name: half-broken
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: broken-dynamic
+          InstanceType: c5.large # instance type has bootstrap failure
+        - Name: working-static
+          InstanceType: c5.xlarge # instance type works as expected
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket }}
+            EnableWriteAccess: true
+    - Name: normal
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: normal
+          InstanceType: c5.xlarge # instance type works as expected
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket }}
+            EnableWriteAccess: true
+SharedStorage:
+  - MountDir: /shared  # Test comment
+    Name: name1
+    StorageType: Ebs

@@ -15,7 +15,7 @@ HeadNode:
     Secured: False
 Scheduling:
   Scheduler: awsbatch
-  Queues:
+  AwsBatchQueues:
     - Name: queue-0
       CapacityType: SPOT
       Networking:

@@ -277,13 +277,16 @@ class Ec2Client(Boto3Client):
         ]
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_instances(self, filters):
+    def describe_instances(self, filters, next_token=None):
         """Retrieve a filtered list of instances."""
-        return [
-            instance
-            for result in self._paginate_results(self._client.describe_instances, Filters=filters)
-            for instance in result.get("Instances")
-        ]
+        describe_stacks_kwargs = {}
+        if next_token:
+            describe_stacks_kwargs["NextToken"] = next_token
+        response = self._client.describe_instances(Filters=filters, **describe_stacks_kwargs)
+        instances = []
+        for reservation in response["Reservations"]:
+            instances.extend(reservation["Instances"])
+        return instances, response.get("NextToken")
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached

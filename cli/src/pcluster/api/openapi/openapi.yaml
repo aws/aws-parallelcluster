@@ -784,12 +784,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
           description: UnauthorizedClientError 401 response
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
-          description: NotFoundException 404 response
         "429":
           content:
             application/json:
@@ -1264,8 +1258,8 @@ components:
       - amiId
       - architecture
       - name
-      - version
       - os
+      - version
       title: AmiInfo
       type: object
     BadRequestExceptionResponseContent:
@@ -1344,7 +1338,6 @@ components:
           type: array
       required:
       - image
-      - validationMessages
       title: BuildImageResponseContent
       type: object
     Change:
@@ -1434,6 +1427,49 @@ components:
       - region
       - version
       title: ClusterInfoSummary
+      type: object
+    ClusterInstance:
+      example:
+        launchTime: 2000-01-23T04:56:07.000+00:00
+        instanceId: instanceId
+        queueName: queueName
+        publicIpAddress: publicIpAddress
+        instanceType: instanceType
+        state: null
+        nodeType: null
+        privateIpAddress: privateIpAddress
+      properties:
+        launchTime:
+          format: date-time
+          title: launchTime
+          type: string
+        instanceId:
+          title: instanceId
+          type: string
+        queueName:
+          title: queueName
+          type: string
+        publicIpAddress:
+          title: publicIpAddress
+          type: string
+        instanceType:
+          title: instanceType
+          type: string
+        state:
+          $ref: '#/components/schemas/InstanceState'
+        nodeType:
+          $ref: '#/components/schemas/NodeType'
+        privateIpAddress:
+          title: privateIpAddress
+          type: string
+      required:
+      - instanceId
+      - instanceType
+      - launchTime
+      - nodeType
+      - privateIpAddress
+      - state
+      title: ClusterInstance
       type: object
     ClusterStatus:
       enum:
@@ -1572,7 +1608,6 @@ components:
           type: array
       required:
       - cluster
-      - validationMessages
       title: CreateClusterResponseContent
       type: object
     DeleteClusterResponseContent:
@@ -1612,21 +1647,25 @@ components:
         instances:
         - launchTime: 2000-01-23T04:56:07.000+00:00
           instanceId: instanceId
+          queueName: queueName
           publicIpAddress: publicIpAddress
           instanceType: instanceType
           state: null
+          nodeType: null
           privateIpAddress: privateIpAddress
         - launchTime: 2000-01-23T04:56:07.000+00:00
           instanceId: instanceId
+          queueName: queueName
           publicIpAddress: publicIpAddress
           instanceType: instanceType
           state: null
+          nodeType: null
           privateIpAddress: privateIpAddress
         nextToken: nextToken
       properties:
         instances:
           items:
-            $ref: '#/components/schemas/EC2Instance'
+            $ref: '#/components/schemas/ClusterInstance'
           title: instances
           type: array
         nextToken:
@@ -1747,16 +1786,16 @@ components:
       type: object
     DescribeImageResponseContent:
       example:
+        cloudformationStackStatusReason: cloudformationStackStatusReason
         imageConfiguration:
           s3Url: s3Url
+        imagebuilderImageStatusReason: imagebuilderImageStatusReason
         imageId: imageId
         imagebuilderImageStatus: null
-        imagebuilderImageStatusReason: imagebuilderImageStatusReason
         creationTime: 2000-01-23T04:56:07.000+00:00
         imageBuildStatus: null
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
-        cloudformationStackStatusReason: cloudformationStackStatusReason
         region: region
         ec2AmiInfo:
           amiName: amiName
@@ -1771,8 +1810,16 @@ components:
           architecture: architecture
         version: version
       properties:
+        cloudformationStackStatusReason:
+          description: Reason for the CloudFormation stack status
+          title: cloudformationStackStatusReason
+          type: string
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
+        imagebuilderImageStatusReason:
+          description: Reason for the ImageBuilder Image status.
+          title: imagebuilderImageStatusReason
+          type: string
         imageId:
           description: Id of the Image
           title: imageId
@@ -1786,16 +1833,8 @@ components:
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
-        cloudformationStackStatusReason:
-          description: Reason for the CloudFormation stack status
-          title: cloudformationStackStatusReason
-          type: string
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStatus'
-        imagebuilderImageStatusReason:
-          description: Reason for the ImageBuilder Image status.
-          title: imagebuilderImageStatusReason
-          type: string
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack
           title: cloudformationStackArn
@@ -1925,8 +1964,8 @@ components:
       required:
       - amiId
       - amiName
-      - description
       - architecture
+      - description
       - state
       - tags
       title: Ec2AmiInfo
@@ -2236,7 +2275,6 @@ components:
       required:
       - changeSet
       - cluster
-      - validationMessages
       title: UpdateClusterResponseContent
       type: object
     UpdateComputeFleetStatusRequestContent:

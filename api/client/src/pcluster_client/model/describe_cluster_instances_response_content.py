@@ -27,8 +27,8 @@ from pcluster_client.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
-    from pcluster_client.model.ec2_instance import EC2Instance
-    globals()['EC2Instance'] = EC2Instance
+    from pcluster_client.model.cluster_instance import ClusterInstance
+    globals()['ClusterInstance'] = ClusterInstance
 
 
 class DescribeClusterInstancesResponseContent(ModelNormal):
@@ -77,7 +77,7 @@ class DescribeClusterInstancesResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'instances': ([EC2Instance],),  # noqa: E501
+            'instances': ([ClusterInstance],),  # noqa: E501
             'next_token': (str,),  # noqa: E501
         }
 
@@ -107,7 +107,7 @@ class DescribeClusterInstancesResponseContent(ModelNormal):
         """DescribeClusterInstancesResponseContent - a model defined in OpenAPI
 
         Args:
-            instances ([EC2Instance]):
+            instances ([ClusterInstance]):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types

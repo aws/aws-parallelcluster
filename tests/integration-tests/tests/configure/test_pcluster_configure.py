@@ -192,20 +192,35 @@ def assert_config_contains_expected_values(
         {"parameter_path": ["HeadNode", "InstanceType"], "expected_value": instance},
         {"parameter_path": ["HeadNode", "Networking", "SubnetId"], "expected_value": headnode_subnet_id},
         {
-            "parameter_path": ["Scheduling", "Queues", 0, "Networking", "SubnetIds", 0],
+            "parameter_path": [
+                "Scheduling",
+                "AwsBatchQueues" if scheduler == "awsbatch" else "SlurmQueues",
+                0,
+                "Networking",
+                "SubnetIds",
+                0,
+            ],
             "expected_value": compute_subnet_id,
         },
     ]
 
-    compute_resource_path = ["Scheduling", "Queues", 0, "ComputeResources", 0]
     if scheduler == "slurm":
         param_validators += [
-            {"parameter_path": compute_resource_path + ["InstanceType"], "expected_value": instance},
-            {"parameter_path": compute_resource_path + ["MinCount"], "expected_value": 0},
+            {
+                "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "InstanceType"],
+                "expected_value": instance,
+            },
+            {
+                "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "MinCount"],
+                "expected_value": 0,
+            },
         ]
     elif scheduler == "awsbatch":
         param_validators += [
-            {"parameter_path": compute_resource_path + ["MinvCpus"], "expected_value": 1},
+            {
+                "parameter_path": ["Scheduling", "AwsBatchQueues", 0, "ComputeResources", 0, "MinvCpus"],
+                "expected_value": 1,
+            },
         ]
 
     for validator in param_validators:

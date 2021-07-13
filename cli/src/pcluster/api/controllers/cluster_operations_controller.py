@@ -123,7 +123,7 @@ def create_cluster(
                 version=get_installed_version(),
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.CREATE_IN_PROGRESS),
             ),
-            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures),
+            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
     except ConfigValidationError as e:
         raise _handle_config_validation_error(e)
@@ -174,6 +174,7 @@ def delete_cluster(cluster_name, region=None):
 
 
 @configure_aws_region()
+@convert_errors()
 def describe_cluster(cluster_name, region=None):
     """
     Get detailed information about an existing cluster.
@@ -239,6 +240,7 @@ def describe_cluster(cluster_name, region=None):
 
 
 @configure_aws_region()
+@convert_errors()
 def list_clusters(region=None, next_token=None, cluster_status=None):
     """
     Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.
@@ -347,7 +349,7 @@ def update_cluster(
                 version=cluster.stack.version,
                 cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.UPDATE_IN_PROGRESS),
             ),
-            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures),
+            validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
             change_set=change_set,
         )
     except ConfigValidationError as e:
@@ -371,13 +373,13 @@ def _handle_cluster_update_error(e):
     change_set, errors = _analyze_changes(e.update_changes)
     return UpdateClusterBadRequestException(
         UpdateClusterBadRequestExceptionResponseContent(
-            message=str(e), change_set=change_set, update_validation_errors=errors
+            message=str(e), change_set=change_set, update_validation_errors=errors or None
         )
     )
 
 
 def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBadRequestException:
-    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures)
+    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
     return CreateClusterBadRequestException(
         CreateClusterBadRequestExceptionResponseContent(
             configuration_validation_errors=config_validation_messages, message="Invalid cluster configuration"

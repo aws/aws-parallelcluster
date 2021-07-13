@@ -15,7 +15,7 @@ from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
-from pcluster.aws.common import AWSClientError, StackNotFoundError
+from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor
 from pcluster.config.update_policy import UpdatePolicy
@@ -119,7 +119,7 @@ class TestCreateCluster:
                     "name": "cluster",
                     "clusterConfiguration": BASE64_ENCODED_CONFIG,
                 },
-                [],
+                None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
                 False,
@@ -152,8 +152,6 @@ class TestCreateCluster:
             rollback_on_failure,
         )
 
-        messages = [{"level": "WARNING", "message": "message", "type": "type"}] if errors else []
-
         expected_response = {
             "cluster": {
                 "cloudformationStackArn": "id",
@@ -163,8 +161,10 @@ class TestCreateCluster:
                 "region": create_cluster_request_content["region"],
                 "version": "3.0.0",
             },
-            "validationMessages": messages,
         }
+
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(202)
@@ -735,7 +735,8 @@ class TestDescribeCluster:
     ):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
         mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.describe_instances", return_value=[headnode_data] if headnode_data else []
+            "pcluster.aws.ec2.Ec2Client.describe_instances",
+            return_value=([headnode_data], "") if headnode_data else ([], ""),
         )
         mocker.patch(
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
@@ -815,6 +816,28 @@ class TestDescribeCluster:
                     " version."
                 }
             )
+
+    @pytest.mark.parametrize(
+        "error_type, error_code, http_code",
+        [
+            (BadRequestError, AWSClientError.ErrorCode.VALIDATION_ERROR.value, 400),
+            (LimitExceededError, AWSClientError.ErrorCode.THROTTLING_EXCEPTION.value, 429),
+            (LimitExceededError, AWSClientError.ErrorCode.REQUEST_LIMIT_EXCEEDED.value, 429),
+        ],
+    )
+    def test_error_conversion(self, client, mocker, error_type, error_code, http_code):
+        error = error_type("describe_stack", "error message", error_code)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=error)
+
+        response = self._send_test_request(client, "us-east-1")
+
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(http_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 class TestListClusters:
@@ -1009,20 +1032,27 @@ class TestListClusters:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
-    def test_aws_api_errors(self, client, mocker):
-        # Generic AWSClientError error handling is tested in test_flask_app
-        error = (
-            AWSClientError(
-                "list_pcluster_stacks", "Testing validation error", AWSClientError.ErrorCode.VALIDATION_ERROR.value
-            ),
-        )
+    @pytest.mark.parametrize(
+        "error_type, error_code, http_code",
+        [
+            (BadRequestError, AWSClientError.ErrorCode.VALIDATION_ERROR.value, 400),
+            (LimitExceededError, AWSClientError.ErrorCode.THROTTLING_EXCEPTION.value, 429),
+            (LimitExceededError, AWSClientError.ErrorCode.REQUEST_LIMIT_EXCEEDED.value, 429),
+        ],
+    )
+    def test_error_conversion(self, client, mocker, error_type, error_code, http_code):
+        error = error_type("list_pcluster_stacks", "error message", error_code)
         mocker.patch("pcluster.aws.cfn.CfnClient.list_pcluster_stacks", side_effect=error)
 
         response = self._send_test_request(client, "us-east-1")
 
+        expected_response = {"message": "error message"}
+        if error_type == BadRequestError:
+            expected_response["message"] = "Bad Request: " + expected_response["message"]
+
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(400)
-            assert_that(response.get_json()).is_equal_to({"message": "Bad Request: Testing validation error"})
+            assert_that(response.status_code).is_equal_to(http_code)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
 
 class TestUpdateCluster:
@@ -1093,7 +1123,7 @@ class TestUpdateCluster:
                 {
                     "clusterConfiguration": BASE64_ENCODED_CONFIG,
                 },
-                [],
+                None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
                 False,
@@ -1134,8 +1164,6 @@ class TestUpdateCluster:
             force_update,
         )
 
-        messages = [{"level": "WARNING", "message": "message", "type": "type"}] if errors else []
-
         expected_response = {
             "cluster": {
                 "cloudformationStackArn": stack_data["StackId"],
@@ -1145,11 +1173,13 @@ class TestUpdateCluster:
                 "region": "us-east-1",
                 "version": "3.0.0",
             },
-            "validationMessages": messages,
             "changeSet": [
                 {"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"}
             ],
         }
+
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(202)

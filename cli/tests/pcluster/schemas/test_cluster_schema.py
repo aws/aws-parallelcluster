@@ -17,7 +17,7 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SlurmSchema
+from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -79,85 +79,126 @@ def test_image_schema(os, custom_ami, failure_message):
         assert_that(image.custom_ami).is_equal_to(custom_ami)
 
 
-DUMMY_REQUIRED_QUEUE = [
-    {
-        "Name": "queue1",
-        "Networking": {"SubnetIds": ["subnet-12345678"]},
-        "ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}],
-    }
-]
-
-FAKE_QUEUE_LIST = [
-    {
-        "Name": "queue1",
-        "Networking": {"SubnetIds": ["subnet-12345678"]},
-        "ComputeResources": [{"InstanceType": "c5.xlarge"}, {"InstanceType": "c4.xlarge"}],
-    },
-    {
-        "Name": "queue2",
-        "Networking": {"SubnetIds": ["subnet-12345678"]},
-        "ComputeResources": [{"InstanceType": "c5.2xlarge", "MaxCount": 5}, {"InstanceType": "c4.2xlarge"}],
-    },
-]
-
-
-@pytest.mark.parametrize(
-    "queues, failure_message",
-    [
-        (None, "Missing data for required field"),
-        (DUMMY_REQUIRED_QUEUE, None),
-    ],
-)
-def test_slurm_scheduling_schema(mocker, queues, failure_message):
-    mock_aws_api(mocker)
-    scheduling_schema = {}
-    if queues:
-        scheduling_schema["Queues"] = queues
-
-    if failure_message:
-        with pytest.raises(ValidationError, match=failure_message):
-            SlurmSchema().load(scheduling_schema)
-    else:
-        SlurmSchema().load(scheduling_schema)
-
-
-DUMMY_EBS_STORAGE = {
-    "MountDir": "/my/mount/point",
-    "StorageType": "EBS",
-    "Settings": {
-        "VolumeType": "String",
-        "Iops": 100,
-        "Size": 150,
-        "Encrypted": True,
-        "KmsKeyId": "String",
-        "SnapshotId": "String",
-        "VolumeId": "String",
-    },
+DUMMY_AWSBATCH_QUEUE = {
+    "Name": "queue1",
+    "Networking": {"SubnetIds": ["subnet-12345678"]},
+    "ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}],
 }
 
-"""
-# Mount directory is going to be tested in test for shared storage
+DUMMY_SLURM_QUEUE = {
+    "Name": "queue1",
+    "Networking": {"SubnetIds": ["subnet-12345678"]},
+    "ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}],
+}
+
+
 @pytest.mark.parametrize(
-    "mount_dir, volume_type, failure_message",
+    "config_dict, failure_message",
     [
-        (None, None, "Missing MountDir"),
-        ("mount-point", None, "Missing Settings"),
-        ("mount-point", "gp2", None),
+        # failures
+        ({"Scheduler": "awsbatch"}, "AwsBatchQueues section must be specified"),
+        ({"Scheduler": "slurm"}, "SlurmQueues section must be specified"),
+        (
+            {"Scheduler": "slurm", "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
+            "Queues section is not appropriate to the Scheduler",
+        ),
+        (
+            {"Scheduler": "awsbatch", "SlurmQueues": [DUMMY_SLURM_QUEUE]},
+            "Queues section is not appropriate to the Scheduler",
+        ),
+        (
+            {"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE], "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
+            "Queues section is not appropriate to the Scheduler",
+        ),
+        (
+            {"Scheduler": "slurm", "SlurmSettings": {}, "AwsBatchSettings": {}},
+            "Multiple .*Settings sections cannot be specified in the Scheduling section",
+        ),
+        # success
+        ({"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE]}, None),
+        (
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [
+                    DUMMY_SLURM_QUEUE,
+                    {
+                        "Name": "queue2",
+                        "Networking": {"SubnetIds": ["subnet-12345678"]},
+                        "ComputeResources": [
+                            {"Name": "compute_resource3", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                            {"Name": "compute_resource4", "InstanceType": "c4.2xlarge"},
+                        ],
+                    },
+                ],
+            },
+            None,
+        ),
     ],
 )
-def test_ebs_schema(mount_dir, volume_type, failure_message):
-    ebs_schema = {"StorageType": "EBS"}
-    if mount_dir:
-        ebs_schema["MountDir"] = mount_dir
-    if volume_type:
-        ebs_schema["Settings"] = {"VolumeType": volume_type}
+def test_scheduling_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SharedStorageSchema().load(ebs_schema)
+            SchedulingSchema().load(config_dict)
     else:
-        ebs_config = SharedStorageSchema().load(ebs_schema)
-        assert_that(ebs_config).is_instance_of(EbsConfig)
-        assert_that(ebs_config.mount_dir).is_equal_to(mount_dir)
-        assert_that(ebs_config.volume_type).is_equal_to(volume_type)
-"""
+        SchedulingSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # failures
+        ({"StorageType": "Ebs"}, "Missing data for required field."),
+        ({"StorageType": "Ebs", "MountDir": "mount/tmp"}, "Missing data for required field."),
+        ({"StorageType": "Ebs", "Name": "name"}, "Missing data for required field."),
+        ({"StorageType": "Efs", "Name": "name"}, "Missing data for required field."),
+        (
+            {
+                "StorageType": "Ebs",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxLustreSettings": {"CopyTagsToBackups": True},
+            },
+            "SharedStorage > .*Settings section is not appropriate to the",
+        ),
+        (
+            {"StorageType": "Efs", "Name": "name", "MountDir": "mount/tmp", "EbsSettings": {"Encrypted": True}},
+            "SharedStorage > .*Settings section is not appropriate to the",
+        ),
+        (
+            {"StorageType": "FsxLustre", "Name": "name", "MountDir": "mount/tmp", "EfsSettings": {"Encrypted": True}},
+            "SharedStorage > .*Settings section is not appropriate to the",
+        ),
+        (
+            {
+                "StorageType": "Efs",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "EbsSettings": {"Encrypted": True},
+                "EfsSettings": {"Encrypted": True},
+            },
+            "Multiple .*Settings sections cannot be specified in the SharedStorage items",
+        ),
+        # success
+        (
+            {
+                "StorageType": "FsxLustre",
+                "Name": "name",
+                "MountDir": "mount/tmp",
+                "FsxLustreSettings": {"CopyTagsToBackups": True},
+            },
+            None,
+        ),
+        ({"StorageType": "Efs", "Name": "name", "MountDir": "mount/tmp", "EfsSettings": {"Encrypted": True}}, None),
+        ({"StorageType": "Ebs", "Name": "name", "MountDir": "mount/tmp", "EbsSettings": {"Encrypted": True}}, None),
+    ],
+)
+def test_shared_storage_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SharedStorageSchema().load(config_dict)
+    else:
+        SharedStorageSchema().load(config_dict)
