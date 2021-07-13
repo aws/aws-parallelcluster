@@ -20,6 +20,7 @@ from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
 from pcluster.aws.logs import LogsClient
+from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
 from pcluster.aws.sts import StsClient
@@ -53,6 +54,7 @@ class AWSApi:
         self._iam = None
         self._ddb_resource = None
         self._logs = None
+        self._route53 = None
 
     @property
     def cfn(self):
@@ -144,6 +146,13 @@ class AWSApi:
         if not self._logs:
             self._logs = LogsClient()
         return self._logs
+
+    @property
+    def route53(self):
+        """STS client."""
+        if not self._route53:
+            self._route53 = Route53Client()
+        return self._route53
 
     @staticmethod
     def instance():

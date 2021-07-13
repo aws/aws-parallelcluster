@@ -49,6 +49,7 @@ from pcluster.validators.cluster_validators import (
     CustomAmiTagValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
+    DNSVPCValidator,
     DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
@@ -1439,6 +1440,10 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
         )
+        if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
+            self._register_validator(
+                DNSVPCValidator, hosted_zone_id=self.scheduling.settings.dns.hosted_zone_id, headnode_vpc=self.vpc_id
+            )
 
         for queue in self.scheduling.queues:
             self._register_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)
