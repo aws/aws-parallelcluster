@@ -41,7 +41,7 @@ def configure_aws_region(is_query_string_arg: bool = True):
     """
     Handle region validation and configuration for API controllers.
 
-    When a controller is decorated with @configure_aws_region, the region value passed either as a query stirng
+    When a controller is decorated with @configure_aws_region, the region value passed either as a query string
     argument or as a body parameter is validated and then set in the environment so that all AWS clients make use
     of it.
 
@@ -51,7 +51,19 @@ def configure_aws_region(is_query_string_arg: bool = True):
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            region = kwargs.get("region") if is_query_string_arg else args[0].get("region")
+            region = None
+            # the region may either be specified in the query parameters, in
+            # which case we can simply look into the keyword arguments.
+            # Otherwise, it may be specified in the body -- which may either be
+            # in the flask request if called via flask or in the body which is
+            # the fisrt arg
+            if is_query_string_arg:
+                region = kwargs.get("region")
+            elif request:
+                region = request.get_json().get("region")
+            elif len(args) > 0:
+                region = args[0].get("region")
+
             if not region:
                 region = os.environ.get("AWS_DEFAULT_REGION")
 
