@@ -1504,6 +1504,7 @@ components:
       - STOP_REQUESTED
       - STOPPING
       - STOPPED
+      - UNKNOWN
       - ENABLED
       - DISABLED
       title: ComputeFleetStatus
