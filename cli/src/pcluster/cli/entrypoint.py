@@ -48,25 +48,25 @@ class APIOperationException(Exception):
         self.data = data
 
 
+def _exit_msg(msg):
+    print(json.dumps({'message': msg}, indent=2))
+    sys.exit(1)
+
+
 def bool_converter(param, in_str):
     """Takes a boolean string and converts it into a boolean value."""
     if in_str in {'false', 'False', 'FALSE', False}:
         return False
     elif in_str in {'true', 'True', 'TRUE', True}:
         return True
-
-    out = {'message': f"Bad Request: '{in_str}' should be  '{rexp_str}' - '{param}'"}
-    print(json.dumps(ret, indent=2))
-    sys.exit(1)
+    _exit_msg(f"Bad Request: Wrong type, expected 'boolean' for parameter '{param}'")
 
 
 def re_validator(rexp_str, param, in_str):
     """Takes a string and validates the input format."""
     rexp = re.compile(rexp_str)
     if rexp.match(in_str) is None:
-        out = {'message': f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'"}
-        print(json.dumps(ret, indent=2))
-        sys.exit(1)
+        _exit_msg(f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'")
     return in_str
 
 
