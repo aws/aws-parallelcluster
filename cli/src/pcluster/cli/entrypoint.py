@@ -132,7 +132,6 @@ def gen_parser(model):
 
         for param in operation['params']:
             help = param.get('description', '')
-            metavar = param['name'].upper() if len(param.get('enum', [])) > 4 else None
 
             # handle regexp parameter validation (or perform type coercion)
             if 'pattern' in param:
@@ -146,7 +145,6 @@ def gen_parser(model):
                                    choices=param.get('enum', None),
                                    nargs='+' if 'multi' in param else None,
                                    type=type_coerce,
-                                   metavar=metavar,
                                    help=help)
 
         subparser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
