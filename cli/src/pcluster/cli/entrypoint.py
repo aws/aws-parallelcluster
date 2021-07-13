@@ -267,7 +267,7 @@ def main():
         print(json.dumps(e.data, indent=2))
         sys.exit(1)
     except APIOperationException as e:
-        LOGGER.error(exc_info=True)
+        LOGGER.error(json.dumps(e.data), exc_info=True)
         print(json.dumps(e.data, indent=2))
         sys.exit(1)
     except Exception as e:
