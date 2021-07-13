@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import yaml
-from functools import lru_cache
 import json
 from connexion.utils import get_function_from_name
 from pcluster.utils import to_kebab_case, to_snake_case
@@ -74,7 +73,6 @@ def _resolve_body(spec, operation):
     return new_params
 
 
-@lru_cache
 def package_spec():
     """Load the OpenAPI specification from the package."""
     with pkg_resources.open_text(openapi, "openapi.yaml") as spec_file:
