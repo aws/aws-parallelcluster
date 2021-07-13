@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+2.11.1
+-----
+
+**BUG FIXES**
+- Pin to version 1.247347.6b250880 of the CloudWatch agent due to performance impact of current latest version.
+
 2.11.0
 ------
 **ENHANCEMENTS**
