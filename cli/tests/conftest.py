@@ -197,14 +197,6 @@ def unset_env():
 
 
 @pytest.fixture()
-def run_cli_command():
-    def _run_cli_command(command):
-        run(command)
-
-    return _run_cli_command
-
-
-@pytest.fixture()
 def run_cli(mocker, capsys):
     def _run_cli(command, expect_failure=False, expect_message=None):
         mocker.patch.object(sys, "argv", command)
