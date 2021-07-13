@@ -268,9 +268,7 @@ def main():
         print(json.dumps(e.data, indent=2))
         sys.exit(1)
     except APIOperationException as e:
-        import traceback
-        with open(get_cli_log_file(), 'a+') as outfile:
-            traceback.print_exc(file=outfile)
+        LOGGER.error(exc_info=True)
         print(json.dumps(e.data, indent=2))
         sys.exit(1)
     except Exception as e:
