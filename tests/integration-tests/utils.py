@@ -329,6 +329,16 @@ def set_credentials(region, credential_arg):
                 aws_session_token=aws_credentials["SessionToken"],
             )
 
+            # Backup current credentials
+            credentials_to_backup = {
+                "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID"),
+                "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN"),
+            }
+            for key, value in credentials_to_backup.items():
+                if value:
+                    os.environ[f"BACKUP_{key}"] = value
+
             # Set credential for all cli command e.g. pcluster create
             os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
             os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
@@ -355,17 +365,22 @@ def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_ext
 def unset_credentials():
     """Unset credentials"""
     # Unset credential for all boto3 client
-    logging.info("Unsetting AWS credentials")
-    boto3.setup_default_session()
-    # Unset credential for cli command e.g. pcluster create
-    if "AWS_ACCESS_KEY_ID" in os.environ:
-        del os.environ["AWS_ACCESS_KEY_ID"]
-    if "AWS_SECRET_ACCESS_KEY" in os.environ:
-        del os.environ["AWS_SECRET_ACCESS_KEY"]
-    if "AWS_SESSION_TOKEN" in os.environ:
-        del os.environ["AWS_SESSION_TOKEN"]
     if "AWS_CREDENTIALS_FOR_REGION" in os.environ:
-        del os.environ["AWS_CREDENTIALS_FOR_REGION"]
+        logging.info("Unsetting AWS credentials")
+        # Unset credential for cli command e.g. pcluster create
+        credentials_to_restore = {
+            "AWS_ACCESS_KEY_ID": os.environ.get("BACKUP_AWS_ACCESS_KEY_ID"),
+            "AWS_SECRET_ACCESS_KEY": os.environ.get("BACKUP_AWS_SECRET_ACCESS_KEY"),
+            "AWS_SESSION_TOKEN": os.environ.get("BACKUP_AWS_SESSION_TOKEN"),
+            "AWS_CREDENTIALS_FOR_REGION": None,
+        }
+        for key, value in credentials_to_restore.items():
+            if value:
+                os.environ[key] = value
+                del os.environ[f"BACKUP_{key}"]
+            elif key in os.environ:
+                del os.environ[key]
+        boto3.setup_default_session()
 
 
 def set_logger_formatter(formatter):
