@@ -13,7 +13,7 @@ HeadNode:
         EnableWriteAccess: true
 Scheduling:
   Scheduler: slurm
-  Queues:
+  SlurmQueues:
     - Name: broken
       Networking:
         SubnetIds:

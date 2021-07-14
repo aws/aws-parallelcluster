@@ -41,7 +41,6 @@ structure BuildImageRequest {
 structure BuildImageResponse {
     @required
     image: ImageInfoSummary,
-    @required
     @documentation("List of messages collected during image config validation whose level is lower than the validationFailureLevel set by the user")
     validationMessages: ValidationMessages
 }

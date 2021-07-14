@@ -107,12 +107,12 @@ def build_image(
 
         return BuildImageResponseContent(
             image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
-            validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures),
+            validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,
         )
     except BadRequestImageBuilderActionError as e:
         errors = validation_results_to_config_validation_errors(e.validation_failures)
         raise BuildImageBadRequestException(
-            BuildImageBadRequestExceptionResponseContent(message=str(e), configuration_validation_errors=errors)
+            BuildImageBadRequestExceptionResponseContent(message=str(e), configuration_validation_errors=errors or None)
         )
 
 

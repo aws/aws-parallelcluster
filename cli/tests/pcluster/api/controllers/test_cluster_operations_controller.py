@@ -119,7 +119,7 @@ class TestCreateCluster:
                     "name": "cluster",
                     "clusterConfiguration": BASE64_ENCODED_CONFIG,
                 },
-                [],
+                None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
                 False,
@@ -152,8 +152,6 @@ class TestCreateCluster:
             rollback_on_failure,
         )
 
-        messages = [{"level": "WARNING", "message": "message", "type": "type"}] if errors else []
-
         expected_response = {
             "cluster": {
                 "cloudformationStackArn": "id",
@@ -163,8 +161,10 @@ class TestCreateCluster:
                 "region": create_cluster_request_content["region"],
                 "version": "3.0.0",
             },
-            "validationMessages": messages,
         }
+
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(202)
@@ -1123,7 +1123,7 @@ class TestUpdateCluster:
                 {
                     "clusterConfiguration": BASE64_ENCODED_CONFIG,
                 },
-                [],
+                None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
                 False,
@@ -1164,8 +1164,6 @@ class TestUpdateCluster:
             force_update,
         )
 
-        messages = [{"level": "WARNING", "message": "message", "type": "type"}] if errors else []
-
         expected_response = {
             "cluster": {
                 "cloudformationStackArn": stack_data["StackId"],
@@ -1175,11 +1173,13 @@ class TestUpdateCluster:
                 "region": "us-east-1",
                 "version": "3.0.0",
             },
-            "validationMessages": messages,
             "changeSet": [
                 {"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"}
             ],
         }
+
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(202)

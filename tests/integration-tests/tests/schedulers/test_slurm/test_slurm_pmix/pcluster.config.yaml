@@ -8,7 +8,7 @@ HeadNode:
     KeyName: {{ key_name }}
 Scheduling:
   Scheduler: slurm
-  Queues:
+  SlurmQueues:
     - Name: ondemand
       CapacityType: ONDEMAND
       Networking:

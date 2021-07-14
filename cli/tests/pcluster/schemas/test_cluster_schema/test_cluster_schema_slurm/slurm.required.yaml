@@ -8,7 +8,7 @@ HeadNode:
     KeyName: ec2-key-name
 Scheduling:
   Scheduler: slurm
-  Queues:
+  SlurmQueues:
     - Name: queue1
       Networking:
         SubnetIds:

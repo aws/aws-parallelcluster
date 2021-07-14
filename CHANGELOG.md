@@ -15,20 +15,20 @@ CHANGELOG
 - Add `--suppress-validators`, `--validation-failure-level` and`--disable-update-check` parameters to `create` command.
 - Add `--suppress-validators` and `--validation-failure-level` parameters to `update` command.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
-- Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`, 
+- Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`,
   `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
   `--subnet-id`.
 - Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
 - Add `delete-image` command with `--name`, `--region`, `--force` parameters.
 - Add `describe-image` command with `--name`, `--region` parameters.
 - Add `list-images` command with `--region`, `--color`parameters.
-- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs 
+- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs
   and CloudFormation Stack Events.
   Add `export-image-logs`, `list-image-logs` and `get-image-log-events` commands to retrieve both Image Builder Logs
   and CloudFormation Stack Events.
 - Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
   as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
-- Split head node and compute fleet instance roles and add possibility to configure a different instance role 
+- Split head node and compute fleet instance roles and add possibility to configure a different instance role
   for each queue.
 - Add possibility to configure different security groups for each queue.
 - Add support for multiple subnets when using AWS Batch.
@@ -36,28 +36,28 @@ CHANGELOG
 - Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
 - Remove `amis.txt` file.
-- Remove additional EBS volume attached to the head node by default. 
+- Remove additional EBS volume attached to the head node by default.
 - Change NICE DCV session storage path to `/home/{UserName}`.
-- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket 
-per cluster.
+- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket
+  per cluster.
 - Rename MasterServer to HeadNode in cli outputs.
 - Rename variable exported in the AWS Batch job environment from MASTER_IP to PCLUSTER_HEAD_NODE_IP.
 - Rename all CFN outputs from Master* to HeadNode*.
 - Rename NodeType and tags from Master to HeadNode.
 - Remove Ganglia support.
 - Add support for associating an existing Elastic IP to the head node.
-- Encrypt root EBS volumes and shared EBS volumes by default. 
+- Encrypt root EBS volumes and shared EBS volumes by default.
   Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
 - Enable EFA for a compute resource by default if the instance type supports EFA.
 - Remove parallelcluster- prefix from CloudFormation stack created by ParallelCluster.
-- Rename tags (Note: the following tags are crucial for ParallelCluster scaling logic): 
-   - aws-parallelcluster-node-type -> parallelcluster:node-type
-   - ClusterName -> parallelcluster:cluster-name
-   - aws-parallelcluster-attributes -> parallelcluster:attributes
-   - Version -> parallelcluster:version
+- Rename tags (Note: the following tags are crucial for ParallelCluster scaling logic):
+  - aws-parallelcluster-node-type -> parallelcluster:node-type
+  - ClusterName -> parallelcluster:cluster-name
+  - aws-parallelcluster-attributes -> parallelcluster:attributes
+  - Version -> parallelcluster:version
 - Remove tag: Application.
 - Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
-- Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file. 
+- Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file.
 - Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
 - Add prompt for availability zone in pcluster configure automated subnets creation.
 - Add configuration HeadNode.Imds.Secured to enable/disable restricted access to IMDS.
@@ -65,27 +65,72 @@ per cluster.
 - Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
   in case recurrent failures are encountered when provisioning nodes.
 
-2.x.x
+2.11.0
 ------
 **ENHANCEMENTS**
 
 - Add support for Ubuntu 20.04.
 - Add support for using FSx Lustre in subnet with no internet access.
+- Add support for building Centos 7 AMIs on ARM.
+- Add support for FSx Lustre DataCompressionType feature.
 - Add validation to prevent using a `cluster_resource_bucket` that is in a different region than the cluster.
+- Install SSM agent on CentOS 7 and 8.
+- Add support for `security_group_id` in packer custom builders. Customers can export `AWS_SECURITY_GROUP_ID` environment variable to specify security group for custom builders when building custom AMIs.
+- SGE: always use shortname as hostname filter with `qstat`. This will make nodewatcher more robust when using custom DHCP option, where the full hostname seen by `SGE` might differ from the hostname returned from EC2 metadata(local-hostname).
+- Transition from IMDSv1 to IMDSv2.
 
 **CHANGES**
 
 - Ubuntu 16.04 is no longer supported.
 - Amazon Linux is no longer supported.
-- Upgrade Slurm to version 20.11.5.
-  - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds
-  - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value for all GPU, Type=tesla
-- Upgrade Arm Performance Libraries (APL) to version 21.0.0  
-- Make `key_name` parameter optional to support cluster configurations without a key pair. 
+- Make `key_name` parameter optional to support cluster configurations without a key pair.
 - Remove support for Python versions < 3.6.
-- Remove dependency on `future` package and `__future__` module.
+  - Remove dependency on `future` package and `__future__` module.
 - Root volume size increased from 25GB to 35GB on all AMIs. Minimum root volume size is now 35GB.
-- Add sanity check to prevent cluster creation in non officially supported AWS regions 
+- Add sanity check to prevent cluster creation in an AWS region not officially supported by ParallelCluster.
+- Restrict IAM permissions to only allow cluster IAM instance role to launch instances via `run-instances` in cluster compute subnet.
+- Upgrade EFA installer to version 1.12.2
+  - EFA configuration: ``efa-config-1.8-1`` (from ``efa-config-1.7``)
+  - EFA profile: ``efa-profile-1.5-1`` (from ``efa-profile-1.4``)
+  - EFA kernel module: ``efa-1.12.3`` (from ``efa-1.10.2``)
+  - RDMA core: ``rdma-core-32.1amzn`` (from ``rdma-core-31.2amzn``)
+  - Libfabric: ``libfabric-1.11.2amzon1.1-1`` (from ``libfabric-1.11.1amzn1.0``)
+  - Open MPI: ``openmpi40-aws-4.1.1-2`` (from ``openmpi40-aws-4.1.0``)
+- Upgrade Slurm to version 20.11.7.
+  - Update slurmctld and slurmd systemd unit files according to latest provided by slurm.
+  - Add new SlurmctldParameters, power_save_min_interval=30, so power actions will be processed every 30 seconds.
+  - Add new SlurmctldParameters, cloud_reg_addrs, which will reset a node's NodeAddr automatically on power_down.
+  - Specify instance GPU model as GRES GPU Type in gres.conf, instead of previous hardcoded value ``Type=tesla`` for all GPU.
+- Upgrade Arm Performance Libraries (APL) to version 21.0.0.
+- Upgrade NICE DCV to version 2021.1-10557.
+- Upgrade NVIDIA driver to version 460.73.01.
+- Upgrade CUDA library to version 11.3.0.
+- Upgrade NVIDIA Fabric manager to `nvidia-fabricmanager-460`.
+- Install ParallelCluster AWSBatch CLI in dedicated python3 virtual env.
+- Upgrade Python version used in ParallelCluster virtualenvs from version 3.6.13 to version 3.7.10.
+- Upgrade Cinc Client to version 16.13.16.
+- Upgrade third-party cookbook dependencies:
+  - apt-7.4.0 (from apt-7.3.0)
+  - iptables-8.0.0 (from iptables-7.1.0)
+  - line-4.0.1 (from line-2.9.0)
+  - openssh-2.9.1 (from openssh-2.8.1)
+  - pyenv-3.4.2 (from pyenv-3.1.1)
+  - selinux-3.1.1 (from selinux-2.1.1)
+  - ulimit-1.1.1 (from ulimit-1.0.0)
+  - yum-6.1.1 (from yum-5.1.0)
+  - yum-epel-4.1.2 (from yum-epel-3.3.0)
+- Drop ``lightdm`` package install from Ubuntu 18.04 DCV installation process.
+
+**BUG FIXES**
+
+- Use ICP-compliant AL2 repo URLs when building Docker images in China
+- Fix a bug that caused `clustermgtd` to not immediately replace instances with failed status check that are in replacement process.
+
+2.10.4
+------
+**CHANGES**
+
+- Upgrade Slurm to version 20.02.7.
 
 2.10.3
 ------
@@ -107,7 +152,7 @@ per cluster.
 
 **BUG FIXES**
 
-- Fix issue with ``awsbsub`` command when setting environment variables for the job submission 
+- Fix issue with ``awsbsub`` command when setting environment variables for the job submission
 
 2.10.2
 ------
@@ -122,7 +167,7 @@ per cluster.
 
 **BUG FIXES**
 
-- Fix sanity checks with ARM instance types by using cluster AMI when performing validation  
+- Fix sanity checks with ARM instance types by using cluster AMI when performing validation
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
 - Use non interactive `apt update` command when building custom Ubuntu AMIs.
 - Fix `encrypted_ephemeral = true` when using Alinux2 or CentOS8
@@ -140,13 +185,13 @@ per cluster.
 - Install Arm Performance Libraries (APL) 20.2.1 on ARM AMIs (CentOS8, Alinux2, Ubuntu1804).
 - Install EFA kernel module on ARM instances with `alinux2` and `ubuntu1804`. This enables support for `c6gn` instances.
 - Add support for io2 and gp3 EBS volume type.
-- Add `iam_lambda_role` parameter under `cluster` section to enable the possibility to specify an existing IAM role to 
-  be used by AWS Lambda functions in CloudFormation. 
-  When using `sge`, `torque`, or `slurm` as the scheduler, 
+- Add `iam_lambda_role` parameter under `cluster` section to enable the possibility to specify an existing IAM role to
+  be used by AWS Lambda functions in CloudFormation.
+  When using `sge`, `torque`, or `slurm` as the scheduler,
   `pcluster` will not create any IAM role if both `ec2_iam_role` and `iam_lambda_role` are provided.
 - Improve robustness of a Slurm cluster when clustermgtd is down.
 - Configure NFS threads to be max(8, num_cores) for performance. This enhancement will not take effect on Ubuntu 16.04.
-- Optimize calls to DescribeInstanceTypes EC2 API when validating cluster configuration. 
+- Optimize calls to DescribeInstanceTypes EC2 API when validating cluster configuration.
 
 **CHANGES**
 
@@ -163,7 +208,7 @@ per cluster.
   The runlevel is set to graphical.target on head node only when DCV is enabled. This prevents the execution of
   graphical services, such as x/gdm, when they are not required.
 - Download Intel MPI and HPC packages from S3 rather than Intel yum repos.
-- Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type 
+- Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type
     (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
 - Enable support for p4d as head node instance type (p4d was already supported as compute node in 2.10.0).
 - Pull Amazon Linux Docker images from public ECR when building docker image for `awsbatch` scheduler.
@@ -179,7 +224,7 @@ per cluster.
 - Set the default EBS volume size to 500 GiB when volume type is `st1` or `sc1`.
 - Fix installation of Intel PSXE package on CentOS 7 by using yum4.
 - Fix routing issues with multiple Network Interfaces on Ubuntu 18.04.
-  
+
 2.10.0
 ------
 
@@ -194,9 +239,9 @@ per cluster.
 - FSx Lustre:
   - Add possibility to configure Auto Import policy through the new `auto_import_policy` parameter.
   - Add support to HDD storage type and the new `storage_type` and `drive_cache_type` configuration parameters.
-- Create a CloudWatch Dashboard for the cluster, named `<clustername>-<region>`, including head node EC2 metrics and 
+- Create a CloudWatch Dashboard for the cluster, named `<clustername>-<region>`, including head node EC2 metrics and
   cluster logs. It can be disabled by configuring the `enable` parameter in the `dashboard` section.
-- Add `-r/-region` arg to `pcluster configure` command. If this arg is provided, configuration will 
+- Add `-r/-region` arg to `pcluster configure` command. If this arg is provided, configuration will
   skip region selection.
 - Add `-r/-region` arg to`ssh` and `dcv connect` commands.
 - Add `cluster_resource_bucket` parameter under `cluster` section to allow the user to specify an existing S3 bucket.
@@ -352,13 +397,13 @@ per cluster.
 - Upgrade EFA installer to version 1.9.4:
   - Kernel module: ``efa-2.6.0`` (from efa-1.5.1)
   - RDMA core: ``rdma-core-28.amzn0`` (from rdma-core-25.0)
-  - Libfabric: ``libfabric-1.10.1amzn1.1`` (updated from libfabric-aws-1.9.0amzn1.1) 
+  - Libfabric: ``libfabric-1.10.1amzn1.1`` (updated from libfabric-aws-1.9.0amzn1.1)
   - Open MPI: openmpi40-aws-4.0.3 (no change)
 - Avoid unnecessary validation of IAM policies.
 - Removed unused dependency on supervisor from the Batch Dockerfile.
 - Move all LogGroup definitions in the CloudFormation templates into the CloudWatch substack.
 - Disable libvirtd service on CentOS 7. Virtual bridge interfaces are incorrectly detected by Open MPI and
-  cause MPI applications to hang, see https://www.open-mpi.org/faq/?category=tcp#tcp-selection for details 
+  cause MPI applications to hang, see https://www.open-mpi.org/faq/?category=tcp#tcp-selection for details
 - Use CINC instead of Chef for provisioning instances. See https://cinc.sh/about/ for details.
 - Retry when mounting an NFS mount fails.
 - Install the ``pyenv`` virtual environments used by ParallelCluster cookbook and node daemon code under

@@ -17,17 +17,7 @@
 import copy
 import re
 
-from marshmallow import (
-    ValidationError,
-    fields,
-    post_dump,
-    post_load,
-    pre_dump,
-    pre_load,
-    validate,
-    validates,
-    validates_schema,
-)
+from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
 from pcluster.config.cluster_config import (
     AdditionalPackages,
@@ -78,13 +68,7 @@ from pcluster.config.cluster_config import (
     Ssh,
 )
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import (
-    EBS_VOLUME_SIZE_DEFAULT,
-    FSX_HDD_THROUGHPUT,
-    FSX_SSD_THROUGHPUT,
-    SUPPORTED_OSES,
-    SUPPORTED_SCHEDULERS,
-)
+from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
@@ -178,7 +162,7 @@ class RaidSchema(BaseSchema):
         return Raid(**data)
 
 
-class EbsSchema(BaseSchema):
+class EbsSettingsSchema(BaseSchema):
     """Represent the schema of EBS."""
 
     volume_type = fields.Str(
@@ -269,7 +253,7 @@ class QueueStorageSchema(BaseSchema):
         return LocalStorage(**data)
 
 
-class EfsSchema(BaseSchema):
+class EfsSettingsSchema(BaseSchema):
     """Represent the EFS schema."""
 
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -310,7 +294,7 @@ class EfsSchema(BaseSchema):
             )
 
 
-class FsxSchema(BaseSchema):
+class FsxLustreSettingsSchema(BaseSchema):
     """Represent the FSX schema."""
 
     storage_capacity = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -406,61 +390,66 @@ class SharedStorageSchema(BaseSchema):
         validate=validate.OneOf(["Ebs", "FsxLustre", "Efs"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
-    ebs = fields.Nested(EbsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    efs = fields.Nested(EfsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    fsx = fields.Nested(FsxSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    ebs_settings = fields.Nested(EbsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    efs_settings = fields.Nested(EfsSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    fsx_lustre_settings = fields.Nested(FsxLustreSettingsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
-    @pre_load
-    def preprocess(self, data, **kwargs):
-        """Before load the data into schema, change the settings to adapt different storage types."""
-        adapted_data = copy.deepcopy(data)
-        if adapted_data.get("StorageType") == "Efs":
-            adapted_data["Efs"] = adapted_data.pop("EfsSettings", {})
-        elif adapted_data.get("StorageType") == "Ebs":
-            adapted_data["Ebs"] = adapted_data.pop("EbsSettings", {})
-        elif adapted_data.get("StorageType") == "FsxLustre":
-            adapted_data["Fsx"] = adapted_data.pop("FsxLustreSettings", {})
-        return adapted_data
+    @validates_schema
+    def no_coexist_storage_settings(self, data, **kwargs):
+        """Validate that *_settings for different storage types do not co-exist."""
+        if self.fields_coexist(data, ["ebs_settings", "efs_settings", "fsx_lustre_settings"], **kwargs):
+            raise ValidationError("Multiple *Settings sections cannot be specified in the SharedStorage items.")
+
+    @validates_schema
+    def right_storage_settings(self, data, **kwargs):
+        """Validate that *_settings param is associated to the right storage type."""
+        for storage_type, settings in [
+            ("Ebs", "ebs_settings"),
+            ("Efs", "efs_settings"),
+            ("FsxLustre", "fsx_lustre_settings"),
+        ]:
+            # Verify the settings section is associated to the right storage type
+            if data.get(settings, None) and storage_type != data.get("storage_type"):
+                raise ValidationError(
+                    "SharedStorage > *Settings section is not appropriate to the "
+                    f"StorageType {data.get('storage_type')}."
+                )
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FsxLustre)."""
-        if data.get("efs") is not None:
-            return SharedEfs(data.get("mount_dir"), data.get("name"), **data.get("efs"))
-        if data.get("fsx") is not None:
-            return SharedFsx(data.get("mount_dir"), data.get("name"), **data.get("fsx"))
-        if data.get("ebs") is not None:
-            return SharedEbs(data.get("mount_dir"), data.get("name"), **data.get("ebs"))
+        storage_type = data.get("storage_type")
+        shared_volume_attributes = {"mount_dir": data.get("mount_dir"), "name": data.get("name")}
+        settings = (
+            data.get("efs_settings", None) or data.get("fsx_lustre_settings", None) or data.get("ebs_settings", None)
+        )
+        if settings:
+            shared_volume_attributes.update(**settings)
+        if storage_type == "Efs":
+            return SharedEfs(**shared_volume_attributes)
+        elif storage_type == "FsxLustre":
+            return SharedFsx(**shared_volume_attributes)
+        elif storage_type == "Ebs":
+            return SharedEbs(**shared_volume_attributes)
         return None
 
     @pre_dump
     def restore_child(self, data, **kwargs):
-        """Restore back the child in the schema. Note: Enums are converted back to string from BaseSchema."""
+        """Restore back the child in the schema."""
         adapted_data = copy.deepcopy(data)
-        # Move SharedXxx as a child to be automatically managed by marshmallow
-        storage_type = "ebs" if adapted_data.shared_storage_type == "raid" else adapted_data.shared_storage_type
-        setattr(adapted_data, storage_type, copy.copy(adapted_data))
-        # Restore storage type
+        # Move SharedXxx as a child to be automatically managed by marshmallow, see post_load action
+        if adapted_data.shared_storage_type == "efs":
+            storage_type = "efs"
+        elif adapted_data.shared_storage_type == "fsx":
+            storage_type = "fsx_lustre"
+        else:  # "raid", "ebs"
+            storage_type = "ebs"
+        setattr(adapted_data, f"{storage_type}_settings", copy.copy(adapted_data))
+        # Restore storage type attribute
         adapted_data.storage_type = (
             "FsxLustre" if adapted_data.shared_storage_type == "fsx" else storage_type.capitalize()
         )
         return adapted_data
-
-    @post_dump
-    def post_processed(self, data, **kwargs):
-        """Restore the SharedStorage Schema back to its origin."""
-        if data.get("Efs") is not None:
-            storage_type, storage_settings = "Efs", "EfsSettings"
-        elif data.get("Ebs") is not None:
-            storage_type, storage_settings = "Ebs", "EbsSettings"
-        elif data.get("Fsx") is not None:
-            storage_type, storage_settings = "Fsx", "FsxLustreSettings"
-        if data.get(storage_type):
-            data[storage_settings] = data.pop(storage_type)
-        else:
-            data.pop(storage_type)
-
-        return data
 
     @validates("mount_dir")
     def shared_dir_validator(self, value):
@@ -1021,18 +1010,6 @@ class SlurmSettingsSchema(BaseSchema):
         return SlurmSettings(**data)
 
 
-class SlurmSchema(BaseSchema):
-    """Represent the schema of the Slurm section."""
-
-    settings = fields.Nested(SlurmSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    queues = fields.Nested(
-        SlurmQueueSchema,
-        many=True,
-        required=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
-
-
 class AwsBatchSettingsSchema(BaseSchema):
     """Represent the schema of the AwsBatch Scheduling Settings."""
 
@@ -1042,91 +1019,82 @@ class AwsBatchSettingsSchema(BaseSchema):
         return AwsBatchSettings(**data)
 
 
-class AwsBatchSchema(BaseSchema):
-    """Represent the schema of the AwsBatch section."""
-
-    queues = fields.Nested(
-        AwsBatchQueueSchema,
-        many=True,
-        required=True,
-        validate=validate.Length(equal=1),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
-    settings = fields.Nested(AwsBatchSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-
-
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
-    slurm = fields.Nested(SlurmSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
-    aws_batch = fields.Nested(AwsBatchSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     scheduler = fields.Str(
         required=True,
         validate=validate.OneOf(["slurm", "awsbatch", "custom"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
-    # custom = fields.Str(CustomSchema)
+    # Slurm schema
+    slurm_settings = fields.Nested(SlurmSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    slurm_queues = fields.Nested(
+        SlurmQueueSchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+    )
+    # Awsbatch schema:
+    aws_batch_queues = fields.Nested(
+        AwsBatchQueueSchema,
+        many=True,
+        validate=validate.Length(equal=1),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+    )
+    aws_batch_settings = fields.Nested(
+        AwsBatchSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+    )
 
-    @pre_load
-    def preprocess(self, data, **kwargs):
-        """Before load the data into schema, change the settings to adapt different storage types."""
-        adapted_data = copy.deepcopy(data)
-        if adapted_data.get("Scheduler") == "slurm":
-            scheduler, scheduler_settings = "Slurm", "SlurmSettings"
-        elif adapted_data.get("Scheduler") == "awsbatch":
-            scheduler, scheduler_settings = "AwsBatch", "AwsBatchSettings"
-        # elif data.get("Scheduler") == "custom":
-        #     scheduler, scheduler_settings = "Custom", "CustomSettings"
-        else:
-            raise ValidationError("You must provide scheduler configuration")
+    @validates_schema
+    def no_coexist_schedulers(self, data, **kwargs):
+        """Validate that *_settings and *_queues for different schedulers do not co-exist."""
+        scheduler = data.get("scheduler")
+        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings"], **kwargs):
+            raise ValidationError("Multiple *Settings sections cannot be specified in the Scheduling section.")
+        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues"], one_required=True, **kwargs):
+            scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
+            raise ValidationError(f"{scheduler_prefix}Queues section must be specified in the Scheduling section.")
 
-        adapted_data[scheduler] = {}
-        adapted_data[scheduler]["Settings"] = adapted_data.pop(scheduler_settings, {})
-        if adapted_data.get("Queues"):
-            adapted_data[scheduler]["Queues"] = adapted_data.pop("Queues")
-        else:
-            raise ValidationError("Queues must be configured in scheduler configuration")
-
-        return adapted_data
+    @validates_schema
+    def right_scheduler_schema(self, data, **kwargs):
+        """Validate that *_settings field is associated to the right scheduler."""
+        for scheduler, settings, queues in [
+            ("awsbatch", "aws_batch_settings", "aws_batch_queues"),
+            ("slurm", "slurm_settings", "slurm_queues"),
+        ]:
+            # Verify the settings section is associated to the right storage type
+            configured_scheduler = data.get("scheduler")
+            if data.get(settings, None) and scheduler != configured_scheduler:
+                raise ValidationError(
+                    f"Scheduling > *Settings section is not appropriate to the Scheduler: {configured_scheduler}."
+                )
+            if data.get(queues, None) and scheduler != configured_scheduler:
+                raise ValidationError(
+                    f"Scheduling > *Queues section is not appropriate to the Scheduler: {configured_scheduler}."
+                )
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate the right type of scheduling according to the child type (Slurm vs AwsBatch vs Custom)."""
-        if data.get("slurm"):
-            return SlurmScheduling(**data.get("slurm"))
-        if data.get("aws_batch"):
-            return AwsBatchScheduling(**data.get("aws_batch"))
-        # if data.get("custom_scheduling"):
-        #    return CustomScheduling(data.get("scheduler"), **data.get("custom_scheduling"))
+        scheduler = data.get("scheduler")
+        if scheduler == "slurm":
+            return SlurmScheduling(queues=data.get("slurm_queues"), settings=data.get("slurm_settings", None))
+        if scheduler == "awsbatch":
+            return AwsBatchScheduling(
+                queues=data.get("aws_batch_queues"), settings=data.get("aws_batch_settings", None)
+            )
+        # if data.get("custom_queues"):
+        #    return CustomScheduling(**data)
         return None
 
     @pre_dump
     def restore_child(self, data, **kwargs):
-        """Restore back the child in the schema."""
+        """Restore back the child in the schema, see post_load action."""
         adapted_data = copy.deepcopy(data)
-        attribute_name = "aws_batch" if adapted_data.scheduler == "awsbatch" else adapted_data.scheduler
-        setattr(adapted_data, attribute_name, copy.copy(adapted_data))
+        scheduler_prefix = "aws_batch" if adapted_data.scheduler == "awsbatch" else adapted_data.scheduler
+        setattr(adapted_data, f"{scheduler_prefix}_queues", copy.copy(getattr(adapted_data, "queues", None)))
+        setattr(adapted_data, f"{scheduler_prefix}_settings", copy.copy(getattr(adapted_data, "settings", None)))
         return adapted_data
-
-    @post_dump
-    def post_processed(self, data, **kwargs):
-        """Restore the SharedStorage Schema back to its origin."""
-        if data.get("Slurm"):
-            scheduler, scheduler_settings = "Slurm", "SlurmSettings"
-        elif data.get("AwsBatch"):
-            scheduler, scheduler_settings = "AwsBatch", "AwsBatchSettings"
-        # elif data.get("Scheduler") == "custom":
-        #     scheduler, scheduler_settings = "Custom", "CustomSettings"
-
-        if data.get(scheduler).get("Settings"):
-            data[scheduler_settings] = data[scheduler].pop("Settings")
-        else:
-            data[scheduler].pop("Settings")
-
-        data["Queues"] = data[scheduler].pop("Queues")
-        data.pop(scheduler)
-
-        return data
 
 
 class ClusterSchema(BaseSchema):
@@ -1172,21 +1140,3 @@ class ClusterSchema(BaseSchema):
 
         cluster.source_config = original_data
         return cluster
-
-    @staticmethod
-    def process_validation_message(validation_error: ValidationError):
-        """
-        Process error message.
-
-        Because there are some @pre_load(s) changing the structure of the schema,
-        """
-        # We need to modify the error message to be aligned with the structure before @pre_load(s)
-        error_message = validation_error.args[0]
-        if "Scheduling" in error_message:
-            scheduling = error_message["Scheduling"]
-            if isinstance(scheduling, dict):
-                for scheduler in SUPPORTED_SCHEDULERS:
-                    scheduler_settings = scheduling.get(scheduler.capitalize())
-                    if scheduler_settings:
-                        error_message["Scheduling"] = scheduler_settings
-                        break

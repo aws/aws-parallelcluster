@@ -32,12 +32,12 @@ NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],
-    "arm64": [],
+    "arm64": ["centos7"],
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSES,
-    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2"],
+    "arm64": ["ubuntu1804", "ubuntu2004", "alinux2", "centos7"],
 }
 
 FSX_MESSAGES = {

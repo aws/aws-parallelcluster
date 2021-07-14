@@ -220,6 +220,8 @@ def configure(args):  # noqa: C901
     # Here is the end of prompt. Code below assembles config and write to file
     for queue in queues:
         queue["Networking"] = {"SubnetIds": [vpc_parameters["compute_subnet_id"]]}
+
+    scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
     result = {
         "Image": {"Os": base_os},
         "HeadNode": {
@@ -228,7 +230,7 @@ def configure(args):  # noqa: C901
             "Ssh": {"KeyName": key_name},
             "Imds": {"Secured": head_node_imds_secured},
         },
-        "Scheduling": {"Scheduler": scheduler, "Queues": queues},
+        "Scheduling": {"Scheduler": scheduler, f"{scheduler_prefix}Queues": queues},
     }
 
     _write_configuration_file(config_file_path, result)

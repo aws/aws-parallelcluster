@@ -12,7 +12,7 @@ Scheduling:
   Scheduler: {{ scheduler }}
   SlurmSettings:
     ScaledownIdletime: {{ scaledown_idletime }}
-  Queues:
+  SlurmQueues:
     - Name: ondemand1
       Networking:
         SubnetIds:

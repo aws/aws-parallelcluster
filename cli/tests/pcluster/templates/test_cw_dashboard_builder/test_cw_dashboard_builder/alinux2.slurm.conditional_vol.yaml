@@ -12,7 +12,7 @@ HeadNode:
     AllowedIps: 0.0.0.0/0
 Scheduling:
   Scheduler: slurm
-  Queues:
+  SlurmQueues:
     - Name: queue1
       Networking:
         SubnetIds:

@@ -393,7 +393,6 @@ class Cluster:
             LOGGER.info("Validation succeeded.")
         except ValidationError as e:
             # syntactic failure
-            ClusterSchema.process_validation_message(e)
             validation_failures = [
                 ValidationResult(
                     str(sorted(e.messages.items())), FailureLevel.ERROR, validator_type="ConfigSchemaValidator"
