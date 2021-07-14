@@ -69,7 +69,7 @@ from pcluster.validators.common import FailureLevel
 LOGGER = logging.getLogger(__name__)
 
 
-@configure_aws_region(is_query_string_arg=False)
+@configure_aws_region(body_name="create_cluster_request_content")
 @convert_errors()
 @http_success_status_code(202)
 def create_cluster(

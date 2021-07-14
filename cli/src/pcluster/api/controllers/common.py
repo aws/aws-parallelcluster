@@ -37,11 +37,11 @@ from pcluster.utils import get_installed_version
 LOGGER = logging.getLogger(__name__)
 
 
-def configure_aws_region(is_query_string_arg: bool = True):
+def configure_aws_region(body_name: str = None):
     """
     Handle region validation and configuration for API controllers.
 
-    When a controller is decorated with @configure_aws_region, the region value passed either as a query stirng
+    When a controller is decorated with @configure_aws_region, the region value passed either as a query string
     argument or as a body parameter is validated and then set in the environment so that all AWS clients make use
     of it.
 
@@ -51,7 +51,12 @@ def configure_aws_region(is_query_string_arg: bool = True):
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            region = kwargs.get("region") if is_query_string_arg else request.get_json().get("region")
+            if body_name is not None:
+                body = kwargs.get(body_name, request and request.get_json())
+                region = body.get("region")
+            else:
+                region = kwargs.get("region")
+
             if not region:
                 region = os.environ.get("AWS_DEFAULT_REGION")
 

@@ -51,7 +51,7 @@ from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel
 
 
-@configure_aws_region(is_query_string_arg=False)
+@configure_aws_region(body_name="build_image_request_content")
 @http_success_status_code(202)
 @convert_errors()
 def build_image(
