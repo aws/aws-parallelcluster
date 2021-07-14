@@ -30,7 +30,7 @@ import pcluster.api.controllers.cluster_instances_controller
 import pcluster.api.controllers.cluster_operations_controller
 import pcluster.api.controllers.image_operations_controller
 import pcluster.api.errors
-import pcluster.cli.commands as cli_commands
+import pcluster.cli.cmds as cli_commands
 import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
 import pcluster.cli.logging as pcluster_logging
