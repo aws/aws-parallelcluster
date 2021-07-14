@@ -149,7 +149,7 @@ class AWSApi:
 
     @property
     def route53(self):
-        """STS client."""
+        """Route53 client."""
         if not self._route53:
             self._route53 = Route53Client()
         return self._route53

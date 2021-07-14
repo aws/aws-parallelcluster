@@ -26,33 +26,25 @@ class Route53Client(Boto3Client):
         :param hosted_zone_id: Hosted zone Id
         :return: hosted zone info
         """
-        return self._client.get_hosted_zone(Id=hosted_zone_id)
+        hosted_zone_info = self._client.get_hosted_zone(Id=hosted_zone_id)
+        if hosted_zone_info:
+            return hosted_zone_info
+        raise AWSClientError(function_name="get_hosted_zone", message=f"Hosted zone {hosted_zone_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
     def get_hosted_zone_domain_name(self, hosted_zone_id):
-        """Return the availability zone associated to the given subnet."""
-        hosted_zone_info = self.get_hosted_zone(hosted_zone_id)
-        if hosted_zone_info:
-            return hosted_zone_info.get("HostedZone").get("Name")
-        raise AWSClientError(
-            function_name="get_hosted_zone_domain_name", message=f"Hosted zone {hosted_zone_id} not found"
-        )
+        """Return domain name given hosted zone id."""
+        return self.get_hosted_zone(hosted_zone_id).get("HostedZone").get("Name")
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
-    def get_vpc_ids(self, hosted_zone_id):
+    def get_hosted_zone_vpcs(self, hosted_zone_id):
         """Return list of vpc ids related to the hosted zone."""
-        hosted_zone_info = self.get_hosted_zone(hosted_zone_id)
-        if hosted_zone_info:
-            return [vpc.get("VPCId") for vpc in hosted_zone_info.get("VPCs")]
-        raise AWSClientError(function_name="get_vpc_ids", message=f"Hosted zone {hosted_zone_id} not found")
+        return [vpc.get("VPCId") for vpc in self.get_hosted_zone(hosted_zone_id).get("VPCs")]
 
     @AWSExceptionHandler.handle_client_exception
     @Cache.cached
-    def is_private_zone(self, hosted_zone_id):
-        """Return list of vpc ids related to the hosted zone."""
-        hosted_zone_info = self.get_hosted_zone(hosted_zone_id)
-        if hosted_zone_info:
-            return hosted_zone_info.get("HostedZone").get("Config").get("PrivateZone")
-        raise AWSClientError(function_name="is_private_zone", message=f"Hosted zone {hosted_zone_id} not found")
+    def is_hosted_zone_private(self, hosted_zone_id):
+        """Check if hosted zone is private or public."""
+        return self.get_hosted_zone(hosted_zone_id).get("HostedZone").get("Config").get("PrivateZone")

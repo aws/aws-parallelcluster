@@ -101,12 +101,13 @@ class SlurmConstruct(Construct):
 
     def _add_parameters(self):
         if self._condition_custom_cluster_dns():
-            subdomain = self.stack_name
-            hosted_zone_id = self.config.scheduling.settings.dns.hosted_zone_id
-            domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(hosted_zone_id)
-            cluster_dns_domain = subdomain + "." + domain_name
+            domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(
+                self.config.scheduling.settings.dns.hosted_zone_id
+            )
         else:
-            cluster_dns_domain = f"{self.stack_name}.pcluster"
+            domain_name = "pcluster"
+        cluster_dns_domain = f"{self.stack_name}.{domain_name}"
+
         self.cluster_dns_domain = CfnParameter(
             self.stack_scope,
             "ClusterDNSDomain",

@@ -10,10 +10,6 @@
 # limitations under the License.
 
 PCLUSTER_NAME_MAX_LENGTH = 60
-HOST_NAME_MAX_LENGTH = 64
-# Max fqdn size is 255 characters, the first 64 are used for the hostname (e.g. queuename-st|dy-computeresourcename-N),
-# then we need to add an extra ., so we have 190 characters to be used for the clustername + domain-name.
-CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH = 255 - HOST_NAME_MAX_LENGTH - 1
 PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 
