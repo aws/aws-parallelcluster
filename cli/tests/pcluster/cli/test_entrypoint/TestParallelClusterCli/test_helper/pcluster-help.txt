@@ -1,5 +1,5 @@
 usage: pcluster [-h]
-                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet-status,update-compute-fleet-status,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,status,configure,create,dcv-connect,delete,export-cluster-logs,get-cluster-log-events,instances,list-cluster-logs,list,ssh,start,stop,update,version,export-image-logs,get-image-log-events,list-image-logs}
+                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet-status,update-compute-fleet-status,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,status,configure,create,dcv-connect,delete,export-cluster-logs,get-cluster-log-events,instances,list-cluster-logs,list,ssh,start,stop,update,export-image-logs,get-image-log-events,list-image-logs,version}
                 ...
 
 pcluster is the AWS ParallelCluster CLI and permits launching and management
@@ -9,7 +9,7 @@ optional arguments:
   -h, --help            show this help message and exit
 
 COMMANDS:
-  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet-status,update-compute-fleet-status,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,status,configure,create,dcv-connect,delete,export-cluster-logs,get-cluster-log-events,instances,list-cluster-logs,list,ssh,start,stop,update,version,export-image-logs,get-image-log-events,list-image-logs}
+  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet-status,update-compute-fleet-status,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,status,configure,create,dcv-connect,delete,export-cluster-logs,get-cluster-log-events,instances,list-cluster-logs,list,ssh,start,stop,update,export-image-logs,get-image-log-events,list-image-logs,version}
     list-clusters       Retrieve the list of existing clusters managed by the
                         API. Deleted clusters are not listed by default.
     create-cluster      Create a ParallelCluster managed cluster in a given
@@ -59,7 +59,6 @@ COMMANDS:
                         running.
     update              Updates a running cluster using the values in the
                         config file.
-    version             Displays the version of AWS ParallelCluster.
     build-image         Creates a custom AMI to use with AWS ParallelCluster.
     delete-image        Deletes an image and related image builder stack.
     describe-image      Describes the specified ParallelCluster image.
@@ -71,5 +70,6 @@ COMMANDS:
     list-images         Displays a list of images built by AWS ParallelCluster
                         in a given AWS region associated with status and
                         version.
+    version             Displays the version of AWS ParallelCluster.
 
 For command specific flags, please run: "pcluster [command] --help"
