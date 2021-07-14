@@ -124,14 +124,14 @@ def camelcase(snake_case_word):
 
 
 def to_kebab_case(input):
-    """Convert a string into its snake case representation."""
-    str1 = re.sub("(.)([A-Z][a-z]+)", r"\1-\2", input).replace('_', '-')
+    """Convert a string into its kebab case representation."""
+    str1 = re.sub("(.)([A-Z][a-z]+)", r"\1-\2", input).replace("_", "-")
     return re.sub("([a-z0-9])([A-Z])", r"\1-\2", str1).lower()
 
 
 def to_snake_case(input):
     """Convert a string into its snake case representation."""
-    str1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input).replace('-', '_')
+    str1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input).replace("-", "_")
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", str1).lower()
 
 

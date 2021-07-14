@@ -15,7 +15,7 @@ from flask.testing import FlaskClient
 from jinja2 import Environment, FileSystemLoader
 
 from pcluster.api.flask_app import ParallelClusterFlaskApp
-from pcluster.cli.entrypoint import main, run
+from pcluster.cli.entrypoint import main
 
 
 @pytest.fixture(autouse=True)

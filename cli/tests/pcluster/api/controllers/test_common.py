@@ -43,7 +43,7 @@ class TestConfigureAwsRegion:
     def test_validate_region_body(self, region, error, client):
         client.post(json={"region": region})
 
-        @configure_aws_region(body_name='body')
+        @configure_aws_region(body_name="body")
         def _decorated_func():
             pass
 

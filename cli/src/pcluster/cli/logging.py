@@ -12,9 +12,10 @@
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging.config
 import os
 import sys
-import logging.config
+
 from pcluster.utils import get_cli_log_file
 
 LOGGER = logging.getLogger(__name__)
@@ -39,7 +40,6 @@ def config_logger():
                 "filename": logfile,
                 "maxBytes": 5 * 1024 * 1024,
                 "backupCount": 3,
-
             },
             "console": {  # TODO: remove console logger
                 "level": "DEBUG",

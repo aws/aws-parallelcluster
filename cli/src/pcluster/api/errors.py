@@ -7,6 +7,9 @@
 # limitations under the License.
 from abc import ABC
 
+from connexion import ProblemException
+from werkzeug.exceptions import HTTPException
+
 from pcluster.api.models import (
     BadRequestExceptionResponseContent,
     ConflictExceptionResponseContent,
@@ -25,10 +28,7 @@ from pcluster.api.models.create_cluster_bad_request_exception_response_content i
 from pcluster.api.models.update_cluster_bad_request_exception_response_content import (
     UpdateClusterBadRequestExceptionResponseContent,
 )
-
 from pcluster.aws.common import AWSClientError
-from werkzeug.exceptions import HTTPException
-from connexion import ProblemException
 
 
 def exception_message(exception):
@@ -37,7 +37,9 @@ def exception_message(exception):
             return exception_message(BadRequestException(str(exception)))
         if exception.error_code in AWSClientError.ErrorCode.throttling_error_codes():
             return exception_message(LimitExceededException(str(exception)))
-        return exception_message(InternalServiceException(f"Failed when calling AWS service in {exception.function_name}: {exception}"))
+        return exception_message(
+            InternalServiceException(f"Failed when calling AWS service in {exception.function_name}: {exception}")
+        )
     elif isinstance(exception, ParallelClusterApiException):
         return exception.content
     elif isinstance(exception, HTTPException):
@@ -51,8 +53,10 @@ def exception_message(exception):
             message += f": {exception.detail}"
         return {"message": message}
     else:
-        return {"message": "Unexpected fatal exception. "
-                "Please look at the application logs for details on the encountered failure."}
+        return {
+            "message": "Unexpected fatal exception. "
+            "Please look at the application logs for details on the encountered failure."
+        }
 
 
 class ParallelClusterApiException(ABC, Exception):

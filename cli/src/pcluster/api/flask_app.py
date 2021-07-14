@@ -17,11 +17,11 @@ from werkzeug.exceptions import HTTPException
 
 from pcluster.api import encoder
 from pcluster.api.errors import (
-    exception_message,
     BadRequestException,
     InternalServiceException,
     LimitExceededException,
-    ParallelClusterApiException
+    ParallelClusterApiException,
+    exception_message,
 )
 from pcluster.aws.common import AWSClientError, Cache
 
