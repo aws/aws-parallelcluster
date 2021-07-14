@@ -8,7 +8,7 @@ build_docker_image() {
         echo "Dockerfile not found for image ${image}. Exiting..."
         exit 1
     fi
-    docker build -f "${image}/Dockerfile" -t "${IMAGE_REPO_NAME}:${image}" .
+    docker build --build-arg AWS_REGION="${AWS_REGION}" -f "${image}/Dockerfile" -t "${IMAGE_REPO_NAME}:${image}" .
 }
 
 if [ -z "${IMAGE}" ]; then

@@ -37,15 +37,15 @@ cloudwatch_logging:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      # 2) run the test for all of the OSes with slurm
+      # 2) run the test for all x86 OSes with slurm
       - regions: ["ap-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
-      # 3) run the test for a single scheduler-OS combination on an ARM instance
+      # 3) run the test for all ARM OSes on an ARM instance
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2"]
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
 configure:
   test_pcluster_configure.py::test_pcluster_configure:
@@ -111,8 +111,6 @@ createami:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-
-
 dashboard:
   test_dashboard.py::test_dashboard:
     dimensions:
@@ -194,6 +192,10 @@ efa:
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
+      - regions: [ "us-east-2" ]
+        instances: [{{ common.instance("instance_type_1") }}]
+        oss: [ "alinux2", "centos8", "ubuntu2004" ]
+        schedulers: [ "slurm" ]
 iam:
   test_iam.py::test_iam_policies:
     dimensions:
@@ -325,6 +327,10 @@ schedulers:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
+      - regions: [ "us-east-2" ]
+        instances: [{{ common.instance("instance_type_1") }}]
+        oss: [ "alinux2" ]
+        schedulers: [ "slurm" ]
   test_slurm.py::test_error_handling:
     dimensions:
       - regions: ["ca-central-1"]
@@ -494,7 +500,7 @@ multiple_nics:
     dimensions:
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos7", "ubuntu1804", "centos7"]
+        oss: ["alinux2", "centos7", "ubuntu1804"]
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
