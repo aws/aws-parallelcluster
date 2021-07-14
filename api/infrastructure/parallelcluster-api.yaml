@@ -207,6 +207,7 @@ Resources:
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
         - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
       Policies:
         - PolicyName: ParallelClusterFunctionPolicy
           PolicyDocument:
