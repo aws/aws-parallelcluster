@@ -156,7 +156,8 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", title='COMMANDS', dest='operation')
     subparsers.required = True
-    type_map = {'number': to_number, 'boolean': bool_converter, 'byte': read_file_b64}
+    type_map = {'number': to_number, 'boolean': bool_converter,
+                'integer': to_int, 'byte': read_file_b64}
     parser_map = {'subparser': subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments
@@ -204,9 +205,9 @@ def add_cli_commands(parser_map):
     add_additional_args(parser_map)
 
 
-def run(sys_args, spec=None):
-    spec = spec or pcluster.cli.model.package_spec()
-    model = pcluster.cli.model.load_model(spec)
+def run(sys_args, model=None):
+    spec = pcluster.cli.model.package_spec()
+    model = model or pcluster.cli.model.load_model(spec)
     parser, parser_map = gen_parser(model)
     add_cli_commands(parser_map)
     args, extra_args = parser.parse_known_args(sys_args)
