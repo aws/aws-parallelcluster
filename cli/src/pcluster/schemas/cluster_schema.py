@@ -438,12 +438,12 @@ class SharedStorageSchema(BaseSchema):
         """Restore back the child in the schema."""
         adapted_data = copy.deepcopy(data)
         # Move SharedXxx as a child to be automatically managed by marshmallow, see post_load action
-        if adapted_data.shared_storage_type in ["raid", "ebs"]:
-            storage_type = "ebs"
-        elif adapted_data.shared_storage_type == "efs":
+        if adapted_data.shared_storage_type == "efs":
             storage_type = "efs"
         elif adapted_data.shared_storage_type == "fsx":
             storage_type = "fsx_lustre"
+        else:  # "raid", "ebs"
+            storage_type = "ebs"
         setattr(adapted_data, f"{storage_type}_settings", copy.copy(adapted_data))
         # Restore storage type attribute
         adapted_data.storage_type = (
