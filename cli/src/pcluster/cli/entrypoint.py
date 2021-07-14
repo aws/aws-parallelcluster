@@ -47,6 +47,7 @@ class APIOperationException(Exception):
     """Thrown while calling API operations."""
 
     def __init__(self, data):
+        super().__init__()
         self.data = data
 
 
@@ -54,6 +55,7 @@ class ParameterException(Exception):
     """Thrown for invalid parameters."""
 
     def __init__(self, data):
+        super().__init__()
         self.data = data
 
 
