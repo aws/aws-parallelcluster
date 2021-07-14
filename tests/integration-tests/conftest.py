@@ -102,6 +102,10 @@ def pytest_addoption(parser):
     parser.addoption(
         "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
     )
+    parser.addoption(
+        "--api-infrastructure-s3-uri", help="URI of the CloudFormation template for the ParallelCluster API"
+    )
+    parser.addoption("--api-uri", help="URI of an existing ParallelCluster API")
     parser.addoption("--instance-types-data-file", help="JSON file with additional instance types data")
     parser.addoption(
         "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
@@ -311,6 +315,66 @@ def clusters_factory(request, region):
     yield _cluster_factory
     if not request.config.getoption("no_delete"):
         factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
+
+
+@pytest.fixture(scope="session")
+def api_server_factory(
+    cfn_stacks_factory, request, public_ecr_image_uri, api_definition_s3_uri, api_infrastructure_s3_uri
+):
+    """Creates a factory for deploying API servers on-demand to each region."""
+    api_servers = {}
+
+    def _api_server_factory(server_region):
+        api_stack_name = generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix"))
+
+        if not api_infrastructure_s3_uri:
+            stack_template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
+            with open(stack_template_path) as stack_template_file:
+                stack_template_data = stack_template_file.read()
+
+        params = [
+            {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
+            {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
+        ]
+
+        if server_region not in api_servers:
+            logging.info(f"Creating API Server stack: {api_stack_name} in {server_region}")
+            try:
+                set_credentials(server_region, request.config.getoption("credential"))
+                stack = CfnStack(
+                    name=api_stack_name,
+                    region=server_region,
+                    parameters=params,
+                    capabilities=["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"],
+                    template=api_infrastructure_s3_uri or stack_template_data,
+                )
+                cfn_stacks_factory.create_stack(stack)
+            finally:
+                unset_credentials()
+            api_servers[server_region] = stack
+        else:
+            logging.info(f"Found cached API Server stack: {api_stack_name} in {server_region}")
+
+        return api_servers[server_region]
+
+    yield _api_server_factory
+
+
+@pytest.fixture(scope="class")
+def api_client(region, api_server_factory, api_uri):
+    """Define a fixture for an API client that interacts with the pcluster api."""
+    from pcluster_client import ApiClient, Configuration
+
+    if api_uri:
+        host = api_uri
+    else:
+        stack = api_server_factory(region)
+        host = stack.cfn_outputs["ParallelClusterApiInvokeUrl"]
+
+    api_configuration = Configuration(host=host)
+
+    with ApiClient(api_configuration) as api_client_instance:
+        yield api_client_instance
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
@@ -855,14 +919,24 @@ def vpc_stack(vpc_stacks, region):
     return vpc_stacks[region]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
 def public_ecr_image_uri(request):
     return request.config.getoption("public_ecr_image_uri")
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
+def api_uri(request):
+    return request.config.getoption("api_uri")
+
+
+@pytest.fixture(scope="session")
 def api_definition_s3_uri(request):
     return request.config.getoption("api_definition_s3_uri")
+
+
+@pytest.fixture(scope="session")
+def api_infrastructure_s3_uri(request):
+    return request.config.getoption("api_infrastructure_s3_uri")
 
 
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
