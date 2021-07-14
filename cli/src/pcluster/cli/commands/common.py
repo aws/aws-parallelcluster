@@ -80,12 +80,6 @@ class CliCommandV3(CliCommand, ABC):  # TODO: remove once all commands are conve
     pass
 
 
-class DcvCommand(CliCommand, ABC):
-    """Abstract class for DCV CLI commands."""
-
-    pass
-
-
 def print_json(obj):
     """Print formatted Json to stdout."""
     print(json.dumps(obj, indent=2))

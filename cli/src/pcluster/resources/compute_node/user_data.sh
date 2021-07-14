@@ -102,7 +102,6 @@ MIME-Version: 1.0
 
 function error_exit
 {
-  region=${AWS::Region}
   instance_id=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/instance-id)
   log_dir=/home/logs/compute
   mkdir -p ${!log_dir}
@@ -111,7 +110,7 @@ function error_exit
   # TODO: add possibility to disable this behavior
   # wait logs flush before signaling the failure
   sleep 10
-  aws --region ${!region} ec2 terminate-instances --instance-ids ${!instance_id}
+  shutdown -h now
   exit 1
 }
 function vendor_cookbook

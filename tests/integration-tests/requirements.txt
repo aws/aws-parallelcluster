@@ -19,3 +19,5 @@ requests
 retrying
 troposphere
 untangle
+requests
+../../api/client/src

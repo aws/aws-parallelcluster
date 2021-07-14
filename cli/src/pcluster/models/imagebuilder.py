@@ -234,7 +234,7 @@ class ImageBuilder:
                 elif self.__stack:
                     self.__config_url = self.stack.config_url
                 else:
-                    ImageBuilderActionError(f"Unable to get image {self.image_id} config url.")
+                    raise ImageBuilderActionError(f"Unable to get image {self.image_id} config url.")
         return self.__config_url
 
     @property

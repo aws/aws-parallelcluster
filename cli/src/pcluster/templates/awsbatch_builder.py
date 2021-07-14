@@ -21,7 +21,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
-from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS, PCLUSTER_DYNAMODB_PREFIX
+from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -748,22 +748,6 @@ class AwsBatchConstruct(Construct):
                             "ec2:AttachVolume",
                         ],
                         resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="DynamoDBTable",
-                        actions=[
-                            "dynamodb:PutItem",
-                            "dynamodb:BatchWriteItem",
-                            "dynamodb:GetItem",
-                            "dynamodb:DeleteItem",
-                            "dynamodb:DescribeTable",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"
-                            )
-                        ],
                     ),
                     iam.PolicyStatement(
                         sid="S3PutObj",

@@ -23,7 +23,6 @@ from pcluster.api.models.cluster_status import ClusterStatusEnum
 from pcluster.cli.commands.common import (
     CliCommand,
     CliCommandV3,
-    DcvCommand,
     ExportLogsCommand,
     GetLogEventsCommand,
     ParallelClusterFlaskClient,
@@ -350,11 +349,11 @@ class ConfigureCommand(CliCommand):
         configure(args)
 
 
-class DcvConnectCommand(DcvCommand):
+class DcvConnectCommand(CliCommand):
     """Implement pcluster dcv connect command."""
 
     # CLI
-    name = "connect"
+    name = "dcv-connect"
     help = "Permits to connect to the head node through an interactive session by using NICE DCV."
     description = help
 

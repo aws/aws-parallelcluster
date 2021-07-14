@@ -351,9 +351,9 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
         ("centos7", "x86_64", None),
         ("ubuntu1804", "x86_64", None),
         ("ubuntu2004", "x86_64", None),
-        # Only a subset of OSes supported for arm64
+        # All OSes supported for x86_64
         ("alinux2", "arm64", None),
-        ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
+        ("centos7", "arm64", None),
         ("ubuntu1804", "arm64", None),
         ("ubuntu2004", "arm64", None),
     ],
@@ -626,13 +626,6 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
                 supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
             ),
         ),
-        (
-            "arm64",
-            "centos7",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
     ],
 )
 def test_fsx_architecture_os_validator(architecture, os, expected_message):
@@ -700,7 +693,6 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
         (False, "alinux2", "t2.micro", None, None, None),  # doesn't fail because DCV is disabled
         (True, "ubuntu1804", "m6g.xlarge", None, None, None),
         (True, "alinux2", "m6g.xlarge", None, None, None),
-        (True, "centos7", "m6g.xlarge", None, None, "Please double check the os configuration"),
         (True, "ubuntu2004", "m6g.xlarge", None, None, "Please double check the os configuration"),
     ],
 )
