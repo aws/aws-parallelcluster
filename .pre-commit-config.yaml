@@ -10,6 +10,7 @@ repos:
       - id: check-merge-conflict
       - id: check-xml
       - id: check-yaml
+        args: ['--unsafe']  # necessary for jinja-templated yaml files
       - id: debug-statements
       - id: detect-private-key
       - id: check-symlinks
@@ -28,11 +29,12 @@ repos:
         # Paths are relative to the top-level of the repo so the nested shell handles that.
         entry: bash -c 'cd cli && flake8 $(for arg in $@; do echo -n "../$arg " ; done)'
 
+
   - repo: https://github.com/timothycrosley/isort
     rev: 5.8.0
     hooks:
       - id: isort
-        args: ['-rc', '-w 120', '--sp', 'cli/.isort.cfg']
+        args: ['-rc', '-w 120', '--settings-path=cli/.isort.cfg']
 
   - repo: https://github.com/ambv/black
     rev: 20.8b1

@@ -17,6 +17,7 @@ import string
 from os import environ
 from pathlib import Path
 
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -29,14 +30,17 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_SHARED_DIR = "/shared"
 DEFAULT_RETENTION_DAYS = 14
 NODE_CONFIG_PATH = "/etc/chef/dna.json"
-HEAD_NODE_ROLE_NAME = "MasterServer"
+HEAD_NODE_ROLE_NAME = "HeadNode"
 COMPUTE_NODE_ROLE_NAME = "ComputeFleet"
 NODE_ROLE_NAMES = {HEAD_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME}
 
 
 def _get_log_group_name_for_cluster(cluster_name):
     """Return the name of the log group to be created for the given cluster if CloudWatch logging is enabled."""
-    return "/aws/parallelcluster/{0}".format(cluster_name)
+    logs_client = boto3.client("logs")
+    log_groups = logs_client.describe_log_groups(logGroupNamePrefix=f"/aws/parallelcluster/{cluster_name}")["logGroups"]
+    assert_that(log_groups).is_length(1)
+    return log_groups[0]["logGroupName"]
 
 
 def _dump_json(obj, indent=4):
@@ -51,8 +55,8 @@ class CloudWatchLoggingClusterState:
     The state is stored in the self._cluster_log_state dict. Here is an example of what that
     structure might look like for a cluster with one compute node, each containing one log:
     {
-        "MasterServer": {
-            "node_role": "MasterServer",
+        "HeadNode": {
+            "node_role": "HeadNode",
             "hostname": "ip-10-0-127-157.us-west-1.compute.internal",
             "instance_id": "i-01be4c67943df785d",
             "logs": {
@@ -171,11 +175,11 @@ class CloudWatchLoggingClusterState:
         """Get EC2 instances belonging to this cluster. Figure out their roles in the cluster."""
         for instance in cw_logs_utils.get_ec2_instances():
             tags = {tag.get("Key"): tag.get("Value") for tag in instance.get("Tags", [])}
-            if tags.get("ClusterName", "") != self.cluster.name:
+            if tags.get("parallelcluster:cluster-name", "") != self.cluster.name:
                 continue
-            elif tags.get("Name", "") == "Master":
+            elif tags.get("Name", "") == "HeadNode":
                 self._set_head_node_instance(instance)
-            else:
+            elif self.scheduler != "awsbatch":  # AWS Batch Compute instances do not use CloudWatch
                 self._add_compute_instance(instance)
         LOGGER.debug("After getting initial cluster state:\n{0}".format(self._dump_cluster_log_state()))
 
@@ -188,7 +192,7 @@ class CloudWatchLoggingClusterState:
     def _read_head_node_config(self):
         """Read the node configuration JSON file at NODE_CONFIG_PATH on the head node."""
         read_cmd = "cat {0}".format(NODE_CONFIG_PATH)
-        head_node_config = json.loads(self._run_command_on_head_node(read_cmd)).get("cfncluster", {})
+        head_node_config = json.loads(self._run_command_on_head_node(read_cmd)).get("cluster", {})
         assert_that(head_node_config).is_not_empty()
         LOGGER.info("DNA config read from head node: {0}".format(_dump_json(head_node_config)))
         return head_node_config
@@ -203,7 +207,7 @@ class CloudWatchLoggingClusterState:
 
         # Use first one, since ParallelCluster-specific node config should be the same on every compute node
         for _, config_json in compute_hostname_to_config.items():
-            compute_node_config = json.loads(config_json).get("cfncluster", {})
+            compute_node_config = json.loads(config_json).get("cluster", {})
             break
 
         assert_that(compute_node_config).is_not_empty()
@@ -275,7 +279,7 @@ class CloudWatchLoggingClusterState:
 
     def _populate_relevant_logs_for_node_roles(self, logs):
         """Populate self._relevant_logs with the entries of logs."""
-        # When the scheduler is AWS Batch, only keep log that whose config's node_role value is MasterServer, since
+        # When the scheduler is AWS Batch, only keep log that whose config's node_role value is HeadNode, since
         # Batch doesn't have compute nodes in the traditional sense.
         desired_node_roles = {HEAD_NODE_ROLE_NAME} if self.scheduler == "awsbatch" else NODE_ROLE_NAMES
         for log in logs:
@@ -638,5 +642,5 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
 def _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner):
     """Verify CloudWatch logs integration behaves as expected while a cluster is running and after it's deleted."""
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
-    cluster.delete(keep_logs=True)
+    cluster.delete(delete_logs=False)
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)

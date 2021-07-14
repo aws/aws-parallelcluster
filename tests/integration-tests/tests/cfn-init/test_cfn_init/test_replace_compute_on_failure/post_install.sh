@@ -1,8 +1,8 @@
 #!/bin/bash
 . "/etc/parallelcluster/cfnconfig"
 
-case "${cfn_node_type}" in
-    MasterServer)
+case "${node_type}" in
+    HeadNode)
         exit 0
     ;;
     ComputeFleet)

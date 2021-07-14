@@ -1,0 +1,34 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Dcv:
+    Enabled: true
+    Port: {{ dcv_port }}
+    AllowedIps: {{ access_from }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          # Cpu count is valid for g3.8xlarge
+          MinvCpus: 32
+          DesiredvCpus: 32
+          MaxvCpus: 32
+          {% else %}
+          InstanceType: {{ instance }}
+          MinCount: 1
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}

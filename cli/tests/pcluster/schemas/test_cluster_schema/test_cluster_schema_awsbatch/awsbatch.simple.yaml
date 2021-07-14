@@ -1,0 +1,32 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: String  # t2.micro
+  Ssh:
+    KeyName: String  # ec2-key-name
+  Networking:
+    SubnetId: subnet-12345678
+Scheduling:
+  Scheduler: awsbatch
+  AwsBatchQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceTypes:
+            - c4.xlarge
+            - c5.large|optimal|c5
+            - c4
+          MaxvCpus: 10
+SharedStorage:
+  - MountDir: /shared2
+    Name: ebs2
+    StorageType: Ebs
+  - MountDir: /shared3
+    Name: efs
+    StorageType: Efs
+  - MountDir: /shared4
+    Name: efs
+    StorageType: FsxLustre

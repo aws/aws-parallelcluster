@@ -22,35 +22,8 @@ from tests.common.utils import fetch_instance_slots
 
 
 # Manually disabled HT
-@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "centos8", "sge")
-@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1804", "sge")
-# HT disabled via CpuOptions
-@pytest.mark.dimensions("sa-east-1", "c5.xlarge", "alinux2", "sge")
-@pytest.mark.dimensions("sa-east-1", "c5.xlarge", "centos7", "torque")
-def test_sit_disable_hyperthreading(
-    region, scheduler, instance, os, pcluster_config_reader, clusters_factory, default_threads_per_core
-):
-    """Test Disable Hyperthreading for SIT clusters."""
-    slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_disable_hyperthreading_settings(
-        remote_command_executor,
-        scheduler_commands,
-        slots_per_instance,
-        scheduler,
-        default_threads_per_core=default_threads_per_core,
-    )
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-
-
-# Manually disabled HT
 @pytest.mark.dimensions("us-west-1", "m4.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("us-west-1", "m4.xlarge", "centos7", "slurm")
-@pytest.mark.dimensions("us-west-2", "m4.xlarge", "centos8", "slurm")
 # HT disabled via CpuOptions
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "ubuntu1804", "slurm")
 def test_hit_disable_hyperthreading(
@@ -133,11 +106,7 @@ def _test_disable_hyperthreading_settings(
     logging.info("{0} Cores: [{1}]".format(scheduler, result))
     assert_that(int(result)).is_equal_to(expected_cpus_per_instance)
 
-    # To-do: fix this test for torque
-    # Cannot specify slots without nodes for torque job
-    # But if node is specified, cluster is obviously going to scale up
-    # For now it may be sufficient to only rely on above check on scheduler node cores
-    if hyperthreading_disabled and scheduler != "torque":
+    if hyperthreading_disabled:
         # check scale up to 2 nodes
         if partition:
             result = scheduler_commands.submit_command(

@@ -1,0 +1,34 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  CustomActions:
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/post_install.sh
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    ScaledownIdletime: 10
+  SlurmQueues:
+    - Name: compute
+      CustomActions:
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/post_install.sh
+      ComputeResources:
+        - Name: compute-i1
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}

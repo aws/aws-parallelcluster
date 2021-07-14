@@ -1,0 +1,20 @@
+--- generated/python-client/pcluster/api/client/api_client.py	2021-06-24 11:33:35.621306657 -0600
++++ resources/api_client.py	2021-06-24 11:37:17.789408006 -0600
+@@ -37,6 +37,7 @@
+     none_type,
+     validate_and_convert_types
+ )
++from pcluster_client.sigv4_auth import sigv4_auth
+ 
+ 
+ class ApiClient(object):
+@@ -603,6 +604,9 @@
+         if not auth_settings:
+             return
+ 
++        if 'aws.auth.sigv4' in auth_settings:
++            sigv4_auth(method, self.configuration.host, resource_path, querys, body, headers)
++
+         for auth in auth_settings:
+             auth_setting = self.configuration.auth_settings().get(auth)
+             if auth_setting:

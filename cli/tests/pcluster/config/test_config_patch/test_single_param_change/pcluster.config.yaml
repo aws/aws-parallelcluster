@@ -1,0 +1,29 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: {{head_node_subnet_id}}
+    AdditionalSecurityGroups:
+      - {{additional_sg}}
+  Ssh:
+    KeyName: test-key
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{compute_subnet_id}}
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: {{compute_instance_type}}
+          MinCount: 1
+          MaxCount: {{max_count}}
+SharedStorage:
+  - MountDir: vol1
+    Name: ebs1
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+      Encrypted: {{ebs_encrypted}}

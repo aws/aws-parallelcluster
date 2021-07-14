@@ -11,136 +11,211 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import logging
-from os import environ
+import time
 
+import boto3
 import pytest
 from assertpy import assert_that
-from packaging import version
-from utils import get_username_for_os, run_command
+from cfn_stacks_factory import CfnStack
+from troposphere import Template, iam
+from utils import generate_stack_name, run_command
 
-from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
-
-
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
-@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
-@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos8", "*")
-@pytest.mark.dimensions("us-east-1", "c5.xlarge", "ubuntu1804", "*")
-@pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "*")
-@pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "*")
-def test_createami(region, os, instance, request, pcluster_config_reader, vpc_stack, architecture):
-    """Test createami for given region and os"""
-    cluster_config = pcluster_config_reader()
-
-    # Get base AMI
-    # remarkable AMIs are not available for ARM yet
-    base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-
-    # Networking
-    vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
-
-    # Custom Cookbook
-    custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
-    custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
-
-    # Custom Node
-    # inject PARALLELCLUSTER_NODE_URL into packer environment
-    custom_node = request.config.getoption("createami_custom_node_package")
-    env = None
-    if custom_node:
-        env = environ.copy()
-        env["PARALLELCLUSTER_NODE_URL"] = custom_node
-
-    # Instance type
-    pcluster_version_result = run_command(["pcluster", "version"])
-    instance_args = (
-        [] if version.parse(pcluster_version_result.stdout.strip()) < version.parse("2.4.1") else ["-i", instance]
-    )
-
-    pcluster_createami_result = run_command(
-        ["pcluster", "createami", "-ai", base_ami, "-os", os, "-r", region, "-c", cluster_config.as_posix()]
-        + custom_cookbook_args
-        + instance_args
-        + networking_args,
-        env=env,
-        timeout=7200,
-    )
-
-    stdout_lower = pcluster_createami_result.stdout.lower()
-    assert_that(stdout_lower).contains("downloading https://{0}-aws-parallelcluster.s3".format(region))
-    assert_that(stdout_lower).does_not_contain("chef.io/chef/install.sh")
-    assert_that(stdout_lower).does_not_contain("packages.chef.io")
-    assert_that(stdout_lower).contains("thank you for installing cinc client")
-    assert_that(stdout_lower).contains("starting cinc client")
-    assert_that(stdout_lower).does_not_contain("no custom ami created")
+from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 
 
-@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "ubuntu1804", "*")
-@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "*")
-def test_createami_post_install(
-    region, os, instance, test_datadir, request, pcluster_config_reader, vpc_stack, architecture, amis_dict
+def test_build_image(
+    region,
+    instance,
+    os,
+    pcluster_config_reader,
+    architecture,
+    s3_bucket_factory,
+    build_image_custom_resource,
+    build_image,
 ):
-    """Test post install script and base AMI is ParallelCluster AMI"""
-    cluster_config = pcluster_config_reader()
+    """Test build image for given region and os"""
+    # Get base AMI
+    # remarkable AMIs are not available for ARM and ubuntu2004 yet
+    if os != "ubuntu2004":
+        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+    else:
+        base_ami = retrieve_latest_ami(region, os, architecture=architecture)
+
+    image_id = f"integ-test-build-image-{generate_random_string()}"
+
+    # Get custom instance role
+    instance_role = build_image_custom_resource(image_id=image_id)
+
+    # Get custom S3 bucket
+    bucket_name = s3_bucket_factory()
+
+    image_config = pcluster_config_reader(
+        config_file="image.config.yaml",
+        parent_image=base_ami,
+        instance_type=instance,
+        instance_role=instance_role,
+        bucket_name=bucket_name,
+    )
+
+    result = build_image(image_id, region, image_config)
+
+    _assert_build_tag(image_id)
+    _assert_build_image_success(result, image_id, region)
+    _assert_image_tag_and_volume(image_id)
+
+
+def _assert_build_tag(image_id):
+    logging.info("Check the build tag is present as specified in config file.")
+    stack_list = boto3.client("cloudformation").describe_stacks(StackName=image_id).get("Stacks")
+    logging.info(stack_list)
+    assert_that(len(stack_list)).is_equal_to(1)
+    stack_tags = stack_list[0].get("Tags")
+    logging.info(stack_tags)
+    assert_that(stack_tags).contains({"Key": "dummyBuildTag", "Value": "dummyBuildTag"})
+
+
+def _assert_image_tag_and_volume(image_id):
+    logging.info("Check the image tag is present as specified in config file.")
+    image_list = (
+        boto3.client("ec2")
+        .describe_images(
+            ImageIds=[], Filters=[{"Name": "tag:parallelcluster:image_id", "Values": [image_id]}], Owners=["self"]
+        )
+        .get("Images")
+    )
+    logging.info(image_list)
+    assert_that(len(image_list)).is_equal_to(1)
+    image_tags = image_list[0].get("Tags")
+    volume_size = image_list[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
+    logging.info(image_tags)
+    assert_that(image_tags).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
+    assert_that(volume_size).is_equal_to(200)
+
+
+@pytest.fixture()
+def build_image_custom_resource(cfn_stacks_factory, region):
+    """
+    Define a fixture to manage the creation and destruction of build image resource( custom instance role).
+
+    return instance role
+    """
+    stack_name_post_test = None
+
+    def _custom_resource(image_id):
+        nonlocal stack_name_post_test
+        # custom resource stack
+        custom_resource_stack_name = generate_stack_name("-".join([image_id, "custom", "resource"]), "")
+        stack_name_post_test = custom_resource_stack_name
+        custom_resource_template = Template()
+        custom_resource_template.set_version()
+        custom_resource_template.set_description("Create build image custom resource stack")
+
+        # Create a instance role
+        managed_policy_arns = [
+            "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+            "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder",
+        ]
+
+        policy_document = iam.Policy(
+            PolicyName="myInstanceRoleInlinePolicy",
+            PolicyDocument={
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ec2:CreateTags",
+                            "ec2:ModifyImageAttribute",
+                            "s3:GetObject",
+                            "cloudformation:ListStacks",
+                        ],
+                        "Resource": "*",
+                    }
+                ]
+            },
+        )
+        role_name = "".join(["dummyInstanceRole", generate_random_string()])
+        instance_role = iam.Role(
+            "CustomInstanceRole",
+            AssumeRolePolicyDocument={
+                "Statement": [
+                    {"Effect": "Allow", "Principal": {"Service": ["ec2.amazonaws.com"]}, "Action": ["sts:AssumeRole"]}
+                ]
+            },
+            Description="custom instance role for build image test.",
+            ManagedPolicyArns=managed_policy_arns,
+            Path="/myInstanceRole/",
+            Policies=[policy_document],
+            RoleName=role_name,
+        )
+
+        custom_resource_template.add_resource(instance_role)
+        custom_resource_stack = CfnStack(
+            name=custom_resource_stack_name,
+            region=region,
+            template=custom_resource_template.to_json(),
+            capabilities="CAPABILITY_NAMED_IAM",
+        )
+        cfn_stacks_factory.create_stack(custom_resource_stack)
+
+        instance_role_arn = boto3.client("iam").get_role(RoleName=role_name).get("Role").get("Arn")
+        logging.info("Custom instance role arn %s", instance_role_arn)
+
+        return instance_role_arn
+
+    yield _custom_resource
+    if stack_name_post_test:
+        cfn_stacks_factory.delete_stack(stack_name_post_test, region)
+
+
+def test_build_image_custom_components(
+    region, os, instance, test_datadir, pcluster_config_reader, architecture, s3_bucket_factory, build_image
+):
+    """Test custom components and base AMI is ParallelCluster AMI"""
+    # Custom script
+    custom_script_file = "custom_script_ubuntu.sh" if os in ["ubuntu1804", "ubuntu2004"] else "custom_script.sh"
+
+    # Create S3 bucket for pre install scripts, to remove epel package if it is installed
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / custom_script_file), "scripts/custom_script.sh")
 
     # Get ParallelCluster AMI as base AMI
-    base_ami = amis_dict.get(os)
+    base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
 
-    # Networking
-    vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
-
-    # Custom Cookbook
-    custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
-    custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
-
-    # Instance type
-    instance_args = ["-i", instance]
-
-    # Post install script
-    post_install_script_file = "post_install_ubuntu.sh" if os in ["ubuntu1804"] else "post_install.sh"
-    post_install_script = "file://{0}".format(test_datadir / post_install_script_file)
-    post_install_args = ["--post-install", post_install_script]
-
-    pcluster_createami_result = run_command(
-        ["pcluster", "createami", "-ai", base_ami, "-os", os, "-r", region, "-c", cluster_config.as_posix()]
-        + custom_cookbook_args
-        + instance_args
-        + networking_args
-        + post_install_args,
-        timeout=7200,
+    image_id = f"integ-test-build-image-custom-components-{generate_random_string()}"
+    image_config = pcluster_config_reader(
+        config_file="image.config.yaml",
+        parent_image=base_ami,
+        instance_type=instance,
+        bucket_name=bucket_name,
+        region=region,
     )
 
-    stdout_lower = pcluster_createami_result.stdout.lower()
-    assert_that(stdout_lower).does_not_contain("no post install script")
-    assert_that(stdout_lower).does_not_contain("no custom ami created")
+    result = build_image(image_id, region, image_config)
+
+    _assert_build_image_success(result, image_id, region)
 
 
-def test_createami_wrong_os(region, instance, os, request, pcluster_config_reader, vpc_stack, architecture, amis_dict):
-    """Test error message when os provide is different from the os of custom AMI"""
-    cluster_config = pcluster_config_reader()
+def _assert_build_image_success(result, image_id, region):
+    logging.info(f"Test build image process for image {image_id}.")
+    assert_that(result).contains("CREATE_IN_PROGRESS")
+    assert_that(result).contains("Build image started successfully.")
 
-    # centos7 is specified in the config file but an AMI of centos8 is provided
-    wrong_os = "centos8"
-    logging.info("Asserting os fixture is different from wrong_os variable")
-    assert_that(os != wrong_os).is_true()
-    # This test only works if both OSs have the same login username
-    # Else ssh to packer instance will fail and cookbook logic cannot be tested
-    logging.info("Asserting os and wrong_os have the same login username")
-    assert_that(get_username_for_os(os) == get_username_for_os(wrong_os)).is_true()
-    base_ami = amis_dict.get(wrong_os)
+    pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+    logging.info(pcluster_describe_image_result.stdout)
 
-    command = _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config)
-    _createami_and_assert_error(command, fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}")
+    while "BUILD_IN_PROGRESS" in pcluster_describe_image_result.stdout:
+        time.sleep(600)
+        pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+        logging.info(pcluster_describe_image_result.stdout)
+
+    assert_that(pcluster_describe_image_result.stdout).contains("BUILD_COMPLETE")
 
 
-@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "*")
-def test_createami_wrong_pcluster_version(
-    region, instance, os, request, pcluster_config_reader, vpc_stack, pcluster_ami_without_standard_naming
+def test_build_image_wrong_pcluster_version(
+    region, os, instance, pcluster_config_reader, architecture, pcluster_ami_without_standard_naming, build_image
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
-    cluster_config = pcluster_config_reader()
     current_version = get_installed_parallelcluster_version()
     wrong_version = "2.8.1"
     logging.info("Asserting wrong_version is different from current_version")
@@ -149,58 +224,30 @@ def test_createami_wrong_pcluster_version(
     # Therefore, we can bypass the version check in CLI and test version check of .bootstrapped file in Cookbook.
     wrong_ami = pcluster_ami_without_standard_naming(wrong_version)
 
-    command = _compose_command(region, instance, os, request, vpc_stack, wrong_ami, cluster_config)
-    _createami_and_assert_error(command, fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
-
-
-def _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config):
-    # Networking
-    vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
-
-    # Custom Cookbook
-    custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
-    custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
-
-    return (
-        [
-            "pcluster",
-            "createami",
-            "-ai",
-            base_ami,
-            "-os",
-            os,
-            "-r",
-            region,
-            "-c",
-            cluster_config.as_posix(),
-            "-i",
-            instance,
-        ]
-        + custom_cookbook_args
-        + networking_args
+    image_config = pcluster_config_reader(
+        config_file="image.config.yaml",
+        parent_image=wrong_ami,
+        instance_type=instance,
     )
+    image_id = f"integ-test-build-image-wrong-version-{generate_random_string()}"
+
+    result = build_image(image_id, region, image_config)
+
+    _assert_build_image_failed(result, image_id, region)
+    # TODO get cloudwatch log
 
 
-def _createami_and_assert_error(command, expected_error):
-    pcluster_createami_result = run_command(command, timeout=7200, raise_on_error=False)
+def _assert_build_image_failed(result, image_id, region):
+    logging.info(f"Test build image process for image {image_id}.")
+    assert_that(result).contains("CREATE_IN_PROGRESS")
+    assert_that(result).contains("Build image started successfully.")
 
-    logging.info("Verifying errors in createami stdout and packer log")
-    stdout = pcluster_createami_result.stdout
-    packer_log_path = _get_packer_log_path(stdout)
-    with open(packer_log_path) as f:
-        packer_log = f.read()
-    logging.info(packer_log)
-    assert_that(packer_log).contains("RuntimeError")
-    assert_that(packer_log).matches(expected_error)
-    assert_that(stdout).contains("No custom AMI created")
+    pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+    logging.info(pcluster_describe_image_result.stdout)
 
+    while "BUILD_IN_PROGRESS" in pcluster_describe_image_result.stdout:
+        time.sleep(600)
+        pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+        logging.info(pcluster_describe_image_result.stdout)
 
-def _get_packer_log_path(createami_stdout):
-    packer_log_key = "Packer log: "
-    for line in createami_stdout.split("\n"):
-        if line.startswith(packer_log_key):
-            packer_log_key_len = len(packer_log_key)
-            return line[packer_log_key_len:]
-    logging.error("Packer log path is not found in stdout of createami")
-    raise Exception
+    assert_that(pcluster_describe_image_result.stdout).contains("BUILD_FAILED")

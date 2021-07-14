@@ -13,6 +13,7 @@ import time
 
 import boto3
 from assertpy import assert_that, soft_assertions
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 from utils import get_compute_nodes_count, get_compute_nodes_instance_ids
@@ -22,25 +23,8 @@ from tests.common.scaling_common import get_compute_nodes_allocation
 
 def assert_instance_replaced_or_terminating(instance_id, region):
     """Assert that a given instance got replaced or is marked as Unhealthy."""
-    response = boto3.client("autoscaling", region_name=region).describe_auto_scaling_instances(
-        InstanceIds=[instance_id]
-    )
-    if response["AutoScalingInstances"]:
-        assert_that(
-            response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
-            or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
-        ).is_true()
-    else:
-        ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
-        assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in(
-            "shutting-down", "terminated"
-        )
-
-
-def assert_asg_desired_capacity(region, asg_name, expected):
-    asg_client = boto3.client("autoscaling", region_name=region)
-    asg = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")[0]
-    assert_that(asg.get("DesiredCapacity")).is_equal_to(expected)
+    ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
+    assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in("shutting-down", "terminated")
 
 
 def assert_no_errors_in_logs(remote_command_executor, scheduler):
@@ -51,8 +35,6 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
             "/var/log/parallelcluster/slurm_resume.log",
             "/var/log/parallelcluster/slurm_suspend.log",
         ]
-    elif scheduler in {"sge", "torque"}:
-        log_files = ["/var/log/sqswatcher", "/var/log/jobwatcher"]
     else:
         log_files = []
 
@@ -144,3 +126,31 @@ def assert_num_instances_constant(cluster_name, region, desired, timeout=5):
     start_time = time.time()
     while time.time() < start_time + 60 * (timeout):
         assert_num_instances_in_cluster(cluster_name, region, desired)
+
+
+def assert_head_node_is_running(region, cluster):
+    logging.info("Asserting the head node is running")
+    head_node_state = (
+        boto3.client("ec2", region_name=region)
+        .describe_instances(Filters=[{"Name": "ip-address", "Values": [cluster.head_node_ip]}])
+        .get("Reservations")[0]
+        .get("Instances")[0]
+        .get("State")
+        .get("Name")
+    )
+    assert_that(head_node_state).is_equal_to("running")
+
+
+def assert_aws_identity_access_is_correct(cluster, users_allow_list, remote_command_executor=None):
+    logging.info("Asserting access to AWS caller identity is correct")
+
+    if not remote_command_executor:
+        remote_command_executor = RemoteCommandExecutor(cluster)
+
+    for user, allowed in users_allow_list.items():
+        logging.info(f"Asserting access to AWS caller identity is {'allowed' if allowed else 'denied'} for user {user}")
+        command = f"sudo -u {user} aws sts get-caller-identity"
+        result = remote_command_executor.run_remote_command(command, raise_on_error=False)
+        logging.info(f"user={user} and result.failed={result.failed}")
+        logging.info(f"user={user} and result.stdout={result.stdout}")
+        assert_that(result.failed).is_equal_to(not allowed)

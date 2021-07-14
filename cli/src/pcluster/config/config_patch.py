@@ -13,24 +13,25 @@ import logging
 import re
 import sys
 from collections import namedtuple
+from typing import List
+
+from pcluster.config.update_policy import UpdatePolicy
+from pcluster.schemas.cluster_schema import ClusterSchema
+from pcluster.schemas.common_schema import BaseSchema
 
 # Represents a single parameter change in a ConfigPatch instance
-from pcluster import utils
-from pcluster.config.update_policy import UpdatePolicy
-from pcluster.utils import get_file_section_name
-
-Change = namedtuple("Change", ["section_key", "section_label", "param_key", "old_value", "new_value", "update_policy"])
+Change = namedtuple("Change", ["path", "key", "old_value", "new_value", "update_policy", "is_list"])
 
 # Patch for deepcopy bug - Issue10076 in Pyhton < 3.7
 # see https://bugs.python.org/issue10076
 # see https://docs.python.org/3/whatsnew/3.7.html#re
 if sys.version_info <= (3, 7):
-    copy._deepcopy_dispatch[type(re.compile(""))] = lambda r, _: r
+    copy._deepcopy_dispatch[type(re.compile(""))] = lambda r, _: r  # pylint: disable=protected-access
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ConfigPatch(object):
+class ConfigPatch:
     """
     Represents the Diff Patch between two PclusterConfig instances.
 
@@ -51,13 +52,14 @@ class ConfigPatch(object):
         - A list of change rows with all the information to build a detailed report
     """
 
-    def __init__(self, base_config, target_config):
+    def __init__(self, cluster, base_config: dict, target_config: dict):
         """
         Create a ConfigPatch.
 
-        :param base_config: The base configuration, f.i. as reconstructed from CloudFormation
+        :param base_config: The base configuration, f.i. from S3 bucket
         :param target_config: The target configuration, f.i. as loaded from configuration file
         """
+        self.cluster = cluster
         # Cached condition results
         self.condition_results = {}
 
@@ -65,29 +67,19 @@ class ConfigPatch(object):
         self.base_config = copy.deepcopy(base_config)
         self.target_config = copy.deepcopy(target_config)
 
-        # Disable autorefresh to avoid breakages due to changes made to the configurations when creating the patch
-        self.base_config.auto_refresh = False
-        self.target_config.auto_refresh = False
-
+        self.cluster_schema = ClusterSchema()
         self.changes = []
         self._compare()
 
     @property
     def stack_name(self):
         """Get the name of the stack this patch is referred to."""
-        return (
-            utils.get_stack_name(self.base_config.cluster_name) if hasattr(self.base_config, "cluster_name") else None
-        )
-
-    @property
-    def config_file(self):
-        """Get the name of the target configuration file, if any."""
-        return self.target_config.config_file if hasattr(self.target_config, "config_file") else None
+        return self.cluster.stack_name
 
     @property
     def cluster_name(self):
         """Get the cluster name from the base configuration file, if any."""
-        return self.base_config.cluster_name if hasattr(self.base_config, "cluster_name") else None
+        return self.cluster.name
 
     def _compare(self):
         """
@@ -96,65 +88,112 @@ class ConfigPatch(object):
         All detected changes are added to the internal changes list, ready to be checked  through the public check()
         method.
         """
-        # Remove ignored sections
-        self._remove_ignored_sections(self.base_config)
-        self._remove_ignored_sections(self.target_config)
+        self._compare_section(self.base_config, self.target_config, self.cluster_schema, param_path=[])
 
-        # First, compare all sections from target vs base config and mark visited base sections.
-        for section_key in sorted(self.target_config.get_section_keys()):
-            for section_label in sorted(self.target_config.get_sections(section_key).keys()):
-                target_section = self.target_config.get_section(section_key, section_label)
-                base_section = self._get_config_section(self.base_config, target_section)
-                base_section.visited = True
-                self._compare_section(base_section, target_section)
-
-        # Then, compare all non visited base sections vs target config.
-        for section_key in sorted(self.base_config.get_section_keys()):
-            for section_label in sorted(self.base_config.get_sections(section_key).keys()):
-                base_section = self.base_config.get_section(section_key, section_label)
-                if not hasattr(base_section, "visited"):
-                    target_section = self._get_config_section(self.target_config, base_section)
-                    self._compare_section(base_section, target_section)
-
-    def _compare_section(self, base_section, target_section):
+    def _compare_section(self, base_section: dict, target_section: dict, section_schema: BaseSchema, param_path: List):
         """
         Compare the provided base and target sections and append the detected changes to the internal changes list.
 
         :param base_section: The section in the base configuration
         :param target_section: The corresponding section in the target configuration
+        :param section_schema: schema corresponding to the section to be analyzed (contains all the resources/params)
+        :param param_path: A list on which the items correspond to the path of the param in the configuration schema
         """
-        # If one of the two sections is marked as mock, all detected changes will also be mock
-        mock_base_section = hasattr(base_section, "mock")
-        mock_target_section = hasattr(target_section, "mock")
-        mock_change = mock_base_section or mock_target_section
+        for _, field_obj in section_schema.declared_fields.items():
+            data_key = field_obj.data_key
+            is_nested_section = hasattr(field_obj, "nested")
+            is_list = hasattr(field_obj, "many") and field_obj.many
 
-        for _, param in target_section.params.items():
-            base_value = base_section.get_param_value(param.key)
+            change_update_policy = field_obj.metadata.get("update_policy", UpdatePolicy.UNSUPPORTED)
 
-            if param != base_section.get_param(param.key):
-                # Mock changes are always considered supported (or ignored). Their purpose is just to show which
-                # parameters are present in a section that has been added or removed. UpdatePolicy checks on related
-                # settings parameters will determine whether adding or removing these sections is supported
-                if mock_change and param.get_update_policy() != UpdatePolicy.IGNORED:
-                    change_update_policy = UpdatePolicy.SUPPORTED
+            if is_nested_section:
+                if is_list:
+                    self._compare_list(
+                        base_section, target_section, param_path, data_key, field_obj, change_update_policy
+                    )
                 else:
-                    change_update_policy = param.get_update_policy()
+                    # Single nested section
+                    target_value = target_section.get(data_key, None)
+                    base_value = base_section.get(data_key, None)
 
+                    if target_value and base_value:
+                        # Compare nested sections and params
+                        nested_path = copy.deepcopy(param_path)
+                        nested_path.append(data_key)
+                        self._compare_section(base_value, target_value, field_obj.schema, nested_path)
+                    elif target_value or base_value:
+                        # One section has been added or removed, add section change information
+                        self.changes.append(
+                            Change(
+                                param_path,
+                                data_key,
+                                base_value if base_value else "-",
+                                target_value if target_value else "-",
+                                change_update_policy,
+                                is_list=False,
+                            )
+                        )
+            else:
+                # Simple param
+                target_value = target_section.get(data_key, None)
+                base_value = base_section.get(data_key, None)
+
+                if target_value != base_value:
+                    # Add param change information
+                    self.changes.append(
+                        Change(param_path, data_key, base_value, target_value, change_update_policy, is_list=False)
+                    )
+
+    def _compare_list(self, base_section, target_section, param_path, data_key, field_obj, change_update_policy):
+        """
+        Compare list of nested section (e.g. list of queues) by comparing the items with the same update_key.
+
+        If update_key is not set we're considering Name as identifier.
+        """
+        update_key = field_obj.metadata.get("update_key")
+
+        # Compare items in the list by searching the right item to compare through update_key value
+        # First, compare all sections from target vs base config and mark visited base sections.
+        for target_nested_section in target_section.get(data_key, []):
+            update_key_value = target_nested_section.get(update_key)
+            base_nested_section = next(
+                (
+                    nested_section
+                    for nested_section in base_section.get(data_key, [])
+                    if nested_section.get(update_key) == update_key_value
+                ),
+                None,
+            )
+            if base_nested_section:
+                nested_path = copy.deepcopy(param_path)
+                nested_path.append(f"{data_key}[{update_key_value}]")
+                self._compare_section(base_nested_section, target_nested_section, field_obj.schema, nested_path)
+                base_nested_section["visited"] = True
+            else:
                 self.changes.append(
                     Change(
-                        target_section.key,
-                        target_section.label,
-                        param.key,
-                        base_value if not mock_base_section else "-",
-                        param.value if not mock_target_section else "-",
+                        param_path,
+                        data_key,
+                        None,
+                        target_nested_section,
                         change_update_policy,
+                        is_list=True,
                     )
                 )
-
-    def _remove_ignored_sections(self, config):
-        # global file sections are ignored for patch creation
-        for section_key in config.get_global_section_keys():
-            config.remove_section(section_key)
+        # Then, compare all non visited base sections vs target config.
+        for base_nested_section in base_section.get(data_key, []):
+            if not base_nested_section.get("visited", False):
+                update_key_value = base_nested_section.get(update_key)
+                self.changes.append(
+                    Change(
+                        param_path,
+                        data_key,
+                        base_nested_section,
+                        None,
+                        change_update_policy,
+                        is_list=True,
+                    )
+                )
 
     @property
     def update_policy_level(self):
@@ -167,48 +206,9 @@ class ConfigPatch(object):
         """
         return (
             max(change.update_policy.level for change in self.changes)
-            if len(self.changes)
+            if len(self.changes) > 0
             else UpdatePolicy.SUPPORTED.level
         )
-
-    def _create_default_section(self, config, section):
-        """
-        Create a section of same type of the provided section, with all default parameter values.
-
-        The purpose of this operation is to allow sections comparison when a section is missing in base or target
-        configuration.
-
-        :param config: The configuration lacking the section
-        :param section: The section to create a default copy of
-        """
-        section_definition = section.definition
-        section_type = section_definition.get("type")
-        default_section = section_type(
-            section_definition=section_definition, pcluster_config=config, section_label=section.label
-        )
-
-        default_section.mock = True
-        return default_section
-
-    def _get_config_section(self, config, section):
-        """
-        Get the section corresponding to the provided one in the specified configuration.
-
-        If no section is found, a default copy of the provided section is created on the fly.
-
-        :param config: The configuration where to get the section from
-        :param section: The section to be matched
-        :return: The matching section
-        """
-        section_key = section.key
-        # We compare the cluster sections of base_config and target_config no matter the label change or not
-        section_label = section.label if section_key != "cluster" else None
-        config_section = config.get_section(section_key, section_label)
-
-        # If section is not present in base config, a default copy is generated
-        if not config_section:
-            config_section = self._create_default_section(config, section)
-        return config_section
 
     def check(self):
         """
@@ -220,7 +220,7 @@ class ConfigPatch(object):
 
         :return A tuple containing the patch applicability and the report rows.
         """
-        rows = [["section", "parameter", "old value", "new value", "check", "reason", "action_needed"]]
+        rows = [["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]]
 
         patch_allowed = True
 
@@ -231,11 +231,10 @@ class ConfigPatch(object):
                 patch_allowed = False
 
             if print_change:
-                section_name = get_file_section_name(change.section_key, change.section_label)
                 rows.append(
                     [
-                        section_name,
-                        change.param_key,
+                        change.path,
+                        change.key,
                         change.old_value,
                         change.new_value,
                         check_result.value,

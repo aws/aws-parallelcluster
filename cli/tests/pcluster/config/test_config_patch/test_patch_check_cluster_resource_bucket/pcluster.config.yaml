@@ -1,0 +1,31 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: {{head_node_subnet_id}}
+    AdditionalSecurityGroups:
+      - {{additional_sg}}
+  Ssh:
+    KeyName: test-key
+  Iam:
+    InstanceRole: {{ ec2_iam_role }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - {{compute_subnet_id}}
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: c5.2xlarge
+SharedStorage:
+  - MountDir: {{shared_dir}}
+    Name: ebs1
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp2
+{% if cluster_resource_bucket %}
+CustomS3Bucket: {{ cluster_resource_bucket }}
+{% endif %}

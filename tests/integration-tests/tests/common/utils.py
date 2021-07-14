@@ -9,11 +9,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import random
+import string
+import time
 
 import boto3
 import pkg_resources
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
 from utils import get_instance_info
@@ -23,7 +27,6 @@ LOGGER = logging.getLogger(__name__)
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"]},
-    "centos8": {"name": "CentOS 8.*", "owners": ["125523088429", "247102896272"]},
     "ubuntu1804": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
@@ -42,12 +45,11 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
 }
 
 # Get official pcluster AMIs or get from dev account
-PCLUSTER_AMI_OWNERS = ["amazon"]
+PCLUSTER_AMI_OWNERS = ["amazon", "self"]
 # Pcluster AMIs are latest ParallelCluster official AMIs that align with cli version
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "centos7": {"name": "centos7-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
-    "centos8": {"name": "centos8-hvm-x86_64-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu1804": {"name": "ubuntu-1804-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
     "ubuntu2004": {"name": "ubuntu-2004-lts-hvm-*-*", "owners": PCLUSTER_AMI_OWNERS},
 }
@@ -55,19 +57,25 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
 AMI_TYPE_DICT = {
     "official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP,
     "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP,
+    "pcluster": OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP,
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
-    """
-    Retrieve latest non-pcluster AMIs.
-
-    Pcluster AMIs should be retrieved with amis_dict fixture.
-    """
+def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None):
+    if additional_filters is None:
+        additional_filters = []
     try:
-        ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
+        if ami_type == "pcluster":
+            ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
+                version=get_installed_parallelcluster_version(),
+                ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name"),
+            )
+        else:
+            ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
+        logging.info("Parent image name %s" % ami_name)
         response = boto3.client("ec2", region_name=region).describe_images(
-            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}],
+            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}]
+            + additional_filters,
             Owners=AMI_TYPE_DICT.get(ami_type).get(os).get("owners"),
         )
         # Sort on Creation date Desc
@@ -95,9 +103,8 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
             Filters=[
                 {"Name": "name", "Values": [official_ami_name]},
                 {"Name": "architecture", "Values": [architecture]},
-                {"Name": "is-public", "Values": ["true"]},
             ],
-            Owners=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("owners"),
+            Owners=["self", "amazon"],
         ).get("Images", [])
         ami_id = client.copy_image(
             Description="This AMI is a copy from an official AMI but uses a different naming. "
@@ -141,3 +148,32 @@ def get_installed_parallelcluster_version():
 def get_sts_endpoint(region):
     """Get regionalized STS endpoint."""
     return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
+
+
+def generate_random_string():
+    """
+    Generate a random prefix that is 16 characters long.
+
+    Example: 4htvo26lchkqeho1
+    """
+    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
+
+
+def reboot_head_node(cluster, remote_command_executor=None):
+    logging.info(f"Rebooting head node for cluster: {cluster.name}")
+    if not remote_command_executor:
+        remote_command_executor = RemoteCommandExecutor(cluster)
+    command = "sudo reboot"
+    result = remote_command_executor.run_remote_command(command, raise_on_error=False)
+    logging.info(f"result.failed={result.failed}")
+    logging.info(f"result.stdout={result.stdout}")
+    wait_head_node_running(cluster)
+    time.sleep(120)  # Wait time is required for the head node to complete the reboot
+    logging.info(f"Rebooted head node for cluster: {cluster.name}")
+
+
+def wait_head_node_running(cluster):
+    logging.info(f"Waiting for head node to be running for cluster: {cluster.name}")
+    boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
+        Filters=[{"Name": "ip-address", "Values": [cluster.head_node_ip]}], WaiterConfig={"Delay": 60, "MaxAttempts": 5}
+    )

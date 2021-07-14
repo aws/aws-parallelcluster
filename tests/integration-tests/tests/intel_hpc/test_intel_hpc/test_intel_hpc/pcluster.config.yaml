@@ -1,0 +1,42 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  LocalStorage:
+    RootVolume:
+      Size: 80
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+    - Name: queue-0
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 80
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          {% endif %}
+          MinCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: large
+    StorageType: Ebs
+    EbsSettings:
+      Size: 200
+AdditionalPackages:
+  IntelSelectSolutions:
+    InstallIntelSoftware: true

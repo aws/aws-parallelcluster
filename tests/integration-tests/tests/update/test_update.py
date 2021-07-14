@@ -14,137 +14,21 @@ import re
 import time
 
 import boto3
-import configparser
 import pytest
 import utils
+import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource, get_policy_resources
 
 from tests.common.hit_common import assert_initial_conditions
-from tests.common.scaling_common import (
-    get_batch_ce,
-    get_batch_ce_max_size,
-    get_batch_ce_min_size,
-    get_max_asg_capacity,
-    get_min_asg_capacity,
-)
-from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
-from tests.common.utils import fetch_instance_slots
-
-
-@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "sge")
-@pytest.mark.usefixtures("os")
-def test_update_sit(
-    region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
-):
-    # Create S3 bucket for pre/post install scripts
-    bucket_name = s3_bucket_factory()
-    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
-    bucket.upload_file(str(test_datadir / "postinstall.sh"), "scripts/postinstall.sh")
-
-    # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
-    cluster = clusters_factory(init_config_file)
-
-    # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.config_file = str(init_config_file)
-    cluster.update(force=False)
-
-    # Command executors
-    command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
-
-    # Create shared dir for script results
-    command_executor.run_remote_command("mkdir /shared/script_results")
-
-    # Update cluster with new configuration
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini", bucket=bucket_name)
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
-
-    # Get initial, new and old compute instances references, to be able to execute specific tests in different group of
-    # instances
-    # Get initial compute nodes
-    initial_compute_nodes = scheduler_commands.get_compute_nodes()
-
-    # Get new compute nodes
-    slots_per_instance = fetch_instance_slots(region, instance)
-    new_compute_nodes = _add_compute_nodes(scheduler_commands, slots_per_instance, number_of_nodes=1)
-
-    # Old compute node instance refs
-    old_compute_node = initial_compute_nodes[0]
-    old_compute_instance = _get_instance(region, cluster.cfn_name, old_compute_node)
-
-    # New compute node instance refs
-    new_compute_node = new_compute_nodes[0]
-    new_compute_instance = _get_instance(region, cluster.cfn_name, new_compute_node)
-
-    # Read updated configuration
-    updated_config = configparser.ConfigParser()
-    updated_config.read(updated_config_file)
-
-    # Check new ASG settings
-    _check_initial_queue(region, cluster.cfn_name, updated_config.getint("cluster default", "initial_queue_size"))
-    _check_max_queue(region, cluster.cfn_name, updated_config.getint("cluster default", "max_queue_size"))
-
-    # Check new S3 resources
-    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
-
-    # Check new Additional IAM policies
-    _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
-
-    # Check old and new compute instance types
-    _check_compute_instance_type(old_compute_instance, cluster.config.get("cluster default", "compute_instance_type"))
-    _check_compute_instance_type(new_compute_instance, updated_config.get("cluster default", "compute_instance_type"))
-
-    # Check old and new instance life cycle
-    _check_ondemand_instance(old_compute_instance)
-    _check_spot_instance(new_compute_instance)
-
-    # Check old and new compute root volume size
-    _check_compute_root_volume_size(
-        command_executor,
-        scheduler_commands,
-        test_datadir,
-        cluster.config.get("cluster default", "compute_root_volume_size"),
-        old_compute_node,
-    )
-    _check_compute_root_volume_size(
-        command_executor,
-        scheduler_commands,
-        test_datadir,
-        updated_config.get("cluster default", "compute_root_volume_size"),
-        new_compute_node,
-    )
-
-    # Check old and new extra_json
-    _check_extra_json(command_executor, scheduler_commands, old_compute_node, "test_value_1")
-    _check_extra_json(command_executor, scheduler_commands, new_compute_node, "test_value_2")
-
-    # Check pre and post install on new nodes
-    _check_script(
-        command_executor,
-        scheduler_commands,
-        new_compute_node,
-        "preinstall",
-        updated_config.get("cluster default", "pre_install_args"),
-    )
-    _check_script(
-        command_executor,
-        scheduler_commands,
-        new_compute_node,
-        "postinstall",
-        updated_config.get("cluster default", "post_install_args"),
-    )
-    _check_volume(cluster, updated_config, region)
+from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
+from tests.common.schedulers_common import SlurmCommands
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("os", "instance")
-def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -156,8 +40,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.config_file = str(init_config_file)
-    cluster.update(force=True)
+    cluster.update(str(init_config_file), force=True)
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
@@ -169,14 +52,14 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     initial_queues_config = {
         "queue1": {
             "compute_resources": {
-                "queue1_i1": {
+                "queue1-i1": {
                     "instance_type": "c5.xlarge",
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 1,
                     "enable_efa": False,
                     "disable_hyperthreading": False,
                 },
-                "queue1_i2": {
+                "queue1-i2": {
                     "instance_type": "t2.micro",
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 9,
@@ -188,7 +71,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
         },
         "queue2": {
             "compute_resources": {
-                "queue2_i1": {
+                "queue2-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -204,44 +87,46 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     _assert_launch_templates_config(queues_config=initial_queues_config, cluster_name=cluster.name, region=region)
 
     # Submit a job in order to verify that jobs are not affected by an update of the queue size
-    result = slurm_commands.submit_command("sleep infinity", constraint="static")
+    result = slurm_commands.submit_command("sleep infinity", constraint="static&c5.xlarge")
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Update cluster with new configuration
+    additional_policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAppStreamServiceAccess"
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.ini", bucket=bucket_name, resource_bucket=bucket_name
+        config_file="pcluster.config.update.yaml",
+        bucket=bucket_name,
+        resource_bucket=bucket_name,
+        additional_policy_arn=additional_policy_arn,
     )
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
+    cluster.update(str(updated_config_file))
 
-    # Here is the expected list of nodes. Note that queue1-dy-t2micro-1 comes from the initial_count set when creating
+    # Here is the expected list of nodes.
     # the cluster:
-    # queue1-dy-t2micro-1
     # queue1-st-c5xlarge-1
     # queue1-st-c5xlarge-2
-    assert_initial_conditions(slurm_commands, 2, 1, partition="queue1")
+    assert_initial_conditions(slurm_commands, 2, 0, partition="queue1")
 
     updated_queues_config = {
         "queue1": {
             "compute_resources": {
-                "queue1_i1": {
+                "queue1-i1": {
                     "instance_type": "c5.xlarge",
                     "expected_running_instances": 2,
                     "expected_power_saved_instances": 2,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
-                "queue1_i2": {
+                "queue1-i2": {
                     "instance_type": "c5.2xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
-                "queue1_i3": {
+                "queue1-i3": {
                     "instance_type": "t2.micro",
-                    "expected_running_instances": 1,  # This comes from initial_count before update
-                    "expected_power_saved_instances": 9,
+                    "expected_running_instances": 0,
+                    "expected_power_saved_instances": 10,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
@@ -250,7 +135,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
         },
         "queue2": {
             "compute_resources": {
-                "queue2_i1": {
+                "queue2-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 1,
@@ -262,14 +147,14 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
         },
         "queue3": {
             "compute_resources": {
-                "queue3_i1": {
+                "queue3-i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": True,
                     "enable_efa": True,
                 },
-                "queue3_i2": {
+                "queue3-i2": {
                     "instance_type": "t2.xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -285,15 +170,15 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     _assert_launch_templates_config(queues_config=updated_queues_config, cluster_name=cluster.name, region=region)
 
     # Read updated configuration
-    updated_config = configparser.ConfigParser()
-    updated_config.read(updated_config_file)
+    with open(updated_config_file) as conf_file:
+        updated_config = yaml.safe_load(conf_file)
 
     # Check new S3 resources
-    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, get_policy_resources(updated_config, enable_write_access=False))
+    check_s3_read_write_resource(region, cluster, get_policy_resources(updated_config, enable_write_access=True))
 
     # Check new Additional IAM policies
-    _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
+    _check_role_attached_policy(region, cluster, additional_policy_arn)
 
     # Assert that the job submitted before the update is still running
     assert_that(slurm_commands.get_job_info(job_id)).contains("JobState=RUNNING")
@@ -339,26 +224,16 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
     for node, state in slurm_nodes.items():
         slurm_nodes_str += f"{node} {state}\n"
     for queue, queue_config in queues_config.items():
-        for compute_resource_config in queue_config["compute_resources"].values():
-            instance_type = compute_resource_config["instance_type"].replace(".", "")
+        for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
+            sanitized_name = re.sub(r"[^A-Za-z0-9]", "", compute_resource_name)
             running_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
             )
             power_saved_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle~\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ idle~\n").findall(slurm_nodes_str)
             )
             assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
-
-
-def _check_max_queue(region, stack_name, queue_size):
-    asg_max_size = get_max_asg_capacity(region, stack_name)
-    assert_that(asg_max_size).is_equal_to(queue_size)
-
-
-def _check_initial_queue(region, stack_name, queue_size):
-    asg_min_size = get_min_asg_capacity(region, stack_name)
-    assert_that(asg_min_size).is_equal_to(queue_size)
 
 
 def _add_compute_nodes(scheduler_commands, slots_per_node, number_of_nodes=1):
@@ -392,7 +267,7 @@ def _get_instance(region, stack_name, host, none_expected=False):
         iter(
             ec2_resource.instances.filter(
                 Filters=[
-                    {"Name": "tag:Application", "Values": [stack_name]},
+                    {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
                     {"Name": "private-dns-name", "Values": [hostname]},
                 ]
             )
@@ -468,12 +343,14 @@ def _check_extra_json(command_executor, scheduler_commands, host, expected_value
 
 def _check_role_attached_policy(region, cluster, policy_arn):
     iam_client = boto3.client("iam", region_name=region)
-    root_role = cluster.cfn_resources.get("RootRole")
-
-    result = iam_client.list_attached_role_policies(RoleName=root_role)
-
-    policies = [p["PolicyArn"] for p in result["AttachedPolicies"]]
-    assert policy_arn in policies
+    cfn_resources = cluster.cfn_resources
+    for resource in cfn_resources:
+        if resource.startswith("Role"):
+            logging.info("checking role %s", resource)
+            role = cluster.cfn_resources.get(resource)
+            result = iam_client.list_attached_role_policies(RoleName=role)
+            policies = [p["PolicyArn"] for p in result["AttachedPolicies"]]
+            assert_that(policy_arn in policies).is_true()
 
 
 def get_cfn_ebs_volume_ids(cluster, region):
@@ -511,7 +388,7 @@ def _check_volume(cluster, config, region):
 
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.usefixtures("os", "scheduler", "instance")
+@pytest.mark.usefixtures("os", "instance")
 def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader()
@@ -521,17 +398,15 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     _verify_initialization(region, cluster, cluster.config)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.config_file = str(init_config_file)
-    cluster.update(force=False)
+    cluster.update(str(init_config_file), force=False)
 
     # Update cluster with new configuration
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini")
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
+    cluster.update(str(updated_config_file))
 
     # Read updated configuration
-    updated_config = configparser.ConfigParser()
-    updated_config.read(updated_config_file)
+    with open(updated_config_file) as conf_file:
+        updated_config = yaml.safe_load(conf_file)
 
     # verify updated parameters
     _verify_initialization(region, cluster, updated_config)
@@ -539,20 +414,24 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
 def _verify_initialization(region, cluster, config):
     # Verify initial settings
-    _test_max_vcpus(region, cluster.cfn_name, config.getint("cluster default", "max_vcpus"))
-    _test_min_vcpus(region, cluster.cfn_name, config.getint("cluster default", "min_vcpus"))
-    spot_bid_percentage = config.getint("cluster default", "spot_bid_percentage")
+    _test_max_vcpus(
+        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MaxvCpus"]
+    )
+    _test_min_vcpus(
+        region, cluster.cfn_name, config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["MinvCpus"]
+    )
+    spot_bid_percentage = config["Scheduling"]["AwsBatchQueues"][0]["ComputeResources"][0]["SpotBidPercentage"]
     assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
 
 
 def _test_max_vcpus(region, stack_name, vcpus):
-    asg_max_size = get_batch_ce_max_size(stack_name, region)
-    assert_that(asg_max_size).is_equal_to(vcpus)
+    ce_max_size = get_batch_ce_max_size(stack_name, region)
+    assert_that(ce_max_size).is_equal_to(vcpus)
 
 
 def _test_min_vcpus(region, stack_name, vcpus):
-    asg_min_size = get_batch_ce_min_size(stack_name, region)
-    assert_that(asg_min_size).is_equal_to(vcpus)
+    ce_min_size = get_batch_ce_min_size(stack_name, region)
+    assert_that(ce_min_size).is_equal_to(vcpus)
 
 
 def get_batch_spot_bid_percentage(stack_name, region):
@@ -564,113 +443,3 @@ def get_batch_spot_bid_percentage(stack_name, region):
         .get("computeResources")
         .get("bidPercentage")
     )
-
-
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
-@pytest.mark.usefixtures("os", "instance")
-def test_sit_update_compute_instance_disable_ht(
-    region, scheduler, pcluster_config_reader, clusters_factory, s3_bucket_factory
-):
-    # check case disable_hyperthreading = true, update compute instance
-    _check_update_compute(
-        pcluster_config_reader,
-        clusters_factory,
-        "pcluster.config.disable_ht.ini",
-        "pcluster.config.disable_ht.update.ini",
-        scheduler,
-        region,
-        disable_hyperthreading=True,
-    )
-
-
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
-@pytest.mark.usefixtures("os", "instance")
-def test_sit_update_compute_instance_extra_json(
-    region, scheduler, pcluster_config_reader, clusters_factory, s3_bucket_factory
-):
-    # check case extra_json is {"cfn_scheduler_slots" : "cores"}, update compute instance
-    _check_update_compute(
-        pcluster_config_reader,
-        clusters_factory,
-        "pcluster.config.extra_json.cores.ini",
-        "pcluster.config.extra_json.cores.update.ini",
-        scheduler,
-        region,
-        cfn_scheduler_slots="cores",
-    )
-
-
-def _check_update_compute(
-    pcluster_config_reader,
-    clusters_factory,
-    init_config_name,
-    update_config_name,
-    scheduler,
-    region,
-    disable_hyperthreading=False,
-    cfn_scheduler_slots=None,
-):
-    # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(config_file=init_config_name)
-    cluster = clusters_factory(init_config_file)
-
-    # Check cfn_scheduler_slots before changing compute instance type
-    _check_compute_node_slots(
-        cluster,
-        scheduler,
-        region,
-        "c5.xlarge",
-        disable_hyperthreading=disable_hyperthreading,
-        cfn_scheduler_slots=cfn_scheduler_slots,
-        nodes_number=2,
-    )
-    cluster.stop()
-
-    # Update cluster with new configuration and change the compute instance type to c5.2xlarge
-    updated_config_file = pcluster_config_reader(update_config_name)
-    cluster.config_file = str(updated_config_file)
-    cluster.update()
-
-    logging.info("Sleeping for 180 seconds in case instance type properties cache is not updated yet in jobwatcher")
-    time.sleep(180)
-
-    # Check cfn_scheduler_slots changed by changing compute instance type
-    _check_compute_node_slots(
-        cluster,
-        scheduler,
-        region,
-        "c5.2xlarge",
-        disable_hyperthreading=disable_hyperthreading,
-        cfn_scheduler_slots=cfn_scheduler_slots,
-    )
-
-
-def _check_compute_node_slots(
-    cluster, scheduler, region, new_compute_instance_type, disable_hyperthreading, cfn_scheduler_slots, nodes_number=1
-):
-    # Command executors
-    command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
-
-    # Get new slots_per_instance
-    slots_per_instance = fetch_instance_slots(region, new_compute_instance_type)
-    if disable_hyperthreading or cfn_scheduler_slots == "cores":
-        slots_per_instance = slots_per_instance // 2
-    elif cfn_scheduler_slots and cfn_scheduler_slots.isdigit():
-        slots_per_instance = int(cfn_scheduler_slots)
-
-    # assert number of slots assigned to scheduler is correct
-    assert_that(slots_per_instance * nodes_number).is_equal_to(4)
-
-    # submit a job to check cfn_scheduler_slot has been updated
-    result = scheduler_commands.submit_command("sleep 10", nodes=nodes_number, slots=slots_per_instance)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-
-    # assert the slots used for each node in scheduler
-    expected_nodes_used_slots = ["4"] if nodes_number == 1 else ["2", "2"]
-    actual_nodes_used_slots = scheduler_commands.get_nodes_used_slots()
-    for expected_slots, actual_slots in zip(expected_nodes_used_slots, actual_nodes_used_slots):
-        assert_that(expected_slots).is_equal_to(actual_slots)
-    scheduler_commands.wait_job_completed(job_id)
-    assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(nodes_number)
-    scheduler_commands.assert_job_succeeded(job_id)

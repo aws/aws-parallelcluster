@@ -16,9 +16,11 @@ import pytest
 import utils
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
+from fabric import Connection
 from remote_command_executor import RemoteCommandExecutor
 from troposphere import GetAtt, Output, Ref, Template, ec2
-from utils import get_compute_nodes_instance_ids
+from troposphere.ec2 import EIP
+from utils import generate_stack_name, get_compute_nodes_instance_ids, get_username_for_os
 
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import retrieve_latest_ami
@@ -30,7 +32,7 @@ from tests.storage.test_fsx_lustre import (
 
 
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "alinux2", "slurm")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos7", "sge")
+@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "scheduler", "instance")
 def test_cluster_in_private_subnet(region, os, scheduler, pcluster_config_reader, clusters_factory, bastion_factory):
     # This test just creates a cluster in the private subnet and just checks that no failures occur
@@ -43,13 +45,48 @@ def test_cluster_in_private_subnet(region, os, scheduler, pcluster_config_reader
     _test_fsx_in_private_subnet(cluster, os, region, scheduler, fsx_mount_dir, bastion_factory)
 
 
+@pytest.fixture(scope="class")
+def existing_eip(region, request, cfn_stacks_factory):
+    template = Template()
+    template.set_version("2010-09-09")
+    template.set_description("EIP stack for testing existing EIP")
+    template.add_resource(EIP("ElasticIP", Domain="vpc"))
+    stack = CfnStack(
+        name=generate_stack_name("integ-tests-eip", request.config.getoption("stackname_suffix")),
+        region=region,
+        template=template.to_json(),
+    )
+    cfn_stacks_factory.create_stack(stack)
+
+    yield stack.cfn_resources["ElasticIP"]
+
+    if not request.config.getoption("no_delete"):
+        cfn_stacks_factory.delete_stack(stack.name, region)
+
+
+@pytest.mark.usefixtures("os", "scheduler", "instance", "region")
+def test_existing_eip(existing_eip, pcluster_config_reader, clusters_factory):
+    cluster_config = pcluster_config_reader(elastic_ip=existing_eip)
+    cluster = clusters_factory(cluster_config)
+    assert_that(cluster).is_not_none()
+    username = get_username_for_os(cluster.os)
+    connection = Connection(
+        host=existing_eip,
+        user=username,
+        forward_agent=False,
+        connect_kwargs={"key_filename": [cluster.ssh_key]},
+    )
+    # Run arbitrary command to test if we can use the elastic ip to log into the instance.
+    connection.run("cat /var/log/cfn-init.log", timeout=60)
+
+
 def _test_fsx_in_private_subnet(cluster, os, region, scheduler, fsx_mount_dir, bastion_factory):
     """Test FSx can be mounted in private subnet."""
     bastion_ip = bastion_factory()
     logging.info("Sleeping for 60 sec to wait for bastion ssh to become ready.")
     time.sleep(60)
-    logging.info("Bastion_ip: {}".format(bastion_ip))
-    remote_command_executor = RemoteCommandExecutor(cluster, bastion="ec2-user@{}".format(bastion_ip))
+    logging.info(f"Bastion_ip: {bastion_ip}")
+    remote_command_executor = RemoteCommandExecutor(cluster, bastion=f"ec2-user@{bastion_ip}")
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
     assert_fsx_lustre_correctly_mounted(remote_command_executor, fsx_mount_dir, os, region, fsx_fs_id)

@@ -47,7 +47,7 @@ class RemoteCommandExecutor:
                 timeout=30,
                 shell=True,
             )
-            connection_kwargs["gateway"] = "ssh -W %h:%p -A {}".format(bastion)
+            connection_kwargs["gateway"] = f"ssh -W %h:%p -A {bastion}"
             connection_kwargs["forward_agent"] = True
         self.__connection = Connection(**connection_kwargs)
         self.__user_at_hostname = "{0}@{1}".format(username, cluster.head_node_ip)

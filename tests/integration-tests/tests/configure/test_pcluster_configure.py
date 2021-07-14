@@ -13,16 +13,16 @@ import logging
 from os import environ
 
 import boto3
-import configparser
 import pexpect
 import pytest
+import yaml
 from assertpy import assert_that
 from conftest import inject_additional_config_settings
 
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["awsbatch", "slurm", "sge"])
+@pytest.mark.schedulers(["awsbatch", "slurm"])
 # Do not run on ARM + Batch
 # pcluster configure always picks optimal and Batch does not support ARM for optimal for now
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "*", "awsbatch")
@@ -31,7 +31,7 @@ def test_pcluster_configure(
 ):
     """Verify that the config file produced by `pcluster configure` can be used to create a cluster."""
     skip_if_unsupported_test_options_were_used(request)
-    config_path = test_datadir / "config.ini"
+    config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
         region,
         key_name,
@@ -44,7 +44,6 @@ def test_pcluster_configure(
     )
     assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
-        region,
         key_name,
         scheduler,
         os,
@@ -76,7 +75,7 @@ def test_pcluster_configure_avoid_bad_subnets(
     When config file contains a subnet that does not have the desired instance type, verify that `pcluster configure`
     can correct the headnode/compute_subnet_id fields using qualified subnets and show a message for the omitted subnets
     """
-    config_path = pcluster_config_reader(wrong_subnet_id=subnet_in_use1_az3)
+    config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
         region,
         key_name,
@@ -95,7 +94,6 @@ def test_pcluster_configure_avoid_bad_subnets(
     )
     assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
-        region,
         key_name,
         scheduler,
         os,
@@ -120,7 +118,7 @@ def test_region_without_t2micro(
     Verify the default instance type (free tier) is retrieved dynamically according to region.
     In other words, t3.micro is retrieved when the region does not contain t2.micro
     """
-    config_path = test_datadir / "config.ini"
+    config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
         region,
         key_name,
@@ -133,7 +131,6 @@ def test_region_without_t2micro(
     )
     assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
-        region,
         key_name,
         scheduler,
         os,
@@ -179,57 +176,69 @@ def assert_configure_workflow(region, stages, config_path):
 
 
 def assert_config_contains_expected_values(
-    region, key_name, scheduler, os, instance, vpc_id, headnode_subnet_id, compute_subnet_id, config_path
+    key_name, scheduler, os, instance, vpc_id, headnode_subnet_id, compute_subnet_id, config_path
 ):
-    config = configparser.ConfigParser()
-    config.read(config_path)
+    with open(config_path) as conf_file:
+        config = yaml.safe_load(conf_file)
 
     # Assert that the config object contains the expected values
     param_validators = [
-        {"section_name": "aws", "parameter_name": "aws_region_name", "expected_value": region},
-        {"section_name": "cluster default", "parameter_name": "key_name", "expected_value": key_name},
-        {"section_name": "cluster default", "parameter_name": "scheduler", "expected_value": scheduler},
+        {"parameter_path": ["HeadNode", "Ssh", "KeyName"], "expected_value": key_name},
+        {"parameter_path": ["Scheduling", "Scheduler"], "expected_value": scheduler},
         {
-            "section_name": "cluster default",
-            "parameter_name": "base_os",
+            "parameter_path": ["Image", "Os"],
             "expected_value": os if scheduler != "awsbatch" else "alinux2",
         },
-        {"section_name": "cluster default", "parameter_name": "master_instance_type", "expected_value": instance},
-        {"section_name": "vpc default", "parameter_name": "vpc_id", "expected_value": vpc_id},
-        {"section_name": "vpc default", "parameter_name": "master_subnet_id", "expected_value": headnode_subnet_id},
-        {"section_name": "vpc default", "parameter_name": "compute_subnet_id", "expected_value": compute_subnet_id},
+        {"parameter_path": ["HeadNode", "InstanceType"], "expected_value": instance},
+        {"parameter_path": ["HeadNode", "Networking", "SubnetId"], "expected_value": headnode_subnet_id},
+        {
+            "parameter_path": [
+                "Scheduling",
+                "AwsBatchQueues" if scheduler == "awsbatch" else "SlurmQueues",
+                0,
+                "Networking",
+                "SubnetIds",
+                0,
+            ],
+            "expected_value": compute_subnet_id,
+        },
     ]
 
     if scheduler == "slurm":
         param_validators += [
-            {"section_name": "cluster default", "parameter_name": "queue_settings", "expected_value": "compute"},
             {
-                "section_name": "queue compute",
-                "parameter_name": "compute_resource_settings",
-                "expected_value": "default",
+                "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "InstanceType"],
+                "expected_value": instance,
             },
-            {"section_name": "compute_resource default", "parameter_name": "instance_type", "expected_value": instance},
-            {"section_name": "compute_resource default", "parameter_name": "min_count", "expected_value": 1},
+            {
+                "parameter_path": ["Scheduling", "SlurmQueues", 0, "ComputeResources", 0, "MinCount"],
+                "expected_value": 0,
+            },
         ]
     elif scheduler == "awsbatch":
         param_validators += [
-            {"section_name": "cluster default", "parameter_name": "min_vcpus", "expected_value": 1},
-            {"section_name": "cluster default", "parameter_name": "desired_vcpus", "expected_value": 1},
-        ]
-    else:
-        param_validators += [
-            {"section_name": "cluster default", "parameter_name": "initial_queue_size", "expected_value": 1},
-            {"section_name": "cluster default", "parameter_name": "maintain_initial_size", "expected_value": "true"},
-            {"section_name": "cluster default", "parameter_name": "compute_instance_type", "expected_value": instance},
+            {
+                "parameter_path": ["Scheduling", "AwsBatchQueues", 0, "ComputeResources", 0, "MinvCpus"],
+                "expected_value": 1,
+            },
         ]
 
     for validator in param_validators:
         expected_value = validator.get("expected_value")
+        logging.info(validator.get("parameter_path"))
         if not expected_value:
             # if expected_value is empty, skip the assertion.
             continue
-        observed_value = config[validator.get("section_name")][validator.get("parameter_name")]
-        assert_that(observed_value).is_equal_to(str(expected_value))
+        observed_value = _get_value_by_nested_key(config, validator.get("parameter_path"))
+        assert_that(observed_value).is_equal_to(expected_value)
+
+
+def _get_value_by_nested_key(d, keys):
+    """Get the value specified by *keys (nested) in d (dict)."""
+    _d = d
+    for key in keys:
+        _d = _d[key]
+    return _d
 
 
 def orchestrate_pcluster_configure_stages(
@@ -243,7 +252,7 @@ def orchestrate_pcluster_configure_stages(
     compute_subnet_id,
     omitted_subnets_num=0,
 ):
-    compute_units = "vcpus" if scheduler == "awsbatch" else "instances"
+    size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
     # Default compute subnet follows the selection of headnode subnet
     default_compute_subnet = headnode_subnet_id if headnode_subnet_id else "subnet-.+"
     # When there are omitted subnets, a note should be printed
@@ -253,19 +262,25 @@ def orchestrate_pcluster_configure_stages(
         {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
         {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
         {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
-        {"prompt": fr"Minimum cluster size \({compute_units}\) \[0\]: ", "response": "1"},
-        {"prompt": fr"Maximum cluster size \({compute_units}\) \[10\]: ", "response": ""},
         {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
-        {"prompt": r"Compute instance type \[t.\.micro\]: ", "response": instance, "skip_for_batch": True},
+        {"prompt": r"Number of queues \[1\]: ", "response": "1", "skip_for_batch": True},
+        {"prompt": r"Name of queue 1 \[queue1\]: ", "response": "myqueue"},
+        {"prompt": r"Number of compute resources for myqueue \[1\]: ", "response": "1", "skip_for_batch": True},
+        {
+            "prompt": r"Compute instance type for compute resource 1 in myqueue \[t.\.micro\]: ",
+            "response": instance,
+            "skip_for_batch": True,
+        },
+        {"prompt": fr"Maximum {size_name} \[10\]: ", "response": ""},
         {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
         {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
         {
-            "prompt": fr"{omitted_note}head node Subnet ID \[subnet-.+\]: ",
+            "prompt": fr"{omitted_note}head node subnet ID \[subnet-.+\]: ",
             "response": headnode_subnet_id,
         },
         {
-            "prompt": fr"{omitted_note}compute Subnet ID \[{default_compute_subnet}\]: ",
+            "prompt": fr"{omitted_note}compute subnet ID \[{default_compute_subnet}\]: ",
             "response": compute_subnet_id,
         },
     ]

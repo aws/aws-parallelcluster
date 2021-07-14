@@ -1,0 +1,21 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
+  SlurmQueues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+          MaxCount: {{ scaling_target }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

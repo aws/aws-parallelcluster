@@ -18,13 +18,14 @@ from tests.common.schedulers_common import get_scheduler_commands
 
 @pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["sge", "slurm"])
-@pytest.mark.oss(["centos7", "centos8", "alinux2", "ubuntu1804"])
+@pytest.mark.schedulers(["slurm"])
+@pytest.mark.oss(["centos7", "alinux2", "ubuntu1804"])
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_spot_default(scheduler, pcluster_config_reader, clusters_factory):
     """Test that a cluster with spot instances can be created with default spot_price_value."""
-    cluster_config = pcluster_config_reader()
+    min_count = 1
+    cluster_config = pcluster_config_reader(min_count=min_count)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(1)
+    assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(min_count)

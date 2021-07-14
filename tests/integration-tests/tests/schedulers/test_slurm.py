@@ -19,7 +19,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import InstanceTypesData, get_compute_nodes_instance_ids, get_head_node_instance_id
+from utils import get_compute_nodes_instance_ids, get_instance_info
 
 from tests.common.assertions import (
     assert_errors_in_logs,
@@ -54,7 +54,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     """
     scaledown_idletime = 3
     gpu_instance_type = "g3.4xlarge"
-    gpu_instance_type_info = InstanceTypesData.get_instance_info(gpu_instance_type, region)
+    gpu_instance_type_info = get_instance_info(gpu_instance_type, region)
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
     supports_impi = architecture == "x86_64"
@@ -139,14 +139,7 @@ def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clus
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4, 1)
-    _test_online_node_configured_correctly(
-        scheduler_commands,
-        partition="ondemand1",
-        num_static_nodes=2,
-        num_dynamic_nodes=2,
-        dynamic_instance_type=instance,
-    )
+    _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4)
     _test_partition_states(
         scheduler_commands,
         cluster.cfn_name,
@@ -198,7 +191,7 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1, 1)
+    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1)
     _test_cloud_node_health_check(
         remote_command_executor,
         scheduler_commands,
@@ -231,17 +224,27 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
         num_dynamic_nodes=1,
         dynamic_instance_type=instance,
     )
-    _test_head_node_down(
-        remote_command_executor,
-        scheduler_commands,
-        cluster.cfn_name,
-        region,
-        test_datadir,
-        partition="ondemand1",
-        num_static_nodes=1,
-        num_dynamic_nodes=1,
-        dynamic_instance_type=instance,
-    )
+
+
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.slurm_protected_mode
+def test_slurm_protected_mode(
+    scheduler, region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
+):
+    """Test that slurm protected mode logic can handle bootstrap failure nodes."""
+    # Create S3 bucket for pre-install scripts
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
+    cluster_config = pcluster_config_reader(bucket=bucket_name)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    _test_disable_protected_mode(remote_command_executor, cluster, bucket_name, pcluster_config_reader)
+    pending_job_id = _test_active_job_running(scheduler_commands, remote_command_executor)
+    _test_protected_mode(scheduler_commands, remote_command_executor, cluster)
+    _test_job_run_in_working_queue(scheduler_commands)
+    _test_recover_from_protected_mode(pending_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands)
 
 
 def _assert_cluster_initial_conditions(
@@ -250,60 +253,22 @@ def _assert_cluster_initial_conditions(
     expected_num_dummy,
     expected_num_instance_node,
     expected_num_static,
-    expected_num_dynamic,
 ):
     """Assert that expected nodes are in cluster."""
     cluster_node_states = scheduler_commands.get_nodes_status()
-    c5l_nodes, instance_nodes, static_nodes, dynamic_nodes = [], [], [], []
+    c5l_nodes, instance_nodes, static_nodes = [], [], []
     logging.info(cluster_node_states)
     for nodename, node_states in cluster_node_states.items():
-        if "c5l" in nodename:
+        if "dummy" in nodename:
             c5l_nodes.append(nodename)
-        # "c5.xlarge"[: "c5.xlarge".index(".")+2].replace(".", "") = c5x
-        if instance[: instance.index(".") + 2].replace(".", "") in nodename:
+        if "-ondemand" in nodename:
             instance_nodes.append(nodename)
         if node_states == "idle":
             if "-st-" in nodename:
                 static_nodes.append(nodename)
-            if "-dy-" in nodename:
-                dynamic_nodes.append(nodename)
     assert_that(len(c5l_nodes)).is_equal_to(expected_num_dummy)
     assert_that(len(instance_nodes)).is_equal_to(expected_num_instance_node)
     assert_that(len(static_nodes)).is_equal_to(expected_num_static)
-    assert_that(len(dynamic_nodes)).is_equal_to(expected_num_dynamic)
-
-
-def _test_online_node_configured_correctly(
-    scheduler_commands,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
-):
-    logging.info("Testing that online nodes' nodeaddr and nodehostname are configured correctly.")
-    init_job_id = submit_initial_job(
-        scheduler_commands,
-        "sleep infinity",
-        partition,
-        dynamic_instance_type,
-        num_dynamic_nodes,
-        other_options="--no-requeue",
-    )
-    static_nodes, dynamic_nodes = assert_initial_conditions(
-        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition, cancel_job_id=init_job_id
-    )
-    node_attr_map = {}
-    for node_entry in scheduler_commands.get_node_addr_host():
-        nodename, nodeaddr, nodehostname = node_entry.split()
-        node_attr_map[nodename] = {"nodeaddr": nodeaddr, "nodehostname": nodehostname}
-    logging.info(node_attr_map)
-    for nodename in static_nodes + dynamic_nodes:
-        # For online nodes:
-        # Nodeaddr should be set to private ip of instance
-        # Nodehostname should be the same with nodename
-        assert_that(nodename in node_attr_map).is_true()
-        assert_that(nodename).is_not_equal_to(node_attr_map.get(nodename).get("nodeaddr"))
-        assert_that(nodename).is_equal_to(node_attr_map.get(nodename).get("nodehostname"))
 
 
 def _test_partition_states(
@@ -593,48 +558,6 @@ def _test_clustermgtd_down_logic(
     )
 
 
-def _test_head_node_down(
-    remote_command_executor,
-    scheduler_commands,
-    cluster_name,
-    region,
-    test_datadir,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
-):
-    # Make sure clustermgtd and slurmctld are running
-    remote_command_executor.run_remote_script(str(test_datadir / "slurm_start_clustermgtd.sh"), run_as_root=True)
-    remote_command_executor.run_remote_script(str(test_datadir / "slurm_start_slurmctld.sh"), run_as_root=True)
-    # Sleep for 60 seconds to make sure clustermgtd finishes 1 iteration and write a valid heartbeat
-    # Otherwise ResumeProgram will not be able to launch dynamic nodes due to invalid heartbeat
-    time.sleep(60)
-    submit_initial_job(
-        scheduler_commands,
-        "sleep infinity",
-        partition,
-        dynamic_instance_type,
-        num_dynamic_nodes,
-        other_options="--no-requeue",
-    )
-    # On slurmctld restart, offline nodes might still show as responding for a short time, breaking assertions
-    # Add some retries to avoid failing due to this case
-    _, _ = retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))(assert_initial_conditions)(
-        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition
-    )
-    _stop_head_node(cluster_name, region)
-    # Default computemgtd clustermgtd_timeout is 10 mins, check that compute instances are terminated around this time
-    retry(wait_fixed=seconds(20), stop_max_delay=minutes(15))(assert_num_instances_in_cluster)(cluster_name, region, 0)
-
-
-def _stop_head_node(cluster_name, region):
-    """Stop head node instance."""
-    head_node_id = get_head_node_instance_id(cluster_name, region)
-    ec2_client = boto3.client("ec2", region_name=region)
-    ec2_client.stop_instances(InstanceIds=head_node_id)
-
-
 def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
     """Wait for static and dynamic nodes to be reset."""
     if static_nodes:
@@ -711,16 +634,16 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     """
     logging.info("Testing no stray process left behind after mpirun job is terminated")
     slurm_commands = SlurmCommands(remote_command_executor)
-    # Assert initial condition
-    assert_that(slurm_commands.compute_nodes_count()).is_equal_to(2)
 
     # Submit mpi_job, which runs Intel MPI benchmarks with intelmpi
     # Leaving 1 vcpu on each node idle so that the process check job can run while mpi_job is running
     result = slurm_commands.submit_script(str(test_datadir / "mpi_job.sh"))
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
-    # Check that mpi processes are started
-    _assert_job_state(slurm_commands, job_id, job_state="RUNNING")
+    # Wait for compute node to start and check that mpi processes are started
+    retry(wait_fixed=seconds(30), stop_max_delay=seconds(500))(_assert_job_state)(
+        slurm_commands, job_id, job_state="RUNNING"
+    )
     _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=False)
     slurm_commands.cancel_job(job_id)
 
@@ -1032,3 +955,155 @@ def _get_num_gpus_on_instance(instance_type_info):
     }
     """
     return sum([gpu_type.get("Count") for gpu_type in instance_type_info.get("GpuInfo").get("Gpus")])
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def _wait_for_computefleet_changed(cluster, desired_status):
+    assert_that(cluster.status()).contains(f"ComputeFleetStatus: {desired_status}")
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def _wait_for_partition_state_changed(scheduler_commands, partition, desired_state):
+    assert_that(scheduler_commands.get_partition_state(partition=partition)).is_equal_to(desired_state)
+
+
+def _update_and_start_cluster(cluster, config_file):
+    cluster.stop()
+    _wait_for_computefleet_changed(cluster, "STOPPED")
+    cluster.update(str(config_file))
+    cluster.start()
+    _wait_for_computefleet_changed(cluster, "RUNNING")
+
+
+def _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader):
+    """Update cluster to include pre-install script, which introduce bootstrap error."""
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.broken.yaml", bucket=bucket_name)
+    _update_and_start_cluster(cluster, updated_config_file)
+
+
+def _set_protected_failure_count(remote_command_executor, protected_failure_count):
+    """Disable protected mode by setting protected_failure_count to -1."""
+    remote_command_executor.run_remote_command(
+        f"echo 'protected_failure_count = {protected_failure_count}' | sudo tee -a "
+        "/etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    )
+
+
+def _enable_protected_mode(remote_command_executor):
+    """Enable protected mode by removing lines related to protected mode in the config, so it will be set to default."""
+    remote_command_executor.run_remote_command(
+        "sudo sed -i '/'protected_failure_count'/d' /etc/parallelcluster/slurm_plugin/parallelcluster_clustermgtd.conf"
+    )
+
+
+def _test_disable_protected_mode(remote_command_executor, cluster, bucket_name, pcluster_config_reader):
+    """Test Bootstrap failures have no affect on cluster when protected mode is disabled."""
+    # Disable protected_mode by setting protected_failure_count to -1
+    _set_protected_failure_count(remote_command_executor, -1)
+    _inject_bootstrap_failures(cluster, bucket_name, pcluster_config_reader)
+    # wait till the node failed
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Found the following unhealthy static nodes",
+        ],
+    )
+    # Assert that it does not contain bootstrap failure
+    assert_no_msg_in_logs(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        ["Node bootstrap error"],
+    )
+
+
+def _test_active_job_running(scheduler_commands, remote_command_executor):
+    """Test cluster is not placed into protected mode when there is an active job running even reach threshold."""
+    # Re-enable protected mode
+    _enable_protected_mode(remote_command_executor)
+    # Decrease protected failure count for quicker enter protected mode.
+    _set_protected_failure_count(remote_command_executor, 2)
+    # Submit a job to the queue contains broken nodes and normal node, submit the job to the normal node to test
+    # the queue will not be disabled if there's active job running.
+    cancel_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 3000", "nodes": 1, "partition": "half-broken", "constraint": "c5.xlarge"}
+    )
+    # Wait for the job to run
+    scheduler_commands.wait_job_running(cancel_job_id)
+    # Submit a job to the problematic compute resource, so the protected_failure count will increase
+    job_id_pending = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 60", "nodes": 2, "partition": "half-broken", "constraint": "c5.large"}
+    )
+    # Check the threshold reach but partition will be still UP since there's active job running
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "currently have jobs running, not disabling them",
+        ],
+    )
+    assert_that(scheduler_commands.get_partition_state(partition="half-broken")).is_equal_to("UP")
+    # Cancel the job
+    scheduler_commands.cancel_job(cancel_job_id)
+    return job_id_pending
+
+
+def _test_protected_mode(scheduler_commands, remote_command_executor, cluster):
+    """Test cluster will be placed into protected mode when protected count reach threshold and no job running."""
+    # See if the cluster can be put into protected mode when there's no job running after reaching threshold
+    retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))(assert_errors_in_logs)(
+        remote_command_executor,
+        ["/var/log/parallelcluster/clustermgtd"],
+        [
+            "Setting cluster into protected mode due to failures detected in node provisioning",
+            "Placing bootstrap failure partitions to INACTIVE",
+            "Updating compute fleet status from RUNNING to PROTECTED",
+            "is in power up state without valid backing instance",
+        ],
+    )
+    # Assert bootstrap failure queues are inactive and compute fleet status is PROTECTED
+    assert_that(cluster.status()).contains("ComputeFleetStatus: PROTECTED")
+    assert_that(scheduler_commands.get_partition_state(partition="normal")).is_equal_to("UP")
+    _wait_for_partition_state_changed(scheduler_commands, "broken", "INACTIVE")
+    _wait_for_partition_state_changed(scheduler_commands, "half-broken", "INACTIVE")
+
+
+def _test_job_run_in_working_queue(scheduler_commands):
+    """After enter protected state, submit a job to the active queue to make sure it can still run jobs."""
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 1", "nodes": 2, "partition": "normal"}
+    )
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+
+def _test_recover_from_protected_mode(
+    incomplete_job_id, pcluster_config_reader, bucket_name, cluster, scheduler_commands
+):
+    """
+    Test cluster after recovering from protected mode.
+
+    Test previous pending job can run successfully.
+    Test all queues can run jobs.
+    """
+    # Update the cluster again, remove the pre-install script to make the cluster work as expected
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.recover.yaml", bucket=bucket_name)
+    _update_and_start_cluster(cluster, updated_config_file)
+    # Assert all queues are UP
+    assert_that(scheduler_commands.get_partition_state(partition="normal")).is_equal_to("UP")
+    assert_that(scheduler_commands.get_partition_state(partition="broken")).is_equal_to("UP")
+    assert_that(scheduler_commands.get_partition_state(partition="half-broken")).is_equal_to("UP")
+    # Pending job that is in the queue when cluster entered protected mode will be run again when cluster is
+    # taken out of protected mode.
+    scheduler_commands.wait_job_completed(incomplete_job_id)
+    scheduler_commands.assert_job_succeeded(incomplete_job_id)
+    # Job can be run succesfully in all queues
+    for partition in ["normal", "broken", "half-broken"]:
+        job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+            submit_command_args={"command": "sleep 1", "partition": partition}
+        )
+        scheduler_commands.wait_job_completed(job_id)
+        scheduler_commands.assert_job_succeeded(job_id)
+    # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
+    # not enter protected mode
+    assert_that(cluster.status()).contains("ComputeFleetStatus: RUNNING")

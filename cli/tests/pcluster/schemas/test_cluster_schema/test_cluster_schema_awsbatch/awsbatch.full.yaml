@@ -1,0 +1,142 @@
+Image:
+  Os: alinux2  # alinux2 | centos7 | ubuntu1804 | ubuntu2004
+  CustomAmi: ami-12345678  # ami-xxx
+HeadNode:
+  InstanceType: String  # t2.micro
+  Networking:
+    SubnetId: subnet-12345678  # subnet-xxx
+    ElasticIp: String  # true|false|EIP-id
+    AssignPublicIp: true  # true|false
+    AdditionalSecurityGroups:
+      - sg-12345678  # sg-xxxx
+      - sg-23456789
+    Proxy:
+      HttpProxyAddress: String  # https://proxy-address:port
+  DisableSimultaneousMultithreading: true
+  CustomActions:
+    OnNodeStart:
+      Script: https://test.tgz  # s3:// | https:// | file://*
+      Args:
+        - String  # arg1
+        - stirng2
+    OnNodeConfigured:
+      Script: https://test.tgz  # s3:// | https:// | file://*
+      Args:
+        - String  # arg1
+        - stirng2
+  Ssh:
+    KeyName: String  # ec2-key-name
+    AllowedIps: 1.2.3.4/32  # 1.2.3.4/32
+  LocalStorage:
+    RootVolume:
+      Size: 37  # 35
+      Encrypted: true  # true
+    EphemeralVolume:
+      Encrypted: true  # true
+      MountDir: String  # /scratch
+  Dcv:
+    Enabled: true  # true
+    Port: 8443  # 8443
+    AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
+Scheduling:
+  Scheduler: awsbatch
+  AwsBatchQueues:
+    - Name: String  # queue
+      CapacityType: ONDEMAND  # ONDEMAND | SPOT
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+        AssignPublicIp: true  # true|false
+        SecurityGroups:
+          - sg-12345678  # sg-xxxx
+        PlacementGroup:
+          Enabled: true  # true
+          Id: String
+        Proxy:
+          HttpProxyAddress: String  # https://proxy-address:port
+      ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
+        - Name: compute_resource
+          InstanceTypes:
+            - optimal
+            - c4.xlarge
+            - c5.large
+          MinvCpus: 0  # 0
+          DesiredvCpus: 10
+          MaxvCpus: 20
+          SpotBidPercentage: 50
+          DisableSimultaneousMultithreading: false
+SharedStorage:
+  - MountDir: /my/mount/point
+    StorageType: Ebs
+    Name: name1
+    EbsSettings:
+      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: 10
+      Size: 20
+      Encrypted: true
+      KmsKeyId: String
+      SnapshotId: snap-12345678  # snap-xxxx
+      VolumeId: vol-12345678  # vol-xxxx
+      Raid:
+        Type: 0  # 0|1
+        NumberOfVolumes: 2  # [2-5]
+  - MountDir: /my/mount/point2
+    StorageType: Efs
+    Name: name2
+    EfsSettings:
+      Encrypted: true  # true
+      KmsKeyId: String  # id-xxx
+      PerformanceMode: maxIO  # generalPurpose | maxIO
+      ThroughputMode: provisioned  # bursting | provisioned
+      ProvisionedThroughput: 1024  # 1024
+      FileSystemId: fs-12345678  # fs-xxxx
+  - MountDir: /my/mount/point3
+    StorageType: FsxLustre
+    Name: name3
+    FsxLustreSettings:
+      StorageCapacity: 3600  # 3600
+      DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      ImportedFileChunkSize: 10  # 1024
+      ExportPath: String  # s3://bucket/folder
+      ImportPath: String  # s3://bucket
+      WeeklyMaintenanceStartTime: "1:00:00"  # "1:00:00"
+      AutomaticBackupRetentionDays: 1  # 0
+      CopyTagsToBackups: true  # true
+      DailyAutomaticBackupStartTime: 01:03  # 01:03
+      PerUnitStorageThroughput: 50  # 200
+      #BackupId: backup-12345678  # BackupId cannot coexist with some of the fields
+      KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      #FileSystemId: fs-12345678123456789  # FileSystemId cannot coexist with some of the fields
+      AutoImportPolicy: NEW_CHANGED  # NEW | NEW_CHANGED
+      DriveCacheType: READ  # READ
+      StorageType: HDD  # HDD | SSD
+Iam:
+  Roles:
+    CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+Monitoring:
+  DetailedMonitoring: true  # false
+  Logs:
+    CloudWatch:
+      Enabled: true  # true
+      RetentionInDays: 14  # 14
+  Dashboards:
+    CloudWatch:
+      Enabled: true  # true
+#AdditionalPackages:
+#  IntelSelectSolutions:
+#    InstallIntelSoftware: true  # false
+#ClusterS3ResourceBucket: String
+Tags:
+  - Key: String
+    Value: String
+  - Key: two
+    Value: two22
+#CustomS3Bucket: String
+#AdditionalResources: String  # https://template.url
+#DevSettings:
+#  ClusterTemplate: String
+#  Cookbook:
+#    ChefCookbook: String
+#    ExtraChefAttributes: Object
+#  AwsBatchCliPackage: String
+#  NodePackage: String

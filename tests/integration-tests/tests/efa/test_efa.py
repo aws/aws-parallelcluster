@@ -23,53 +23,6 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.regions(["us-east-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
-# Torque is not supported by OpenMPI distributed with EFA
-# Slurm test is to verify EFA works correctly when using the SIT model in the config file
-@pytest.mark.schedulers(["sge", "slurm"])
-@pytest.mark.usefixtures("os")
-def test_sit_efa(
-    region,
-    scheduler,
-    instance,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    architecture,
-    network_interfaces_count,
-):
-    """
-    Test all EFA Features.
-
-    Grouped all tests in a single function so that cluster can be reused for all of them.
-    """
-    max_queue_size = 2
-    slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size)
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-
-    _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True)
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler)
-    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
-    _test_osu_benchmarks_latency(
-        "openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
-    )
-    if architecture == "x86_64":
-        _test_osu_benchmarks_latency(
-            "intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
-        )
-    _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
-    if network_interfaces_count > 1:
-        _test_osu_benchmarks_multiple_bandwidth(
-            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
-        )
-
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-
-
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5n.18xlarge"])
 @pytest.mark.oss(["alinux2"])
@@ -92,37 +45,45 @@ def test_hit_efa(
     """
     max_queue_size = 2
     slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size)
+    no_efa_instance = "t3.micro" if architecture == "x86_64" else "t4g.micro"
+    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, no_efa_instance=no_efa_instance)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
+    _test_efa_installation(
+        scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled-by-default"
+    )
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=False, partition="efa-disabled")
+    _test_efa_installation(
+        scheduler_commands, remote_command_executor, efa_installed=False, partition="efa-disabled-by-default"
+    )
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
-    _test_osu_benchmarks_latency(
-        "openmpi",
-        remote_command_executor,
-        scheduler_commands,
-        test_datadir,
-        slots_per_instance,
-        partition="efa-enabled",
-    )
-    if architecture == "x86_64":
+    for efa_queue_name in ["efa-enabled", "efa-enabled-by-default"]:
         _test_osu_benchmarks_latency(
-            "intelmpi",
+            "openmpi",
             remote_command_executor,
             scheduler_commands,
             test_datadir,
             slots_per_instance,
-            partition="efa-enabled",
+            partition=efa_queue_name,
         )
-    if network_interfaces_count > 1:
-        _test_osu_benchmarks_multiple_bandwidth(
-            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
-        )
-    _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
+        if architecture == "x86_64":
+            _test_osu_benchmarks_latency(
+                "intelmpi",
+                remote_command_executor,
+                scheduler_commands,
+                test_datadir,
+                slots_per_instance,
+                partition=efa_queue_name,
+            )
+        if network_interfaces_count > 1:
+            _test_osu_benchmarks_multiple_bandwidth(
+                remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=efa_queue_name
+            )
+        _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition=efa_queue_name)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 

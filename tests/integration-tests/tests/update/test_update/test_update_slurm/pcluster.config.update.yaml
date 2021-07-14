@@ -1,0 +1,157 @@
+Image:
+  Os: {{ os }}
+Tags:
+  - Key: key
+    Value: value3
+  - Key: key2
+    Value: value2
+CustomS3Bucket: {{ resource_bucket }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ resource_bucket }}
+        EnableWriteAccess: true
+    AdditionalIamPolicies:
+      - Policy: {{ additional_policy_arn }}
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: 30
+  SlurmQueues:
+    - Name: queue1
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 40
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Args:
+            - ABC
+        OnNodeConfigured:
+          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Args:
+            - DEF
+      CapacityType: SPOT
+      ComputeResources:
+        - Name: queue1-i1
+          InstanceType: c5.xlarge
+          MinCount: 2
+          MaxCount: 4
+        - Name: queue1-i2
+          InstanceType: c5.2xlarge
+          SpotPrice: 2.1
+        - Name: queue1-i3
+          InstanceType: t2.micro
+      Iam:
+        S3Access:
+          - BucketName: {{ resource_bucket }}
+            EnableWriteAccess: true
+        AdditionalIamPolicies:
+          - Policy: {{ additional_policy_arn }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: queue2
+      Iam:
+        S3Access:
+          - BucketName: {{ resource_bucket }}
+            EnableWriteAccess: true
+        AdditionalIamPolicies:
+          - Policy: {{ additional_policy_arn }}
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 40
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Args:
+            - ABC
+        OnNodeConfigured:
+          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Args:
+            - DEF
+      ComputeResources:
+        - Name: queue2-i1
+          InstanceType: c5n.18xlarge
+          MaxCount: 1
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: queue3
+      Iam:
+        S3Access:
+          - BucketName: {{ resource_bucket }}
+            EnableWriteAccess: true
+        AdditionalIamPolicies:
+          - Policy: {{ additional_policy_arn }}
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 40
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Args:
+            - ABC
+        OnNodeConfigured:
+          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Args:
+            - DEF
+      ComputeResources:
+        - Name: queue3-i1
+          InstanceType: c5n.18xlarge
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+        - Name: queue3-i2
+          InstanceType: t2.xlarge
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: shared
+    Name: ebs
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: io2
+      Iops: 140
+  - MountDir: efs
+    Name: efs
+    StorageType: Efs
+    EfsSettings:
+      ThroughputMode: provisioned
+      ProvisionedThroughput: 1024
+  - MountDir: raid
+    StorageType: Ebs
+    Name: raid
+    EbsSettings:
+      VolumeType: io2
+      Iops: 110
+      Raid:
+        Type: 0
+        NumberOfVolumes: 2
+  - MountDir: fsx
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 3600
+      WeeklyMaintenanceStartTime: "3:02:30"
+Monitoring:
+  DetailedMonitoring: false
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 1

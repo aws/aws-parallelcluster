@@ -144,8 +144,25 @@ disable=print-statement,
         # CUSTOM
         missing-docstring,
         bad-continuation, # handled by black formatter
-        useless-object-inheritance, # needed for Python2 support
         wrong-import-position, # handled by isort
+        design,
+        raise-missing-from,
+        useless-super-delegation,
+        redefined-builtin,
+        attribute-defined-outside-init,
+        arguments-differ,
+        pointless-string-statement,
+        broad-except,
+        unnecessary-pass,
+        import-error,
+        no-self-use,
+        no-member,
+        unused-import, # handled by flake8
+        no-else-return, # A complete if else block can improve readability even with returns in the body
+        wrong-import-order,
+        # FIXME Refactor/cleanup cli code to solve following warnings
+        duplicate-code
+
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -182,7 +199,7 @@ score=yes
 [REFACTORING]
 
 # Maximum number of nested blocks for function / method body
-max-nested-blocks=5
+max-nested-blocks=6
 
 # Complete name of functions that never returns. When checking for
 # inconsistent-return-statements if a never returning function is called then
@@ -221,9 +238,7 @@ spelling-store-unknown-words=no
 [MISCELLANEOUS]
 
 # List of note tags to take in consideration, separated by a comma.
-notes=FIXME,
-      XXX,
-      TODO
+notes=
 
 
 [TYPECHECK]
@@ -298,7 +313,7 @@ dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
 
 # Argument names that match this expression will be ignored. Default to name
 # with leading underscore.
-ignored-argument-names=_.*|^ignored_|^unused_
+ignored-argument-names=_.*|^ignored_|^unused_|args|kwargs
 
 # Tells whether we should check for unused import in __init__ files.
 init-import=no
@@ -354,10 +369,10 @@ ignore-comments=yes
 ignore-docstrings=yes
 
 # Ignore imports when computing similarities.
-ignore-imports=no
+ignore-imports=yes
 
 # Minimum lines number of a similarity.
-min-similarity-lines=4
+min-similarity-lines=6
 
 
 [BASIC]
@@ -424,7 +439,9 @@ good-names=i,
            Run,
            e,
            f,
-           _
+           _,
+           id,
+           os,
 
 # Include a hint for the correct naming format with invalid-name.
 include-naming-hint=no

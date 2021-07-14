@@ -1,0 +1,40 @@
+name: ParallelClusterTest
+description: Test ParallelCluster AMI
+schemaVersion: 1.0
+
+phases:
+  - name: test
+    steps:
+      ### utils ###
+      - name: NvSwitches
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              NVSWITCHES=$(lspci -d 10de:1af1 | wc -l)
+              echo "${NVSWITCHES}"
+
+      ### tests ###
+      - name: FabricManager
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              if [ {{ test.NvSwitches.outputs.stdout }} -gt 1 ]; then
+                echo "test fabric-manager daemon"
+                systemctl show -p SubState nvidia-fabricmanager | grep -i running
+                [[ $? -ne 0 ]] && echo "fabric-manager daemon test failed" && exit 1
+                echo "NVIDIA Fabric Manager service correctly started"
+              fi
+
+      - name: CloudWatch
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status | grep status | grep stopped
+              [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
+              echo "CloudWatch test passed"

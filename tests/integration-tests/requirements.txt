@@ -2,11 +2,12 @@ argparse
 assertpy
 aws-parallelcluster
 boto3
+cfn_flip
 fabric
 jinja2
 junitparser
-pykwalify
 pexpect
+pykwalify
 pytest
 pytest-datadir
 pytest-html
@@ -14,6 +15,7 @@ pytest-rerunfailures
 pytest-sugar
 pytest-xdist
 PyYAML
+requests
 retrying
 troposphere
 untangle

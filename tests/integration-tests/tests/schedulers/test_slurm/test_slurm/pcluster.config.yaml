@@ -1,0 +1,36 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
+  SlurmQueues:
+    - Name: ondemand
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      ComputeResources:
+        - Name: ondemand-i1
+          InstanceType: c4.xlarge
+        - Name: ondemand-i2
+          InstanceType: c5.xlarge
+          MaxCount: 5
+    - Name: gpu
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+      CapacityType: ONDEMAND
+      ComputeResources:
+        - Name: gpu-i1
+          InstanceType: {{ gpu_instance_type }}
+          MaxCount: 5
+SharedStorage:
+  - MountDir: /shared  # Test comment
+    Name: name1
+    StorageType: Ebs

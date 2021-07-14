@@ -18,11 +18,11 @@ test-suites:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm"]
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm"]
   schedulers:
     test_awsbatch.py::test_awsbatch:
       dimensions:
@@ -49,37 +49,25 @@ test-suites:
           oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: {{ common.SCHEDULERS_TRAD }}
   cli_commands:
-    test_cli_commands.py::test_hit_cli_commands:
+    test_cli_commands.py::test_slurm_cli_commands:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1804"]
           schedulers: ["slurm"]
-    test_cli_commands.py::test_sit_cli_commands:
-      dimensions:
-        - regions: {{ NEW_REGION }}
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
-          schedulers: ["sge"]
   update:
-    test_update.py::test_update_hit:
+    test_update.py::test_update_slurm:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
-  createami:
-    test_createami.py::test_createami:
-      dimensions:
-        - regions: {{ NEW_REGION }}
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux2", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
   dashboard:
     test_dashboard.py::test_dashboard:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos8"]
+          oss: ["centos7"]
           schedulers: ["slurm"]
   dcv:
     test_dcv.py::test_dcv_configuration:
@@ -139,7 +127,7 @@ test-suites:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos8"]
+          oss: ["centos7"]
           schedulers: ["slurm"]
   storage:
     test_fsx_lustre.py::test_fsx_lustre:

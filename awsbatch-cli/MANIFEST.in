@@ -1,0 +1,2 @@
+recursive-include src/awsbatch/examples *
+recursive-exclude tests *

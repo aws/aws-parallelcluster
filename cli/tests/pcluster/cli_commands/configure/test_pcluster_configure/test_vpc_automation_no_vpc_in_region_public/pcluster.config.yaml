@@ -1,0 +1,22 @@
+Image:
+  Os: centos7
+HeadNode:
+  InstanceType: t2.nano
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: key1
+  Imds:
+    Secured: true
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: myqueue
+      ComputeResources:
+        - Name: myqueue-t2micro
+          InstanceType: t2.micro
+          MinCount: 0
+          MaxCount: 14
+      Networking:
+        SubnetIds:
+          - subnet-12345678

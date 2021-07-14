@@ -11,19 +11,19 @@
 # See the License for the specific language governing permissions and limitations under the License.
 # import logging
 
-import json
 import logging
 import subprocess as sp
 
 import boto3
 import pytest
 from assertpy import assert_that
+from utils import get_root_volume_id
 
 
 @pytest.mark.regions(["ap-southeast-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.oss(["alinux2"])
-@pytest.mark.schedulers(["slurm", "torque", "awsbatch"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "instance")
 def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os):
     """
@@ -31,7 +31,6 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
 
     The following resources are checked for tags:
     - main CFN stack
-    - head node substack
     - head node
     - head node's root EBS volume
     - compute node (traditional schedulers)
@@ -39,38 +38,29 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
     - shared EBS volume
     """
     config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
-    command_line_tags = {"CommandLineTag": "CommandLineTagValue"}
-    version_tags = {"Version": get_pcluster_version()}
-    cluster_config = pcluster_config_reader(tags=json.dumps(config_file_tags))
-    cluster = clusters_factory(cluster_config, extra_args=["--tags", json.dumps(command_line_tags)])
-    cluster_name_tags = {"ClusterName": cluster.name}
+    version_tags = {"parallelcluster:version": get_pcluster_version()}
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    cluster_name_tags = {"parallelcluster:cluster-name": cluster.name}
 
     test_cases = [
         {
             "resource": "Main CloudFormation Stack",
             "tag_getter": get_main_stack_tags,
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
-        },
-        {
-            "resource": "Head Node CloudFormation Stack",
-            "tag_getter": get_head_node_substack_tags,
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
-        },
-        {
-            "resource": "ComputeFleet CloudFormation Stack",
-            "tag_getter": get_compute_fleet_substack_tags,
-            "tag_getter_kwargs": {"cluster": cluster, "scheduler": scheduler},
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
+            "expected_tags": (version_tags, config_file_tags),
         },
         {
             "resource": "Head Node",
             "tag_getter": get_head_node_tags,
-            "expected_tags": (cluster_name_tags, {"Name": "Master", "aws-parallelcluster-node-type": "Master"}),
+            "expected_tags": (
+                cluster_name_tags,
+                {"Name": "HeadNode", "parallelcluster:node-type": "HeadNode"},
+            ),
         },
         {
             "resource": "Head Node Root Volume",
             "tag_getter": get_head_node_root_volume_tags,
-            "expected_tags": (cluster_name_tags, {"aws-parallelcluster-node-type": "Master"}),
+            "expected_tags": (cluster_name_tags, {"parallelcluster:node-type": "HeadNode"}),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
         },
         {
@@ -78,9 +68,8 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
             "tag_getter": get_compute_node_tags,
             "expected_tags": (
                 cluster_name_tags,
-                {"Name": "Compute", "aws-parallelcluster-node-type": "Compute"},
+                {"Name": "Compute", "parallelcluster:node-type": "Compute"},
                 config_file_tags,
-                command_line_tags,
             ),
             "skip": scheduler == "awsbatch",
         },
@@ -89,9 +78,8 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
             "tag_getter": get_compute_node_root_volume_tags,
             "expected_tags": (
                 cluster_name_tags,
-                {"aws-parallelcluster-node-type": "Compute"},
+                {"parallelcluster:node-type": "Compute"},
                 config_file_tags if scheduler == "slurm" else {},
-                command_line_tags if scheduler == "slurm" else {},
             ),
             "tag_getter_kwargs": {"cluster": cluster, "os": os},
             "skip": scheduler == "awsbatch",
@@ -99,7 +87,7 @@ def test_tag_propagation(pcluster_config_reader, clusters_factory, scheduler, os
         {
             "resource": "Shared EBS Volume",
             "tag_getter": get_shared_volume_tags,
-            "expected_tags": (version_tags, config_file_tags, command_line_tags),
+            "expected_tags": (version_tags, config_file_tags),
         },
     ]
     for test_case in test_cases:
@@ -142,35 +130,9 @@ def get_main_stack_tags(cluster):
     return get_cloudformation_tags(cluster.region, cluster.cfn_name)
 
 
-def get_head_node_substack_name(cluster):
-    """Return the name of the given cluster's head node's substack."""
-    return cluster.cfn_resources.get("MasterServerSubstack")
-
-
-def get_head_node_substack_tags(cluster):
-    """Return the tags for the given cluster's head node's CFN stack."""
-    return get_cloudformation_tags(cluster.region, get_head_node_substack_name(cluster))
-
-
-def get_compute_fleet_substack_name(cluster, scheduler):
-    """Return the name of the given cluster's compute fleet substack."""
-    scheduler_to_compute_fleet_logical_stack_name = {
-        "slurm": "ComputeFleetHITSubstack",
-        "sge": "ComputeFleetSubstack",
-        "torque": "ComputeFleetSubstack",
-        "awsbatch": "AWSBatchStack",
-    }
-    return cluster.cfn_resources.get(scheduler_to_compute_fleet_logical_stack_name[scheduler])
-
-
-def get_compute_fleet_substack_tags(cluster, scheduler):
-    """Return the tags for the given cluster's compute fleet CFN stack."""
-    return get_cloudformation_tags(cluster.region, get_compute_fleet_substack_name(cluster, scheduler))
-
-
 def get_head_node_instance_id(cluster):
     """Return the given cluster's head node's instance ID."""
-    return cluster.head_node_substack_cfn_resources.get("MasterServer")
+    return cluster.cfn_resources.get("HeadNode")
 
 
 def get_ec2_instance_tags(instance_id, region):
@@ -183,32 +145,6 @@ def get_ec2_instance_tags(instance_id, region):
         .get("Instances")[0]
         .get("Tags")
     )
-
-
-def get_root_volume_id(instance_id, region, os):
-    """Return the root EBS volume's ID for the given EC2 instance."""
-    logging.info("Getting root volume for instance %s", instance_id)
-    os_to_root_volume_device = {
-        # These are taken from the main CFN template
-        "centos7": "/dev/sda1",
-        "centos8": "/dev/sda1",
-        "alinux2": "/dev/xvda",
-        "ubuntu1804": "/dev/sda1",
-    }
-    block_device_mappings = (
-        boto3.client("ec2", region_name=region)
-        .describe_instances(InstanceIds=[instance_id])
-        .get("Reservations")[0]
-        .get("Instances")[0]
-        .get("BlockDeviceMappings")
-    )
-    matching_devices = [
-        device_mapping
-        for device_mapping in block_device_mappings
-        if device_mapping.get("DeviceName") == os_to_root_volume_device[os]
-    ]
-    assert_that(matching_devices).is_length(1)
-    return matching_devices[0].get("Ebs").get("VolumeId")
 
 
 def get_tags_for_volume(volume_id, region):
@@ -232,7 +168,7 @@ def get_head_node_tags(cluster):
 
 def get_compute_node_root_volume_tags(cluster, os):
     """Return the given cluster's compute node's root volume's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="ComputeFleet")
+    compute_nodes = cluster.instances(desired_instance_role="Compute")
     assert_that(compute_nodes).is_length(1)
     root_volume_id = get_root_volume_id(compute_nodes[0], cluster.region, os)
     return get_tags_for_volume(root_volume_id, cluster.region)
@@ -240,7 +176,7 @@ def get_compute_node_root_volume_tags(cluster, os):
 
 def get_compute_node_tags(cluster):
     """Return the given cluster's compute node's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="ComputeFleet")
+    compute_nodes = cluster.instances(desired_instance_role="Compute")
     assert_that(compute_nodes).is_length(1)
     return get_ec2_instance_tags(compute_nodes[0], cluster.region)
 
@@ -252,7 +188,7 @@ def get_ebs_volume_tags(volume_id, region):
 
 def get_shared_volume_tags(cluster):
     """Return the given cluster's EBS volume's tags."""
-    shared_volume = cluster.ebs_substack_cfn_resources.get("Volume1")
+    shared_volume = cluster.cfn_resources.get("EBS0")
     return get_ebs_volume_tags(shared_volume, cluster.region)
 
 

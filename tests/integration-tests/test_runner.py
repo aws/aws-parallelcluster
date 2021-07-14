@@ -13,12 +13,14 @@ import datetime
 import logging
 import multiprocessing
 import os
+import re
 import sys
 import time
 import urllib.request
 from tempfile import TemporaryDirectory
 
 import argparse
+import boto3
 import pytest
 from assertpy import assert_that
 from framework.tests_configuration.config_renderer import dump_rendered_config_file, read_config_file
@@ -54,23 +56,24 @@ TEST_DEFAULTS = {
     "custom_node_url": None,
     "custom_cookbook_url": None,
     "createami_custom_cookbook_url": None,
+    "cookbook_git_ref": None,
+    "node_git_ref": None,
+    "ami_owner": None,
     "createami_custom_node_url": None,
-    "custom_template_url": None,
     "custom_awsbatchcli_url": None,
-    "custom_hit_template_url": None,
-    "custom_cw_dashboard_template_url": None,
     "custom_ami": None,
     "pre_install": None,
     "post_install": None,
     "vpc_stack": None,
     "cluster": None,
+    "api_definition_s3_uri": None,
+    "public_ecr_image_uri": None,
     "no_delete": False,
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
     "stackname_suffix": "",
-    "keep_logs_on_cluster_failure": False,
-    "keep_logs_on_test_failure": False,
+    "delete_logs_on_success": False,
     "tests_root_dir": "./tests",
     "instance_types_data": None,
 }
@@ -221,30 +224,10 @@ def _init_argparser():
         type=_is_url,
     )
     custom_group.add_argument(
-        "--custom-template-url",
-        help="URL to a custom cfn template.",
-        default=TEST_DEFAULTS.get("custom_template_url"),
-        type=_is_url,
-    )
-    custom_group.add_argument(
-        "--custom-hit-template-url",
-        help="URL to a custom hit cfn template.",
-        default=TEST_DEFAULTS.get("custom_hit_template_url"),
-        type=_is_url,
-    )
-    custom_group.add_argument(
-        "--custom-cw-dashboard-template-url",
-        help="URL to a custom dashboard cfn template.",
-        default=TEST_DEFAULTS.get("custom_cw_dashboard_template_url"),
-    )
-    custom_group.add_argument(
         "--custom-awsbatchcli-url",
         help="URL to a custom awsbatch cli package.",
         default=TEST_DEFAULTS.get("custom_awsbatchcli_url"),
         type=_is_url,
-    )
-    custom_group.add_argument(
-        "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
     custom_group.add_argument(
         "--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install")
@@ -258,6 +241,31 @@ def _init_argparser():
         "instance_type -> data, where data must respect the same structure returned by ec2 "
         "describe-instance-types",
         default=TEST_DEFAULTS.get("instance_types_data"),
+    )
+
+    ami_group = parser.add_argument_group("AMI selection parameters")
+    ami_group.add_argument(
+        "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
+    )
+    ami_group.add_argument(
+        "--pcluster-git-ref",
+        help="Git ref of the custom cli package used to build the AMI.",
+        default=TEST_DEFAULTS.get("pcluster_git_ref"),
+    )
+    ami_group.add_argument(
+        "--cookbook-git-ref",
+        help="Git ref of the custom cookbook package used to build the AMI.",
+        default=TEST_DEFAULTS.get("cookbook_git_ref"),
+    )
+    ami_group.add_argument(
+        "--node-git-ref",
+        help="Git ref of the custom node package used to build the AMI.",
+        default=TEST_DEFAULTS.get("node_git_ref"),
+    )
+    ami_group.add_argument(
+        "--ami-owner",
+        help="Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon.",
+        default=TEST_DEFAULTS.get("ami_owner"),
     )
 
     banchmarks_group = parser.add_argument_group("Benchmarks")
@@ -288,22 +296,26 @@ def _init_argparser():
         "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
     )
     debug_group.add_argument(
+        "--api-definition-s3-uri",
+        help="URI of the Docker image for the Lambda of the ParallelCluster API",
+        default=TEST_DEFAULTS.get("api_definition_s3_uri"),
+    )
+    debug_group.add_argument(
+        "--public-ecr-image-uri",
+        help="S3 URI of the ParallelCluster API spec",
+        default=TEST_DEFAULTS.get("public_ecr_image_uri"),
+    )
+    debug_group.add_argument(
         "--no-delete",
         action="store_true",
         help="Don't delete stacks after tests are complete.",
         default=TEST_DEFAULTS.get("no_delete"),
     )
     debug_group.add_argument(
-        "--keep-logs-on-cluster-failure",
-        help="preserve CloudWatch logs when a cluster fails to be created",
+        "--delete-logs-on-success",
+        help="delete CloudWatch logs when a test succeeds",
         action="store_true",
-        default=TEST_DEFAULTS.get("keep_logs_on_cluster_failure"),
-    )
-    debug_group.add_argument(
-        "--keep-logs-on-test-failure",
-        help="preserve CloudWatch logs when a test fails",
-        action="store_true",
-        default=TEST_DEFAULTS.get("keep_logs_on_test_failure"),
+        default=TEST_DEFAULTS.get("delete_logs_on_success"),
     )
     debug_group.add_argument(
         "--stackname-suffix",
@@ -327,11 +339,23 @@ def _is_file(value):
 
 
 def _is_url(value):
-    try:
-        urllib.request.urlopen(value)
-    except Exception:
+    scheme = urllib.request.urlparse(value).scheme
+    if scheme in ["https", "s3", "file"]:
+        try:
+            if scheme == "s3":
+                match = re.match(r"s3://(.*?)/(.*)", value)
+                if not match or len(match.groups()) < 2:
+                    raise argparse.ArgumentTypeError(f"'{value}' is not a valid S3url")
+                else:
+                    bucket_name, object_name = match.group(1), match.group(2)
+                    boto3.client("s3").head_object(Bucket=bucket_name, Key=object_name)
+            else:
+                urllib.request.urlopen(value)
+            return value
+        except Exception as e:
+            raise argparse.ArgumentTypeError(f"'{value}' is not a valid url:{e}")
+    else:
         raise argparse.ArgumentTypeError("'{0}' is not a valid url".format(value))
-    return value
 
 
 def _test_config_file(value):
@@ -404,10 +428,8 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append("--schedulers")
         pytest_args.extend(args.schedulers)
 
-    if args.keep_logs_on_cluster_failure:
-        pytest_args.append("--keep-logs-on-cluster-failure")
-    if args.keep_logs_on_test_failure:
-        pytest_args.append("--keep-logs-on-test-failure")
+    if args.delete_logs_on_success:
+        pytest_args.append("--delete-logs-on-success")
 
     if args.credential:
         pytest_args.append("--credential")
@@ -430,6 +452,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
         pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
 
     _set_custom_packages_args(args, pytest_args)
+    _set_ami_args(args, pytest_args)
     _set_custom_stack_args(args, pytest_args)
     return pytest_args
 
@@ -447,20 +470,8 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.createami_custom_node_url:
         pytest_args.extend(["--createami-custom-node-package", args.createami_custom_node_url])
 
-    if args.custom_template_url:
-        pytest_args.extend(["--template-url", args.custom_template_url])
-
-    if args.custom_hit_template_url:
-        pytest_args.extend(["--hit-template-url", args.custom_hit_template_url])
-
-    if args.custom_cw_dashboard_template_url:
-        pytest_args.extend(["--cw-dashboard-template-url", args.custom_cw_dashboard_template_url])
-
     if args.custom_awsbatchcli_url:
         pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
-
-    if args.custom_ami:
-        pytest_args.extend(["--custom-ami", args.custom_ami])
 
     if args.pre_install:
         pytest_args.extend(["--pre-install", args.pre_install])
@@ -469,12 +480,35 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
         pytest_args.extend(["--post-install", args.post_install])
 
 
+def _set_ami_args(args, pytest_args):
+    if args.custom_ami:
+        pytest_args.extend(["--custom-ami", args.custom_ami])
+
+    if args.pcluster_git_ref:
+        pytest_args.extend(["--pcluster-git-ref", args.pcluster_git_ref])
+
+    if args.cookbook_git_ref:
+        pytest_args.extend(["--cookbook-git-ref", args.cookbook_git_ref])
+
+    if args.node_git_ref:
+        pytest_args.extend(["--node-git-ref", args.node_git_ref])
+
+    if args.ami_owner:
+        pytest_args.extend(["--ami-owner", args.ami_owner])
+
+
 def _set_custom_stack_args(args, pytest_args):
     if args.vpc_stack:
         pytest_args.extend(["--vpc-stack", args.vpc_stack])
 
     if args.cluster:
         pytest_args.extend(["--cluster", args.cluster])
+
+    if args.api_definition_s3_uri:
+        pytest_args.extend(["--api-definition-s3-uri", args.api_definition_s3_uri])
+
+    if args.public_ecr_image_uri:
+        pytest_args.extend(["--public-ecr-image-uri", args.public_ecr_image_uri])
 
     if args.no_delete:
         pytest_args.append("--no-delete")

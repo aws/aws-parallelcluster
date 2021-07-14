@@ -1,0 +1,31 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.micro  # t2.micro
+  Networking:
+    SubnetId: subnet-12345678  # subnet-xxx
+  Ssh:
+    KeyName: ec2-key-name
+    AllowedIps: 1.2.3.4/32
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      CapacityType: ONDEMAND
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute_resource1
+          InstanceType: c5.xlarge
+SharedStorage:
+  - MountDir: /my/mount/point2
+    Name: name1
+    StorageType: Efs
+    EfsSettings:
+      FileSystemId: fs-12345678123456789
+  - MountDir: /my/mount/point3
+    Name: name2
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      FileSystemId: fs-12345678123456789

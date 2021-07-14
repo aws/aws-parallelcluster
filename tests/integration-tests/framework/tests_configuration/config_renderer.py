@@ -31,7 +31,7 @@ def read_config_file(config_file, print_rendered=False):
     logging.info("Parsing config file: %s", config_file)
     rendered_config = _render_config_file(config_file)
     try:
-        return yaml.load(rendered_config, Loader=yaml.SafeLoader)
+        return yaml.safe_load(rendered_config)
     except Exception:
         logging.exception("Failed when reading config file %s", config_file)
         print_rendered = True
@@ -62,6 +62,6 @@ def _render_config_file(config_file):
             .get_template(config_name)
             .render(additional_instance_types_map=InstanceTypesData.additional_instance_types_map)
         )
-    except Exception:
-        logging.error("Failed when rendering config file %s", config_file)
+    except Exception as e:
+        logging.error("Failed when rendering config file %s with error: %s", config_file, e)
         raise

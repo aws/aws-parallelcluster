@@ -33,11 +33,9 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "centos7", "slurm")
-@pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "centos8", "slurm")
 @pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "centos7", "slurm")
-@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "centos8", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "ubuntu1804", "slurm")
 def test_dcv_configuration(
     region,
@@ -51,7 +49,6 @@ def test_dcv_configuration(
     _test_dcv_configuration(
         8443,
         "0.0.0.0/0",
-        "/shared",
         region,
         instance,
         os,
@@ -62,15 +59,11 @@ def test_dcv_configuration(
     )
 
 
-@pytest.mark.parametrize(
-    "dcv_port, access_from, shared_dir", [(8443, "0.0.0.0/0", "/shared"), (5678, "192.168.1.1/32", "/myshared")]
-)
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "sge")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos8", "sge")
+@pytest.mark.parametrize("dcv_port, access_from", [(8443, "0.0.0.0/0"), (5678, "192.168.1.1/32")])
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
 def test_dcv_with_remote_access(
     dcv_port,
     access_from,
-    shared_dir,
     region,
     instance,
     os,
@@ -82,7 +75,6 @@ def test_dcv_with_remote_access(
     _test_dcv_configuration(
         dcv_port,
         access_from,
-        shared_dir,
         region,
         instance,
         os,
@@ -96,7 +88,6 @@ def test_dcv_with_remote_access(
 def _test_dcv_configuration(
     dcv_port,
     access_from,
-    shared_dir,
     region,
     instance,
     os,
@@ -106,7 +97,7 @@ def _test_dcv_configuration(
     test_datadir,
 ):
     dcv_authenticator_port = dcv_port + 1
-    cluster_config = pcluster_config_reader(dcv_port=str(dcv_port), access_from=access_from, shared_dir=shared_dir)
+    cluster_config = pcluster_config_reader(dcv_port=str(dcv_port), access_from=access_from)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
@@ -148,6 +139,8 @@ def _test_dcv_configuration(
     _check_auth_ko(
         remote_command_executor, dcv_authenticator_port, "-d action=sessionToken -d authUser=centos", "Wrong parameters"
     )
+
+    shared_dir = f"/home/{get_username_for_os(os)}"
 
     # launch a session and verify the authenticator works
     command_execution = remote_command_executor.run_remote_command(f"{DCV_CONNECT_SCRIPT} {shared_dir}")

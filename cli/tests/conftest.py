@@ -3,13 +3,19 @@ This module loads pytest fixtures and plugins needed by all tests.
 
 It's very useful for fixtures that need to be shared among all tests.
 """
-
+import logging
 import os
+import sys
 
 import boto3
 import pytest
+from assertpy import assert_that, soft_assertions
 from botocore.stub import Stubber
+from flask.testing import FlaskClient
 from jinja2 import Environment, FileSystemLoader
+
+from pcluster.api.flask_app import ParallelClusterFlaskApp
+from pcluster.cli.entrypoint import ParallelClusterCli
 
 
 @pytest.fixture(autouse=True)
@@ -19,17 +25,11 @@ def clear_env():
 
 
 @pytest.fixture(autouse=True)
-def mock_default_instance(mocker, request):
-    """
-    Mock get_default_instance_type for all tests.
+def reset_aws_api():
+    """Reset AWSApi singleton to remove dependencies between tests."""
+    from pcluster.aws.aws_api import AWSApi
 
-    To disable the mock for certain tests, add annotation `@pytest.mark.nomockdefaultinstance` to the tests.
-    To disable the mock for an entire file, declare global var `pytestmark = pytest.mark.noassertnopendingresponses`
-    """
-    if "nomockdefaultinstance" in request.keywords:
-        # skip mocking
-        return
-    mocker.patch("pcluster.config.cfn_param_types.get_default_instance_type", return_value="t2.micro")
+    AWSApi._instance = None
 
 
 @pytest.fixture
@@ -63,24 +63,6 @@ def test_datadir(request, datadir):
 
     class_name = request.cls.__name__
     return datadir / "{0}/{1}".format(class_name, function_name)
-
-
-@pytest.fixture()
-def convert_to_date_mock(request, mocker):
-    """Mock convert_to_date function by enforcing the timezone to UTC."""
-    module_under_test = request.node.fspath.purebasename.replace("test_", "")
-
-    def _convert_to_date_utc(*args, **kwargs):
-        from dateutil import tz
-
-        from awsbatch.utils import convert_to_date
-
-        # executes convert_to_date but overrides arguments so that timezone is enforced to utc
-        if "timezone" in kwargs:
-            del kwargs["timezone"]
-        return convert_to_date(timezone=tz.tzutc(), *args, **kwargs)
-
-    return mocker.patch("awsbatch." + module_under_test + ".convert_to_date", wraps=_convert_to_date_utc)
 
 
 @pytest.fixture()
@@ -148,25 +130,6 @@ def boto3_stubber(mocker, boto3_stubber_path):
         stubber.deactivate()
 
 
-DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG = {
-    "region": "region",
-    "proxy": None,
-    "aws_access_key_id": "aws_access_key_id",
-    "aws_secret_access_key": "aws_secret_access_key",
-    "job_queue": "job_queue",
-}
-
-
-@pytest.fixture()
-def awsbatchcliconfig_mock(request, mocker):
-    """Mock AWSBatchCliConfig object with a default mock."""
-    module_under_test = request.node.fspath.purebasename.replace("test_", "")
-    mock = mocker.patch("awsbatch." + module_under_test + ".AWSBatchCliConfig", autospec=True)
-    for key, value in DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG.items():
-        setattr(mock.return_value, key, value)
-    return mock
-
-
 @pytest.fixture()
 def pcluster_config_reader(test_datadir):
     """
@@ -175,7 +138,7 @@ def pcluster_config_reader(test_datadir):
     The config for a given test is a pcluster.config.ini file stored in the configs_datadir folder.
     The config can be written by using Jinja2 template engine.
     The current renderer already replaces placeholders for current keys:
-        {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
+        {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
         {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
@@ -183,9 +146,8 @@ def pcluster_config_reader(test_datadir):
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
 
-    def _config_renderer(config_file="pcluster.config.ini", **kwargs):
+    def _config_renderer(config_file="pcluster.config.yaml", **kwargs):
         config_file_path = os.path.join(str(test_datadir), config_file)
-        # default_values = _get_default_template_values(vpc_stacks, region, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**kwargs)
@@ -194,3 +156,77 @@ def pcluster_config_reader(test_datadir):
         return config_file_path
 
     return _config_renderer
+
+
+@pytest.fixture
+def aws_api_mock(mocker):
+    mocked_aws_api = mocker.MagicMock(autospec=True)
+    mocker.patch("pcluster.aws.aws_api.AWSApi.instance", return_value=mocked_aws_api)
+    return mocked_aws_api
+
+
+@pytest.fixture
+def client() -> FlaskClient:
+    flask_app = ParallelClusterFlaskApp(swagger_ui=False, validate_responses=True).flask_app
+    with flask_app.test_client() as client:
+        yield client
+
+
+@pytest.fixture
+def set_env():
+    old_environ = dict(os.environ)
+
+    def _set_env_var(key, value):
+        os.environ[key] = value
+
+    yield _set_env_var
+    os.environ.clear()
+    os.environ.update(old_environ)
+
+
+@pytest.fixture
+def unset_env():
+    old_environ = dict(os.environ)
+
+    def _unset_env_var(key):
+        os.environ.pop(key, default=None)
+
+    yield _unset_env_var
+    os.environ.clear()
+    os.environ.update(old_environ)
+
+
+@pytest.fixture()
+def run_cli(mocker, capsys):
+    def _run_cli(command, expect_failure=False, expect_message=None):
+        mocker.patch.object(sys, "argv", command)
+        with pytest.raises(SystemExit) as sysexit:
+            ParallelClusterCli().handle_command()
+        if expect_failure:
+            if expect_message:
+                assert_that(sysexit.value.code).contains(expect_message)
+            else:
+                assert_that(sysexit.value.code).is_greater_than(0)
+        else:
+            assert_that(sysexit.value.code).is_equal_to(0)
+
+    return _run_cli
+
+
+@pytest.fixture()
+def assert_out_err(capsys):
+    def _assert_out_err(expected_out, expected_err):
+        out_err = capsys.readouterr()
+        with soft_assertions():
+            assert_that(out_err.out.strip()).contains(expected_out)
+            assert_that(out_err.err.strip()).contains(expected_err)
+
+    return _assert_out_err
+
+
+@pytest.fixture(autouse=True)
+def enable_logging_propagation():
+    # pytest caplog fixture captures logs propagated to the root logger.
+    # Since we disabled propagation by default we have to enable it in order to enable
+    # unit tests to verify logging output.
+    logging.getLogger("pcluster").propagate = True

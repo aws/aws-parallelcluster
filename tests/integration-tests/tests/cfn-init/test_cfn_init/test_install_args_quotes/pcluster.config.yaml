@@ -1,0 +1,51 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  CustomActions:
+    OnNodeStart:
+      Script: s3://{{ bucket_name }}/scripts/pre_install.sh
+      Args:
+        - "R curl wget"
+    OnNodeConfigured:
+      Script: s3://{{ bucket_name }}/scripts/post_install.sh
+      Args:
+        - "R curl wget"
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    S3Access:
+      - BucketName: {{ bucket_name }}
+        EnableWriteAccess: false
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+    - Name: queue-0
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket_name }}/scripts/pre_install.sh
+          Args:
+            - 'R curl wget'
+        OnNodeConfigured:
+          Script: s3://{{ bucket_name }}/scripts/post_install.sh
+          Args:
+            - 'R curl wget'
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      Iam:
+        S3Access:
+          - BucketName: {{ bucket_name }}
+            EnableWriteAccess: false

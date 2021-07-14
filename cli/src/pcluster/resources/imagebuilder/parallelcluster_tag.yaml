@@ -1,0 +1,185 @@
+name: ParallelClusterTag
+description: Tag ParallelCluster AMI
+schemaVersion: 1.0
+
+phases:
+  - name: test
+    steps:
+      # Get AMI ID
+      - name: AmiId
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              IMDS_TOKEN=$(curl --retry 3 --retry-delay 0 -s --fail -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+              AMI_ID=$(curl --retry 3 --retry-delay 0 -s --fail -H "X-aws-ec2-metadata-token: ${IMDS_TOKEN}" http://169.254.169.254/latest/meta-data/ami-id)
+              echo ${AMI_ID}
+
+      # Get AWS region
+      - name: AWSRegion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              IMDS_TOKEN=$(curl --retry 3 --retry-delay 0 -s --fail -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+              AVAIL_ZONE=$(curl --retry 3 --retry-delay 0 -s --fail -H "X-aws-ec2-metadata-token: ${IMDS_TOKEN}" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+              AWS_REGION=${AVAIL_ZONE::-1}
+              echo ${AWS_REGION}
+
+      - name: OperatingSystemName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              FILE=/etc/os-release
+              if [ -e ${FILE} ]; then
+                . ${FILE}
+                RELEASE="${ID}${VERSION_ID:+.${VERSION_ID}}"
+              fi
+
+              if [ $(echo "${RELEASE}" | grep -w '^amzn\.2') ]; then
+                OS='alinux2'
+              elif [ $(echo "${RELEASE}" | grep '^centos\.7') ]; then
+                OS='centos7'
+              elif [ $(echo "${RELEASE}" | grep '^ubuntu\.18') ]; then
+                OS='ubuntu1804'
+              elif [ $(echo "${RELEASE}" | grep '^ubuntu\.20') ]; then
+                OS='ubuntu2004'
+              fi
+
+              echo ${OS}
+
+      - name: ParallelClusterTag
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+
+              # Install AWS CLI
+              which aws
+              if [[ $? -ne 0 ]]; then
+                echo "Installing unzip"
+                if [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^(centos7|alinux) ]]; then
+                  yum -y install unzip
+                elif [[ "{{ test.OperatingSystemName.outputs.stdout }}" =~ ^ubuntu ]]; then
+                  apt-get -y install unzip
+                fi
+                echo "Installing AWS CLI"
+                curl --retry 3 -L -o /tmp/awscliv2.zip "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip"
+                cd /tmp/ && unzip awscliv2.zip
+                ./aws/install
+              fi
+
+              DESCRIPTION="AWS ParallelCluster AMI for {{ test.OperatingSystemName.outputs.stdout }}"
+              append_description () {
+                KEY="$1"
+                VALUE="$2"
+                if [[ -n "${VALUE}" ]] && [[ ! "${VALUE}" =~ NOT_INSTALLED ]]; then
+                  echo "Appending ${KEY}-${VALUE} to decription"
+                  DESCRIPTION="${DESCRIPTION}, ${KEY}-${VALUE}"
+                fi
+              }
+
+              add_description () {
+                DESCRIPTION="$(echo ${DESCRIPTION} | cut -c -1024)"
+                echo "Setting decription to ${DESCRIPTION}"
+                aws ec2 modify-image-attribute --region {{ test.AWSRegion.outputs.stdout }} --image-id {{ test.AmiId.outputs.stdout }} --description "${DESCRIPTION}" || echo "Not able to set AMI description"
+              }
+
+              add_tag () {
+                KEY="$1"
+                VALUE="$2"
+                if [[ -n "${VALUE}" ]] && [[ ! "${VALUE}" =~ NOT_INSTALLED ]]; then
+                  KEY="$(echo ${KEY} | cut -c -128)"
+                  VALUE="$(echo ${VALUE} | cut -c -256)"
+                  echo "Adding Tag Key=${KEY},Value=${VALUE}"
+                  aws ec2 create-tags --region {{ test.AWSRegion.outputs.stdout }} --resource {{ test.AmiId.outputs.stdout }} --tags "Key=${KEY},Value=${VALUE}" || echo "Not able to set AMI tag"
+                fi
+              }
+
+              get_package_version () {
+                set -o pipefail
+                PACKAGE_NAME="$1"
+                if [ $(which apt 2> /dev/null) ]; then
+                  VERSION=$(dpkg -s "${PACKAGE_NAME}" 2> /dev/null | grep -i "^version:" | tr -s ' ' | cut -d' ' -f2 || echo "NOT_INSTALLED")
+                  echo "${VERSION}"
+                elif [ $(which yum 2> /dev/null) ]; then
+                  VERSION=$(rpm -q "${PACKAGE_NAME}" 2> /dev/null || echo "NOT_INSTALLED")
+                  echo "${VERSION#${PACKAGE_NAME}-}"
+                fi
+                set +o pipefail
+              }
+
+              get_modinfo () {
+                set -o pipefail
+                MODULE_NAME="$1"
+                VERSION=$(modinfo "${MODULE_NAME}" 2> /dev/null | grep -i "^version:" | tr -s ' ' | cut -d' ' -f2 || echo "NOT_INSTALLED")
+                echo "${VERSION}"
+                set +o pipefail
+              }
+
+              get_source_version () {
+                PACKAGE_NAME="$1"
+                FILENAME="$(basename $(ls "/opt/parallelcluster/sources/${PACKAGE_NAME}"* 2> /dev/null || echo "NOT_INSTALLED"))"
+                FILENAME="${FILENAME%%.tar.gz}"
+                FILENAME="${FILENAME%%.zip}"
+                VERSION="${FILENAME#${PACKAGE_NAME}-}"
+                echo "${VERSION}"
+              }
+
+              # ParallelCluster bootstrap file
+              if [[ -f /opt/parallelcluster/.bootstrapped ]]; then
+                add_tag "parallelcluster:bootstrap_file" "$(cat /opt/parallelcluster/.bootstrapped)"
+              fi
+
+              # OS
+              add_tag "parallelcluster:os" "{{ test.OperatingSystemName.outputs.stdout }}"
+
+              # Kernel
+              KERNEL_VERSION="$(uname -r)"
+              add_tag "parallelcluster:kernel_version" "${KERNEL_VERSION}"
+              append_description "kernel" "${KERNEL_VERSION}"
+
+              # sudo
+              add_tag "parallelcluster:sudo_version" "$(get_package_version "sudo")"
+
+              # Lustre
+              LUSTRE_VERSION="$(get_package_version "lustre-client")"
+              add_tag "parallelcluster:lustre_version" "${LUSTRE_VERSION}"
+              append_description "lustre" "${LUSTRE_VERSION}"
+              LUSTRE_VERSION="$(get_package_version "lustre-client-modules-aws")"
+              add_tag "parallelcluster:lustre_version" "${LUSTRE_VERSION}"
+              append_description "lustre" "${LUSTRE_VERSION}"
+
+              # EFA
+              EFA_VERSION="$(get_package_version "efa")"
+              add_tag "parallelcluster:efa_version" "${EFA_VERSION}"
+              append_description "efa" "${EFA_VERSION}"
+
+              # DCV
+              DCV_VERSION="$(get_package_version "nice-dcv-server")"
+              add_tag "parallelcluster:dcv_version" "${DCV_VERSION}"
+              append_description "dcv" "${DCV_VERSION}"
+
+              # Slurm, Munge and PMIx
+              SLURM_VERSION="$(get_source_version "slurm")"
+              add_tag "parallelcluster:slurm_version" "${SLURM_VERSION}"
+              append_description "slurm" "${SLURM_VERSION}"
+              add_tag "parallelcluster:munge_version" "$(get_source_version "munge")"
+              add_tag "parallelcluster:pmix_version" "$(get_source_version "pmix")"
+
+              # Nvidia, Cuda and Nvidia FabricManager
+              NVIDIA_VERSION="$(get_modinfo "nvidia")"
+              add_tag "parallelcluster:nvidia_version" "${NVIDIA_VERSION}"
+              append_description "nvidia" "${NVIDIA_VERSION}"
+              CUDA_VERSION="$(cat /usr/local/cuda/version.txt | cut -d' ' -f3)"
+              add_tag "parallelcluster:cuda_version" "${CUDA_VERSION}"
+              append_description "cuda" "${CUDA_VERSION}"
+              add_tag "parallelcluster:nvidia_fabricmanager_version" "$(get_package_version "nvidia-fabricmanager")"
+
+              # Add description
+              add_description

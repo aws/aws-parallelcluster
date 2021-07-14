@@ -39,11 +39,11 @@ python -m test_runner --help
 usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
                       [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
                       [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
-                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] 
-                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-template-url CUSTOM_TEMPLATE_URL]
-                      [--custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--custom-ami CUSTOM_AMI] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
-                      [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
-                      [--keep-logs-on-cluster-failure] [--keep-logs-on-test-failure] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
+                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL]
+                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
+                      [--custom-ami CUSTOM_AMI] [--pcluster-git-ref PCLUSTER_GIT_REF] [--cookbook-git-ref COOKBOOK_GIT_REF] [--node-git-ref NODE_GIT_REF] [--ami-owner AMI_OWNER] [--benchmarks]
+                      [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
+                      [--delete-logs-on-success] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
 
 Run integration tests suite.
 
@@ -57,8 +57,8 @@ optional arguments:
   --credential CREDENTIAL
                         STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times.
                         <region> represents the region credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role
-                        to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId)
-                        (default: None)
+                        to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-
+                        assume,externalId) (default: None)
   --retry-on-failures   Retry once more the failed tests after a delay of 60 seconds. (default: False)
   --tests-root-dir TESTS_ROOT_DIR
                         Root dir where integration tests are defined (default: ./tests)
@@ -66,7 +66,7 @@ optional arguments:
 Test dimensions:
   -c TESTS_CONFIG, --tests-config TESTS_CONFIG
                         Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss,
-                        schedulers. Refer to the docs for further details on the config format. (default: None)
+                        schedulers. Refer to the docs for further details on the config format: https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md (default: None)
   -i [INSTANCES [INSTANCES ...]], --instances [INSTANCES [INSTANCES ...]]
                         AWS instances under test. Ignored when tests-config is used. (default: [])
   -o [OSS [OSS ...]], --oss [OSS [OSS ...]]
@@ -101,20 +101,24 @@ Custom packages and templates:
                         URL to a custom cookbook package for the createami command. (default: None)
   --createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL
                         URL to a custom node package for the createami command. (default: None)
-  --custom-template-url CUSTOM_TEMPLATE_URL
-                        URL to a custom cfn template. (default: None)
-  --custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL
-                        URL to a custom hit cfn template. (default: None)
   --custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL
                         URL to a custom awsbatch cli package. (default: None)
-  --custom-cw-dashboard-template-url CUSTOM_CW_DASHBOARD_TEMPLATE_URL
-                        URL to a custom cw dashboard template. (default: None)
-  --custom-ami CUSTOM_AMI
-                        custom AMI to use for all tests. (default: None)
   --pre-install PRE_INSTALL
                         URL to a pre install script (default: None)
   --post-install POST_INSTALL
                         URL to a post install script (default: None)
+
+AMI selection parameters:
+  --custom-ami CUSTOM_AMI
+                        custom AMI to use for all tests. (default: None)
+  --pcluster-git-ref PCLUSTER_GIT_REF
+                        Git ref of the custom cli package used to build the AMI. (default: None)
+  --cookbook-git-ref COOKBOOK_GIT_REF
+                        Git ref of the custom cookbook package used to build the AMI. (default: None)
+  --node-git-ref NODE_GIT_REF
+                        Git ref of the custom node package used to build the AMI. (default: None)
+  --ami-owner AMI_OWNER
+                        Override the owner value when fetching AMIs to use with cluster. By default pcluster uses amazon. (default: None)
 
 Benchmarks:
   --benchmarks          run benchmarks tests. This disables the execution of all tests defined under the tests directory. (default: False)
@@ -128,10 +132,8 @@ Debugging/Development options:
                         Name of an existing vpc stack. (default: None)
   --cluster CLUSTER     Use an existing cluster instead of creating one. (default: None)
   --no-delete           Don't delete stacks after tests are complete. (default: False)
-  --keep-logs-on-cluster-failure
-                        preserve CloudWatch logs when a cluster fails to be created (default: False)
-  --keep-logs-on-test-failure
-                        preserve CloudWatch logs when a test fails (default: False)
+  --delete-logs-on-success
+                        delete CloudWatch logs when a test success (default: True)
   --stackname-suffix STACKNAME_SUFFIX
                         set a suffix in the integration tests stack names (default: )
   --dry-run             Only show the list of tests that would run with specified options. (default: False)
@@ -186,7 +188,7 @@ test-suites:
         - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_ONE_PER_DISTRO }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm", "awsbatch"]
   cli_commands:
     test_cli_commands.py::test_hit_cli_commands:
       dimensions:
@@ -199,7 +201,7 @@ test-suites:
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
-          schedulers: ["sge"]
+          schedulers: ["slurm"]
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:
       dimensions:
@@ -231,9 +233,7 @@ cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-awsbatch]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-sge]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-torque]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[eu-west-1-m6g.xlarge-alinux2-slurm]
 ```
   
@@ -458,10 +458,10 @@ def test_case_1(region, instance, os, scheduler):
 ```
 This test case will be automatically parametrized and executed for all combination of input dimensions.
 For example, given as input dimensions `--regions "eu-west-1" --instances "c4.xlarge" --oss "alinux2"
-"ubuntu1804" --scheduler "sge" "slurm"`, the following tests will run:
+"ubuntu1804" --scheduler "awsbatch" "slurm"`, the following tests will run:
 ```
-test_case_1[eu-west-1-c4.xlarge-alinux2-sge]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1804-sge]
+test_case_1[eu-west-1-c4.xlarge-alinux2-awsbatch]
+test_case_1[eu-west-1-c4.xlarge-ubuntu1804-awsbatch]
 test_case_1[eu-west-1-c4.xlarge-alinux2-slurm]
 test_case_1[eu-west-1-c4.xlarge-ubuntu1804-slurm]
 ```
@@ -522,13 +522,13 @@ While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "sge")
+@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "slurm")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux2", "awsbatch")` or
-`("c4.xlarge", "centos7", "sge")`
+`("c4.xlarge", "centos7", "slurm")`
 
 #### Default Invalid Dimensions
 
@@ -547,7 +547,7 @@ integration-tests
          ├── $test_file_i.py: contains resources for test cases defined in file $test_file_i.py
          │         └── $test_case_i: contains resources for test case $test_case_i
          │             ├── data_file
-         │             ├── pcluster.config.ini
+         │             ├── pcluster.config.yaml
          │             └── test_script.sh
          └── data: contains common resources to share across all tests
                 └── shared_dir_1
@@ -577,7 +577,7 @@ Similarly to parametrized test cases, also cluster configurations can be paramet
 [Jinja2](http://jinja.pocoo.org/docs/2.10/) templating syntax.
 
 The cluster configuration needed for a given test case needs to reside in the test specific `test_datadir`
-and it needs to be in a file named pcluster.config.ini.
+and it needs to be in a file named pcluster.config.yaml.
 
 Test cases can then inject a fixture called `pcluster_config_reader` which allows to automatically read and render
 the configuration defined for a specific test case and have it automatically parametrized with the default
@@ -586,41 +586,43 @@ test dimensions and additional test options (such as the value assigned to `key_
 For example in the following test, defined in the file `test_feature.py`:
 ```python
 def test_case_1(region, instance, os, scheduler, pcluster_config_reader):
-    cluster_config = pcluster_config_reader(vpc_id="id-xxx", master_subnet_id="id-xxx", compute_subnet_id="id-xxx")
+    cluster_config = pcluster_config_reader(public_subnet_id="id-xxx", private_subnet_id="id-xxx")
 ```
 you can simply render the parametrized cluster config which is defined in the file
-`integration-tests/tests/test_feature/test_case_1/pcluster.config.ini`
+`integration-tests/tests/test_feature/test_case_1/pcluster.config.yaml`
 
 Here is an example of the parametrized pcluster config:
-```INI
-[global]
-cluster_template = awsbatch
-
-[aws]
-aws_region_name = {{ region }}
-
-[cluster awsbatch]
-base_os = {{ os }}
-key_name = {{ key_name }}
-vpc_settings = parallelcluster-vpc
-scheduler = awsbatch
-compute_instance_type = {{ instance }}
-min_vcpus = 2
-desired_vcpus = 2
-max_vcpus = 24
-
-[vpc parallelcluster-vpc]
-vpc_id = {{ vpc_id }}
-master_subnet_id = {{ public_subnet_id }}
-compute_subnet_id = {{ private_subnet_id }}
+```YAML
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  <scheduler-specific>Queues:
+    - Name: queue-0
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
 ```
 
 The following placeholders are automatically injected by the `pcluster_config_reader` fixture and are
-available in the `pcluster.config.ini` files:
+available in the `pcluster.config.yaml` files:
 * Test dimensions for the specific parametrized test case: `{{ region }}`, `{{ instance }}`, `{{ os }}`,
 `{{ scheduler }}`
 * EC2 key name specified at tests submission time by the user: `{{ key_name }}`
-* VPC related parameters: `{{ vpc_id }}`, `{{ public_subnet_id }}`, `{{ private_subnet_id }}`
+* Networking related parameters: `{{ public_subnet_id }}`, `{{ private_subnet_id }}`
 
 Additional parameters can be specified when calling the fixture to retrieve the rendered configuration
 as shown in the example above.
@@ -673,12 +675,18 @@ Parameters related to the generated VPC and Subnets are automatically exported t
 in particular are available when using the `pcluster_config_reader` fixture, as shown above. The only thing to do
 is to use them when defining the cluster config for the specific test case:
 
-```INI
-...
-[vpc parallelcluster-vpc]
-vpc_id = {{ vpc_id }}
-master_subnet_id = {{ public_subnet_id }}
-compute_subnet_id = {{ private_subnet_id }}
+```YAML
+HeadNode:
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  ...
+Scheduling:
+  <scheduler-specific>Queues:
+    - Name: queue-0
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+  ...
 ```
 
 ### Create/Destroy Clusters
@@ -689,7 +697,7 @@ Cluster lifecycle management is fully managed by the testing framework and is ex
 Here is an example of how to use it:
 ```python
 def test_case_1(region, instance, os, scheduler, pcluster_config_reader, clusters_factory):
-    cluster_config = pcluster_config_reader(vpc_id="aaa", master_subnet_id="bbb", compute_subnet_id="ccc")
+    cluster_config = pcluster_config_reader(public_subnet_id="bbb", private_subnet_id="ccc")
     cluster = clusters_factory(cluster_config)
 ```
 
@@ -712,7 +720,7 @@ methods to execute remote commands and scripts as shown in the example below:
 import logging
 from remote_command_executor import RemoteCommandExecutor
 def test_case_1(region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir):
-    cluster_config = pcluster_config_reader(vpc_id="aaa", master_subnet_id="bbb", compute_subnet_id="ccc")
+    cluster_config = pcluster_config_reader(public_subnet_id="bbb", private_subnet_id="ccc")
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     result = remote_command_executor.run_remote_command("env")
@@ -732,7 +740,7 @@ integration-tests
           └──  test_feature
                     └── test_case_1
                         ├── data_file
-                        ├── pcluster.config.ini
+                        ├── pcluster.config.yaml
                         └── test_script.sh
 
 ```

@@ -1,18 +1,18 @@
 AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
 manage High Performance Computing (HPC) clusters in the AWS cloud.
 Built on the Open Source CfnCluster project, AWS ParallelCluster enables you to quickly build an HPC compute environment in AWS.
-It automatically sets up the required compute resources and a shared filesystem and offers a variety of batch schedulers such as AWS Batch, SGE, Torque, and Slurm.
+It automatically sets up the required compute resources and a shared filesystem and offers a variety of batch schedulers such as AWS Batch and Slurm.
 AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments.
 You can build higher level workflows, such as a Genomics portal that automates the entire DNA sequencing workflow, on top of AWS ParallelCluster.
 
     usage: pcluster [-h]
-                    {create,update,delete,start,stop,status,list,instances,ssh,configure,version,createami}
+                    {create,update,delete,start,stop,status,list,instances,ssh,configure,version,dcv,createami}
                     ...
 
     pcluster is a tool to launch and manage a cluster.
 
     positional arguments:
-      {create,update,delete,start,stop,status,list,instances,ssh,configure,version,createami}
+      {create,update,delete,start,stop,status,list,instances,ssh,configure,version,dcv,createami}
         create              Creates a cluster.
         update              Updates a running cluster.
         delete              Deletes a cluster.
@@ -24,6 +24,7 @@ You can build higher level workflows, such as a Genomics portal that automates t
         ssh                 Connects to the head node using SSH.
         configure           Starts the AWS ParallelCluster configuration.
         version             Displays version of AWS ParallelCluster.
+        dcv                 Permits to use NICE DCV related features.
         createami           (Linux/macOS) Creates a custom AMI to use with AWS ParallelCluster.
 
     optional arguments:

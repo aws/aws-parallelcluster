@@ -1,0 +1,24 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: t2.nano
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: key1
+  Imds:
+    Secured: false
+Scheduling:
+  Scheduler: awsbatch
+  AwsBatchQueues:
+    - Name: myqueue
+      ComputeResources:
+        - Name: myqueue-optimal
+          InstanceTypes:
+            - optimal
+          MinvCpus: 0
+          DesiredvCpus: 0
+          MaxvCpus: 14
+      Networking:
+        SubnetIds:
+          - subnet-23456789

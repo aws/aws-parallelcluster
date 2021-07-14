@@ -1,0 +1,31 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmSettings:
+    ScaledownIdletime: {{ scaledown_idletime }}
+    Dns:
+      DisableManagedDns: true
+  SlurmQueues:
+    - Name: default-queue
+      Networking:
+        SubnetIds:
+          - {{ public_subnet_id }}
+      ComputeResources:
+        - Name: default-queue-i1
+          InstanceType: {{ instance }}
+          MaxCount: {{ max_queue_size }}
+          MinCount: {{ min_queue_size }}
+          # initial_count was deprecated. The original config has it set to 1. ToDo Check if using MinCount is a good alternative for the test.
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs

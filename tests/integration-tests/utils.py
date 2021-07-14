@@ -21,6 +21,7 @@ import subprocess
 
 import boto3
 from assertpy import assert_that
+from constants import OS_TO_ROOT_VOLUME_DEVICE
 from retrying import retry
 
 
@@ -124,19 +125,28 @@ def random_alphanumeric(size=16):
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))
 
 
-@retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
+def retrieve_cfn_parameters(stack_name, region):
+    """Retrieve CloudFormation Stack Parameters from a given stack."""
+    return _retrieve_cfn_data(stack_name, region, "Parameter")
+
+
 def retrieve_cfn_outputs(stack_name, region):
     """Retrieve CloudFormation Stack Outputs from a given stack."""
-    logging.debug("Retrieving stack outputs for stack {}".format(stack_name))
+    return _retrieve_cfn_data(stack_name, region, "Output")
+
+
+@retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
+def _retrieve_cfn_data(stack_name, region, data_type):
+    logging.debug("Retrieving stack %s for stack %s", data_type, stack_name)
     try:
         cfn = boto3.client("cloudformation", region_name=region)
         stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
-        outputs = {}
-        for output in stack.get("Outputs", []):
-            outputs[output.get("OutputKey")] = output.get("OutputValue")
-        return outputs
+        result = {}
+        for output in stack.get(f"{data_type}s", []):
+            result[output.get(f"{data_type}Key")] = output.get(f"{data_type}Value")
+        return result
     except Exception as e:
-        logging.warning("Failed retrieving stack outputs for stack {} with exception: {}".format(stack_name, e))
+        logging.warning("Failed retrieving stack %s for stack %s with exception: %s", data_type, stack_name, e)
         raise
 
 
@@ -183,11 +193,6 @@ def get_compute_nodes_instance_ids(stack_name, region, instance_types=None):
     return get_cluster_nodes_instance_ids(stack_name, region, instance_types, node_type="Compute")
 
 
-def get_head_node_instance_id(stack_name, region):
-    """Return a list of Head node Instance Id."""
-    return get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type="Master")
-
-
 def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None):
     """Return a list of cluster Instances Id's."""
     try:
@@ -208,11 +213,11 @@ def _describe_cluster_instances(
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
-        {"Name": "tag:Application", "Values": [stack_name]},
+        {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
         {"Name": "instance-state-name", "Values": ["running"]},
     ]
     if filter_by_node_type:
-        filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
+        filters.append({"Name": "tag:parallelcluster:node-type", "Values": [filter_by_node_type]})
     if filter_by_name:
         filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
     if filter_by_instance_types:
@@ -395,7 +400,6 @@ def get_username_for_os(os):
     usernames = {
         "alinux2": "ec2-user",
         "centos7": "centos",
-        "centos8": "centos",
         "ubuntu1804": "ubuntu",
         "ubuntu2004": "ubuntu",
     }
@@ -437,7 +441,7 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
 
 def check_headnode_security_group(region, cluster, port, expected_cidr):
     """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
-    security_group_id = cluster.cfn_resources.get("MasterSecurityGroup")
+    security_group_id = cluster.cfn_resources.get("HeadNodeSecurityGroup")
     response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
 
     ips = response["SecurityGroups"][0]["IpPermissions"]
@@ -448,6 +452,45 @@ def check_headnode_security_group(region, cluster, port, expected_cidr):
 def get_network_interfaces_count(instance_type, region_name=None):
     """Return the number of Network Interfaces for the provided instance type."""
     return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
+
+
+def get_root_volume_id(instance_id, region, os):
+    """Return the root EBS volume's ID for the given EC2 instance."""
+    logging.info("Getting root volume for instance %s", instance_id)
+    block_device_mappings = (
+        boto3.client("ec2", region_name=region)
+        .describe_instances(InstanceIds=[instance_id])
+        .get("Reservations")[0]
+        .get("Instances")[0]
+        .get("BlockDeviceMappings")
+    )
+    matching_devices = [
+        device_mapping
+        for device_mapping in block_device_mappings
+        if device_mapping.get("DeviceName") == OS_TO_ROOT_VOLUME_DEVICE[os]
+    ]
+    assert_that(matching_devices).is_length(1)
+    return matching_devices[0].get("Ebs").get("VolumeId")
+
+
+def dict_has_nested_key(d, keys):
+    """Check if *keys (nested) exists in d (dict)."""
+    _d = d
+    for key in keys:
+        try:
+            _d = _d[key]
+        except KeyError:
+            return False
+    return True
+
+
+def dict_add_nested_key(d, value, keys):
+    _d = d
+    for key in keys[:-1]:
+        if key not in _d:
+            _d[key] = {}
+        _d = _d[key]
+    _d[keys[-1]] = value
 
 
 def read_json_file(file):

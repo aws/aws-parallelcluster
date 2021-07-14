@@ -23,11 +23,11 @@ from tests.common.schedulers_common import get_scheduler_commands
 
 @pytest.mark.regions(["eu-central-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge"])
-@pytest.mark.oss(["centos7", "centos8", "alinux2", "ubuntu1804"])
+@pytest.mark.schedulers(["slurm"])
+@pytest.mark.oss(["centos7", "alinux2", "ubuntu1804"])
 @pytest.mark.usefixtures("os", "instance")
 def test_replace_compute_on_failure(
-    region, scheduler, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir
+    region, scheduler, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir
 ):
     """
     Test that compute nodes get replaced on userdata failures and logs get saved in shared directory.
@@ -56,7 +56,7 @@ def test_replace_compute_on_failure(
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_install_args_quotes(region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir):
+def test_install_args_quotes(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     """
     Test pre/post install args with single quote and double quotes.
 
@@ -90,7 +90,7 @@ def _assert_compute_logs(remote_command_executor, instance_id):
 
 
 def _assert_server_status(cluster):
-    expected_status = ["Status: CREATE_COMPLETE", "MasterServer: RUNNING", "ComputeFleetStatus: RUNNING"]
+    expected_status = ["Status: CREATE_COMPLETE", "HeadNode: running", "ComputeFleetStatus: RUNNING"]
     cluster_status = cluster.status()
     for detail in expected_status:
         assert_that(cluster_status).contains(detail)

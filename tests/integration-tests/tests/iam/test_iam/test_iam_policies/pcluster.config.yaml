@@ -1,0 +1,37 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    AdditionalIamPolicies:
+      {% for policy in iam_policies %}
+      - Policy: {{ policy }} # Todo: change it to arn instead of name
+      {% endfor %}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+    - Name: queue-0
+      {% if scheduler != "awsbatch" %}
+      Iam:
+        AdditionalIamPolicies:
+          {% for policy in iam_policies %}
+          - Policy: {{ policy }} # Todo: change it to arn instead of name
+          {% endfor %}
+      {% endif %}
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

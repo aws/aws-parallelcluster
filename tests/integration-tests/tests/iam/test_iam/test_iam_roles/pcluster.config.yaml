@@ -1,0 +1,37 @@
+Image:
+  Os: {{ os }}
+Iam:
+  Roles:
+    CustomLambdaResources: {{ iam_lambda_role }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Iam:
+    InstanceRole: {{ ec2_iam_role }}
+  Imds:
+    Secured: {{ imds_secured }}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+    - Name: queue-0
+      {% if scheduler != "awsbatch" %}
+      Iam:
+        InstanceRole: {{ ec2_iam_role }}
+      {% endif %}
+      ComputeResources:
+        - Name: compute-resource-0
+          {% if scheduler == "awsbatch" %}
+          InstanceTypes:
+            - {{ instance }}
+          {% else %}
+          InstanceType: {{ instance }}
+          Efa:
+            Enabled: false
+            GdrSupport: false
+          {% endif %}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

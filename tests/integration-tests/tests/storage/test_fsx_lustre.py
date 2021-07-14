@@ -44,15 +44,14 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         "drive_cache_type",
         "storage_capacity",
         "imported_file_chunk_size",
-        "data_compression_type",
     ),
     [
-        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024, None),
-        ("SCRATCH_1", None, "NEW", None, None, 1200, 1024, "LZ4"),
-        ("SCRATCH_2", None, None, None, None, 1200, 1024, "LZ4"),
-        ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048, "LZ4"),
-        ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512, "LZ4"),
-        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
+        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024),
+        ("SCRATCH_1", None, "NEW", None, None, 1200, 1024),
+        ("SCRATCH_2", None, None, None, None, 1200, 1024),
+        ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048),
+        ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512),
+        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024),
     ],
 )
 @pytest.mark.regions(["eu-west-1"])
@@ -65,8 +64,8 @@ def test_fsx_lustre_configuration_options(
     auto_import_policy,
     region,
     pcluster_config_reader,
-    clusters_factory,
     s3_bucket_factory,
+    clusters_factory,
     test_datadir,
     os,
     scheduler,
@@ -74,7 +73,6 @@ def test_fsx_lustre_configuration_options(
     drive_cache_type,
     storage_capacity,
     imported_file_chunk_size,
-    data_compression_type,
 ):
     mount_dir = "/fsx_mount_dir"
     bucket_name = s3_bucket_factory()
@@ -92,7 +90,6 @@ def test_fsx_lustre_configuration_options(
         storage_capacity=storage_capacity,
         imported_file_chunk_size=imported_file_chunk_size,
         weekly_maintenance_start_time=weekly_maintenance_start_time,
-        data_compression_type=data_compression_type,
     )
     cluster = clusters_factory(cluster_config)
     _test_fsx_lustre_configuration_options(
@@ -108,7 +105,6 @@ def test_fsx_lustre_configuration_options(
         weekly_maintenance_start_time,
         imported_file_chunk_size,
         storage_capacity,
-        data_compression_type,
     )
 
 
@@ -125,7 +121,6 @@ def _test_fsx_lustre_configuration_options(
     weekly_maintenance_start_time,
     imported_file_chunk_size,
     storage_capacity,
-    data_compression_type,
 ):
     _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -138,7 +133,6 @@ def _test_fsx_lustre_configuration_options(
     _test_storage_capacity(remote_command_executor, mount_dir, storage_capacity)
     _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx)
     _test_imported_file_chunch_size(imported_file_chunk_size, fsx)
-    _test_data_compression_type(data_compression_type, fsx)
 
 
 @pytest.mark.regions(["eu-west-1"])
@@ -150,8 +144,8 @@ def _test_fsx_lustre_configuration_options(
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
-    clusters_factory,
     s3_bucket_factory,
+    clusters_factory,
     test_datadir,
     os,
     scheduler,
@@ -202,7 +196,7 @@ def _test_fsx_lustre(
 
 @pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["sge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
 # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
@@ -257,7 +251,7 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
 
     # Restore backup into a new cluster
     cluster_config_restore = pcluster_config_reader(
-        config_file="pcluster_restore_fsx.config.ini", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId")
+        config_file="pcluster_restore_fsx.config.yaml", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId")
     )
 
     cluster_restore = clusters_factory(cluster_config_restore)
@@ -316,7 +310,7 @@ def test_existing_fsx(
     _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
     """
     Define a fixture to manage the creation and destruction of fsx.
@@ -398,8 +392,7 @@ def get_mount_name(fsx_fs_id, region):
 
 
 def get_fsx_fs_id(cluster, region):
-    fsx_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="FSXSubstack")[0]
-    return utils.retrieve_cfn_outputs(fsx_stack, region).get("FileSystemId")
+    return utils.retrieve_cfn_outputs(cluster.cfn_name, region).get("FSXIds")
 
 
 def _get_storage_type(fsx):
@@ -451,7 +444,7 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name, region):
         "sudo lfs hsm_archive {mount_dir}/file_to_export && sleep 5".format(mount_dir=mount_dir)
     )
     remote_command_executor.run_remote_command(
-        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
             region=region, bucket_name=bucket_name
         )
     )
@@ -525,7 +518,7 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(task.get("Lifecycle")).is_equal_to("SUCCEEDED")
 
     remote_command_executor.run_remote_command(
-        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+        "sudo aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
             region=region, bucket_name=bucket_name
         )
     )
@@ -563,16 +556,6 @@ def _test_imported_file_chunch_size(imported_file_chunk_size, fsx):
 def _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx):
     logging.info("Test FSx weekly maintenance start time setting")
     assert_that(get_weekly_maintenance_start_time(fsx)).is_equal_to(weekly_maintenance_start_time)
-
-
-def _test_data_compression_type(compression_type, fsx):
-    logging.info("Test FSx data compression type")
-    if compression_type:
-        assert_that(get_compression_type(fsx)).is_equal_to(compression_type)
-
-
-def get_compression_type(fsx):
-    return fsx.get("FileSystems")[0].get("LustreConfiguration").get("DataCompressionType")
 
 
 def get_imported_chunch_size(fsx):

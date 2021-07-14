@@ -20,16 +20,39 @@ def readme():
         return f.read()
 
 
-VERSION = "2.11.0"
+VERSION = "3.0.0"
+CDK_VERSION = "1.94"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
-    "tabulate>=0.8.2,<0.8.10",
-    "ipaddress>=1.0.22",
+    "tabulate~=0.8",
     "PyYAML>=5.3.1",
     "jinja2>=2.11.0",
+    "marshmallow~=3.10",
+    "aws-cdk.core~=" + CDK_VERSION,
+    "aws-cdk.aws-batch~=" + CDK_VERSION,
+    "aws_cdk.aws-cloudwatch~=" + CDK_VERSION,
+    "aws-cdk.aws-codebuild~=" + CDK_VERSION,
+    "aws-cdk.aws-dynamodb~=" + CDK_VERSION,
+    "aws-cdk.aws-ec2~=" + CDK_VERSION,
+    "aws-cdk.aws-efs~=" + CDK_VERSION,
+    "aws-cdk.aws-events~=" + CDK_VERSION,
+    "aws-cdk.aws-fsx~=" + CDK_VERSION,
+    "aws-cdk.aws-imagebuilder~=" + CDK_VERSION,
+    "aws-cdk.aws-iam~=" + CDK_VERSION,
+    "aws_cdk.aws-lambda~=" + CDK_VERSION,
+    "aws-cdk.aws-logs~=" + CDK_VERSION,
+    "aws-cdk.aws-route53~=" + CDK_VERSION,
+    "aws-cdk.aws-ssm~=" + CDK_VERSION,
+    "aws-cdk.aws-sqs~=" + CDK_VERSION,
+    "werkzeug~=2.0",
+    "connexion~=2.7",
+    "flask~=2.0",
 ]
 
+LAMBDA_REQUIRES = [
+    "aws-lambda-powertools~=1.14",
+]
 
 setup(
     name="aws-parallelcluster",
@@ -43,21 +66,16 @@ setup(
     packages=find_packages("src"),
     python_requires=">=3.6",
     install_requires=REQUIRES,
+    extras_require={
+        "awslambda": LAMBDA_REQUIRES,
+    },
     entry_points={
         "console_scripts": [
-            "pcluster = pcluster.cli:main",
-            "pcluster-config = pcluster_config.cli:main",
-            "awsbqueues = awsbatch.awsbqueues:main",
-            "awsbhosts = awsbatch.awsbhosts:main",
-            "awsbstat = awsbatch.awsbstat:main",
-            "awsbkill = awsbatch.awsbkill:main",
-            "awsbsub = awsbatch.awsbsub:main",
-            "awsbout = awsbatch.awsbout:main",
+            "pcluster = pcluster.cli.entrypoint:main",
         ]
     },
     include_package_data=True,
     zip_safe=False,
-    package_data={"": ["src/examples/config"]},
     long_description=readme(),
     classifiers=[
         "Development Status :: 5 - Production/Stable",
