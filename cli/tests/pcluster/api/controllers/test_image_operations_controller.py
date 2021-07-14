@@ -238,6 +238,8 @@ class TestListImages:
         expected_error = {"message": "test error"}
         if error == BadRequestError:
             expected_error["message"] = "Bad Request: " + expected_error["message"]
+        elif error == AWSClientError:
+            expected_error = {"message": "Failed when calling AWS service in get_images: test error"}
         response = self._send_test_request(client, ImageStatusFilteringOption.AVAILABLE)
 
         with soft_assertions():
@@ -401,7 +403,10 @@ class TestDeleteImage:
         image = _create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
         mocker.patch("pcluster.models.imagebuilder.ImageBuilder.delete", side_effect=Exception("test error"))
-        expected_error = {"message": "test error"}
+        expected_error = {
+            "message": "Unexpected fatal exception. Please look at the application "
+            "logs for details on the encountered failure."
+        }
         response = self._send_test_request(client, "image1")
 
         with soft_assertions():
@@ -705,6 +710,8 @@ class TestDescribeOfficialImages:
         expected_error = {"message": "test error"}
         if error == BadRequestError:
             expected_error["message"] = "Bad Request: " + expected_error["message"]
+        elif error == AWSClientError:
+            expected_error = {"message": "Failed when calling AWS service in get_official_images: test error"}
         response = self._send_test_request(client)
 
         with soft_assertions():
@@ -848,6 +855,11 @@ class TestDescribeImage:
             expected_error = {"message": "No image or stack associated to parallelcluster image id image1."}
         elif error == BadRequestError:
             expected_error = {"message": "Bad Request: Unable to get image image1, due to test error."}
+        elif error == AWSClientError:
+            expected_error = {
+                "message": "Unexpected fatal exception. Please look at the application "
+                "logs for details on the encountered failure."
+            }
         else:
             expected_error = {"message": "Unable to get image image1, due to test error."}
 

@@ -392,6 +392,11 @@ class TestCreateCluster:
         expected_response = {"message": "error message"}
         if error_type == BadRequestClusterActionError:
             expected_response["message"] = "Bad Request: " + expected_response["message"]
+        elif error_type == ClusterActionError:
+            expected_response = {
+                "message": "Unexpected fatal exception. Please look at the application logs for"
+                " details on the encountered failure."
+            }
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
@@ -548,6 +553,11 @@ class TestDeleteCluster:
         expected_response = {"message": "error message"}
         if error_type == BadRequestClusterActionError:
             expected_response["message"] = "Bad Request: " + expected_response["message"]
+        elif error_type == ClusterActionError:
+            expected_response = {
+                "message": "Unexpected fatal exception. Please look at the application logs for"
+                " details on the encountered failure."
+            }
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
@@ -1703,6 +1713,11 @@ class TestUpdateCluster:
         expected_response = {"message": "error message"}
         if error_type == BadRequestClusterActionError:
             expected_response["message"] = "Bad Request: " + expected_response["message"]
+        elif error_type == ClusterActionError:
+            expected_response = {
+                "message": "Unexpected fatal exception. Please look at the application logs for"
+                " details on the encountered failure."
+            }
         elif error_type == ClusterUpdateError:
             expected_response["changeSet"] = [
                 {"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"},

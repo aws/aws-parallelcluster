@@ -20,13 +20,7 @@ from typing import List, Optional, Set
 from flask import request
 from pkg_resources import packaging
 
-from pcluster.api.errors import (
-    BadRequestException,
-    ConflictException,
-    InternalServiceException,
-    LimitExceededException,
-    ParallelClusterApiException,
-)
+from pcluster.api.errors import BadRequestException, ConflictException, LimitExceededException
 from pcluster.aws.common import BadRequestError, LimitExceededError
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
 from pcluster.constants import SUPPORTED_REGIONS
@@ -129,17 +123,15 @@ def convert_errors():
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except ParallelClusterApiException as e:
-                error = e
             except (LimitExceeded, LimitExceededError) as e:
-                error = LimitExceededException(str(e))
+                raise LimitExceededException(str(e))
             except (BadRequest, BadRequestError) as e:
-                error = BadRequestException(str(e))
+                raise BadRequestException(str(e))
             except Conflict as e:
-                error = ConflictException(str(e))
+                raise ConflictException(str(e))
             except Exception as e:
-                error = InternalServiceException(str(e))
-            raise error
+                # ParallelClusterApiException is among the exceptions we might raise here
+                raise e
 
         return wrapper
 
