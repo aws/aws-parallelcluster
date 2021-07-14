@@ -67,7 +67,7 @@ def bool_converter(param, in_str):
         return False
     elif in_str in {"true", "True", "TRUE", True}:
         return True
-    _exit_msg(f"Bad Request: Wrong type, expected 'boolean' for parameter '{param}'")
+    return _exit_msg(f"Bad Request: Wrong type, expected 'boolean' for parameter '{param}'")
 
 
 def re_validator(rexp_str, param, in_str):
@@ -96,7 +96,7 @@ def to_number(param, in_str):
     try:
         return float(in_str)
     except ValueError:
-        _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
+        return _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
 
 
 def to_int(param, in_str):
@@ -104,7 +104,7 @@ def to_int(param, in_str):
     try:
         return int(in_str)
     except ValueError:
-        _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
+        return _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
 
 
 def convert_args(model, op_name, args_in):
