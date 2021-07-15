@@ -49,7 +49,11 @@ def middleware_hooks():
 
     The map has operation names as the keys and functions as values.
     """
-    return {"create-cluster": create_cluster, "delete-cluster": delete_cluster}
+    return {
+        "create-cluster": create_cluster,
+        "delete-cluster": delete_cluster,
+        "update-cluster": update_cluster,
+    }
 
 
 def update_cluster(func, body, kwargs):
