@@ -99,14 +99,7 @@ class TestUpdateClusterCommand:
                 path,
             ]
         )
-        expected = {
-            **response_dict,
-            **{
-                "creationTime": "2021-01-01T00:00:00+00:00",
-                "lastUpdatedTime": "2021-01-01T00:00:00+00:00",
-            },
-        }
-        assert_that(out).is_equal_to(expected)
+        assert_that(out).is_equal_to(response_dict)
         assert_that(describe_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
         expected_args = {"region": None, "cluster_name": "cluster"}
         describe_clusters_mock.assert_called_with(**expected_args)
