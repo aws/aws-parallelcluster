@@ -68,6 +68,7 @@ CHANGELOG
 - Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
   in case recurrent failures are encountered when provisioning nodes.
 - Upgrade Slurm to version 20.11.8.
+- Upgrade Cinc Client to version 17.2.29.
 
 2.11.0
 ------
