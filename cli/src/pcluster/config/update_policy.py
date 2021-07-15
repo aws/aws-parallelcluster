@@ -10,6 +10,8 @@
 # limitations under the License.
 from enum import Enum
 
+from pcluster.constants import DEFAULT_MAX_COUNT
+
 
 class UpdatePolicy:
     """Describes the policy that rules the update of a configuration parameter."""
@@ -149,7 +151,8 @@ UpdatePolicy.MAX_COUNT = UpdatePolicy(
     fail_reason=lambda change, patch: "Shrinking a queue requires the compute fleet to be stopped first",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
     condition_checker=lambda change, patch: not patch.cluster.has_running_capacity()
-    or change.new_value >= change.old_value,
+    or (change.new_value if change.new_value is not None else DEFAULT_MAX_COUNT)
+    >= (change.old_value if change.old_value is not None else DEFAULT_MAX_COUNT),
 )
 
 # Update supported only with all compute nodes down
