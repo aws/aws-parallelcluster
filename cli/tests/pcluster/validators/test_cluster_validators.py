@@ -35,6 +35,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
+    OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
 )
@@ -655,16 +656,46 @@ def test_fsx_architecture_os_validator(architecture, os, expected_message):
         ),
         (
             ["dir1", "dir1", "dir2"],
-            "Mount directory dir1 cannot be specified for multiple volumes",
+            "Mount directory dir1 cannot be specified for multiple file systems",
         ),
         (
             ["dir1", "dir2", "dir3", "dir2", "dir1"],
-            "Mount directories dir2, dir1 cannot be specified for multiple volumes",
+            "Mount directories dir2, dir1 cannot be specified for multiple file systems",
         ),
     ],
 )
 def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
     actual_failures = DuplicateMountDirValidator().execute(mount_dir_list)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "mount_dir_list, expected_message",
+    [
+        (
+            ["dir1"],
+            None,
+        ),
+        (
+            ["dir1", "dir2"],
+            None,
+        ),
+        (
+            ["dir1", "dir2", "dir3"],
+            None,
+        ),
+        (
+            ["dir1", "dir1/subdir", "dir2"],
+            "Mount directory dir1 cannot contain other mount directories",
+        ),
+        (
+            ["dir1", "dir1/subdir", "dir2", "dir2/subdir", "dir3"],
+            "Mount directories dir1, dir2 cannot contain other mount directories",
+        ),
+    ],
+)
+def test_overlapping_mount_dir_validator(mount_dir_list, expected_message):
+    actual_failures = OverlappingMountDirValidator().execute(mount_dir_list)
     assert_failure_messages(actual_failures, expected_message)
 
 
