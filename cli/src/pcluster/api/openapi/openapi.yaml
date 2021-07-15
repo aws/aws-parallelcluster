@@ -1504,6 +1504,7 @@ components:
       - STOP_REQUESTED
       - STOPPING
       - STOPPED
+      - UNKNOWN
       - ENABLED
       - DISABLED
       title: ComputeFleetStatus
@@ -1780,7 +1781,6 @@ components:
         status:
           $ref: '#/components/schemas/ComputeFleetStatus'
       required:
-      - lastUpdatedTime
       - status
       title: DescribeComputeFleetStatusResponseContent
       type: object

@@ -15,7 +15,7 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
-from aws_cdk.core import CfnCustomResource, CfnOutput, CfnParameter, CfnTag, Construct, Fn, Stack
+from aws_cdk.core import CfnCustomResource, CfnDeletionPolicy, CfnOutput, CfnParameter, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
 from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX, PCLUSTER_QUEUE_NAME_TAG
@@ -48,7 +48,6 @@ class SlurmConstruct(Construct):
         stack_name: str,
         cluster_config: SlurmClusterConfig,
         bucket: S3Bucket,
-        dynamodb_table: dynamodb.CfnTable,
         log_group: logs.CfnLogGroup,
         instance_roles: dict,
         instance_profiles: dict,
@@ -65,7 +64,6 @@ class SlurmConstruct(Construct):
         self.stack_name = stack_name
         self.config = cluster_config
         self.bucket = bucket
-        self.dynamodb_table = dynamodb_table
         self.log_group = log_group
         self.instance_roles = instance_roles
         self.instance_profiles = instance_profiles
@@ -108,6 +106,9 @@ class SlurmConstruct(Construct):
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
     def _add_resources(self):
+        # DynamoDB to store cluster states
+        self._add_dynamodb_table()
+
         # Add Slurm Policies to new instances roles
         for node_name, role_info in self.instance_roles.items():
             if role_info.get("IsNew"):
@@ -326,6 +327,29 @@ class SlurmConstruct(Construct):
             self.terminate_compute_fleet_custom_resource.add_depends_on(self.cleanup_route53_custom_resource)
         # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
         # terminate_compute_fleet_custom_resource.add_depends_on()
+
+    def _add_dynamodb_table(self):
+        table = dynamodb.CfnTable(
+            self.stack_scope,
+            "DynamoDBTable",
+            table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack_name,
+            attribute_definitions=[
+                dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
+                dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
+            ],
+            key_schema=[dynamodb.CfnTable.KeySchemaProperty(attribute_name="Id", key_type="HASH")],
+            global_secondary_indexes=[
+                dynamodb.CfnTable.GlobalSecondaryIndexProperty(
+                    index_name="InstanceId",
+                    key_schema=[dynamodb.CfnTable.KeySchemaProperty(attribute_name="InstanceId", key_type="HASH")],
+                    projection=dynamodb.CfnTable.ProjectionProperty(projection_type="ALL"),
+                )
+            ],
+            billing_mode="PAY_PER_REQUEST",
+        )
+        table.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        table.cfn_options.deletion_policy = CfnDeletionPolicy.DELETE
+        self.dynamodb_table = table
 
     def _add_private_hosted_zone(self):
         cluster_hosted_zone = route53.CfnHostedZone(

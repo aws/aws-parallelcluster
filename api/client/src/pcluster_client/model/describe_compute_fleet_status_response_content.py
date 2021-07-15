@@ -77,8 +77,8 @@ class DescribeComputeFleetStatusResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'last_updated_time': (datetime,),  # noqa: E501
             'status': (ComputeFleetStatus,),  # noqa: E501
+            'last_updated_time': (datetime,),  # noqa: E501
         }
 
     @cached_property
@@ -87,8 +87,8 @@ class DescribeComputeFleetStatusResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'last_updated_time': 'lastUpdatedTime',  # noqa: E501
         'status': 'status',  # noqa: E501
+        'last_updated_time': 'lastUpdatedTime',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -103,11 +103,10 @@ class DescribeComputeFleetStatusResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, last_updated_time, status, *args, **kwargs):  # noqa: E501
+    def __init__(self, status, *args, **kwargs):  # noqa: E501
         """DescribeComputeFleetStatusResponseContent - a model defined in OpenAPI
 
         Args:
-            last_updated_time (datetime): Timestamp representing the last status update time
             status (ComputeFleetStatus):
 
         Keyword Args:
@@ -141,6 +140,7 @@ class DescribeComputeFleetStatusResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            last_updated_time (datetime): Timestamp representing the last status update time. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -166,7 +166,6 @@ class DescribeComputeFleetStatusResponseContent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.last_updated_time = last_updated_time
         self.status = status
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \

@@ -10,6 +10,7 @@
 # limitations under the License.
 import logging
 import time
+from datetime import datetime, timezone
 from enum import Enum
 
 from boto3.dynamodb.conditions import Attr
@@ -30,6 +31,8 @@ class ComputeFleetStatus(Enum):
     STARTING = "STARTING"  # clustermgtd is handling the start request.
     STOP_REQUESTED = "STOP_REQUESTED"  # A request to stop the fleet has been submitted.
     START_REQUESTED = "START_REQUESTED"  # A request to start the fleet has been submitted.
+    ENABLED = "ENABLED"  # AWS Batch only. The compute environment is enabled
+    DISABLED = "DISABLED"  # AWS Batch only. The compute environment is disabled
     UNKNOWN = "UNKNOWN"  # Cannot determine fleet status
     # PROTECTED indicates that some partitions have consistent bootstrap failures. Affected partitions are inactive.
     PROTECTED = "PROTECTED"
@@ -63,6 +66,7 @@ class ComputeFleetStatusManager:
 
     COMPUTE_FLEET_STATUS_KEY = "COMPUTE_FLEET"
     COMPUTE_FLEET_STATUS_ATTRIBUTE = "Status"
+    LAST_UPDATED_TIME_ATTRIBUTE = "LastUpdatedTime"
 
     class ConditionalStatusUpdateFailed(Exception):
         """Raised when there is a failure in updating the status due to a change occurred after retrieving its value."""
@@ -74,27 +78,40 @@ class ComputeFleetStatusManager:
 
     def get_status(self, fallback=ComputeFleetStatus.UNKNOWN):
         """Get compute fleet status."""
+        status, _ = self.get_status_with_last_updated_time(status_fallback=fallback)
+        return status
+
+    def get_status_with_last_updated_time(
+        self, status_fallback=ComputeFleetStatus.UNKNOWN, last_updated_time_fallback=None
+    ):
+        """Get compute fleet status and the last compute fleet status updated time."""
         try:
             compute_fleet_status = AWSApi.instance().ddb_resource.get_item(
                 self._table_name, {"Id": self.COMPUTE_FLEET_STATUS_KEY}
             )
             if not compute_fleet_status or "Item" not in compute_fleet_status:
                 raise Exception("COMPUTE_FLEET status not found in db table")
-            return ComputeFleetStatus(compute_fleet_status["Item"][self.COMPUTE_FLEET_STATUS_ATTRIBUTE])
+            return ComputeFleetStatus(
+                compute_fleet_status["Item"][self.COMPUTE_FLEET_STATUS_ATTRIBUTE]
+            ), compute_fleet_status["Item"].get(self.LAST_UPDATED_TIME_ATTRIBUTE)
         except Exception as e:
             LOGGER.warning(
                 "Failed when retrieving fleet status from DynamoDB with error %s. "
                 "This is expected if cluster creation/deletion is in progress",
                 e,
             )
-            return fallback
+            return status_fallback, last_updated_time_fallback
 
     def put_status(self, current_status, next_status):
         """Set compute fleet status."""
         try:
             AWSApi.instance().ddb_resource.put_item(
                 self._table_name,
-                item={"Id": self.COMPUTE_FLEET_STATUS_KEY, self.COMPUTE_FLEET_STATUS_ATTRIBUTE: str(next_status)},
+                item={
+                    "Id": self.COMPUTE_FLEET_STATUS_KEY,
+                    self.COMPUTE_FLEET_STATUS_ATTRIBUTE: str(next_status),
+                    self.LAST_UPDATED_TIME_ATTRIBUTE: str(datetime.now(tz=timezone.utc)),
+                },
                 condition_expression=Attr(self.COMPUTE_FLEET_STATUS_ATTRIBUTE).eq(str(current_status)),
             )
         except AWSClientError as e:

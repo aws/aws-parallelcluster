@@ -1254,6 +1254,7 @@ components:
         - STOP_REQUESTED
         - STOPPING
         - STOPPED
+        - UNKNOWN
         - ENABLED
         - DISABLED
     ConfigValidationMessage:
@@ -1409,7 +1410,6 @@ components:
         status:
           $ref: '#/components/schemas/ComputeFleetStatus'
       required:
-        - lastUpdatedTime
         - status
     DescribeImageResponseContent:
       type: object
