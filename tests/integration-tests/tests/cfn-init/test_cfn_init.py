@@ -15,6 +15,7 @@ import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from utils import check_status
 
 from tests.common.assertions import assert_instance_replaced_or_terminating
 from tests.common.compute_logs_common import wait_compute_log
@@ -90,7 +91,4 @@ def _assert_compute_logs(remote_command_executor, instance_id):
 
 
 def _assert_server_status(cluster):
-    expected_status = ["Status: CREATE_COMPLETE", "HeadNode: running", "ComputeFleetStatus: RUNNING"]
-    cluster_status = cluster.status()
-    for detail in expected_status:
-        assert_that(cluster_status).contains(detail)
+    check_status(cluster, "CREATE_COMPLETE", "running", "RUNNING")

@@ -113,7 +113,7 @@ def _test_dcv_configuration(
     add_keys_to_known_hosts(cluster.head_node_ip, host_keys_file)
 
     try:
-        result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
+        result = run_command(["pcluster", "dcv-connect", cluster.name, "--show-url"], env=env)
     finally:
         # remove ssh key from jenkins user known hosts file
         remove_keys_from_known_hosts(cluster.head_node_ip, host_keys_file, env=env)
