@@ -25,6 +25,7 @@ from pcluster.config.imagebuilder_config import (
     Image,
     ImageBuilderConfig,
     ImagebuilderDevSettings,
+    UpdateOsPackages,
     Volume,
 )
 from pcluster.constants import PCLUSTER_IMAGE_NAME_REGEX
@@ -148,6 +149,17 @@ class IamSchema(BaseSchema):
         return Iam(**data)
 
 
+class UpdateOsPackagesSchema(BaseSchema):
+    """Represents the schema of ImageBuilder UpdateOsPackages."""
+
+    enabled = fields.Bool()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return UpdateOsPackages(**data)
+
+
 class BuildSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Build."""
 
@@ -158,7 +170,7 @@ class BuildSchema(BaseSchema):
     tags = fields.List(fields.Nested(TagSchema))
     security_group_ids = fields.List(fields.Str)
     subnet_id = fields.Str(validate=get_field_validator("subnet_id"))
-    update_os_and_reboot = fields.Bool()
+    update_os_packages = fields.Nested(UpdateOsPackagesSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):

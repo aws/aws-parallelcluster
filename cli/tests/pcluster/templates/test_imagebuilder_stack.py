@@ -38,7 +38,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
-                        "update_os_and_reboot": True,
+                        "update_os_packages": {"enabled": True},
                     },
                 }
             },
@@ -88,7 +88,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
-                        "update_os_and_reboot": True,
+                        "update_os_packages": {"enabled": True},
                     },
                     "dev_settings": {"disable_pcluster_component": True},
                 }
@@ -136,7 +136,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
-                        "update_os_and_reboot": True,
+                        "update_os_packages": {"enabled": True},
                     },
                     "dev_settings": {
                         "disable_validate_and_test": True,
@@ -1047,7 +1047,7 @@ def test_imagebuilder_instance_role(
                             {"type": "script", "value": "s3://test/post_install.sh"},
                             {"type": "script", "value": "s3://test/post_install2.sh"},
                         ],
-                        "update_os_and_reboot": True,
+                        "update_os_packages": {"enabled": True},
                     },
                 }
             },
@@ -1629,7 +1629,7 @@ def test_imagebuilder_lambda_execution_role(
                                 "aws:component/amazon-cloudwatch-agent-linux/1.0.0",
                             },
                         ],
-                        "update_os_and_reboot": True,
+                        "update_os_packages": {"enabled": True},
                     },
                 }
             },
@@ -1712,7 +1712,7 @@ def test_imagebuilder_lambda_execution_role(
                                 "aws:component/amazon-cloudwatch-agent-linux/1.0.0",
                             },
                         ],
-                        "update_os_and_reboot": True,
+                        "update_os_packages": {"enabled": True},
                     },
                     "dev_settings": {
                         "disable_pcluster_component": True,
@@ -2424,7 +2424,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
                     "build": {
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
-                        "update_os_and_reboot": True,
+                        "update_os_packages": {"enabled": True},
                     },
                 }
             },

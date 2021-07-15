@@ -117,6 +117,17 @@ class Iam(Resource):
             self._register_validator(RoleValidator, role_arn=self.cleanup_lambda_role)
 
 
+class UpdateOsPackages(Resource):
+    """Represent the UpdateOsPackages configuration for the ImageBuilder."""
+
+    def __init__(
+        self,
+        enabled: bool = None,
+    ):
+        super().__init__()
+        self.enabled = enabled
+
+
 class Build(Resource):
     """Represent the build configuration for the ImageBuilder."""
 
@@ -129,7 +140,7 @@ class Build(Resource):
         tags: List[BaseTag] = None,
         security_group_ids: List[str] = None,
         components: List[Component] = None,
-        update_os_and_reboot: bool = None,
+        update_os_packages: UpdateOsPackages = None,
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
@@ -139,7 +150,7 @@ class Build(Resource):
         self.subnet_id = Resource.init_param(subnet_id)
         self.security_group_ids = security_group_ids
         self.components = components
-        self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
+        self.update_os_packages = update_os_packages
 
     def _register_validators(self):
         self._register_validator(

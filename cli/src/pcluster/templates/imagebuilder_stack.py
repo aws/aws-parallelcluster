@@ -192,7 +192,11 @@ class ImageBuilderCdkStack(Stack):
             self,
             "CfnParamUpdateOsAndReboot",
             type="String",
-            default="true" if self.config.build and self.config.build.update_os_and_reboot else "false",
+            default="true"
+            if self.config.build
+            and self.config.build.update_os_packages
+            and self.config.build.update_os_packages.enabled
+            else "false",
             description="UpdateOsAndReboot",
         )
 
@@ -387,7 +391,7 @@ class ImageBuilderCdkStack(Stack):
         # ImageBuilderComponents
         components = []
         components_resources = []
-        if self.config.build and self.config.build.update_os_and_reboot:
+        if self.config.build and self.config.build.update_os_packages and self.config.build.update_os_packages.enabled:
             update_os_component_resource = imagebuilder.CfnComponent(
                 self,
                 "UpdateOSComponent",
