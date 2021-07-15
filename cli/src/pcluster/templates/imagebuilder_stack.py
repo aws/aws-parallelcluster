@@ -49,7 +49,6 @@ from pcluster.imagebuilder_utils import (
     AMI_NAME_REQUIRED_SUBSTRING,
     PCLUSTER_RESERVED_VOLUME_SIZE,
     ROOT_VOLUME_TYPE,
-    InstanceRole,
     wrap_script_to_component,
 )
 from pcluster.models.s3_bucket import S3Bucket, S3FileType
@@ -76,6 +75,11 @@ class ImageBuilderCdkStack(Stack):
         self.custom_instance_role = (
             self.config.build.iam.instance_role
             if self.config.build.iam and self.config.build.iam.instance_role
+            else None
+        )
+        self.custom_instance_profile = (
+            self.config.build.iam.instance_profile
+            if self.config.build.iam and self.config.build.iam.instance_profile
             else None
         )
         self.custom_cleanup_lambda_role = (
@@ -117,13 +121,6 @@ class ImageBuilderCdkStack(Stack):
             resource_name=f"/aws/imagebuilder/{self._build_image_recipe_name()}",
         )
         return log_group_arn
-
-    def _get_instance_role_type(self):
-        """Get instance role type based on instance_role in config."""
-        identifier = self.custom_instance_role.split("/", 1)[0]
-        if identifier.endswith("role"):
-            return InstanceRole.ROLE
-        return InstanceRole.INSTANCE_PROFILE
 
     def _get_image_tags(self):
         """Get image tags."""
@@ -220,16 +217,14 @@ class ImageBuilderCdkStack(Stack):
         # InstanceRole and InstanceProfile
         instance_profile_name = None
         if self.custom_instance_role:
-            instance_role_type = self._get_instance_role_type()
-            if instance_role_type == InstanceRole.ROLE:
-                resource_dependency_list.append(
-                    self._add_instance_profile(
-                        instance_role=self.custom_instance_role,
-                        cleanup_policy_statements=lambda_cleanup_policy_statements,
-                    )
+            resource_dependency_list.append(
+                self._add_instance_profile(
+                    instance_role=self.custom_instance_role,
+                    cleanup_policy_statements=lambda_cleanup_policy_statements,
                 )
-            else:
-                instance_profile_name = self.custom_instance_role
+            )
+        elif self.custom_instance_profile:
+            instance_profile_name = self.custom_instance_profile
         else:
             resource_dependency_list.append(
                 self._add_default_instance_role(lambda_cleanup_policy_statements, build_tags_list)

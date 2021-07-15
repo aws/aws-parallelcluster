@@ -25,7 +25,14 @@ from tests.common.assertions import assert_no_errors_in_logs
 
 @pytest.mark.usefixtures("os", "instance")
 def test_iam_roles(
-    region, scheduler, common_pcluster_policies, role_factory, pcluster_config_reader, clusters_factory, test_datadir
+    region,
+    scheduler,
+    common_pcluster_policies,
+    role_factory,
+    instance_profile_factory,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
 ):
     is_awsbatch = scheduler == "awsbatch"
     if is_awsbatch:
@@ -34,8 +41,9 @@ def test_iam_roles(
     else:
         instance_policies = common_pcluster_policies["traditional_instance_policy"]
         lambda_policies = common_pcluster_policies["traditional_lambda_policy"]
-    cluster_role_name = role_factory("ec2", [instance_policies])
-    lambda_role_name = role_factory("lambda", [lambda_policies])
+    _, cluster_role_arn = role_factory("ec2", [instance_policies])
+    instance_profile = instance_profile_factory([instance_policies])
+    lambda_role_name, lambda_role_arn = role_factory("lambda", [lambda_policies])
 
     # Copy the config file template for reuse in update.
     config_file_name = "pcluster.config.yaml"
@@ -45,7 +53,10 @@ def test_iam_roles(
     copyfile(config_file_path, updated_config_file_path)
 
     cluster_config = pcluster_config_reader(
-        config_file=config_file_name, ec2_iam_role=cluster_role_name, iam_lambda_role=lambda_role_name
+        config_file=config_file_name,
+        ec2_iam_role=cluster_role_arn,
+        iam_lambda_role=lambda_role_arn,
+        instance_profile=instance_profile,
     )
     cluster = clusters_factory(cluster_config)
 
@@ -56,15 +67,22 @@ def test_iam_roles(
     # If scheduler is awsbatch, there will still be IAM roles created.
     _check_lambda_role(cfn_client, lambda_client, cluster.name, lambda_role_name, not is_awsbatch)
 
-    # Test updating the iam_lambda_role
-    updated_lambda_role_name = role_factory("lambda", [lambda_policies])
-    assert_that(updated_lambda_role_name == lambda_role_name).is_false()
+    # Test updating the iam_lambda_role, instance_role and instance profile
+    updated_lambda_role_name, updated_lambda_role_arn = role_factory("lambda", [lambda_policies])
+    _, update_cluster_role_arn = role_factory("ec2", [instance_policies])
+    updated_instance_profile = instance_profile_factory([instance_policies])
+
+    assert_that(updated_lambda_role_arn == lambda_role_arn).is_false()
+    assert_that(update_cluster_role_arn == cluster_role_arn).is_false()
+    assert_that(updated_instance_profile == instance_profile).is_false()
+
     cluster.update(
         str(
             pcluster_config_reader(
                 config_file=updated_config_file_name,
-                ec2_iam_role=cluster_role_name,
-                iam_lambda_role=updated_lambda_role_name,
+                ec2_iam_role=update_cluster_role_arn,
+                iam_lambda_role=updated_lambda_role_arn,
+                instance_profile=updated_instance_profile,
             )
         )
     )

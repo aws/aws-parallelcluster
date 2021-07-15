@@ -90,6 +90,7 @@ class Iam(Resource):
     def __init__(
         self,
         instance_role: str = None,
+        instance_profile: str = None,
         cleanup_lambda_role: str = None,
         additional_iam_policies: List[AdditionalIamPolicy] = (),
     ):
@@ -97,6 +98,7 @@ class Iam(Resource):
         self.instance_role = Resource.init_param(instance_role)
         self.cleanup_lambda_role = Resource.init_param(cleanup_lambda_role)
         self.additional_iam_policies = additional_iam_policies
+        self.instance_profile = Resource.init_param(instance_profile)
 
     @property
     def additional_iam_policy_arns(self) -> List[str]:
@@ -108,10 +110,9 @@ class Iam(Resource):
 
     def _register_validators(self):
         if self.instance_role:
-            if self.instance_role.split("/", 1)[0].endswith("instance-profile"):
-                self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_role)
-            else:
-                self._register_validator(RoleValidator, role_arn=self.instance_role)
+            self._register_validator(RoleValidator, role_arn=self.instance_role)
+        elif self.instance_profile:
+            self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
 
         if self.cleanup_lambda_role:
             self._register_validator(RoleValidator, role_arn=self.cleanup_lambda_role)

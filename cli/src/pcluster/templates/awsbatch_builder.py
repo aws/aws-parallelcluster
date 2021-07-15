@@ -53,7 +53,7 @@ class AwsBatchConstruct(Construct):
         shared_storage_mappings: dict,
         shared_storage_options: dict,
         head_node_instance: ec2.CfnInstance,
-        head_node_role_ref: str,
+        instance_roles: dict,
         **kwargs,
     ):
         super().__init__(scope, id)
@@ -66,7 +66,7 @@ class AwsBatchConstruct(Construct):
         self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
         self.head_node_instance = head_node_instance
-        self.head_node_role_ref = head_node_role_ref
+        self.instance_roles = instance_roles
 
         # Currently AWS batch integration supports a single queue and a single compute resource
         self.queue = self.config.scheduling.queues[0]
@@ -105,8 +105,10 @@ class AwsBatchConstruct(Construct):
 
     def _add_resources(self):
 
-        # Augment head node instance profile with Batch-specific policies
-        self._add_batch_head_node_policies_to_role()
+        # Augment head node instance profile with Batch-specific policies, only add policies to Role craeted by
+        # ParallelCluster
+        if self.instance_roles.get("HeadNode"):
+            self._add_batch_head_node_policies_to_role()
 
         # Iam Roles
         self._batch_service_role = self._add_batch_service_role()
@@ -621,12 +623,7 @@ class AwsBatchConstruct(Construct):
             config=self.config,
             execution_role=manage_docker_images_lambda_execution_role.attr_arn
             if manage_docker_images_lambda_execution_role
-            else self._format_arn(
-                service="iam",
-                account=self._stack_account,
-                region="",
-                resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
-            ),
+            else self.config.iam.roles.custom_lambda_resources,
             handler_func="manage_docker_images",
             timeout=60,
         ).lambda_func
@@ -684,12 +681,7 @@ class AwsBatchConstruct(Construct):
             config=self.config,
             execution_role=build_notification_lambda_execution_role.attr_arn
             if build_notification_lambda_execution_role
-            else self._format_arn(
-                service="iam",
-                region="",
-                account=self._stack_account,
-                resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
-            ),
+            else self.config.iam.roles.custom_lambda_resources,
             handler_func="send_build_notification",
             timeout=60,
         ).lambda_func
@@ -789,7 +781,7 @@ class AwsBatchConstruct(Construct):
                     ),
                 ]
             ),
-            roles=[self.head_node_role_ref],
+            roles=[self.instance_roles.get("HeadNode").get("RoleRef")],
         )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #

@@ -92,6 +92,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
+from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import (
@@ -540,6 +541,10 @@ class Roles(Resource):
         super().__init__()
         self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
 
+    def _register_validators(self):
+        if self.custom_lambda_resources:
+            self._register_validator(RoleValidator, role_arn=self.custom_lambda_resources)
+
 
 class S3Access(Resource):
     """Represent the S3 Access configuration."""
@@ -572,12 +577,14 @@ class Iam(Resource):
         s3_access: List[S3Access] = None,
         additional_iam_policies: List[AdditionalIamPolicy] = (),
         instance_role: str = None,
+        instance_profile: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.s3_access = s3_access
         self.additional_iam_policies = additional_iam_policies
         self.instance_role = Resource.init_param(instance_role)
+        self.instance_profile = Resource.init_param(instance_profile)
 
     @property
     def additional_iam_policy_arns(self) -> List[str]:
@@ -586,6 +593,12 @@ class Iam(Resource):
         for policy in self.additional_iam_policies:
             arns.append(policy.policy)
         return arns
+
+    def _register_validators(self):
+        if self.instance_role:
+            self._register_validator(RoleValidator, role_arn=self.instance_role)
+        elif self.instance_profile:
+            self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
 
 
 class Imds(Resource):
@@ -789,6 +802,11 @@ class HeadNode(Resource):
     def instance_role(self):
         """Return the IAM role for head node, if set."""
         return self.iam.instance_role if self.iam else None
+
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for head node, if set."""
+        return self.iam.instance_profile if self.iam else None
 
 
 class BaseComputeResource(Resource):
@@ -1346,6 +1364,11 @@ class SlurmQueue(BaseQueue):
     def instance_role(self):
         """Return the IAM role for compute nodes, if set."""
         return self.iam.instance_role if self.iam else None
+
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for compute nodes, if set."""
+        return self.iam.instance_profile if self.iam else None
 
 
 class Dns(Resource):

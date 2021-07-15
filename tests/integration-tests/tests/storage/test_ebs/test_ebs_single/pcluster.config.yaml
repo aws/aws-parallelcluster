@@ -7,7 +7,7 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
   Iam:
-    InstanceRole: {{ ec2_iam_role }} # TODO: change the role name in the test into role arn
+    InstanceRole: {{ ec2_iam_role }}
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -29,7 +29,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
       Iam:
-        InstanceRole: {{ ec2_iam_role }} # TODO: change the role name in the test into role arn
+        InstanceRole: {{ ec2_iam_role }}
 SharedStorage:
   - MountDir: {{ mount_dir }}
     StorageType: Ebs
