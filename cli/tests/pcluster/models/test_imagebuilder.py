@@ -149,7 +149,7 @@ def test_imagebuilder_url_validator(
                 "build": {
                     "parent_image": "ami-0185634c5a8a37250",
                     "instance_type": "c5.xlarge",
-                    "update_os_and_reboot": True,
+                    "update_os_packages": {"enabled": True},
                 },
                 "dev_settings": {
                     "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
