@@ -65,6 +65,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
+    OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
 )
@@ -965,6 +966,7 @@ class BaseClusterConfig(Resource):
                 )
 
         self._register_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
+        self._register_validator(OverlappingMountDirValidator, mount_dir_list=self.mount_dir_list)
 
     @property
     def region(self):

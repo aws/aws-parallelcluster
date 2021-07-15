@@ -501,6 +501,17 @@ def _find_duplicate_params(param_list):
     return duplicated_params
 
 
+def _find_overlapping_paths(paths_list):
+    overlapping_paths = []
+    if paths_list:
+        for path in paths_list:
+            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path))
+            if is_overlapping:
+                overlapping_paths.append(path)
+
+    return overlapping_paths
+
+
 class DuplicateMountDirValidator(Validator):
     """
     Mount dir validator.
@@ -512,9 +523,29 @@ class DuplicateMountDirValidator(Validator):
         duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
         if duplicated_mount_dirs:
             self._add_failure(
-                "Mount {0} {1} cannot be specified for multiple volumes".format(
+                "Mount {0} {1} cannot be specified for multiple file systems".format(
                     "directories" if len(duplicated_mount_dirs) > 1 else "directory",
                     ", ".join(mount_dir for mount_dir in duplicated_mount_dirs),
+                ),
+                FailureLevel.ERROR,
+            )
+
+
+class OverlappingMountDirValidator(Validator):
+    """
+    Mount dir validator.
+
+    Verify if there are overlapping mount dirs between shared storage and ephemeral volumes.
+    Two mount dirs are overlapped if one is contained into the other.
+    """
+
+    def _validate(self, mount_dir_list):
+        overlapping_mount_dirs = _find_overlapping_paths(mount_dir_list)
+        if overlapping_mount_dirs:
+            self._add_failure(
+                "Mount {0} {1} cannot contain other mount directories".format(
+                    "directories" if len(overlapping_mount_dirs) > 1 else "directory",
+                    ", ".join(mount_dir for mount_dir in overlapping_mount_dirs),
                 ),
                 FailureLevel.ERROR,
             )
