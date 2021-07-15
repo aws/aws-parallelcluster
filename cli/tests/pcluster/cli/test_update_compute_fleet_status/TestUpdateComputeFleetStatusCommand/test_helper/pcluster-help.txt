@@ -1,0 +1,15 @@
+usage: pcluster update-compute-fleet-status [-h] --cluster-name CLUSTER_NAME
+                                            [--region REGION] --status
+                                            {START_REQUESTED,STOP_REQUESTED,ENABLED,DISABLED}
+                                            [--debug]
+
+Update the status of the cluster compute fleet.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --cluster-name CLUSTER_NAME
+                        Name of the cluster
+  --region REGION       AWS Region. Defaults to the region the API is deployed
+                        to.
+  --status {START_REQUESTED,STOP_REQUESTED,ENABLED,DISABLED}
+  --debug               Turn on debug logging.

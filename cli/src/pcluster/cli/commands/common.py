@@ -10,14 +10,11 @@ import logging
 import os
 import sys
 from abc import ABC, abstractmethod
-from typing import Dict
 
 import argparse
 from argparse import ArgumentParser, Namespace
-from flask.testing import FlaskClient
 
 from pcluster import utils
-from pcluster.api.flask_app import ParallelClusterFlaskApp
 from pcluster.constants import SUPPORTED_REGIONS
 from pcluster.utils import isoformat_to_epoch
 
@@ -74,46 +71,9 @@ class CliCommand(ABC):
             sys.exit(1)
 
 
-class CliCommandV3(CliCommand, ABC):  # TODO: remove once all commands are converted
-    """Temporary class to identify pcluster v3 commands."""
-
-    pass
-
-
 def print_json(obj):
     """Print formatted Json to stdout."""
     print(json.dumps(obj, indent=2))
-
-
-def csv_type(choices):
-    """Return a function that splits and checks comma-separated values."""
-
-    def split_arg(arg):
-        values = set(token.strip() for token in arg.split(","))
-        for value in values:
-            if value not in choices:
-                raise argparse.ArgumentTypeError(
-                    "invalid choice: {!r} (choose from {})".format(value, ", ".join(map(repr, choices)))
-                )
-        return values
-
-    return split_arg
-
-
-class ParallelClusterFlaskClient(FlaskClient):
-    """ParallelCluster Api client to invoke the WSGI application programmatically."""
-
-    def __init__(self, *args, **kwargs):
-        flask_app = ParallelClusterFlaskApp().flask_app
-        super().__init__(*args, application=flask_app, response_wrapper=flask_app.response_class, **kwargs)
-
-    def open(self, *args, headers: Dict[str, str] = None, **kwargs):
-        """Invoke ParallelCLuster Api functionalities as they were exposed by a HTTP endpoint."""
-        default_headers = {
-            "Accept": "application/json",
-        }
-        headers = headers or {}
-        return super().open(*args, headers={**default_headers, **headers}, **kwargs)
 
 
 class Iso8601Arg:
