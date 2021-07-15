@@ -15,10 +15,14 @@ import base64
 
 import boto3
 import pytest
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from botocore.config import Config
+from pcluster_client import ApiException
 from pcluster_client.api import cluster_operations_api
+from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+from pcluster_client.model.cluster_status import ClusterStatus
 from pcluster_client.model.create_cluster_request_content import CreateClusterRequestContent
+from pcluster_client.model.update_cluster_request_content import UpdateClusterRequestContent
 from utils import generate_stack_name
 
 
@@ -29,44 +33,98 @@ def _cloudformation_wait(region, stack_name, status):
     waiter.wait(StackName=stack_name)
 
 
-@pytest.mark.usefixtures("region", "os", "instance")
-def test_cluster_operations(request, scheduler, region, pcluster_config_reader, clusters_factory, api_client):
-    cluster_config_path = pcluster_config_reader(scaledown_idletime=3)
+@pytest.mark.usefixtures("os", "instance")
+def test_cluster_slurm(request, scheduler, region, pcluster_config_reader, api_client):
+    assert_that(scheduler).is_equal_to("slurm")
+    initial_config_file = pcluster_config_reader()
+    updated_config_file = pcluster_config_reader("pcluster.config.update.yaml")
+    with soft_assertions():
+        _test_cluster_workflow(request, region, initial_config_file, updated_config_file, api_client)
 
-    with open(cluster_config_path) as config_file:
+
+@pytest.mark.usefixtures("os", "instance")
+def test_cluster_awsbatch(request, scheduler, region, pcluster_config_reader, api_client):
+    assert_that(scheduler).is_equal_to("awsbatch")
+    initial_config_file = pcluster_config_reader()
+    updated_config_file = pcluster_config_reader("pcluster.config.update.yaml")
+    with soft_assertions():
+        _test_cluster_workflow(request, region, initial_config_file, updated_config_file, api_client)
+
+
+def _test_cluster_workflow(request, region, initial_config_file, updated_config_file, api_client):
+    # Create cluster with initial configuration
+    with open(initial_config_file) as config_file:
         cluster_config = config_file.read()
 
     stack_name = generate_stack_name("integ-tests", request.config.getoption("stackname_suffix"))
-    client = cluster_operations_api.ClusterOperationsApi(api_client)
-    resp = _test_create(client, cluster_config, region, stack_name)
+    cluster_operations_client = cluster_operations_api.ClusterOperationsApi(api_client)
+
+    resp = _test_create_cluster(cluster_operations_client, cluster_config, region, stack_name)
     cluster = resp["cluster"]
     cluster_name = cluster["cluster_name"]
     assert_that(cluster_name).is_equal_to(stack_name)
 
+    _test_list_clusters(cluster_operations_client, cluster, region, "CREATE_IN_PROGRESS")
+    _test_describe_cluster(cluster_operations_client, cluster, region, "CREATE_IN_PROGRESS")
+
     _cloudformation_wait(region, stack_name, "stack_create_complete")
 
-    _test_list_clusters(client, cluster, region)
-    _test_describe_cluster(client, cluster, region)
-    _test_delete_cluster(client, cluster, region)
+    _test_list_clusters(cluster_operations_client, cluster, region, "CREATE_COMPLETE")
+    _test_describe_cluster(cluster_operations_client, cluster, region, "CREATE_COMPLETE")
+
+    # Update cluster with new configuration
+    with open(updated_config_file) as config_file:
+        updated_cluster_config = config_file.read()
+    _test_update_cluster_dryrun(cluster_operations_client, updated_cluster_config, region, stack_name)
+
+    _test_delete_cluster(cluster_operations_client, cluster, region)
 
 
-def _test_list_clusters(client, cluster, region):
-    response = client.list_clusters(region=region)
-    cluster_names = [c["cluster_name"] for c in response["items"]]
+def _test_list_clusters(client, cluster, region, status):
     cluster_name = cluster["cluster_name"]
-    assert_that(cluster_names).contains(cluster_name)
+
+    response = client.list_clusters(region=region)
+    target_cluster = _get_cluster(response["items"], cluster_name)
+    next_token = response.get("next_token", None)
+
+    while next_token and not target_cluster:
+        response = client.list_clusters(region=region, next_token=next_token)
+        target_cluster = _get_cluster(response["items"], cluster_name)
+        next_token = response.get("next_token", None)
+
+    assert_that(target_cluster).is_not_none()
+    assert_that(target_cluster.cluster_name).is_equal_to(cluster_name)
+    assert_that(target_cluster.cluster_status).is_equal_to(ClusterStatus(status))
+    assert_that(target_cluster.cloudformation_stack_status).is_equal_to(CloudFormationStatus(status))
 
 
-def _test_describe_cluster(client, cluster, region):
+def _get_cluster(clusters, cluster_name):
+    for cluster in clusters:
+        if cluster["cluster_name"] == cluster_name:
+            return cluster
+    return None
+
+
+def _test_describe_cluster(client, cluster, region, status):
     cluster_name = cluster["cluster_name"]
     response = client.describe_cluster(cluster_name, region=region)
     assert_that(response.cluster_name).is_equal_to(cluster_name)
+    assert_that(response.cluster_status).is_equal_to(ClusterStatus(status))
+    assert_that(response.cloud_formation_status).is_equal_to(CloudFormationStatus(status))
 
 
-def _test_create(client, cluster_config, region, stack_name):
+def _test_create_cluster(client, cluster_config, region, stack_name):
     cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
     body = CreateClusterRequestContent(stack_name, cluster_config_data, region=region)
     return client.create_cluster(body)
+
+
+def _test_update_cluster_dryrun(client, cluster_config, region, stack_name):
+    cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
+    body = UpdateClusterRequestContent(cluster_config_data)
+    error_message = "Request would have succeeded, but DryRun flag is set."
+    with pytest.raises(ApiException, match=error_message):
+        client.update_cluster(stack_name, body, region=region, dryrun=True)
 
 
 def _test_delete_cluster(client, cluster, region):
