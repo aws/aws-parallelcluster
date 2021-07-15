@@ -78,8 +78,13 @@ class TestUpdateClusterCommand:
                 "version": "3.0.0",
                 "clusterStatus": "UPDATE_IN_PROGRESS",
             },
-            # TODO: add better values here
-            "changeSet": [],
+            "changeSet": [
+                {
+                    "parameter": "Scheduling.SlurmQueues[queue0].ComputeResources[queue0-i0].MaxCount",
+                    "requestedValue": "100",
+                    "currentValue": "20",
+                }
+            ],
         }
 
         response = UpdateClusterResponseContent().from_dict(response_dict)
@@ -100,8 +105,18 @@ class TestUpdateClusterCommand:
             ]
         )
         assert_that(out).is_equal_to(response_dict)
-        assert_that(describe_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
-        expected_args = {"region": None, "cluster_name": "cluster"}
+        assert_that(describe_clusters_mock.call_args).is_length(
+            2
+        )  # this is due to the decorator on list_clusters
+        expected_args = {
+            "update_cluster_request_content": {"clusterConfiguration": ""},
+            "cluster_name": "cluster",
+            "dryrun": None,
+            "force_update": None,
+            "region": None,
+            "suppress_validators": None,
+            "validation_failure_level": None,
+        }
         describe_clusters_mock.assert_called_with(**expected_args)
 
     def test_error(self, mocker, test_datadir):
