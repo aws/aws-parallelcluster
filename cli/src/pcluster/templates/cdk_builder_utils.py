@@ -24,9 +24,9 @@ from pcluster.config.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
     BaseQueue,
-    Ebs,
     HeadNode,
     LocalStorage,
+    RootVolume,
     SharedStorageType,
 )
 from pcluster.constants import (
@@ -51,7 +51,7 @@ def get_block_device_mappings(local_storage: LocalStorage, os: str):
             ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
         )
 
-    root_volume = local_storage.root_volume or Ebs()
+    root_volume = local_storage.root_volume or RootVolume()
 
     block_device_mappings.append(
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
@@ -62,6 +62,7 @@ def get_block_device_mappings(local_storage: LocalStorage, os: str):
                 volume_type=root_volume.volume_type,
                 iops=root_volume.iops,
                 throughput=root_volume.throughput,
+                delete_on_termination=root_volume.delete_on_termination,
             ),
         )
     )

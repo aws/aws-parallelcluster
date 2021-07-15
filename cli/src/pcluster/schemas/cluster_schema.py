@@ -39,7 +39,6 @@ from pcluster.config.cluster_config import (
     Dashboards,
     Dcv,
     Dns,
-    Ebs,
     Efa,
     EphemeralVolume,
     HeadNode,
@@ -56,6 +55,7 @@ from pcluster.config.cluster_config import (
     QueueNetworking,
     Raid,
     Roles,
+    RootVolume,
     S3Access,
     SharedEbs,
     SharedEfs,
@@ -70,6 +70,7 @@ from pcluster.config.cluster_config import (
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
     DELETION_POLICIES,
+    DELETION_POLICIES_WITH_SNAPSHOT,
     EBS_VOLUME_SIZE_DEFAULT,
     FSX_HDD_THROUGHPUT,
     FSX_SSD_THROUGHPUT,
@@ -114,11 +115,12 @@ class HeadNodeRootVolumeSchema(BaseSchema):
     kms_key_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Ebs(**data)
+        return RootVolume(**data)
 
     @validates("size")
     def validate_size(self, value):
@@ -141,7 +143,7 @@ class QueueRootVolumeSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Ebs(**data)
+        return RootVolume(**data)
 
     @validates("size")
     def validate_size(self, value):
@@ -201,6 +203,9 @@ class EbsSettingsSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     raid = fields.Nested(RaidSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    deletion_policy = fields.Str(
+        validate=validate.OneOf(DELETION_POLICIES_WITH_SNAPSHOT), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
 
 class HeadNodeEphemeralVolumeSchema(BaseSchema):
