@@ -255,6 +255,10 @@ def policy_name_to_arn(policy_name):
     return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
 
 
+def get_resource_name_from_resource_arn(resource_arn):
+    return resource_arn.rsplit("/", 1)[-1] if resource_arn else ""
+
+
 def grouper(iterable, size):
     """Slice iterable into chunks of size."""
     itr = iter(iterable)

@@ -41,7 +41,7 @@ HeadNode:
         - String  # arg1
         - stirng2
   Iam:
-    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
+    InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
       - BucketName: string
         KeyName: String
@@ -116,6 +116,8 @@ Scheduling:
           Efa:
             Enabled: true
             GdrSupport: false
+      Iam:
+        InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1

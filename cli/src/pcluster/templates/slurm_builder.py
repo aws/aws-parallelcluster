@@ -111,8 +111,7 @@ class SlurmConstruct(Construct):
 
         # Add Slurm Policies to new instances roles
         for node_name, role_info in self.instance_roles.items():
-            if role_info.get("IsNew"):
-                self._add_policies_to_role(node_name, role_info.get("RoleRef"))
+            self._add_policies_to_role(node_name, role_info.get("RoleRef"))
 
         if self.cleanup_lambda_role:
             self._add_policies_to_cleanup_resources_lambda_role()
@@ -359,8 +358,9 @@ class SlurmConstruct(Construct):
             vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
         )
 
+        # If Headnode InstanceRole is created by ParallelCluster, add Route53 policy for InstanceRole
         head_node_role_info = self.instance_roles.get("HeadNode")
-        if head_node_role_info.get("IsNew"):
+        if head_node_role_info:
             iam.CfnPolicy(
                 self.stack_scope,
                 "ParallelClusterSlurmRoute53Policies",
@@ -418,12 +418,7 @@ class SlurmConstruct(Construct):
             config=self.config,
             execution_role=cleanup_route53_lambda_execution_role.attr_arn
             if cleanup_route53_lambda_execution_role
-            else self._format_arn(
-                service="iam",
-                region="",
-                resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
-                account=self._stack_account,
-            ),
+            else self.config.iam.roles.custom_lambda_resources,
             handler_func="cleanup_resources",
         ).lambda_func
 
@@ -477,12 +472,7 @@ class SlurmConstruct(Construct):
             config=self.config,
             execution_role=update_waiter_lambda_execution_role.attr_arn
             if update_waiter_lambda_execution_role
-            else self._format_arn(
-                service="iam",
-                account=self._stack_account,
-                resource="role/{0}".format(self.config.iam.roles.custom_lambda_resources),
-                region="",
-            ),
+            else self.config.iam.roles.custom_lambda_resources,
             handler_func="wait_for_update",
         ).lambda_func
 
@@ -568,7 +558,6 @@ class SlurmConstruct(Construct):
                         get_user_data_content("../resources/compute_node/user_data.sh"),
                         {
                             **{
-                                "IamRoleName": str(self.instance_roles[queue.name]["RoleRef"]),
                                 "EnableEfa": "efa" if compute_resource.efa and compute_resource.efa.enabled else "NONE",
                                 "RAIDOptions": get_shared_storage_options_by_type(
                                     self.shared_storage_options, SharedStorageType.RAID

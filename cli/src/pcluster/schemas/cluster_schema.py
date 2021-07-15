@@ -700,7 +700,12 @@ class ClusterIamSchema(BaseSchema):
 class IamSchema(BaseSchema):
     """Represent the schema of IAM for HeadNode and Queue."""
 
-    instance_role = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    instance_role = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
+    )
+    instance_profile = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+    )
     s3_access = fields.Nested(
         S3AccessSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "BucketName"}
     )
@@ -712,9 +717,11 @@ class IamSchema(BaseSchema):
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):
-        """Validate that instance_role and additional_security_groups do not co-exist."""
-        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
-            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
+        """Validate that instance_role, instance_profile or additional_iam_policies do not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "instance_profile", "additional_iam_policies"], **kwargs):
+            raise ValidationError(
+                "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together."
+            )
 
     @post_load
     def make_resource(self, data, **kwargs):
