@@ -22,6 +22,7 @@ HeadNode:
       Encrypted: true
       VolumeType: gp2
       Iops: 100
+      DeleteOnTermination: true
     EphemeralVolume:
       Encrypted: true
       MountDir: /test
@@ -130,6 +131,7 @@ SharedStorage:
       KmsKeyId: String
       SnapshotId: snap-12345678
       VolumeId: vol-12345678
+      DeletionPolicy: Retain
   - MountDir: /my/mount/point2
     Name: name2
     StorageType: Efs
