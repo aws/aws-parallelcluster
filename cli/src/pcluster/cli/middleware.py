@@ -56,14 +56,14 @@ def middleware_hooks():
     }
 
 
-def update_cluster(func, body, kwargs):
+def update_cluster(func, _body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)
     if wait:
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_update_complete")
-        waiter.wait(StackName=body["name"])
-        ret = _cluster_status(body["name"])
+        waiter.wait(StackName=kwargs["cluster_name"])
+        ret = _cluster_status(kwargs["cluster_name"])
     return ret
 
 
