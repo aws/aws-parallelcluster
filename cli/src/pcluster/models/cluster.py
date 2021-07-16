@@ -63,7 +63,6 @@ from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, grouper, isoformat_to_epoch
-from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 # pylint: disable=C0302
@@ -234,7 +233,7 @@ class Cluster:
         """Return ClusterConfig object."""
         if not self.__config:
             try:
-                self.__config = ClusterSchema().load(parse_config(self.source_config_text))
+                self.__config = ClusterSchema(cluster_name=self.name).load(parse_config(self.source_config_text))
             except Exception as e:
                 raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}")
         return self.__config
@@ -390,10 +389,9 @@ class Cluster:
         try:
             LOGGER.info("Validating cluster configuration...")
             Cluster._load_additional_instance_type_data(cluster_config_dict)
-            config = ClusterSchema().load(cluster_config_dict)
+            config = ClusterSchema(cluster_name=self.name).load(cluster_config_dict)
 
-            validation_failures = ClusterNameValidator().execute(name=self.name)
-            validation_failures += config.validate(validator_suppressors)
+            validation_failures = config.validate(validator_suppressors)
             for failure in validation_failures:
                 if failure.level.value >= FailureLevel(validation_failure_level).value:
                     raise ConfigValidationError(
@@ -429,7 +427,7 @@ class Cluster:
             # Upload config with default values and sections
             if self.config:
                 result = self.bucket.upload_config(
-                    config=ClusterSchema().dump(deepcopy(self.config)),
+                    config=ClusterSchema(cluster_name=self.name).dump(deepcopy(self.config)),
                     config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("config_name"),
                 )
 

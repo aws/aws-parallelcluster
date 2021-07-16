@@ -30,9 +30,7 @@ def test_slurm_cluster_builder(mocker):
     mock_bucket(mocker)
 
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_slurm_cluster_config(mocker),
-        bucket=dummy_cluster_bucket(),
-        stack_name="parallelcluster-dummyname",
+        cluster_config=dummy_slurm_cluster_config(mocker), bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template
@@ -44,9 +42,7 @@ def test_awsbatch_cluster_builder(mocker):
     mock_bucket(mocker)
 
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_awsbatch_cluster_config(mocker),
-        bucket=dummy_cluster_bucket(),
-        stack_name="parallelcluster-dummyname",
+        cluster_config=dummy_awsbatch_cluster_config(mocker), bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template
@@ -67,12 +63,10 @@ def test_head_node_dna_json(mocker, test_datadir, config_file_name, expected_hea
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
 
-    cluster_config = ClusterSchema().load(input_yaml)
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
 
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster_config,
-        bucket=dummy_cluster_bucket(),
-        stack_name="parallelcluster-dummyname",
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
 
     generated_head_node_dna_json = json.loads(

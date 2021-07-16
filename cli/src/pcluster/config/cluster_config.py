@@ -43,6 +43,7 @@ from pcluster.validators.awsbatch_validators import (
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
+    ClusterNameValidator,
     ComputeResourceLaunchTemplateValidator,
     ComputeResourceSizeValidator,
     CustomAmiTagValidator,
@@ -870,6 +871,7 @@ class BaseClusterConfig(Resource):
 
     def __init__(
         self,
+        cluster_name: str,
         image: Image,
         head_node: HeadNode,
         shared_storage: List[Resource] = None,
@@ -883,6 +885,7 @@ class BaseClusterConfig(Resource):
     ):
         super().__init__()
         self.__region = None
+        self.cluster_name = cluster_name
         self.image = image
         self.head_node = head_node
         self.shared_storage = shared_storage
@@ -901,6 +904,7 @@ class BaseClusterConfig(Resource):
 
     def _register_validators(self):
         self._register_validator(RegionValidator, region=self.region)
+        self._register_validator(ClusterNameValidator, name=self.cluster_name)
         self._register_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
         if self.ami_id:
             self._register_validator(
@@ -1191,8 +1195,8 @@ class AwsBatchScheduling(Resource):
 class AwsBatchClusterConfig(BaseClusterConfig):
     """Represent the full AwsBatch Cluster configuration."""
 
-    def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, cluster_name: str, scheduling: AwsBatchScheduling, **kwargs):
+        super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
 
     def _register_validators(self):
@@ -1406,8 +1410,8 @@ class SlurmScheduling(Resource):
 class SlurmClusterConfig(BaseClusterConfig):
     """Represent the full Slurm Cluster configuration."""
 
-    def __init__(self, scheduling: SlurmScheduling, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, cluster_name: str, scheduling: SlurmScheduling, **kwargs):
+        super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
 
     def get_instance_types_data(self):

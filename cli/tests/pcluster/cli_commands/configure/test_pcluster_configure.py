@@ -336,7 +336,7 @@ def _assert_configurations_are_equal(path_config_expected, path_config_after_inp
     with open(path_config_after_input) as after_input_conf_file:
         after_input_content = yaml.safe_load(after_input_conf_file)
         copy_after_input_content = deepcopy(after_input_content)
-        ClusterSchema().load(
+        ClusterSchema(cluster_name="clustername").load(
             copy_after_input_content
         )  # Test if the generated yaml can be corrected loaded by Marshmallow.
     with open(path_config_expected) as expected_conf_file:

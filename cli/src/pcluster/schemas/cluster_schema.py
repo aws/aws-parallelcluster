@@ -1129,6 +1129,10 @@ class ClusterSchema(BaseSchema):
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
+    def __init__(self, cluster_name: str):
+        super().__init__()
+        self.cluster_name = cluster_name
+
     @validates("tags")
     def validate_tags(self, tags):
         """Validate tags."""
@@ -1139,11 +1143,11 @@ class ClusterSchema(BaseSchema):
         """Generate cluster according to the scheduler. Save original configuration."""
         scheduler = data.get("scheduling").scheduler
         if scheduler == "slurm":
-            cluster = SlurmClusterConfig(**data)
+            cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         elif scheduler == "awsbatch":
-            cluster = AwsBatchClusterConfig(**data)
+            cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
         else:  # scheduler == "custom":
-            cluster = BaseClusterConfig(**data)  # FIXME Must be ByosCluster
+            cluster = BaseClusterConfig(cluster_name=self.cluster_name, **data)  # FIXME Must be ByosCluster
 
         cluster.source_config = original_data
         return cluster
