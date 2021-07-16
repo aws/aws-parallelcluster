@@ -9,7 +9,6 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-import os
 import re
 
 import boto3
@@ -19,31 +18,14 @@ import requests
 from assertpy import assert_that, soft_assertions
 
 
-@pytest.mark.skip_regions(["cn-north-1", "cn-northwest-1"])  # TODO No Lambda container support in China regions
-def test_api_infrastructure_with_default_parameters(
-    region, api_definition_s3_uri, public_ecr_image_uri, parameterized_cfn_stacks_factory
-):
+@pytest.mark.skip_regions(["cn-north-1", "cn-northwest-1"])  # No Lambda container support in China regions
+def test_api_infrastructure_with_default_parameters(region, api_server_factory):
     """Test that creating the API Infrastructure stack with the defaults correctly sets up the Lambda and APIGateway API
 
     :param region: the region where the stack is run
-    :api_definition_s3_uri: a fixture, the S3 URI of the API definition
-    :public_ecr_image_uri: a fixture, the URI of the published Lambda Docker image
-    :api_infrastructure_stack_factory: a fixture, the factory used to create the regional API Infrastructure stack
+    :api_server_factory: factory for deploying API servers on-demand to each region
     """
-    parameters = [
-        {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
-        {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
-    ]
-    capabilities = ["CAPABILITY_AUTO_EXPAND", "CAPABILITY_IAM"]
-    template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
-    stack_prefix = "integ-tests-api-infrastructure"
-    stack = parameterized_cfn_stacks_factory(
-        region=region,
-        template_path=template_path,
-        stack_prefix=stack_prefix,
-        parameters=parameters,
-        capabilities=capabilities,
-    )
+    stack = api_server_factory(region)
 
     lambda_client = boto3.client("lambda", region_name=region)
     apigateway_client = boto3.client("apigateway", region_name=region)
