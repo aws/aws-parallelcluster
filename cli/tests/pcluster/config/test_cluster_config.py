@@ -30,7 +30,11 @@ def instance_type_info_mock(aws_api_mock):
 class TestBaseClusterConfig:
     @pytest.fixture()
     def base_cluster_config(self):
-        return BaseClusterConfig(image=Image("alinux2"), head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")))
+        return BaseClusterConfig(
+            cluster_name="clustername",
+            image=Image("alinux2"),
+            head_node=HeadNode("c5.xlarge", HeadNodeNetworking("subnet")),
+        )
 
     @pytest.mark.parametrize(
         "custom_ami, ami_filters",

@@ -557,7 +557,9 @@ def test_subnet_id_validator(subnet_id, expected_message):
     ],
 )
 def test_tags_validator(key, expected_message):
-    _validate_and_assert_error(ClusterSchema(), {"Tags": [{"Key": key, "Value": "test_value"}]}, expected_message)
+    _validate_and_assert_error(
+        ClusterSchema(cluster_name="clustername"), {"Tags": [{"Key": key, "Value": "test_value"}]}, expected_message
+    )
 
 
 def _validate_and_assert_error(schema, section_dict, expected_message, partial=True):
