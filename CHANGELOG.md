@@ -68,6 +68,7 @@ CHANGELOG
 - Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
   in case recurrent failures are encountered when provisioning nodes.
 - Upgrade Slurm to version 20.11.8.
+- Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
 
 2.11.0
 ------
