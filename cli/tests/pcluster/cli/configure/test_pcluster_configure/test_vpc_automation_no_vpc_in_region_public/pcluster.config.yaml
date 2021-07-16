@@ -20,3 +20,7 @@ Scheduling:
       Networking:
         SubnetIds:
           - subnet-12345678
+SharedStorage:
+  - MountDir: /home
+    Name: home-directory
+    StorageType: Ebs

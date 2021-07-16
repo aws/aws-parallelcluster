@@ -68,6 +68,7 @@ CHANGELOG
 - Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
   in case recurrent failures are encountered when provisioning nodes.
 - Upgrade Slurm to version 20.11.8.
+- Make pcluster configure set the default Ebs shared storage for the home directory.
 
 2.11.0
 ------

@@ -231,6 +231,7 @@ def configure(args):  # noqa: C901
             "Imds": {"Secured": head_node_imds_secured},
         },
         "Scheduling": {"Scheduler": scheduler, f"{scheduler_prefix}Queues": queues},
+        "SharedStorage": [{"MountDir": "/home", "Name": "home-directory", "StorageType": "Ebs"}],
     }
 
     _write_configuration_file(config_file_path, result)
