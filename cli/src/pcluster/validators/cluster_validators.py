@@ -112,7 +112,7 @@ class CustomAmiTagValidator(Validator):
                     "The custom AMI may not have been created by pcluster. "
                     "You can ignore this warning if the AMI is shared or copied from another pcluster AMI. "
                     "If the AMI is indeed not created by pcluster, cluster creation will fail. "
-                    "If the cluster creation fails, please goto"
+                    "If the cluster creation fails, please go to "
                     "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html"
                     "#troubleshooting-stack-creation-failures for troubleshooting."
                 ),
