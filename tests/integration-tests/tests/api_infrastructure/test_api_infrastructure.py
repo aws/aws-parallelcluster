@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
 import re
 
 import boto3
@@ -16,6 +17,8 @@ import botocore
 import pytest
 import requests
 from assertpy import assert_that, soft_assertions
+
+LOGGER = logging.getLogger(__name__)
 
 
 @pytest.mark.skip_regions(["cn-north-1", "cn-northwest-1"])  # No Lambda container support in China regions
@@ -100,6 +103,7 @@ def _assert_can_call_list_clusters(region, api_url):
     botocore.auth.SigV4Auth(session.get_credentials(), "execute-api", region).add_auth(request)
     prepared_request = request.prepare()
     response = requests.get(prepared_request.url, headers=prepared_request.headers, timeout=10)
+    LOGGER.info(response.json())
     assert_that(response.status_code).is_equal_to(requests.codes.ok)
 
 
