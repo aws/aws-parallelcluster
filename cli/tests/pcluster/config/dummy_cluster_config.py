@@ -43,7 +43,7 @@ class _DummySlurmClusterConfig(SlurmClusterConfig):
     """Generate dummy Slurm cluster config."""
 
     def __init__(self, scheduling: SlurmScheduling, **kwargs):
-        super().__init__(scheduling, **kwargs)
+        super().__init__("clustername", scheduling, **kwargs)
 
     @property
     def region(self):
@@ -62,7 +62,7 @@ class _DummyAwsBatchClusterConfig(AwsBatchClusterConfig):
     """Generate dummy Slurm cluster config."""
 
     def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
-        super().__init__(scheduling, **kwargs)
+        super().__init__("clustername", scheduling, **kwargs)
 
     @property
     def region(self):

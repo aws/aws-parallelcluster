@@ -30,11 +30,11 @@ def _check_cluster_schema(test_datadir, config_file_name):
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     print(input_yaml)
     copy_input_yaml = deepcopy(input_yaml)
-    cluster = ClusterSchema().load(copy_input_yaml)
+    cluster = ClusterSchema(cluster_name="clustername").load(copy_input_yaml)
     print(cluster)
 
     # Re-create Yaml file from model and compare content
-    cluster_schema = ClusterSchema()
+    cluster_schema = ClusterSchema(cluster_name="clustername")
     cluster_schema.context = {"delete_defaults_when_dump": True}
     output_json = cluster_schema.dump(cluster)
     assert_that(json.dumps(input_yaml, sort_keys=True)).is_equal_to(json.dumps(output_json, sort_keys=True))

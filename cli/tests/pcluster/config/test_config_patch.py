@@ -177,7 +177,7 @@ def test_single_param_change(
 
 
 def _load_config(config_file):
-    return ClusterSchema().load(load_yaml_dict(config_file))
+    return ClusterSchema(cluster_name="clustername").load(load_yaml_dict(config_file))
 
 
 def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):

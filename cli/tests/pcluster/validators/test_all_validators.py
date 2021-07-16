@@ -54,7 +54,7 @@ def _mock_all_validators(mocker, mockers):
 
 def _load_and_validate(config_path):
     input_yaml = load_yaml_dict(config_path)
-    cluster = ClusterSchema().load(input_yaml)
+    cluster = ClusterSchema(cluster_name="clustername").load(input_yaml)
     failures = cluster.validate()
     assert_that(failures).is_empty()
 
