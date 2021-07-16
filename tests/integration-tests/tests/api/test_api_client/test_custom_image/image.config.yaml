@@ -1,0 +1,4 @@
+Build:
+  InstanceType: {{ instance }}
+  ParentImage: {{ parent_image }}
+  UpdateOsAndReboot: true
