@@ -1,7 +1,7 @@
 Image:
   Os: alinux2
 HeadNode:
-  InstanceType: t2.micro
+  InstanceType: t2.nano
   Networking:
     SubnetId: subnet-12345678
   Ssh:
@@ -16,11 +16,13 @@ Scheduling:
         - Name: myqueue-t2micro
           InstanceType: t2.micro
           MinCount: 0
-          MaxCount: 10
+          MaxCount: 14
       Networking:
         SubnetIds:
-          - subnet-12345678
+          - subnet-23456789
 SharedStorage:
   - MountDir: /home
     Name: home-directory
     StorageType: Ebs
+    EbsSettings:
+      VolumeId: vol-23456789

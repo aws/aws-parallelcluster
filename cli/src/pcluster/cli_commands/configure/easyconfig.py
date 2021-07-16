@@ -34,7 +34,12 @@ from pcluster.cli_commands.configure.utils import (
     prompt,
     prompt_iterable,
 )
-from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
+from pcluster.constants import (
+    DEFAULT_MAX_COUNT,
+    DEFAULT_MIN_COUNT,
+    SUPPORTED_SCHEDULERS,
+    SUPPORTED_SHARED_STORAGE_TYPES,
+)
 from pcluster.utils import default_config_file_path, error, get_supported_os_for_scheduler
 from pcluster.validators.cluster_validators import NAME_REGEX
 
@@ -222,6 +227,9 @@ def configure(args):  # noqa: C901
         queue["Networking"] = {"SubnetIds": [vpc_parameters["compute_subnet_id"]]}
 
     scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
+
+    home_directory_storage_parameters = _create_home_directory_storage_parameters()
+
     result = {
         "Image": {"Os": base_os},
         "HeadNode": {
@@ -232,6 +240,10 @@ def configure(args):  # noqa: C901
         },
         "Scheduling": {"Scheduler": scheduler, f"{scheduler_prefix}Queues": queues},
     }
+
+    if home_directory_storage_parameters["StorageType"] != "EbsRoot":
+        result["SharedStorage"] = result.get("SharedStorage", [])
+        result["SharedStorage"].append(_get_shared_storage_for_home_directory(home_directory_storage_parameters))
 
     _write_configuration_file(config_file_path, result)
     print(
@@ -375,3 +387,41 @@ def _get_common_supported_az_for_multi_instance_types(instance_types):
         else:
             common_az = common_az & set(az_list)
     return common_az
+
+
+def _create_home_directory_storage_parameters():
+    home_directory_storage_parameters = {}
+
+    home_directory_storage_parameters["StorageType"] = prompt_iterable(
+        "Home directory storage type",
+        SUPPORTED_SHARED_STORAGE_TYPES,
+    )
+
+    if (
+        home_directory_storage_parameters["StorageType"] != "EbsRoot"
+        and prompt("Automate home directory storage creation? (y/n)", lambda x: x in ("y", "n"), default_value="y")
+        == "n"
+    ):
+        home_directory_storage_parameters["StorageId"] = prompt("Home directory storage id")
+
+    return home_directory_storage_parameters
+
+
+def _get_shared_storage_for_home_directory(home_directory_storage_parameters):
+    storage_type = home_directory_storage_parameters["StorageType"]
+    storage_id = home_directory_storage_parameters.get("StorageId", None)
+    storage_settings_key = f"{storage_type}Settings"
+
+    result = {"MountDir": "/home", "Name": "home-directory", "StorageType": storage_type, storage_settings_key: {}}
+
+    if storage_id:
+        file_system_id_key = "VolumeId" if storage_type == "Ebs" else "FileSystemId"
+        result[storage_settings_key][file_system_id_key] = storage_id
+
+    if storage_type == "FsxLustre" and storage_id is None:
+        result[storage_settings_key]["StorageCapacity"] = 1200
+
+    if not result[storage_settings_key]:
+        del result[storage_settings_key]
+
+    return result

@@ -64,6 +64,7 @@ CHANGELOG
 - Use different permissions in instance roles based on the scheduler and the node's role in the cluster.
 - Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
   in case recurrent failures are encountered when provisioning nodes.
+- Make pcluster configure ask for home directory storage.
 
 2.11.0
 ------

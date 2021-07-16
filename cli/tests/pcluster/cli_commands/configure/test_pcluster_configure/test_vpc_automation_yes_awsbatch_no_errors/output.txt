@@ -30,5 +30,10 @@ Allowed values for Scheduler:
 1. slurm
 2. awsbatch
 Beginning VPC creation. Please do not leave the terminal until the creation is finalized
+Allowed values for Home directory storage type:
+1. Ebs
+2. EbsRoot
+3. Efs
+4. FsxLustre
 Configuration file written to {{ CONFIG_FILE }}
 You can edit your configuration file or simply run 'pcluster create -c {{ CONFIG_FILE }} cluster-name' to create your cluster

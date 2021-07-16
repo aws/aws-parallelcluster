@@ -393,6 +393,15 @@ class ComposeInput:
             self.input_list.append("")  # Choose the first availability zone
             self.input_list.append(network_configuration)
 
+    def add_home_dir_storage(
+        self, storage_type: str = "Ebs", storage_automation: str or None = "y", storage_id: str or None = None
+    ):
+        self.input_list.append(storage_type)
+        if storage_type != "EbsRoot":
+            self.input_list.append(storage_automation)
+        if storage_automation == "n":
+            self.input_list.append(storage_id)
+
     def mock_input(self, mocker):
         _mock_input(mocker, self.input_list)
 
@@ -458,6 +467,7 @@ def _run_input_test(
         input_composer = ComposeInput(aws_region_name="", key="", scheduler="")
         input_composer.add_first_flow(op_sys="", max_size="", head_node_instance="", compute_instance="")
         input_composer.add_no_automation_no_empty_vpc(vpc_id="", head_node_id="", compute_id="")
+        input_composer.add_home_dir_storage(storage_type="", storage_automation="")
 
     input_composer.mock_input(mocker)
 
@@ -475,6 +485,7 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, temp_
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
     )
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -506,6 +517,7 @@ def test_with_region_arg(mocker, capsys, test_datadir, temp_path_for_config):
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
     )
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
     os.environ["AWS_DEFAULT_REGION"] = "env_region_name_to_be_overwritten"
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config, region="eu-west-1")
@@ -521,6 +533,7 @@ def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir, temp
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
     )
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -539,6 +552,7 @@ def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_
     input_composer.add_sub_automation(
         vpc_id="vpc-23456789", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=False
     )
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -557,6 +571,7 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, t
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
     )
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -573,6 +588,7 @@ def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, temp
         op_sys="centos7", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -587,6 +603,7 @@ def test_vpc_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir, tem
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(op_sys=None, max_size="14", head_node_instance="t2.nano", compute_instance=None)
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -604,6 +621,7 @@ def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir, temp_pat
         input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
         input_composer.add_first_flow(op_sys=None, max_size="14", head_node_instance="t2.nano", compute_instance=None)
         input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+        input_composer.add_home_dir_storage(storage_type="EbsRoot")
         input_composer.mock_input(mocker)
         _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
 
@@ -620,6 +638,7 @@ def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(op_sys=None, max_size="14", head_node_instance="t2.nano", compute_instance=None)
     input_composer.add_sub_automation(vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
     assert_that("WARNING: The VPC does not have the correct parameters set." in caplog.text).is_true()
@@ -636,6 +655,7 @@ def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir, temp_path
         op_sys="centos7", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -653,6 +673,7 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir, te
         op_sys="centos7", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration="2")
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -667,7 +688,7 @@ def test_filtered_subnets_by_az(mocker, capsys, test_datadir, temp_path_for_conf
     input_composer = ComposeInput(aws_region_name="", key="", scheduler="")
     input_composer.add_first_flow(op_sys="", max_size="", head_node_instance="", compute_instance="")
     input_composer.add_no_automation_no_empty_vpc(vpc_id="vpc-34567891", head_node_id="", compute_id="")
-
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
 
     _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
@@ -686,11 +707,13 @@ def general_wrapper_for_prompt_testing(
     vpc_id="vpc-12345678",
     head_node_id="subnet-12345678",
     compute_id="subnet-23456789",
+    home_dir_storage_type="EbsRoot",
 ):
     MockHandler(mocker)
     input_composer = ComposeInput(aws_region_name=region, key=key, scheduler=scheduler)
     input_composer.add_first_flow(op_sys, max_size, head_node_instance, compute_instance)
     input_composer.add_no_automation_no_empty_vpc(vpc_id, head_node_id, compute_id)
+    input_composer.add_home_dir_storage(home_dir_storage_type)
     input_composer.mock_input(mocker)
 
     _run_configuration(mocker, temp_path_for_config)
@@ -714,6 +737,7 @@ def test_vpc_automation_with_no_single_qualified_az(mocker, temp_path_for_config
         op_sys="centos7", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+    input_composer.add_home_dir_storage(storage_type="EbsRoot")
     input_composer.mock_input(mocker)
     with pytest.raises(SystemExit):
         _run_configuration(mocker, temp_path_for_config)
@@ -798,3 +822,40 @@ def test_valid_subnet(mocker, temp_path_for_config, vpc_id, head_node_id, comput
             mocker, temp_path_for_config, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id
         )
     ).is_true()
+
+
+@pytest.mark.parametrize(
+    "storage_type, storage_automation, storage_id",
+    [
+        ("Ebs", "y", None),
+        ("Ebs", "n", "vol-23456789"),
+        ("EbsRoot", None, None),
+        ("Efs", "y", None),
+        ("Efs", "n", "fs-23456789"),
+        ("FsxLustre", "y", None),
+        ("FsxLustre", "n", "fs-12345678910111213"),
+    ],
+)
+def test_home_dir_storage(
+    mocker, capsys, test_datadir, temp_path_for_config, storage_type, storage_automation, storage_id
+):
+    test_data_dir_full = test_datadir / f"{storage_type.lower()}"
+    if storage_automation is not None:
+        test_data_dir_full = test_data_dir_full / f"{storage_automation.lower()}_automation"
+
+    config, error, output = get_file_path(test_data_dir_full)
+
+    mock_handler = MockHandler(mocker)
+    mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
+
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
+    input_composer.add_first_flow(
+        op_sys="alinux2", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
+    )
+    input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+    input_composer.add_home_dir_storage(
+        storage_type=storage_type, storage_automation=storage_automation, storage_id=storage_id
+    )
+    input_composer.mock_input(mocker)
+
+    _run_and_assert(mocker, capsys, output, error, config, temp_path_for_config)
