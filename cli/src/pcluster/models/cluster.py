@@ -396,7 +396,9 @@ class Cluster:
             validation_failures += config.validate(validator_suppressors)
             for failure in validation_failures:
                 if failure.level.value >= FailureLevel(validation_failure_level).value:
-                    raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
+                    raise ConfigValidationError(
+                        "Invalid cluster configuration", validation_failures=validation_failures
+                    )
             LOGGER.info("Validation succeeded.")
         except ValidationError as e:
             # syntactic failure
@@ -405,11 +407,11 @@ class Cluster:
                     str(sorted(e.messages.items())), FailureLevel.ERROR, validator_type="ConfigSchemaValidator"
                 )
             ]
-            raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
+            raise ConfigValidationError("Invalid cluster configuration", validation_failures=validation_failures)
         except ConfigValidationError as e:
             raise e
         except Exception as e:
-            raise ConfigValidationError(f"Configuration is invalid: {e}")
+            raise ConfigValidationError(f"Invalid cluster configuration: {e}")
 
         return config, validation_failures
 
