@@ -4,8 +4,12 @@ CHANGELOG
 2.11.1
 -----
 
+**CHANGES**
+- Restore ``noatime`` option, which has positive impact on the performances of NFS filesystem.
+
 **BUG FIXES**
 - Pin to version 1.247347 of the CloudWatch agent due to performance impact of latest CW agent version 1.247348.
+- Avoid failures when building SGE using instance type with vCPU >=32.
 
 2.11.0
 ------
