@@ -756,9 +756,9 @@ class TestDescribeImage:
                 "state": Ec2AmiState.AVAILABLE,
                 "description": "description",
                 "tags": [
-                    {"Key": "parallelcluster:image_id", "Value": "image1"},
-                    {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                    {"Key": "parallelcluster:build_config", "Value": "test_url"},
+                    {"key": "parallelcluster:image_id", "value": "image1"},
+                    {"key": "parallelcluster:version", "value": "3.0.0"},
+                    {"key": "parallelcluster:build_config", "value": "test_url"},
                 ],
             },
             "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
