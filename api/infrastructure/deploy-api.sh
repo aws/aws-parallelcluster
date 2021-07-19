@@ -69,5 +69,13 @@ aws cloudformation deploy \
     --stack-name "ParallelClusterApi" \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
-    --capabilities CAPABILITY_IAM
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
 
+echo "Updating API Lambda since updates are not fully automated yet"
+LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='ParallelClusterLambdaArn'].OutputValue" --output text)
+ECR_IMAGE_URI=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='UriOfCopyOfPublicEcrImage'].OutputValue" --output text)
+
+aws lambda update-function-code \
+    --function-name ${LAMBDA_FUNCTION_ARN} \
+    --image-uri ${ECR_IMAGE_URI} \
+    --publish
