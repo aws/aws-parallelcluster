@@ -151,7 +151,7 @@ def build_image_custom_resource(cfn_stacks_factory, region):
             name=custom_resource_stack_name,
             region=region,
             template=custom_resource_template.to_json(),
-            capabilities="CAPABILITY_NAMED_IAM",
+            capabilities=["CAPABILITY_NAMED_IAM"],
         )
         cfn_stacks_factory.create_stack(custom_resource_stack)
 
