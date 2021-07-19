@@ -60,8 +60,9 @@ SharedStorage:
     Name: ebs
     StorageType: Ebs
     EbsSettings:
-      VolumeType: io2
-#      Iops: 140 #Initially not set
+      VolumeType: gp3
+#      Iops: 3200 #Initially not set
+#      Throughput: 130 #Initially not set
   - MountDir: efs
     Name: efs
     StorageType: Efs
@@ -72,8 +73,9 @@ SharedStorage:
     StorageType: Ebs
     Name: raid
     EbsSettings:
-      VolumeType: io2
-#      Iops: 110 #Initially not set
+      VolumeType: gp3
+#      Iops: 3200 #Initially not set
+#     Throughput: 130 #Initially not set
       Raid:
         Type: 0
         NumberOfVolumes: 2
