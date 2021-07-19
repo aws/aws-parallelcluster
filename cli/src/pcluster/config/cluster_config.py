@@ -458,7 +458,7 @@ class Dcv(Resource):
     def __init__(self, enabled: bool, port: int = None, allowed_ips: str = None):
         super().__init__()
         self.enabled = Resource.init_param(enabled)
-        self.port = Resource.init_param(port, default=8843)
+        self.port = Resource.init_param(port, default=8443)
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
 
