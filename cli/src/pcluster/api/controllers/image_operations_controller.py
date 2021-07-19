@@ -81,7 +81,7 @@ def build_image(
 
     :rtype: BuildImageResponseContent
     """
-    rollback_on_failure = rollback_on_failure or False
+    rollback_on_failure = rollback_on_failure in {True, None}
     disable_rollback = not rollback_on_failure
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun or False

@@ -91,9 +91,9 @@ def create_cluster(
     Defaults to true.
     """
     # Set defaults
-    rollback_on_failure = rollback_on_failure or True
+    rollback_on_failure = rollback_on_failure in {True, None}
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
-    dryrun = dryrun or False
+    dryrun = dryrun is True
     create_cluster_request_content = CreateClusterRequestContent.from_dict(create_cluster_request_content)
     cluster_config = read_config(create_cluster_request_content.cluster_configuration)
 
@@ -306,8 +306,8 @@ def update_cluster(
     """
     # Set defaults
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
-    dryrun = dryrun or False
-    force_update = force_update or False
+    dryrun = dryrun is True
+    force_update = force_update is True
     update_cluster_request_content = UpdateClusterRequestContent.from_dict(update_cluster_request_content)
     cluster_config = read_config(update_cluster_request_content.cluster_configuration)
 

@@ -122,7 +122,7 @@ class TestCreateCluster:
                 None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
-                False,
+                True,
                 id="test with no errors",
             ),
         ],
@@ -170,7 +170,7 @@ class TestCreateCluster:
             assert_that(response.status_code).is_equal_to(202)
             assert_that(response.get_json()).is_equal_to(expected_response)
         cluster_create_mock.assert_called_with(
-            disable_rollback=not (rollback_on_failure or True),
+            disable_rollback=rollback_on_failure is False,
             validator_suppressors=mocker.ANY,
             validation_failure_level=FailureLevel[validation_failure_level or ValidationLevel.ERROR],
         )
