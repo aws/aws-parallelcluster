@@ -31,7 +31,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
     mount_dir = "ebs_mount_dir"
     kms_key_id = kms_key_factory.create_kms_key(region)
     cluster_config = pcluster_config_reader(
-        mount_dir=mount_dir, ec2_iam_role=kms_key_factory.iam_role, ebs_kms_key_id=kms_key_id
+        mount_dir=mount_dir, ec2_iam_role=kms_key_factory.iam_role_arn, ebs_kms_key_id=kms_key_id
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)

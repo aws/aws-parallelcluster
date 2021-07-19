@@ -5,7 +5,6 @@ Tags:
     Value: value3
   - Key: key2
     Value: value2
-CustomS3Bucket: {{ resource_bucket }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
@@ -27,17 +26,13 @@ Scheduling:
         - Name: queue1-i1
           InstanceType: c5.xlarge
           MinCount: 1
-          MaxCount: 2
+          MaxCount: 3
         - Name: queue1-i2
           InstanceType: t2.micro
-          MinCount: 1
+          MinCount: 0
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-      Iam:
-        S3Access:
-          - BucketName: {{ resource_bucket }}
-            EnableWriteAccess: true
     - Name: queue2
       ComputeSettings:
         LocalStorage:
@@ -48,10 +43,6 @@ Scheduling:
           Efa:
             Enabled: true
           InstanceType: c5n.18xlarge
-      Iam:
-        S3Access:
-          - BucketName: {{ resource_bucket }}
-            EnableWriteAccess: true
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
@@ -60,22 +51,15 @@ SharedStorage:
     Name: ebs
     StorageType: Ebs
     EbsSettings:
-      VolumeType: gp3
-#      Iops: 3200 #Initially not set
-#      Throughput: 130 #Initially not set
+      VolumeType: io2
   - MountDir: efs
     Name: efs
     StorageType: Efs
-#    EfsSettings:
-#      ThroughputMode: provisioned
-#      ProvisionedThroughput: 1024
   - MountDir: raid
     StorageType: Ebs
     Name: raid
     EbsSettings:
-      VolumeType: gp3
-#      Iops: 3200 #Initially not set
-#     Throughput: 130 #Initially not set
+      VolumeType: io2
       Raid:
         Type: 0
         NumberOfVolumes: 2
@@ -84,10 +68,8 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 3600
-#     WeeklyMaintenanceStartTime: "3:02:30" #Initially not set
 Monitoring:
   DetailedMonitoring: false
   Logs:
     CloudWatch:
       Enabled: true
-#      RetentionInDays: 1 #Initially not set

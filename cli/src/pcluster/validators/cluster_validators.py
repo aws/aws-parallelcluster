@@ -112,7 +112,7 @@ class CustomAmiTagValidator(Validator):
                     "The custom AMI may not have been created by pcluster. "
                     "You can ignore this warning if the AMI is shared or copied from another pcluster AMI. "
                     "If the AMI is indeed not created by pcluster, cluster creation will fail. "
-                    "If the cluster creation fails, please goto"
+                    "If the cluster creation fails, please go to "
                     "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html"
                     "#troubleshooting-stack-creation-failures for troubleshooting."
                 ),
@@ -173,7 +173,7 @@ class DisableSimultaneousMultithreadingArchitectureValidator(Validator):
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
-    def _validate(self, efa_enabled, os, architecture: str):
+    def _validate(self, efa_enabled: bool, os: str, architecture: str):
         if efa_enabled and os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
                 f"EFA is currently not supported on {os} for {architecture} architecture.",
@@ -188,12 +188,19 @@ class ArchitectureOsValidator(Validator):
     ARM AMIs are only available for a subset of the supported OSes.
     """
 
-    def _validate(self, os, architecture: str):
+    def _validate(self, os: str, architecture: str, custom_ami: str):
         allowed_oses = get_supported_os_for_architecture(architecture)
         if os not in allowed_oses:
             self._add_failure(
                 f"The architecture {architecture} is only supported "
                 f"for the following operating systems: {allowed_oses}.",
+                FailureLevel.ERROR,
+            )
+        if custom_ami is None and os == "centos7" and architecture == "arm64":
+            self._add_failure(
+                "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
+                "(M6g, C6g, etc.). To proceed please provide a custom AMI, "
+                "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes",
                 FailureLevel.ERROR,
             )
 

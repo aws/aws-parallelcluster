@@ -67,7 +67,7 @@ class ConfigPatch:
         self.base_config = copy.deepcopy(base_config)
         self.target_config = copy.deepcopy(target_config)
 
-        self.cluster_schema = ClusterSchema()
+        self.cluster_schema = ClusterSchema(cluster_name=cluster.name)
         self.changes = []
         self._compare()
 

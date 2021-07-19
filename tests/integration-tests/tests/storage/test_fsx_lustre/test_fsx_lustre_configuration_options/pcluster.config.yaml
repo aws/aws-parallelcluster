@@ -50,6 +50,9 @@ SharedStorage:
       {% if drive_cache_type %}
       DriveCacheType: {{ drive_cache_type }}
       {% endif %}
+      {% if data_compression_type %}
+      DataCompressionType: {{ data_compression_type }}
+      {% endif %}
       {% if storage_type %}
       StorageType: {{ storage_type }}
       {% endif %}

@@ -26,7 +26,7 @@
     "head_node_imds_secured": "false",
     "hosted_zone": "",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",
-    "log_group_name": "/aws/parallelcluster/parallelcluster-dummyname-202101010101",
+    "log_group_name": "/aws/parallelcluster/clustername-202101010101",
     "node_type": "HeadNode",
     "postinstall": "NONE",
     "postinstall_args": "NONE",
@@ -37,7 +37,7 @@
     "raid_vol_ids": "NONE",
     "region": "{'Ref': 'AWS::Region'}",
     "scheduler": "awsbatch",
-    "stack_name": "parallelcluster-dummyname",
+    "stack_name": "clustername",
     "volume": "NONE"
   },
   "run_list": "recipe[aws-parallelcluster::awsbatch_config]"

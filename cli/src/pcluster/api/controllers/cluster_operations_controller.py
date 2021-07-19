@@ -27,7 +27,6 @@ from pcluster.api.errors import (
     BadRequestException,
     CreateClusterBadRequestException,
     DryrunOperationException,
-    InternalServiceException,
     NotFoundException,
     UpdateClusterBadRequestException,
 )
@@ -53,7 +52,6 @@ from pcluster.api.models import (
 )
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import StackNotFoundError
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.models.cluster import (
     Cluster,
@@ -93,9 +91,9 @@ def create_cluster(
     Defaults to true.
     """
     # Set defaults
-    rollback_on_failure = rollback_on_failure or True
+    rollback_on_failure = rollback_on_failure in {True, None}
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
-    dryrun = dryrun or False
+    dryrun = dryrun is True
     create_cluster_request_content = CreateClusterRequestContent.from_dict(create_cluster_request_content)
     cluster_config = read_config(create_cluster_request_content.cluster_configuration)
 
@@ -198,8 +196,6 @@ def describe_cluster(cluster_name, region=None):
         raise BadRequestException(f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version.")
 
     fleet_status = cluster.compute_fleet_status
-    if fleet_status == ComputeFleetStatus.UNKNOWN:
-        raise InternalServiceException("could not retrieve compute fleet status.")
 
     config_url = "NOT_AVAILABLE"
     try:
@@ -310,8 +306,8 @@ def update_cluster(
     """
     # Set defaults
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
-    dryrun = dryrun or False
-    force_update = force_update or False
+    dryrun = dryrun is True
+    force_update = force_update is True
     update_cluster_request_content = UpdateClusterRequestContent.from_dict(update_cluster_request_content)
     cluster_config = read_config(update_cluster_request_content.cluster_configuration)
 
@@ -382,7 +378,7 @@ def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBa
     config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
     return CreateClusterBadRequestException(
         CreateClusterBadRequestExceptionResponseContent(
-            configuration_validation_errors=config_validation_messages, message="Invalid cluster configuration"
+            configuration_validation_errors=config_validation_messages, message=str(e)
         )
     )
 
