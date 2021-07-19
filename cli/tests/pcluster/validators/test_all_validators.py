@@ -228,7 +228,7 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
     disable_simultaneous_multithreading_architecture_validator.assert_has_calls(
         [call(disable_simultaneous_multithreading=False, architecture="x86_64")] * 5
     )
-    architecture_os_validator.assert_has_calls([call(os="alinux2", architecture="x86_64")])
+    architecture_os_validator.assert_has_calls([call(os="alinux2", architecture="x86_64", custom_ami="ami-12345678")])
     instance_architecture_compatibility_validator.assert_has_calls(
         [
             call(instance_type="c5.2xlarge", architecture="x86_64"),
