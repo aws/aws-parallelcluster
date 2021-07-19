@@ -41,6 +41,7 @@ def add_additional_args(parser_map):
     """
     parser_map["create-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
     parser_map["delete-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
+    parser_map["update-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
 
 
 def middleware_hooks():
@@ -48,7 +49,22 @@ def middleware_hooks():
 
     The map has operation names as the keys and functions as values.
     """
-    return {"create-cluster": create_cluster, "delete-cluster": delete_cluster}
+    return {
+        "create-cluster": create_cluster,
+        "delete-cluster": delete_cluster,
+        "update-cluster": update_cluster,
+    }
+
+
+def update_cluster(func, _body, kwargs):
+    wait = kwargs.pop("wait", False)
+    ret = func(**kwargs)
+    if wait:
+        cloud_formation = boto3.client("cloudformation")
+        waiter = cloud_formation.get_waiter("stack_update_complete")
+        waiter.wait(StackName=kwargs["cluster_name"])
+        ret = _cluster_status(kwargs["cluster_name"])
+    return ret
 
 
 def create_cluster(func, body, kwargs):
