@@ -33,7 +33,7 @@ import pcluster.api.errors
 import pcluster.cli.cmds as cli_commands
 import pcluster.cli.commands.cluster as cluster_commands
 import pcluster.cli.commands.image as image_commands
-import pcluster.cli.logging as pcluster_logging
+import pcluster.cli.logger as pcluster_logging
 import pcluster.cli.model
 from pcluster.api import encoder
 from pcluster.cli.commands.common import CliCommand
