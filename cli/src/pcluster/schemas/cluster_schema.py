@@ -336,6 +336,9 @@ class FsxLustreSettingsSchema(BaseSchema):
     drive_cache_type = fields.Str(
         validate=validate.OneOf(["READ"]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
+    data_compression_type = fields.Str(
+        validate=validate.OneOf(["LZ4"]), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
     fsx_storage_type = fields.Str(
         data_key="StorageType",
         validate=validate.OneOf(["HDD", "SSD"]),
