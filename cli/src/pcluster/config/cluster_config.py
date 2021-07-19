@@ -905,7 +905,12 @@ class BaseClusterConfig(Resource):
     def _register_validators(self):
         self._register_validator(RegionValidator, region=self.region)
         self._register_validator(ClusterNameValidator, name=self.cluster_name)
-        self._register_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
+        self._register_validator(
+            ArchitectureOsValidator,
+            os=self.image.os,
+            architecture=self.head_node.architecture,
+            custom_ami=self.image.custom_ami,
+        )
         if self.ami_id:
             self._register_validator(
                 InstanceTypeBaseAMICompatibleValidator,
