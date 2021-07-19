@@ -424,7 +424,7 @@ class TestBuildImage:
         "ZWxjbHVzdGVyL3RhcmJhbGwvZDVjMmExZWMyNjdhODY1Y2ZmM2NmMzUwYWYzMGQ0NGU2OGYwZWYxOA===="
     )
 
-    def _send_test_request(self, client, dryrun=False, suppress_validators=None):
+    def _send_test_request(self, client, dryrun=None, suppress_validators=None, rollback_on_failure=None):
         build_image_request_content = {
             "imageConfiguration": self.encoded_config,
             "id": "imageid",
@@ -432,9 +432,13 @@ class TestBuildImage:
         }
         query_string = [
             ("validationFailureLevel", ValidationLevel.INFO),
-            ("dryrun", dryrun),
-            ("rollbackOnFailure", True),
         ]
+
+        if dryrun is not None:
+            query_string.append(("dryrun", dryrun))
+
+        if rollback_on_failure is not None:
+            query_string.append(("rollbackOnFailure", rollback_on_failure))
 
         if suppress_validators:
             query_string.extend([("suppressValidators", validator) for validator in suppress_validators])
@@ -453,14 +457,17 @@ class TestBuildImage:
         )
 
     @pytest.mark.parametrize(
-        "suppress_validators, suppressed_validation_errors",
+        "suppress_validators, suppressed_validation_errors, rollback_on_failure",
         [
-            (None, None),
-            (["type:type1", "type:type2"], [ValidationResult("suppressed failure", FailureLevel.INFO, "type1")]),
+            (None, None, None),
+            (["type:type1", "type:type2"], [ValidationResult("suppressed failure", FailureLevel.INFO, "type1")], None),
+            (None, None, False),
         ],
-        ids=["test with no validation errors", "test with suppressed validators"],
+        ids=["test with no validation errors", "test with suppressed validators", "rollback on failure"],
     )
-    def test_build_image_success(self, client, mocker, suppress_validators, suppressed_validation_errors):
+    def test_build_image_success(
+        self, client, mocker, suppress_validators, suppressed_validation_errors, rollback_on_failure
+    ):
         mocked_call = mocker.patch(
             "pcluster.models.imagebuilder.ImageBuilder.create",
             auto_spec=True,
@@ -487,12 +494,19 @@ class TestBuildImage:
                 {"level": "INFO", "type": "type1", "message": "suppressed failure"}
             ]
 
-        response = self._send_test_request(client, dryrun=False, suppress_validators=suppress_validators)
+        response = self._send_test_request(
+            client, dryrun=False, suppress_validators=suppress_validators, rollback_on_failure=rollback_on_failure
+        )
 
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(202)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
+        mocked_call.assert_called_with(
+            disable_rollback=rollback_on_failure is False,
+            validator_suppressors=mocker.ANY,
+            validation_failure_level=FailureLevel[ValidationLevel.INFO],
+        )
         mocked_call.assert_called_once()
         if suppress_validators:
             _, kwargs = mocked_call.call_args
