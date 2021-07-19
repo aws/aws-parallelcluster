@@ -258,6 +258,7 @@ class SharedFsx(Resource):
         name: str,
         storage_capacity: int = None,
         deployment_type: str = None,
+        data_compression_type: str = None,
         export_path: str = None,
         import_path: str = None,
         imported_file_chunk_size: int = None,
@@ -280,6 +281,7 @@ class SharedFsx(Resource):
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
         self.deployment_type = Resource.init_param(deployment_type)
+        self.data_compression_type = Resource.init_param(data_compression_type)
         self.export_path = Resource.init_param(export_path)
         self.import_path = Resource.init_param(import_path)
         self.imported_file_chunk_size = Resource.init_param(imported_file_chunk_size)

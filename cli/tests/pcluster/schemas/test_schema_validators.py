@@ -471,6 +471,9 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"StorageType": "INVALID_VALUE"}, "Must be one of"),
         ({"DriveCacheType": "READ"}, None),
         ({"DriveCacheType": "INVALID_VALUE"}, "Must be one of"),
+        ({"DataCompressionType": None}, None),
+        ({"DataCompressionType": "LZ4"}, None),
+        ({"DataCompressionType": "INVALID_VALUE"}, "Must be one of"),
         ({"invalid_key": "fake_value"}, "Unknown field"),
     ],
 )

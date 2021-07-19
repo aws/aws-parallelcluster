@@ -622,6 +622,7 @@ class ClusterCdkStack(Stack):
                 storage_capacity=shared_fsx.storage_capacity,
                 lustre_configuration=fsx.CfnFileSystem.LustreConfigurationProperty(
                     deployment_type=shared_fsx.deployment_type,
+                    data_compression_type=shared_fsx.data_compression_type,
                     imported_file_chunk_size=shared_fsx.imported_file_chunk_size,
                     export_path=shared_fsx.export_path,
                     import_path=shared_fsx.import_path,
