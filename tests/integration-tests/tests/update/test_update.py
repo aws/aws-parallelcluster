@@ -11,11 +11,9 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
-import time
 
 import boto3
 import pytest
-import utils
 import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -183,9 +181,9 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Assert that the job submitted before the update is still running
     assert_that(slurm_commands.get_job_info(job_id)).contains("JobState=RUNNING")
 
+    _check_volume(cluster, updated_config, region)
+
     # TODO add following tests:
-    # - Check Additional IAM policies
-    # - Check compute root volume size
     # - Check pre/post install scripts
     # - Test extra json
 
@@ -236,111 +234,6 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
 
 
-def _add_compute_nodes(scheduler_commands, slots_per_node, number_of_nodes=1):
-    """
-    Add new compute nodes to the cluster.
-
-    It is required because some changes will be available only on new compute nodes.
-    :param cluster: the cluster
-    :param number_of_nodes: number of nodes to add
-    :return an array containing the new compute nodes only
-    """
-    initial_compute_nodes = scheduler_commands.get_compute_nodes()
-
-    number_of_nodes = len(initial_compute_nodes) + number_of_nodes
-    # submit a job to perform a scaling up action and have new instances
-    result = scheduler_commands.submit_command("sleep 1", nodes=number_of_nodes, slots=slots_per_node)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    return [node for node in scheduler_commands.get_compute_nodes() if node not in initial_compute_nodes]
-
-
-def _get_instance(region, stack_name, host, none_expected=False):
-    if region == "us-east-1":
-        hostname = "{0}.ec2.internal".format(host)
-    else:
-        hostname = "{0}.{1}.compute.internal".format(host, region)
-    ec2_resource = boto3.resource("ec2", region_name=region)
-    instance = next(
-        iter(
-            ec2_resource.instances.filter(
-                Filters=[
-                    {"Name": "tag:parallelcluster:cluster-name", "Values": [stack_name]},
-                    {"Name": "private-dns-name", "Values": [hostname]},
-                ]
-            )
-            or []
-        ),
-        None,
-    )
-    if not none_expected:
-        assert_that(instance).is_not_none()
-    return instance
-
-
-def _check_compute_instance_type(instance, compute_instance_type):
-    assert_that(instance.instance_type).is_equal_to(compute_instance_type)
-
-
-def _check_spot_instance(instance):
-    assert_that(instance.instance_lifecycle).is_equal_to("spot")
-
-
-def _check_ondemand_instance(instance):
-    assert_that(not hasattr(instance, "instance_life_cycle"))
-
-
-def _check_compute_root_volume_size(command_executor, scheduler_commands, test_datadir, compute_root_volume_size, host):
-    # submit a job to retrieve compute root volume size and save in a file
-    result = scheduler_commands.submit_script(str(test_datadir / "slurm_get_root_volume_size.sh"), host=host)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    # read volume size from file
-    time.sleep(5)  # wait a bit to be sure to have the file
-    result = command_executor.run_remote_command("cat /shared/{0}_root_volume_size.txt".format(host))
-    assert_that(result.stdout).matches(r"{size}G".format(size=compute_root_volume_size))
-
-
-def _retrieve_script_output(scheduler_commands, script_name, host):
-    # submit a job to retrieve pre and post install outputs
-    command = "cp /tmp/{0}_out.txt /shared/script_results/{1}_{0}_out.txt".format(script_name, host)
-    result = scheduler_commands.submit_command(command, host=host)
-
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    time.sleep(5)  # wait a bit to be sure to have the files
-
-
-def _check_script(command_executor, scheduler_commands, host, script_name, script_arg):
-    _retrieve_script_output(scheduler_commands, script_name, host)
-    result = command_executor.run_remote_command("cat /shared/script_results/{1}_{0}_out.txt".format(script_name, host))
-    assert_that(result.stdout).matches(r"{0}-{1}".format(script_name, script_arg))
-
-
-def _retrieve_extra_json(scheduler_commands, host):
-    # submit a job to retrieve the value of the custom key test_key provided with extra_json
-    command = "jq .test_key /etc/chef/dna.json > /shared/{0}_extra_json.txt".format(host)
-    result = scheduler_commands.submit_command(command, host=host)
-
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    time.sleep(5)  # wait a bit to be sure to have the files
-
-
-def _check_extra_json(command_executor, scheduler_commands, host, expected_value):
-    _retrieve_extra_json(scheduler_commands, host)
-    result = command_executor.run_remote_command("cat /shared/{0}_extra_json.txt".format(host))
-    assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
-
-
 def _check_role_attached_policy(region, cluster, policy_arn):
     iam_client = boto3.client("iam", region_name=region)
     cfn_resources = cluster.cfn_resources
@@ -353,14 +246,13 @@ def _check_role_attached_policy(region, cluster, policy_arn):
             assert_that(policy_arn in policies).is_true()
 
 
-def get_cfn_ebs_volume_ids(cluster, region):
+def _get_cfn_ebs_volume_ids(cluster):
     # get the list of configured ebs volume ids
     # example output: ['vol-000', 'vol-001', 'vol-002']
-    ebs_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="EBSCfnStack")[0]
-    return utils.retrieve_cfn_outputs(ebs_stack, region).get("Volumeids").split(",")
+    return cluster.cfn_outputs["EBSIds"].split(",")
 
 
-def get_ebs_volume_info(volume_id, region):
+def _get_ebs_volume_info(volume_id, region):
     volume = boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
     volume_type = volume.get("VolumeType")
     volume_iops = volume.get("Iops")
@@ -370,19 +262,19 @@ def get_ebs_volume_info(volume_id, region):
 
 def _check_volume(cluster, config, region):
     logging.info("checking volume throughout and iops change")
-    volume_ids = get_cfn_ebs_volume_ids(cluster, region)
-    volume_type = config.get("ebs custom", "volume_type")
-    actual_volume_type, actual_volume_iops, actual_volume_throughput = get_ebs_volume_info(volume_ids[0], region)
+    volume_ids = _get_cfn_ebs_volume_ids(cluster)
+    volume_type = config["SharedStorage"][0]["EbsSettings"]["VolumeType"]
+    actual_volume_type, actual_volume_iops, actual_volume_throughput = _get_ebs_volume_info(volume_ids[0], region)
     if volume_type:
         assert_that(actual_volume_type).is_equal_to(volume_type)
     else:
         # the default volume type is gp2
         assert_that("gp2").is_equal_to(volume_type)
     if volume_type in ["io1", "io2", "gp3"]:
-        volume_iops = config.get("ebs custom", "volume_iops")
+        volume_iops = config["SharedStorage"][0]["EbsSettings"]["Iops"]
         assert_that(actual_volume_iops).is_equal_to(int(volume_iops))
         if volume_type == "gp3":
-            throughput = config.get("ebs custom", "volume_throughput")
+            throughput = config["SharedStorage"][0]["EbsSettings"]["Throughput"]
             volume_throughput = throughput if throughput else 125
             assert_that(actual_volume_throughput).is_equal_to(int(volume_throughput))
 
