@@ -13,7 +13,11 @@ import logging
 
 import pytest
 from assertpy import assert_that
+from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
+from troposphere import Template
+from troposphere.route53 import HostedZone, HostedZoneVPCs
+from utils import generate_stack_name
 
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
@@ -42,11 +46,7 @@ def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_rea
     assert_that(result.failed).is_true()
 
     # Assert compute hostname is the same as nodename
-    result = scheduler_commands.submit_command("hostname > /shared/compute_hostname")
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    hostname = remote_command_executor.run_remote_command("cat /shared/compute_hostname").stdout
-    assert_that(compute_nodes).contains(hostname)
+    _test_hostname_same_as_nodename(scheduler_commands, remote_command_executor, compute_nodes)
 
     # This verifies that the job completes correctly
     _test_mpi(
@@ -58,3 +58,85 @@ def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_rea
         scaledown_idletime,
         verify_scaling=False,
     )
+
+
+@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.schedulers(["slurm"])
+def test_existing_hosted_zone(
+    hosted_zone_factory,
+    pcluster_config_reader,
+    clusters_factory,
+    vpc_stack,
+    cfn_stacks_factory,
+    key_name,
+    scheduler,
+    region,
+    instance,
+):
+    """Test hosted_zone_id is provided in the config file."""
+    num_computes = 2
+    hosted_zone_id, domain_name = hosted_zone_factory()
+    cluster_config = pcluster_config_reader(existing_hosted_zone=hosted_zone_id, queue_size=num_computes)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+
+    # Test run mpi job
+    _test_mpi(
+        remote_command_executor,
+        slots_per_instance=fetch_instance_slots(region, instance),
+        scheduler=scheduler,
+        region=region,
+        stack_name=cluster.cfn_name,
+        scaledown_idletime=3,
+        verify_scaling=False,
+    )
+
+    # Assert compute hostname is the same as nodename
+    compute_nodes = scheduler_commands.get_compute_nodes()
+    _test_hostname_same_as_nodename(scheduler_commands, remote_command_executor, compute_nodes)
+
+    # Test domain name matches expected domain name
+    resolv_conf = remote_command_executor.run_remote_command("cat /etc/resolv.conf").stdout
+    assert_that(resolv_conf).contains(cluster.cfn_name + "." + domain_name)
+
+
+@pytest.fixture(scope="class")
+def hosted_zone_factory(vpc_stack, cfn_stacks_factory, request, region):
+    """Create a hosted zone stack."""
+    hosted_zone_stack_name = generate_stack_name(
+        "integ-tests-hosted-zone", request.config.getoption("stackname_suffix")
+    )
+    domain_name = hosted_zone_stack_name + ".com"
+
+    def create_hosted_zone():
+        hosted_zone_template = Template()
+        hosted_zone_template.set_version("2010-09-09")
+        hosted_zone_template.set_description("Hosted zone stack created for testing existing DNS")
+        hosted_zone_template.add_resource(
+            HostedZone(
+                "HostedZoneResource",
+                Name=domain_name,
+                VPCs=[HostedZoneVPCs(VPCId=vpc_stack.cfn_outputs["VpcId"], VPCRegion=region)],
+            )
+        )
+        hosted_zone_stack = CfnStack(
+            name=hosted_zone_stack_name,
+            region=region,
+            template=hosted_zone_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(hosted_zone_stack)
+        return hosted_zone_stack.cfn_resources["HostedZoneResource"], domain_name
+
+    yield create_hosted_zone
+
+    if not request.config.getoption("no_delete"):
+        cfn_stacks_factory.delete_stack(hosted_zone_stack_name, region)
+
+
+def _test_hostname_same_as_nodename(scheduler_commands, remote_command_executor, compute_nodes):
+    result = scheduler_commands.submit_command("hostname > /shared/compute_hostname")
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    hostname = remote_command_executor.run_remote_command("cat /shared/compute_hostname").stdout
+    assert_that(compute_nodes).contains(hostname)

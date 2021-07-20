@@ -199,14 +199,17 @@ def test_build_image_custom_components(
 def _assert_build_image_success(result, image_id, region):
     logging.info(f"Test build image process for image {image_id}.")
     assert_that(result).contains("CREATE_IN_PROGRESS")
-    assert_that(result).contains("Build image started successfully.")
 
-    pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+    pcluster_describe_image_result = run_command(
+        ["pcluster", "describe-image", "--image-id", image_id, "--region", region]
+    )
     logging.info(pcluster_describe_image_result.stdout)
 
     while "BUILD_IN_PROGRESS" in pcluster_describe_image_result.stdout:
         time.sleep(600)
-        pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+        pcluster_describe_image_result = run_command(
+            ["pcluster", "describe-image", "--image-id", image_id, "--region", region]
+        )
         logging.info(pcluster_describe_image_result.stdout)
 
     assert_that(pcluster_describe_image_result.stdout).contains("BUILD_COMPLETE")
@@ -240,14 +243,17 @@ def test_build_image_wrong_pcluster_version(
 def _assert_build_image_failed(result, image_id, region):
     logging.info(f"Test build image process for image {image_id}.")
     assert_that(result).contains("CREATE_IN_PROGRESS")
-    assert_that(result).contains("Build image started successfully.")
 
-    pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+    pcluster_describe_image_result = run_command(
+        ["pcluster", "describe-image", "--image-id", image_id, "--region", region]
+    )
     logging.info(pcluster_describe_image_result.stdout)
 
     while "BUILD_IN_PROGRESS" in pcluster_describe_image_result.stdout:
         time.sleep(600)
-        pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
+        pcluster_describe_image_result = run_command(
+            ["pcluster", "describe-image", "--image-id", image_id, "-region", region]
+        )
         logging.info(pcluster_describe_image_result.stdout)
 
     assert_that(pcluster_describe_image_result.stdout).contains("BUILD_FAILED")
