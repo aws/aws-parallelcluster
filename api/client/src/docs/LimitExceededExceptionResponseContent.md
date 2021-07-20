@@ -1,6 +1,6 @@
 # LimitExceededExceptionResponseContent
 
-The client is sending more than the allowed number of requests per unit of time.
+The client is sending more than the allowed number of requests per unit of time..
 
 ## Properties
 Name | Type | Description | Notes

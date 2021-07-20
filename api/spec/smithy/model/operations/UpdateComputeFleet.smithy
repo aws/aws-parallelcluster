@@ -1,11 +1,11 @@
 namespace parallelcluster
 
-@http(method: "PATCH", uri: "/v3/clusters/{clusterName}/computefleet/status", code: 204)
+@http(method: "PATCH", uri: "/v3/clusters/{clusterName}/computefleet", code: 204)
 @tags(["Cluster ComputeFleet"])
 @documentation("Update the status of the cluster compute fleet.")
-operation UpdateComputeFleetStatus {
-    input: UpdateComputeFleetStatusRequest,
-    output: UpdateComputeFleetStatusResponse,
+operation UpdateComputeFleet {
+    input: UpdateComputeFleetRequest,
+    output: UpdateComputeFleetResponse,
     errors: [
         InternalServiceException,
         BadRequestException,
@@ -15,7 +15,7 @@ operation UpdateComputeFleetStatus {
     ]
 }
 
-structure UpdateComputeFleetStatusRequest {
+structure UpdateComputeFleetRequest {
     @httpLabel
     @required
     clusterName: ClusterName,
@@ -27,7 +27,9 @@ structure UpdateComputeFleetStatusRequest {
     status: RequestedComputeFleetStatus,
 }
 
-structure UpdateComputeFleetStatusResponse {
+structure UpdateComputeFleetResponse {
+    @required
+    message: String
 }
 
 @enum([

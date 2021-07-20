@@ -1,12 +1,12 @@
 namespace parallelcluster
 
 @readonly
-@http(method: "GET", uri: "/v3/clusters/{clusterName}/computefleet/status", code: 200)
+@http(method: "GET", uri: "/v3/clusters/{clusterName}/computefleet", code: 200)
 @tags(["Cluster ComputeFleet"])
-@documentation("Describe the status of the compute fleet")
-operation DescribeComputeFleetStatus {
-    input: DescribeComputeFleetStatusRequest,
-    output: DescribeComputeFleetStatusResponse,
+@documentation("Describe the status of the compute fleet.")
+operation DescribeComputeFleet {
+    input: DescribeComputeFleetRequest,
+    output: DescribeComputeFleetResponse,
     errors: [
         InternalServiceException,
         BadRequestException,
@@ -16,7 +16,7 @@ operation DescribeComputeFleetStatus {
     ]
 }
 
-structure DescribeComputeFleetStatusRequest {
+structure DescribeComputeFleetRequest {
     @httpLabel
     @required
     clusterName: ClusterName,
@@ -24,10 +24,10 @@ structure DescribeComputeFleetStatusRequest {
     region: Region,
 }
 
-structure DescribeComputeFleetStatusResponse {
+structure DescribeComputeFleetResponse {
     @required
     status: ComputeFleetStatus,
-    @documentation("Timestamp representing the last status update time")
+    @documentation("Timestamp representing the last status update time.")
     @timestampFormat("date-time")
     lastUpdatedTime: Timestamp,
 }

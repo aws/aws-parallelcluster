@@ -55,26 +55,29 @@ class ClusterOperationsApi(object):
 
         def __create_cluster(
             self,
+            cluster_name,
             create_cluster_request_content,
             **kwargs
         ):
             """create_cluster  # noqa: E501
 
-            Create a ParallelCluster managed cluster in a given region.  # noqa: E501
+            Create a ParallelCluster managed in a given region.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.create_cluster(create_cluster_request_content, async_req=True)
+            >>> thread = api.create_cluster(cluster_name, create_cluster_request_content, async_req=True)
             >>> result = thread.get()
 
             Args:
+                cluster_name (str): Name of the cluster that will be created.
                 create_cluster_request_content (CreateClusterRequestContent):
 
             Keyword Args:
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
-                validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. Defaults to 'ERROR'.. [optional]
-                dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the cluster configuration. Response code: 200. [optional]
-                rollback_on_failure (bool, none_type): When set it automatically initiates a cluster stack rollback on failures. Defaults to true.. [optional]
+                validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.). [optional]
+                dryrun (bool, none_type): Only perform request validation without creating any resource. May be used to validate the cluster configuration.. [optional]
+                rollback_on_failure (bool, none_type): When set it automatically initiates a cluster stack rollback on failures. (Defaults to true.). [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -119,6 +122,8 @@ class ClusterOperationsApi(object):
                 '_check_return_type', True
             )
             kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['cluster_name'] = \
+                cluster_name
             kwargs['create_cluster_request_content'] = \
                 create_cluster_request_content
             return self.call_with_http_info(**kwargs)
@@ -136,13 +141,16 @@ class ClusterOperationsApi(object):
             },
             params_map={
                 'all': [
+                    'cluster_name',
                     'create_cluster_request_content',
+                    'region',
                     'suppress_validators',
                     'validation_failure_level',
                     'dryrun',
                     'rollback_on_failure',
                 ],
                 'required': [
+                    'cluster_name',
                     'create_cluster_request_content',
                 ],
                 'nullable': [
@@ -152,11 +160,19 @@ class ClusterOperationsApi(object):
                 'enum': [
                 ],
                 'validation': [
+                    'cluster_name',
                     'suppress_validators',
                 ]
             },
             root_map={
                 'validations': {
+                    ('cluster_name',): {
+
+                        'min_length': 5,
+                        'regex': {
+                            'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
+                        },
+                    },
                     ('suppress_validators',): {
 
                     },
@@ -164,8 +180,12 @@ class ClusterOperationsApi(object):
                 'allowed_values': {
                 },
                 'openapi_types': {
+                    'cluster_name':
+                        (str,),
                     'create_cluster_request_content':
                         (CreateClusterRequestContent,),
+                    'region':
+                        (str,),
                     'suppress_validators':
                         ([str],),
                     'validation_failure_level':
@@ -176,13 +196,17 @@ class ClusterOperationsApi(object):
                         (bool, none_type,),
                 },
                 'attribute_map': {
+                    'cluster_name': 'clusterName',
+                    'region': 'region',
                     'suppress_validators': 'suppressValidators',
                     'validation_failure_level': 'validationFailureLevel',
                     'dryrun': 'dryrun',
                     'rollback_on_failure': 'rollbackOnFailure',
                 },
                 'location_map': {
+                    'cluster_name': 'query',
                     'create_cluster_request_content': 'body',
+                    'region': 'query',
                     'suppress_validators': 'query',
                     'validation_failure_level': 'query',
                     'dryrun': 'query',
@@ -222,7 +246,7 @@ class ClusterOperationsApi(object):
                 cluster_name (str): Name of the cluster
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -301,7 +325,7 @@ class ClusterOperationsApi(object):
             root_map={
                 'validations': {
                     ('cluster_name',): {
-                        'max_length': 60,
+
                         'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
@@ -355,7 +379,7 @@ class ClusterOperationsApi(object):
                 cluster_name (str): Name of the cluster
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -434,7 +458,7 @@ class ClusterOperationsApi(object):
             root_map={
                 'validations': {
                     ('cluster_name',): {
-                        'max_length': 60,
+
                         'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
@@ -476,7 +500,7 @@ class ClusterOperationsApi(object):
         ):
             """list_clusters  # noqa: E501
 
-            Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.  # noqa: E501
+            Retrieve the list of existing clusters. Deleted clusters are not shown by default.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
@@ -485,9 +509,9 @@ class ClusterOperationsApi(object):
 
 
             Keyword Args:
-                region (str): List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to.. [optional]
+                region (str): List clusters deployed to a given AWS Region.. [optional]
                 next_token (str): Token to use for paginated requests.. [optional]
-                cluster_status ([ClusterStatusFilteringOption]): Filter by cluster status.. [optional]
+                cluster_status ([ClusterStatusFilteringOption]): Filter by cluster status. (Defaults to all clusters.). [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -608,6 +632,7 @@ class ClusterOperationsApi(object):
         ):
             """update_cluster  # noqa: E501
 
+            Update a ParallelCluster managed in a given region.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
@@ -620,9 +645,9 @@ class ClusterOperationsApi(object):
 
             Keyword Args:
                 suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
-                validation_failure_level (ValidationLevel): Min validation level that will cause the update to fail. Defaults to 'error'.. [optional]
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
-                dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the cluster configuration and update requirements. Response code: 200. [optional]
+                validation_failure_level (ValidationLevel): Min validation level that will cause the update to fail. (Defaults to 'ERROR'.). [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
+                dryrun (bool, none_type): Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements.. [optional]
                 force_update (bool, none_type): Force update by ignoring the update validation errors.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
@@ -713,7 +738,7 @@ class ClusterOperationsApi(object):
             root_map={
                 'validations': {
                     ('cluster_name',): {
-                        'max_length': 60,
+
                         'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501

@@ -62,7 +62,6 @@ class ClusterInfoSummary(ModelNormal):
 
     validations = {
         ('cluster_name',): {
-            'max_length': 60,
             'min_length': 5,
             'regex': {
                 'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
@@ -124,11 +123,11 @@ class ClusterInfoSummary(ModelNormal):
         """ClusterInfoSummary - a model defined in OpenAPI
 
         Args:
-            cluster_name (str): Name of the cluster
+            cluster_name (str): Name of the cluster.
             cloudformation_stack_status (CloudFormationStatus):
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack
-            region (str): AWS region where the cluster is created
-            version (str): ParallelCluster version used to create the cluster
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
+            region (str): AWS region where the cluster is created.
+            version (str): ParallelCluster version used to create the cluster.
             cluster_status (ClusterStatus):
 
         Keyword Args:

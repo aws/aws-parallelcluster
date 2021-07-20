@@ -1,13 +1,13 @@
 namespace parallelcluster
 
-@documentation("This exception is thrown on an unhandled service error")
+@documentation("This exception is thrown on an unhandled service error.")
 @error("server")
 @httpError(500)
 structure InternalServiceException {
     message: String
 }
 
-@documentation("This exception is thrown when a client calls an API with wrong parameters")
+@documentation("This exception is thrown when a client calls an API with wrong parameters.")
 @error("client")
 @httpError(400)
 structure BadRequestException {
@@ -51,28 +51,28 @@ structure UpdateError {
     message: String,
 }
 
-@documentation("This exception is thrown when the client is not authorized to perform an action")
+@documentation("This exception is thrown when the client is not authorized to perform an action.")
 @error("client")
 @httpError(401)
 structure UnauthorizedClientError {
     message: String
 }
 
-@documentation("This exception is thrown when the requested entity is not found")
+@documentation("This exception is thrown when the requested entity is not found.")
 @error("client")
 @httpError(404)
 structure NotFoundException {
     message: String
 }
 
-@documentation("This exception is thrown when a client request to create/modify content would result in a conflict")
+@documentation("This exception is thrown when a client request to create/modify content would result in a conflict.")
 @error("client")
 @httpError(409)
 structure ConflictException {
     message: String
 }
 
-@documentation("The client is sending more than the allowed number of requests per unit of time.")
+@documentation("The client is sending more than the allowed number of requests per unit of time..")
 @error("client")
 @httpError(429)
 structure LimitExceededException {

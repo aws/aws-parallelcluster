@@ -4,7 +4,7 @@ namespace parallelcluster
 @readonly
 @http(method: "GET", uri: "/v3/clusters", code: 200)
 @tags(["Cluster Operations"])
-@documentation("Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.")
+@documentation("Retrieve the list of existing clusters. Deleted clusters are not shown by default.")
 operation ListClusters {
     input: ListClustersRequest,
     output: ListClustersResponse,
@@ -18,12 +18,12 @@ operation ListClusters {
 
 structure ListClustersRequest {
     @httpQuery("region")
-    @documentation("List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to.")
+    @documentation("List clusters deployed to a given AWS Region.")
     region: Region,
     @httpQuery("nextToken")
     nextToken: PaginationToken,
     @httpQuery("clusterStatus")
-    @documentation("Filter by cluster status.")
+    @documentation("Filter by cluster status. (Defaults to all clusters.)")
     clusterStatus: ClusterStatusFilteringOptions,
 }
 

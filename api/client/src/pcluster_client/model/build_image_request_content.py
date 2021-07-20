@@ -55,13 +55,6 @@ class BuildImageRequestContent(ModelNormal):
     }
 
     validations = {
-        ('id',): {
-            'max_length': 60,
-            'min_length': 5,
-            'regex': {
-                'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
-            },
-        },
     }
 
     additional_properties_type = None
@@ -80,8 +73,6 @@ class BuildImageRequestContent(ModelNormal):
         """
         return {
             'image_configuration': (str,),  # noqa: E501
-            'id': (str,),  # noqa: E501
-            'region': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -91,8 +82,6 @@ class BuildImageRequestContent(ModelNormal):
 
     attribute_map = {
         'image_configuration': 'imageConfiguration',  # noqa: E501
-        'id': 'id',  # noqa: E501
-        'region': 'region',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -107,12 +96,11 @@ class BuildImageRequestContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, image_configuration, id, *args, **kwargs):  # noqa: E501
+    def __init__(self, image_configuration, *args, **kwargs):  # noqa: E501
         """BuildImageRequestContent - a model defined in OpenAPI
 
         Args:
             image_configuration (str): Image configuration as a YAML document
-            id (str): Id of the image
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -145,7 +133,6 @@ class BuildImageRequestContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -172,7 +159,6 @@ class BuildImageRequestContent(ModelNormal):
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
         self.image_configuration = image_configuration
-        self.id = id
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

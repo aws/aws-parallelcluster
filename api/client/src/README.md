@@ -51,12 +51,13 @@ import pcluster_client
 from pprint import pprint
 from pcluster_client.api import cluster_compute_fleet_api
 from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster_client.model.describe_compute_fleet_status_response_content import DescribeComputeFleetStatusResponseContent
+from pcluster_client.model.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent
 from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
 from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
-from pcluster_client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
+from pcluster_client.model.update_compute_fleet_request_content import UpdateComputeFleetRequestContent
+from pcluster_client.model.update_compute_fleet_response_content import UpdateComputeFleetResponseContent
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
 configuration = pcluster_client.Configuration(
@@ -80,13 +81,13 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
-region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
+region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     try:
-        api_response = api_instance.describe_compute_fleet_status(cluster_name, region=region)
+        api_response = api_instance.describe_compute_fleet(cluster_name, region=region)
         pprint(api_response)
     except pcluster_client.ApiException as e:
-        print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet_status: %s\n" % e)
+        print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet: %s\n" % e)
 ```
 
 ## Documentation for API Endpoints
@@ -95,8 +96,8 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
-*ClusterComputeFleetApi* | [**describe_compute_fleet_status**](docs/ClusterComputeFleetApi.md#describe_compute_fleet_status) | **GET** /v3/clusters/{clusterName}/computefleet/status | 
-*ClusterComputeFleetApi* | [**update_compute_fleet_status**](docs/ClusterComputeFleetApi.md#update_compute_fleet_status) | **PATCH** /v3/clusters/{clusterName}/computefleet/status | 
+*ClusterComputeFleetApi* | [**describe_compute_fleet**](docs/ClusterComputeFleetApi.md#describe_compute_fleet) | **GET** /v3/clusters/{clusterName}/computefleet | 
+*ClusterComputeFleetApi* | [**update_compute_fleet**](docs/ClusterComputeFleetApi.md#update_compute_fleet) | **PATCH** /v3/clusters/{clusterName}/computefleet | 
 *ClusterInstancesApi* | [**delete_cluster_instances**](docs/ClusterInstancesApi.md#delete_cluster_instances) | **DELETE** /v3/clusters/{clusterName}/instances | 
 *ClusterInstancesApi* | [**describe_cluster_instances**](docs/ClusterInstancesApi.md#describe_cluster_instances) | **GET** /v3/clusters/{clusterName}/instances | 
 *ClusterOperationsApi* | [**create_cluster**](docs/ClusterOperationsApi.md#create_cluster) | **POST** /v3/clusters | 
@@ -135,7 +136,7 @@ Class | Method | HTTP request | Description
  - [DeleteImageResponseContent](docs/DeleteImageResponseContent.md)
  - [DescribeClusterInstancesResponseContent](docs/DescribeClusterInstancesResponseContent.md)
  - [DescribeClusterResponseContent](docs/DescribeClusterResponseContent.md)
- - [DescribeComputeFleetStatusResponseContent](docs/DescribeComputeFleetStatusResponseContent.md)
+ - [DescribeComputeFleetResponseContent](docs/DescribeComputeFleetResponseContent.md)
  - [DescribeImageResponseContent](docs/DescribeImageResponseContent.md)
  - [DescribeOfficialImagesResponseContent](docs/DescribeOfficialImagesResponseContent.md)
  - [DryrunOperationExceptionResponseContent](docs/DryrunOperationExceptionResponseContent.md)
@@ -160,7 +161,8 @@ Class | Method | HTTP request | Description
  - [UpdateClusterBadRequestExceptionResponseContent](docs/UpdateClusterBadRequestExceptionResponseContent.md)
  - [UpdateClusterRequestContent](docs/UpdateClusterRequestContent.md)
  - [UpdateClusterResponseContent](docs/UpdateClusterResponseContent.md)
- - [UpdateComputeFleetStatusRequestContent](docs/UpdateComputeFleetStatusRequestContent.md)
+ - [UpdateComputeFleetRequestContent](docs/UpdateComputeFleetRequestContent.md)
+ - [UpdateComputeFleetResponseContent](docs/UpdateComputeFleetResponseContent.md)
  - [UpdateError](docs/UpdateError.md)
  - [ValidationLevel](docs/ValidationLevel.md)
 

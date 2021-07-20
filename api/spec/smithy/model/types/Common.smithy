@@ -1,6 +1,6 @@
 namespace parallelcluster
 
-@documentation("AWS Region. Defaults to the region the API is deployed to.")
+@documentation("AWS Region that the operation corresponds to.")
 string Region
 
 string Version
@@ -20,9 +20,9 @@ structure Tag {
 }
 
 structure ConfigValidationMessage {
-    @documentation("Id of the validator")
+    @documentation("Id of the validator.")
     id: String,
-    @documentation("Type of the validator")
+    @documentation("Type of the validator.")
     type: String,
     @documentation("Validation level")
     level: ValidationLevel,

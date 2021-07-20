@@ -136,10 +136,10 @@ class DescribeImageResponseContent(ModelNormal):
 
         Args:
             image_configuration (ImageConfigurationStructure):
-            image_id (str): Id of the Image
+            image_id (str): Id of the Image to retrieve detailed information for.
             image_build_status (ImageBuildStatus):
-            region (str): AWS region where the image is created
-            version (str): ParallelCluster version used to build the image
+            region (str): AWS region where the image is created.
+            version (str): ParallelCluster version used to build the image.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -172,12 +172,12 @@ class DescribeImageResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            cloudformation_stack_status_reason (str): Reason for the CloudFormation stack status. [optional]  # noqa: E501
+            cloudformation_stack_status_reason (str): Reason for the CloudFormation stack status.. [optional]  # noqa: E501
             imagebuilder_image_status_reason (str): Reason for the ImageBuilder Image status.. [optional]  # noqa: E501
             imagebuilder_image_status (ImageBuilderImageStatus): [optional]  # noqa: E501
-            creation_time (datetime): Timestamp representing the image creation time. [optional]  # noqa: E501
+            creation_time (datetime): Timestamp representing the image creation time.. [optional]  # noqa: E501
             cloudformation_stack_status (CloudFormationStatus): [optional]  # noqa: E501
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack. [optional]  # noqa: E501
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
             ec2_ami_info (Ec2AmiInfo): [optional]  # noqa: E501
         """
 

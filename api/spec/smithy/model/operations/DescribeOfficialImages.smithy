@@ -19,10 +19,10 @@ structure DescribeOfficialImagesRequest {
     @httpQuery("region")
     region: Region,
     @httpQuery("os")
-    @documentation("Filter by OS distribution")
+    @documentation("Filter by OS distribution (Default is to not filter.)")
     os: String,
     @httpQuery("architecture")
-    @documentation("Filter by architecture")
+    @documentation("Filter by architecture (Default is to not filter.)")
     architecture: String,
 }
 
