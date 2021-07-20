@@ -1,0 +1,16 @@
+usage: pcluster delete-cluster-instances [-h] --cluster-name CLUSTER_NAME
+                                         [--region REGION] [--force FORCE]
+                                         [--debug]
+
+Initiate the forced termination of all cluster compute nodes. Does not work
+with AWS Batch clusters
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --cluster-name CLUSTER_NAME
+                        Name of the cluster
+  --region REGION       AWS Region. Defaults to the region the API is deployed
+                        to.
+  --force FORCE         Force the deletion also when the cluster id is not
+                        found.
+  --debug               Turn on debug logging.

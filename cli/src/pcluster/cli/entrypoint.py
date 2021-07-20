@@ -37,26 +37,11 @@ import pcluster.cli.logger as pcluster_logging
 import pcluster.cli.model
 from pcluster.api import encoder
 from pcluster.cli.commands.common import CliCommand
+from pcluster.cli.exceptions import APIOperationException, ParameterException
 from pcluster.cli.middleware import add_additional_args, middleware_hooks
 from pcluster.utils import camelcase, to_snake_case
 
 LOGGER = logging.getLogger(__name__)
-
-
-class APIOperationException(Exception):
-    """Thrown while calling API operations."""
-
-    def __init__(self, data):
-        super().__init__()
-        self.data = data
-
-
-class ParameterException(Exception):
-    """Thrown for invalid parameters."""
-
-    def __init__(self, data):
-        super().__init__()
-        self.data = data
 
 
 def _exit_msg(msg):
@@ -186,7 +171,7 @@ def gen_parser(model):
             else:
                 type_coerce = None
 
-            # add teh parameter to the parser based on type from model / specification
+            # add the parameter to the parser based on type from model / specification
             subparser.add_argument(
                 f"--{param['name']}",
                 required=param.get("required", False),
@@ -245,13 +230,15 @@ def run(sys_args, model=None):
     LOGGER.debug("Handling CLI command %s", args.operation)  # ToDo: change the level to info after finishing API.
     LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
 
-    # TODO: remove when ready to switch over to spec-based implementations
-    v2_implemented = {"list-images", "build-image", "delete-image", "describe-image", "list-clusters"}
-    if args.operation in model and args.operation not in v2_implemented:
+    if args.operation in model:
         # TODO: remove once all commands are converted
-        logging.getLogger("pcluster").removeHandler(logging.getLogger("pcluster").handlers[1])
+        logging_handlers = logging.getLogger("pcluster").handlers
+        if len(logging_handlers) > 1:
+            logging.getLogger("pcluster").removeHandler(logging_handlers[1])
         try:
             return args.func(args)
+        except APIOperationException as e:
+            raise e
         except Exception as e:
             # format exception messages in the same manner as the api
             message = pcluster.api.errors.exception_message(e)

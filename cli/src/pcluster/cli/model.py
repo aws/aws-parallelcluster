@@ -17,6 +17,7 @@ import yaml
 from connexion.utils import get_function_from_name
 
 from pcluster.api import encoder, openapi
+from pcluster.cli.exceptions import APIOperationException
 from pcluster.utils import to_kebab_case, to_snake_case
 
 # For importing package resources
@@ -147,5 +148,9 @@ def call(func_str, *args, **kwargs):
     """
     func = get_function_from_name(func_str)
     ret = func(*args, **kwargs)
-    ret = ret[0] if isinstance(ret, tuple) else ret
+    if isinstance(ret, tuple):
+        ret, status_code = ret
+        if status_code >= 400:
+            data = json.loads(encoder.JSONEncoder().encode(ret))
+            raise APIOperationException(data)
     return json.loads(encoder.JSONEncoder().encode(ret))

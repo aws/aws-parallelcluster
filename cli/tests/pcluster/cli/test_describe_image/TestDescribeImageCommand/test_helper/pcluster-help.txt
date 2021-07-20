@@ -1,0 +1,11 @@
+usage: pcluster describe-image [-h] --image-id IMAGE_ID [--region REGION]
+                               [--debug]
+
+Get detailed information about an existing image.
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --image-id IMAGE_ID  Id of the image
+  --region REGION      AWS Region. Defaults to the region the API is deployed
+                       to.
+  --debug              Turn on debug logging.

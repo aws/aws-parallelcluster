@@ -1,0 +1,30 @@
+usage: pcluster build-image [-h]
+                            [--suppress-validators SUPPRESS_VALIDATORS [SUPPRESS_VALIDATORS ...]]
+                            [--validation-failure-level {INFO,WARNING,ERROR}]
+                            [--dryrun DRYRUN]
+                            [--rollback-on-failure ROLLBACK_ON_FAILURE]
+                            --image-configuration IMAGE_CONFIGURATION --id ID
+                            [--region REGION] [--debug]
+
+Create a custom ParallelCluster image in a given region.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --suppress-validators SUPPRESS_VALIDATORS [SUPPRESS_VALIDATORS ...]
+                        Identifies one or more config validators to suppress.
+                        Format: (ALL|type:[A-Za-z0-9]+)
+  --validation-failure-level {INFO,WARNING,ERROR}
+                        Min validation level that will cause the creation to
+                        fail. Defaults to 'error'.
+  --dryrun DRYRUN       Only perform request validation without creating any
+                        resource. It can be used to validate the image
+                        configuration. Response code: 200
+  --rollback-on-failure ROLLBACK_ON_FAILURE
+                        When set it automatically initiates an image stack
+                        rollback on failures. Defaults to true.
+  --image-configuration IMAGE_CONFIGURATION
+                        Image configuration as a YAML document
+  --id ID               Id of the image
+  --region REGION       AWS Region. Defaults to the region the API is deployed
+                        to.
+  --debug               Turn on debug logging.
