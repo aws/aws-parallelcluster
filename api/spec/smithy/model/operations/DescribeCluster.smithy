@@ -36,7 +36,7 @@ structure DescribeClusterResponse {
     version: Version,
     @required
     @documentation("Status of the cluster. Corresponds to the CloudFormation stack status.")
-    cloudFormationStatus: CloudFormationStatus,
+    cloudFormationStackStatus: CloudFormationStackStatus,
     @required
     @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,

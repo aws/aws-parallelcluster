@@ -55,6 +55,11 @@ class CreateClusterRequestContent(ModelNormal):
     }
 
     validations = {
+        ('cluster_name',): {
+            'regex': {
+                'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
+            },
+        },
     }
 
     additional_properties_type = None
@@ -72,6 +77,7 @@ class CreateClusterRequestContent(ModelNormal):
                 and the value is attribute type.
         """
         return {
+            'cluster_name': (str,),  # noqa: E501
             'cluster_configuration': (str,),  # noqa: E501
         }
 
@@ -81,6 +87,7 @@ class CreateClusterRequestContent(ModelNormal):
 
 
     attribute_map = {
+        'cluster_name': 'clusterName',  # noqa: E501
         'cluster_configuration': 'clusterConfiguration',  # noqa: E501
     }
 
@@ -96,10 +103,11 @@ class CreateClusterRequestContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, cluster_configuration, *args, **kwargs):  # noqa: E501
+    def __init__(self, cluster_name, cluster_configuration, *args, **kwargs):  # noqa: E501
         """CreateClusterRequestContent - a model defined in OpenAPI
 
         Args:
+            cluster_name (str): Name of the cluster that will be created.
             cluster_configuration (str): Cluster configuration as a YAML document
 
         Keyword Args:
@@ -158,6 +166,7 @@ class CreateClusterRequestContent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
+        self.cluster_name = cluster_name
         self.cluster_configuration = cluster_configuration
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \

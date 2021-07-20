@@ -1,7 +1,6 @@
 namespace parallelcluster
 
 @pattern("^[a-zA-Z][a-zA-Z0-9-]+$")
-@length(min: 5)
 @documentation("Name of the cluster")
 string ClusterName
 
@@ -27,7 +26,7 @@ structure ClusterInfoSummary {
     cloudformationStackArn: String,
     @required
     @documentation("Status of the CloudFormation stack provisioning the cluster infrastructure.")
-    cloudformationStackStatus: CloudFormationStatus,
+    cloudformationStackStatus: CloudFormationStackStatus,
     @required
     @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,
@@ -60,8 +59,8 @@ string ClusterStatus
 string ComputeFleetStatus
 
 structure ClusterConfigurationStructure {
-    @documentation("S3 URL of the cluster configuration file.")
-    s3Url: String,
+    @documentation("URL of the cluster configuration file.")
+    url: String,
 }
 
 @documentation("Cluster configuration as a YAML document")

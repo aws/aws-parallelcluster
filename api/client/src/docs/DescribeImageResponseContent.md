@@ -13,7 +13,7 @@ Name | Type | Description | Notes
 **imagebuilder_image_status_reason** | **str** | Reason for the ImageBuilder Image status. | [optional] 
 **imagebuilder_image_status** | [**ImageBuilderImageStatus**](ImageBuilderImageStatus.md) |  | [optional] 
 **creation_time** | **datetime** | Timestamp representing the image creation time. | [optional] 
-**cloudformation_stack_status** | [**CloudFormationStatus**](CloudFormationStatus.md) |  | [optional] 
+**cloudformation_stack_status** | [**CloudFormationStackStatus**](CloudFormationStackStatus.md) |  | [optional] 
 **cloudformation_stack_arn** | **str** | ARN of the main CloudFormation stack. | [optional] 
 **ec2_ami_info** | [**Ec2AmiInfo**](Ec2AmiInfo.md) |  | [optional] 
 

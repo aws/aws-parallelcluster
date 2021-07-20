@@ -27,13 +27,13 @@ from pcluster_client.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
-    from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+    from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
     from pcluster_client.model.cluster_configuration_structure import ClusterConfigurationStructure
     from pcluster_client.model.cluster_status import ClusterStatus
     from pcluster_client.model.compute_fleet_status import ComputeFleetStatus
     from pcluster_client.model.ec2_instance import EC2Instance
     from pcluster_client.model.tag import Tag
-    globals()['CloudFormationStatus'] = CloudFormationStatus
+    globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
     globals()['ClusterConfigurationStructure'] = ClusterConfigurationStructure
     globals()['ClusterStatus'] = ClusterStatus
     globals()['ComputeFleetStatus'] = ComputeFleetStatus
@@ -70,7 +70,6 @@ class DescribeClusterResponseContent(ModelNormal):
 
     validations = {
         ('cluster_name',): {
-            'min_length': 5,
             'regex': {
                 'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
             },
@@ -97,7 +96,7 @@ class DescribeClusterResponseContent(ModelNormal):
             'version': (str,),  # noqa: E501
             'cluster_configuration': (ClusterConfigurationStructure,),  # noqa: E501
             'tags': ([Tag],),  # noqa: E501
-            'cloud_formation_status': (CloudFormationStatus,),  # noqa: E501
+            'cloud_formation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cluster_name': (str,),  # noqa: E501
             'compute_fleet_status': (ComputeFleetStatus,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
@@ -118,7 +117,7 @@ class DescribeClusterResponseContent(ModelNormal):
         'version': 'version',  # noqa: E501
         'cluster_configuration': 'clusterConfiguration',  # noqa: E501
         'tags': 'tags',  # noqa: E501
-        'cloud_formation_status': 'cloudFormationStatus',  # noqa: E501
+        'cloud_formation_stack_status': 'cloudFormationStackStatus',  # noqa: E501
         'cluster_name': 'clusterName',  # noqa: E501
         'compute_fleet_status': 'computeFleetStatus',  # noqa: E501
         'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
@@ -141,7 +140,7 @@ class DescribeClusterResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, creation_time, version, cluster_configuration, tags, cloud_formation_status, cluster_name, compute_fleet_status, cloudformation_stack_arn, last_updated_time, region, cluster_status, *args, **kwargs):  # noqa: E501
+    def __init__(self, creation_time, version, cluster_configuration, tags, cloud_formation_stack_status, cluster_name, compute_fleet_status, cloudformation_stack_arn, last_updated_time, region, cluster_status, *args, **kwargs):  # noqa: E501
         """DescribeClusterResponseContent - a model defined in OpenAPI
 
         Args:
@@ -149,7 +148,7 @@ class DescribeClusterResponseContent(ModelNormal):
             version (str): ParallelCluster version used to create the cluster.
             cluster_configuration (ClusterConfigurationStructure):
             tags ([Tag]): Tags associated with the cluster.
-            cloud_formation_status (CloudFormationStatus):
+            cloud_formation_stack_status (CloudFormationStackStatus):
             cluster_name (str): Name of the cluster.
             compute_fleet_status (ComputeFleetStatus):
             cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
@@ -219,7 +218,7 @@ class DescribeClusterResponseContent(ModelNormal):
         self.version = version
         self.cluster_configuration = cluster_configuration
         self.tags = tags
-        self.cloud_formation_status = cloud_formation_status
+        self.cloud_formation_stack_status = cloud_formation_stack_status
         self.cluster_name = cluster_name
         self.compute_fleet_status = compute_fleet_status
         self.cloudformation_stack_arn = cloudformation_stack_arn

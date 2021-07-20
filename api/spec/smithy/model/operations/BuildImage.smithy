@@ -36,7 +36,6 @@ structure BuildImageRequest {
     @required
     imageConfiguration: ImageConfigurationData,
 
-    @httpQuery("imageId")
     @required
     @documentation("Id of the Image that will be built.")
     imageId: ImageId,

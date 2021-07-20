@@ -12,11 +12,11 @@ Method | HTTP request | Description
 
 
 # **create_cluster**
-> CreateClusterResponseContent create_cluster(cluster_name, create_cluster_request_content)
+> CreateClusterResponseContent create_cluster(create_cluster_request_content)
 
 
 
-Create a ParallelCluster managed in a given region.
+Create a managed cluster in a given region.
 
 ### Example
 
@@ -56,8 +56,8 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster that will be created.
     create_cluster_request_content = CreateClusterRequestContent(
+        cluster_name="AqWzy",
         cluster_configuration="cluster_configuration_example",
     ) # CreateClusterRequestContent | 
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
@@ -70,7 +70,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
     # example passing only required values which don't have defaults set
     try:
-        api_response = api_instance.create_cluster(cluster_name, create_cluster_request_content)
+        api_response = api_instance.create_cluster(create_cluster_request_content)
         pprint(api_response)
     except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->create_cluster: %s\n" % e)
@@ -78,7 +78,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_response = api_instance.create_cluster(cluster_name, create_cluster_request_content, region=region, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
+        api_response = api_instance.create_cluster(create_cluster_request_content, region=region, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
         pprint(api_response)
     except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->create_cluster: %s\n" % e)
@@ -89,7 +89,6 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **cluster_name** | **str**| Name of the cluster that will be created. |
  **create_cluster_request_content** | [**CreateClusterRequestContent**](CreateClusterRequestContent.md)|  |
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
@@ -319,7 +318,7 @@ Name | Type | Description  | Notes
 
 
 
-Retrieve the list of existing clusters. Deleted clusters are not shown by default.
+Retrieve the list of existing clusters.
 
 ### Example
 
@@ -410,7 +409,7 @@ Name | Type | Description  | Notes
 
 
 
-Update a ParallelCluster managed in a given region.
+Update a cluster managed in a given region.
 
 ### Example
 

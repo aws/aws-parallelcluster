@@ -5,7 +5,7 @@ namespace parallelcluster
 @readonly
 @http(method: "GET", uri: "/v3/images/custom", code: 200)
 @tags(["Image Operations"])
-@documentation("Retrieve the list of existing custom images. Deleted images are not shown by default.")
+@documentation("Retrieve the list of existing custom images.")
 operation ListImages {
     input: ListImagesRequest,
     output: ListImagesResponse,
@@ -19,7 +19,7 @@ operation ListImages {
 
 structure ListImagesRequest {
     @httpQuery("region")
-    @documentation("List Images built in a given AWS Region.")
+    @documentation("List images built in a given AWS Region.")
     region: Region,
     @httpQuery("nextToken")
     nextToken: PaginationToken,

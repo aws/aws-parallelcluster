@@ -120,7 +120,7 @@ Class | Method | HTTP request | Description
  - [BuildImageRequestContent](docs/BuildImageRequestContent.md)
  - [BuildImageResponseContent](docs/BuildImageResponseContent.md)
  - [Change](docs/Change.md)
- - [CloudFormationStatus](docs/CloudFormationStatus.md)
+ - [CloudFormationStackStatus](docs/CloudFormationStackStatus.md)
  - [ClusterConfigurationStructure](docs/ClusterConfigurationStructure.md)
  - [ClusterInfoSummary](docs/ClusterInfoSummary.md)
  - [ClusterInstance](docs/ClusterInstance.md)

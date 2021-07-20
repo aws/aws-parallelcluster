@@ -72,7 +72,7 @@ structure ConflictException {
     message: String
 }
 
-@documentation("The client is sending more than the allowed number of requests per unit of time..")
+@documentation("The client is sending more than the allowed number of requests per unit of time.")
 @error("client")
 @httpError(429)
 structure LimitExceededException {

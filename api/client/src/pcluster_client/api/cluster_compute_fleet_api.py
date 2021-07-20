@@ -141,7 +141,6 @@ class ClusterComputeFleetApi(object):
                 'validations': {
                     ('cluster_name',): {
 
-                        'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -280,7 +279,6 @@ class ClusterComputeFleetApi(object):
                 'validations': {
                     ('cluster_name',): {
 
-                        'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },

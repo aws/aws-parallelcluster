@@ -3,7 +3,7 @@ namespace parallelcluster
 @http(method: "PUT", uri: "/v3/clusters/{clusterName}", code: 202)
 @tags(["Cluster Operations"])
 @idempotent
-@documentation("Update a ParallelCluster managed in a given region.")
+@documentation("Update a cluster managed in a given region.")
 operation UpdateCluster {
     input: UpdateClusterRequest,
     output: UpdateClusterResponse,

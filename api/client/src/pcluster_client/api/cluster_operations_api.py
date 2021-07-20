@@ -55,21 +55,19 @@ class ClusterOperationsApi(object):
 
         def __create_cluster(
             self,
-            cluster_name,
             create_cluster_request_content,
             **kwargs
         ):
             """create_cluster  # noqa: E501
 
-            Create a ParallelCluster managed in a given region.  # noqa: E501
+            Create a managed cluster in a given region.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.create_cluster(cluster_name, create_cluster_request_content, async_req=True)
+            >>> thread = api.create_cluster(create_cluster_request_content, async_req=True)
             >>> result = thread.get()
 
             Args:
-                cluster_name (str): Name of the cluster that will be created.
                 create_cluster_request_content (CreateClusterRequestContent):
 
             Keyword Args:
@@ -122,8 +120,6 @@ class ClusterOperationsApi(object):
                 '_check_return_type', True
             )
             kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['cluster_name'] = \
-                cluster_name
             kwargs['create_cluster_request_content'] = \
                 create_cluster_request_content
             return self.call_with_http_info(**kwargs)
@@ -141,7 +137,6 @@ class ClusterOperationsApi(object):
             },
             params_map={
                 'all': [
-                    'cluster_name',
                     'create_cluster_request_content',
                     'region',
                     'suppress_validators',
@@ -150,7 +145,6 @@ class ClusterOperationsApi(object):
                     'rollback_on_failure',
                 ],
                 'required': [
-                    'cluster_name',
                     'create_cluster_request_content',
                 ],
                 'nullable': [
@@ -160,19 +154,11 @@ class ClusterOperationsApi(object):
                 'enum': [
                 ],
                 'validation': [
-                    'cluster_name',
                     'suppress_validators',
                 ]
             },
             root_map={
                 'validations': {
-                    ('cluster_name',): {
-
-                        'min_length': 5,
-                        'regex': {
-                            'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
-                        },
-                    },
                     ('suppress_validators',): {
 
                     },
@@ -180,8 +166,6 @@ class ClusterOperationsApi(object):
                 'allowed_values': {
                 },
                 'openapi_types': {
-                    'cluster_name':
-                        (str,),
                     'create_cluster_request_content':
                         (CreateClusterRequestContent,),
                     'region':
@@ -196,7 +180,6 @@ class ClusterOperationsApi(object):
                         (bool, none_type,),
                 },
                 'attribute_map': {
-                    'cluster_name': 'clusterName',
                     'region': 'region',
                     'suppress_validators': 'suppressValidators',
                     'validation_failure_level': 'validationFailureLevel',
@@ -204,7 +187,6 @@ class ClusterOperationsApi(object):
                     'rollback_on_failure': 'rollbackOnFailure',
                 },
                 'location_map': {
-                    'cluster_name': 'query',
                     'create_cluster_request_content': 'body',
                     'region': 'query',
                     'suppress_validators': 'query',
@@ -326,7 +308,6 @@ class ClusterOperationsApi(object):
                 'validations': {
                     ('cluster_name',): {
 
-                        'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -459,7 +440,6 @@ class ClusterOperationsApi(object):
                 'validations': {
                     ('cluster_name',): {
 
-                        'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -500,7 +480,7 @@ class ClusterOperationsApi(object):
         ):
             """list_clusters  # noqa: E501
 
-            Retrieve the list of existing clusters. Deleted clusters are not shown by default.  # noqa: E501
+            Retrieve the list of existing clusters.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
@@ -632,7 +612,7 @@ class ClusterOperationsApi(object):
         ):
             """update_cluster  # noqa: E501
 
-            Update a ParallelCluster managed in a given region.  # noqa: E501
+            Update a cluster managed in a given region.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
@@ -739,7 +719,6 @@ class ClusterOperationsApi(object):
                 'validations': {
                     ('cluster_name',): {
 
-                        'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },

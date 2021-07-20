@@ -53,7 +53,6 @@ class ImageOperationsApi(object):
 
         def __build_image(
             self,
-            image_id,
             build_image_request_content,
             **kwargs
         ):
@@ -63,11 +62,10 @@ class ImageOperationsApi(object):
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.build_image(image_id, build_image_request_content, async_req=True)
+            >>> thread = api.build_image(build_image_request_content, async_req=True)
             >>> result = thread.get()
 
             Args:
-                image_id (str): Id of the Image that will be built.
                 build_image_request_content (BuildImageRequestContent):
 
             Keyword Args:
@@ -120,8 +118,6 @@ class ImageOperationsApi(object):
                 '_check_return_type', True
             )
             kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['image_id'] = \
-                image_id
             kwargs['build_image_request_content'] = \
                 build_image_request_content
             return self.call_with_http_info(**kwargs)
@@ -139,7 +135,6 @@ class ImageOperationsApi(object):
             },
             params_map={
                 'all': [
-                    'image_id',
                     'build_image_request_content',
                     'suppress_validators',
                     'validation_failure_level',
@@ -148,7 +143,6 @@ class ImageOperationsApi(object):
                     'region',
                 ],
                 'required': [
-                    'image_id',
                     'build_image_request_content',
                 ],
                 'nullable': [
@@ -158,19 +152,11 @@ class ImageOperationsApi(object):
                 'enum': [
                 ],
                 'validation': [
-                    'image_id',
                     'suppress_validators',
                 ]
             },
             root_map={
                 'validations': {
-                    ('image_id',): {
-
-                        'min_length': 5,
-                        'regex': {
-                            'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
-                        },
-                    },
                     ('suppress_validators',): {
 
                     },
@@ -178,8 +164,6 @@ class ImageOperationsApi(object):
                 'allowed_values': {
                 },
                 'openapi_types': {
-                    'image_id':
-                        (str,),
                     'build_image_request_content':
                         (BuildImageRequestContent,),
                     'suppress_validators':
@@ -194,7 +178,6 @@ class ImageOperationsApi(object):
                         (str,),
                 },
                 'attribute_map': {
-                    'image_id': 'imageId',
                     'suppress_validators': 'suppressValidators',
                     'validation_failure_level': 'validationFailureLevel',
                     'dryrun': 'dryrun',
@@ -202,7 +185,6 @@ class ImageOperationsApi(object):
                     'region': 'region',
                 },
                 'location_map': {
-                    'image_id': 'query',
                     'build_image_request_content': 'body',
                     'suppress_validators': 'query',
                     'validation_failure_level': 'query',
@@ -327,7 +309,6 @@ class ImageOperationsApi(object):
                 'validations': {
                     ('image_id',): {
 
-                        'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -464,7 +445,6 @@ class ImageOperationsApi(object):
                 'validations': {
                     ('image_id',): {
 
-                        'min_length': 5,
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -631,7 +611,7 @@ class ImageOperationsApi(object):
         ):
             """list_images  # noqa: E501
 
-            Retrieve the list of existing custom images. Deleted images are not shown by default.  # noqa: E501
+            Retrieve the list of existing custom images.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
@@ -642,7 +622,7 @@ class ImageOperationsApi(object):
                 image_status (ImageStatusFilteringOption): Filter images by the status provided.
 
             Keyword Args:
-                region (str): List Images built in a given AWS Region.. [optional]
+                region (str): List images built in a given AWS Region.. [optional]
                 next_token (str): Token to use for paginated requests.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.

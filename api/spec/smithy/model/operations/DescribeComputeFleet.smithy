@@ -29,5 +29,5 @@ structure DescribeComputeFleetResponse {
     status: ComputeFleetStatus,
     @documentation("Timestamp representing the last status update time.")
     @timestampFormat("date-time")
-    lastUpdatedTime: Timestamp,
+    lastStatusUpdatedTime: Timestamp,
 }

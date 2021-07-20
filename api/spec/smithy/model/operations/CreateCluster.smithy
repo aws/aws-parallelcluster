@@ -2,7 +2,7 @@ namespace parallelcluster
 
 @http(method: "POST", uri: "/v3/clusters", code: 202)
 @tags(["Cluster Operations"])
-@documentation("Create a ParallelCluster managed in a given region.")
+@documentation("Create a managed cluster in a given region.")
 @idempotent
 operation CreateCluster {
     input: CreateClusterRequest,
@@ -33,7 +33,6 @@ structure CreateClusterRequest {
     @documentation("When set it automatically initiates a cluster stack rollback on failures. (Defaults to true.)")
     rollbackOnFailure: Boolean,
 
-    @httpQuery("clusterName")
     @required
     @documentation("Name of the cluster that will be created.")
     clusterName: ClusterName,

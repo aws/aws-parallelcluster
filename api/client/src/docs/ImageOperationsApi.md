@@ -12,7 +12,7 @@ Method | HTTP request | Description
 
 
 # **build_image**
-> BuildImageResponseContent build_image(image_id, build_image_request_content)
+> BuildImageResponseContent build_image(build_image_request_content)
 
 
 
@@ -56,9 +56,9 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
-    image_id = "AqWzy" # str | Id of the Image that will be built.
     build_image_request_content = BuildImageRequestContent(
         image_configuration="image_configuration_example",
+        image_id="AqWzy",
     ) # BuildImageRequestContent | 
     suppress_validators = [
         "type:u2LC",
@@ -70,7 +70,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
     # example passing only required values which don't have defaults set
     try:
-        api_response = api_instance.build_image(image_id, build_image_request_content)
+        api_response = api_instance.build_image(build_image_request_content)
         pprint(api_response)
     except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->build_image: %s\n" % e)
@@ -78,7 +78,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_response = api_instance.build_image(image_id, build_image_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure, region=region)
+        api_response = api_instance.build_image(build_image_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure, region=region)
         pprint(api_response)
     except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->build_image: %s\n" % e)
@@ -89,7 +89,6 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **image_id** | **str**| Id of the Image that will be built. |
  **build_image_request_content** | [**BuildImageRequestContent**](BuildImageRequestContent.md)|  |
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
  **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
@@ -409,7 +408,7 @@ Name | Type | Description  | Notes
 
 
 
-Retrieve the list of existing custom images. Deleted images are not shown by default.
+Retrieve the list of existing custom images.
 
 ### Example
 
@@ -447,7 +446,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     image_status = ImageStatusFilteringOption("AVAILABLE") # ImageStatusFilteringOption | Filter images by the status provided.
-    region = "region_example" # str | List Images built in a given AWS Region. (optional)
+    region = "region_example" # str | List images built in a given AWS Region. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
 
     # example passing only required values which don't have defaults set
@@ -472,7 +471,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **image_status** | **ImageStatusFilteringOption**| Filter images by the status provided. |
- **region** | **str**| List Images built in a given AWS Region. | [optional]
+ **region** | **str**| List images built in a given AWS Region. | [optional]
  **next_token** | **str**| Token to use for paginated requests. | [optional]
 
 ### Return type

@@ -4,7 +4,7 @@ namespace parallelcluster
 @readonly
 @http(method: "GET", uri: "/v3/clusters", code: 200)
 @tags(["Cluster Operations"])
-@documentation("Retrieve the list of existing clusters. Deleted clusters are not shown by default.")
+@documentation("Retrieve the list of existing clusters.")
 operation ListClusters {
     input: ListClustersRequest,
     output: ListClustersResponse,

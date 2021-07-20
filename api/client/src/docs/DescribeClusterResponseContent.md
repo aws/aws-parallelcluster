@@ -8,7 +8,7 @@ Name | Type | Description | Notes
 **version** | **str** | ParallelCluster version used to create the cluster. | 
 **cluster_configuration** | [**ClusterConfigurationStructure**](ClusterConfigurationStructure.md) |  | 
 **tags** | [**[Tag]**](Tag.md) | Tags associated with the cluster. | 
-**cloud_formation_status** | [**CloudFormationStatus**](CloudFormationStatus.md) |  | 
+**cloud_formation_stack_status** | [**CloudFormationStackStatus**](CloudFormationStackStatus.md) |  | 
 **cluster_name** | **str** | Name of the cluster. | 
 **compute_fleet_status** | [**ComputeFleetStatus**](ComputeFleetStatus.md) |  | 
 **cloudformation_stack_arn** | **str** | ARN of the main CloudFormation stack. | 

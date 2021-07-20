@@ -38,7 +38,7 @@ structure DescribeImageResponse {
     @documentation("Status of the image build.")
     imageBuildStatus: ImageBuildStatus,
     @documentation("Status of the CloudFormation stack for the image build process.")
-    cloudformationStackStatus: CloudFormationStatus,
+    cloudformationStackStatus: CloudFormationStackStatus,
     @documentation("Reason for the CloudFormation stack status.")
     cloudformationStackStatusReason: String,
     @documentation("ARN of the main CloudFormation stack.")

@@ -1,7 +1,6 @@
 namespace parallelcluster
 
 @pattern("^[a-zA-Z][a-zA-Z0-9-]+$")
-@length(min: 5)
 @documentation("Id of the image.")
 string ImageId
 
@@ -42,12 +41,12 @@ structure ImageInfoSummary {
     @documentation("Status of the image build process.")
     imageBuildStatus: ImageBuildStatus,
     @documentation("Status of the CloudFormation stack for the image build process.")
-    cloudformationStackStatus: CloudFormationStatus,
+    cloudformationStackStatus: CloudFormationStackStatus,
 }
 
 structure ImageConfigurationStructure {
-    @documentation("S3 Url pointing to the image configuration file.")
-    s3Url: String,
+    @documentation("URL of the image configuration file.")
+    url: String,
 }
 
 @documentation("Image configuration as a YAML document")

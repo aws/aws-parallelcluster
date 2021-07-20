@@ -55,6 +55,11 @@ class BuildImageRequestContent(ModelNormal):
     }
 
     validations = {
+        ('image_id',): {
+            'regex': {
+                'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
+            },
+        },
     }
 
     additional_properties_type = None
@@ -73,6 +78,7 @@ class BuildImageRequestContent(ModelNormal):
         """
         return {
             'image_configuration': (str,),  # noqa: E501
+            'image_id': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -82,6 +88,7 @@ class BuildImageRequestContent(ModelNormal):
 
     attribute_map = {
         'image_configuration': 'imageConfiguration',  # noqa: E501
+        'image_id': 'imageId',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -96,11 +103,12 @@ class BuildImageRequestContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, image_configuration, *args, **kwargs):  # noqa: E501
+    def __init__(self, image_configuration, image_id, *args, **kwargs):  # noqa: E501
         """BuildImageRequestContent - a model defined in OpenAPI
 
         Args:
             image_configuration (str): Image configuration as a YAML document
+            image_id (str): Id of the Image that will be built.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -159,6 +167,7 @@ class BuildImageRequestContent(ModelNormal):
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
         self.image_configuration = image_configuration
+        self.image_id = image_id
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

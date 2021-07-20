@@ -1,4 +1,4 @@
-# CloudFormationStatus
+# CloudFormationStackStatus
 
 
 ## Properties

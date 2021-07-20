@@ -8,7 +8,7 @@ docs/BuildImageBadRequestExceptionResponseContent.md
 docs/BuildImageRequestContent.md
 docs/BuildImageResponseContent.md
 docs/Change.md
-docs/CloudFormationStatus.md
+docs/CloudFormationStackStatus.md
 docs/ClusterComputeFleetApi.md
 docs/ClusterConfigurationStructure.md
 docs/ClusterInfoSummary.md
@@ -75,7 +75,7 @@ pcluster_client/model/build_image_bad_request_exception_response_content.py
 pcluster_client/model/build_image_request_content.py
 pcluster_client/model/build_image_response_content.py
 pcluster_client/model/change.py
-pcluster_client/model/cloud_formation_status.py
+pcluster_client/model/cloud_formation_stack_status.py
 pcluster_client/model/cluster_configuration_structure.py
 pcluster_client/model/cluster_info_summary.py
 pcluster_client/model/cluster_instance.py

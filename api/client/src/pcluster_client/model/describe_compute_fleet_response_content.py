@@ -78,7 +78,7 @@ class DescribeComputeFleetResponseContent(ModelNormal):
         lazy_import()
         return {
             'status': (ComputeFleetStatus,),  # noqa: E501
-            'last_updated_time': (datetime,),  # noqa: E501
+            'last_status_updated_time': (datetime,),  # noqa: E501
         }
 
     @cached_property
@@ -88,7 +88,7 @@ class DescribeComputeFleetResponseContent(ModelNormal):
 
     attribute_map = {
         'status': 'status',  # noqa: E501
-        'last_updated_time': 'lastUpdatedTime',  # noqa: E501
+        'last_status_updated_time': 'lastStatusUpdatedTime',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -140,7 +140,7 @@ class DescribeComputeFleetResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            last_updated_time (datetime): Timestamp representing the last status update time.. [optional]  # noqa: E501
+            last_status_updated_time (datetime): Timestamp representing the last status update time.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

@@ -59,4 +59,4 @@ string ValidationLevel
     {name: "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS", value: "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS"},
     {name: "UPDATE_ROLLBACK_COMPLETE", value: "UPDATE_ROLLBACK_COMPLETE"}
 ])
-string CloudFormationStatus
+string CloudFormationStackStatus

@@ -5,7 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **cluster_name** | **str** | Name of the cluster. | 
-**cloudformation_stack_status** | [**CloudFormationStatus**](CloudFormationStatus.md) |  | 
+**cloudformation_stack_status** | [**CloudFormationStackStatus**](CloudFormationStackStatus.md) |  | 
 **cloudformation_stack_arn** | **str** | ARN of the main CloudFormation stack. | 
 **region** | **str** | AWS region where the cluster is created. | 
 **version** | **str** | ParallelCluster version used to create the cluster. | 
