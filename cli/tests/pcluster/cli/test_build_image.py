@@ -10,6 +10,10 @@ import itertools
 import pytest
 from assertpy import assert_that
 
+from pcluster.api.models import BuildImageResponseContent
+from pcluster.cli.entrypoint import run
+from pcluster.cli.exceptions import APIOperationException
+
 
 class TestBuildImageCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
@@ -52,6 +56,60 @@ class TestBuildImageCommand:
 
         out, err = capsys.readouterr()
         assert_that(out + err).contains(error_message)
+
+    def test_execute(self, mocker, test_datadir):
+        response_dict = {
+            "image": {
+                "imageId": "image-id",
+                "imageBuildStatus": "BUILD_IN_PROGRESS",
+                "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+                "cloudformationStackArn": "arn:aws:cloudformation:eu-west-1:000000000000:stack/image-id/aaa",
+                "region": "eu-west-1",
+                "version": "3.0.0",
+            }
+        }
+
+        response = BuildImageResponseContent().from_dict(response_dict)
+        describe_clusters_mock = mocker.patch(
+            "pcluster.api.controllers.image_operations_controller.build_image",
+            return_value=response,
+            autospec=True,
+        )
+
+        path = str(test_datadir / "config.yaml")
+        out = run(["build-image", "--image-configuration", path, "--id", "image-id", "--region", "eu-west-1"])
+        assert_that(out).is_equal_to(response_dict)
+        assert_that(describe_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
+        expected_args = {
+            "suppress_validators": None,
+            "validation_failure_level": None,
+            "dryrun": None,
+            "rollback_on_failure": None,
+            "build_image_request_content": {"id": "image-id", "region": "eu-west-1", "imageConfiguration": ""},
+        }
+        describe_clusters_mock.assert_called_with(**expected_args)
+
+    def test_error(self, mocker, test_datadir):
+        api_response = {"message": "error"}, 400
+        mocker.patch(
+            "pcluster.api.controllers.image_operations_controller.build_image",
+            return_value=api_response,
+            autospec=True,
+        )
+
+        path = str(test_datadir / "config.yaml")
+        with pytest.raises(APIOperationException) as exc_info:
+            command = [
+                "build-image",
+                "--region",
+                "eu-west-1",
+                "--image-configuration",
+                path,
+                "--id",
+                "image-id",
+            ]
+            run(command)
+        assert_that(exc_info.value.data).is_equal_to(api_response[0])
 
     def _build_args(self, args):
         args = [[k, v] if v is not None else [k] for k, v in args.items()]
