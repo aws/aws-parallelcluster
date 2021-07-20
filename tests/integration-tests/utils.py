@@ -449,6 +449,17 @@ def check_headnode_security_group(region, cluster, port, expected_cidr):
     assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)
 
 
+def check_status(cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None):
+    """Check the cluster's status and its head and compute status is as expected."""
+    cluster_info = cluster.describe_cluster()
+    if cluster_status:
+        assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
+    if head_node_status:
+        assert_that(cluster_info["headnode"]["state"]).is_equal_to(head_node_status)
+    if compute_fleet_status:
+        assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
+
+
 def get_network_interfaces_count(instance_type, region_name=None):
     """Return the number of Network Interfaces for the provided instance type."""
     return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
