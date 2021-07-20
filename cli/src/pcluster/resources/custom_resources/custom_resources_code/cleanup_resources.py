@@ -65,6 +65,7 @@ def _list_resource_record_sets_iterator(hosted_zone_id, domain_name):
     paginator = route53.get_paginator("list_resource_record_sets")
     for page in paginator.paginate(HostedZoneId=hosted_zone_id, PaginationConfig=pagination_config):
         changes = []
+        logger.info(f"Deleting ResourceRecordSets end with {domain_name}")
         for record_set in page.get("ResourceRecordSets", []):
             if record_set.get("Type") == "A" and record_set.get("Name").endswith(domain_name):
                 changes.append({"Action": "DELETE", "ResourceRecordSet": record_set})
