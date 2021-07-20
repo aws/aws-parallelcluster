@@ -3,6 +3,9 @@ CHANGELOG
 
 3.0.0
 ------
+**ENHANCEMENTS**
+- Add possibility to use an existing Instance Profile for cluster creation and Imagebuilder.
+- Add possibility to use an existing Private Route53 Hosted Zone when using Slurm as scheduler.
 
 **CHANGES**
 

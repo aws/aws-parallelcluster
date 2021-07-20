@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import namedtuple
 
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
@@ -17,6 +18,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk import aws_route53 as route53
 from aws_cdk.core import CfnCustomResource, CfnDeletionPolicy, CfnOutput, CfnParameter, CfnTag, Construct, Fn, Stack
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
 from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX, PCLUSTER_QUEUE_NAME_TAG
 from pcluster.models.s3_bucket import S3Bucket
@@ -36,6 +38,8 @@ from pcluster.templates.cdk_builder_utils import (
     get_user_data_content,
 )
 from pcluster.utils import join_shell_args
+
+CustomDns = namedtuple("CustomDns", ["ref", "name"])
 
 
 class SlurmConstruct(Construct):
@@ -96,11 +100,19 @@ class SlurmConstruct(Construct):
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_parameters(self):
+        if self._condition_custom_cluster_dns():
+            domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(
+                self.config.scheduling.settings.dns.hosted_zone_id
+            )
+        else:
+            domain_name = "pcluster"
+        cluster_dns_domain = f"{self.stack_name}.{domain_name}"
+
         self.cluster_dns_domain = CfnParameter(
             self.stack_scope,
             "ClusterDNSDomain",
             description="DNS Domain of the private hosted zone created within the cluster",
-            default=f"{self.stack_name}.pcluster",
+            default=cluster_dns_domain,
         )
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
@@ -351,12 +363,16 @@ class SlurmConstruct(Construct):
         self.dynamodb_table = table
 
     def _add_private_hosted_zone(self):
-        cluster_hosted_zone = route53.CfnHostedZone(
-            self.stack_scope,
-            "Route53HostedZone",
-            name=self.cluster_dns_domain.value_as_string,
-            vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
-        )
+        if self._condition_custom_cluster_dns():
+            hosted_zone_id = self.config.scheduling.settings.dns.hosted_zone_id
+            cluster_hosted_zone = CustomDns(ref=hosted_zone_id, name=self.cluster_dns_domain.value_as_string)
+        else:
+            cluster_hosted_zone = route53.CfnHostedZone(
+                self.stack_scope,
+                "Route53HostedZone",
+                name=self.cluster_dns_domain.value_as_string,
+                vpcs=[route53.CfnHostedZone.VPCProperty(vpc_id=self.config.vpc_id, vpc_region=self._stack_region)],
+            )
 
         # If Headnode InstanceRole is created by ParallelCluster, add Route53 policy for InstanceRole
         head_node_role_info = self.instance_roles.get("HeadNode")
@@ -429,6 +445,7 @@ class SlurmConstruct(Construct):
         )
         self.cleanup_route53_custom_resource.add_property_override("ClusterHostedZone", cluster_hosted_zone.ref)
         self.cleanup_route53_custom_resource.add_property_override("Action", "DELETE_DNS_RECORDS")
+        self.cleanup_route53_custom_resource.add_property_override("ClusterDNSDomain", cluster_hosted_zone.name)
 
         CfnOutput(
             self.stack_scope,
@@ -661,4 +678,11 @@ class SlurmConstruct(Construct):
             self.config.scheduling.settings
             and self.config.scheduling.settings.dns
             and self.config.scheduling.settings.dns.disable_managed_dns
+        )
+
+    def _condition_custom_cluster_dns(self):
+        return (
+            self.config.scheduling.settings
+            and self.config.scheduling.settings.dns
+            and self.config.scheduling.settings.dns.hosted_zone_id
         )

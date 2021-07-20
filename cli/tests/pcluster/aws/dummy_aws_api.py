@@ -20,6 +20,7 @@ from pcluster.aws.iam import IamClient
 from pcluster.aws.imagebuilder import ImageBuilderClient
 from pcluster.aws.kms import KmsClient
 from pcluster.aws.logs import LogsClient
+from pcluster.aws.route53 import Route53Client
 from pcluster.aws.s3 import S3Client
 from pcluster.aws.s3_resource import S3Resource
 from pcluster.aws.sts import StsClient
@@ -87,6 +88,7 @@ class _DummyAWSApi(AWSApi):
         self._batch = _DummyBatchClient()
         self._logs = _DummyLogsClient()
         self._ddb_resource = _DummyDynamoResource()
+        self._route53 = _DummyRoute53Client()
 
 
 class _DummyCfnClient(CfnClient):
@@ -201,6 +203,12 @@ class _DummyBatchClient(IamClient):
 
 
 class _DummyLogsClient(LogsClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+        pass
+
+
+class _DummyRoute53Client(Route53Client):
     def __init__(self):
         """Override Parent constructor. No real boto3 client is created."""
         pass
