@@ -43,6 +43,7 @@ from pcluster.validators.awsbatch_validators import (
 )
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
+    ClusterNameValidator,
     ComputeResourceLaunchTemplateValidator,
     ComputeResourceSizeValidator,
     CustomAmiTagValidator,
@@ -60,6 +61,7 @@ from pcluster.validators.cluster_validators import (
     FsxNetworkingValidator,
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
+    HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
@@ -92,6 +94,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
+from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import (
@@ -256,6 +259,7 @@ class SharedFsx(Resource):
         name: str,
         storage_capacity: int = None,
         deployment_type: str = None,
+        data_compression_type: str = None,
         export_path: str = None,
         import_path: str = None,
         imported_file_chunk_size: int = None,
@@ -278,6 +282,7 @@ class SharedFsx(Resource):
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.fsx_storage_type = Resource.init_param(fsx_storage_type)
         self.deployment_type = Resource.init_param(deployment_type)
+        self.data_compression_type = Resource.init_param(data_compression_type)
         self.export_path = Resource.init_param(export_path)
         self.import_path = Resource.init_param(import_path)
         self.imported_file_chunk_size = Resource.init_param(imported_file_chunk_size)
@@ -456,7 +461,7 @@ class Dcv(Resource):
     def __init__(self, enabled: bool, port: int = None, allowed_ips: str = None):
         super().__init__()
         self.enabled = Resource.init_param(enabled)
-        self.port = Resource.init_param(port, default=8843)
+        self.port = Resource.init_param(port, default=8443)
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
 
@@ -540,6 +545,10 @@ class Roles(Resource):
         super().__init__()
         self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
 
+    def _register_validators(self):
+        if self.custom_lambda_resources:
+            self._register_validator(RoleValidator, role_arn=self.custom_lambda_resources)
+
 
 class S3Access(Resource):
     """Represent the S3 Access configuration."""
@@ -572,12 +581,14 @@ class Iam(Resource):
         s3_access: List[S3Access] = None,
         additional_iam_policies: List[AdditionalIamPolicy] = (),
         instance_role: str = None,
+        instance_profile: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.s3_access = s3_access
         self.additional_iam_policies = additional_iam_policies
         self.instance_role = Resource.init_param(instance_role)
+        self.instance_profile = Resource.init_param(instance_profile)
 
     @property
     def additional_iam_policy_arns(self) -> List[str]:
@@ -586,6 +597,12 @@ class Iam(Resource):
         for policy in self.additional_iam_policies:
             arns.append(policy.policy)
         return arns
+
+    def _register_validators(self):
+        if self.instance_role:
+            self._register_validator(RoleValidator, role_arn=self.instance_role)
+        elif self.instance_profile:
+            self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
 
 
 class Imds(Resource):
@@ -790,6 +807,11 @@ class HeadNode(Resource):
         """Return the IAM role for head node, if set."""
         return self.iam.instance_role if self.iam else None
 
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for head node, if set."""
+        return self.iam.instance_profile if self.iam else None
+
 
 class BaseComputeResource(Resource):
     """Represent the base Compute Resource, with the fields in common between all the schedulers."""
@@ -852,6 +874,7 @@ class BaseClusterConfig(Resource):
 
     def __init__(
         self,
+        cluster_name: str,
         image: Image,
         head_node: HeadNode,
         shared_storage: List[Resource] = None,
@@ -865,6 +888,7 @@ class BaseClusterConfig(Resource):
     ):
         super().__init__()
         self.__region = None
+        self.cluster_name = cluster_name
         self.image = image
         self.head_node = head_node
         self.shared_storage = shared_storage
@@ -883,7 +907,13 @@ class BaseClusterConfig(Resource):
 
     def _register_validators(self):
         self._register_validator(RegionValidator, region=self.region)
-        self._register_validator(ArchitectureOsValidator, os=self.image.os, architecture=self.head_node.architecture)
+        self._register_validator(ClusterNameValidator, name=self.cluster_name)
+        self._register_validator(
+            ArchitectureOsValidator,
+            os=self.image.os,
+            architecture=self.head_node.architecture,
+            custom_ami=self.image.custom_ami,
+        )
         if self.ami_id:
             self._register_validator(
                 InstanceTypeBaseAMICompatibleValidator,
@@ -1173,8 +1203,8 @@ class AwsBatchScheduling(Resource):
 class AwsBatchClusterConfig(BaseClusterConfig):
     """Represent the full AwsBatch Cluster configuration."""
 
-    def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, cluster_name: str, scheduling: AwsBatchScheduling, **kwargs):
+        super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
 
     def _register_validators(self):
@@ -1347,13 +1377,19 @@ class SlurmQueue(BaseQueue):
         """Return the IAM role for compute nodes, if set."""
         return self.iam.instance_role if self.iam else None
 
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for compute nodes, if set."""
+        return self.iam.instance_profile if self.iam else None
+
 
 class Dns(Resource):
     """Represent the DNS settings."""
 
-    def __init__(self, disable_managed_dns: bool = None):
+    def __init__(self, disable_managed_dns: bool = None, hosted_zone_id: str = None):
         super().__init__()
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
+        self.hosted_zone_id = Resource.init_param(hosted_zone_id)
 
 
 class SlurmSettings(Resource):
@@ -1383,8 +1419,8 @@ class SlurmScheduling(Resource):
 class SlurmClusterConfig(BaseClusterConfig):
     """Represent the full Slurm Cluster configuration."""
 
-    def __init__(self, scheduling: SlurmScheduling, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, cluster_name: str, scheduling: SlurmScheduling, **kwargs):
+        super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
 
     def get_instance_types_data(self):
@@ -1404,6 +1440,13 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
         )
+        if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
+            self._register_validator(
+                HostedZoneValidator,
+                hosted_zone_id=self.scheduling.settings.dns.hosted_zone_id,
+                cluster_vpc=self.vpc_id,
+                cluster_name=self.cluster_name,
+            )
 
         for queue in self.scheduling.queues:
             self._register_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)

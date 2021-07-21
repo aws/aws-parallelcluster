@@ -23,6 +23,8 @@ boto3_config = Config(retries={"max_attempts": 60})
 def _delete_dns_records(event):
     """Delete all DNS entries from the private Route53 hosted zone created within the cluster."""
     hosted_zone_id = event["ResourceProperties"]["ClusterHostedZone"]
+    domain_name = event["ResourceProperties"]["ClusterDNSDomain"]
+
     if not hosted_zone_id:
         logger.error("Hosted Zone ID is empty")
         raise Exception("Hosted Zone ID is empty")
@@ -34,7 +36,7 @@ def _delete_dns_records(event):
         completed_successfully = False
         while not completed_successfully:
             completed_successfully = True
-            for changes in _list_resource_record_sets_iterator(hosted_zone_id):
+            for changes in _list_resource_record_sets_iterator(hosted_zone_id, domain_name):
                 if changes:
                     try:
                         route53.change_resource_record_sets(
@@ -56,15 +58,16 @@ def _delete_dns_records(event):
         raise
 
 
-def _list_resource_record_sets_iterator(hosted_zone_id):
+def _list_resource_record_sets_iterator(hosted_zone_id, domain_name):
     route53 = boto3.client("route53", config=boto3_config)
     pagination_config = {"PageSize": 100}
 
     paginator = route53.get_paginator("list_resource_record_sets")
     for page in paginator.paginate(HostedZoneId=hosted_zone_id, PaginationConfig=pagination_config):
         changes = []
+        logger.info(f"Deleting ResourceRecordSets end with {domain_name}")
         for record_set in page.get("ResourceRecordSets", []):
-            if record_set.get("Type") == "A":
+            if record_set.get("Type") == "A" and record_set.get("Name").endswith(domain_name):
                 changes.append({"Action": "DELETE", "ResourceRecordSet": record_set})
         yield changes
 

@@ -44,7 +44,7 @@ function error_exit
 {
   # wait logs flush before signaling the failure
   sleep 10
-  cfn-signal --exit-code=1 --reason="$1" --stack=${AWS::StackName} --role=${IamRoleName} --resource=HeadNode --region=${AWS::Region}
+  cfn-signal --exit-code=1 --reason="$1" --stack=${AWS::StackName} --resource=HeadNode --region=${AWS::Region}
   exit 1
 }
 function vendor_cookbook
@@ -92,7 +92,7 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
 fi
 cd /tmp
 # Call CloudFormation
-cfn-init -s ${AWS::StackName} --role=${IamRoleName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
-cfn-signal --exit-code=0 --reason="HeadNode setup complete" --stack=${AWS::StackName} --role=${IamRoleName} --resource=HeadNode --region=${AWS::Region}
+cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
+cfn-signal --exit-code=0 --reason="HeadNode setup complete" --stack=${AWS::StackName} --resource=HeadNode --region=${AWS::Region}
 # End of file
 --==BOUNDARY==

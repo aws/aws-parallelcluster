@@ -19,7 +19,7 @@ import botocore
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import get_cluster_nodes_instance_ids
+from utils import check_status, get_cluster_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
 
@@ -50,27 +50,19 @@ def _test_pcluster_instances_and_status(cluster, region, compute_fleet_status=No
     cluster_instances_from_ec2 = get_cluster_nodes_instance_ids(cluster.cfn_name, region)
     cluster_instances_from_cli = cluster.instances()
     assert_that(set(cluster_instances_from_cli)).is_equal_to(set(cluster_instances_from_ec2))
-    expected_status_details = ["Status: CREATE_COMPLETE", "HeadNode: running"]
-    if compute_fleet_status:
-        expected_status_details.append("ComputeFleetStatus: {0}".format(compute_fleet_status))
-    cluster_status = cluster.status()
-    for detail in expected_status_details:
-        assert_that(cluster_status).contains(detail)
+    check_status(cluster, "CREATE_COMPLETE", "running", compute_fleet_status)
     return cluster_instances_from_cli
 
 
 def _test_pcluster_stop_and_start(cluster, region, expected_num_nodes):
     """Test pcluster start and stop functionality."""
     logging.info("Testing pcluster stop functionalities")
-    cluster_stop_output = cluster.stop()
+    cluster.stop()
     # Sample pcluster stop output:
     # Compute fleet status is: RUNNING. Submitting status change request.
     # Request submitted successfully. It might take a while for the transition to complete.
     # Please run 'pcluster status' if you need to check compute fleet status
-    expected_stop_output = (
-        r"Compute fleet status is: RUNNING.*Submitting status change request.*" "\nRequest submitted successfully"
-    )
-    assert_that(cluster_stop_output).matches(expected_stop_output)
+
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, desired=0)
     _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="STOPPED")
 
@@ -79,15 +71,7 @@ def _test_pcluster_stop_and_start(cluster, region, expected_num_nodes):
     cluster.start()
     cluster.stop()
     cluster.stop()
-    cluster_start_output = cluster.start()
-    # Sample pcluster start output:
-    # Compute fleet status is: STOPPED. Submitting status change request.
-    # Request submitted successfully. It might take a while for the transition to complete.
-    # Please run 'pcluster status' if you need to check compute fleet status
-    expected_start_output = (
-        r"Compute fleet status is: STOP.*Submitting status change request.*" "\nRequest submitted successfully"
-    )
-    assert_that(cluster_start_output).matches(expected_start_output)
+    cluster.start()
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, desired=expected_num_nodes)
     _test_pcluster_instances_and_status(cluster, region, compute_fleet_status="RUNNING")
 

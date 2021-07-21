@@ -133,15 +133,18 @@ class DistributionConfigurationSchema(BaseSchema):
 class IamSchema(BaseSchema):
     """Represent the schema of the ImageBuilder IAM."""
 
-    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:(role|instance-profile)/"))
+    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
+    instance_profile = fields.Str(validate=validate.Regexp("^arn:.*:instance-profile/"))
     cleanup_lambda_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
     additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):
-        """Validate that instance_role and additional_security_groups do not co-exist."""
-        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
-            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
+        """Validate that instance_role, instance_profile or additional_iam_policies do not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "instance_profile", "additional_iam_policies"], **kwargs):
+            raise ValidationError(
+                "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together."
+            )
 
     @post_load()
     def make_resource(self, data, **kwargs):

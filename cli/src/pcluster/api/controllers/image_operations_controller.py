@@ -39,6 +39,7 @@ from pcluster.api.models import (
     ImageInfoSummary,
     ImageStatusFilteringOption,
     ListImagesResponseContent,
+    ValidationLevel,
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
@@ -80,9 +81,9 @@ def build_image(
 
     :rtype: BuildImageResponseContent
     """
-    rollback_on_failure = rollback_on_failure or False
+    rollback_on_failure = rollback_on_failure in {True, None}
     disable_rollback = not rollback_on_failure
-    validation_failure_level = validation_failure_level or FailureLevel.ERROR
+    validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun or False
 
     build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)

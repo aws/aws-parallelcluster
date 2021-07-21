@@ -39,7 +39,7 @@ HeadNode:
         - String  # arg1
         - stirng2
   Iam:
-    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
+    InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
       - BucketName: string
         EnableWriteAccess: True
@@ -48,7 +48,8 @@ Scheduling:
   SlurmSettings:
     ScaledownIdletime: 10
     Dns:
-      DisableManagedDns: true
+      DisableManagedDns: false
+      HostedZoneId: 12345ABC
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND

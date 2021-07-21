@@ -17,7 +17,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Set
 
-from pcluster.validators.common import ValidationResult, Validator
+from pcluster.validators.common import FailureLevel, ValidationResult, Validator
 from pcluster.validators.iam_validators import AdditionalIamPolicyValidator
 from pcluster.validators.s3_validators import UrlValidator
 
@@ -194,7 +194,11 @@ class Resource(ABC):
                 LOGGER.debug("Suppressing validator %s", validator_class.__name__)
                 continue
             LOGGER.debug("Executing validator %s", validator_class.__name__)
-            self._validation_failures.extend(validator_class().execute(**validator_args))
+            try:
+                validation_failures = validator.execute(**validator_args)
+                self._validation_failures.extend(validation_failures)
+            except Exception as e:
+                self._validation_failures.append(ValidationResult(str(e), FailureLevel.ERROR, validator.type))
         return self._validation_failures
 
     def _register_validators(self):

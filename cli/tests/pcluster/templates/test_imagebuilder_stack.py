@@ -236,7 +236,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_imagebuilder_bucket, moc
                         "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
                         "instance_type": "c5.xlarge",
                         "iam": {
-                            "instance_role": "arn:aws:iam::111122223333:instance-profile/my_custom_instance_profile"
+                            "instance_profile": "arn:aws:iam::111122223333:instance-profile/my_custom_instance_profile"
                         },
                     },
                 }
@@ -981,7 +981,7 @@ def _test_resources(generated_resources, expected_resources):
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
                         "iam": {
-                            "instance_role": "arn:aws:iam::xxxxxxxxxxxx:instance-profile/InstanceProfile",
+                            "instance_profile": "arn:aws:iam::xxxxxxxxxxxx:instance-profile/InstanceProfile",
                         },
                     },
                 }

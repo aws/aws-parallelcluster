@@ -336,6 +336,9 @@ class FsxLustreSettingsSchema(BaseSchema):
     drive_cache_type = fields.Str(
         validate=validate.OneOf(["READ"]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
+    data_compression_type = fields.Str(
+        validate=validate.OneOf(["LZ4"]), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
     fsx_storage_type = fields.Str(
         data_key="StorageType",
         validate=validate.OneOf(["HDD", "SSD"]),
@@ -700,7 +703,12 @@ class ClusterIamSchema(BaseSchema):
 class IamSchema(BaseSchema):
     """Represent the schema of IAM for HeadNode and Queue."""
 
-    instance_role = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    instance_role = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
+    )
+    instance_profile = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+    )
     s3_access = fields.Nested(
         S3AccessSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "BucketName"}
     )
@@ -712,9 +720,11 @@ class IamSchema(BaseSchema):
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):
-        """Validate that instance_role and additional_security_groups do not co-exist."""
-        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
-            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
+        """Validate that instance_role, instance_profile or additional_iam_policies do not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "instance_profile", "additional_iam_policies"], **kwargs):
+            raise ValidationError(
+                "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together."
+            )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -991,6 +1001,7 @@ class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
     disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    hosted_zone_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1122,6 +1133,10 @@ class ClusterSchema(BaseSchema):
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
+    def __init__(self, cluster_name: str):
+        super().__init__()
+        self.cluster_name = cluster_name
+
     @validates("tags")
     def validate_tags(self, tags):
         """Validate tags."""
@@ -1132,11 +1147,11 @@ class ClusterSchema(BaseSchema):
         """Generate cluster according to the scheduler. Save original configuration."""
         scheduler = data.get("scheduling").scheduler
         if scheduler == "slurm":
-            cluster = SlurmClusterConfig(**data)
+            cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         elif scheduler == "awsbatch":
-            cluster = AwsBatchClusterConfig(**data)
+            cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
         else:  # scheduler == "custom":
-            cluster = BaseClusterConfig(**data)  # FIXME Must be ByosCluster
+            cluster = BaseClusterConfig(cluster_name=self.cluster_name, **data)  # FIXME Must be ByosCluster
 
         cluster.source_config = original_data
         return cluster
