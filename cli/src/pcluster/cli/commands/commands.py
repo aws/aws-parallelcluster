@@ -14,16 +14,12 @@
 # flake8: noqa
 
 from pcluster.cli.commands.cluster_logs import (
+    ExportClusterLogsCommand,
     GetClusterLogEventsCommand,
     ListClusterLogsCommand,
-    ExportClusterLogsCommand,
-)
-from pcluster.cli.commands.image_logs import (
-    GetImageLogEventsCommand,
-    ListImageLogsCommand,
-    ExportImageLogsCommand,
 )
 from pcluster.cli.commands.configure.command import ConfigureCommand
 from pcluster.cli.commands.dcv_connect import DcvConnectCommand
+from pcluster.cli.commands.image_logs import ExportImageLogsCommand, GetImageLogEventsCommand, ListImageLogsCommand
 from pcluster.cli.commands.ssh import SshCommand
 from pcluster.cli.commands.version import VersionCommand
