@@ -228,7 +228,7 @@ class ImageBuilderCdkStack(Stack):
                 )
             )
         elif self.custom_instance_profile:
-            instance_profile_name = self.custom_instance_profile
+            instance_profile_name = self.custom_instance_profile.split("/")[-1]
         else:
             resource_dependency_list.append(
                 self._add_default_instance_role(lambda_cleanup_policy_statements, build_tags_list)
