@@ -39,6 +39,7 @@ from pcluster.api.models import (
     ImageInfoSummary,
     ImageStatusFilteringOption,
     ListImagesResponseContent,
+    Tag,
     ValidationLevel,
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
@@ -210,7 +211,7 @@ def _image_to_describe_image_response(imagebuilder):
             ami_name=imagebuilder.image.name,
             ami_id=imagebuilder.image.id,
             state=imagebuilder.image.state.upper(),
-            tags=imagebuilder.image.tags,
+            tags=[Tag(key=tag["Key"], value=tag["Value"]) for tag in imagebuilder.image.tags],
             architecture=imagebuilder.image.architecture,
             description=imagebuilder.image.description,
         ),
