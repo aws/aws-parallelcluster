@@ -5,7 +5,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.aws.common import AWSClientError
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
+from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 
 
 class TestComputeFleetStatusManager:

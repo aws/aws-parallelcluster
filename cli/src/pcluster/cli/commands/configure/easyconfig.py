@@ -21,13 +21,13 @@ import yaml
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import get_region
-from pcluster.cli_commands.configure.networking import (
+from pcluster.cli.commands.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,
     automate_subnet_creation,
     automate_vpc_with_subnet_creation,
 )
-from pcluster.cli_commands.configure.utils import (
+from pcluster.cli.commands.configure.utils import (
     get_regions,
     get_resource_tag,
     handle_client_exception,

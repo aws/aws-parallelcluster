@@ -7,14 +7,14 @@ import yaml
 from assertpy import assert_that
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
-from pcluster.cli_commands.configure.easyconfig import configure
-from pcluster.cli_commands.configure.networking import NetworkConfiguration
+from pcluster.cli.commands.configure.easyconfig import configure
+from pcluster.cli.commands.configure.networking import NetworkConfiguration
 from pcluster.schemas.cluster_schema import ClusterSchema
 from tests.pcluster.aws.dummy_aws_api import _DummyInstanceTypeInfo, mock_aws_api
 
-EASYCONFIG = "pcluster.cli_commands.configure.easyconfig."
-NETWORKING = "pcluster.cli_commands.configure.networking."
-UTILS = "pcluster.cli_commands.configure.utils."
+EASYCONFIG = "pcluster.cli.commands.configure.easyconfig."
+NETWORKING = "pcluster.cli.commands.configure.networking."
+UTILS = "pcluster.cli.commands.configure.utils."
 
 PUBLIC_PRIVATE_CONFIGURATION = NetworkConfiguration.PUBLIC_PRIVATE.value.config_type
 PUBLIC_CONFIGURATION = NetworkConfiguration.PUBLIC.value.config_type
