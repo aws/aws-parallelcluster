@@ -53,6 +53,11 @@ FSX_MESSAGES = {
     }
 }
 
+HOST_NAME_MAX_LENGTH = 64
+# Max fqdn size is 255 characters, the first 64 are used for the hostname (e.g. queuename-st|dy-computeresourcename-N),
+# then we need to add an extra ., so we have 190 characters to be used for the clustername + domain-name.
+CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH = 255 - HOST_NAME_MAX_LENGTH - 1
+
 
 class ClusterNameValidator(Validator):
     """Cluster name validator."""
@@ -880,3 +885,37 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             NetworkInterfaces=network_interfaces,
             DryRun=True,
         )
+
+
+class HostedZoneValidator(Validator):
+    """Validate custom private domain in the same VPC as headnode."""
+
+    def _validate(self, hosted_zone_id, cluster_vpc, cluster_name):
+        if AWSApi.instance().route53.is_hosted_zone_private(hosted_zone_id):
+            vpc_ids = AWSApi.instance().route53.get_hosted_zone_vpcs(hosted_zone_id)
+            if cluster_vpc not in vpc_ids:
+                self._add_failure(
+                    f"Private Route53 hosted zone {hosted_zone_id} need to be associated with "
+                    f"the VPC of the cluster: {cluster_vpc}. "
+                    f"The VPCs associated with hosted zone are {vpc_ids}.",
+                    FailureLevel.ERROR,
+                )
+        else:
+            self._add_failure(
+                f"Hosted zone {hosted_zone_id} cannot be used. "
+                f"Public Route53 hosted zone is not officially supported by ParallelCluster.",
+                FailureLevel.ERROR,
+            )
+
+        domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(hosted_zone_id)
+        total_length = len(cluster_name) + len(domain_name)
+        if total_length > CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH:
+            self._add_failure(
+                (
+                    "Error: When specifying HostedZoneId, "
+                    f"the total length of cluster name {cluster_name} and domain name {domain_name} can not be "
+                    f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
+                    f"current length is {total_length}"
+                ),
+                FailureLevel.ERROR,
+            )

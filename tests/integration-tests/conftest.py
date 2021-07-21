@@ -1113,26 +1113,37 @@ def build_image():
     image_id_post_test = None
     region_post_test = None
 
-    def _build_image(image_id, region, cluster_config):
+    def _build_image(image_id, region, image_config):
         nonlocal image_id_post_test
         nonlocal region_post_test
         image_id_post_test = image_id
         region_post_test = region
 
         pcluster_build_image_result = run_command(
-            ["pcluster", "build-image", "--id", image_id, "-r", region, "-c", cluster_config.as_posix()]
+            [
+                "pcluster",
+                "build-image",
+                "--id",
+                image_id,
+                "--region",
+                region,
+                "--image-configuration",
+                image_config.as_posix(),
+            ]
         )
         return pcluster_build_image_result.stdout
 
     yield _build_image
     if image_id_post_test:
         pcluster_describe_image_result = run_command(
-            ["pcluster", "describe-image", "--id", image_id_post_test, "-r", region_post_test]
+            ["pcluster", "describe-image", "--image-id", image_id_post_test, "--region", region_post_test]
         )
         logging.info("Build image post process. Describe image result: %s" % pcluster_describe_image_result.stdout)
 
         # FIXME once the command return proper JSON
         if "build_failed" in pcluster_describe_image_result.stdout.lower():
-            run_command(["pcluster", "delete-image", "--id", image_id_post_test, "-r", region_post_test, "--force"])
+            run_command(
+                ["pcluster", "delete-image", "--image-id", image_id_post_test, "--region", region_post_test, "--force"]
+            )
             # sleep 90 seconds for image deletion
             time.sleep(90)

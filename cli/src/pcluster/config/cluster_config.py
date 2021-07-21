@@ -61,6 +61,7 @@ from pcluster.validators.cluster_validators import (
     FsxNetworkingValidator,
     HeadNodeImdsValidator,
     HeadNodeLaunchTemplateValidator,
+    HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
@@ -1385,9 +1386,10 @@ class SlurmQueue(BaseQueue):
 class Dns(Resource):
     """Represent the DNS settings."""
 
-    def __init__(self, disable_managed_dns: bool = None):
+    def __init__(self, disable_managed_dns: bool = None, hosted_zone_id: str = None):
         super().__init__()
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
+        self.hosted_zone_id = Resource.init_param(hosted_zone_id)
 
 
 class SlurmSettings(Resource):
@@ -1438,6 +1440,13 @@ class SlurmClusterConfig(BaseClusterConfig):
         self._register_validator(
             HeadNodeImdsValidator, imds_secured=self.head_node.imds.secured, scheduler=self.scheduling.scheduler
         )
+        if self.scheduling.settings and self.scheduling.settings.dns and self.scheduling.settings.dns.hosted_zone_id:
+            self._register_validator(
+                HostedZoneValidator,
+                hosted_zone_id=self.scheduling.settings.dns.hosted_zone_id,
+                cluster_vpc=self.vpc_id,
+                cluster_name=self.cluster_name,
+            )
 
         for queue in self.scheduling.queues:
             self._register_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)

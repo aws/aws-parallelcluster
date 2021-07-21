@@ -29,6 +29,7 @@ from pcluster.validators.cluster_validators import (
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
     HeadNodeImdsValidator,
+    HostedZoneValidator,
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
@@ -764,4 +765,57 @@ def test_intel_hpc_os_validator(os, expected_message):
 )
 def test_head_node_imds_validator(imds_secured, scheduler, expected_message):
     actual_failures = HeadNodeImdsValidator().execute(imds_secured=imds_secured, scheduler=scheduler)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "vpcs, is_private_zone, domain_name, expected_message",
+    [
+        (
+            None,
+            False,
+            "domain.com",
+            "Hosted zone 12345Z cannot be used",
+        ),
+        (
+            [{"VPCRegion": "us-east-1", "VPCId": "vpc-123"}, {"VPCRegion": "us-east-1", "VPCId": "vpc-456"}],
+            True,
+            "domain.com",
+            None,
+        ),
+        (
+            [{"VPCRegion": "us-east-1", "VPCId": "vpc-456"}],
+            True,
+            "domain.com",
+            "Private Route53 hosted zone 12345Z need to be associated with the VPC of the cluster",
+        ),
+        (
+            [{"VPCRegion": "us-east-1", "VPCId": "vpc-123"}, {"VPCRegion": "us-east-1", "VPCId": "vpc-456"}],
+            True,
+            "a_long_name_together_with_stackname_longer_than_190_"
+            "characters_0123456789_0123456789_0123456789_0123456789_"
+            "0123456789_0123456789_0123456789_0123456789_0123456789_"
+            "0123456789.com",
+            "Error: When specifying HostedZoneId, ",
+        ),
+    ],
+    ids=[
+        "Public hosted zone",
+        "Private hosted zone associated with cluster VPC",
+        "Private hosted zone not associated with cluster VPC",
+        "Hosted zone name and cluster name exceeds lengths",
+    ],
+)
+def test_hosted_zone_validator(mocker, vpcs, is_private_zone, domain_name, expected_message):
+    get_hosted_zone_info = {
+        "HostedZone": {"Name": domain_name, "Config": {"PrivateZone": is_private_zone}},
+        "VPCs": vpcs,
+    }
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.route53.Route53Client.get_hosted_zone", return_value=get_hosted_zone_info)
+    actual_failures = HostedZoneValidator().execute(
+        hosted_zone_id="12345Z",
+        cluster_vpc="vpc-123",
+        cluster_name="ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12",
+    )
     assert_failure_messages(actual_failures, expected_message)

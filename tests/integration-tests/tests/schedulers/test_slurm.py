@@ -19,7 +19,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids, get_instance_info
+from utils import check_status, get_compute_nodes_instance_ids, get_instance_info
 
 from tests.common.assertions import (
     assert_errors_in_logs,
@@ -991,7 +991,7 @@ def _get_num_gpus_on_instance(instance_type_info):
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def _wait_for_computefleet_changed(cluster, desired_status):
-    assert_that(cluster.status()).contains(f"ComputeFleetStatus: {desired_status}")
+    check_status(cluster, compute_fleet_status=desired_status)
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
@@ -1094,7 +1094,7 @@ def _test_protected_mode(scheduler_commands, remote_command_executor, cluster):
         ],
     )
     # Assert bootstrap failure queues are inactive and compute fleet status is PROTECTED
-    assert_that(cluster.status()).contains("ComputeFleetStatus: PROTECTED")
+    check_status(cluster, compute_fleet_status="PROTECTED")
     assert_that(scheduler_commands.get_partition_state(partition="normal")).is_equal_to("UP")
     _wait_for_partition_state_changed(scheduler_commands, "broken", "INACTIVE")
     _wait_for_partition_state_changed(scheduler_commands, "half-broken", "INACTIVE")
@@ -1138,4 +1138,4 @@ def _test_recover_from_protected_mode(
         scheduler_commands.assert_job_succeeded(job_id)
     # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
     # not enter protected mode
-    assert_that(cluster.status()).contains("ComputeFleetStatus: RUNNING")
+    check_status(cluster, compute_fleet_status="RUNNING")
