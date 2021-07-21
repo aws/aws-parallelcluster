@@ -11,15 +11,13 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 
-import base64
-
 import boto3
 import pytest
 from assertpy import assert_that, soft_assertions
 from botocore.config import Config
 from pcluster_client import ApiException
 from pcluster_client.api import cluster_operations_api
-from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster_client.model.cluster_status import ClusterStatus
 from pcluster_client.model.create_cluster_request_content import CreateClusterRequestContent
 from pcluster_client.model.update_cluster_request_content import UpdateClusterRequestContent
@@ -95,7 +93,7 @@ def _test_list_clusters(client, cluster, region, status):
     assert_that(target_cluster).is_not_none()
     assert_that(target_cluster.cluster_name).is_equal_to(cluster_name)
     assert_that(target_cluster.cluster_status).is_equal_to(ClusterStatus(status))
-    assert_that(target_cluster.cloudformation_stack_status).is_equal_to(CloudFormationStatus(status))
+    assert_that(target_cluster.cloudformation_stack_status).is_equal_to(CloudFormationStackStatus(status))
 
 
 def _get_cluster(clusters, cluster_name):
@@ -110,18 +108,16 @@ def _test_describe_cluster(client, cluster, region, status):
     response = client.describe_cluster(cluster_name, region=region)
     assert_that(response.cluster_name).is_equal_to(cluster_name)
     assert_that(response.cluster_status).is_equal_to(ClusterStatus(status))
-    assert_that(response.cloud_formation_status).is_equal_to(CloudFormationStatus(status))
+    assert_that(response.cloud_formation_status).is_equal_to(CloudFormationStackStatus(status))
 
 
 def _test_create_cluster(client, cluster_config, region, stack_name):
-    cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
-    body = CreateClusterRequestContent(stack_name, cluster_config_data)
+    body = CreateClusterRequestContent(stack_name, cluster_config)
     return client.create_cluster(body, region=region)
 
 
 def _test_update_cluster_dryrun(client, cluster_config, region, stack_name):
-    cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
-    body = UpdateClusterRequestContent(cluster_config_data)
+    body = UpdateClusterRequestContent(cluster_config)
     error_message = "Request would have succeeded, but DryRun flag is set."
     with pytest.raises(ApiException, match=error_message):
         client.update_cluster(stack_name, body, region=region, dryrun=True)
