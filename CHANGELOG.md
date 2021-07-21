@@ -6,6 +6,9 @@ CHANGELOG
 
 **CHANGES**
 - Restore ``noatime`` option, which has positive impact on the performances of NFS filesystem.
+- Upgrade EFA installer to version 1.12.3
+  - EFA configuration: ``efa-config-1.9`` (from ``efa-config-1.8-1``)
+  - EFA kernel module: ``efa-1.13.0`` (from ``efa-1.12.3``)
 
 **BUG FIXES**
 - Pin to version 1.247347 of the CloudWatch agent due to performance impact of latest CW agent version 1.247348.
