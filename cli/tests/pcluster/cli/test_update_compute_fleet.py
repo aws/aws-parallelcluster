@@ -66,8 +66,7 @@ class TestUpdateComputeFleetCommand:
         assert_that(out + err).contains(error_message)
 
     def test_execute(self, mocker):
-        response_dict = {"status": "START_REQUESTED",
-                         "lastStatusUpdatedTime": "2021-01-01 00:00:00.000000+00:00"}
+        response_dict = {"status": "START_REQUESTED", "lastStatusUpdatedTime": "2021-01-01 00:00:00.000000+00:00"}
         response = UpdateComputeFleetResponseContent().from_dict(response_dict)
         update_compute_fleet_status_mock = mocker.patch(
             "pcluster.api.controllers.cluster_compute_fleet_controller.update_compute_fleet",
@@ -84,10 +83,7 @@ class TestUpdateComputeFleetCommand:
                 "START_REQUESTED",
             ]
         )
-        expected = {
-            **response_dict,
-            **{"lastStatusUpdatedTime": "2021-01-01T00:00:00+00:00"}
-        }
+        expected = {**response_dict, **{"lastStatusUpdatedTime": "2021-01-01T00:00:00+00:00"}}
         assert_that(out).is_equal_to(expected)
         assert_that(update_compute_fleet_status_mock.call_args).is_length(
             2
