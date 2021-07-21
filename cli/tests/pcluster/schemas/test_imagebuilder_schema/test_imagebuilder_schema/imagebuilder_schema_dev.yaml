@@ -32,7 +32,8 @@ Build:
     - sg-0058826a55bae6679
     - sg-01971157d4012122a
   SubnetId: subnet-0d03dc52
-  UpdateOsAndReboot: True
+  UpdateOsPackages:
+    Enabled: true
 
 DevSettings:
   DisablePclusterComponent: False
