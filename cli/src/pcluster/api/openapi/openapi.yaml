@@ -1821,6 +1821,22 @@ components:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
+        imageBuildLogsArn:
+          description: ARN of the logs for the image build process.
+          title: imageBuildLogsArn
+          type: string
+          type: string
+        cloudformationStackCreationTime:
+          description: Timestamp representing the CloudFormation stack creation time.
+          format: date-time
+          title: cloudformationStackCreationTime
+          type: string
+        cloudformationStackTags:
+          description: Tags for the CloudFormation stack.
+          items:
+            $ref: '#/components/schemas/Tag'
+          title: cloudformationStackTags
+          type: array
         region:
           description: AWS region where the image is created.
           title: region
