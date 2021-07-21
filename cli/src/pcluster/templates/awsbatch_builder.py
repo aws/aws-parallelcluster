@@ -111,7 +111,6 @@ class AwsBatchConstruct(Construct):
             self._add_batch_head_node_policies_to_role()
 
         # Iam Roles
-        self._batch_service_role = self._add_batch_service_role()
         self._ecs_instance_role, self._iam_instance_profile = self._add_ecs_instance_role_and_profile()
 
         # Spot Iam Role
@@ -151,7 +150,7 @@ class AwsBatchConstruct(Construct):
             self.stack_scope,
             "ComputeEnvironment",
             type="MANAGED",
-            service_role=self._batch_service_role.ref,
+            # service_role=self._batch_service_role.ref,
             state="ENABLED",
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
                 type="SPOT" if self.queue.capacity_type == CapacityType.SPOT else "EC2",
@@ -299,18 +298,6 @@ class AwsBatchConstruct(Construct):
                     )
                 ],
             ),
-        )
-
-    def _add_batch_service_role(self):
-        return iam.CfnRole(
-            self.stack_scope,
-            "BatchServiceRole",
-            managed_policy_arns=[
-                self._format_arn(
-                    service="iam", account="aws", region="", resource="policy/service-role/AWSBatchServiceRole"
-                )
-            ],
-            assume_role_policy_document=get_assume_role_policy_document("batch.amazonaws.com"),
         )
 
     def _add_batch_user_role(self):
