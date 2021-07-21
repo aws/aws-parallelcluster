@@ -86,7 +86,7 @@ class TestBuildImageCommand:
             "dryrun": None,
             "rollback_on_failure": None,
             "region": "eu-west-1",
-            "build_image_request_content": {"id": "image-id", "imageConfiguration": ""},
+            "build_image_request_content": {"image-id": "image-id", "imageConfiguration": ""},
         }
         describe_clusters_mock.assert_called_with(**expected_args)
 
