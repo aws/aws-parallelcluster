@@ -13,7 +13,7 @@ from datetime import datetime
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cloud_formation_status import CloudFormationStatus
+from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.api.models.image_builder_image_status import ImageBuilderImageStatus
@@ -57,7 +57,7 @@ class DescribeImageResponseContent(Model):
         :param image_build_status: The image_build_status of this DescribeImageResponseContent.
         :type image_build_status: ImageBuildStatus
         :param cloudformation_stack_status: The cloudformation_stack_status of this DescribeImageResponseContent.
-        :type cloudformation_stack_status: CloudFormationStatus
+        :type cloudformation_stack_status: CloudFormationStackStatus
         :param cloudformation_stack_status_reason: The cloudformation_stack_status_reason
                                                    of this DescribeImageResponseContent.
         :type cloudformation_stack_status_reason: str
@@ -77,7 +77,7 @@ class DescribeImageResponseContent(Model):
             "imagebuilder_image_status_reason": str,
             "creation_time": datetime,
             "image_build_status": ImageBuildStatus,
-            "cloudformation_stack_status": CloudFormationStatus,
+            "cloudformation_stack_status": CloudFormationStackStatus,
             "cloudformation_stack_status_reason": str,
             "cloudformation_stack_arn": str,
             "region": str,
@@ -151,7 +151,7 @@ class DescribeImageResponseContent(Model):
     def image_id(self):
         """Gets the image_id of this DescribeImageResponseContent.
 
-        id of the Image
+        Id of the Image to retrieve detailed information for.
 
         :return: The image_id of this DescribeImageResponseContent.
         :rtype: str
@@ -162,7 +162,7 @@ class DescribeImageResponseContent(Model):
     def image_id(self, image_id):
         """Sets the image_id of this DescribeImageResponseContent.
 
-        id of the Image
+        Id of the Image to retrieve detailed information for.
 
         :param image_id: The image_id of this DescribeImageResponseContent.
         :type image_id: str
@@ -221,7 +221,7 @@ class DescribeImageResponseContent(Model):
     def creation_time(self):
         """Gets the creation_time of this DescribeImageResponseContent.
 
-        Timestamp representing the image creation time
+        Timestamp representing the image creation time.
 
         :return: The creation_time of this DescribeImageResponseContent.
         :rtype: datetime
@@ -232,7 +232,7 @@ class DescribeImageResponseContent(Model):
     def creation_time(self, creation_time):
         """Sets the creation_time of this DescribeImageResponseContent.
 
-        Timestamp representing the image creation time
+        Timestamp representing the image creation time.
 
         :param creation_time: The creation_time of this DescribeImageResponseContent.
         :type creation_time: datetime
@@ -268,7 +268,7 @@ class DescribeImageResponseContent(Model):
 
 
         :return: The cloudformation_stack_status of this DescribeImageResponseContent.
-        :rtype: CloudFormationStatus
+        :rtype: CloudFormationStackStatus
         """
         return self._cloudformation_stack_status
 
@@ -278,7 +278,7 @@ class DescribeImageResponseContent(Model):
 
 
         :param cloudformation_stack_status: The cloudformation_stack_status of this DescribeImageResponseContent.
-        :type cloudformation_stack_status: CloudFormationStatus
+        :type cloudformation_stack_status: CloudFormationStackStatus
         """
         self._cloudformation_stack_status = cloudformation_stack_status
 
@@ -310,7 +310,7 @@ class DescribeImageResponseContent(Model):
     def cloudformation_stack_arn(self):
         """Gets the cloudformation_stack_arn of this DescribeImageResponseContent.
 
-        ARN of the main CloudFormation stack
+        ARN of the main CloudFormation stack.
 
         :return: The cloudformation_stack_arn of this DescribeImageResponseContent.
         :rtype: str
@@ -321,7 +321,7 @@ class DescribeImageResponseContent(Model):
     def cloudformation_stack_arn(self, cloudformation_stack_arn):
         """Sets the cloudformation_stack_arn of this DescribeImageResponseContent.
 
-        ARN of the main CloudFormation stack
+        ARN of the main CloudFormation stack.
 
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this DescribeImageResponseContent.
         :type cloudformation_stack_arn: str
@@ -332,7 +332,7 @@ class DescribeImageResponseContent(Model):
     def region(self):
         """Gets the region of this DescribeImageResponseContent.
 
-        AWS region where the image is created
+        AWS region where the image is created.
 
         :return: The region of this DescribeImageResponseContent.
         :rtype: str
@@ -343,7 +343,7 @@ class DescribeImageResponseContent(Model):
     def region(self, region):
         """Sets the region of this DescribeImageResponseContent.
 
-        AWS region where the image is created
+        AWS region where the image is created.
 
         :param region: The region of this DescribeImageResponseContent.
         :type region: str
@@ -378,7 +378,7 @@ class DescribeImageResponseContent(Model):
     def version(self):
         """Gets the version of this DescribeImageResponseContent.
 
-        ParallelCluster version used to build the image
+        ParallelCluster version used to build the image.
 
         :return: The version of this DescribeImageResponseContent.
         :rtype: str
@@ -389,7 +389,7 @@ class DescribeImageResponseContent(Model):
     def version(self, version):
         """Sets the version of this DescribeImageResponseContent.
 
-        ParallelCluster version used to build the image
+        ParallelCluster version used to build the image.
 
         :param version: The version of this DescribeImageResponseContent.
         :type version: str

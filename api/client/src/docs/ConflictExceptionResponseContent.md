@@ -1,6 +1,6 @@
 # ConflictExceptionResponseContent
 
-This exception is thrown when a client request to create/modify content would result in a conflict
+This exception is thrown when a client request to create/modify content would result in a conflict.
 
 ## Properties
 Name | Type | Description | Notes

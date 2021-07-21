@@ -27,6 +27,20 @@ except ImportError:
     import importlib_resources as pkg_resources
 
 
+def _param_overrides(operation, param):
+    """Provide updates to the model that are specific to the CLI."""
+    overrides = {
+        "create-cluster": {"clusterConfiguration": {"type": "file"}},
+        "update-cluster": {"clusterConfiguration": {"type": "file"}},
+        "build-image": {"imageConfiguration": {"type": "file"}},
+    }
+
+    try:
+        return overrides[to_kebab_case(operation["operationId"])][param]
+    except KeyError:
+        return {}
+
+
 def _resolve_ref(spec, subspec):
     """Look up a reference (e.g. $ref)in the specification."""
     if "$ref" in subspec:
@@ -66,6 +80,7 @@ def _resolve_body(spec, operation):
         new_param.update({k: v for k, v in param_data.items() if k in copy_keys})
         if param_data.get("format", None) == "byte":
             new_param["type"] = "byte"
+        new_param.update(_param_overrides(operation, param_name))
         new_params.append(new_param)
 
     return new_params

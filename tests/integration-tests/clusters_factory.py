@@ -321,7 +321,7 @@ class ClustersFactory:
             "false",
             "--cluster-configuration",
             config,
-            "--name",
+            "--cluster-name",
             name,
             "--wait",
         ]

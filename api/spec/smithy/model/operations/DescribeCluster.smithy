@@ -26,29 +26,29 @@ structure DescribeClusterRequest {
 
 structure DescribeClusterResponse {
     @required
-    @documentation("Name of the cluster")
+    @documentation("Name of the cluster.")
     clusterName: ClusterName,
     @required
-    @documentation("AWS region where the cluster is created")
+    @documentation("AWS region where the cluster is created.")
     region: Region,
     @required
-    @documentation("ParallelCluster version used to create the cluster")
+    @documentation("ParallelCluster version used to create the cluster.")
     version: Version,
     @required
-    @documentation("Status of the cluster. This corresponds to the CloudFormation stack status.")
-    cloudFormationStatus: CloudFormationStatus,
+    @documentation("Status of the cluster. Corresponds to the CloudFormation stack status.")
+    cloudFormationStackStatus: CloudFormationStackStatus,
     @required
-    @documentation("Status of the cluster infrastructure")
+    @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,
     @required
-    @documentation("ARN of the main CloudFormation stack")
+    @documentation("ARN of the main CloudFormation stack.")
     cloudformationStackArn: String,
     @required
-    @documentation("Timestamp representing the cluster creation time")
+    @documentation("Timestamp representing the cluster creation time.")
     @timestampFormat("date-time")
     creationTime: Timestamp,
     @required
-    @documentation("Timestamp representing the last cluster update time")
+    @documentation("Timestamp representing the last cluster update time.")
     @timestampFormat("date-time")
     lastUpdatedTime: Timestamp,
     @required
@@ -56,9 +56,9 @@ structure DescribeClusterResponse {
     @required
     computeFleetStatus: ComputeFleetStatus,
     @required
-    @documentation("Tags associated with the cluster")
+    @documentation("Tags associated with the cluster.")
     tags: Tags,
     headnode: EC2Instance,
-    @documentation("Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status")
+    @documentation("Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.")
     failureReason: String
 }

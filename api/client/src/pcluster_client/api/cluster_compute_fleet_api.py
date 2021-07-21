@@ -22,12 +22,13 @@ from pcluster_client.model_utils import (  # noqa: F401
     validate_and_convert_types
 )
 from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster_client.model.describe_compute_fleet_status_response_content import DescribeComputeFleetStatusResponseContent
+from pcluster_client.model.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent
 from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
 from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
-from pcluster_client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
+from pcluster_client.model.update_compute_fleet_request_content import UpdateComputeFleetRequestContent
+from pcluster_client.model.update_compute_fleet_response_content import UpdateComputeFleetResponseContent
 
 
 class ClusterComputeFleetApi(object):
@@ -42,25 +43,25 @@ class ClusterComputeFleetApi(object):
             api_client = ApiClient()
         self.api_client = api_client
 
-        def __describe_compute_fleet_status(
+        def __describe_compute_fleet(
             self,
             cluster_name,
             **kwargs
         ):
-            """describe_compute_fleet_status  # noqa: E501
+            """describe_compute_fleet  # noqa: E501
 
-            Describe the status of the compute fleet  # noqa: E501
+            Describe the status of the compute fleet.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.describe_compute_fleet_status(cluster_name, async_req=True)
+            >>> thread = api.describe_compute_fleet(cluster_name, async_req=True)
             >>> result = thread.get()
 
             Args:
                 cluster_name (str): Name of the cluster
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -82,7 +83,7 @@ class ClusterComputeFleetApi(object):
                 async_req (bool): execute request asynchronously
 
             Returns:
-                DescribeComputeFleetStatusResponseContent
+                DescribeComputeFleetResponseContent
                     If the method is called asynchronously, returns the request
                     thread.
             """
@@ -109,14 +110,14 @@ class ClusterComputeFleetApi(object):
                 cluster_name
             return self.call_with_http_info(**kwargs)
 
-        self.describe_compute_fleet_status = _Endpoint(
+        self.describe_compute_fleet = _Endpoint(
             settings={
-                'response_type': (DescribeComputeFleetStatusResponseContent,),
+                'response_type': (DescribeComputeFleetResponseContent,),
                 'auth': [
                     'aws.auth.sigv4'
                 ],
-                'endpoint_path': '/v3/clusters/{clusterName}/computefleet/status',
-                'operation_id': 'describe_compute_fleet_status',
+                'endpoint_path': '/v3/clusters/{clusterName}/computefleet',
+                'operation_id': 'describe_compute_fleet',
                 'http_method': 'GET',
                 'servers': None,
             },
@@ -139,8 +140,7 @@ class ClusterComputeFleetApi(object):
             root_map={
                 'validations': {
                     ('cluster_name',): {
-                        'max_length': 60,
-                        'min_length': 5,
+
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -172,30 +172,30 @@ class ClusterComputeFleetApi(object):
                 'content_type': [],
             },
             api_client=api_client,
-            callable=__describe_compute_fleet_status
+            callable=__describe_compute_fleet
         )
 
-        def __update_compute_fleet_status(
+        def __update_compute_fleet(
             self,
             cluster_name,
-            update_compute_fleet_status_request_content,
+            update_compute_fleet_request_content,
             **kwargs
         ):
-            """update_compute_fleet_status  # noqa: E501
+            """update_compute_fleet  # noqa: E501
 
             Update the status of the cluster compute fleet.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content, async_req=True)
+            >>> thread = api.update_compute_fleet(cluster_name, update_compute_fleet_request_content, async_req=True)
             >>> result = thread.get()
 
             Args:
                 cluster_name (str): Name of the cluster
-                update_compute_fleet_status_request_content (UpdateComputeFleetStatusRequestContent):
+                update_compute_fleet_request_content (UpdateComputeFleetRequestContent):
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -217,7 +217,7 @@ class ClusterComputeFleetApi(object):
                 async_req (bool): execute request asynchronously
 
             Returns:
-                None
+                UpdateComputeFleetResponseContent
                     If the method is called asynchronously, returns the request
                     thread.
             """
@@ -242,30 +242,30 @@ class ClusterComputeFleetApi(object):
             kwargs['_host_index'] = kwargs.get('_host_index')
             kwargs['cluster_name'] = \
                 cluster_name
-            kwargs['update_compute_fleet_status_request_content'] = \
-                update_compute_fleet_status_request_content
+            kwargs['update_compute_fleet_request_content'] = \
+                update_compute_fleet_request_content
             return self.call_with_http_info(**kwargs)
 
-        self.update_compute_fleet_status = _Endpoint(
+        self.update_compute_fleet = _Endpoint(
             settings={
-                'response_type': None,
+                'response_type': (UpdateComputeFleetResponseContent,),
                 'auth': [
                     'aws.auth.sigv4'
                 ],
-                'endpoint_path': '/v3/clusters/{clusterName}/computefleet/status',
-                'operation_id': 'update_compute_fleet_status',
+                'endpoint_path': '/v3/clusters/{clusterName}/computefleet',
+                'operation_id': 'update_compute_fleet',
                 'http_method': 'PATCH',
                 'servers': None,
             },
             params_map={
                 'all': [
                     'cluster_name',
-                    'update_compute_fleet_status_request_content',
+                    'update_compute_fleet_request_content',
                     'region',
                 ],
                 'required': [
                     'cluster_name',
-                    'update_compute_fleet_status_request_content',
+                    'update_compute_fleet_request_content',
                 ],
                 'nullable': [
                 ],
@@ -278,8 +278,7 @@ class ClusterComputeFleetApi(object):
             root_map={
                 'validations': {
                     ('cluster_name',): {
-                        'max_length': 60,
-                        'min_length': 5,
+
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -290,8 +289,8 @@ class ClusterComputeFleetApi(object):
                 'openapi_types': {
                     'cluster_name':
                         (str,),
-                    'update_compute_fleet_status_request_content':
-                        (UpdateComputeFleetStatusRequestContent,),
+                    'update_compute_fleet_request_content':
+                        (UpdateComputeFleetRequestContent,),
                     'region':
                         (str,),
                 },
@@ -301,7 +300,7 @@ class ClusterComputeFleetApi(object):
                 },
                 'location_map': {
                     'cluster_name': 'path',
-                    'update_compute_fleet_status_request_content': 'body',
+                    'update_compute_fleet_request_content': 'body',
                     'region': 'query',
                 },
                 'collection_format_map': {
@@ -316,5 +315,5 @@ class ClusterComputeFleetApi(object):
                 ]
             },
             api_client=api_client,
-            callable=__update_compute_fleet_status
+            callable=__update_compute_fleet
         )

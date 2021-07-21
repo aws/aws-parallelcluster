@@ -49,7 +49,7 @@ class ClusterInstancesApi(object):
         ):
             """delete_cluster_instances  # noqa: E501
 
-            Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters  # noqa: E501
+            Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
@@ -60,8 +60,8 @@ class ClusterInstancesApi(object):
                 cluster_name (str): Name of the cluster
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
-                force (bool, none_type): Force the deletion also when the cluster id is not found.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
+                force (bool, none_type): Force the deletion also when the cluster with the given name is not found. (Defaults to false.). [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -142,8 +142,7 @@ class ClusterInstancesApi(object):
             root_map={
                 'validations': {
                     ('cluster_name',): {
-                        'max_length': 60,
-                        'min_length': 5,
+
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -200,7 +199,7 @@ class ClusterInstancesApi(object):
                 cluster_name (str): Name of the cluster
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 next_token (str): Token to use for paginated requests.. [optional]
                 node_type (NodeType): [optional]
                 queue_name (str): [optional]
@@ -285,8 +284,7 @@ class ClusterInstancesApi(object):
             root_map={
                 'validations': {
                     ('cluster_name',): {
-                        'max_length': 60,
-                        'min_length': 5,
+
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },

@@ -142,8 +142,8 @@ class ConfigValidationMessage(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             level (ValidationLevel): [optional]  # noqa: E501
-            id (str): Id of the validator. [optional]  # noqa: E501
-            type (str): Type of the validator. [optional]  # noqa: E501
+            id (str): Id of the validator.. [optional]  # noqa: E501
+            type (str): Type of the validator.. [optional]  # noqa: E501
             message (str): Validation message. [optional]  # noqa: E501
         """
 

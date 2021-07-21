@@ -27,9 +27,9 @@ from pcluster_client.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
-    from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+    from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
     from pcluster_client.model.image_build_status import ImageBuildStatus
-    globals()['CloudFormationStatus'] = CloudFormationStatus
+    globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
     globals()['ImageBuildStatus'] = ImageBuildStatus
 
 
@@ -62,8 +62,6 @@ class ImageInfoSummary(ModelNormal):
 
     validations = {
         ('image_id',): {
-            'max_length': 60,
-            'min_length': 5,
             'regex': {
                 'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
             },
@@ -90,7 +88,7 @@ class ImageInfoSummary(ModelNormal):
             'image_build_status': (ImageBuildStatus,),  # noqa: E501
             'region': (str,),  # noqa: E501
             'version': (str,),  # noqa: E501
-            'cloudformation_stack_status': (CloudFormationStatus,),  # noqa: E501
+            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
         }
 
@@ -124,10 +122,10 @@ class ImageInfoSummary(ModelNormal):
         """ImageInfoSummary - a model defined in OpenAPI
 
         Args:
-            image_id (str): Id of the image
+            image_id (str): Id of the image.
             image_build_status (ImageBuildStatus):
-            region (str): AWS region where the image is built
-            version (str): ParallelCluster version used to build the image
+            region (str): AWS region where the image is built.
+            version (str): ParallelCluster version used to build the image.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -160,8 +158,8 @@ class ImageInfoSummary(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            cloudformation_stack_status (CloudFormationStatus): [optional]  # noqa: E501
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack. [optional]  # noqa: E501
+            cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

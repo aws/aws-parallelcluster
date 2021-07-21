@@ -1,6 +1,6 @@
 # UnauthorizedClientErrorResponseContent
 
-This exception is thrown when the client is not authorized to perform an action
+This exception is thrown when the client is not authorized to perform an action.
 
 ## Properties
 Name | Type | Description | Notes

@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 
 from pcluster.api.models import (
-    CloudFormationStatus,
+    CloudFormationStackStatus,
     Ec2AmiState,
     ImageBuilderImageStatus,
     ImageBuildStatus,
@@ -130,10 +130,10 @@ class TestListImages:
     @pytest.mark.parametrize("next_token", [None, "nextToken"], ids=["nextToken is None", "nextToken is not None"])
     def test_list_pending_images_successful(self, client, mocker, next_token):
         describe_result = [
-            _create_stack("image1", CloudFormationStatus.CREATE_COMPLETE),
-            _create_stack("image2", CloudFormationStatus.CREATE_COMPLETE),
-            _create_stack("image3", CloudFormationStatus.CREATE_IN_PROGRESS),
-            _create_stack("image4", CloudFormationStatus.DELETE_IN_PROGRESS),
+            _create_stack("image1", CloudFormationStackStatus.CREATE_COMPLETE),
+            _create_stack("image2", CloudFormationStackStatus.CREATE_COMPLETE),
+            _create_stack("image3", CloudFormationStackStatus.CREATE_IN_PROGRESS),
+            _create_stack("image4", CloudFormationStackStatus.DELETE_IN_PROGRESS),
         ]
         mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
 
@@ -144,7 +144,7 @@ class TestListImages:
                 {
                     "imageId": "image3",
                     "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
-                    "cloudformationStackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                    "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                     "cloudformationStackArn": "arn:image3",
                     "region": "us-east-1",
                     "version": "3.0.0",
@@ -160,12 +160,12 @@ class TestListImages:
     @pytest.mark.parametrize("next_token", [None, "nextToken"], ids=["nextToken is None", "nextToken is not None"])
     def test_list_failed_images_successful(self, client, mocker, next_token):
         describe_result = [
-            _create_stack("image1", CloudFormationStatus.CREATE_COMPLETE),
-            _create_stack("image2", CloudFormationStatus.CREATE_COMPLETE),
-            _create_stack("image3", CloudFormationStatus.CREATE_IN_PROGRESS),
-            _create_stack("image4", CloudFormationStatus.DELETE_IN_PROGRESS),
-            _create_stack("image5", CloudFormationStatus.DELETE_FAILED),
-            _create_stack("image6", CloudFormationStatus.CREATE_FAILED),
+            _create_stack("image1", CloudFormationStackStatus.CREATE_COMPLETE),
+            _create_stack("image2", CloudFormationStackStatus.CREATE_COMPLETE),
+            _create_stack("image3", CloudFormationStackStatus.CREATE_IN_PROGRESS),
+            _create_stack("image4", CloudFormationStackStatus.DELETE_IN_PROGRESS),
+            _create_stack("image5", CloudFormationStackStatus.DELETE_FAILED),
+            _create_stack("image6", CloudFormationStackStatus.CREATE_FAILED),
         ]
         mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
 
@@ -176,7 +176,7 @@ class TestListImages:
                 {
                     "imageId": "image5",
                     "imageBuildStatus": ImageBuildStatus.DELETE_FAILED,
-                    "cloudformationStackStatus": CloudFormationStatus.DELETE_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.DELETE_FAILED,
                     "cloudformationStackArn": "arn:image5",
                     "region": "us-east-1",
                     "version": "3.0.0",
@@ -184,7 +184,7 @@ class TestListImages:
                 {
                     "imageId": "image6",
                     "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
-                    "cloudformationStackStatus": CloudFormationStatus.CREATE_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
                     "cloudformationStackArn": "arn:image6",
                     "region": "us-east-1",
                     "version": "3.0.0",
@@ -288,7 +288,7 @@ class TestDeleteImage:
 
     def test_delete_available_ec2_image_with_stack_yet_to_be_removed_succeeds(self, mocker, client):
         image = _create_image_info("image1")
-        stack = _create_stack("image1", CloudFormationStatus.DELETE_IN_PROGRESS)
+        stack = _create_stack("image1", CloudFormationStackStatus.DELETE_IN_PROGRESS)
         expected_response = {
             "image": {
                 "imageId": "image1",
@@ -312,14 +312,14 @@ class TestDeleteImage:
         self._assert_successful(mocker, client, "image1", True, "us-east-1", image, None, expected_response)
 
     def test_delete_image_with_only_stack_and_no_available_image_succeeds(self, mocker, client):
-        stack = _create_stack("image1", CloudFormationStatus.DELETE_FAILED)
+        stack = _create_stack("image1", CloudFormationStackStatus.DELETE_FAILED)
         expected_response = {
             "image": {
                 "imageId": "image1",
                 "imageBuildStatus": ImageBuildStatus.DELETE_IN_PROGRESS,
                 "region": "us-east-1",
                 "version": "3.0.0",
-                "cloudformationStackStatus": CloudFormationStatus.DELETE_IN_PROGRESS,
+                "cloudformationStackStatus": CloudFormationStackStatus.DELETE_IN_PROGRESS,
                 "cloudformationStackArn": "arn:image1",
             }
         }
@@ -425,13 +425,10 @@ class TestBuildImage:
     )
 
     def _send_test_request(self, client, dryrun=None, suppress_validators=None, rollback_on_failure=None):
-        build_image_request_content = {
-            "imageConfiguration": self.encoded_config,
-            "id": "imageid",
-            "region": "eu-west-1",
-        }
+        build_image_request_content = {"imageConfiguration": self.encoded_config, "imageId": "imageid"}
         query_string = [
             ("validationFailureLevel", ValidationLevel.INFO),
+            ("region", "eu-west-1"),
         ]
 
         if dryrun is not None:
@@ -475,7 +472,7 @@ class TestBuildImage:
         )
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=_create_stack("image1", CloudFormationStatus.CREATE_IN_PROGRESS),
+            return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS),
         )
 
         expected_response = {
@@ -762,7 +759,7 @@ class TestDescribeImage:
                 ],
             },
             "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
-            "imageConfiguration": {"s3Url": "test_url"},
+            "imageConfiguration": {"url": "test_url"},
             "imageId": "image1",
             "region": "us-east-1",
             "version": "3.0.0",
@@ -781,14 +778,14 @@ class TestDescribeImage:
         )
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=_create_stack("image1", CloudFormationStatus.CREATE_IN_PROGRESS),
+            return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS),
         )
 
         expected_response = {
-            "imageConfiguration": {"s3Url": "test_url"},
+            "imageConfiguration": {"url": "test_url"},
             "imageId": "image1",
             "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
-            "cloudformationStackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+            "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
             "cloudformationStackArn": "arn:image1",
             "region": "us-east-1",
             "version": "3.0.0",
@@ -807,7 +804,7 @@ class TestDescribeImage:
         )
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=_create_stack("image1", CloudFormationStatus.CREATE_FAILED, "cfn test reason"),
+            return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_FAILED, "cfn test reason"),
         )
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack_resource",
@@ -820,10 +817,10 @@ class TestDescribeImage:
 
         expected_response = {
             "cloudformationStackArn": "arn:image1",
-            "cloudformationStackStatus": CloudFormationStatus.CREATE_FAILED,
+            "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
             "cloudformationStackStatusReason": "cfn test reason",
             "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
-            "imageConfiguration": {"s3Url": "test_url"},
+            "imageConfiguration": {"url": "test_url"},
             "imageId": "image1",
             "imagebuilderImageStatus": ImageBuilderImageStatus.FAILED,
             "imagebuilderImageStatusReason": "img test reason",
