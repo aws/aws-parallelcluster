@@ -63,10 +63,12 @@ def _create_stack(image_id, status, reason=None):
         "StackId": f"arn:{image_id}",
         "StackName": f"arn:{image_id}",
         "StackStatus": status,
+        "CreationTime": datetime(2021, 4, 12),
         "Tags": [
             {"Key": "parallelcluster:image_id", "Value": image_id},
             {"Key": "parallelcluster:version", "Value": "3.0.0"},
             {"Key": "parallelcluster:build_config", "Value": "test_url"},
+            {"Key": "parallelcluster:build_log", "Value": f"arn:{image_id}:build_log"},
         ],
     }
 
@@ -787,6 +789,14 @@ class TestDescribeImage:
             "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
             "cloudformationStackArn": "arn:image1",
+            "imageBuildLogsArn": "arn:image1:build_log",
+            "cloudformationStackCreationTime": "2021-04-12 00:00:00",
+            "cloudformationStackTags": [
+                {"Key": "parallelcluster:image_id", "Value": "image1"},
+                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:build_config", "Value": "test_url"},
+                {"Key": "parallelcluster:build_log", "Value": "arn:image1:build_log"},
+            ],
             "region": "us-east-1",
             "version": "3.0.0",
         }
@@ -817,6 +827,14 @@ class TestDescribeImage:
 
         expected_response = {
             "cloudformationStackArn": "arn:image1",
+            "imageBuildLogsArn": "arn:image1:build_log",
+            "cloudformationStackCreationTime": "2021-04-12 00:00:00",
+            "cloudformationStackTags": [
+                {"Key": "parallelcluster:image_id", "Value": "image1"},
+                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:build_config", "Value": "test_url"},
+                {"Key": "parallelcluster:build_log", "Value": "arn:image1:build_log"},
+            ],
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
             "cloudformationStackStatusReason": "cfn test reason",
             "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
