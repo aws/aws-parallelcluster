@@ -124,7 +124,7 @@ class Cluster:
 
     def start(self):
         """Run pcluster start and return the result."""
-        cmd_args = ["pcluster", "update-compute-fleet-status", "--cluster-name", self.name, "--status"]
+        cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
         if scheduler == "slurm":
             cmd_args.append("START_REQUESTED")
@@ -140,7 +140,7 @@ class Cluster:
 
     def stop(self):
         """Run pcluster stop and return the result."""
-        cmd_args = ["pcluster", "update-compute-fleet-status", "--cluster-name", self.name, "--status"]
+        cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
         if scheduler == "slurm":
             cmd_args.append("STOP_REQUESTED")
