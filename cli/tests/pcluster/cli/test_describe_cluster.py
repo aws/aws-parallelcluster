@@ -61,13 +61,13 @@ class TestDescribeClusterCommand:
             },
             "version": "3.0.0",
             "clusterConfiguration": {
-                "s3Url": (
+                "url": (
                     "https://parallelcluster-v1-do-not-delete.s3.amazonaws.com/parallelcluster/3.0.0/clusters/cluster/"
                     "configs/cluster-config.yaml"
                 )
             },
             "tags": [{"value": "3.0.0", "key": "parallelcluster:version"}],
-            "cloudFormationStatus": "CREATE_COMPLETE",
+            "cloudFormationStackStatus": "CREATE_COMPLETE",
             "clusterName": "cluster",
             "computeFleetStatus": "RUNNING",
             "cloudformationStackArn": "arn:aws:cloudformation:us-east-2:000000000000:stack/name/0",

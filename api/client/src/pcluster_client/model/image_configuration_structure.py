@@ -72,7 +72,7 @@ class ImageConfigurationStructure(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            's3_url': (str,),  # noqa: E501
+            'url': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -81,7 +81,7 @@ class ImageConfigurationStructure(ModelNormal):
 
 
     attribute_map = {
-        's3_url': 's3Url',  # noqa: E501
+        'url': 'url',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -130,7 +130,7 @@ class ImageConfigurationStructure(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            s3_url (str): S3 Url pointing to the image configuration file.. [optional]  # noqa: E501
+            url (str): URL of the image configuration file.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

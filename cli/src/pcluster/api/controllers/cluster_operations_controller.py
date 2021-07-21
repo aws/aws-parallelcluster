@@ -17,7 +17,6 @@ from pcluster.api.controllers.common import (
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
-    read_config,
 )
 from pcluster.api.converters import (
     cloud_formation_status_to_cluster_status,
@@ -32,7 +31,7 @@ from pcluster.api.errors import (
 )
 from pcluster.api.models import (
     Change,
-    CloudFormationStatus,
+    CloudFormationStackStatus,
     ClusterConfigurationStructure,
     ClusterInfoSummary,
     CreateClusterBadRequestExceptionResponseContent,
@@ -67,38 +66,46 @@ from pcluster.validators.common import FailureLevel
 LOGGER = logging.getLogger(__name__)
 
 
-@configure_aws_region(body_name="create_cluster_request_content")
+@configure_aws_region()
 @convert_errors()
 @http_success_status_code(202)
 def create_cluster(
     create_cluster_request_content: Dict,
+    region: str = None,
     suppress_validators: List[str] = None,
     validation_failure_level: str = None,
     dryrun: bool = None,
     rollback_on_failure: bool = None,
 ) -> CreateClusterResponseContent:
     """
-    Create a ParallelCluster managed cluster in a given region.
+    Create a managed cluster in a given region.
 
     :param create_cluster_request_content:
+    :type create_cluster_request_content: dict | bytes
+    :param region: AWS Region that the operation corresponds to.
+    :type region: str
     :param suppress_validators: Identifies one or more config validators to suppress.
     Format: (ALL|type:[A-Za-z0-9]+)
     :param validation_failure_level: Min validation level that will cause the cluster creation to fail.
     Defaults to &#39;ERROR&#39;.
-    :param dryrun: Only perform request validation without creating any resource. It can be used to validate the cluster
-    configuration. Response code: 200
+    :param dryrun: Only perform request validation without creating any resource. May be used to validate the cluster
+    configuration.
     :param rollback_on_failure: When set it automatically initiates a cluster stack rollback on failures.
-    Defaults to true.
+    (Defaults to true.)
     """
     # Set defaults
     rollback_on_failure = rollback_on_failure in {True, None}
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun is True
     create_cluster_request_content = CreateClusterRequestContent.from_dict(create_cluster_request_content)
-    cluster_config = read_config(create_cluster_request_content.cluster_configuration)
+    cluster_config = create_cluster_request_content.cluster_configuration
+
+    if not cluster_config:
+        LOGGER.error("Failed: configuration is required and cannot be empty")
+        raise BadRequestException("configuration is required and cannot be empty")
 
     try:
-        cluster = Cluster(create_cluster_request_content.name, cluster_config)
+        cluster = Cluster(create_cluster_request_content.cluster_name, cluster_config)
 
         if dryrun:
             cluster.validate_create_request(
@@ -114,12 +121,12 @@ def create_cluster(
 
         return CreateClusterResponseContent(
             ClusterInfoSummary(
-                cluster_name=create_cluster_request_content.name,
-                cloudformation_stack_status=CloudFormationStatus.CREATE_IN_PROGRESS,
+                cluster_name=create_cluster_request_content.cluster_name,
+                cloudformation_stack_status=CloudFormationStackStatus.CREATE_IN_PROGRESS,
                 cloudformation_stack_arn=stack_id,
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=get_installed_version(),
-                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.CREATE_IN_PROGRESS),
+                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.CREATE_IN_PROGRESS),
             ),
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
@@ -136,7 +143,7 @@ def delete_cluster(cluster_name, region=None):
 
     :param cluster_name: Name of the cluster
     :type cluster_name: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
 
     :rtype: DeleteClusterResponseContent
@@ -149,18 +156,18 @@ def delete_cluster(cluster_name, region=None):
                 f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
             )
 
-        if not cluster.status == CloudFormationStatus.DELETE_IN_PROGRESS:
+        if not cluster.status == CloudFormationStackStatus.DELETE_IN_PROGRESS:
             # TODO: remove keep_logs logic from delete
             cluster.delete(keep_logs=False)
 
         return DeleteClusterResponseContent(
             cluster=ClusterInfoSummary(
                 cluster_name=cluster_name,
-                cloudformation_stack_status=CloudFormationStatus.DELETE_IN_PROGRESS,
+                cloudformation_stack_status=CloudFormationStackStatus.DELETE_IN_PROGRESS,
                 cloudformation_stack_arn=cluster.stack.id,
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=cluster.stack.version,
-                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.DELETE_IN_PROGRESS),
+                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.DELETE_IN_PROGRESS),
             )
         )
     except StackNotFoundError:
@@ -179,7 +186,7 @@ def describe_cluster(cluster_name, region=None):
 
     :param cluster_name: Name of the cluster
     :type cluster_name: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
 
     :rtype: DescribeClusterResponseContent
@@ -207,9 +214,9 @@ def describe_cluster(cluster_name, region=None):
     response = DescribeClusterResponseContent(
         creation_time=cfn_stack.creation_time,
         version=cfn_stack.version,
-        cluster_configuration=ClusterConfigurationStructure(s3_url=config_url),
+        cluster_configuration=ClusterConfigurationStructure(url=config_url),
         tags=[Tag(value=tag.get("Value"), key=tag.get("Key")) for tag in cfn_stack.tags],
-        cloud_formation_status=cfn_stack.status,
+        cloud_formation_stack_status=cfn_stack.status,
         cluster_name=cluster_name,
         compute_fleet_status=fleet_status.value,
         cloudformation_stack_arn=cfn_stack.id,
@@ -241,11 +248,11 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
     """
     Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.
 
-    :param region: List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to.
+    :param region: List clusters deployed to a given AWS Region.
     :type region: str
     :param next_token: Token to use for paginated requests.
     :type next_token: str
-    :param cluster_status: Filter by cluster status.
+    :param cluster_status: Filter by cluster status. (Defaults to all clusters.)
     :type cluster_status: list | bytes
 
     :rtype: ListClustersResponseContent
@@ -283,7 +290,7 @@ def update_cluster(
     force_update=None,
 ):
     """
-    Update cluster.
+    Update a cluster managed in a given region.
 
     :param update_cluster_request_content:
     :param cluster_name: Name of the cluster
@@ -292,12 +299,12 @@ def update_cluster(
     Format: (ALL|type:[A-Za-z0-9]+)
     :type suppress_validators: List[str]
     :param validation_failure_level: Min validation level that will cause the update to fail.
-    Defaults to &#39;error&#39;.
+    (Defaults to &#39;error&#39;.)
     :type validation_failure_level: dict | bytes
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
     :param dryrun: Only perform request validation without creating any resource.
-    It can be used to validate the cluster configuration and update requirements. Response code: 200
+    May be used to validate the cluster configuration and update requirements. Response code: 200
     :type dryrun: bool
     :param force_update: Force update by ignoring the update validation errors.
     :type force_update: bool
@@ -309,7 +316,11 @@ def update_cluster(
     dryrun = dryrun is True
     force_update = force_update is True
     update_cluster_request_content = UpdateClusterRequestContent.from_dict(update_cluster_request_content)
-    cluster_config = read_config(update_cluster_request_content.cluster_configuration)
+    cluster_config = update_cluster_request_content.cluster_configuration
+
+    if not cluster_config:
+        LOGGER.error("Failed: configuration is required and cannot be empty")
+        raise BadRequestException("configuration is required and cannot be empty")
 
     try:
         cluster = Cluster(cluster_name)
@@ -339,11 +350,11 @@ def update_cluster(
         return UpdateClusterResponseContent(
             cluster=ClusterInfoSummary(
                 cluster_name=cluster_name,
-                cloudformation_stack_status=CloudFormationStatus.UPDATE_IN_PROGRESS,
+                cloudformation_stack_status=CloudFormationStackStatus.UPDATE_IN_PROGRESS,
                 cloudformation_stack_arn=cluster.stack.id,
                 region=os.environ.get("AWS_DEFAULT_REGION"),
                 version=cluster.stack.version,
-                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStatus.UPDATE_IN_PROGRESS),
+                cluster_status=cloud_formation_status_to_cluster_status(CloudFormationStackStatus.UPDATE_IN_PROGRESS),
             ),
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
             change_set=change_set,

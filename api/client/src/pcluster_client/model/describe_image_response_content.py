@@ -27,12 +27,12 @@ from pcluster_client.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
-    from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+    from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
     from pcluster_client.model.ec2_ami_info import Ec2AmiInfo
     from pcluster_client.model.image_build_status import ImageBuildStatus
     from pcluster_client.model.image_builder_image_status import ImageBuilderImageStatus
     from pcluster_client.model.image_configuration_structure import ImageConfigurationStructure
-    globals()['CloudFormationStatus'] = CloudFormationStatus
+    globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
     globals()['Ec2AmiInfo'] = Ec2AmiInfo
     globals()['ImageBuildStatus'] = ImageBuildStatus
     globals()['ImageBuilderImageStatus'] = ImageBuilderImageStatus
@@ -94,7 +94,7 @@ class DescribeImageResponseContent(ModelNormal):
             'imagebuilder_image_status_reason': (str,),  # noqa: E501
             'imagebuilder_image_status': (ImageBuilderImageStatus,),  # noqa: E501
             'creation_time': (datetime,),  # noqa: E501
-            'cloudformation_stack_status': (CloudFormationStatus,),  # noqa: E501
+            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
             'ec2_ami_info': (Ec2AmiInfo,),  # noqa: E501
         }
@@ -136,10 +136,10 @@ class DescribeImageResponseContent(ModelNormal):
 
         Args:
             image_configuration (ImageConfigurationStructure):
-            image_id (str): Id of the Image
+            image_id (str): Id of the Image to retrieve detailed information for.
             image_build_status (ImageBuildStatus):
-            region (str): AWS region where the image is created
-            version (str): ParallelCluster version used to build the image
+            region (str): AWS region where the image is created.
+            version (str): ParallelCluster version used to build the image.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -172,12 +172,12 @@ class DescribeImageResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            cloudformation_stack_status_reason (str): Reason for the CloudFormation stack status. [optional]  # noqa: E501
+            cloudformation_stack_status_reason (str): Reason for the CloudFormation stack status.. [optional]  # noqa: E501
             imagebuilder_image_status_reason (str): Reason for the ImageBuilder Image status.. [optional]  # noqa: E501
             imagebuilder_image_status (ImageBuilderImageStatus): [optional]  # noqa: E501
-            creation_time (datetime): Timestamp representing the image creation time. [optional]  # noqa: E501
-            cloudformation_stack_status (CloudFormationStatus): [optional]  # noqa: E501
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack. [optional]  # noqa: E501
+            creation_time (datetime): Timestamp representing the image creation time.. [optional]  # noqa: E501
+            cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
             ec2_ami_info (Ec2AmiInfo): [optional]  # noqa: E501
         """
 

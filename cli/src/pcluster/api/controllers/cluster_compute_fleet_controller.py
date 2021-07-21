@@ -11,9 +11,10 @@
 from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, convert_errors
 from pcluster.api.errors import BadRequestException, NotFoundException
 from pcluster.api.models import (
-    DescribeComputeFleetStatusResponseContent,
+    DescribeComputeFleetResponseContent,
     RequestedComputeFleetStatus,
-    UpdateComputeFleetStatusRequestContent,
+    UpdateComputeFleetRequestContent,
+    UpdateComputeFleetResponseContent,
 )
 from pcluster.aws.common import StackNotFoundError
 from pcluster.models.cluster import Cluster
@@ -21,16 +22,16 @@ from pcluster.models.cluster import Cluster
 
 @configure_aws_region()
 @convert_errors()
-def describe_compute_fleet_status(cluster_name, region=None):
+def describe_compute_fleet(cluster_name, region=None):
     """
     Describe the status of the compute fleet.
 
     :param cluster_name: Name of the cluster
     :type cluster_name: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
 
-    :rtype: DescribeComputeFleetStatusResponseContent
+    :rtype: DescribeComputeFleetResponseContent
     """
     try:
         cluster = Cluster(cluster_name)
@@ -38,8 +39,10 @@ def describe_compute_fleet_status(cluster_name, region=None):
             raise BadRequestException(
                 f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
             )
-        status, last_updated_time = cluster.compute_fleet_status_with_last_updated_time
-        return DescribeComputeFleetStatusResponseContent(last_updated_time=last_updated_time, status=status.value)
+        status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
+        return DescribeComputeFleetResponseContent(
+            last_status_updated_time=last_status_updated_time, status=status.value
+        )
     except StackNotFoundError:
         raise NotFoundException(
             f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
@@ -48,29 +51,29 @@ def describe_compute_fleet_status(cluster_name, region=None):
 
 @configure_aws_region()
 @convert_errors()
-def update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content, region=None):
+def update_compute_fleet(update_compute_fleet_request_content, cluster_name, region=None):
     """
-    Update the status of the cluster compute fleet.
+        Update the status of the cluster compute fleet.
 
-    :param cluster_name: Name of the cluster
-    :type cluster_name: str
-    :param update_compute_fleet_status_request_content:
-    :type update_compute_fleet_status_request_content: dict | bytes
-    :param region: AWS Region. Defaults to the region the API is deployed to.
-    :type region: str
+    request_content:
+        :type update_compute_fleet_request_content: dict | bytes
+        :param cluster_name: Name of the cluster
+        :type cluster_name: str
+        :param region: AWS Region that the operation corresponds to.
+        :type region: str
 
-    :rtype: None
+        :rtype: UpdateComputeFleetResponseContent
     """
     try:
-        update_compute_fleet_status_request_content = UpdateComputeFleetStatusRequestContent.from_dict(
-            update_compute_fleet_status_request_content
+        update_compute_fleet_request_content = UpdateComputeFleetRequestContent.from_dict(
+            update_compute_fleet_request_content
         )
         cluster = Cluster(cluster_name)
         if not check_cluster_version(cluster):
             raise BadRequestException(
                 f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
             )
-        status = update_compute_fleet_status_request_content.status
+        status = update_compute_fleet_request_content.status
         if cluster.stack.scheduler == "slurm":
             if status == RequestedComputeFleetStatus.START_REQUESTED:
                 cluster.start()
@@ -92,6 +95,8 @@ def update_compute_fleet_status(cluster_name, update_compute_fleet_status_reques
                         "the update compute fleet status can only be set to"
                         " `ENABLED` or `DISABLED` for AWS Batch clusters."
                     )
+        status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
+        return UpdateComputeFleetResponseContent(last_status_updated_time=last_status_updated_time, status=status.value)
     except StackNotFoundError:
         raise NotFoundException(
             f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."

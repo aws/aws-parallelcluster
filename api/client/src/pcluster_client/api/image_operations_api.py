@@ -70,9 +70,10 @@ class ImageOperationsApi(object):
 
             Keyword Args:
                 suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
-                validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. Defaults to 'error'.. [optional]
-                dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200. [optional]
-                rollback_on_failure (bool, none_type): When set it automatically initiates an image stack rollback on failures. Defaults to true.. [optional]
+                validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.). [optional]
+                dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the image configuration.. [optional]
+                rollback_on_failure (bool, none_type): When set, will automatically initiate an image stack rollback on failure. (Defaults to true.). [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -139,6 +140,7 @@ class ImageOperationsApi(object):
                     'validation_failure_level',
                     'dryrun',
                     'rollback_on_failure',
+                    'region',
                 ],
                 'required': [
                     'build_image_request_content',
@@ -172,12 +174,15 @@ class ImageOperationsApi(object):
                         (bool, none_type,),
                     'rollback_on_failure':
                         (bool, none_type,),
+                    'region':
+                        (str,),
                 },
                 'attribute_map': {
                     'suppress_validators': 'suppressValidators',
                     'validation_failure_level': 'validationFailureLevel',
                     'dryrun': 'dryrun',
                     'rollback_on_failure': 'rollbackOnFailure',
+                    'region': 'region',
                 },
                 'location_map': {
                     'build_image_request_content': 'body',
@@ -185,6 +190,7 @@ class ImageOperationsApi(object):
                     'validation_failure_level': 'query',
                     'dryrun': 'query',
                     'rollback_on_failure': 'query',
+                    'region': 'query',
                 },
                 'collection_format_map': {
                     'suppress_validators': 'multi',
@@ -217,10 +223,10 @@ class ImageOperationsApi(object):
             >>> result = thread.get()
 
             Args:
-                image_id (str): Id of the image
+                image_id (str): Id of the image.
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 force (bool, none_type): Force deletion in case there are instances using the AMI or in case the AMI is shared. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
@@ -302,8 +308,7 @@ class ImageOperationsApi(object):
             root_map={
                 'validations': {
                     ('image_id',): {
-                        'max_length': 60,
-                        'min_length': 5,
+
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -357,10 +362,10 @@ class ImageOperationsApi(object):
             >>> result = thread.get()
 
             Args:
-                image_id (str): Id of the image
+                image_id (str): Id of the image.
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -439,8 +444,7 @@ class ImageOperationsApi(object):
             root_map={
                 'validations': {
                     ('image_id',): {
-                        'max_length': 60,
-                        'min_length': 5,
+
                         'regex': {
                             'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
                         },
@@ -490,9 +494,9 @@ class ImageOperationsApi(object):
 
 
             Keyword Args:
-                region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]
-                os (str): Filter by OS distribution. [optional]
-                architecture (str): Filter by architecture. [optional]
+                region (str): AWS Region that the operation corresponds to.. [optional]
+                os (str): Filter by OS distribution (Default is to not filter.). [optional]
+                architecture (str): Filter by architecture (Default is to not filter.). [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -607,7 +611,7 @@ class ImageOperationsApi(object):
         ):
             """list_images  # noqa: E501
 
-            Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default  # noqa: E501
+            Retrieve the list of existing custom images.  # noqa: E501
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
@@ -615,10 +619,10 @@ class ImageOperationsApi(object):
             >>> result = thread.get()
 
             Args:
-                image_status (ImageStatusFilteringOption): Filter by image status.
+                image_status (ImageStatusFilteringOption): Filter images by the status provided.
 
             Keyword Args:
-                region (str): List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.. [optional]
+                region (str): List images built in a given AWS Region.. [optional]
                 next_token (str): Token to use for paginated requests.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.

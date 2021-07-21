@@ -2,13 +2,12 @@ namespace parallelcluster
 
 resource Cluster {
     identifiers: { clusterName: ClusterName },
-    create: CreateCluster,
+    put: CreateCluster,
     list: ListClusters,
     read: DescribeCluster,
     delete: DeleteCluster,
     update: UpdateCluster,
-    operations: [
-    ],
+    operations: [],
 }
 
 resource ClusterInstances {
@@ -17,8 +16,8 @@ resource ClusterInstances {
     delete: DeleteClusterInstances,
 }
 
-resource ClusterComputeFleetStatus {
+resource ClusterComputeFleet {
     identifiers: { clusterName: ClusterName },
-    read: DescribeComputeFleetStatus,
-    update: UpdateComputeFleetStatus,
+    read: DescribeComputeFleet,
+    update: UpdateComputeFleet,
 }

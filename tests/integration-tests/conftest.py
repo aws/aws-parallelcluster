@@ -1123,7 +1123,7 @@ def build_image():
             [
                 "pcluster",
                 "build-image",
-                "--id",
+                "--image-id",
                 image_id,
                 "--region",
                 region,

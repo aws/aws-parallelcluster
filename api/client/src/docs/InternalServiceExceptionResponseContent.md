@@ -1,6 +1,6 @@
 # InternalServiceExceptionResponseContent
 
-This exception is thrown on an unhandled service error
+This exception is thrown on an unhandled service error.
 
 ## Properties
 Name | Type | Description | Notes

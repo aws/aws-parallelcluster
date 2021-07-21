@@ -12,7 +12,6 @@
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import inspect
 import json
 import logging.config
@@ -65,17 +64,14 @@ def re_validator(rexp_str, param, in_str):
     return in_str
 
 
-def read_file_b64(_param, path):
-    """Take file path, read the file and convert to base64 encoded string."""
+def read_file(_param, path):
+    """Take file path, read the file and return the data as a string."""
     try:
         with open(path) as file:
             file_data = file.read()
     except FileNotFoundError:
         _exit_msg(f"Bad Request: File not found: '{path}'")
-    except UnicodeDecodeError:
-        _exit_msg(f"Bad Request: Unicode error: Perhaps input file '{path}' is not yaml.")
-
-    return base64.b64encode(file_data.encode("utf-8")).decode("utf-8")
+    return file_data
 
 
 def to_number(param, in_str):
@@ -151,7 +147,12 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", title="COMMANDS", dest="operation")
     subparsers.required = True
-    type_map = {"number": to_number, "boolean": bool_converter, "integer": to_int, "byte": read_file_b64}
+    type_map = {
+        "number": to_number,
+        "boolean": bool_converter,
+        "integer": to_int,
+        "file": read_file,
+    }
     parser_map = {"subparser": subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments

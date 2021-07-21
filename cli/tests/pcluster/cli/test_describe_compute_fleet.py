@@ -8,14 +8,14 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.api.models import DescribeComputeFleetStatusResponseContent
+from pcluster.api.models import DescribeComputeFleetResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
 
 
-class TestDescribeComputeFleetStatusCommand:
+class TestDescribeComputeFleetCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
-        command = ["pcluster", "describe-compute-fleet-status", "--help"]
+        command = ["pcluster", "describe-compute-fleet", "--help"]
         run_cli(command, expect_failure=False)
 
         assert_out_err(
@@ -42,27 +42,27 @@ class TestDescribeComputeFleetStatusCommand:
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
-        command = ["pcluster", "describe-compute-fleet-status"] + args
+        command = ["pcluster", "describe-compute-fleet"] + args
         run_cli(command, expect_failure=True)
 
         out, err = capsys.readouterr()
         assert_that(out + err).contains(error_message)
 
     def test_execute(self, mocker):
-        response_dict = {"lastUpdatedTime": "2021-01-01 00:00:00.000000+00:00", "status": "RUNNING"}
+        response_dict = {"lastStatusUpdatedTime": "2021-01-01 00:00:00.000000+00:00", "status": "RUNNING"}
 
-        response = DescribeComputeFleetStatusResponseContent().from_dict(response_dict)
+        response = DescribeComputeFleetResponseContent().from_dict(response_dict)
         describe_clusters_mock = mocker.patch(
-            "pcluster.api.controllers.cluster_compute_fleet_controller.describe_compute_fleet_status",
+            "pcluster.api.controllers.cluster_compute_fleet_controller.describe_compute_fleet",
             return_value=response,
             autospec=True,
         )
 
-        out = run(["describe-compute-fleet-status", "--cluster-name", "cluster"])
+        out = run(["describe-compute-fleet", "--cluster-name", "cluster"])
         expected = {
             **response_dict,
             **{
-                "lastUpdatedTime": "2021-01-01T00:00:00+00:00",
+                "lastStatusUpdatedTime": "2021-01-01T00:00:00+00:00",
             },
         }
         assert_that(out).is_equal_to(expected)
@@ -73,14 +73,14 @@ class TestDescribeComputeFleetStatusCommand:
     def test_error(self, mocker):
         api_response = {"message": "error"}, 400
         mocker.patch(
-            "pcluster.api.controllers.cluster_compute_fleet_controller.describe_compute_fleet_status",
+            "pcluster.api.controllers.cluster_compute_fleet_controller.describe_compute_fleet",
             return_value=api_response,
             autospec=True,
         )
 
         with pytest.raises(APIOperationException) as exc_info:
             command = [
-                "describe-compute-fleet-status",
+                "describe-compute-fleet",
                 "--region",
                 "eu-west-1",
                 "--cluster-name",
