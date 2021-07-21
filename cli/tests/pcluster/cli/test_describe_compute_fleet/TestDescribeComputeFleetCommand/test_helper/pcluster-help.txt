@@ -1,7 +1,7 @@
-usage: pcluster delete-cluster [-h] --cluster-name CLUSTER_NAME
-                               [--region REGION] [--debug]
+usage: pcluster describe-compute-fleet [-h] --cluster-name CLUSTER_NAME
+                                       [--region REGION] [--debug]
 
-Initiate the deletion of a cluster.
+Describe the status of the compute fleet.
 
 optional arguments:
   -h, --help            show this help message and exit

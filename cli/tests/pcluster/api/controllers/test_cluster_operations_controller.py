@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 
 from pcluster.api.controllers.common import get_validator_suppressors
-from pcluster.api.models import CloudFormationStatus
+from pcluster.api.models import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError
@@ -54,7 +54,7 @@ class TestCreateCluster:
     url = "/v3/clusters"
     method = "POST"
 
-    BASE64_ENCODED_CONFIG = "SW1hZ2U6CiAgT3M6IGFsaW51eDIKSGVhZE5vZGU6CiAgSW5zdGFuY2VUeXBlOiB0Mi5taWNybw=="
+    CONFIG = "Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t2.micro"
 
     def _send_test_request(
         self,
@@ -63,6 +63,7 @@ class TestCreateCluster:
         suppress_validators=None,
         validation_failure_level=None,
         dryrun=None,
+        region=None,
         rollback_on_failure=None,
     ):
         query_string = []
@@ -74,6 +75,8 @@ class TestCreateCluster:
             query_string.append(("dryrun", dryrun))
         if rollback_on_failure is not None:
             query_string.append(("rollbackOnFailure", rollback_on_failure))
+        if region:
+            query_string.append(("region", region))
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -87,41 +90,42 @@ class TestCreateCluster:
         )
 
     @pytest.mark.parametrize(
-        "create_cluster_request_content, errors, suppress_validators, validation_failure_level, rollback_on_failure",
+        "create_cluster_request_content, errors, suppress_validators, validation_failure_level, region, "
+        "rollback_on_failure",
         [
             pytest.param(
                 {
-                    "region": "us-east-1",
-                    "name": "cluster",
-                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                    "clusterName": "cluster",
+                    "clusterConfiguration": CONFIG,
                 },
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 None,
                 None,
+                "us-east-1",
                 None,
                 id="test with all errors",
             ),
             pytest.param(
                 {
-                    "region": "us-east-1",
-                    "name": "cluster",
-                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                    "clusterName": "cluster",
+                    "clusterConfiguration": CONFIG,
                 },
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
+                "us-east-1",
                 False,
                 id="test with filtered errors",
             ),
             pytest.param(
                 {
-                    "region": "us-east-1",
-                    "name": "cluster",
-                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                    "clusterName": "cluster",
+                    "clusterConfiguration": CONFIG,
                 },
                 None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
+                "us-east-1",
                 True,
                 id="test with no errors",
             ),
@@ -135,6 +139,7 @@ class TestCreateCluster:
         errors,
         suppress_validators,
         validation_failure_level,
+        region,
         rollback_on_failure,
     ):
         cluster_create_mock = mocker.patch(
@@ -149,6 +154,7 @@ class TestCreateCluster:
             suppress_validators,
             validation_failure_level,
             False,
+            region,
             rollback_on_failure,
         )
 
@@ -156,9 +162,9 @@ class TestCreateCluster:
             "cluster": {
                 "cloudformationStackArn": "id",
                 "cloudformationStackStatus": "CREATE_IN_PROGRESS",
-                "clusterName": create_cluster_request_content["name"],
+                "clusterName": create_cluster_request_content["clusterName"],
                 "clusterStatus": "CREATE_IN_PROGRESS",
-                "region": create_cluster_request_content["region"],
+                "region": region,
                 "version": "3.0.0",
             },
         }
@@ -187,15 +193,12 @@ class TestCreateCluster:
         )
 
         create_cluster_request_content = {
-            "region": "us-east-1",
-            "name": "cluster",
-            "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+            "clusterName": "cluster",
+            "clusterConfiguration": self.CONFIG,
         }
 
         response = self._send_test_request(
-            client,
-            create_cluster_request_content=create_cluster_request_content,
-            dryrun=True,
+            client, create_cluster_request_content=create_cluster_request_content, dryrun=True, region="us-east-1"
         )
 
         expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
@@ -204,100 +207,98 @@ class TestCreateCluster:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
-        "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, rollback_on_failure, "
-        "expected_response",
+        "create_cluster_request_content, suppress_validators, validation_failure_level, dryrun, region, "
+        "rollback_on_failure, expected_response",
         [
-            (None, None, None, None, None, {"message": "Bad Request: request body is required"}),
-            ({}, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            (None, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
+            ({}, None, None, None, None, None, {"message": "Bad Request: request body is required"}),
             (
-                {"region": "us-east-1", "name": "cluster"},
+                {"clusterName": "cluster"},
                 None,
                 None,
                 None,
+                "us-east-1",
                 None,
                 {"message": "Bad Request: 'clusterConfiguration' is a required property"},
             ),
             (
-                {"clusterConfiguration": "config", "name": "cluster", "region": "invalid"},
+                {"clusterConfiguration": "config", "clusterName": "cluster"},
                 None,
                 None,
                 None,
+                "invalid",
                 None,
                 {"message": "Bad Request: invalid or unsupported region 'invalid'"},
             ),
             (
-                {"clusterConfiguration": "config", "region": "us-east-1"},
+                {"clusterConfiguration": "config"},
                 None,
                 None,
                 None,
+                "us-east-1",
                 None,
-                {"message": "Bad Request: 'name' is a required property"},
+                {"message": "Bad Request: 'clusterName' is a required property"},
             ),
             (
-                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                {"clusterConfiguration": "config", "clusterName": "cluster"},
                 ["ALL", "ALLL"],
                 None,
                 None,
+                "us-east-1",
                 None,
                 {"message": "Bad Request: 'ALLL' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
             ),
             (
-                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                {"clusterConfiguration": "config", "clusterName": "cluster"},
                 ["type:"],
                 None,
                 None,
+                "us-east-1",
                 None,
                 {"message": "Bad Request: 'type:' does not match '^(ALL|type:[A-Za-z0-9]+)$'"},
             ),
             (
-                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                {"clusterConfiguration": "config", "clusterName": "cluster"},
                 None,
                 "CRITICAL",
                 None,
+                "us-east-1",
                 None,
                 {"message": "Bad Request: 'CRITICAL' is not one of ['INFO', 'WARNING', 'ERROR']"},
             ),
             (
-                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                {"clusterConfiguration": "config", "clusterName": "cluster"},
                 None,
                 None,
                 "NO",
+                "us-east-1",
                 None,
                 {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'dryrun'"},
             ),
             (
-                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                {"clusterConfiguration": "config", "clusterName": "cluster"},
                 None,
                 None,
                 None,
+                "us-east-1",
                 "NO",
                 {"message": "Bad Request: Wrong type, expected 'boolean' for query parameter 'rollbackOnFailure'"},
             ),
             (
-                {"clusterConfiguration": "config", "name": "cluster", "region": "us-east-1"},
+                {"clusterConfiguration": "invalid", "clusterName": "cluster"},
                 None,
                 None,
                 None,
-                None,
-                {"message": "Bad Request: invalid configuration. Please make sure the string is base64 encoded."},
-            ),
-            (
-                {"clusterConfiguration": "aW52YWxpZA==", "name": "cluster", "region": "us-east-1"},
-                None,
-                None,
-                None,
+                "us-east-1",
                 None,
                 {"message": "Bad Request: Configuration must be a valid YAML document"},
             ),
             (
-                {
-                    "clusterConfiguration": "SW1hZ2U6CiAgSW52YWxpZEtleTogdGVzdA==",
-                    "name": "cluster",
-                    "region": "us-east-1",
-                },
+                {"clusterConfiguration": "Image:\n  InvalidKey: test", "clusterName": "cluster"},
                 None,
                 None,
                 None,
+                "us-east-1",
                 None,
                 {
                     "configurationValidationErrors": [
@@ -313,10 +314,11 @@ class TestCreateCluster:
                 },
             ),
             (
-                {"clusterConfiguration": "", "name": "cluster", "region": "us-east-1"},
+                {"clusterConfiguration": "", "clusterName": "cluster"},
                 None,
                 None,
                 None,
+                "us-east-1",
                 None,
                 {"message": "Bad Request: configuration is required and cannot be empty"},
             ),
@@ -332,7 +334,6 @@ class TestCreateCluster:
             "invalid_failure_level",
             "invalid_dryrun",
             "invalid_rollback",
-            "invalid_config_encoding",
             "invalid_config_format",
             "invalid_config_schema",
             "empty_config",
@@ -346,6 +347,7 @@ class TestCreateCluster:
         suppress_validators,
         validation_failure_level,
         dryrun,
+        region,
         rollback_on_failure,
         expected_response,
     ):
@@ -357,6 +359,7 @@ class TestCreateCluster:
             suppress_validators,
             validation_failure_level,
             dryrun,
+            region,
             rollback_on_failure,
         )
 
@@ -383,10 +386,10 @@ class TestCreateCluster:
         response = self._send_test_request(
             client,
             create_cluster_request_content={
-                "region": "us-east-1",
-                "name": "clustername",
-                "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+                "clusterName": "clustername",
+                "clusterConfiguration": self.CONFIG,
             },
+            region="us-east-1",
         )
 
         expected_response = {"message": "error message"}
@@ -472,16 +475,11 @@ class TestDeleteCluster:
             ),
             (
                 "us-east-1",
-                "a",
-                {"message": "Bad Request: 'a' is too short"},
-            ),
-            (
-                "us-east-1",
                 "aaaaa.aaa",
                 {"message": "Bad Request: 'aaaaa.aaa' does not match '^[a-zA-Z][a-zA-Z0-9-]+$'"},
             ),
         ],
-        ids=["bad_region", "short_cluster_name", "invalid_cluster_name"],
+        ids=["bad_region", "invalid_cluster_name"],
     )
     def test_malformed_request(self, client, region, cluster_name, expected_response):
         response = self._send_test_request(client, cluster_name=cluster_name, region=region)
@@ -584,9 +582,9 @@ class TestDescribeCluster:
                 },
                 False,
                 {
-                    "cloudFormationStatus": "CREATE_COMPLETE",
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
-                    "clusterConfiguration": {"s3Url": "presigned-url"},
+                    "clusterConfiguration": {"url": "presigned-url"},
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
@@ -617,9 +615,9 @@ class TestDescribeCluster:
                 None,
                 False,
                 {
-                    "cloudFormationStatus": "CREATE_COMPLETE",
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
-                    "clusterConfiguration": {"s3Url": "presigned-url"},
+                    "clusterConfiguration": {"url": "presigned-url"},
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
@@ -642,9 +640,9 @@ class TestDescribeCluster:
                 None,
                 True,
                 {
-                    "cloudFormationStatus": "CREATE_COMPLETE",
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
-                    "clusterConfiguration": {"s3Url": "NOT_AVAILABLE"},
+                    "clusterConfiguration": {"url": "NOT_AVAILABLE"},
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
@@ -669,9 +667,9 @@ class TestDescribeCluster:
                 None,
                 False,
                 {
-                    "cloudFormationStatus": "ROLLBACK_IN_PROGRESS",
+                    "cloudFormationStackStatus": "ROLLBACK_IN_PROGRESS",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
-                    "clusterConfiguration": {"s3Url": "presigned-url"},
+                    "clusterConfiguration": {"url": "presigned-url"},
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_FAILED",
                     "computeFleetStatus": "RUNNING",
@@ -700,9 +698,9 @@ class TestDescribeCluster:
                 },
                 False,
                 {
-                    "cloudFormationStatus": "CREATE_COMPLETE",
+                    "cloudFormationStackStatus": "CREATE_COMPLETE",
                     "cloudformationStackArn": "arn:aws:cloudformation:us-east-1:123:stack/pcluster3-2/123",
-                    "clusterConfiguration": {"s3Url": "presigned-url"},
+                    "clusterConfiguration": {"url": "presigned-url"},
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
@@ -766,16 +764,11 @@ class TestDescribeCluster:
             ),
             (
                 "us-east-1",
-                "a",
-                {"message": "Bad Request: 'a' is too short"},
-            ),
-            (
-                "us-east-1",
                 "aaaaa.aaa",
                 {"message": "Bad Request: 'aaaaa.aaa' does not match '^[a-zA-Z][a-zA-Z0-9-]+$'"},
             ),
         ],
-        ids=["bad_region", "short_cluster_name", "invalid_cluster_name"],
+        ids=["bad_region", "invalid_cluster_name"],
     )
     def test_malformed_request(self, client, region, cluster_name, expected_response):
         response = self._send_test_request(client, cluster_name=cluster_name, region=region)
@@ -869,14 +862,14 @@ class TestListClusters:
                         "StackName": "name1",
                         "StackId": "arn:id",
                         "CreationTime": datetime(2021, 4, 30),
-                        "StackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                        "StackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
                     },
                     {
                         "StackName": "name2",
                         "StackId": "arn:id2",
                         "CreationTime": datetime(2021, 5, 30),
-                        "StackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
+                        "StackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                 ],
@@ -884,7 +877,7 @@ class TestListClusters:
                     "items": [
                         {
                             "cloudformationStackArn": "arn:id",
-                            "cloudformationStackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                            "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                             "clusterName": "name1",
                             "clusterStatus": ClusterStatus.CREATE_IN_PROGRESS,
                             "region": "us-east-1",
@@ -892,7 +885,7 @@ class TestListClusters:
                         },
                         {
                             "cloudformationStackArn": "arn:id2",
-                            "cloudformationStackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
+                            "cloudformationStackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                             "clusterName": "name2",
                             "clusterStatus": ClusterStatus.UPDATE_FAILED,
                             "region": "us-east-1",
@@ -910,21 +903,21 @@ class TestListClusters:
                         "StackName": "name1",
                         "StackId": "arn:id",
                         "CreationTime": datetime(2021, 4, 30),
-                        "StackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                        "StackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
                     },
                     {
                         "StackName": "name2",
                         "StackId": "arn:id2",
                         "CreationTime": datetime(2021, 5, 30),
-                        "StackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
+                        "StackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                     {
                         "StackName": "name3",
                         "StackId": "arn:id3",
                         "CreationTime": datetime(2021, 5, 30),
-                        "StackStatus": CloudFormationStatus.DELETE_IN_PROGRESS,
+                        "StackStatus": CloudFormationStackStatus.DELETE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                 ],
@@ -932,7 +925,7 @@ class TestListClusters:
                     "items": [
                         {
                             "cloudformationStackArn": "arn:id",
-                            "cloudformationStackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                            "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                             "clusterName": "name1",
                             "clusterStatus": ClusterStatus.CREATE_IN_PROGRESS,
                             "region": "eu-west-1",
@@ -940,7 +933,7 @@ class TestListClusters:
                         },
                         {
                             "cloudformationStackArn": "arn:id2",
-                            "cloudformationStackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
+                            "cloudformationStackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                             "clusterName": "name2",
                             "clusterStatus": ClusterStatus.UPDATE_FAILED,
                             "region": "eu-west-1",
@@ -958,14 +951,14 @@ class TestListClusters:
                         "StackName": "name1",
                         "StackId": "arn:id",
                         "CreationTime": datetime(2021, 4, 30),
-                        "StackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                        "StackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.0.0"}],
                     },
                     {
                         "StackName": "name2",
                         "StackId": "arn:id2",
                         "CreationTime": datetime(2021, 5, 30),
-                        "StackStatus": CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE,
+                        "StackStatus": CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE,
                         "Tags": [{"Key": "parallelcluster:version", "Value": "3.1.0"}],
                     },
                 ],
@@ -973,7 +966,7 @@ class TestListClusters:
                     "items": [
                         {
                             "cloudformationStackArn": "arn:id",
-                            "cloudformationStackStatus": CloudFormationStatus.CREATE_IN_PROGRESS,
+                            "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
                             "clusterName": "name1",
                             "clusterStatus": ClusterStatus.CREATE_IN_PROGRESS,
                             "region": "eu-west-1",
@@ -1059,7 +1052,7 @@ class TestUpdateCluster:
     url = "/v3/clusters/{cluster_name}"
     method = "PUT"
 
-    BASE64_ENCODED_CONFIG = "SW1hZ2U6CiAgT3M6IGFsaW51eDIKSGVhZE5vZGU6CiAgSW5zdGFuY2VUeXBlOiB0Mi5taWNybw=="
+    CONFIG = "Image:\n  Os: alinux2\nHeadNode:\n  InstanceType: t2.micro"
 
     def _send_test_request(
         self,
@@ -1101,7 +1094,7 @@ class TestUpdateCluster:
         [
             pytest.param(
                 {
-                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                    "clusterConfiguration": CONFIG,
                 },
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 None,
@@ -1111,7 +1104,7 @@ class TestUpdateCluster:
             ),
             pytest.param(
                 {
-                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                    "clusterConfiguration": CONFIG,
                 },
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 ["type:type1", "type:type2"],
@@ -1121,7 +1114,7 @@ class TestUpdateCluster:
             ),
             pytest.param(
                 {
-                    "clusterConfiguration": BASE64_ENCODED_CONFIG,
+                    "clusterConfiguration": CONFIG,
                 },
                 None,
                 ["type:type1", "type:type2"],
@@ -1206,8 +1199,8 @@ class TestUpdateCluster:
 
         update_cluster_request_content = {
             "region": "us-east-1",
-            "name": "cluster",
-            "clusterConfiguration": self.BASE64_ENCODED_CONFIG,
+            "clusterName": "cluster",
+            "clusterConfiguration": self.CONFIG,
         }
 
         response = self._send_test_request(
@@ -1427,9 +1420,7 @@ class TestUpdateCluster:
                 return_value=(changes, []),
             )
 
-        response = self._send_test_request(
-            client, "clusterName", "us-east-1", {"clusterConfiguration": self.BASE64_ENCODED_CONFIG}
-        )
+        response = self._send_test_request(client, "clusterName", "us-east-1", {"clusterConfiguration": self.CONFIG})
 
         with soft_assertions():
             assert_that(response.get_json()["changeSet"]).is_equal_to(change_set)
@@ -1463,7 +1454,7 @@ class TestUpdateCluster:
                 id="request with empty body",
             ),
             pytest.param(
-                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                {"clusterConfiguration": CONFIG},
                 "invalid",
                 "clusterName",
                 None,
@@ -1474,18 +1465,7 @@ class TestUpdateCluster:
                 id="request with invalid region",
             ),
             pytest.param(
-                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
-                "us-east-1",
-                "clu",
-                None,
-                None,
-                None,
-                None,
-                {"message": "Bad Request: 'clu' is too short"},
-                id="request with invalid name",
-            ),
-            pytest.param(
-                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                {"clusterConfiguration": CONFIG},
                 "us-east-1",
                 "clusterName",
                 ["ALL", "ALLL"],
@@ -1496,7 +1476,7 @@ class TestUpdateCluster:
                 id="request with invalid validator",
             ),
             pytest.param(
-                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                {"clusterConfiguration": CONFIG},
                 "us-east-1",
                 "clusterName",
                 ["type:"],
@@ -1507,7 +1487,7 @@ class TestUpdateCluster:
                 id="request with empty named validator",
             ),
             pytest.param(
-                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                {"clusterConfiguration": CONFIG},
                 "us-east-1",
                 "clusterName",
                 None,
@@ -1518,7 +1498,7 @@ class TestUpdateCluster:
                 id="request with invalid validation failure level",
             ),
             pytest.param(
-                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                {"clusterConfiguration": CONFIG},
                 "us-east-1",
                 "clusterName",
                 None,
@@ -1529,7 +1509,7 @@ class TestUpdateCluster:
                 id="request with invalid dryrun value",
             ),
             pytest.param(
-                {"clusterConfiguration": BASE64_ENCODED_CONFIG},
+                {"clusterConfiguration": CONFIG},
                 "us-east-1",
                 "clusterName",
                 None,
@@ -1540,18 +1520,7 @@ class TestUpdateCluster:
                 id="request with invalid forceUpdate value",
             ),
             pytest.param(
-                {"clusterConfiguration": "config"},
-                "us-east-1",
-                "clusterName",
-                None,
-                None,
-                None,
-                None,
-                {"message": "Bad Request: invalid configuration. " "Please make sure the string is base64 encoded."},
-                id="request with configuration not encoded",
-            ),
-            pytest.param(
-                {"clusterConfiguration": "aW52YWxpZA=="},
+                {"clusterConfiguration": "invalid"},
                 "us-east-1",
                 "clusterName",
                 None,
@@ -1562,7 +1531,7 @@ class TestUpdateCluster:
                 id="request with single string configuration",
             ),
             pytest.param(
-                {"clusterConfiguration": "SW1hZ2U6CiAgSW52YWxpZEtleTogdGVzdA=="},
+                {"clusterConfiguration": "Image:\n  InvalidKey: test"},
                 "us-east-1",
                 "clusterName",
                 None,
@@ -1632,7 +1601,7 @@ class TestUpdateCluster:
 
         response = self._send_test_request(
             client,
-            update_cluster_request_content={"clusterConfiguration": self.BASE64_ENCODED_CONFIG},
+            update_cluster_request_content={"clusterConfiguration": self.CONFIG},
             cluster_name="clusterName",
         )
 
@@ -1696,7 +1665,7 @@ class TestUpdateCluster:
 
         response = self._send_test_request(
             client,
-            update_cluster_request_content={"clusterConfiguration": self.BASE64_ENCODED_CONFIG},
+            update_cluster_request_content={"clusterConfiguration": self.CONFIG},
             cluster_name="clusterName",
         )
 

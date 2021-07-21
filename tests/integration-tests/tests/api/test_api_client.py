@@ -115,8 +115,8 @@ def _test_describe_cluster(client, cluster, region, status):
 
 def _test_create_cluster(client, cluster_config, region, stack_name):
     cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
-    body = CreateClusterRequestContent(stack_name, cluster_config_data, region=region)
-    return client.create_cluster(body)
+    body = CreateClusterRequestContent(stack_name, cluster_config_data)
+    return client.create_cluster(body, region=region)
 
 
 def _test_update_cluster_dryrun(client, cluster_config, region, stack_name):

@@ -8,14 +8,14 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.api.models import DescribeComputeFleetStatusResponseContent
+from pcluster.api.models import UpdateComputeFleetResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
 
 
-class TestDescribeComputeFleetStatusCommand:
+class TestUpdateComputeFleetCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
-        command = ["pcluster", "describe-compute-fleet-status", "--help"]
+        command = ["pcluster", "update-compute-fleet", "--help"]
         run_cli(command, expect_failure=False)
 
         assert_out_err(
@@ -32,59 +32,90 @@ class TestDescribeComputeFleetStatusCommand:
                 "error: argument --cluster-name: expected one argument",
             ),
             (
-                ["--cluster-name", "cluster", "--invalid"],
+                ["--status"],
+                "error: argument --status: expected one argument",
+            ),
+            (
+                [
+                    "--cluster-name",
+                    "cluster",
+                    "--status",
+                    "START_REQUESTED",
+                    "--invalid",
+                ],
                 "Invalid arguments ['--invalid']",
             ),
             (
-                ["--cluster-name", "cluster", "--region", "eu-west-"],
+                [
+                    "--cluster-name",
+                    "cluster",
+                    "--status",
+                    "START_REQUESTED",
+                    "--region",
+                    "eu-west-",
+                ],
                 "Bad Request: invalid or unsupported region 'eu-west-'",
             ),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
-        command = ["pcluster", "describe-compute-fleet-status"] + args
+        command = ["pcluster", "update-compute-fleet"] + args
         run_cli(command, expect_failure=True)
 
         out, err = capsys.readouterr()
         assert_that(out + err).contains(error_message)
 
     def test_execute(self, mocker):
-        response_dict = {"lastUpdatedTime": "2021-01-01 00:00:00.000000+00:00", "status": "RUNNING"}
-
-        response = DescribeComputeFleetStatusResponseContent().from_dict(response_dict)
-        describe_clusters_mock = mocker.patch(
-            "pcluster.api.controllers.cluster_compute_fleet_controller.describe_compute_fleet_status",
+        response_dict = {"status": "START_REQUESTED",
+                         "lastStatusUpdatedTime": "2021-01-01 00:00:00.000000+00:00"}
+        response = UpdateComputeFleetResponseContent().from_dict(response_dict)
+        update_compute_fleet_status_mock = mocker.patch(
+            "pcluster.api.controllers.cluster_compute_fleet_controller.update_compute_fleet",
             return_value=response,
             autospec=True,
         )
 
-        out = run(["describe-compute-fleet-status", "--cluster-name", "cluster"])
+        out = run(
+            [
+                "update-compute-fleet",
+                "--cluster-name",
+                "cluster",
+                "--status",
+                "START_REQUESTED",
+            ]
+        )
         expected = {
             **response_dict,
-            **{
-                "lastUpdatedTime": "2021-01-01T00:00:00+00:00",
-            },
+            **{"lastStatusUpdatedTime": "2021-01-01T00:00:00+00:00"}
         }
         assert_that(out).is_equal_to(expected)
-        assert_that(describe_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
-        expected_args = {"region": None, "cluster_name": "cluster"}
-        describe_clusters_mock.assert_called_with(**expected_args)
+        assert_that(update_compute_fleet_status_mock.call_args).is_length(
+            2
+        )  # this is due to the decorator on list_clusters
+        expected_args = {
+            "region": None,
+            "cluster_name": "cluster",
+            "update_compute_fleet_request_content": {"status": "START_REQUESTED"},
+        }
+        update_compute_fleet_status_mock.assert_called_with(**expected_args)
 
     def test_error(self, mocker):
         api_response = {"message": "error"}, 400
         mocker.patch(
-            "pcluster.api.controllers.cluster_compute_fleet_controller.describe_compute_fleet_status",
+            "pcluster.api.controllers.cluster_compute_fleet_controller.update_compute_fleet",
             return_value=api_response,
             autospec=True,
         )
 
         with pytest.raises(APIOperationException) as exc_info:
             command = [
-                "describe-compute-fleet-status",
+                "update-compute-fleet",
                 "--region",
                 "eu-west-1",
                 "--cluster-name",
                 "name",
+                "--status",
+                "START_REQUESTED",
             ]
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])

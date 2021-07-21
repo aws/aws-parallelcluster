@@ -2,15 +2,13 @@ usage: pcluster list-images [-h] [--region REGION] [--next-token NEXT_TOKEN]
                             --image-status {AVAILABLE,PENDING,FAILED}
                             [--debug]
 
-Retrieve the list of existing custom images managed by the API. Deleted images
-are not showed by default
+Retrieve the list of existing custom images.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --region REGION       List Images built into a given AWS Region. Defaults to
-                        the AWS region the API is deployed to.
+  --region REGION       List images built in a given AWS Region.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --image-status {AVAILABLE,PENDING,FAILED}
-                        Filter by image status.
+                        Filter images by the status provided.
   --debug               Turn on debug logging.

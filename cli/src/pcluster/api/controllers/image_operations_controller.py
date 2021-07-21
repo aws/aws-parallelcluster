@@ -7,6 +7,7 @@
 # limitations under the License.
 
 # pylint: disable=W0613
+import logging
 import os as os_lib
 
 from pcluster.api.controllers.common import (
@@ -14,7 +15,6 @@ from pcluster.api.controllers.common import (
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
-    read_config,
 )
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,
@@ -31,7 +31,7 @@ from pcluster.api.models import (
     BuildImageBadRequestExceptionResponseContent,
     BuildImageRequestContent,
     BuildImageResponseContent,
-    CloudFormationStatus,
+    CloudFormationStackStatus,
     DescribeImageResponseContent,
     DescribeOfficialImagesResponseContent,
     Ec2AmiInfo,
@@ -51,8 +51,10 @@ from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistin
 from pcluster.utils import get_installed_version
 from pcluster.validators.common import FailureLevel
 
+LOGGER = logging.getLogger(__name__)
 
-@configure_aws_region(body_name="build_image_request_content")
+
+@configure_aws_region()
 @http_success_status_code(202)
 @convert_errors()
 def build_image(
@@ -61,6 +63,7 @@ def build_image(
     validation_failure_level=None,
     dryrun=None,
     rollback_on_failure=None,
+    region=None,
 ):
     """
     Create a custom ParallelCluster image in a given region.
@@ -75,9 +78,11 @@ def build_image(
     :param dryrun: Only perform request validation without creating any resource.
     It can be used to validate the image configuration. Response code: 200
     :type dryrun: bool
-    :param rollback_on_failure: When set it automatically initiates an image stack rollback on failures.
-    Defaults to true.
+    :param rollback_on_failure: When set, will automatically initiate an image stack rollback on failure.
+    (Defaults to true.)
     :type rollback_on_failure: bool
+    :param region: AWS Region that the operation corresponds to.
+    :type region: str
 
     :rtype: BuildImageResponseContent
     """
@@ -89,8 +94,13 @@ def build_image(
     build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
 
     try:
-        image_id = build_image_request_content.id
-        config = read_config(build_image_request_content.image_configuration)
+        image_id = build_image_request_content.image_id
+        config = build_image_request_content.image_configuration
+
+        if not config:
+            LOGGER.error("Failed: configuration is required and cannot be empty")
+            raise BadRequestException("configuration is required and cannot be empty")
+
         imagebuilder = ImageBuilder(image_id=image_id, config=config)
 
         if dryrun:
@@ -126,7 +136,7 @@ def delete_image(image_id, region=None, force=None):
 
     :param image_id: Id of the image
     :type image_id: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
     :param force: Force deletion in case there are instances using the AMI or in case the AMI is shared
     :type force: bool
@@ -143,7 +153,7 @@ def delete_image(image_id, region=None, force=None):
         image=ImageInfoSummary(
             image_id=image_id,
             image_build_status=ImageBuildStatus.DELETE_IN_PROGRESS,
-            cloudformation_stack_status=CloudFormationStatus.DELETE_IN_PROGRESS if stack else None,
+            cloudformation_stack_status=CloudFormationStackStatus.DELETE_IN_PROGRESS if stack else None,
             cloudformation_stack_arn=stack.id if stack else None,
             region=os_lib.environ.get("AWS_DEFAULT_REGION"),
             version=stack.version if stack else image.version,
@@ -174,7 +184,7 @@ def describe_image(image_id, region=None):
 
     :param image_id: Id of the image
     :type image_id: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
 
     :rtype: DescribeImageResponseContent
@@ -193,7 +203,7 @@ def describe_image(image_id, region=None):
 def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
         creation_time=imagebuilder.image.creation_date,
-        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
         image_id=imagebuilder.image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
         ec2_ami_info=Ec2AmiInfo(
@@ -212,7 +222,7 @@ def _image_to_describe_image_response(imagebuilder):
 def _stack_to_describe_image_response(imagebuilder):
     imagebuilder_image_state = imagebuilder.stack.image_state or dict()
     return DescribeImageResponseContent(
-        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
         image_id=imagebuilder.image_id,
         image_build_status=imagebuilder.imagebuild_status,
         imagebuilder_image_status=imagebuilder_image_state.get("status", None),
@@ -231,11 +241,11 @@ def describe_official_images(region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
 
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
-    :param os: Filter by OS distribution
+    :param os: Filter by OS distribution (Default is to not filter.)
     :type os: str
-    :param architecture: Filter by architecture
+    :param architecture: Filter by architecture (Default is to not filter.)
     :type architecture: str
 
     :rtype: DescribeOfficialImagesResponseContent
@@ -276,11 +286,11 @@ def _image_info_to_ami_info(image):
 @convert_errors()
 def list_images(image_status, region=None, next_token=None):
     """
-    Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default.
+    Retrieve the list of existing custom images.
 
     :param image_status: Filter by image status.
     :type image_status: dict | bytes
-    :param region: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
+    :param region: List images built in a given AWS Region.
     :type region: str
     :param next_token: Token to use for paginated requests.
     :type next_token: str
@@ -312,9 +322,12 @@ def _get_images_in_progress(image_status, next_token):
 
 def _image_status_to_cloudformation_status(image_status):
     mapping = {
-        ImageStatusFilteringOption.AVAILABLE: {CloudFormationStatus.CREATE_COMPLETE},
-        ImageStatusFilteringOption.PENDING: {CloudFormationStatus.CREATE_IN_PROGRESS},
-        ImageStatusFilteringOption.FAILED: {CloudFormationStatus.CREATE_FAILED, CloudFormationStatus.DELETE_FAILED},
+        ImageStatusFilteringOption.AVAILABLE: {CloudFormationStackStatus.CREATE_COMPLETE},
+        ImageStatusFilteringOption.PENDING: {CloudFormationStackStatus.CREATE_IN_PROGRESS},
+        ImageStatusFilteringOption.FAILED: {
+            CloudFormationStackStatus.CREATE_FAILED,
+            CloudFormationStackStatus.DELETE_FAILED,
+        },
     }
     return mapping.get(image_status, set())
 

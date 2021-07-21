@@ -19,17 +19,17 @@ class ClusterConfigurationStructure(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, s3_url=None):
+    def __init__(self, url=None):
         """ClusterConfigurationStructure - a model defined in OpenAPI
 
-        :param s3_url: The s3_url of this ClusterConfigurationStructure.
-        :type s3_url: str
+        :param url: The url of this ClusterConfigurationStructure.
+        :type url: str
         """
-        self.openapi_types = {"s3_url": str}
+        self.openapi_types = {"url": str}
 
-        self.attribute_map = {"s3_url": "s3Url"}
+        self.attribute_map = {"url": "url"}
 
-        self._s3_url = s3_url
+        self._url = url
 
     @classmethod
     def from_dict(cls, dikt) -> "ClusterConfigurationStructure":
@@ -43,24 +43,24 @@ class ClusterConfigurationStructure(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def s3_url(self):
-        """Gets the s3_url of this ClusterConfigurationStructure.
+    def url(self):
+        """Gets the url of this ClusterConfigurationStructure.
 
         S3 Url pointing to the cluster configuration file.
 
-        :return: The s3_url of this ClusterConfigurationStructure.
+        :return: The url of this ClusterConfigurationStructure.
         :rtype: str
         """
-        return self._s3_url
+        return self._url
 
-    @s3_url.setter
-    def s3_url(self, s3_url):
-        """Sets the s3_url of this ClusterConfigurationStructure.
+    @url.setter
+    def url(self, url):
+        """Sets the url of this ClusterConfigurationStructure.
 
         S3 Url pointing to the cluster configuration file.
 
-        :param s3_url: The s3_url of this ClusterConfigurationStructure.
-        :type s3_url: str
+        :param url: The url of this ClusterConfigurationStructure.
+        :type url: str
         """
 
-        self._s3_url = s3_url
+        self._url = url

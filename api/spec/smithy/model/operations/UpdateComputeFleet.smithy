@@ -29,7 +29,12 @@ structure UpdateComputeFleetRequest {
 
 structure UpdateComputeFleetResponse {
     @required
-    message: String
+    @documentation("Status of the compute fleet.")
+    status: ComputeFleetStatus,
+
+    @documentation("Timestamp representing the last status update time.")
+    @timestampFormat("date-time")
+    lastStatusUpdatedTime: Timestamp,
 }
 
 @enum([

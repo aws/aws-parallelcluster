@@ -1703,10 +1703,14 @@ components:
     UpdateComputeFleetResponseContent:
       type: object
       properties:
-        message:
+        status:
+          $ref: '#/components/schemas/ComputeFleetStatus'
+        lastStatusUpdatedTime:
           type: string
+          description: Timestamp representing the last status update time.
+          format: date-time
       required:
-        - message
+        - status
     UpdateError:
       type: object
       properties:

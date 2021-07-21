@@ -5,13 +5,12 @@ info:
   version: 3.0.0
 servers:
 - url: /
-security:
-- aws.auth.sigv4: []
+# security:
+# - aws.auth.sigv4: []
 paths:
   /v3/clusters:
     get:
-      description: Retrieve the list of existing clusters. Deleted clusters are not
-        shown by default.
+      description: Retrieve the list of existing clusters.
       operationId: list_clusters
       parameters:
       - description: List clusters deployed to a given AWS Region.
@@ -87,7 +86,7 @@ paths:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
     post:
-      description: Create a ParallelCluster managed in a given region.
+      description: Create a managed cluster in a given region.
       operationId: create_cluster
       parameters:
       - description: AWS Region that the operation corresponds to.
@@ -147,21 +146,11 @@ paths:
           nullable: true
           type: boolean
         style: form
-      - description: Name of the cluster that will be created.
-        explode: true
-        in: query
-        name: clusterName
-        required: true
-        schema:
-          description: Name of the cluster that will be created.
-          minLength: 5
-          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
-          type: string
-        style: form
       requestBody:
         content:
           application/json:
             schema:
+              x-body-name: create_cluster_request_content
               $ref: '#/components/schemas/CreateClusterRequestContent'
         required: true
       responses:
@@ -230,7 +219,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -302,7 +290,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -364,7 +351,7 @@ paths:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
     put:
-      description: Update a ParallelCluster managed in a given region.
+      description: Update a cluster managed in a given region.
       operationId: update_cluster
       parameters:
       - description: Name of the cluster
@@ -374,7 +361,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -437,6 +423,7 @@ paths:
         content:
           application/json:
             schema:
+              x-body-name: update_cluster_request_content
               $ref: '#/components/schemas/UpdateClusterRequestContent'
         required: true
       responses:
@@ -511,7 +498,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -583,7 +569,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -600,6 +585,7 @@ paths:
         content:
           application/json:
             schema:
+              x-body-name: update_compute_fleet_request_content
               $ref: '#/components/schemas/UpdateComputeFleetRequestContent'
         required: true
       responses:
@@ -663,7 +649,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -743,7 +728,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -823,17 +807,16 @@ paths:
       x-openapi-router-controller: pcluster.api.controllers.cluster_instances_controller
   /v3/images/custom:
     get:
-      description: Retrieve the list of existing custom images. Deleted images are
-        not shown by default.
+      description: Retrieve the list of existing custom images.
       operationId: list_images
       parameters:
-      - description: List Images built in a given AWS Region.
+      - description: List images built in a given AWS Region.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: List Images built in a given AWS Region.
+          description: List images built in a given AWS Region.
           type: string
         style: form
       - description: Token to use for paginated requests.
@@ -956,21 +939,11 @@ paths:
           description: AWS Region that the operation corresponds to.
           type: string
         style: form
-      - description: Id of the Image that will be built.
-        explode: true
-        in: query
-        name: imageId
-        required: true
-        schema:
-          description: Id of the Image that will be built.
-          minLength: 5
-          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
-          type: string
-        style: form
       requestBody:
         content:
           application/json:
             schema:
+              x-body-name: build_image_request_content
               $ref: '#/components/schemas/BuildImageRequestContent'
         required: true
       responses:
@@ -1039,7 +1012,6 @@ paths:
         required: true
         schema:
           description: Id of the image.
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -1123,7 +1095,6 @@ paths:
         required: true
         schema:
           description: Id of the image.
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -1317,12 +1288,18 @@ components:
     BuildImageRequestContent:
       example:
         imageConfiguration: imageConfiguration
+        imageId: imageId
       properties:
         imageConfiguration:
           description: Image configuration as a YAML document
           type: string
+        imageId:
+          description: Id of the Image that will be built.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
       required:
       - imageConfiguration
+      - imageId
       type: object
     BuildImageResponseContent:
       example:
@@ -1373,7 +1350,7 @@ components:
           type: string
       title: Change
       type: object
-    CloudFormationStatus:
+    CloudFormationStackStatus:
       enum:
       - CREATE_IN_PROGRESS
       - CREATE_FAILED
@@ -1391,15 +1368,15 @@ components:
       - UPDATE_ROLLBACK_FAILED
       - UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS
       - UPDATE_ROLLBACK_COMPLETE
-      title: CloudFormationStatus
+      title: CloudFormationStackStatus
       type: string
     ClusterConfigurationStructure:
       example:
-        s3Url: s3Url
+        url: url
       properties:
-        s3Url:
-          description: S3 URL of the cluster configuration file.
-          title: s3Url
+        url:
+          description: URL of the cluster configuration file.
+          title: url
           type: string
       title: ClusterConfigurationStructure
       type: object
@@ -1414,12 +1391,11 @@ components:
       properties:
         clusterName:
           description: Name of the cluster.
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: clusterName
           type: string
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
@@ -1573,13 +1549,19 @@ components:
       type: object
     CreateClusterRequestContent:
       example:
+        clusterName: clusterName
         clusterConfiguration: clusterConfiguration
       properties:
+        clusterName:
+          description: Name of the cluster that will be created.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
         clusterConfiguration:
           description: Cluster configuration as a YAML document
           type: string
       required:
       - clusterConfiguration
+      - clusterName
       type: object
     CreateClusterResponseContent:
       example:
@@ -1691,13 +1673,13 @@ components:
           privateIpAddress: privateIpAddress
         version: version
         clusterConfiguration:
-          s3Url: s3Url
+          url: url
         tags:
         - value: value
           key: key
         - value: value
           key: key
-        cloudFormationStatus: null
+        cloudFormationStackStatus: null
         clusterName: clusterName
         computeFleetStatus: null
         failureReason: failureReason
@@ -1725,11 +1707,10 @@ components:
             $ref: '#/components/schemas/Tag'
           title: tags
           type: array
-        cloudFormationStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+        cloudFormationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterName:
           description: Name of the cluster.
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: clusterName
           type: string
@@ -1756,7 +1737,7 @@ components:
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
       required:
-      - cloudFormationStatus
+      - cloudFormationStackStatus
       - cloudformationStackArn
       - clusterConfiguration
       - clusterName
@@ -1771,13 +1752,13 @@ components:
       type: object
     DescribeComputeFleetResponseContent:
       example:
-        lastUpdatedTime: 2000-01-23T04:56:07.000+00:00
         status: null
+        lastStatusUpdatedTime: 2000-01-23T04:56:07.000+00:00
       properties:
-        lastUpdatedTime:
+        lastStatusUpdatedTime:
           description: Timestamp representing the last status update time.
           format: date-time
-          title: lastUpdatedTime
+          title: lastStatusUpdatedTime
           type: string
         status:
           $ref: '#/components/schemas/ComputeFleetStatus'
@@ -1789,7 +1770,7 @@ components:
       example:
         cloudformationStackStatusReason: cloudformationStackStatusReason
         imageConfiguration:
-          s3Url: s3Url
+          url: url
         imagebuilderImageStatusReason: imagebuilderImageStatusReason
         imageId: imageId
         imagebuilderImageStatus: null
@@ -1835,7 +1816,7 @@ components:
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
@@ -2009,11 +1990,11 @@ components:
       type: string
     ImageConfigurationStructure:
       example:
-        s3Url: s3Url
+        url: url
       properties:
-        s3Url:
-          description: S3 Url pointing to the image configuration file.
-          title: s3Url
+        url:
+          description: URL of the image configuration file.
+          title: url
           type: string
       title: ImageConfigurationStructure
       type: object
@@ -2028,14 +2009,13 @@ components:
       properties:
         imageId:
           description: Id of the image.
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: imageId
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
@@ -2082,7 +2062,7 @@ components:
       type: object
     LimitExceededExceptionResponseContent:
       description: The client is sending more than the allowed number of requests
-        per unit of time..
+        per unit of time.
       properties:
         message:
           title: message
@@ -2287,13 +2267,18 @@ components:
       type: object
     UpdateComputeFleetResponseContent:
       example:
-        message: message
+        status: null
+        lastStatusUpdatedTime: 2000-01-23T04:56:07.000+00:00
       properties:
-        message:
-          title: message
+        status:
+          $ref: '#/components/schemas/ComputeFleetStatus'
+        lastStatusUpdatedTime:
+          description: Timestamp representing the last status update time.
+          format: date-time
+          title: lastStatusUpdatedTime
           type: string
       required:
-      - message
+      - status
       title: UpdateComputeFleetResponseContent
       type: object
     UpdateError:
@@ -2319,11 +2304,11 @@ components:
       - ERROR
       title: ValidationLevel
       type: string
-  securitySchemes:
-    aws.auth.sigv4:
-      description: AWS Signature Version 4 authentication
-      in: header
-      name: Authorization
-      type: apiKey
-      x-amazon-apigateway-authtype: awsSigv4
-      x-apikeyInfoFunc: pcluster.api.controllers.security_controller_.info_from_aws.auth.sigv4
+  # securitySchemes:
+  #   aws.auth.sigv4:
+  #     description: AWS Signature Version 4 authentication
+  #     in: header
+  #     name: Authorization
+  #     type: apiKey
+  #     x-amazon-apigateway-authtype: awsSigv4
+  #     x-apikeyInfoFunc: pcluster.api.controllers.security_controller_.info_from_aws.auth.sigv4

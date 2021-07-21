@@ -2,15 +2,13 @@ usage: pcluster list-clusters [-h] [--region REGION] [--next-token NEXT_TOKEN]
                               [--cluster-status {CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} [{CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} ...]]
                               [--debug]
 
-Retrieve the list of existing clusters managed by the API. Deleted clusters
-are not listed by default.
+Retrieve the list of existing clusters.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --region REGION       List clusters deployed to a given AWS Region. Defaults
-                        to the AWS region the API is deployed to.
+  --region REGION       List clusters deployed to a given AWS Region.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --cluster-status {CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} [{CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} ...]
-                        Filter by cluster status.
+                        Filter by cluster status. (Defaults to all clusters.)
   --debug               Turn on debug logging.
