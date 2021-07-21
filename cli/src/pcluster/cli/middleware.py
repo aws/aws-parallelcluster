@@ -73,8 +73,8 @@ def create_cluster(func, body, kwargs):
     if wait:
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_create_complete")
-        waiter.wait(StackName=body["name"])
-        ret = _cluster_status(body["name"])
+        waiter.wait(StackName=body["clusterName"])
+        ret = _cluster_status(body["clusterName"])
     return ret
 
 
