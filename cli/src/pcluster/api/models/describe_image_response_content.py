@@ -10,6 +10,7 @@
 
 
 from datetime import datetime
+from typing import List
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
@@ -18,6 +19,7 @@ from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.api.models.image_builder_image_status import ImageBuilderImageStatus
 from pcluster.api.models.image_configuration_structure import ImageConfigurationStructure
+from pcluster.api.models.tag import Tag
 
 
 class DescribeImageResponseContent(Model):
@@ -34,9 +36,12 @@ class DescribeImageResponseContent(Model):
         imagebuilder_image_status_reason=None,
         creation_time=None,
         image_build_status=None,
+        cloudformation_stack_creation_time=None,
         cloudformation_stack_status=None,
         cloudformation_stack_status_reason=None,
         cloudformation_stack_arn=None,
+        cloudformation_stack_logs_arn=None,
+        cloudformation_stack_tags=None,
         region=None,
         ec2_ami_info=None,
         version=None,
@@ -66,6 +71,13 @@ class DescribeImageResponseContent(Model):
         :param region: The region of this DescribeImageResponseContent.
         :type region: str
         :param ec2_ami_info: The ec2_ami_info of this DescribeImageResponseContent.
+        :param cloudformation_stack_creation_time: The cloudformation_stack_creation_time of this
+                                                   DescribeImageResponseContent.
+        :type cloudformation_stack_creation_time: datetime
+        :param cloudformation_stack_tags: The cloudformation_stack_tags of this DescribeImageResponseContent.
+        :type cloudformation_stack_tags: List[Tag]
+        :param cloudformation_stack_logs_arn: The cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+        :type cloudformation_stack_logs_arn: str
         :type ec2_ami_info: Ec2AmiInfo
         :param version: The version of this DescribeImageResponseContent.
         :type version: str
@@ -83,6 +95,9 @@ class DescribeImageResponseContent(Model):
             "region": str,
             "ec2_ami_info": Ec2AmiInfo,
             "version": str,
+            "cloudformation_stack_tags": List[Tag],
+            "cloudformation_stack_logs_arn": str,
+            "cloudformation_stack_creation_time": datetime,
         }
 
         self.attribute_map = {
@@ -90,8 +105,11 @@ class DescribeImageResponseContent(Model):
             "image_id": "imageId",
             "imagebuilder_image_status": "imagebuilderImageStatus",
             "imagebuilder_image_status_reason": "imagebuilderImageStatusReason",
+            "cloudformation_stack_tags": "cloudformationStackTags",
+            "cloudformation_stack_logs_arn": "cloudformationStackLogsArn",
             "creation_time": "creationTime",
             "image_build_status": "imageBuildStatus",
+            "cloudformation_stack_creation_time": "cloudformationStackCreationTime",
             "cloudformation_stack_status": "cloudformationStackStatus",
             "cloudformation_stack_status_reason": "cloudformationStackStatusReason",
             "cloudformation_stack_arn": "cloudformationStackArn",
@@ -109,6 +127,9 @@ class DescribeImageResponseContent(Model):
         self._cloudformation_stack_status = cloudformation_stack_status
         self._cloudformation_stack_status_reason = cloudformation_stack_status_reason
         self._cloudformation_stack_arn = cloudformation_stack_arn
+        self._cloudformation_stack_tags = cloudformation_stack_tags
+        self._cloudformation_stack_creation_time = cloudformation_stack_creation_time
+        self._cloudformation_stack_logs_arn = cloudformation_stack_logs_arn
         self._region = region
         self._ec2_ami_info = ec2_ami_info
         self._version = version
@@ -171,6 +192,29 @@ class DescribeImageResponseContent(Model):
             raise ValueError("Invalid value for `image_id`, must not be `None`")
 
         self._image_id = image_id
+
+    @property
+    def cloudformation_stack_tags(self):
+        """Gets the cloudformation_stack_tags of this DescribeImageResponseContent.
+
+        Tags for the CloudFormation stack.  # noqa: E501
+
+        :return: The cloudformation_stack_tags of this DescribeImageResponseContent.
+        :rtype: List[Tag]
+        """
+        return self._cloudformation_stack_tags
+
+    @cloudformation_stack_tags.setter
+    def cloudformation_stack_tags(self, cloudformation_stack_tags):
+        """Sets the cloudformation_stack_tags of this DescribeImageResponseContent.
+
+        Tags for the CloudFormation stack.  # noqa: E501
+
+        :param cloudformation_stack_tags: The cloudformation_stack_tags of this DescribeImageResponseContent.
+        :type cloudformation_stack_tags: List[Tag]
+        """
+
+        self._cloudformation_stack_tags = cloudformation_stack_tags
 
     @property
     def imagebuilder_image_status(self):
@@ -238,6 +282,29 @@ class DescribeImageResponseContent(Model):
         :type creation_time: datetime
         """
         self._creation_time = creation_time
+
+    @property
+    def cloudformation_stack_logs_arn(self):
+        """Gets the cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+
+        ARN of the logs for the CloudFormation stack.  # noqa: E501
+
+        :return: The cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+        :rtype: str
+        """
+        return self._cloudformation_stack_logs_arn
+
+    @cloudformation_stack_logs_arn.setter
+    def cloudformation_stack_logs_arn(self, cloudformation_stack_logs_arn):
+        """Sets the cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+
+        ARN of the logs for the CloudFormation stack.  # noqa: E501
+
+        :param cloudformation_stack_logs_arn: The cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+        :type cloudformation_stack_logs_arn: str
+        """
+
+        self._cloudformation_stack_logs_arn = cloudformation_stack_logs_arn
 
     @property
     def image_build_status(self):
@@ -352,6 +419,30 @@ class DescribeImageResponseContent(Model):
             raise ValueError("Invalid value for `region`, must not be `None`")
 
         self._region = region
+
+    @property
+    def cloudformation_stack_creation_time(self):
+        """Gets the cloudformation_stack_creation_time of this DescribeImageResponseContent.
+
+        Timestamp representing the CloudFormation stack creation time.  # noqa: E501
+
+        :return: The cloudformation_stack_creation_time of this DescribeImageResponseContent.
+        :rtype: datetime
+        """
+        return self._cloudformation_stack_creation_time
+
+    @cloudformation_stack_creation_time.setter
+    def cloudformation_stack_creation_time(self, cloudformation_stack_creation_time):
+        """Sets the cloudformation_stack_creation_time of this DescribeImageResponseContent.
+
+        Timestamp representing the CloudFormation stack creation time.  # noqa: E501
+
+        :param cloudformation_stack_creation_time: The cloudformation_stack_creation_time of this
+                                                   DescribeImageResponseContent.
+        :type cloudformation_stack_creation_time: datetime
+        """
+
+        self._cloudformation_stack_creation_time = cloudformation_stack_creation_time
 
     @property
     def ec2_ami_info(self):

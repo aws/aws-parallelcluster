@@ -231,6 +231,9 @@ def _stack_to_describe_image_response(imagebuilder):
         cloudformation_stack_status=imagebuilder.stack.status,
         cloudformation_stack_status_reason=imagebuilder.stack.status_reason,
         cloudformation_stack_arn=imagebuilder.stack.id,
+        cloudformation_stack_logs_arn=imagebuilder.stack.build_log,
+        cloudformation_stack_creation_time=imagebuilder.stack.creation_time,
+        cloudformation_stack_tags=imagebuilder.stack.tags,
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=imagebuilder.stack.version,
     )
