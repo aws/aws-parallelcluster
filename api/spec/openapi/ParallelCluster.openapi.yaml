@@ -1400,35 +1400,47 @@ components:
         cloudformationStackStatusReason:
           type: string
           description: Reason for the CloudFormation stack status.
-        imageConfiguration:
-          $ref: '#/components/schemas/ImageConfigurationStructure'
         imagebuilderImageStatusReason:
           type: string
           description: Reason for the ImageBuilder Image status.
         imageId:
           type: string
           description: Id of the Image to retrieve detailed information for.
+        cloudformationStackTags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          description: Tags for the CloudFormation stack.
         imagebuilderImageStatus:
           $ref: '#/components/schemas/ImageBuilderImageStatus'
         creationTime:
           type: string
           description: Timestamp representing the image creation time.
           format: date-time
+        version:
+          type: string
+          description: ParallelCluster version used to build the image.
+        imageConfiguration:
+          $ref: '#/components/schemas/ImageConfigurationStructure'
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStackStatus'
+        imageBuildLogsArn:
+          type: string
+          description: ARN of the logs for the image build process.
         cloudformationStackArn:
           type: string
           description: ARN of the main CloudFormation stack.
         region:
           type: string
           description: AWS region where the image is created.
+        cloudformationStackCreationTime:
+          type: string
+          description: Timestamp representing the CloudFormation stack creation time.
+          format: date-time
         ec2AmiInfo:
           $ref: '#/components/schemas/Ec2AmiInfo'
-        version:
-          type: string
-          description: ParallelCluster version used to build the image.
       required:
         - imageBuildStatus
         - imageConfiguration
