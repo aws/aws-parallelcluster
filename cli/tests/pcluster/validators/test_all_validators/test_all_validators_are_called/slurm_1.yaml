@@ -149,6 +149,7 @@ SharedStorage:
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
 Iam:
+  PermissionsBoundary: arn:aws:iam::aws:policy/boundary
   Roles:
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:

@@ -693,6 +693,9 @@ class ClusterIamSchema(BaseSchema):
     """Represent the schema of IAM for Cluster."""
 
     roles = fields.Nested(RolesSchema)
+    permissions_boundary = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
