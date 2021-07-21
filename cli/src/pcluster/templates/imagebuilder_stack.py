@@ -52,7 +52,7 @@ from pcluster.imagebuilder_utils import (
     wrap_script_to_component,
 )
 from pcluster.models.s3_bucket import S3Bucket, S3FileType
-from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
+from pcluster.templates.cdk_builder_utils import apply_permissions_boundary, get_assume_role_policy_document
 
 
 class ImageBuilderCdkStack(Stack):
@@ -90,6 +90,11 @@ class ImageBuilderCdkStack(Stack):
 
         self._add_cfn_parameters()
         self._add_resources()
+
+        try:
+            apply_permissions_boundary(image_config.build.iam.permissions_boundary, self)
+        except AttributeError:
+            pass
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
