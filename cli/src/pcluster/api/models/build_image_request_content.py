@@ -31,7 +31,7 @@ class BuildImageRequestContent(Model):
         """
         self.openapi_types = {"image_configuration": str, "image_id": str}
 
-        self.attribute_map = {"image_configuration": "imageConfiguration", "image_id": "image_id"}
+        self.attribute_map = {"image_configuration": "imageConfiguration", "image_id": "imageId"}
 
         self._image_configuration = image_configuration
         self._image_id = image_id
