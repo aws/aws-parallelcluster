@@ -21,22 +21,19 @@ class CreateClusterRequestContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, region=None, cluster_configuration=None):
+    def __init__(self, cluster_name=None, cluster_configuration=None):
         """CreateClusterRequestContent - a model defined in OpenAPI
 
-        :param name: The name of this CreateClusterRequestContent.
-        :type name: str
-        :param region: The region of this CreateClusterRequestContent.
-        :type region: str
-        :param cluster_configuration: The cluster_configuration of this CreateClusterRequestContent.
+        :param cluster_name: The cluster_name of this CreateClusterRequestContent.  # noqa: E501
+        :type cluster_name: str
+        :param cluster_configuration: The cluster_configuration of this CreateClusterRequestContent.  # noqa: E501
         :type cluster_configuration: str
         """
-        self.openapi_types = {"name": str, "region": str, "cluster_configuration": str}
+        self.openapi_types = {"cluster_name": str, "cluster_configuration": str}
 
-        self.attribute_map = {"name": "name", "region": "region", "cluster_configuration": "clusterConfiguration"}
+        self.attribute_map = {"cluster_name": "clusterName", "cluster_configuration": "clusterConfiguration"}
 
-        self._name = name
-        self._region = region
+        self._cluster_name = cluster_name
         self._cluster_configuration = cluster_configuration
 
     @classmethod
@@ -51,60 +48,33 @@ class CreateClusterRequestContent(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def name(self):
-        """Gets the name of this CreateClusterRequestContent.
+    def cluster_name(self):
+        """Gets the cluster_name of this CreateClusterRequestContent.
 
-        Name of the cluster
+        Name of the cluster that will be created.  # noqa: E501
 
         :return: The name of this CreateClusterRequestContent.
         :rtype: str
         """
-        return self._name
+        return self._cluster_name
 
-    @name.setter
-    def name(self, name):
-        """Sets the name of this CreateClusterRequestContent.
+    @cluster_name.setter
+    def cluster_name(self, cluster_name):
+        """Sets the cluster_name of this CreateClusterRequestContent.
 
         Name of the cluster
 
-        :param name: The name of this CreateClusterRequestContent.
-        :type name: str
+        :param cluster_name: The name of this CreateClusterRequestContent.
+        :type cluster_name: str
         """
-        if name is None:
-            raise ValueError("Invalid value for `name`, must not be `None`")
-        if name is not None and len(name) > 60:
-            raise ValueError("Invalid value for `name`, length must be less than or equal to `60`")
-        if name is not None and len(name) < 5:
-            raise ValueError("Invalid value for `name`, length must be greater than or equal to `5`")
-        if name is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", name):
+        if cluster_name is None:
+            raise ValueError("Invalid value for `cluster_name`, must not be `None`")
+        if cluster_name is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", cluster_name):
             raise ValueError(
-                "Invalid value for `name`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
+                "Invalid value for `cluster_name`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
             )
 
-        self._name = name
-
-    @property
-    def region(self):
-        """Gets the region of this CreateClusterRequestContent.
-
-        AWS Region. Defaults to the region the API is deployed to.
-
-        :return: The region of this CreateClusterRequestContent.
-        :rtype: str
-        """
-        return self._region
-
-    @region.setter
-    def region(self, region):
-        """Sets the region of this CreateClusterRequestContent.
-
-        AWS Region. Defaults to the region the API is deployed to.
-
-        :param region: The region of this CreateClusterRequestContent.
-        :type region: str
-        """
-
-        self._region = region
+        self._cluster_name = cluster_name
 
     @property
     def cluster_configuration(self):

@@ -27,9 +27,9 @@ from pcluster_client.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
-    from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+    from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
     from pcluster_client.model.cluster_status import ClusterStatus
-    globals()['CloudFormationStatus'] = CloudFormationStatus
+    globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
     globals()['ClusterStatus'] = ClusterStatus
 
 
@@ -62,8 +62,6 @@ class ClusterInfoSummary(ModelNormal):
 
     validations = {
         ('cluster_name',): {
-            'max_length': 60,
-            'min_length': 5,
             'regex': {
                 'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
             },
@@ -87,7 +85,7 @@ class ClusterInfoSummary(ModelNormal):
         lazy_import()
         return {
             'cluster_name': (str,),  # noqa: E501
-            'cloudformation_stack_status': (CloudFormationStatus,),  # noqa: E501
+            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
             'region': (str,),  # noqa: E501
             'version': (str,),  # noqa: E501
@@ -124,11 +122,11 @@ class ClusterInfoSummary(ModelNormal):
         """ClusterInfoSummary - a model defined in OpenAPI
 
         Args:
-            cluster_name (str): Name of the cluster
-            cloudformation_stack_status (CloudFormationStatus):
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack
-            region (str): AWS region where the cluster is created
-            version (str): ParallelCluster version used to create the cluster
+            cluster_name (str): Name of the cluster.
+            cloudformation_stack_status (CloudFormationStackStatus):
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
+            region (str): AWS region where the cluster is created.
+            version (str): ParallelCluster version used to create the cluster.
             cluster_status (ClusterStatus):
 
         Keyword Args:

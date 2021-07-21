@@ -88,8 +88,8 @@ class UpdateClusterResponseContent(Model):
     def validation_messages(self):
         """Gets the validation_messages of this UpdateClusterResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the validationFailureLevel
-        set by the user
+        List of messages collected during cluster config validation whose level is lower than the
+        'validationFailureLevel' set by the user.
 
         :return: The validation_messages of this UpdateClusterResponseContent.
         :rtype: List[ConfigValidationMessage]
@@ -100,8 +100,8 @@ class UpdateClusterResponseContent(Model):
     def validation_messages(self, validation_messages):
         """Sets the validation_messages of this UpdateClusterResponseContent.
 
-        List of messages collected during cluster config validation whose level is lower than the validationFailureLevel
-        set by the user
+        List of messages collected during cluster config validation whose level is lower than the
+        'validationFailureLevel' set by the user.
 
         :param validation_messages: The validation_messages of this UpdateClusterResponseContent.
         :type validation_messages: List[ConfigValidationMessage]
@@ -112,7 +112,7 @@ class UpdateClusterResponseContent(Model):
     def change_set(self):
         """Gets the change_set of this UpdateClusterResponseContent.
 
-        List of configuration changes requested by the update operation
+        List of configuration changes requested by the update operation.
 
         :return: The change_set of this UpdateClusterResponseContent.
         :rtype: List[Change]
@@ -123,7 +123,7 @@ class UpdateClusterResponseContent(Model):
     def change_set(self, change_set):
         """Sets the change_set of this UpdateClusterResponseContent.
 
-        List of configuration changes requested by the update operation
+        List of configuration changes requested by the update operation.
 
         :param change_set: The change_set of this UpdateClusterResponseContent.
         :type change_set: List[Change]

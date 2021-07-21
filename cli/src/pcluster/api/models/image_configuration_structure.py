@@ -19,17 +19,17 @@ class ImageConfigurationStructure(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, s3_url=None):
+    def __init__(self, url=None):
         """ImageConfigurationStructure - a model defined in OpenAPI
 
-        :param s3_url: The s3_url of this ImageConfigurationStructure.
-        :type s3_url: str
+        :param url: The url of this ImageConfigurationStructure.
+        :type url: str
         """
-        self.openapi_types = {"s3_url": str}
+        self.openapi_types = {"url": str}
 
-        self.attribute_map = {"s3_url": "s3Url"}
+        self.attribute_map = {"url": "url"}
 
-        self._s3_url = s3_url
+        self._url = url
 
     @classmethod
     def from_dict(cls, dikt) -> "ImageConfigurationStructure":
@@ -43,24 +43,24 @@ class ImageConfigurationStructure(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def s3_url(self):
-        """Gets the s3_url of this ImageConfigurationStructure.
+    def url(self):
+        """Gets the url of this ImageConfigurationStructure.
 
-        S3 Url pointing to the image configuration file.
+        URL of the image configuration file.
 
-        :return: The s3_url of this ImageConfigurationStructure.
+        :return: The url of this ImageConfigurationStructure.
         :rtype: str
         """
-        return self._s3_url
+        return self._url
 
-    @s3_url.setter
-    def s3_url(self, s3_url):
-        """Sets the s3_url of this ImageConfigurationStructure.
+    @url.setter
+    def url(self, url):
+        """Sets the url of this ImageConfigurationStructure.
 
-        S3 Url pointing to the image configuration file.
+        URL of the image configuration file.
 
-        :param s3_url: The s3_url of this ImageConfigurationStructure.
-        :type s3_url: str
+        :param url: The url of this ImageConfigurationStructure.
+        :type url: str
         """
 
-        self._s3_url = s3_url
+        self._url = url

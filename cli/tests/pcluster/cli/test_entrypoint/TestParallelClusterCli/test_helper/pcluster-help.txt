@@ -1,5 +1,5 @@
 usage: pcluster [-h]
-                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet-status,update-compute-fleet-status,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,configure,dcv-connect,export-cluster-logs,get-cluster-log-events,list-cluster-logs,ssh,export-image-logs,get-image-log-events,list-image-logs,version}
+                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,configure,dcv-connect,export-cluster-logs,get-cluster-log-events,list-cluster-logs,ssh,export-image-logs,get-image-log-events,list-image-logs,version}
                 ...
 
 pcluster is the AWS ParallelCluster CLI and permits launching and management
@@ -9,25 +9,22 @@ optional arguments:
   -h, --help            show this help message and exit
 
 COMMANDS:
-  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet-status,update-compute-fleet-status,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,configure,dcv-connect,export-cluster-logs,get-cluster-log-events,list-cluster-logs,ssh,export-image-logs,get-image-log-events,list-image-logs,version}
-    list-clusters       Retrieve the list of existing clusters managed by the
-                        API. Deleted clusters are not listed by default.
-    create-cluster      Create a ParallelCluster managed cluster in a given
-                        region.
+  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,configure,dcv-connect,export-cluster-logs,get-cluster-log-events,list-cluster-logs,ssh,export-image-logs,get-image-log-events,list-image-logs,version}
+    list-clusters       Retrieve the list of existing clusters.
+    create-cluster      Create a managed cluster in a given region.
     delete-cluster      Initiate the deletion of a cluster.
     describe-cluster    Get detailed information about an existing cluster.
-    update-cluster      update-cluster command help
-    describe-compute-fleet-status
-                        Describe the status of the compute fleet
-    update-compute-fleet-status
+    update-cluster      Update a cluster managed in a given region.
+    describe-compute-fleet
+                        Describe the status of the compute fleet.
+    update-compute-fleet
                         Update the status of the cluster compute fleet.
     delete-cluster-instances
                         Initiate the forced termination of all cluster compute
-                        nodes. Does not work with AWS Batch clusters
+                        nodes. Does not work with AWS Batch clusters.
     describe-cluster-instances
                         Describe the instances belonging to a given cluster.
-    list-images         Retrieve the list of existing custom images managed by
-                        the API. Deleted images are not showed by default
+    list-images         Retrieve the list of existing custom images.
     build-image         Create a custom ParallelCluster image in a given
                         region.
     delete-image        Initiate the deletion of the custom ParallelCluster

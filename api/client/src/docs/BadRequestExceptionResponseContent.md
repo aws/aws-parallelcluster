@@ -1,6 +1,6 @@
 # BadRequestExceptionResponseContent
 
-This exception is thrown when a client calls an API with wrong parameters
+This exception is thrown when a client calls an API with wrong parameters.
 
 ## Properties
 Name | Type | Description | Notes

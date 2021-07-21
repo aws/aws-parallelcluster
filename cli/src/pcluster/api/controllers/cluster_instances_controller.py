@@ -31,9 +31,9 @@ def delete_cluster_instances(cluster_name, region=None, force=None):
 
     :param cluster_name: Name of the cluster
     :type cluster_name: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
-    :param force: Force the deletion also when the cluster id is not found.
+    :param force: Force the deletion also when the cluster with the given name is not found. (Defaults to false.)
     :type force: bool
 
     :rtype: None
@@ -63,7 +63,7 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
 
     :param cluster_name: Name of the cluster
     :type cluster_name: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
     :param next_token: Token to use for paginated requests.
     :type next_token: str
