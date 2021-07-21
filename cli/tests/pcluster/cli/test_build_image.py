@@ -77,7 +77,7 @@ class TestBuildImageCommand:
         )
 
         path = str(test_datadir / "config.yaml")
-        out = run(["build-image", "--image-configuration", path, "--id", "image-id", "--region", "eu-west-1"])
+        out = run(["build-image", "--image-configuration", path, "--image-id", "image-id", "--region", "eu-west-1"])
         assert_that(out).is_equal_to(response_dict)
         assert_that(describe_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
         expected_args = {
@@ -105,7 +105,7 @@ class TestBuildImageCommand:
                 "eu-west-1",
                 "--image-configuration",
                 path,
-                "--id",
+                "--image-id",
                 "image-id",
             ]
             run(command)
