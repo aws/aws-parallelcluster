@@ -78,9 +78,10 @@ def build_image(
     :type validation_failure_level: dict | bytes
     :param dryrun: Only perform request validation without creating any resource.
     It can be used to validate the image configuration. Response code: 200
+    (Defaults to &#39;false&#39;.)
     :type dryrun: bool
     :param rollback_on_failure: When set, will automatically initiate an image stack rollback on failure.
-    (Defaults to true.)
+    (Defaults to &#39;true&#39;.)
     :type rollback_on_failure: bool
     :param region: AWS Region that the operation corresponds to.
     :type region: str
@@ -140,6 +141,7 @@ def delete_image(image_id, region=None, force=None):
     :param region: AWS Region that the operation corresponds to.
     :type region: str
     :param force: Force deletion in case there are instances using the AMI or in case the AMI is shared
+    (Defaults to &#39;false&#39;.)
     :type force: bool
 
     :rtype: DeleteImageResponseContent

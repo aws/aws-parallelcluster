@@ -51,7 +51,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     api_instance = cluster_instances_api.ClusterInstancesApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
-    force = True # bool, none_type | Force the deletion also when the cluster with the given name is not found. (Defaults to false.) (optional)
+    force = True # bool, none_type | Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -74,7 +74,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
- **force** | **bool, none_type**| Force the deletion also when the cluster with the given name is not found. (Defaults to false.) | [optional]
+ **force** | **bool, none_type**| Force the deletion also when the cluster with the given name is not found. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 

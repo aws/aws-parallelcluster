@@ -24,6 +24,7 @@ optional arguments:
                         configuration and update requirements.
   --force-update FORCE_UPDATE
                         Force update by ignoring the update validation errors.
+                        (Defaults to 'false'.)
   --cluster-configuration CLUSTER_CONFIGURATION
                         Cluster configuration as a YAML document
   --debug               Turn on debug logging.

@@ -27,10 +27,10 @@ structure CreateClusterRequest {
     @documentation("Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.)")
     validationFailureLevel: ValidationLevel,
     @httpQuery("dryrun")
-    @documentation("Only perform request validation without creating any resource. May be used to validate the cluster configuration.")
+    @documentation("Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.)")
     dryrun: Boolean,
     @httpQuery("rollbackOnFailure")
-    @documentation("When set it automatically initiates a cluster stack rollback on failures. (Defaults to true.)")
+    @documentation("When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)")
     rollbackOnFailure: Boolean,
 
     @required
