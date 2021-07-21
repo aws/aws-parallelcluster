@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 
-import base64
 import logging
 
 import boto3
@@ -50,7 +49,7 @@ def _cloudformation_wait(region, stack_name, status):
     cloud_formation = boto3.client("cloudformation", config=config)
     waiter = cloud_formation.get_waiter(status)
     # 180 attempts, one every 30 seconds, times out after 90 minutes
-    waiter.wait(StackName=stack_name, WaiterConfig={'MaxAttempts': 180})
+    waiter.wait(StackName=stack_name, WaiterConfig={"MaxAttempts": 180})
 
 
 def _ec2_wait_terminated(region, instances):
@@ -106,7 +105,7 @@ def _test_cluster_workflow(region, api_client, request, pcluster_config_reader, 
         _test_delete_cluster_instances(region, cluster_instances_client, cluster_name, head_node, compute_node_map)
 
     running_state = "RUNNING" if scheduler == "slurm" else "ENABLED"
-    _test_describe_compute_fleet_status(region, cluster_compute_fleet_client, cluster_name, running_state)
+    _test_describe_compute_fleet(region, cluster_compute_fleet_client, cluster_name, running_state)
     _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_instances_client, cluster_name, scheduler)
 
     _test_delete_cluster(region, cluster_operations_client, cluster_name)
@@ -166,8 +165,8 @@ def _test_delete_cluster_instances(region, client, cluster_name, head_node, comp
         assert_that(new_compute_node_map[queue]).is_not_equal_to(compute_node_map[queue])
 
 
-def _test_describe_compute_fleet_status(region, client, cluster_name, status):
-    response = client.describe_compute_fleet_status(cluster_name=cluster_name, region=region)
+def _test_describe_compute_fleet(region, client, cluster_name, status):
+    response = client.describe_compute_fleet(cluster_name=cluster_name, region=region)
     LOGGER.info("Compute fleet status response: %s", response)
     assert_that(response.status).is_equal_to(ComputeFleetStatus(status))
 
@@ -180,11 +179,9 @@ def _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_insta
     compute_node_map = _test_describe_cluster_compute_nodes(region, cluster_instances_client, cluster_name)
     instances_to_terminate = _get_instances_to_terminate(compute_node_map)
 
-    cluster_compute_fleet_client.update_compute_fleet_status(
+    cluster_compute_fleet_client.update_compute_fleet(
         cluster_name=cluster_name,
-        update_compute_fleet_status_request_content=UpdateComputeFleetRequestContent(
-            RequestedComputeFleetStatus(stop_status)
-        ),
+        update_compute_fleet_request_content=UpdateComputeFleetRequestContent(RequestedComputeFleetStatus(stop_status)),
         region=region,
     )
 
@@ -194,7 +191,7 @@ def _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_insta
         # updated, while for the Slurm case we wait for the previous compute instances to have been terminated.
         _ec2_wait_terminated(region, instances_to_terminate)
 
-    response = cluster_compute_fleet_client.describe_compute_fleet_status(cluster_name=cluster_name, region=region)
+    response = cluster_compute_fleet_client.describe_compute_fleet(cluster_name=cluster_name, region=region)
     assert_that(response.status).is_equal_to(ComputeFleetStatus(terminal_state))
 
     if scheduler == "slurm":
@@ -236,19 +233,17 @@ def _test_describe_cluster(region, client, cluster_name, status):
     LOGGER.info("Describe cluster response: %s", response)
     assert_that(response.cluster_name).is_equal_to(cluster_name)
     assert_that(response.cluster_status).is_equal_to(ClusterStatus(status))
-    assert_that(response.cloud_formation_status).is_equal_to(CloudFormationStackStatus(status))
+    assert_that(response.cloud_formation_stack_status).is_equal_to(CloudFormationStackStatus(status))
 
 
-def _test_create_cluster(region, client, cluster_name, cluster_config):
-    cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
-    body = CreateClusterRequestContent(cluster_name, cluster_config_data)
+def _test_create_cluster(region, client, cluster_name, config):
+    body = CreateClusterRequestContent(cluster_name=cluster_name, cluster_configuration=config)
     response = client.create_cluster(body, region=region)
     assert_that(response.cluster.cluster_name).is_equal_to(cluster_name)
 
 
-def _test_update_cluster_dryrun(region, client, cluster_name, cluster_config):
-    cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
-    body = UpdateClusterRequestContent(cluster_config_data)
+def _test_update_cluster_dryrun(region, client, cluster_name, config):
+    body = UpdateClusterRequestContent(config)
     error_message = "Request would have succeeded, but DryRun flag is set."
     with pytest.raises(ApiException, match=error_message):
         client.update_cluster(cluster_name, body, region=region, dryrun=True)
@@ -298,8 +293,7 @@ def test_custom_image(region, api_client, os, request, pcluster_config_reader):
 
 
 def _test_build_image(region, client, image_id, config):
-    image_config_data = base64.b64encode(config.encode("utf-8")).decode("utf-8")
-    body = BuildImageRequestContent(image_config_data, image_id)
+    body = BuildImageRequestContent(image_id=image_id, image_configuration=config)
     response = client.build_image(body, region=region)
     LOGGER.info("Build image response: %s", response)
     assert_that(response.image.image_id).is_equal_to(image_id)
