@@ -28,21 +28,21 @@ class TestBuildImageCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({}, "error: the following arguments are required: --image-configuration, --id"),
+            ({}, "error: the following arguments are required: --image-configuration, --image-id"),
             (
                 {"--image-configuration": None},
                 "error: argument --image-configuration: expected one argument",
             ),
             (
-                {"--id": None},
-                "error: argument --id: expected one argument",
+                {"--image-id": None},
+                "error: argument --image-id: expected one argument",
             ),
             (
-                {"--image-configuration": "file", "--id": "id", "--invalid": None},
+                {"--image-configuration": "file", "--image-id": "id", "--invalid": None},
                 "Invalid arguments ['--invalid']",
             ),
             (
-                {"--image-configuration": "file", "--id": "id", "--region": "eu-west-"},
+                {"--image-configuration": "file", "--image-id": "id", "--region": "eu-west-"},
                 "Bad Request: invalid or unsupported region 'eu-west-'",
             ),
         ],

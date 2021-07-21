@@ -1,7 +1,6 @@
 namespace parallelcluster
 
 @pattern("^[a-zA-Z][a-zA-Z0-9-]+$")
-@length(min: 5, max: 60)
 @documentation("Name of the cluster")
 string ClusterName
 
@@ -14,22 +13,22 @@ string SuppressValidatorExpression
 
 structure ClusterInfoSummary {
     @required
-    @documentation("Name of the cluster")
+    @documentation("Name of the cluster.")
     clusterName: ClusterName,
     @required
-    @documentation("AWS region where the cluster is created")
+    @documentation("AWS region where the cluster is created.")
     region: Region,
     @required
-    @documentation("ParallelCluster version used to create the cluster")
+    @documentation("ParallelCluster version used to create the cluster.")
     version: Version,
     @required
-    @documentation("ARN of the main CloudFormation stack")
+    @documentation("ARN of the main CloudFormation stack.")
     cloudformationStackArn: String,
     @required
     @documentation("Status of the CloudFormation stack provisioning the cluster infrastructure.")
-    cloudformationStackStatus: CloudFormationStatus,
+    cloudformationStackStatus: CloudFormationStackStatus,
     @required
-    @documentation("Status of the cluster infrastructure")
+    @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,
 }
 
@@ -60,9 +59,9 @@ string ClusterStatus
 string ComputeFleetStatus
 
 structure ClusterConfigurationStructure {
-    @documentation("S3 Url pointing to the cluster configuration file.")
-    s3Url: String,
+    @documentation("URL of the cluster configuration file.")
+    url: String,
 }
 
 @documentation("Cluster configuration as a YAML document")
-blob ClusterConfigurationData
+string ClusterConfigurationData

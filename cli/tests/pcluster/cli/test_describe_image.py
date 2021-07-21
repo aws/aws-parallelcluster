@@ -51,7 +51,7 @@ class TestDescribeImageCommand:
     def test_execute(self, mocker):
         response_dict = {
             "imageConfiguration": {
-                "s3Url": "s3://parallelcluster-0000000000000000-v1-do-not-delete/parallelcluster/3.0.0/config.yaml"
+                "url": "s3://parallelcluster-0000000000000000-v1-do-not-delete/parallelcluster/3.0.0/config.yaml"
             },
             "imageId": "aws-parallelcluster-3-0-0-ubuntu-1804-lts-hvm-arm64-202101010000",
             "creationTime": "2021-01-01T00:00:00.000Z",

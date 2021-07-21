@@ -6,7 +6,7 @@ usage: pcluster update-cluster [-h] --cluster-name CLUSTER_NAME
                                --cluster-configuration CLUSTER_CONFIGURATION
                                [--debug]
 
-update-cluster command help
+Update a cluster managed in a given region.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -17,13 +17,11 @@ optional arguments:
                         Format: (ALL|type:[A-Za-z0-9]+)
   --validation-failure-level {INFO,WARNING,ERROR}
                         Min validation level that will cause the update to
-                        fail. Defaults to 'error'.
-  --region REGION       AWS Region. Defaults to the region the API is deployed
-                        to.
+                        fail. (Defaults to 'ERROR'.)
+  --region REGION       AWS Region that the operation corresponds to.
   --dryrun DRYRUN       Only perform request validation without creating any
-                        resource. It can be used to validate the cluster
-                        configuration and update requirements. Response code:
-                        200
+                        resource. May be used to validate the cluster
+                        configuration and update requirements.
   --force-update FORCE_UPDATE
                         Force update by ignoring the update validation errors.
   --cluster-configuration CLUSTER_CONFIGURATION

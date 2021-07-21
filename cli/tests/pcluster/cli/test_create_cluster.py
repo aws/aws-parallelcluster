@@ -30,20 +30,20 @@ class TestCreateClusterCommand:
         [
             (
                 {},
-                "error: the following arguments are required: --name, --cluster-configuration",
+                "error: the following arguments are required: --cluster-name, --cluster-configuration",
             ),
             (
                 {"--cluster-configuration": None},
                 "error: argument --cluster-configuration: expected one argument",
             ),
             (
-                {"--name": None},
-                "error: argument --name: expected one argument",
+                {"--cluster-name": None},
+                "error: argument --cluster-name: expected one argument",
             ),
             (
                 {
                     "--cluster-configuration": "file",
-                    "--name": "cluster",
+                    "--cluster-name": "cluster",
                     "--invalid": None,
                 },
                 "Invalid arguments ['--invalid']",
@@ -51,7 +51,7 @@ class TestCreateClusterCommand:
             (
                 {
                     "--cluster-configuration": "file",
-                    "--name": "cluster",
+                    "--cluster-name": "cluster",
                     "--region": "eu-west-",
                 },
                 "Bad Request: invalid or unsupported region 'eu-west-'",
@@ -88,7 +88,9 @@ class TestCreateClusterCommand:
         )
 
         path = str(test_datadir / "config.yaml")
-        out = run(["create-cluster", "--name", "cluster", "--cluster-configuration", path, "--region", "eu-west-1"])
+        out = run(
+            ["create-cluster", "--cluster-name", "cluster", "--cluster-configuration", path, "--region", "eu-west-1"]
+        )
         assert_that(out).is_equal_to(response_dict)
         assert_that(describe_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
         expected_args = {
@@ -96,7 +98,8 @@ class TestCreateClusterCommand:
             "validation_failure_level": None,
             "dryrun": None,
             "rollback_on_failure": None,
-            "create_cluster_request_content": {"name": "cluster", "region": "eu-west-1", "clusterConfiguration": ""},
+            "region": "eu-west-1",
+            "create_cluster_request_content": {"clusterName": "cluster", "clusterConfiguration": ""},
         }
         describe_clusters_mock.assert_called_with(**expected_args)
 
@@ -116,7 +119,7 @@ class TestCreateClusterCommand:
                 "eu-west-1",
                 "--cluster-configuration",
                 path,
-                "--name",
+                "--cluster-name",
                 "cluster",
             ]
             run(command)

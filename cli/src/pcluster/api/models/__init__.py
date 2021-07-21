@@ -20,7 +20,7 @@ from pcluster.api.models.build_image_bad_request_exception_response_content impo
 from pcluster.api.models.build_image_request_content import BuildImageRequestContent
 from pcluster.api.models.build_image_response_content import BuildImageResponseContent
 from pcluster.api.models.change import Change
-from pcluster.api.models.cloud_formation_status import CloudFormationStatus
+from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster.api.models.cluster_configuration_structure import ClusterConfigurationStructure
 from pcluster.api.models.cluster_info_summary import ClusterInfoSummary
 from pcluster.api.models.cluster_instance import ClusterInstance
@@ -38,7 +38,7 @@ from pcluster.api.models.delete_cluster_response_content import DeleteClusterRes
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.describe_cluster_instances_response_content import DescribeClusterInstancesResponseContent
 from pcluster.api.models.describe_cluster_response_content import DescribeClusterResponseContent
-from pcluster.api.models.describe_compute_fleet_status_response_content import DescribeComputeFleetStatusResponseContent
+from pcluster.api.models.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent
 from pcluster.api.models.describe_image_response_content import DescribeImageResponseContent
 from pcluster.api.models.describe_official_images_response_content import DescribeOfficialImagesResponseContent
 from pcluster.api.models.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
@@ -65,6 +65,7 @@ from pcluster.api.models.update_cluster_bad_request_exception_response_content i
 )
 from pcluster.api.models.update_cluster_request_content import UpdateClusterRequestContent
 from pcluster.api.models.update_cluster_response_content import UpdateClusterResponseContent
-from pcluster.api.models.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
+from pcluster.api.models.update_compute_fleet_request_content import UpdateComputeFleetRequestContent
+from pcluster.api.models.update_compute_fleet_response_content import UpdateComputeFleetResponseContent
 from pcluster.api.models.update_error import UpdateError
 from pcluster.api.models.validation_level import ValidationLevel

@@ -1,8 +1,7 @@
 namespace parallelcluster
 
 @pattern("^[a-zA-Z][a-zA-Z0-9-]+$")
-@length(min: 5, max: 60)
-@documentation("Id of the image")
+@documentation("Id of the image.")
 string ImageId
 
 structure Ec2AmiInfo {
@@ -28,30 +27,30 @@ structure Ec2AmiInfo {
 
 structure ImageInfoSummary {
     @required
-    @documentation("Id of the image")
+    @documentation("Id of the image.")
     imageId: ImageId,
     @required
-    @documentation("AWS region where the image is built")
+    @documentation("AWS region where the image is built.")
     region: Region,
     @required
-    @documentation("ParallelCluster version used to build the image")
+    @documentation("ParallelCluster version used to build the image.")
     version: Version,
-    @documentation("ARN of the main CloudFormation stack")
+    @documentation("ARN of the main CloudFormation stack.")
     cloudformationStackArn: String,
     @required
-    @documentation("Status of the image build.")
+    @documentation("Status of the image build process.")
     imageBuildStatus: ImageBuildStatus,
     @documentation("Status of the CloudFormation stack for the image build process.")
-    cloudformationStackStatus: CloudFormationStatus,
+    cloudformationStackStatus: CloudFormationStackStatus,
 }
 
 structure ImageConfigurationStructure {
-    @documentation("S3 Url pointing to the image configuration file.")
-    s3Url: String,
+    @documentation("URL of the image configuration file.")
+    url: String,
 }
 
 @documentation("Image configuration as a YAML document")
-blob ImageConfigurationData
+string ImageConfigurationData
 
 @enum([
     {name: "BUILD_IN_PROGRESS", value: "BUILD_IN_PROGRESS"},

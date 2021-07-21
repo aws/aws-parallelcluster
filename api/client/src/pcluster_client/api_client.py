@@ -766,10 +766,10 @@ class Endpoint(object):
         Example:
 
         api_instance = ClusterComputeFleetApi()
-        api_instance.describe_compute_fleet_status  # this is an instance of the class Endpoint
-        api_instance.describe_compute_fleet_status()  # this invokes api_instance.describe_compute_fleet_status.__call__()
+        api_instance.describe_compute_fleet  # this is an instance of the class Endpoint
+        api_instance.describe_compute_fleet()  # this invokes api_instance.describe_compute_fleet.__call__()
         which then invokes the callable functions stored in that endpoint at
-        api_instance.describe_compute_fleet_status.callable or self.callable in this class
+        api_instance.describe_compute_fleet.callable or self.callable in this class
 
         """
         return self.callable(self, *args, **kwargs)

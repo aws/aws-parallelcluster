@@ -6,8 +6,6 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import base64
-
 import pytest
 from assertpy import assert_that
 
@@ -89,12 +87,11 @@ class TestCliModel:
             _run_model(model, ["op"])
 
     def test_file(self, identity_dispatch, test_datadir):
-        model = _model([{"body": False, "name": "file", "required": True, "type": "byte"}])
+        model = _model([{"body": False, "name": "file", "required": True, "type": "file"}])
         path = str(test_datadir / "file.txt")
         ret = _run_model(model, ["op", "--file", path])
         file_data = "asdf\n"
-        expected = base64.b64encode(file_data.encode("utf-8")).decode("utf-8")
-        assert_that(ret["file"]).is_equal_to(expected)
+        assert_that(ret["file"]).is_equal_to(file_data)
         path = str(test_datadir / "notfound")
         with pytest.raises(ParameterException):
             _run_model(model, ["op", "--file", path])
