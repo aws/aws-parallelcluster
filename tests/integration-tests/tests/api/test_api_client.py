@@ -27,7 +27,7 @@ from pcluster_client.api import (
 )
 from pcluster_client.exceptions import NotFoundException
 from pcluster_client.model.build_image_request_content import BuildImageRequestContent
-from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster_client.model.cluster_status import ClusterStatus
 from pcluster_client.model.compute_fleet_status import ComputeFleetStatus
 from pcluster_client.model.create_cluster_request_content import CreateClusterRequestContent
@@ -37,7 +37,7 @@ from pcluster_client.model.instance_state import InstanceState
 from pcluster_client.model.node_type import NodeType
 from pcluster_client.model.requested_compute_fleet_status import RequestedComputeFleetStatus
 from pcluster_client.model.update_cluster_request_content import UpdateClusterRequestContent
-from pcluster_client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
+from pcluster_client.model.update_compute_fleet_request_content import UpdateComputeFleetRequestContent
 from utils import generate_stack_name
 
 from tests.common.utils import retrieve_latest_ami
@@ -181,7 +181,7 @@ def _test_stop_compute_fleet(cluster_compute_fleet_client, cluster_instances_cli
 
     cluster_compute_fleet_client.update_compute_fleet_status(
         cluster_name=cluster_name,
-        update_compute_fleet_status_request_content=UpdateComputeFleetStatusRequestContent(
+        update_compute_fleet_status_request_content=UpdateComputeFleetRequestContent(
             RequestedComputeFleetStatus(stop_status)
         ),
         region=region,
@@ -220,7 +220,7 @@ def _test_list_clusters(client, cluster_name, region, status):
     assert_that(target_cluster).is_not_none()
     assert_that(target_cluster.cluster_name).is_equal_to(cluster_name)
     assert_that(target_cluster.cluster_status).is_equal_to(ClusterStatus(status))
-    assert_that(target_cluster.cloudformation_stack_status).is_equal_to(CloudFormationStatus(status))
+    assert_that(target_cluster.cloudformation_stack_status).is_equal_to(CloudFormationStackStatus(status))
 
 
 def _get_cluster(clusters, cluster_name):
@@ -235,13 +235,13 @@ def _test_describe_cluster(client, cluster_name, region, status):
     LOGGER.info("Describe cluster response: %s", response)
     assert_that(response.cluster_name).is_equal_to(cluster_name)
     assert_that(response.cluster_status).is_equal_to(ClusterStatus(status))
-    assert_that(response.cloud_formation_status).is_equal_to(CloudFormationStatus(status))
+    assert_that(response.cloud_formation_status).is_equal_to(CloudFormationStackStatus(status))
 
 
 def _test_create_cluster(client, cluster_config, region, cluster_name):
     cluster_config_data = base64.b64encode(cluster_config.encode("utf-8")).decode("utf-8")
-    body = CreateClusterRequestContent(cluster_name, cluster_config_data, region=region)
-    response = client.create_cluster(body)
+    body = CreateClusterRequestContent(cluster_name, cluster_config_data)
+    response = client.create_cluster(body, region=region)
     assert_that(response.cluster.cluster_name).is_equal_to(cluster_name)
 
 
@@ -298,8 +298,8 @@ def test_custom_image(request, region, os, pcluster_config_reader, api_client):
 
 def _test_build_image(client, image_id, region, config):
     image_config_data = base64.b64encode(config.encode("utf-8")).decode("utf-8")
-    body = BuildImageRequestContent(image_config_data, image_id, region=region)
-    response = client.build_image(body)
+    body = BuildImageRequestContent(image_config_data, image_id)
+    response = client.build_image(body, region=region)
     LOGGER.info("Build image response: %s", response)
     assert_that(response.image.image_id).is_equal_to(image_id)
 
