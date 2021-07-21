@@ -999,7 +999,7 @@ def _test_resources(generated_resources, expected_resources):
             },
             None,
             None,
-            "arn:aws:iam::xxxxxxxxxxxx:instance-profile/InstanceProfile",
+            "InstanceProfile",
         ),
     ],
 )
