@@ -47,7 +47,13 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.constants import CW_LOG_GROUP_NAME_PREFIX, CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_S3_ARTIFACTS_DICT
+from pcluster.constants import (
+    CW_LOG_GROUP_NAME_PREFIX,
+    CW_LOGS_CFN_PARAM_NAME,
+    IAM_ROLE_PATH,
+    OS_MAPPING,
+    PCLUSTER_S3_ARTIFACTS_DICT,
+)
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
@@ -99,7 +105,7 @@ class ClusterCdkStack(Stack):
                 self.log_group_name = log_group_name
             else:
                 # pcluster create create a log group with timestamp suffix
-                timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
+                timestamp = f"{datetime.utcnow().strftime('%Y%m%d%H%M')}"
                 self.log_group_name = f"{CW_LOG_GROUP_NAME_PREFIX}{self.stack_name}-{timestamp}"
 
         self.instance_roles = {}
@@ -513,7 +519,7 @@ class ClusterCdkStack(Stack):
             )
 
     def _add_instance_profile(self, role_ref: str, name: str):
-        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path="/").ref
+        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path=IAM_ROLE_PATH).ref
 
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
         additional_iam_policies = node.iam.additional_iam_policy_arns
@@ -528,9 +534,9 @@ class ClusterCdkStack(Stack):
         return iam.CfnRole(
             self,
             name,
+            path=IAM_ROLE_PATH,
             managed_policy_arns=additional_iam_policies,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
-            path=f"/{self._build_resource_path()}/",
         ).ref
 
     def _add_pcluster_policies_to_role(self, role_ref: str, name: str):

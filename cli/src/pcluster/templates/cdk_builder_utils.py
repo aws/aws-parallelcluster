@@ -32,6 +32,7 @@ from pcluster.config.cluster_config import (
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    IAM_ROLE_PATH,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
@@ -245,8 +246,8 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
     return iam.CfnRole(
         scope,
         f"{function_id}FunctionExecutionRole",
+        path=IAM_ROLE_PATH,
         assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
-        path="/",
         policies=[
             iam.CfnRole.PolicyProperty(
                 policy_document=iam.PolicyDocument(statements=statements),
