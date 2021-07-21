@@ -49,7 +49,8 @@ def _cloudformation_wait(region, stack_name, status):
     config = Config(region_name=region)
     cloud_formation = boto3.client("cloudformation", config=config)
     waiter = cloud_formation.get_waiter(status)
-    waiter.wait(StackName=stack_name)
+    # 180 attempts, one every 30 seconds, times out after 90 minutes
+    waiter.wait(StackName=stack_name, WaiterConfig={'MaxAttempts': 180})
 
 
 def _ec2_wait_terminated(region, instances):
