@@ -38,6 +38,7 @@ from aws_cdk.core import (
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
+    AwsBatchClusterConfig,
     BaseQueue,
     HeadNode,
     SharedEbs,
@@ -52,6 +53,7 @@ from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
+    apply_permissions_boundary,
     create_hash_suffix,
     get_assume_role_policy_document,
     get_block_device_mappings,
@@ -81,7 +83,7 @@ class ClusterCdkStack(Stack):
         scope: Construct,
         construct_id: str,
         stack_name: str,
-        cluster_config: SlurmClusterConfig,
+        cluster_config: Union[SlurmClusterConfig, AwsBatchClusterConfig],
         bucket: S3Bucket,
         log_group_name=None,
         **kwargs,
@@ -110,6 +112,11 @@ class ClusterCdkStack(Stack):
         self._add_parameters()
         self._add_resources()
         self._add_outputs()
+
+        try:
+            apply_permissions_boundary(cluster_config.iam.permissions_boundary, self)
+        except AttributeError:
+            pass
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
