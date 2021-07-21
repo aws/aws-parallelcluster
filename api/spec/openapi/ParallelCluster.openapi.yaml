@@ -108,17 +108,17 @@ paths:
             $ref: '#/components/schemas/ValidationLevel'
         - name: dryrun
           in: query
-          description: Only perform request validation without creating any resource. May be used to validate the cluster configuration.
+          description: Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Only perform request validation without creating any resource. May be used to validate the cluster configuration.
+            description: Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.)
             nullable: true
         - name: rollbackOnFailure
           in: query
-          description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to true.)
+          description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)
           schema:
             type: boolean
-            description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to true.)
+            description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)
             nullable: true
       responses:
         "202":
@@ -347,17 +347,17 @@ paths:
             description: AWS Region that the operation corresponds to.
         - name: dryrun
           in: query
-          description: Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements.
+          description: Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements.
+            description: Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.)
             nullable: true
         - name: forceUpdate
           in: query
-          description: Force update by ignoring the update validation errors.
+          description: Force update by ignoring the update validation errors. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Force update by ignoring the update validation errors.
+            description: Force update by ignoring the update validation errors. (Defaults to 'false'.)
             nullable: true
       responses:
         "202":
@@ -576,10 +576,10 @@ paths:
             description: AWS Region that the operation corresponds to.
         - name: force
           in: query
-          description: Force the deletion also when the cluster with the given name is not found. (Defaults to false.)
+          description: Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Force the deletion also when the cluster with the given name is not found. (Defaults to false.)
+            description: Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)
             nullable: true
       responses:
         "202":
@@ -790,17 +790,17 @@ paths:
             $ref: '#/components/schemas/ValidationLevel'
         - name: dryrun
           in: query
-          description: Only perform request validation without creating any resource. It can be used to validate the image configuration.
+          description: Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Only perform request validation without creating any resource. It can be used to validate the image configuration.
+            description: Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.)
             nullable: true
         - name: rollbackOnFailure
           in: query
-          description: When set, will automatically initiate an image stack rollback on failure. (Defaults to true.)
+          description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
           schema:
             type: boolean
-            description: When set, will automatically initiate an image stack rollback on failure. (Defaults to true.)
+            description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
             nullable: true
         - name: region
           in: query
@@ -882,10 +882,10 @@ paths:
             description: AWS Region that the operation corresponds to.
         - name: force
           in: query
-          description: Force deletion in case there are instances using the AMI or in case the AMI is shared
+          description: Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Force deletion in case there are instances using the AMI or in case the AMI is shared
+            description: Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.)
             nullable: true
       responses:
         "202":
