@@ -105,7 +105,7 @@ class SlurmConstruct(Construct):
                 self.config.scheduling.settings.dns.hosted_zone_id
             )
         else:
-            domain_name = "pcluster"
+            domain_name = "pcluster."
         cluster_dns_domain = f"{self.stack_name}.{domain_name}"
 
         self.cluster_dns_domain = CfnParameter(
