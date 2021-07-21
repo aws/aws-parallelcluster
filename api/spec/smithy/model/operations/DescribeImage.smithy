@@ -37,14 +37,14 @@ structure DescribeImageResponse {
     @required
     @documentation("Status of the image build.")
     imageBuildStatus: ImageBuildStatus,
+    @documentation("ARN of the logs for the image build process.")
+    imageBuildLogsArn: String,
     @documentation("Status of the CloudFormation stack for the image build process.")
     cloudformationStackStatus: CloudFormationStackStatus,
     @documentation("Reason for the CloudFormation stack status.")
     cloudformationStackStatusReason: String,
     @documentation("ARN of the main CloudFormation stack.")
     cloudformationStackArn: String,
-    @documentation("ARN of the logs for the CloudFormation stack.")
-    cloudformationStackLogsArn: String,
     @documentation("Timestamp representing the image creation time.")
     @timestampFormat("date-time")
     creationTime: Timestamp,

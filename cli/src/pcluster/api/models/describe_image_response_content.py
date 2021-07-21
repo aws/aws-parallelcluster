@@ -36,11 +36,11 @@ class DescribeImageResponseContent(Model):
         imagebuilder_image_status_reason=None,
         creation_time=None,
         image_build_status=None,
+        image_build_logs_arn=None,
         cloudformation_stack_creation_time=None,
         cloudformation_stack_status=None,
         cloudformation_stack_status_reason=None,
         cloudformation_stack_arn=None,
-        cloudformation_stack_logs_arn=None,
         cloudformation_stack_tags=None,
         region=None,
         ec2_ami_info=None,
@@ -76,8 +76,8 @@ class DescribeImageResponseContent(Model):
         :type cloudformation_stack_creation_time: datetime
         :param cloudformation_stack_tags: The cloudformation_stack_tags of this DescribeImageResponseContent.
         :type cloudformation_stack_tags: List[Tag]
-        :param cloudformation_stack_logs_arn: The cloudformation_stack_logs_arn of this DescribeImageResponseContent.
-        :type cloudformation_stack_logs_arn: str
+        :param image_build_logs_arn: The image_build_logs_arn of this DescribeImageResponseContent.
+        :type image_build_logs_arn: str
         :type ec2_ami_info: Ec2AmiInfo
         :param version: The version of this DescribeImageResponseContent.
         :type version: str
@@ -96,7 +96,7 @@ class DescribeImageResponseContent(Model):
             "ec2_ami_info": Ec2AmiInfo,
             "version": str,
             "cloudformation_stack_tags": List[Tag],
-            "cloudformation_stack_logs_arn": str,
+            "image_build_logs_arn": str,
             "cloudformation_stack_creation_time": datetime,
         }
 
@@ -106,7 +106,7 @@ class DescribeImageResponseContent(Model):
             "imagebuilder_image_status": "imagebuilderImageStatus",
             "imagebuilder_image_status_reason": "imagebuilderImageStatusReason",
             "cloudformation_stack_tags": "cloudformationStackTags",
-            "cloudformation_stack_logs_arn": "cloudformationStackLogsArn",
+            "image_build_logs_arn": "imageBuildLogsArn",
             "creation_time": "creationTime",
             "image_build_status": "imageBuildStatus",
             "cloudformation_stack_creation_time": "cloudformationStackCreationTime",
@@ -118,20 +118,20 @@ class DescribeImageResponseContent(Model):
             "version": "version",
         }
 
-        self._image_configuration = image_configuration
-        self._image_id = image_id
-        self._imagebuilder_image_status = imagebuilder_image_status
-        self._imagebuilder_image_status_reason = imagebuilder_image_status_reason
-        self._creation_time = creation_time
-        self._image_build_status = image_build_status
         self._cloudformation_stack_status = cloudformation_stack_status
         self._cloudformation_stack_status_reason = cloudformation_stack_status_reason
         self._cloudformation_stack_arn = cloudformation_stack_arn
         self._cloudformation_stack_tags = cloudformation_stack_tags
         self._cloudformation_stack_creation_time = cloudformation_stack_creation_time
-        self._cloudformation_stack_logs_arn = cloudformation_stack_logs_arn
-        self._region = region
+        self._creation_time = creation_time
         self._ec2_ami_info = ec2_ami_info
+        self._image_build_status = image_build_status
+        self._image_build_logs_arn = image_build_logs_arn
+        self._image_configuration = image_configuration
+        self._image_id = image_id
+        self._imagebuilder_image_status = imagebuilder_image_status
+        self._imagebuilder_image_status_reason = imagebuilder_image_status_reason
+        self._region = region
         self._version = version
 
     @classmethod
@@ -284,27 +284,27 @@ class DescribeImageResponseContent(Model):
         self._creation_time = creation_time
 
     @property
-    def cloudformation_stack_logs_arn(self):
-        """Gets the cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+    def image_build_logs_arn(self):
+        """Gets the image_build_logs_arn of this DescribeImageResponseContent.
 
         ARN of the logs for the CloudFormation stack.  # noqa: E501
 
-        :return: The cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+        :return: The image_build_logs_arn of this DescribeImageResponseContent.
         :rtype: str
         """
-        return self._cloudformation_stack_logs_arn
+        return self._image_build_logs_arn
 
-    @cloudformation_stack_logs_arn.setter
-    def cloudformation_stack_logs_arn(self, cloudformation_stack_logs_arn):
-        """Sets the cloudformation_stack_logs_arn of this DescribeImageResponseContent.
+    @image_build_logs_arn.setter
+    def image_build_logs_arn(self, image_build_logs_arn):
+        """Sets the image_build_logs_arn of this DescribeImageResponseContent.
 
         ARN of the logs for the CloudFormation stack.  # noqa: E501
 
-        :param cloudformation_stack_logs_arn: The cloudformation_stack_logs_arn of this DescribeImageResponseContent.
-        :type cloudformation_stack_logs_arn: str
+        :param image_build_logs_arn: The image_build_logs_arn of this DescribeImageResponseContent.
+        :type image_build_logs_arn: str
         """
 
-        self._cloudformation_stack_logs_arn = cloudformation_stack_logs_arn
+        self._image_build_logs_arn = image_build_logs_arn
 
     @property
     def image_build_status(self):

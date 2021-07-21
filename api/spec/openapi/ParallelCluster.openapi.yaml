@@ -1420,15 +1420,15 @@ components:
         version:
           type: string
           description: ParallelCluster version used to build the image.
-        cloudformationStackLogsArn:
-          type: string
-          description: ARN of the logs for the CloudFormation stack.
         imageConfiguration:
           $ref: '#/components/schemas/ImageConfigurationStructure'
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
           $ref: '#/components/schemas/CloudFormationStackStatus'
+        imageBuildLogsArn:
+          type: string
+          description: ARN of the logs for the image build process.
         cloudformationStackArn:
           type: string
           description: ARN of the main CloudFormation stack.

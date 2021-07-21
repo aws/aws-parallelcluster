@@ -97,8 +97,8 @@ class DescribeImageResponseContent(ModelNormal):
             'cloudformation_stack_tags': ([Tag],),  # noqa: E501
             'imagebuilder_image_status': (ImageBuilderImageStatus,),  # noqa: E501
             'creation_time': (datetime,),  # noqa: E501
-            'cloudformation_stack_logs_arn': (str,),  # noqa: E501
             'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
+            'image_build_logs_arn': (str,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
             'cloudformation_stack_creation_time': (datetime,),  # noqa: E501
             'ec2_ami_info': (Ec2AmiInfo,),  # noqa: E501
@@ -120,8 +120,8 @@ class DescribeImageResponseContent(ModelNormal):
         'cloudformation_stack_tags': 'cloudformationStackTags',  # noqa: E501
         'imagebuilder_image_status': 'imagebuilderImageStatus',  # noqa: E501
         'creation_time': 'creationTime',  # noqa: E501
-        'cloudformation_stack_logs_arn': 'cloudformationStackLogsArn',  # noqa: E501
         'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
+        'image_build_logs_arn': 'imageBuildLogsArn',  # noqa: E501
         'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
         'cloudformation_stack_creation_time': 'cloudformationStackCreationTime',  # noqa: E501
         'ec2_ami_info': 'ec2AmiInfo',  # noqa: E501
@@ -185,8 +185,8 @@ class DescribeImageResponseContent(ModelNormal):
             cloudformation_stack_tags ([Tag]): Tags for the CloudFormation stack.. [optional]  # noqa: E501
             imagebuilder_image_status (ImageBuilderImageStatus): [optional]  # noqa: E501
             creation_time (datetime): Timestamp representing the image creation time.. [optional]  # noqa: E501
-            cloudformation_stack_logs_arn (str): ARN of the logs for the CloudFormation stack.. [optional]  # noqa: E501
             cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
+            image_build_logs_arn (str): ARN of the logs for the image build process.. [optional]  # noqa: E501
             cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
             cloudformation_stack_creation_time (datetime): Timestamp representing the CloudFormation stack creation time.. [optional]  # noqa: E501
             ec2_ami_info (Ec2AmiInfo): [optional]  # noqa: E501

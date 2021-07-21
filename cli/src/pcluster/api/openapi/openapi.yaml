@@ -1821,9 +1821,10 @@ components:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
-        cloudformationStackLogsArn:
-          description: ARN of the logs for the CloudFormation stack.
-          title: cloudformationStackLogsArn
+        imageBuildLogsArn:
+          description: ARN of the logs for the image build process.
+          title: imageBuildLogsArn
+          type: string
           type: string
         cloudformationStackCreationTime:
           description: Timestamp representing the CloudFormation stack creation time.

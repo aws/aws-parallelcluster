@@ -789,7 +789,7 @@ class TestDescribeImage:
             "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
             "cloudformationStackArn": "arn:image1",
-            "cloudformationStackLogsArn": "arn:image1:build_log",
+            "imageBuildLogsArn": "arn:image1:build_log",
             "cloudformationStackCreationTime": "2021-04-12 00:00:00",
             "cloudformationStackTags": [
                 {"Key": "parallelcluster:image_id", "Value": "image1"},
@@ -827,7 +827,7 @@ class TestDescribeImage:
 
         expected_response = {
             "cloudformationStackArn": "arn:image1",
-            "cloudformationStackLogsArn": "arn:image1:build_log",
+            "imageBuildLogsArn": "arn:image1:build_log",
             "cloudformationStackCreationTime": "2021-04-12 00:00:00",
             "cloudformationStackTags": [
                 {"Key": "parallelcluster:image_id", "Value": "image1"},
