@@ -32,7 +32,6 @@ from pcluster_client.model.compute_fleet_status import ComputeFleetStatus
 from pcluster_client.model.create_cluster_request_content import CreateClusterRequestContent
 from pcluster_client.model.image_build_status import ImageBuildStatus
 from pcluster_client.model.image_status_filtering_option import ImageStatusFilteringOption
-from pcluster_client.model.instance_state import InstanceState
 from pcluster_client.model.node_type import NodeType
 from pcluster_client.model.requested_compute_fleet_status import RequestedComputeFleetStatus
 from pcluster_client.model.update_cluster_request_content import UpdateClusterRequestContent
@@ -123,13 +122,13 @@ def _test_describe_cluster_compute_nodes(region, client, cluster_name, all_termi
     response = client.describe_cluster_instances(
         cluster_name=cluster_name, node_type=NodeType("COMPUTE"), region=region
     )
-    _add_non_terminated_compute_nodes(response.instances, compute_nodes_map)
+    _add_compute_nodes(response.instances, compute_nodes_map)
 
     while "next_token" in response:
         response = client.describe_cluster_instances(
             cluster_name=cluster_name, node_type=NodeType("COMPUTE"), region=region, next_token=response.next_token
         )
-        _add_non_terminated_compute_nodes(response.instances, compute_nodes_map)
+        _add_compute_nodes(response.instances, compute_nodes_map)
 
     for instances in compute_nodes_map.values():
         if all_terminated:
@@ -140,14 +139,10 @@ def _test_describe_cluster_compute_nodes(region, client, cluster_name, all_termi
     return compute_nodes_map
 
 
-def _add_non_terminated_compute_nodes(instances, compute_node_map):
+def _add_compute_nodes(instances, compute_node_map):
     for instance in instances:
-        if instance.state == InstanceState("terminated"):
-            continue
-
         if instance.queue_name not in compute_node_map:
             compute_node_map[instance.queue_name] = set()
-
         compute_node_map[instance.queue_name].add(instance.instance_id)
 
 
