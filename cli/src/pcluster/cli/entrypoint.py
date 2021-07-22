@@ -29,9 +29,7 @@ import pcluster.api.controllers.cluster_instances_controller
 import pcluster.api.controllers.cluster_operations_controller
 import pcluster.api.controllers.image_operations_controller
 import pcluster.api.errors
-import pcluster.cli.cmds as cli_commands
-import pcluster.cli.commands.cluster as cluster_commands
-import pcluster.cli.commands.image as image_commands
+import pcluster.cli.commands.commands as cli_commands
 import pcluster.cli.logger as pcluster_logging
 import pcluster.cli.model
 from pcluster.api import encoder
@@ -193,9 +191,7 @@ def add_cli_commands(parser_map):
     subparsers = parser_map["subparser"]
 
     # add all non-api commands via introspection
-    for _name, obj in (
-        inspect.getmembers(cluster_commands) + inspect.getmembers(image_commands) + inspect.getmembers(cli_commands)
-    ):
+    for _name, obj in inspect.getmembers(cli_commands):
         if inspect.isclass(obj) and issubclass(obj, CliCommand) and not inspect.isabstract(obj):
             obj(subparsers)
 

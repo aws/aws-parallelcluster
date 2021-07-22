@@ -100,7 +100,7 @@ class TestListClusterLogsCommand:
             }
         ]
 
-        list_logs_mock = mocker.patch("pcluster.cli.commands.cluster.Cluster.list_logs", return_value=logs)
+        list_logs_mock = mocker.patch("pcluster.cli.commands.cluster_logs.Cluster.list_logs", return_value=logs)
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})

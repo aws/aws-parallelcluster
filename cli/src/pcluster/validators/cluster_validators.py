@@ -13,7 +13,7 @@ from abc import ABC
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
+from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,

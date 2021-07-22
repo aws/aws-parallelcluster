@@ -1,6 +1,6 @@
 from assertpy import assert_that
 
-from pcluster.cli_commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
+from pcluster.cli.commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 
 
 def test_empty_vpc():

@@ -135,10 +135,10 @@ class TestGetImageLogEventsCommand:
             )
         ] * 2 + [LogStream(FAKE_ID, "logstream", {})]
         get_image_log_events_mock = mocker.patch(
-            "pcluster.cli.commands.image.ImageBuilder.get_log_events", side_effect=mocked_result
+            "pcluster.cli.commands.image_logs.ImageBuilder.get_log_events", side_effect=mocked_result
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
-        mocker.patch("pcluster.cli.commands.image.time.sleep")  # so we don't actually have to wait
+        mocker.patch("pcluster.cli.commands.image_logs.time.sleep")  # so we don't actually have to wait
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
 

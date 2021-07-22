@@ -17,7 +17,6 @@ from pkg_resources import packaging
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import get_region
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.models.cluster import (
     Cluster,
@@ -28,6 +27,7 @@ from pcluster.models.cluster import (
     NodeType,
 )
 from pcluster.models.cluster_resources import ClusterInstance
+from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, NonExistingImageError
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
 from pcluster.utils import get_installed_version
