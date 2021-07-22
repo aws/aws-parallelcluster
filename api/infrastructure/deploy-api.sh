@@ -13,6 +13,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 S3_BUCKET=
 ECR_REPO=
+STACK_NAME="ParallelClusterApi"
 while [[ $# -gt 0 ]]
 do
 key="$1"
@@ -34,6 +35,11 @@ case $key in
     ;;
     --region)
     export AWS_DEFAULT_REGION=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --stack-name)
+    export STACK_NAME=$2
     shift # past argument
     shift # past value
     ;;
@@ -66,7 +72,7 @@ aws s3 cp "${SCRIPT_DIR}/../spec/openapi/ParallelCluster.openapi.yaml" "${S3_UPL
 
 echo "Deploying API template"
 aws cloudformation deploy \
-    --stack-name "ParallelClusterApi" \
+    --stack-name ${STACK_NAME} \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
     --capabilities CAPABILITY_NAMED_IAM

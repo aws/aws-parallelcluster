@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  PClusterBuildImageLambdaCleanupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to be attached to the PCluster lambda cleanup function for building image
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Path: /parallelcluster/
+      Policies:
+        - PolicyName: LambdaCleanupPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - iam:DetachRolePolicy
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+                Effect: Allow
+              - Action:
+                  - iam:DeleteInstanceProfile
+                  - iam:RemoveRoleFromInstanceProfile
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+                Effect: Allow
+              - Action: imagebuilder:DeleteInfrastructureConfiguration
+                Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
+                Effect: Allow
+              - Action:
+                  - imagebuilder:DeleteComponent
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:component/parallelclusterimage-*/*'
+                Effect: Allow
+              - Action: imagebuilder:DeleteImageRecipe
+                Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*/*'
+                Effect: Allow
+              - Action: imagebuilder:DeleteDistributionConfiguration
+                Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
+                Effect: Allow
+              - Action: imagebuilder:DeleteImage
+                Resource: !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/parallelclusterimage-*/*'
+                Effect: Allow
+              - Action: cloudformation:DeleteStack
+                Resource: !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*/*'
+                Effect: Allow
+              - Action: ec2:CreateTags
+                Resource: !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}::image/*'
+                Effect: Allow
+              - Action: tag:TagResources
+                Resource: '*'
+                Effect: Allow
+              - Action:
+                  - lambda:DeleteFunction
+                  - lambda:RemovePermission
+                Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
+                Effect: Allow
+              - Action: logs:DeleteLogGroup
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*:*'
+                Effect: Allow
+              - Action:
+                  - SNS:GetTopicAttributes
+                  - SNS:DeleteTopic
+                  - SNS:GetSubscriptionAttributes
+                  - SNS:Unsubscribe
+                Resource: !Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:ParallelClusterImage-*'
+                Effect: Allow
+
+  PClusterBuildImageInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /parallelcluster/
+      Roles:
+        - !Ref PClusterBuildImageInstanceRole
+
+  PClusterBuildImageInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub 'ec2.${AWS::URLSuffix}'
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to be attached to the PCluster building image
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder'
+      Path: /parallelcluster/
+      Policies:
+        - PolicyName: InstanceRoleInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - ec2:CreateTags
+                  - ec2:ModifyImageAttribute
+                Resource: !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}::image/*'
+                Effect: Allow
