@@ -69,7 +69,7 @@ class Cluster:
         result = run_command(command)
         logging.info("update-cluster --wait response: %s", result.stdout)
         response = json.loads(result.stdout)
-        if response.get("cloudFormationStatus") != "UPDATE_COMPLETE":
+        if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
             error = f"Cluster update failed for {self.name}"
             logging.error(error)
             raise Exception(error)
@@ -124,7 +124,7 @@ class Cluster:
 
     def start(self):
         """Run pcluster start and return the result."""
-        cmd_args = ["pcluster", "update-compute-fleet-status", "--cluster-name", self.name, "--status"]
+        cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
         if scheduler == "slurm":
             cmd_args.append("START_REQUESTED")
@@ -140,7 +140,7 @@ class Cluster:
 
     def stop(self):
         """Run pcluster stop and return the result."""
-        cmd_args = ["pcluster", "update-compute-fleet-status", "--cluster-name", self.name, "--status"]
+        cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
         if scheduler == "slurm":
             cmd_args.append("STOP_REQUESTED")
@@ -334,7 +334,7 @@ class ClustersFactory:
         )
         logging.info("create-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
-        if response.get("cloudFormationStatus") != "CREATE_COMPLETE":
+        if response.get("cloudFormationStackStatus") != "CREATE_COMPLETE":
             error = f"Cluster creation failed for {name}"
             logging.error(error)
             if raise_on_error:
