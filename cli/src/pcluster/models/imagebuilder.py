@@ -66,7 +66,7 @@ from pcluster.models.imagebuilder_resources import (
     NonExistingStackError,
     StackError,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, isoformat_to_epoch
@@ -202,6 +202,7 @@ class ImageBuilder:
         self.__stack = stack
         self.__image = image
         self.__config_url = None
+        self.__presigned_config_url = None
         self.__config = None
         self.__bucket = None
         self.template_body = None
@@ -236,6 +237,13 @@ class ImageBuilder:
                 else:
                     raise ImageBuilderActionError(f"Unable to get image {self.image_id} config url.")
         return self.__config_url
+
+    @property
+    def presigned_config_url(self):
+        """Return configuration file as a presigned URL."""
+        if not self.__presigned_config_url:
+            self.__presigned_config_url = create_s3_presigned_url(self.config_url)
+        return self.__presigned_config_url
 
     @property
     def stack(self):

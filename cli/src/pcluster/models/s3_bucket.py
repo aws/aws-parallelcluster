@@ -16,7 +16,9 @@ import hashlib
 import json
 import logging
 import os
+import re
 from enum import Enum
+from urllib.error import URLError
 
 import yaml
 
@@ -386,3 +388,35 @@ class S3BucketFactory:
         else:
             LOGGER.error("Unable to check S3 bucket %s is configured properly.", bucket.name)
             raise e
+
+
+def parse_bucket_url(url):
+    """
+    Parse s3 url to get bucket name and object name.
+
+    input: s3://test/templates/3.0/post_install.sh
+    output: {"bucket_name": "test", "object_key": "templates/3.0/post_install.sh", "object_name": "post_install.sh"}
+    """
+    match = re.match(r"s3://(.*?)/(.*)", url)
+    if match:
+        bucket_name = match.group(1)
+        object_key = match.group(2)
+        object_name = object_key.split("/")[-1]
+    else:
+        raise URLError("Invalid s3 url: {0}".format(url))
+
+    return {"bucket_name": bucket_name, "object_key": object_key, "object_name": object_name}
+
+
+def create_s3_presigned_url(s3_uri, expiration=3600):
+    """Generate a presigned URL to share an S3 object.
+
+    :param s3_uri: s3 uri, e.g. s3://my.bucket/my.object
+    :param expiration: Time in seconds for the presigned URL to remain valid
+    :return: Presigned URL as string
+    """
+    s3_uri_info = parse_bucket_url(s3_uri)
+    print(s3_uri_info)
+    return AWSApi.instance().s3.create_presigned_url(
+        s3_uri_info["bucket_name"], s3_uri_info["object_key"], expiration=expiration
+    )

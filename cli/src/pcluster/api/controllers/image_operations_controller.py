@@ -206,7 +206,7 @@ def describe_image(image_id, region=None):
 def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
         creation_time=imagebuilder.image.creation_date,
-        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=imagebuilder.presigned_config_url),
         image_id=imagebuilder.image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
         ec2_ami_info=Ec2AmiInfo(
@@ -225,7 +225,7 @@ def _image_to_describe_image_response(imagebuilder):
 def _stack_to_describe_image_response(imagebuilder):
     imagebuilder_image_state = imagebuilder.stack.image_state or dict()
     return DescribeImageResponseContent(
-        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=imagebuilder.presigned_config_url),
         image_id=imagebuilder.image_id,
         image_build_status=imagebuilder.imagebuild_status,
         image_build_logs_arn=imagebuilder.stack.build_log,

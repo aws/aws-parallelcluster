@@ -18,9 +18,7 @@
 import copy
 import json
 import os
-import re
 from typing import List
-from urllib.error import URLError
 
 import yaml
 from aws_cdk import aws_iam as iam
@@ -52,7 +50,7 @@ from pcluster.imagebuilder_utils import (
     ROOT_VOLUME_TYPE,
     wrap_script_to_component,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3FileType
+from pcluster.models.s3_bucket import S3Bucket, S3FileType, create_s3_presigned_url, parse_bucket_url
 from pcluster.templates.cdk_builder_utils import apply_permissions_boundary, get_assume_role_policy_document
 
 
@@ -1015,35 +1013,6 @@ class ImageBuilderCdkStack(Stack):
                 resources=resources,
             )
         )
-
-
-def parse_bucket_url(url):
-    """
-    Parse s3 url to get bucket name and object name.
-
-    input: s3://test/templates/3.0/post_install.sh
-    output: {"bucket_name": "test", "object_key": "templates/3.0/post_install.sh", "object_name": "post_install.sh"}
-    """
-    match = re.match(r"s3://(.*?)/(.*)", url)
-    if match:
-        bucket_name = match.group(1)
-        object_key = match.group(2)
-        object_name = object_key.split("/")[-1]
-    else:
-        raise URLError("Invalid s3 url: {0}".format(url))
-
-    return {"bucket_name": bucket_name, "object_key": object_key, "object_name": object_name}
-
-
-def create_s3_presigned_url(s3_uri, expiration=3600):
-    """Generate a presigned URL to share an S3 object.
-
-    :param s3_uri: s3 uri, e.g. s3://my.bucket/my.object
-    :param expiration: Time in seconds for the presigned URL to remain valid
-    :return: Presigned URL as string
-    """
-    s3_uri_info = parse_bucket_url(s3_uri)
-    return AWSApi.instance().s3.create_presigned_url(s3_uri_info["bucket_name"], s3_uri_info["object_key"], expiration)
 
 
 def _load_yaml(source_dir, file_name):
