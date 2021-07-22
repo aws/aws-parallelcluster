@@ -17,6 +17,7 @@ import boto3
 import pytest
 from assertpy import assert_that
 from botocore.config import Config
+from clusters_factory import Cluster, ClustersFactory
 from pcluster_client import ApiException
 from pcluster_client.api import (
     cluster_compute_fleet_api,
@@ -43,6 +44,53 @@ from tests.common.utils import retrieve_latest_ami
 LOGGER = logging.getLogger(__name__)
 
 
+@pytest.fixture()
+def build_image(region):
+    """Create a build image process."""
+    image_id_post_test = None
+    client_post_test = None
+
+    def _build_image(client, image_id, config):
+        nonlocal image_id_post_test
+        nonlocal client_post_test
+        image_id_post_test = image_id
+        client_post_test = client
+
+        body = BuildImageRequestContent(image_id=image_id, image_configuration=config)
+        return client.build_image(body, region=region)
+
+    yield _build_image
+
+    if image_id_post_test:
+        try:
+            response = client_post_test.delete_image(image_id_post_test, region=region)
+            LOGGER.info("Build image post process. Delete image result: %s", response)
+        except NotFoundException:
+            logging.info("Build image post process. Nothing to do, image %s was already deleted.", image_id_post_test)
+
+
+@pytest.fixture()
+def create_cluster(region, request):
+    """A fixture to create clusters via the API client, and clean them up in case of test failure."""
+    factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
+
+    def _create_cluster(client, cluster_name, config):
+        # Create cluster with initial configuration
+        with open(config) as config_file:
+            config_contents = config_file.read()
+        body = CreateClusterRequestContent(cluster_name=cluster_name, cluster_configuration=config_contents)
+        response = client.create_cluster(body, region=region)
+        cluster = Cluster(
+            name=cluster_name, config_file=config, ssh_key=request.config.getoption("key_path"), region=region
+        )
+        factory.register_cluster(cluster)
+        return cluster, response
+
+    yield _create_cluster
+    if not request.config.getoption("no_delete"):
+        factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
+
+
 def _cloudformation_wait(region, stack_name, status):
     config = Config(region_name=region)
     cloud_formation = boto3.client("cloudformation", config=config)
@@ -59,36 +107,34 @@ def _ec2_wait_terminated(region, instances):
 
 
 @pytest.mark.usefixtures("os", "instance")
-def test_cluster_slurm(region, api_client, request, pcluster_config_reader, scheduler):
+def test_cluster_slurm(region, api_client, create_cluster, request, pcluster_config_reader, scheduler):
     assert_that(scheduler).is_equal_to("slurm")
-    _test_cluster_workflow(region, api_client, request, pcluster_config_reader, scheduler)
+    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler)
 
 
 @pytest.mark.usefixtures("os", "instance")
-def test_cluster_awsbatch(region, api_client, request, pcluster_config_reader, scheduler):
+def test_cluster_awsbatch(region, api_client, create_cluster, request, pcluster_config_reader, scheduler):
     assert_that(scheduler).is_equal_to("awsbatch")
-    _test_cluster_workflow(region, api_client, request, pcluster_config_reader, scheduler)
+    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler)
 
 
-def _test_cluster_workflow(region, api_client, request, pcluster_config_reader, scheduler):
+def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler):
     initial_config_file = pcluster_config_reader()
     updated_config_file = pcluster_config_reader("pcluster.config.update.yaml")
-
-    # Create cluster with initial configuration
-    with open(initial_config_file) as config_file:
-        cluster_config = config_file.read()
 
     cluster_name = generate_stack_name("integ-tests", request.config.getoption("stackname_suffix"))
     cluster_operations_client = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_compute_fleet_client = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
     cluster_instances_client = cluster_instances_api.ClusterInstancesApi(api_client)
 
-    _test_create_cluster(region, cluster_operations_client, cluster_name, cluster_config)
+    cluster = _test_create_cluster(cluster_operations_client, create_cluster, cluster_name, initial_config_file)
 
     _test_list_clusters(region, cluster_operations_client, cluster_name, "CREATE_IN_PROGRESS")
     _test_describe_cluster(region, cluster_operations_client, cluster_name, "CREATE_IN_PROGRESS")
 
     _cloudformation_wait(region, cluster_name, "stack_create_complete")
+
+    cluster.mark_as_created()
 
     _test_list_clusters(region, cluster_operations_client, cluster_name, "CREATE_COMPLETE")
     _test_describe_cluster(region, cluster_operations_client, cluster_name, "CREATE_COMPLETE")
@@ -231,10 +277,11 @@ def _test_describe_cluster(region, client, cluster_name, status):
     assert_that(response.cloud_formation_stack_status).is_equal_to(CloudFormationStackStatus(status))
 
 
-def _test_create_cluster(region, client, cluster_name, config):
-    body = CreateClusterRequestContent(cluster_name=cluster_name, cluster_configuration=config)
-    response = client.create_cluster(body, region=region)
+def _test_create_cluster(client, create_cluster, cluster_name, config):
+    cluster, response = create_cluster(client, cluster_name, config)
+    LOGGER.info("Create cluster response: %s", response)
     assert_that(response.cluster.cluster_name).is_equal_to(cluster_name)
+    return cluster
 
 
 def _test_update_cluster_dryrun(region, client, cluster_name, config):
@@ -263,7 +310,7 @@ def test_official_images(region, api_client):
 
 
 @pytest.mark.usefixtures("instance")
-def test_custom_image(region, api_client, os, request, pcluster_config_reader):
+def test_custom_image(region, api_client, build_image, os, request, pcluster_config_reader):
     base_ami = retrieve_latest_ami(region, os)
 
     config_file = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami)
@@ -273,7 +320,7 @@ def test_custom_image(region, api_client, os, request, pcluster_config_reader):
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
     client = image_operations_api.ImageOperationsApi(api_client)
 
-    _test_build_image(region, client, image_id, config)
+    _test_build_image(client, build_image, image_id, config)
 
     _test_describe_image(region, client, image_id, "BUILD_IN_PROGRESS")
     _test_list_images(region, client, image_id, "PENDING")
@@ -287,9 +334,8 @@ def test_custom_image(region, api_client, os, request, pcluster_config_reader):
     _delete_image(region, client, image_id)
 
 
-def _test_build_image(region, client, image_id, config):
-    body = BuildImageRequestContent(image_id=image_id, image_configuration=config)
-    response = client.build_image(body, region=region)
+def _test_build_image(client, build_image, image_id, config):
+    response = build_image(client, image_id, config)
     LOGGER.info("Build image response: %s", response)
     assert_that(response.image.image_id).is_equal_to(image_id)
 
