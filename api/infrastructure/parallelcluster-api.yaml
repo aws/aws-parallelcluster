@@ -6,7 +6,7 @@ Parameters:
   EnableMultiRegionSupport:
     Description: When set to true it enables the API to control clusters in all regions
     Type: String
-    Default: false
+    Default: true
     AllowedValues:
       - true
       - false
