@@ -512,3 +512,7 @@ def read_json_file(file):
     except Exception as e:
         logging.exception("Failed when reading json file %s", file)
         raise e
+
+
+def get_stack_id_tag_filter(stack_arn):
+    return {"Name": "tag:aws:cloudformation:stack-id", "Values": [stack_arn]}

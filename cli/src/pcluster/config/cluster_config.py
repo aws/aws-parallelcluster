@@ -150,6 +150,16 @@ class Ebs(Resource):
         )
 
 
+class RootVolume(Ebs):
+    """Represent the root volume configuration."""
+
+    def __init__(self, delete_on_termination: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        # The default delete_on_termination takes effect both on head and compute nodes.
+        # If the default of the head node is to be changed, please separate this class for different defaults.
+        self.delete_on_termination = Resource.init_param(delete_on_termination, default=True)
+
+
 class Raid(Resource):
     """Represent the Raid configuration."""
 
@@ -197,6 +207,7 @@ class SharedEbs(Ebs):
         snapshot_id: str = None,
         volume_id: str = None,
         raid: Raid = None,
+        deletion_policy: str = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -207,6 +218,7 @@ class SharedEbs(Ebs):
         self.snapshot_id = Resource.init_param(snapshot_id)
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
+        self.deletion_policy = Resource.init_param(deletion_policy, default="Delete")
 
     def _register_validators(self):
         super()._register_validators()
@@ -480,11 +492,11 @@ class Efa(Resource):
 class CloudWatchLogs(Resource):
     """Represent the CloudWatch configuration in Logs."""
 
-    def __init__(self, enabled: bool = None, retention_in_days: int = None, retain_on_delete: bool = None, **kwargs):
+    def __init__(self, enabled: bool = None, retention_in_days: int = None, deletion_policy: str = None, **kwargs):
         super().__init__(**kwargs)
         self.enabled = Resource.init_param(enabled, default=CW_LOGS_ENABLED_DEFAULT)
         self.retention_in_days = Resource.init_param(retention_in_days, default=CW_LOGS_RETENTION_DAYS_DEFAULT)
-        self.retain_on_delete = Resource.init_param(retain_on_delete, default=True)
+        self.deletion_policy = Resource.init_param(deletion_policy, default="Retain")
 
 
 class CloudWatchDashboards(Resource):

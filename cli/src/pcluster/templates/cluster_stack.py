@@ -60,6 +60,7 @@ from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
     apply_permissions_boundary,
+    convert_deletion_policy,
     create_hash_suffix,
     get_assume_role_policy_document,
     get_block_device_mappings,
@@ -69,7 +70,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_retain_log_on_delete,
+    get_log_group_deletion_policy,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -280,7 +281,7 @@ class ClusterCdkStack(Stack):
             log_group_name=self.log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
-        log_group.cfn_options.deletion_policy = get_retain_log_on_delete(self.config)
+        log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(self.config)
         return log_group
 
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
@@ -812,7 +813,7 @@ class ClusterCdkStack(Stack):
         return ebs_id
 
     def _add_cfn_volume(self, id: str, shared_ebs: SharedEbs):
-        return ec2.CfnVolume(
+        volume = ec2.CfnVolume(
             self,
             id,
             availability_zone=self.config.head_node.networking.availability_zone,
@@ -823,7 +824,9 @@ class ClusterCdkStack(Stack):
             size=shared_ebs.size,
             snapshot_id=shared_ebs.snapshot_id,
             volume_type=shared_ebs.volume_type,
-        ).ref
+        )
+        volume.cfn_options.deletion_policy = convert_deletion_policy(shared_ebs.deletion_policy)
+        return volume.ref
 
     def _add_head_node(self):
         head_node = self.config.head_node

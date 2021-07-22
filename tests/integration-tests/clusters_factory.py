@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import functools
 import json
 import logging
 import re
@@ -20,12 +21,24 @@ import yaml
 from retrying import retry
 from utils import (
     dict_add_nested_key,
+    get_stack_id_tag_filter,
     retrieve_cfn_outputs,
     retrieve_cfn_parameters,
     retrieve_cfn_resources,
     retry_if_subprocess_error,
     run_command,
 )
+
+
+def suppress_and_log_exception(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.error("Failed when running function %s. Ignoring exception. Error: %s", func.__name__, e)
+
+    return wrapper
 
 
 class Cluster:
@@ -43,6 +56,7 @@ class Cluster:
         self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
+        self.cfn_stack_arn = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
@@ -239,7 +253,7 @@ class Cluster:
         if "HeadNodePublicIP" in self.cfn_outputs:
             return self.cfn_outputs["HeadNodePublicIP"]
         else:
-            ec2 = boto3.client("ec2")
+            ec2 = boto3.client("ec2", region_name=self.region)
             filters = [
                 {"Name": "tag:parallelcluster:cluster-name", "Values": [self.cfn_name]},
                 {"Name": "instance-state-name", "Values": ["running"]},
@@ -291,6 +305,25 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
+    def delete_resource_by_stack_id_tag(self):
+        """Delete resources by stack id tag."""
+        self._delete_snapshots()
+        self._delete_volumes()
+
+    @suppress_and_log_exception
+    def _delete_snapshots(self):
+        ec2_client = boto3.client("ec2", region_name=self.region)
+        snapshots = ec2_client.describe_snapshots(Filters=[get_stack_id_tag_filter(self.cfn_stack_arn)])["Snapshots"]
+        for snapshot in snapshots:
+            ec2_client.delete_snapshot(SnapshotId=snapshot["SnapshotId"])
+
+    @suppress_and_log_exception
+    def _delete_volumes(self):
+        ec2_client = boto3.client("ec2", region_name=self.region)
+        volumes = ec2_client.describe_volumes(Filters=[get_stack_id_tag_filter(self.cfn_stack_arn)])["Volumes"]
+        for volume in volumes:
+            ec2_client.delete_snapshot(VolumeId=volume["VolumeId"])
+
 
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
@@ -334,6 +367,7 @@ class ClustersFactory:
         )
         logging.info("create-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
+        cluster.cfn_stack_arn = response["cloudformationStackArn"]
         if response.get("cloudFormationStackStatus") != "CREATE_COMPLETE":
             error = f"Cluster creation failed for {name}"
             logging.error(error)
@@ -354,12 +388,15 @@ class ClustersFactory:
         if name in self.__created_clusters:
             delete_logs = test_passed and self._delete_logs_on_success and self.__created_clusters[name].create_complete
             try:
-                self.__created_clusters[name].delete(delete_logs=delete_logs)
+                cluster = self.__created_clusters[name]
+                cluster.delete(delete_logs=delete_logs)
             except Exception as e:
                 logging.error(
                     "Failed when deleting cluster %s with error %s. Retrying deletion without deleting logs.", name, e
                 )
                 self._destroy_cluster(name)
+            finally:
+                cluster.delete_resource_by_stack_id_tag()
             del self.__created_clusters[name]
             logging.info("Cluster {0} deleted successfully".format(name))
         else:

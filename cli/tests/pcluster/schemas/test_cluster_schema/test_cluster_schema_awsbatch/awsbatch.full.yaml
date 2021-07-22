@@ -31,6 +31,7 @@ HeadNode:
     RootVolume:
       Size: 37  # 35
       Encrypted: true  # true
+      DeleteOnTermination: true
     EphemeralVolume:
       Encrypted: true  # true
       MountDir: String  # /scratch
@@ -80,6 +81,7 @@ SharedStorage:
       Raid:
         Type: 0  # 0|1
         NumberOfVolumes: 2  # [2-5]
+      DeletionPolicy: Snapshot
   - MountDir: /my/mount/point2
     StorageType: Efs
     Name: name2
@@ -120,6 +122,7 @@ Monitoring:
     CloudWatch:
       Enabled: true  # true
       RetentionInDays: 14  # 14
+      DeletionPolicy: Delete
   Dashboards:
     CloudWatch:
       Enabled: true  # true
