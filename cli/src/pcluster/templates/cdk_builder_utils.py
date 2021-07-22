@@ -17,6 +17,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
+from aws_cdk.aws_iam import ManagedPolicy, PermissionsBoundary
 from aws_cdk.core import CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import (
@@ -31,6 +32,7 @@ from pcluster.config.cluster_config import (
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    IAM_ROLE_PATH,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
@@ -244,8 +246,8 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
     return iam.CfnRole(
         scope,
         f"{function_id}FunctionExecutionRole",
+        path=IAM_ROLE_PATH,
         assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
-        path="/",
         policies=[
             iam.CfnRole.PolicyProperty(
                 policy_document=iam.PolicyDocument(statements=statements),
@@ -253,6 +255,13 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
             ),
         ],
     )
+
+
+def apply_permissions_boundary(boundary, scope):
+    """Apply a permissions boundary to all IAM roles defined in the scope."""
+    if boundary:
+        boundary = ManagedPolicy.from_managed_policy_arn(scope, "Boundary", boundary)
+        PermissionsBoundary.of(scope).apply(boundary)
 
 
 class PclusterLambdaConstruct(Construct):

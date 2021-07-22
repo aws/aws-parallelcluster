@@ -6,7 +6,7 @@ Parameters:
   EnableMultiRegionSupport:
     Description: When set to true it enables the API to control clusters in all regions
     Type: String
-    Default: false
+    Default: true
     AllowedValues:
       - true
       - false
@@ -51,6 +51,14 @@ Parameters:
     Type: String
     Default: ''
 
+  EnableIamAdminAccess:
+    Description: WARNING - setting this to true grants IAM admin privileges to the Lambda function
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+
 
 Mappings:
   ParallelCluster:
@@ -90,6 +98,9 @@ Conditions:
     - !Condition UseCustomDomain
     - !Condition UseRoute53Configuration
   IsMultiRegion: !Equals [!Ref EnableMultiRegionSupport, true]
+  EnableIamPolicy: !And
+    - !Equals [!Ref EnableIamAdminAccess, true]
+    - !Not [!Condition UseCustomParallelClusterFunctionRole]
   UsePrivateVpcEndpoint: !And
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
     - !Not [!Equals [!Ref VpcEndpointId, '']]
@@ -192,58 +203,148 @@ Resources:
               - '-'
               - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
 
-  DefaultParallelClusterFunctionRole:
-    Condition: DoNotUseCustomParallelClusterFunctionRole
-    Type: AWS::IAM::Role
+  DefaultParallelClusterIamAdminPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: EnableIamPolicy
     Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
+      ManagedPolicyName: !Sub
+        - DefaultParallelClusterIamAdminPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      Roles:
+        - !Ref DefaultParallelClusterFunctionRole
+      PolicyDocument:
+        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
-      Policies:
-        - PolicyName: ParallelClusterFunctionPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-            - Action:
-              - ec2:DescribeAddresses
-              - ec2:DescribeAvailabilityZones
-              - ec2:DescribeImages
-              - ec2:DescribeInstanceStatus
-              - ec2:DescribeInstanceTypeOfferings
-              - ec2:DescribeInstanceTypes
-              - ec2:DescribeInstances
-              - ec2:DescribeKeyPairs
-              - ec2:DescribeLaunchTemplateVersions
-              - ec2:DescribeLaunchTemplates
-              - ec2:DescribeNetworkInterfaceAttribute
-              - ec2:DescribeNetworkInterfaces
-              - ec2:DescribePlacementGroups
-              - ec2:DescribeRegions
-              - ec2:DescribeSecurityGroups
-              - ec2:DescribeSnapshots
-              - ec2:DescribeSubnets
-              - ec2:DescribeVolumes
-              - ec2:DescribeVpcAttribute
-              - ec2:DescribeVpcs
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: EC2Read
-            - Action:
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteRole
+              - iam:TagRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Sid: IamRole
+          - Action:
+              - iam:CreateRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Sid: IamCreateRole
+          - Action:
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Sid: IamInlinePolicy
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Condition:
+              ArnLike:
+                iam:PolicyARN:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster-*
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonS3ReadOnlyAccess
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
+            Effect: Allow
+            Sid: IamPolicy
+
+  DefaultParallelClusterPolicyBatch:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: DoNotUseCustomParallelClusterFunctionRole
+    Properties:
+      ManagedPolicyName: !Sub
+        - ParallelClusterFunctionPolicyBatch-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - codebuild:*
+            Resource: !Sub
+              - arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/pcluster-*
+              - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: CodeBuild
+          - Action:
+              - ecr:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: ECR
+          - Action:
+              - batch:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: Batch
+          - Action:
+              - events:*
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Resource: '*'
+            Sid: AmazonCloudWatchEvents
+          - Action:
+              - ecs:DescribeContainerInstances
+              - ecs:ListContainerInstances
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: ECS
+
+  DefaultParallelClusterPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: DoNotUseCustomParallelClusterFunctionRole
+    Properties:
+      ManagedPolicyName: !Sub
+        - ParallelClusterFunctionPolicy-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - ec2:Describe*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: EC2Read
+          - Action:
               - ec2:AllocateAddress
               - ec2:AssociateAddress
               - ec2:AttachNetworkInterface
@@ -270,16 +371,16 @@ Resources:
               - ec2:RevokeSecurityGroupIngress
               - ec2:RunInstances
               - ec2:TerminateInstances
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: EC2Write
-            - Action:
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: EC2Write
+          - Action:
               - dynamodb:DescribeTable
               - dynamodb:ListTagsOfResource
               - dynamodb:CreateTable
@@ -288,18 +389,18 @@ Resources:
               - dynamodb:PutItem
               - dynamodb:Query
               - dynamodb:TagResource
-              Resource: !Sub
+            Resource: !Sub
               - arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*
               - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: DynamoDB
-            - Action:
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: DynamoDB
+          - Action:
               - route53:ChangeResourceRecordSets
               - route53:ChangeTagsForResource
               - route53:CreateHostedZone
@@ -308,101 +409,72 @@ Resources:
               - route53:GetHostedZone
               - route53:ListResourceRecordSets
               - route53:ListQueryLoggingConfigs
-              Resource: !Sub arn:${AWS::Partition}:route53:::hostedzone/*
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: Route53HostedZones
-            - Action:
-              - cloudformation:DescribeStackEvents
-              - cloudformation:DescribeStackResource
-              - cloudformation:DescribeStackResources
-              - cloudformation:DescribeStacks
-              - cloudformation:ListStacks
-              - cloudformation:GetTemplate
-              - cloudformation:CreateStack
-              - cloudformation:DeleteStack
-              - cloudformation:UpdateStack
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: CloudFormation
-            - Action:
+            Resource: '*'
+            Effect: Allow
+            Sid: Route53HostedZones
+          - Action:
+              - cloudformation:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: CloudFormation
+          - Action:
               - cloudwatch:PutDashboard
               - cloudwatch:ListDashboards
               - cloudwatch:DeleteDashboards
               - cloudwatch:GetDashboard
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: CloudWatch
-            # TODO: review and scope down IAM policies
-            - Action:
-              - iam:PassRole
-              - iam:CreateRole
-              - iam:CreateServiceLinkedRole
-              - iam:DeleteRole
-              - iam:GetRole
-              - iam:TagRole
-              - iam:SimulatePrincipalPolicy
-              Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: IAMModify
-            # TODO: review and scope down IAM policies
-            - Action:
-              - iam:AddRoleToInstanceProfile
-              - iam:RemoveRoleFromInstanceProfile
-              - iam:GetRolePolicy
-              - iam:GetPolicy
-              - iam:AttachRolePolicy
-              - iam:DetachRolePolicy
-              - iam:PutRolePolicy
-              - iam:DeleteRolePolicy
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: IAM
-            # TODO: review and scope down IAM policies
-            - Action:
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: CloudWatch
+          - Action:
+            - iam:GetRole
+            - iam:GetRolePolicy
+            - iam:GetPolicy
+            - iam:SimulatePrincipalPolicy
+            - iam:GetInstanceProfile
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*
+              - !Sub arn:${AWS::Partition}:iam::aws:policy/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*
+            Effect: Allow
+            Sid: IamRead
+          - Action:
               - iam:CreateInstanceProfile
               - iam:DeleteInstanceProfile
-              - iam:GetInstanceProfile
-              - iam:PassRole
-              Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: IAMInstanceProfile
-            - Action:
+              - iam:AddRoleToInstanceProfile
+              - iam:RemoveRoleFromInstanceProfile
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
+            Effect: Allow
+            Sid: IamInstanceProfile
+          - Action:
+            - iam:PassRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Condition:
+              StringEqualsIfExists:
+                iam:PassedToService:
+                  - ecs-tasks.amazonaws.com
+                  - lambda.amazonaws.com
+                  - !Sub ec2.${AWS::URLSuffix}
+                  - spotfleet.amazonaws.com
+                  - batch.amazonaws.com
+                  - codebuild.amazonaws.com
+            Sid: IamPassRole
+          - Action:
               - lambda:CreateFunction
               - lambda:DeleteFunction
               - lambda:GetFunctionConfiguration
@@ -410,151 +482,131 @@ Resources:
               - lambda:InvokeFunction
               - lambda:AddPermission
               - lambda:RemovePermission
-              Resource:
+            Resource:
               - !Sub
                 - arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:parallelcluster-*
                 - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
               - !Sub
                 - arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:pcluster-*
                 - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: Lambda
-            - Action:
-              - codebuild:*
-              Resource: !Sub
-              - arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/parallelcluster-*
-              - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: CodeBuild
-            - Action:
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: Lambda
+          - Action:
               - s3:*
-              Resource: !Sub arn:${AWS::Partition}:s3:::parallelcluster-*
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: S3ResourcesBucket
-            - Action:
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*
+              - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*/*
+              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*
+              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*/*
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: S3ResourcesBucket
+          - Action:
               - s3:Get*
               - s3:List*
-              Resource: !Sub
+            Resource: !Sub
               - arn:${AWS::Partition}:s3:::${Region}-aws-parallelcluster*
               - { Region: !If [IsMultiRegion, '*', !Ref AWS::Region] }
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: S3ParallelClusterReadOnly
-            - Action:
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: S3ParallelClusterReadOnly
+          - Action:
               - fsx:*
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: FSx
-            - Action:
-              - ecr:*
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: ECR
-            - Action:
-              - batch:*
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: Batch
-            - Action:
-              - events:*
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Resource: '*'
-              Sid: AmazonCloudWatchEvents
-            - Action:
-              - ecs:DescribeContainerInstances
-              - ecs:ListContainerInstances
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: ECS
-            - Action:
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: FSx
+          - Action:
               - elasticfilesystem:*
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: EFS
-            - Action:
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: EFS
+          - Action:
               - imagebuilder:*
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: ImageBuilder
-            - Action:
-              - logs:DeleteLogGroup
-              - logs:PutRetentionPolicy
-              - logs:DescribeLogGroups
-              - logs:CreateLogGroup
-              Resource: '*'
-              Effect: Allow
-              Condition: !If
-                - IsMultiRegion
-                - !Ref AWS::NoValue
-                - StringEquals:
-                    aws:RequestedRegion:
-                      - !Ref AWS::Region
-              Sid: CloudWatchLogs
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: ImageBuilder
+          - Action:
+              - sns:GetTopicAttributes
+              - sns:TagResource
+              - sns:CreateTopic
+              - sns:Subscribe
+              - sns:Publish
+            Resource: !Sub arn:${AWS::Partition}:sns:*:${AWS::AccountId}:ParallelClusterImage-*
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: SNS
+          - Action:
+            - logs:DeleteLogGroup
+            - logs:PutRetentionPolicy
+            - logs:DescribeLogGroups
+            - logs:CreateLogGroup
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref AWS::Region
+            Sid: CloudWatchLogs
+
+  DefaultParallelClusterFunctionRole:
+    Condition: DoNotUseCustomParallelClusterFunctionRole
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Ref DefaultParallelClusterPolicy
+        - !Ref DefaultParallelClusterPolicyBatch
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess  # TODO: remove this one when the policy works
 
   ParallelClusterFunctionLogGroup:
     Type: AWS::Logs::LogGroup

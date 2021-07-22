@@ -43,7 +43,7 @@ class InstanceProfileValidator(Validator):
             self._add_failure(str(e), FailureLevel.ERROR)
 
 
-class AdditionalIamPolicyValidator(Validator):
+class IamPolicyValidator(Validator):
     """
     EC2 IAM Policy validator.
 
@@ -52,10 +52,21 @@ class AdditionalIamPolicyValidator(Validator):
 
     def _validate(self, policy: str):
         try:
-            if policy not in self._get_base_additional_iam_policies():
-                IamClient().get_policy(policy)
+            IamClient().get_policy(policy)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class AdditionalIamPolicyValidator(IamPolicyValidator):
+    """
+    EC2 IAM Policy validator.
+
+    Verify the given policy is correct.
+    """
+
+    def _validate(self, policy: str):
+        if policy not in self._get_base_additional_iam_policies():
+            super()._validate(policy)
 
     @staticmethod
     def _get_base_additional_iam_policies():
