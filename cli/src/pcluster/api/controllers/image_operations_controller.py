@@ -49,7 +49,7 @@ from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, to_iso_time
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -205,7 +205,7 @@ def describe_image(image_id, region=None):
 
 def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
-        creation_time=imagebuilder.image.creation_date,
+        creation_time=to_iso_time(imagebuilder.image.creation_date),
         image_configuration=ImageConfigurationStructure(url=imagebuilder.presigned_config_url),
         image_id=imagebuilder.image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
@@ -234,7 +234,7 @@ def _stack_to_describe_image_response(imagebuilder):
         cloudformation_stack_status=imagebuilder.stack.status,
         cloudformation_stack_status_reason=imagebuilder.stack.status_reason,
         cloudformation_stack_arn=imagebuilder.stack.id,
-        cloudformation_stack_creation_time=imagebuilder.stack.creation_time,
+        cloudformation_stack_creation_time=to_iso_time(imagebuilder.stack.creation_time),
         cloudformation_stack_tags=imagebuilder.stack.tags,
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=imagebuilder.stack.version,
