@@ -36,7 +36,7 @@ from pcluster.models.imagebuilder import (
     LimitExceededImageError,
 )
 from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, to_iso_time
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
@@ -747,7 +747,7 @@ class TestDescribeImage:
         )
 
         expected_response = {
-            "creationTime": "2021-04-12T00:00:00Z",
+            "creationTime": to_iso_time("2021-04-12T00:00:00Z"),
             "ec2AmiInfo": {
                 "amiId": "image1",
                 "amiName": "image1",
@@ -790,7 +790,7 @@ class TestDescribeImage:
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
             "cloudformationStackArn": "arn:image1",
             "imageBuildLogsArn": "arn:image1:build_log",
-            "cloudformationStackCreationTime": "2021-04-12 00:00:00",
+            "cloudformationStackCreationTime": to_iso_time("2021-04-12 00:00:00"),
             "cloudformationStackTags": [
                 {"Key": "parallelcluster:image_id", "Value": "image1"},
                 {"Key": "parallelcluster:version", "Value": "3.0.0"},
@@ -828,7 +828,7 @@ class TestDescribeImage:
         expected_response = {
             "cloudformationStackArn": "arn:image1",
             "imageBuildLogsArn": "arn:image1:build_log",
-            "cloudformationStackCreationTime": "2021-04-12 00:00:00",
+            "cloudformationStackCreationTime": to_iso_time("2021-04-12 00:00:00"),
             "cloudformationStackTags": [
                 {"Key": "parallelcluster:image_id", "Value": "image1"},
                 {"Key": "parallelcluster:version", "Value": "3.0.0"},

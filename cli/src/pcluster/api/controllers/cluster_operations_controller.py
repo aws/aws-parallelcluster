@@ -60,7 +60,7 @@ from pcluster.models.cluster import (
     NotFoundClusterActionError,
 )
 from pcluster.models.cluster_resources import ClusterStack
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, to_iso_time
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -214,7 +214,7 @@ def describe_cluster(cluster_name, region=None):
         LOGGER.error(e)
 
     response = DescribeClusterResponseContent(
-        creation_time=cfn_stack.creation_time,
+        creation_time=to_iso_time(cfn_stack.creation_time),
         version=cfn_stack.version,
         cluster_configuration=ClusterConfigurationStructure(url=config_url),
         tags=[Tag(value=tag.get("Value"), key=tag.get("Key")) for tag in cfn_stack.tags],
@@ -222,7 +222,7 @@ def describe_cluster(cluster_name, region=None):
         cluster_name=cluster_name,
         compute_fleet_status=fleet_status.value,
         cloudformation_stack_arn=cfn_stack.id,
-        last_updated_time=cfn_stack.last_updated_time,
+        last_updated_time=to_iso_time(cfn_stack.last_updated_time),
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cloud_formation_status_to_cluster_status(cfn_stack.status),
     )
@@ -231,7 +231,7 @@ def describe_cluster(cluster_name, region=None):
         head_node = cluster.head_node_instance
         response.headnode = EC2Instance(
             instance_id=head_node.id,
-            launch_time=head_node.launch_time,
+            launch_time=to_iso_time(head_node.launch_time),
             public_ip_address=head_node.public_ip,
             instance_type=head_node.instance_type,
             state=InstanceState.from_dict(head_node.state),

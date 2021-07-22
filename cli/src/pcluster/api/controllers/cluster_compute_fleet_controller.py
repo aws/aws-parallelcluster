@@ -18,6 +18,7 @@ from pcluster.api.models import (
 )
 from pcluster.aws.common import StackNotFoundError
 from pcluster.models.cluster import Cluster
+from pcluster.utils import to_iso_time
 
 
 @configure_aws_region()
@@ -41,7 +42,7 @@ def describe_compute_fleet(cluster_name, region=None):
             )
         status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
         return DescribeComputeFleetResponseContent(
-            last_status_updated_time=last_status_updated_time, status=status.value
+            last_status_updated_time=to_iso_time(last_status_updated_time), status=status.value
         )
     except StackNotFoundError:
         raise NotFoundException(
@@ -96,6 +97,7 @@ def update_compute_fleet(update_compute_fleet_request_content, cluster_name, reg
                         " `ENABLED` or `DISABLED` for AWS Batch clusters."
                     )
         status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
+        last_status_updated_time = to_iso_time(last_status_updated_time)
         return UpdateComputeFleetResponseContent(last_status_updated_time=last_status_updated_time, status=status.value)
     except StackNotFoundError:
         raise NotFoundException(

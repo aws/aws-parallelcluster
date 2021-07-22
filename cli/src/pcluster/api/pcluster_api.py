@@ -30,7 +30,7 @@ from pcluster.models.cluster_resources import ClusterInstance
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.imagebuilder import ImageBuilder, ImageBuilderActionError, NonExistingImageError
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, to_iso_time
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class ClusterInstanceInfo:
     """Minimal representation of an instance of a cluster."""
 
     def __init__(self, instance: ClusterInstance):
-        self.launch_time = instance.launch_time
+        self.launch_time = to_iso_time(instance.launch_time)
         self.instance_id = instance.id
         self.public_ip_address = instance.public_ip
         self.private_ip_address = instance.private_ip
@@ -105,7 +105,7 @@ class ImageBuilderStackInfo(ImageBuilderInfo):
         self.stack_arn = imagebuilder.stack.id
         self.tags = imagebuilder.stack.tags
         self.version = imagebuilder.stack.version
-        self.creation_time = imagebuilder.stack.creation_time
+        self.creation_time = to_iso_time(imagebuilder.stack.creation_time)
         self.build_log = imagebuilder.stack.build_log
 
         # build image process status by stack status mapping
@@ -128,7 +128,7 @@ class ImageBuilderImageInfo(ImageBuilderInfo):
         self.image_architecture = imagebuilder.image.architecture
         self.image_tags = imagebuilder.image.tags
         self.imagebuild_status = "BUILD_COMPLETE"
-        self.creation_time = imagebuilder.image.creation_date
+        self.creation_time = to_iso_time(imagebuilder.image.creation_date)
         self.build_log = imagebuilder.image.build_log
         self.version = imagebuilder.image.version
 
