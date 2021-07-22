@@ -206,9 +206,8 @@ def _run_operation(model, args, extra_args):
             logging.getLogger("pcluster").removeHandler(logging_handlers[1])
         try:
             return args.func(args)
-        except KeyboardInterrupt:
-            LOGGER.debug("Received KeyboardInterrupt. Exiting.")
-            sys.exit(1)
+        except KeyboardInterrupt as e:
+            raise e
         except APIOperationException as e:
             raise e
         except Exception as e:
