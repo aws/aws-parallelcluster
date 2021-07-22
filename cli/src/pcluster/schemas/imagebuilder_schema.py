@@ -137,6 +137,7 @@ class IamSchema(BaseSchema):
     instance_profile = fields.Str(validate=validate.Regexp("^arn:.*:instance-profile/"))
     cleanup_lambda_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
     additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
+    permissions_boundary = fields.Str(validate=validate.Regexp("^arn:.*:policy/"))
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):
