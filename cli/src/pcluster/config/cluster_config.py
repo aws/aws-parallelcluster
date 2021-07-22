@@ -94,7 +94,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
-from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
+from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
 from pcluster.validators.kms_validators import KmsKeyIdEncryptedValidator, KmsKeyValidator
 from pcluster.validators.networking_validators import ElasticIpValidator, SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import (
@@ -623,9 +623,15 @@ class ClusterIam(Resource):
     def __init__(
         self,
         roles: Roles = None,
+        permissions_boundary: str = None,
     ):
         super().__init__()
         self.roles = roles
+        self.permissions_boundary = Resource.init_param(permissions_boundary)
+
+    def _register_validators(self):
+        if self.permissions_boundary:
+            self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
 
 
 class IntelSelectSolutions(Resource):

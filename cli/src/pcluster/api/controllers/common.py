@@ -108,16 +108,15 @@ def convert_errors():
             try:
                 return func(*args, **kwargs)
             except ParallelClusterApiException as e:
-                error = e
+                raise e
             except (LimitExceeded, LimitExceededError) as e:
-                error = LimitExceededException(str(e))
+                raise LimitExceededException(str(e)) from e
             except (BadRequest, BadRequestError) as e:
-                error = BadRequestException(str(e))
+                raise BadRequestException(str(e)) from e
             except Conflict as e:
-                error = ConflictException(str(e))
+                raise ConflictException(str(e)) from e
             except Exception as e:
-                error = InternalServiceException(str(e))
-            raise error
+                raise InternalServiceException(str(e)) from e
 
         return wrapper
 

@@ -61,7 +61,7 @@ class ClusterInstancesApi(object):
 
             Keyword Args:
                 region (str): AWS Region that the operation corresponds to.. [optional]
-                force (bool, none_type): Force the deletion also when the cluster with the given name is not found. (Defaults to false.). [optional]
+                force (bool, none_type): Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.). [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object

@@ -8,5 +8,6 @@ optional arguments:
   --image-id IMAGE_ID  Id of the image.
   --region REGION      AWS Region that the operation corresponds to.
   --force FORCE        Force deletion in case there are instances using the
-                       AMI or in case the AMI is shared
+                       AMI or in case the AMI is shared. (Defaults to
+                       'false'.)
   --debug              Turn on debug logging.

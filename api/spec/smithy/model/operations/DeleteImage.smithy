@@ -24,7 +24,7 @@ structure DeleteImageRequest {
     @httpQuery("region")
     region: Region,
     @httpQuery("force")
-    @documentation("Force deletion in case there are instances using the AMI or in case the AMI is shared")
+    @documentation("Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.)")
     force: Boolean,
 }
 

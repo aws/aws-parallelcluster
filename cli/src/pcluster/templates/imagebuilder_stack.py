@@ -36,6 +36,7 @@ from pcluster.aws.common import get_region
 from pcluster.config.common import BaseTag
 from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.constants import (
+    IAM_ROLE_PATH,
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_CONFIG_TAG,
@@ -52,7 +53,7 @@ from pcluster.imagebuilder_utils import (
     wrap_script_to_component,
 )
 from pcluster.models.s3_bucket import S3Bucket, S3FileType
-from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
+from pcluster.templates.cdk_builder_utils import apply_permissions_boundary, get_assume_role_policy_document
 
 
 class ImageBuilderCdkStack(Stack):
@@ -90,6 +91,11 @@ class ImageBuilderCdkStack(Stack):
 
         self._add_cfn_parameters()
         self._add_resources()
+
+        try:
+            apply_permissions_boundary(image_config.build.iam.permissions_boundary, self)
+        except AttributeError:
+            pass
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
@@ -733,7 +739,7 @@ class ImageBuilderCdkStack(Stack):
                 "DeleteStackFunctionExecutionRole",
                 managed_policy_arns=managed_lambda_policy,
                 assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
-                path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
+                path=IAM_ROLE_PATH,
                 policies=[
                     iam.CfnRole.PolicyProperty(
                         policy_document=policy_document,
@@ -863,9 +869,9 @@ class ImageBuilderCdkStack(Stack):
         instance_role_resource = iam.CfnRole(
             self,
             "InstanceRole",
+            path=IAM_ROLE_PATH,
             managed_policy_arns=managed_policy_arns,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
-            path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             policies=[
                 instancerole_policy,
             ],
@@ -896,7 +902,7 @@ class ImageBuilderCdkStack(Stack):
         instance_profile_resource = iam.CfnInstanceProfile(
             self,
             "InstanceProfile",
-            path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
+            path=IAM_ROLE_PATH,
             roles=[instance_role.split("/")[-1] if instance_role else Fn.ref("InstanceRole")],
             instance_profile_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
         )

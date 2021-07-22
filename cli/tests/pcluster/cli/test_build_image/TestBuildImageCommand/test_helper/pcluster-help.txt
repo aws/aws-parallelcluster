@@ -18,10 +18,10 @@ optional arguments:
                         fail. (Defaults to 'ERROR'.)
   --dryrun DRYRUN       Only perform request validation without creating any
                         resource. It can be used to validate the image
-                        configuration.
+                        configuration. (Defaults to 'false'.)
   --rollback-on-failure ROLLBACK_ON_FAILURE
                         When set, will automatically initiate an image stack
-                        rollback on failure. (Defaults to true.)
+                        rollback on failure. (Defaults to 'true'.)
   --region REGION       AWS Region that the operation corresponds to.
   --image-configuration IMAGE_CONFIGURATION
                         Image configuration as a YAML document

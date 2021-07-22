@@ -32,10 +32,10 @@ structure UpdateClusterRequest {
     @httpQuery("region")
     region: Region,
     @httpQuery("dryrun")
-    @documentation("Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements.")
+    @documentation("Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.)")
     dryrun: Boolean,
     @httpQuery("forceUpdate")
-    @documentation("Force update by ignoring the update validation errors.")
+    @documentation("Force update by ignoring the update validation errors. (Defaults to 'false'.)")
     forceUpdate: Boolean,
 
     @required

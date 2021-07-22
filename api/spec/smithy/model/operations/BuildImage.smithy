@@ -25,10 +25,10 @@ structure BuildImageRequest {
     @documentation("Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.)")
     validationFailureLevel: ValidationLevel,
     @httpQuery("dryrun")
-    @documentation("Only perform request validation without creating any resource. It can be used to validate the image configuration.")
+    @documentation("Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.)")
     dryrun: Boolean,
     @httpQuery("rollbackOnFailure")
-    @documentation("When set, will automatically initiate an image stack rollback on failure. (Defaults to true.)")
+    @documentation("When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)")
     rollbackOnFailure: Boolean,
     @httpQuery("region")
     region: Region,

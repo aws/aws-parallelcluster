@@ -123,26 +123,26 @@ paths:
           $ref: '#/components/schemas/ValidationLevel'
         style: form
       - description: Only perform request validation without creating any resource.
-          May be used to validate the cluster configuration.
+          May be used to validate the cluster configuration. (Defaults to 'false'.)
         explode: true
         in: query
         name: dryrun
         required: false
         schema:
           description: Only perform request validation without creating any resource.
-            May be used to validate the cluster configuration.
+            May be used to validate the cluster configuration. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
       - description: When set it automatically initiates a cluster stack rollback
-          on failures. (Defaults to true.)
+          on failures. (Defaults to 'true'.)
         explode: true
         in: query
         name: rollbackOnFailure
         required: false
         schema:
           description: When set it automatically initiates a cluster stack rollback
-            on failures. (Defaults to true.)
+            on failures. (Defaults to 'true'.)
           nullable: true
           type: boolean
         style: form
@@ -409,13 +409,15 @@ paths:
           nullable: true
           type: boolean
         style: form
-      - description: Force update by ignoring the update validation errors.
+      - description: Force update by ignoring the update validation errors. (Defaults
+          to 'false'.)
         explode: true
         in: query
         name: forceUpdate
         required: false
         schema:
-          description: Force update by ignoring the update validation errors.
+          description: Force update by ignoring the update validation errors. (Defaults
+            to 'false'.)
           nullable: true
           type: boolean
         style: form
@@ -662,14 +664,14 @@ paths:
           type: string
         style: form
       - description: Force the deletion also when the cluster with the given name
-          is not found. (Defaults to false.)
+          is not found. (Defaults to 'false'.)
         explode: true
         in: query
         name: force
         required: false
         schema:
           description: Force the deletion also when the cluster with the given name
-            is not found. (Defaults to false.)
+            is not found. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
@@ -907,26 +909,26 @@ paths:
           $ref: '#/components/schemas/ValidationLevel'
         style: form
       - description: Only perform request validation without creating any resource.
-          It can be used to validate the image configuration.
+          It can be used to validate the image configuration. (Defaults to 'false'.)
         explode: true
         in: query
         name: dryrun
         required: false
         schema:
           description: Only perform request validation without creating any resource.
-            It can be used to validate the image configuration.
+            It can be used to validate the image configuration. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
       - description: "When set, will automatically initiate an image stack rollback\
-          \ on failure. (Defaults to true.)"
+          \ on failure. (Defaults to 'true'.)"
         explode: true
         in: query
         name: rollbackOnFailure
         required: false
         schema:
           description: "When set, will automatically initiate an image stack rollback\
-            \ on failure. (Defaults to true.)"
+            \ on failure. (Defaults to 'true'.)"
           nullable: true
           type: boolean
         style: form
@@ -1025,14 +1027,14 @@ paths:
           type: string
         style: form
       - description: Force deletion in case there are instances using the AMI or in
-          case the AMI is shared
+          case the AMI is shared. (Defaults to 'false'.)
         explode: true
         in: query
         name: force
         required: false
         schema:
           description: Force deletion in case there are instances using the AMI or
-            in case the AMI is shared
+            in case the AMI is shared. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
