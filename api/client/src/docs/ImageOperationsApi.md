@@ -64,8 +64,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
         "type:u2LC",
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
     validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.) (optional)
-    dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the image configuration. (optional)
-    rollback_on_failure = True # bool, none_type | When set, will automatically initiate an image stack rollback on failure. (Defaults to true.) (optional)
+    dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.) (optional)
+    rollback_on_failure = True # bool, none_type | When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.) (optional)
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
@@ -92,8 +92,8 @@ Name | Type | Description  | Notes
  **build_image_request_content** | [**BuildImageRequestContent**](BuildImageRequestContent.md)|  |
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
  **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
- **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the image configuration. | [optional]
- **rollback_on_failure** | **bool, none_type**| When set, will automatically initiate an image stack rollback on failure. (Defaults to true.) | [optional]
+ **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to &#39;false&#39;.) | [optional]
+ **rollback_on_failure** | **bool, none_type**| When set, will automatically initiate an image stack rollback on failure. (Defaults to &#39;true&#39;.) | [optional]
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
@@ -167,7 +167,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     image_id = "AqWzy" # str | Id of the image.
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
-    force = True # bool, none_type | Force deletion in case there are instances using the AMI or in case the AMI is shared (optional)
+    force = True # bool, none_type | Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -192,7 +192,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **image_id** | **str**| Id of the image. |
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
- **force** | **bool, none_type**| Force deletion in case there are instances using the AMI or in case the AMI is shared | [optional]
+ **force** | **bool, none_type**| Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 

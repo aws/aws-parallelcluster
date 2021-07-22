@@ -33,7 +33,7 @@ def delete_cluster_instances(cluster_name, region=None, force=None):
     :type cluster_name: str
     :param region: AWS Region that the operation corresponds to.
     :type region: str
-    :param force: Force the deletion also when the cluster with the given name is not found. (Defaults to false.)
+    :param force: Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)
     :type force: bool
 
     :rtype: None

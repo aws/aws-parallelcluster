@@ -59,7 +59,7 @@ def middleware_hooks():
 def update_cluster(func, _body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)
-    if wait:
+    if wait and not kwargs.get("dryrun"):
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_update_complete")
         waiter.wait(StackName=kwargs["cluster_name"])
@@ -70,7 +70,7 @@ def update_cluster(func, _body, kwargs):
 def create_cluster(func, body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)
-    if wait:
+    if wait and not kwargs.get("dryrun"):
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_create_complete")
         waiter.wait(StackName=body["clusterName"])

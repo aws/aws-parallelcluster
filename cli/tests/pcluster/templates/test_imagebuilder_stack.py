@@ -764,7 +764,7 @@ def _test_resources(generated_resources, expected_resources):
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"},
                     ],
-                    "Path": "/ParallelClusterImage/",
+                    "Path": "/parallelcluster/",
                     "Policies": [
                         {
                             "PolicyDocument": {
@@ -808,7 +808,7 @@ def _test_resources(generated_resources, expected_resources):
                 "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {
                     "Roles": [{"Ref": "InstanceRole"}],
-                    "Path": "/ParallelClusterImage/",
+                    "Path": "/parallelcluster/",
                     "InstanceProfileName": {
                         "Fn::Join": [
                             "",
@@ -873,7 +873,7 @@ def _test_resources(generated_resources, expected_resources):
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"},
                         "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess",
                     ],
-                    "Path": "/ParallelClusterImage/",
+                    "Path": "/parallelcluster/",
                     "Policies": [
                         {
                             "PolicyDocument": {
@@ -917,7 +917,7 @@ def _test_resources(generated_resources, expected_resources):
                 "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {
                     "Roles": [{"Ref": "InstanceRole"}],
-                    "Path": "/ParallelClusterImage/",
+                    "Path": "/parallelcluster/",
                     "InstanceProfileName": {
                         "Fn::Join": [
                             "",
@@ -960,7 +960,7 @@ def _test_resources(generated_resources, expected_resources):
                 "DependsOn": ["DeleteStackFunctionExecutionRole"],
                 "Properties": {
                     "Roles": ["test-InstanceRole"],
-                    "Path": "/ParallelClusterImage/",
+                    "Path": "/parallelcluster/",
                     "InstanceProfileName": {
                         "Fn::Join": [
                             "",
@@ -1087,7 +1087,7 @@ def test_imagebuilder_instance_role(
                     "ManagedPolicyArns": [
                         {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"},
                     ],
-                    "Path": "/ParallelClusterImage/",
+                    "Path": "/parallelcluster/",
                     "Policies": [
                         {
                             "PolicyDocument": {

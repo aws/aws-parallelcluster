@@ -20,7 +20,13 @@ from aws_cdk.core import CfnCustomResource, CfnDeletionPolicy, CfnOutput, CfnPar
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import CapacityType, SharedStorageType, SlurmClusterConfig
-from pcluster.constants import OS_MAPPING, PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_DYNAMODB_PREFIX, PCLUSTER_QUEUE_NAME_TAG
+from pcluster.constants import (
+    IAM_ROLE_PATH,
+    OS_MAPPING,
+    PCLUSTER_CLUSTER_NAME_TAG,
+    PCLUSTER_DYNAMODB_PREFIX,
+    PCLUSTER_QUEUE_NAME_TAG,
+)
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -187,7 +193,7 @@ class SlurmConstruct(Construct):
                         self._format_arn(
                             service="iam",
                             region="",
-                            resource=f"role/{Stack.of(self).stack_id}/*",
+                            resource=f"role{IAM_ROLE_PATH}*",
                         )
                     ],
                 },

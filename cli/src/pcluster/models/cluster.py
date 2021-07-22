@@ -29,7 +29,6 @@ from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError, get_region
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
 from pcluster.config.config_patch import ConfigPatch
@@ -59,6 +58,7 @@ from pcluster.models.common import (
     export_stack_events,
     parse_config,
 )
+from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder

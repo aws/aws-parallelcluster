@@ -11,8 +11,6 @@
 
 from pcluster.constants import SUPPORTED_OSES
 
-DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
-
 
 def get_supported_dcv_os(architecture):
     """Return a list of all the operating system supported by DCV."""

@@ -13,14 +13,18 @@ import re
 import subprocess as sub
 import time
 import webbrowser
+from typing import List
+
+from argparse import ArgumentParser, Namespace
 
 from pcluster.api.pcluster_api import PclusterApi
 from pcluster.aws.common import get_region
-from pcluster.cli_commands.dcv.utils import DCV_CONNECT_SCRIPT
+from pcluster.cli.commands.common import CliCommand
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.models.cluster import NodeType
 from pcluster.utils import error
 
+DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 LOGGER = logging.getLogger(__name__)
 
 
@@ -37,7 +41,7 @@ def _check_command_output(cmd):
     return sub.check_output(cmd, shell=True, universal_newlines=True, stderr=sub.STDOUT).strip()  # nosec nosemgrep
 
 
-def dcv_connect(args):
+def _dcv_connect(args):
     """
     Execute pcluster dcv connect command.
 
@@ -137,3 +141,25 @@ def _retry(func, func_args, attempts=1, wait=0):
 
             LOGGER.debug("%s, retrying in %s seconds..", e, wait)
             time.sleep(wait)
+
+
+class DcvConnectCommand(CliCommand):
+    """Implement pcluster dcv connect command."""
+
+    # CLI
+    name = "dcv-connect"
+    help = "Permits to connect to the head node through an interactive session by using NICE DCV."
+    description = help
+
+    def __init__(self, subparsers):
+        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("cluster_name", help="Name of the cluster to connect to")
+        parser.add_argument(
+            "--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection"
+        )
+        parser.add_argument("--show-url", "-s", action="store_true", default=False, help="Print URL and exit")
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
+        _dcv_connect(args)

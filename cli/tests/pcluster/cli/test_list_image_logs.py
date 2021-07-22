@@ -78,7 +78,7 @@ class TestListImageLogsCommand:
             }
         ]
 
-        list_logs_mock = mocker.patch("pcluster.cli.commands.image.ImageBuilder.list_logs", return_value=logs)
+        list_logs_mock = mocker.patch("pcluster.cli.commands.image_logs.ImageBuilder.list_logs", return_value=logs)
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})

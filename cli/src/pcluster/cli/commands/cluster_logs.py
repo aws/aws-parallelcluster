@@ -10,7 +10,6 @@
 import logging
 import os
 import re
-import textwrap
 import time
 from datetime import datetime
 from typing import List
@@ -24,91 +23,6 @@ from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME_FORMAT
 from pcluster.models.cluster import Cluster
 
 LOGGER = logging.getLogger(__name__)
-
-
-class SshCommand(CliCommand):
-    """Implement pcluster ssh command."""
-
-    # CLI
-    name = "ssh"
-    help = "Connects to the head node instance using SSH."
-    description = (
-        "Run ssh command with the cluster username and IP address pre-populated. "
-        "Arbitrary arguments are appended to the end of the ssh command."
-    )
-    epilog = textwrap.dedent(
-        """Example::
-
-  $ pcluster ssh mycluster -i ~/.ssh/id_rsa
-
-Returns an ssh command with the cluster username and IP address pre-populated::
-
-  $ ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa"""
-    )
-
-    def __init__(self, subparsers):
-        super().__init__(
-            subparsers,
-            name=self.name,
-            help=self.help,
-            description=self.description,
-            epilog=self.epilog,
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            expects_extra_args=True,
-        )
-
-    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("cluster_name", help="Name of the cluster to connect to.")
-        parser.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
-
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
-        from pcluster.cli_commands.commands import ssh
-
-        ssh(args, extra_args)
-
-
-class ConfigureCommand(CliCommand):
-    """Implement pcluster configure command."""
-
-    # CLI
-    name = "configure"
-    help = "Start the AWS ParallelCluster configuration."
-    description = help
-
-    def __init__(self, subparsers):
-        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
-
-    def register_command_args(self, parser: argparse.ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("-c", "--config", help="Path of the output config file.")
-
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
-        from pcluster.cli_commands.configure.easyconfig import configure
-
-        configure(args)
-
-
-class DcvConnectCommand(CliCommand):
-    """Implement pcluster dcv connect command."""
-
-    # CLI
-    name = "dcv-connect"
-    help = "Permits to connect to the head node through an interactive session by using NICE DCV."
-    description = help
-
-    def __init__(self, subparsers):
-        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
-
-    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("cluster_name", help="Name of the cluster to connect to")
-        parser.add_argument(
-            "--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection"
-        )
-        parser.add_argument("--show-url", "-s", action="store_true", default=False, help="Print URL and exit")
-
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
-        from pcluster.cli_commands.dcv.connect import dcv_connect
-
-        dcv_connect(args)
 
 
 class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):

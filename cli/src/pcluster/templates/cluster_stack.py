@@ -38,6 +38,7 @@ from aws_cdk.core import (
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
+    AwsBatchClusterConfig,
     BaseQueue,
     HeadNode,
     SharedEbs,
@@ -46,12 +47,20 @@ from pcluster.config.cluster_config import (
     SharedStorageType,
     SlurmClusterConfig,
 )
-from pcluster.constants import CW_LOG_GROUP_NAME_PREFIX, CW_LOGS_CFN_PARAM_NAME, OS_MAPPING, PCLUSTER_S3_ARTIFACTS_DICT
+from pcluster.constants import (
+    CW_LOG_GROUP_NAME_PREFIX,
+    CW_LOGS_CFN_PARAM_NAME,
+    IAM_ROLE_PATH,
+    OS_MAPPING,
+    PCLUSTER_S3_ARTIFACTS_DICT,
+)
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
     add_lambda_cfn_role,
+    apply_permissions_boundary,
+    convert_deletion_policy,
     create_hash_suffix,
     get_assume_role_policy_document,
     get_block_device_mappings,
@@ -61,7 +70,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
-    get_retain_log_on_delete,
+    get_log_group_deletion_policy,
     get_shared_storage_ids_by_type,
     get_shared_storage_options_by_type,
     get_user_data_content,
@@ -81,7 +90,7 @@ class ClusterCdkStack(Stack):
         scope: Construct,
         construct_id: str,
         stack_name: str,
-        cluster_config: SlurmClusterConfig,
+        cluster_config: Union[SlurmClusterConfig, AwsBatchClusterConfig],
         bucket: S3Bucket,
         log_group_name=None,
         **kwargs,
@@ -97,7 +106,7 @@ class ClusterCdkStack(Stack):
                 self.log_group_name = log_group_name
             else:
                 # pcluster create create a log group with timestamp suffix
-                timestamp = f"{datetime.now().strftime('%Y%m%d%H%M')}"
+                timestamp = f"{datetime.utcnow().strftime('%Y%m%d%H%M')}"
                 self.log_group_name = f"{CW_LOG_GROUP_NAME_PREFIX}{self.stack_name}-{timestamp}"
 
         self.instance_roles = {}
@@ -110,6 +119,11 @@ class ClusterCdkStack(Stack):
         self._add_parameters()
         self._add_resources()
         self._add_outputs()
+
+        try:
+            apply_permissions_boundary(cluster_config.iam.permissions_boundary, self)
+        except AttributeError:
+            pass
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
@@ -267,7 +281,7 @@ class ClusterCdkStack(Stack):
             log_group_name=self.log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
-        log_group.cfn_options.deletion_policy = get_retain_log_on_delete(self.config)
+        log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(self.config)
         return log_group
 
     def _add_role_and_policies(self, node: Union[HeadNode, BaseQueue], name: str):
@@ -506,7 +520,7 @@ class ClusterCdkStack(Stack):
             )
 
     def _add_instance_profile(self, role_ref: str, name: str):
-        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path="/").ref
+        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path=IAM_ROLE_PATH).ref
 
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
         additional_iam_policies = node.iam.additional_iam_policy_arns
@@ -521,9 +535,9 @@ class ClusterCdkStack(Stack):
         return iam.CfnRole(
             self,
             name,
+            path=IAM_ROLE_PATH,
             managed_policy_arns=additional_iam_policies,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
-            path=f"/{self._build_resource_path()}/",
         ).ref
 
     def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
@@ -799,7 +813,7 @@ class ClusterCdkStack(Stack):
         return ebs_id
 
     def _add_cfn_volume(self, id: str, shared_ebs: SharedEbs):
-        return ec2.CfnVolume(
+        volume = ec2.CfnVolume(
             self,
             id,
             availability_zone=self.config.head_node.networking.availability_zone,
@@ -810,7 +824,9 @@ class ClusterCdkStack(Stack):
             size=shared_ebs.size,
             snapshot_id=shared_ebs.snapshot_id,
             volume_type=shared_ebs.volume_type,
-        ).ref
+        )
+        volume.cfn_options.deletion_policy = convert_deletion_policy(shared_ebs.deletion_policy)
+        return volume.ref
 
     def _add_head_node(self):
         head_node = self.config.head_node

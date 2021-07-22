@@ -15,8 +15,10 @@ import os
 import time
 from abc import ABC
 from enum import Enum
+from typing import Dict
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
 LOGGER = logging.getLogger(__name__)
@@ -137,8 +139,10 @@ def _log_boto3_calls(params, **kwargs):
 class Boto3Client(ABC):
     """Abstract Boto3 client."""
 
-    def __init__(self, client_name: str):
-        self._client = boto3.client(client_name)
+    def __init__(self, client_name: str, botocore_config_kwargs: Dict = None):
+        self._client = boto3.client(
+            client_name, config=Config(**botocore_config_kwargs) if botocore_config_kwargs else None
+        )
         self._client.meta.events.register("provide-client-params.*.*", _log_boto3_calls)
 
     def _paginate_results(self, method, **kwargs):

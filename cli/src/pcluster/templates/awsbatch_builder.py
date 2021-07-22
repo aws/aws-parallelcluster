@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from datetime import datetime
 
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_cloudformation as cfn
@@ -21,7 +22,7 @@ from aws_cdk import aws_logs as logs
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
-from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS
+from pcluster.constants import AWSBATCH_CLI_REQUIREMENTS, CW_LOG_GROUP_NAME_PREFIX, IAM_ROLE_PATH
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -31,9 +32,9 @@ from pcluster.templates.cdk_builder_utils import (
     get_cloud_watch_logs_retention_days,
     get_custom_tags,
     get_default_instance_tags,
+    get_log_group_deletion_policy,
     get_mount_dirs_by_type,
     get_queue_security_groups_full,
-    get_retain_log_on_delete,
     get_shared_storage_ids_by_type,
 )
 
@@ -111,7 +112,6 @@ class AwsBatchConstruct(Construct):
             self._add_batch_head_node_policies_to_role()
 
         # Iam Roles
-        self._batch_service_role = self._add_batch_service_role()
         self._ecs_instance_role, self._iam_instance_profile = self._add_ecs_instance_role_and_profile()
 
         # Spot Iam Role
@@ -151,7 +151,7 @@ class AwsBatchConstruct(Construct):
             self.stack_scope,
             "ComputeEnvironment",
             type="MANAGED",
-            service_role=self._batch_service_role.ref,
+            # service_role=self._batch_service_role.ref,
             state="ENABLED",
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
                 type="SPOT" if self.queue.capacity_type == CapacityType.SPOT else "EC2",
@@ -161,10 +161,9 @@ class AwsBatchConstruct(Construct):
                 instance_types=self.compute_resource.instance_types,
                 subnets=self.queue.networking.subnet_ids,
                 security_group_ids=get_queue_security_groups_full(self.compute_security_groups, self.queue),
-                # ec2_key_pair=  TODO?
                 instance_role=self._iam_instance_profile.ref,
                 bid_percentage=self.compute_resource.spot_bid_percentage,
-                spot_iam_fleet_role=self._spot_iam_fleet_role.ref if self._spot_iam_fleet_role else None,
+                spot_iam_fleet_role=self._spot_iam_fleet_role.attr_arn if self._spot_iam_fleet_role else None,
                 tags={
                     **get_default_instance_tags(
                         self.stack_name,
@@ -196,6 +195,7 @@ class AwsBatchConstruct(Construct):
         ecs_instance_role = iam.CfnRole(
             self.stack_scope,
             "EcsInstanceRole",
+            path=IAM_ROLE_PATH,
             managed_policy_arns=[
                 self._format_arn(
                     service="iam",
@@ -208,7 +208,7 @@ class AwsBatchConstruct(Construct):
         )
 
         iam_instance_profile = iam.CfnInstanceProfile(
-            self.stack_scope, "IamInstanceProfile", roles=[ecs_instance_role.ref]
+            self.stack_scope, "IamInstanceProfile", path=IAM_ROLE_PATH, roles=[ecs_instance_role.ref]
         )
 
         return ecs_instance_role, iam_instance_profile
@@ -217,6 +217,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "JobRole",
+            path=IAM_ROLE_PATH,
             managed_policy_arns=[
                 self._format_arn(service="iam", account="aws", region="", resource="policy/AmazonS3ReadOnlyAccess"),
                 self._format_arn(
@@ -275,7 +276,7 @@ class AwsBatchConstruct(Construct):
         )
 
     def _add_docker_images_repo(self):
-        return ecr.CfnRepository(self.stack_scope, "DockerImagesRepo")
+        return ecr.CfnRepository(self.stack_scope, "ParallelClusterDockerImagesRepo")
 
     def _add_job_definition_serial(self):
         return batch.CfnJobDefinition(
@@ -301,18 +302,6 @@ class AwsBatchConstruct(Construct):
             ),
         )
 
-    def _add_batch_service_role(self):
-        return iam.CfnRole(
-            self.stack_scope,
-            "BatchServiceRole",
-            managed_policy_arns=[
-                self._format_arn(
-                    service="iam", account="aws", region="", resource="policy/service-role/AWSBatchServiceRole"
-                )
-            ],
-            assume_role_policy_document=get_assume_role_policy_document("batch.amazonaws.com"),
-        )
-
     def _add_batch_user_role(self):
         batch_user_role_statement = iam.PolicyStatement(effect=iam.Effect.ALLOW, actions=["sts:AssumeRole"])
         batch_user_role_statement.add_account_root_principal()
@@ -320,6 +309,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "PclusterBatchUserRole",
+            path=IAM_ROLE_PATH,
             max_session_duration=36000,
             assume_role_policy_document=iam.PolicyDocument(statements=[batch_user_role_statement]),
             policies=[
@@ -429,6 +419,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "BatchSpotRole",
+            path=IAM_ROLE_PATH,
             managed_policy_arns=[
                 self._format_arn(
                     service="iam",
@@ -442,7 +433,7 @@ class AwsBatchConstruct(Construct):
 
     def _get_container_properties(self):
         return batch.CfnJobDefinition.ContainerPropertiesProperty(
-            job_role_arn=self._job_role.ref,
+            job_role_arn=self._job_role.attr_arn,
             image="{account}.dkr.ecr.{region}.{url_suffix}/{docker_images_repo}:{os}".format(
                 account=self._stack_account,
                 region=self._stack_region,
@@ -482,6 +473,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "CodeBuildRole",
+            path=IAM_ROLE_PATH,
             assume_role_policy_document=get_assume_role_policy_document("codebuild.amazonaws.com"),
         )
 
@@ -529,7 +521,10 @@ class AwsBatchConstruct(Construct):
         )
 
     def _add_code_build_docker_image_builder_project(self):
-        log_group_name = f"/aws/codebuild/{self.stack_name}-CodeBuildDockerImageBuilderProject"
+        timestamp = f"{datetime.utcnow().strftime('%Y%m%d%H%M')}"
+        log_group_name = (
+            f"{CW_LOG_GROUP_NAME_PREFIX}codebuild/{self.stack_name}-CodeBuildDockerImageBuilderProject-{timestamp}"
+        )
 
         log_group = logs.CfnLogGroup(
             self.stack_scope,
@@ -537,7 +532,7 @@ class AwsBatchConstruct(Construct):
             log_group_name=log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
-        log_group.cfn_options.deletion_policy = get_retain_log_on_delete(self.config)
+        log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(self.config)
 
         return codebuild.CfnProject(
             self.stack_scope,
@@ -575,8 +570,8 @@ class AwsBatchConstruct(Construct):
                 type="ARM_CONTAINER" if self._condition_use_arm_code_build_image() else "LINUX_CONTAINER",
                 privileged_mode=True,
             ),
-            name=f"{self.stack_name}-build-docker-images-project",
-            service_role=self._code_build_role.ref,
+            name=f"pcluster-{self.stack_name}-build-docker-images-project",
+            service_role=self._code_build_role.attr_arn,
             source=codebuild.CfnProject.SourceProperty(
                 location=f"{self.bucket.name}/{self.bucket.artifact_directory}"
                 "/custom_resources/scheduler_resources.zip",
@@ -762,7 +757,7 @@ class AwsBatchConstruct(Construct):
                             self._format_arn(
                                 service="iam",
                                 region="",
-                                resource=f"role/{self._stack_id}/*",
+                                resource=f"role{IAM_ROLE_PATH}*",
                             )
                         ],
                     ),

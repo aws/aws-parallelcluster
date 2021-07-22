@@ -57,7 +57,7 @@ class TestExportImageLogsCommand:
         ],
     )
     def test_execute(self, mocker, capsys, set_env, assert_out_err, run_cli, args):
-        export_logs_mock = mocker.patch("pcluster.cli.commands.image.ImageBuilder.export_logs")
+        export_logs_mock = mocker.patch("pcluster.cli.commands.image_logs.ImageBuilder.export_logs")
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
