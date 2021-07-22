@@ -207,7 +207,8 @@ def _run_operation(model, args, extra_args):
         try:
             return args.func(args)
         except KeyboardInterrupt:
-            raise APIOperationException({"message": "Received KeyboardInterrupt. Exiting."})
+            LOGGER.debug("Received KeyboardInterrupt. Exiting.")
+            sys.exit(1)
         except APIOperationException as e:
             raise e
         except Exception as e:
