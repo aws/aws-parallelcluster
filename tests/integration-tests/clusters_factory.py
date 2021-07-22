@@ -62,6 +62,13 @@ class Cluster:
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
         return "{class_name}({attrs})".format(class_name=self.__class__.__name__, attrs=attrs)
 
+    def mark_as_created(self):
+        """Mark the cluster as created.
+
+        This is used by some fixtures to know whether to delete log files or not.
+        """
+        self.create_complete = True
+
     def update(self, config_file, force=True):
         """
         Update a cluster with an already updated config.
@@ -375,7 +382,7 @@ class ClustersFactory:
                 raise Exception(error)
         else:
             logging.info("Cluster {0} created successfully".format(name))
-            cluster.create_complete = True
+            cluster.mark_as_created()
 
         # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
         # job submission right after creation. We need to investigate this further.
@@ -401,6 +408,10 @@ class ClustersFactory:
             logging.info("Cluster {0} deleted successfully".format(name))
         else:
             logging.warning("Couldn't find cluster with name {0}. Skipping deletion.".format(name))
+
+    def register_cluster(self, cluster):
+        """Register a cluster created externally."""
+        self.__created_clusters[cluster.name] = cluster
 
     @retry(stop_max_attempt_number=5, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
     def _destroy_cluster(self, name):
