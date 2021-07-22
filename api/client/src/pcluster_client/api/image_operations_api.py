@@ -71,8 +71,8 @@ class ImageOperationsApi(object):
             Keyword Args:
                 suppress_validators ([str]): Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+). [optional]
                 validation_failure_level (ValidationLevel): Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.). [optional]
-                dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the image configuration.. [optional]
-                rollback_on_failure (bool, none_type): When set, will automatically initiate an image stack rollback on failure. (Defaults to true.). [optional]
+                dryrun (bool, none_type): Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.). [optional]
+                rollback_on_failure (bool, none_type): When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.). [optional]
                 region (str): AWS Region that the operation corresponds to.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
@@ -227,7 +227,7 @@ class ImageOperationsApi(object):
 
             Keyword Args:
                 region (str): AWS Region that the operation corresponds to.. [optional]
-                force (bool, none_type): Force deletion in case there are instances using the AMI or in case the AMI is shared. [optional]
+                force (bool, none_type): Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.). [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object

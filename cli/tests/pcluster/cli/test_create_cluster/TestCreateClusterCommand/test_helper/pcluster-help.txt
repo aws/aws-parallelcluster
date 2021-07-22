@@ -20,10 +20,10 @@ optional arguments:
                         fail. (Defaults to 'ERROR'.)
   --dryrun DRYRUN       Only perform request validation without creating any
                         resource. May be used to validate the cluster
-                        configuration.
+                        configuration. (Defaults to 'false'.)
   --rollback-on-failure ROLLBACK_ON_FAILURE
                         When set it automatically initiates a cluster stack
-                        rollback on failures. (Defaults to true.)
+                        rollback on failures. (Defaults to 'true'.)
   --cluster-name CLUSTER_NAME
                         Name of the cluster that will be created.
   --cluster-configuration CLUSTER_CONFIGURATION

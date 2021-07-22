@@ -11,5 +11,5 @@ optional arguments:
                         Name of the cluster
   --region REGION       AWS Region that the operation corresponds to.
   --force FORCE         Force the deletion also when the cluster with the
-                        given name is not found. (Defaults to false.)
+                        given name is not found. (Defaults to 'false'.)
   --debug               Turn on debug logging.
