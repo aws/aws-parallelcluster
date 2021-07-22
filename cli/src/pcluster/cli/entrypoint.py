@@ -202,6 +202,27 @@ def add_cli_commands(parser_map):
     add_additional_args(parser_map)
 
 
+def _run_operation(model, args, extra_args):
+    if args.operation in model:
+        # TODO: remove once all commands are converted
+        logging_handlers = logging.getLogger("pcluster").handlers
+        if len(logging_handlers) > 1:
+            logging.getLogger("pcluster").removeHandler(logging_handlers[1])
+        try:
+            return args.func(args)
+        except KeyboardInterrupt:
+            raise APIOperationException({"message": "Received KeyboardInterrupt. Exiting."})
+        except APIOperationException as e:
+            raise e
+        except Exception as e:
+            # format exception messages in the same manner as the api
+            message = pcluster.api.errors.exception_message(e)
+            error_encoded = encoder.JSONEncoder().encode(message)
+            raise APIOperationException(json.loads(error_encoded))
+    else:
+        return args.func(args, extra_args)
+
+
 def run(sys_args, model=None):
     spec = pcluster.cli.model.package_spec()
     model = model or pcluster.cli.model.load_model(spec)
@@ -230,23 +251,7 @@ def run(sys_args, model=None):
 
     LOGGER.debug("Handling CLI command %s", args.operation)  # ToDo: change the level to info after finishing API.
     LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
-
-    if args.operation in model:
-        # TODO: remove once all commands are converted
-        logging_handlers = logging.getLogger("pcluster").handlers
-        if len(logging_handlers) > 1:
-            logging.getLogger("pcluster").removeHandler(logging_handlers[1])
-        try:
-            return args.func(args)
-        except APIOperationException as e:
-            raise e
-        except Exception as e:
-            # format exception messages in the same manner as the api
-            message = pcluster.api.errors.exception_message(e)
-            error_encoded = encoder.JSONEncoder().encode(message)
-            raise APIOperationException(json.loads(error_encoded))
-    else:
-        return args.func(args, extra_args)
+    return _run_operation(model, args, extra_args)
 
 
 def main():
