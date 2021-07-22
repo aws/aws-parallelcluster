@@ -25,11 +25,13 @@ Resources:
             Effect: Allow
             Action:
               - iam:CreateInstanceProfile
+              - iam:AddRoleToInstanceProfile
               - iam:GetRole
               - iam:GetRolePolicy
               - iam:GetInstanceProfile
             Resource:
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/ParallelClusterImage*'
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
           - Sid: IAMPassRole
             Effect: Allow
@@ -146,6 +148,7 @@ Resources:
               - iam:GetInstanceProfile
             Resource:
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/ParallelClusterImage*'
               - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
           - Sid: IAMPutRolePolicy
             Effect: Allow
