@@ -23,7 +23,7 @@ structure DeleteClusterInstancesRequest {
     @httpQuery("region")
     region: Region,
     @httpQuery("force")
-    @documentation("Force the deletion also when the cluster with the given name is not found. (Defaults to false.)")
+    @documentation("Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)")
     force: Boolean,
 }
 

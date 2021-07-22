@@ -65,8 +65,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
         "type:u2LC",
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
     validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.) (optional)
-    dryrun = True # bool, none_type | Only perform request validation without creating any resource. May be used to validate the cluster configuration. (optional)
-    rollback_on_failure = True # bool, none_type | When set it automatically initiates a cluster stack rollback on failures. (Defaults to true.) (optional)
+    dryrun = True # bool, none_type | Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.) (optional)
+    rollback_on_failure = True # bool, none_type | When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -93,8 +93,8 @@ Name | Type | Description  | Notes
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
  **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
- **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. May be used to validate the cluster configuration. | [optional]
- **rollback_on_failure** | **bool, none_type**| When set it automatically initiates a cluster stack rollback on failures. (Defaults to true.) | [optional]
+ **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to &#39;false&#39;.) | [optional]
+ **rollback_on_failure** | **bool, none_type**| When set it automatically initiates a cluster stack rollback on failures. (Defaults to &#39;true&#39;.) | [optional]
 
 ### Return type
 
@@ -459,8 +459,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
     validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the update to fail. (Defaults to 'ERROR'.) (optional)
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
-    dryrun = True # bool, none_type | Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (optional)
-    force_update = True # bool, none_type | Force update by ignoring the update validation errors. (optional)
+    dryrun = True # bool, none_type | Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.) (optional)
+    force_update = True # bool, none_type | Force update by ignoring the update validation errors. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -488,8 +488,8 @@ Name | Type | Description  | Notes
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
  **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the update to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
- **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. | [optional]
- **force_update** | **bool, none_type**| Force update by ignoring the update validation errors. | [optional]
+ **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to &#39;false&#39;.) | [optional]
+ **force_update** | **bool, none_type**| Force update by ignoring the update validation errors. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 

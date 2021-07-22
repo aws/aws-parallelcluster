@@ -87,11 +87,13 @@ def create_cluster(
     :param suppress_validators: Identifies one or more config validators to suppress.
     Format: (ALL|type:[A-Za-z0-9]+)
     :param validation_failure_level: Min validation level that will cause the cluster creation to fail.
-    Defaults to &#39;ERROR&#39;.
+    (Defaults to &#39;ERROR&#39;.)
     :param dryrun: Only perform request validation without creating any resource. May be used to validate the cluster
-    configuration.
+    configuration. (Defaults to &#39;false&#39;.)
+    :type dryrun: bool
     :param rollback_on_failure: When set it automatically initiates a cluster stack rollback on failures.
-    (Defaults to true.)
+    (Defaults to &#39;true&#39;.)
+    :type rollback_on_failure: bool
     """
     # Set defaults
     rollback_on_failure = rollback_on_failure in {True, None}
@@ -307,6 +309,7 @@ def update_cluster(
     May be used to validate the cluster configuration and update requirements. Response code: 200
     :type dryrun: bool
     :param force_update: Force update by ignoring the update validation errors.
+    (Defaults to &#39;false&#39;.)
     :type force_update: bool
 
     :rtype: UpdateClusterResponseContent
