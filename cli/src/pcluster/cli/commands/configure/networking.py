@@ -18,8 +18,8 @@ import boto3
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import get_region
-from pcluster.cli_commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
-from pcluster.cli_commands.configure.utils import handle_client_exception
+from pcluster.cli.commands.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
+from pcluster.cli.commands.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
 from pcluster.utils import (
     get_cli_log_file,

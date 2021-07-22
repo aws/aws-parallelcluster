@@ -16,7 +16,6 @@ from pcluster.api.models import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.validation_level import ValidationLevel
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.models.cluster import (
@@ -26,6 +25,7 @@ from pcluster.models.cluster import (
     ConflictClusterActionError,
     LimitExceededClusterActionError,
 )
+from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
