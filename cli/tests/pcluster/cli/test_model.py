@@ -17,10 +17,8 @@ def _model(params):
     return {"op": {"func": "", "body_name": "body", "params": params}}
 
 
-def _run_model(model, params, add_additional_args=None):
+def _run_model(model, params):
     parser, parser_map = gen_parser(model)
-    if add_additional_args:
-        add_additional_args(parser_map)
     args, _ = parser.parse_known_args(params)
     del args.__dict__["debug"]
     return args.func(args)
@@ -123,16 +121,12 @@ class TestCliModel:
         def op_middle(func, _body, kwargs):
             return func(kwargs)["body"]
 
-        def add_args(parser_map):
-            parser_map["op"].add_argument("--query")
-
         mocker.patch("pcluster.cli.entrypoint.middleware_hooks", return_value={"op": queryable(op_middle)})
-        mocker.patch("pcluster.cli.middleware.add_additional_args", add_args)
 
         model = _model(
             [
                 {"body": True, "name": "param", "required": False, "type": "integer"},
             ]
         )
-        ret = _run_model(model, ["op", "--param", "1", "--query", "body.param"], add_additional_args=add_args)
+        ret = _run_model(model, ["op", "--param", "1", "--query", "body.param"])
         assert_that(ret).is_equal_to(1)
