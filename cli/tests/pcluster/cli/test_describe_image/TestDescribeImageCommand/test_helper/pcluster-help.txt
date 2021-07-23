@@ -8,4 +8,4 @@ optional arguments:
   --image-id IMAGE_ID  Id of the image.
   --region REGION      AWS Region that the operation corresponds to.
   --debug              Turn on debug logging.
-  --query QUERY        JMESpath query to perform on output.
+  --query QUERY        JMESPath query to perform on output.

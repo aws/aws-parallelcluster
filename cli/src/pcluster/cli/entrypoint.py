@@ -181,7 +181,7 @@ def gen_parser(model):
             )
 
         subparser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
-        subparser.add_argument("--query", help="JMESpath query to perform on output.")
+        subparser.add_argument("--query", help="JMESPath query to perform on output.")
         subparser.set_defaults(func=partial(dispatch, model))
 
     return parser, parser_map

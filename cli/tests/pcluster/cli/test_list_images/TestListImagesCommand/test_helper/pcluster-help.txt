@@ -12,4 +12,4 @@ optional arguments:
   --image-status {AVAILABLE,PENDING,FAILED}
                         Filter images by the status provided.
   --debug               Turn on debug logging.
-  --query QUERY         JMESpath query to perform on output.
+  --query QUERY         JMESPath query to perform on output.

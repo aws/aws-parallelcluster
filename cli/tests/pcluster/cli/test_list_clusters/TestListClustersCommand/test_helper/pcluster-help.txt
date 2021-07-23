@@ -12,4 +12,4 @@ optional arguments:
   --cluster-status {CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} [{CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} ...]
                         Filter by cluster status. (Defaults to all clusters.)
   --debug               Turn on debug logging.
-  --query QUERY         JMESpath query to perform on output.
+  --query QUERY         JMESPath query to perform on output.

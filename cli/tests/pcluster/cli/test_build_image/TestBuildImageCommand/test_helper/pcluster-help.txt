@@ -28,4 +28,4 @@ optional arguments:
                         Image configuration as a YAML document
   --image-id IMAGE_ID   Id of the Image that will be built.
   --debug               Turn on debug logging.
-  --query QUERY         JMESpath query to perform on output.
+  --query QUERY         JMESPath query to perform on output.

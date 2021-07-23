@@ -12,4 +12,4 @@ optional arguments:
   --region REGION       AWS Region that the operation corresponds to.
   --status {START_REQUESTED,STOP_REQUESTED,ENABLED,DISABLED}
   --debug               Turn on debug logging.
-  --query QUERY         JMESpath query to perform on output.
+  --query QUERY         JMESPath query to perform on output.

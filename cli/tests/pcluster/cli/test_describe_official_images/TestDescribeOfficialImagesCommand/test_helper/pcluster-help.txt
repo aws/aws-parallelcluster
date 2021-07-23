@@ -11,4 +11,4 @@ optional arguments:
   --architecture ARCHITECTURE
                         Filter by architecture (Default is to not filter.)
   --debug               Turn on debug logging.
-  --query QUERY         JMESpath query to perform on output.
+  --query QUERY         JMESPath query to perform on output.
