@@ -10,6 +10,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.cli.entrypoint import ParameterException, gen_parser
+from pcluster.cli.middleware import queryable
 
 
 def _model(params):
@@ -17,7 +18,7 @@ def _model(params):
 
 
 def _run_model(model, params):
-    parser, _parser_map = gen_parser(model)
+    parser, parser_map = gen_parser(model)
     args, _ = parser.parse_known_args(params)
     del args.__dict__["debug"]
     return args.func(args)
@@ -115,3 +116,17 @@ class TestCliModel:
         ret = _run_model(model, ["op", "--qparam", "1", "--param", "0.0"])
         assert_that(ret["body"]["param"]).is_equal_to(0.1)
         assert_that(ret["qparam"]).is_equal_to(7)
+
+    def test_query(self, mocker, identity_dispatch):
+        def op_middle(func, _body, kwargs):
+            return func(kwargs)["body"]
+
+        mocker.patch("pcluster.cli.entrypoint.middleware_hooks", return_value={"op": queryable(op_middle)})
+
+        model = _model(
+            [
+                {"body": True, "name": "param", "required": False, "type": "integer"},
+            ]
+        )
+        ret = _run_model(model, ["op", "--param", "1", "--query", "body.param"])
+        assert_that(ret).is_equal_to(1)
