@@ -41,6 +41,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_ID_REGEX,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
@@ -66,7 +67,7 @@ from pcluster.models.imagebuilder_resources import (
     NonExistingStackError,
     StackError,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, isoformat_to_epoch
@@ -202,7 +203,6 @@ class ImageBuilder:
         self.__stack = stack
         self.__image = image
         self.__config_url = None
-        self.__presigned_config_url = None
         self.__config = None
         self.__bucket = None
         self.template_body = None
@@ -239,11 +239,12 @@ class ImageBuilder:
         return self.__config_url
 
     @property
-    def presigned_config_url(self):
-        """Return configuration file as a presigned URL."""
-        if not self.__presigned_config_url:
-            self.__presigned_config_url = create_s3_presigned_url(self.config_url)
-        return self.__presigned_config_url
+    def presigned_config_url(self) -> str:
+        """Return a pre-signed Url to download the config from the S3 bucket."""
+        return self.bucket.get_config_presigned_url(
+            config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name"),
+            version_id=self.stack.original_config_version,
+        )
 
     @property
     def stack(self):

@@ -416,7 +416,6 @@ def create_s3_presigned_url(s3_uri, expiration=3600):
     :return: Presigned URL as string
     """
     s3_uri_info = parse_bucket_url(s3_uri)
-    print(s3_uri_info)
     return AWSApi.instance().s3.create_presigned_url(
         s3_uri_info["bucket_name"], s3_uri_info["object_key"], expiration=expiration
     )
