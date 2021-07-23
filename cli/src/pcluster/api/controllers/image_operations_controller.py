@@ -45,6 +45,7 @@ from pcluster.api.models import (
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
@@ -204,11 +205,11 @@ def describe_image(image_id, region=None):
 
 
 def _image_to_describe_image_response(imagebuilder):
+    # Do not fail request when S3 bucket is not available
     config_url = "NOT_AVAILABLE"
     try:
-        config_url = imagebuilder.config_presigned_url
-    except ClusterActionError as e:
-        # Do not fail request when S3 bucket is not available
+        config_url = imagebuilder.presigned_config_url
+    except AWSClientError as e:
         LOGGER.error(e)
 
     return DescribeImageResponseContent(
@@ -231,12 +232,12 @@ def _image_to_describe_image_response(imagebuilder):
 
 def _stack_to_describe_image_response(imagebuilder):
     imagebuilder_image_state = imagebuilder.stack.image_state or dict()
+    # Do not fail request when S3 bucket is not available
     config_url = "NOT_AVAILABLE"
     try:
-        config_url = imagebuilder.config_presigned_url
-    except ClusterActionError as e:
-        # Do not fail request when S3 bucket is not available
-        LOGGER.error(e)
+        config_url = imagebuilder.presigned_config_url
+    except AWSClientError as e:
+       LOGGER.error(e)
 
     return DescribeImageResponseContent(
         image_configuration=ImageConfigurationStructure(url=config_url),

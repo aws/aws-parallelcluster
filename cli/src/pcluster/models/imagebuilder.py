@@ -241,10 +241,7 @@ class ImageBuilder:
     @property
     def presigned_config_url(self) -> str:
         """Return a pre-signed Url to download the config from the S3 bucket."""
-        return self.bucket.get_config_presigned_url(
-            config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name"),
-            version_id=self.stack.original_config_version,
-        )
+        return self.bucket.get_config_presigned_url(config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name"))
 
     @property
     def stack(self):
