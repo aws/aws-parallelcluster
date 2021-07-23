@@ -82,7 +82,8 @@ Resources:
             Condition:
               ArnLike:
                 iam:PolicyARN:
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster-*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
@@ -91,6 +92,8 @@ Resources:
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
             Effect: Allow
             Sid: IamPolicy
 
@@ -422,14 +425,14 @@ Resources:
             Action:
               - logs:CreateLogGroup
             Resource:
-              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
           - Sid: CloudFormation
             Effect: Allow
             Action:
               - cloudformation:DescribeStacks
               - cloudformation:CreateStack
             Resource:
-              - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*'
+              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
           - Sid: Lambda
             Effect: Allow
             Action:
@@ -437,27 +440,27 @@ Resources:
               - lambda:GetFunction
               - lambda:AddPermission
             Resource:
-              - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
+          - Sid: ImageBuilderGet
+            Effect: Allow
+            Action:
+              - imagebuilder:Get*
+            Resource: '*'
           - Sid: ImageBuilder
             Effect: Allow
             Action:
               - imagebuilder:CreateImage
               - imagebuilder:TagResource
-              - imagebuilder:GetImage
-              - imagebuilder:GetImageRecipe
               - imagebuilder:CreateImageRecipe
-              - imagebuilder:GetComponent
               - imagebuilder:CreateComponent
-              - imagebuilder:GetInfrastructureConfiguration
               - imagebuilder:CreateDistributionConfiguration
-              - imagebuilder:GetDistributionConfiguration
               - imagebuilder:CreateInfrastructureConfiguration
             Resource:
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:component/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
           - Sid: S3Bucket
             Effect: Allow
             Action:
@@ -474,7 +477,7 @@ Resources:
               - sns:Subscribe
               - sns:Publish
             Resource:
-              - !Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
           - Sid: S3Objects
             Effect: Allow
             Action:
@@ -482,12 +485,6 @@ Resources:
               - s3:GetObject
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
-          - Sid: ImageBuilderGetImage
-            Effect: Allow
-            Action:
-              - imagebuilder:GetImage
-            Resource:
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:image/*'
 
   ParallelClusterDeleteImageManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -521,18 +518,18 @@ Resources:
               - imagebuilder:DeleteInfrastructureConfiguration
               - imagebuilder:DeleteDistributionConfiguration
             Resource:
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:component/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
-              - !Sub 'arn:${AWS::Partition}:imagebuilder:${AWS::Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
           - Sid: CloudFormation
             Effect: Allow
             Action:
               - cloudformation:DescribeStacks
               - cloudformation:DeleteStack
             Resource:
-              - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*'
+              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
           - Sid: Lambda
             Effect: Allow
             Action:
@@ -540,7 +537,7 @@ Resources:
               - lambda:DeleteFunction
               - lambda:AddPermission
             Resource:
-              - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
           - Sid: SNS
             Effect: Allow
             Action:
@@ -548,7 +545,7 @@ Resources:
               - SNS:Unsubscribe
               - SNS:GetTopicAttributes
             Resource:
-              - !Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
           - Sid: S3Bucket
             Effect: Allow
             Action:
@@ -571,8 +568,8 @@ Resources:
             Action:
               - logs:DeleteLogGroup
             Resource:
-              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/imagebuilder/ParallelClusterImage-*'
-              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/imagebuilder/ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
 
   ParallelClusterListImagesManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -614,5 +611,5 @@ Resources:
             Action:
               - cloudformation:DescribeStacks
             Resource:
-              - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*'
+              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
   
