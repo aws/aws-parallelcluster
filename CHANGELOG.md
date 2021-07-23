@@ -4,6 +4,9 @@ CHANGELOG
 2.11.4
 -----
 
+**CHANGES**
+- Upgrade Slurm to version 20.11.8.
+
 **BUG FIXES**
 - Disable update of ec2_iam_role parameter.
 
