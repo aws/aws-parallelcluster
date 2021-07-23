@@ -1,5 +1,5 @@
 usage: pcluster describe-image [-h] --image-id IMAGE_ID [--region REGION]
-                               [--debug]
+                               [--debug] [--query QUERY]
 
 Get detailed information about an existing image.
 
@@ -8,3 +8,4 @@ optional arguments:
   --image-id IMAGE_ID  Id of the image.
   --region REGION      AWS Region that the operation corresponds to.
   --debug              Turn on debug logging.
+  --query QUERY        JMESpath query to perform on output.

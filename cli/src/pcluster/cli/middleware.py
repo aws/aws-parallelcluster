@@ -44,10 +44,6 @@ def add_additional_args(parser_map):
     parser_map["create-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
     parser_map["delete-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
     parser_map["update-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
-    queryable_operations = ["create-cluster", "delete-cluster", "update-cluster", "list-clusters", "list-images"]
-
-    for operation in queryable_operations:
-        parser_map[operation].add_argument("--query", help="JMESpath query to perform on output.")
 
 
 def middleware_hooks():
@@ -55,13 +51,7 @@ def middleware_hooks():
 
     The map has operation names as the keys and functions as values.
     """
-    return {
-        "create-cluster": create_cluster,
-        "delete-cluster": delete_cluster,
-        "update-cluster": update_cluster,
-        "list-images": identity,
-        "list-clusters": identity,
-    }
+    return {"create-cluster": create_cluster, "delete-cluster": delete_cluster, "update-cluster": update_cluster}
 
 
 def queryable(func):
@@ -74,11 +64,6 @@ def queryable(func):
             raise ParameterException({"message": "Invalid query string.", "query": query})
 
     return wrapper
-
-
-@queryable
-def identity(func, _body, kwargs):
-    return func(**kwargs)
 
 
 @queryable

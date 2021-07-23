@@ -1,7 +1,7 @@
 usage: pcluster update-compute-fleet [-h] --cluster-name CLUSTER_NAME
                                      [--region REGION] --status
                                      {START_REQUESTED,STOP_REQUESTED,ENABLED,DISABLED}
-                                     [--debug]
+                                     [--debug] [--query QUERY]
 
 Update the status of the cluster compute fleet.
 
@@ -12,3 +12,4 @@ optional arguments:
   --region REGION       AWS Region that the operation corresponds to.
   --status {START_REQUESTED,STOP_REQUESTED,ENABLED,DISABLED}
   --debug               Turn on debug logging.
+  --query QUERY         JMESpath query to perform on output.

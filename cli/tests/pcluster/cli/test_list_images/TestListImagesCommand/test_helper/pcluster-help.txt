@@ -1,6 +1,6 @@
 usage: pcluster list-images [-h] [--region REGION] [--next-token NEXT_TOKEN]
                             --image-status {AVAILABLE,PENDING,FAILED}
-                            [--debug]
+                            [--debug] [--query QUERY]
 
 Retrieve the list of existing custom images.
 
@@ -12,3 +12,4 @@ optional arguments:
   --image-status {AVAILABLE,PENDING,FAILED}
                         Filter images by the status provided.
   --debug               Turn on debug logging.
+  --query QUERY         JMESpath query to perform on output.

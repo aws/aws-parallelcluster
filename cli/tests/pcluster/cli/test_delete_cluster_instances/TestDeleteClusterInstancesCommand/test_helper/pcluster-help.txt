@@ -1,6 +1,6 @@
 usage: pcluster delete-cluster-instances [-h] --cluster-name CLUSTER_NAME
                                          [--region REGION] [--force FORCE]
-                                         [--debug]
+                                         [--debug] [--query QUERY]
 
 Initiate the forced termination of all cluster compute nodes. Does not work
 with AWS Batch clusters.
@@ -13,3 +13,4 @@ optional arguments:
   --force FORCE         Force the deletion also when the cluster with the
                         given name is not found. (Defaults to 'false'.)
   --debug               Turn on debug logging.
+  --query QUERY         JMESpath query to perform on output.

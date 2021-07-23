@@ -5,6 +5,7 @@ usage: pcluster build-image [-h]
                             [--rollback-on-failure ROLLBACK_ON_FAILURE]
                             [--region REGION] --image-configuration
                             IMAGE_CONFIGURATION --image-id IMAGE_ID [--debug]
+                            [--query QUERY]
 
 Create a custom ParallelCluster image in a given region.
 
@@ -27,3 +28,4 @@ optional arguments:
                         Image configuration as a YAML document
   --image-id IMAGE_ID   Id of the Image that will be built.
   --debug               Turn on debug logging.
+  --query QUERY         JMESpath query to perform on output.
