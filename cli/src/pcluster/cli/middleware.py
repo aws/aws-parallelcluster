@@ -21,8 +21,10 @@ provided.
 
 import argparse
 import boto3
+import jmespath
 
 import pcluster.cli.model
+from pcluster.cli.exceptions import ParameterException
 
 
 def _cluster_status(cluster_name):
@@ -49,13 +51,22 @@ def middleware_hooks():
 
     The map has operation names as the keys and functions as values.
     """
-    return {
-        "create-cluster": create_cluster,
-        "delete-cluster": delete_cluster,
-        "update-cluster": update_cluster,
-    }
+    return {"create-cluster": create_cluster, "delete-cluster": delete_cluster, "update-cluster": update_cluster}
 
 
+def queryable(func):
+    def wrapper(dest_func, _body, kwargs):
+        query = kwargs.pop("query", None)
+        ret = func(dest_func, _body, kwargs)
+        try:
+            return jmespath.search(query, ret) if query else ret
+        except jmespath.exceptions.ParseError:
+            raise ParameterException({"message": "Invalid query string.", "query": query})
+
+    return wrapper
+
+
+@queryable
 def update_cluster(func, _body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)
@@ -67,6 +78,7 @@ def update_cluster(func, _body, kwargs):
     return ret
 
 
+@queryable
 def create_cluster(func, body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)
@@ -78,6 +90,7 @@ def create_cluster(func, body, kwargs):
     return ret
 
 
+@queryable
 def delete_cluster(func, _body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)

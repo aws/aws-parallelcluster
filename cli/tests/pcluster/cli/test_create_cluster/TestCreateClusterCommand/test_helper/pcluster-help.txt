@@ -5,7 +5,7 @@ usage: pcluster create-cluster [-h] [--region REGION]
                                [--rollback-on-failure ROLLBACK_ON_FAILURE]
                                --cluster-name CLUSTER_NAME
                                --cluster-configuration CLUSTER_CONFIGURATION
-                               [--debug]
+                               [--debug] [--query QUERY]
 
 Create a managed cluster in a given region.
 
@@ -29,3 +29,4 @@ optional arguments:
   --cluster-configuration CLUSTER_CONFIGURATION
                         Cluster configuration as a YAML document
   --debug               Turn on debug logging.
+  --query QUERY         JMESPath query to perform on output.
