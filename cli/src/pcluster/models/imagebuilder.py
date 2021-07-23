@@ -218,6 +218,7 @@ class ImageBuilder:
     @property
     def s3_artifact_dir(self):
         """Get s3 artifacts dir."""
+        print("artifact_dir")
         if self.__s3_artifact_dir is None:
             self.__s3_artifact_dir = self._get_artifact_dir()
         return self.__s3_artifact_dir
@@ -225,6 +226,7 @@ class ImageBuilder:
     @property
     def config_url(self):
         """Return configuration file S3 bucket url."""
+        print("getting config url...")
         if not self.__config_url:
             # get config url in build image command
             if self.__source_config_text:

@@ -746,7 +746,7 @@ class TestDescribeImage:
             return_value=_create_image_info("image1"),
         )
         mocker.patch(
-            "pcluster.aws.s3.S3Client.create_presigned_url",
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
             return_value="https://parallelcluster.aws.com/bucket/key",
         )
 
@@ -787,7 +787,7 @@ class TestDescribeImage:
             return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS),
         )
         mocker.patch(
-            "pcluster.aws.s3.S3Client.create_presigned_url",
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
             return_value="https://parallelcluster.aws.com/bucket/key",
         )
 
@@ -833,7 +833,7 @@ class TestDescribeImage:
             return_value={"status": ImageBuilderImageStatus.FAILED, "reason": "img test reason"},
         )
         mocker.patch(
-            "pcluster.aws.s3.S3Client.create_presigned_url",
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
             return_value="https://parallelcluster.aws.com/bucket/key",
         )
 
