@@ -210,6 +210,8 @@ def _run_operation(model, args, extra_args):
             raise e
         except APIOperationException as e:
             raise e
+        except ParameterException as e:
+            raise e
         except Exception as e:
             # format exception messages in the same manner as the api
             message = pcluster.api.errors.exception_message(e)
