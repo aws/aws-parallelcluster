@@ -13,6 +13,7 @@
 
 import json
 
+import jmespath
 import yaml
 from connexion.utils import get_function_from_name
 
@@ -161,6 +162,7 @@ def call(func_str, *args, **kwargs):
     tuple (instead of an object). Also uses the flask json-ifier to ensure data
     is converted the same as the API.
     """
+    query = kwargs.pop("query", None)
     func = get_function_from_name(func_str)
     ret = func(*args, **kwargs)
     if isinstance(ret, tuple):
@@ -168,4 +170,5 @@ def call(func_str, *args, **kwargs):
         if status_code >= 400:
             data = json.loads(encoder.JSONEncoder().encode(ret))
             raise APIOperationException(data)
-    return json.loads(encoder.JSONEncoder().encode(ret))
+    data = json.loads(encoder.JSONEncoder().encode(ret))
+    return jmespath.search(query, data) if query else data

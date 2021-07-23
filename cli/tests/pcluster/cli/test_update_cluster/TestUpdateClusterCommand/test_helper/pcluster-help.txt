@@ -4,7 +4,7 @@ usage: pcluster update-cluster [-h] --cluster-name CLUSTER_NAME
                                [--region REGION] [--dryrun DRYRUN]
                                [--force-update FORCE_UPDATE]
                                --cluster-configuration CLUSTER_CONFIGURATION
-                               [--debug]
+                               [--debug] [--query QUERY]
 
 Update a cluster managed in a given region.
 
@@ -28,3 +28,4 @@ optional arguments:
   --cluster-configuration CLUSTER_CONFIGURATION
                         Cluster configuration as a YAML document
   --debug               Turn on debug logging.
+  --query QUERY         JMESPath query to perform on output.

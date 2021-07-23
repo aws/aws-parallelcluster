@@ -33,6 +33,6 @@ class ConfigureCommand(CliCommand):
         parser.add_argument("-c", "--config", help="Path of the output config file.")
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102  #pylint: disable=unused-argument
-        from easyconfig import configure
+        from pcluster.cli.commands.configure.easyconfig import configure
 
         configure(args)
