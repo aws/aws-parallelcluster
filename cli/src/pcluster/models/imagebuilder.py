@@ -218,7 +218,6 @@ class ImageBuilder:
     @property
     def s3_artifact_dir(self):
         """Get s3 artifacts dir."""
-        print("artifact_dir")
         if self.__s3_artifact_dir is None:
             self.__s3_artifact_dir = self._get_artifact_dir()
         return self.__s3_artifact_dir
