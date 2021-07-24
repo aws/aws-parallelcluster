@@ -294,7 +294,7 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True):
+    def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True, wait=True, log_error=True):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
@@ -309,7 +309,9 @@ def clusters_factory(request, region):
             region=region,
         )
         if not request.config.getoption("cluster"):
-            factory.create_cluster(cluster, extra_args=extra_args, raise_on_error=raise_on_error)
+            cluster.creation_response = factory.create_cluster(
+                cluster, extra_args=extra_args, raise_on_error=raise_on_error, wait=wait, log_error=log_error
+            )
         return cluster
 
     yield _cluster_factory

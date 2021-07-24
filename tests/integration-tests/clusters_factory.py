@@ -56,7 +56,7 @@ class Cluster:
         self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
-        self.cfn_stack_arn = None
+        self.__cfn_stack_arn = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
@@ -69,10 +69,14 @@ class Cluster:
         """
         self.create_complete = True
 
-    def update(self, config_file, force=True):
+    def update(self, config_file, force=True, extra_args=None, raise_on_error=True, wait=True, log_error=True):
         """
         Update a cluster with an already updated config.
         :param force: if to use --force flag when update
+        :param extra_args: list of strings; extra args to pass to `pcluster update-cluster`
+        :param raise_on_error: raise exception if cluster creation fails
+        :param wait: wait for update completion
+        :param log_error: log error when error occurs. This can be set to False when error is expected
         """
         # update the cluster
         logging.info("Updating cluster {0} with config {1}".format(self.name, config_file))
@@ -83,17 +87,22 @@ class Cluster:
             config_file,
             "--cluster-name",
             self.name,
-            "--wait",
         ]
+        if wait:
+            command.append("--wait")
         if force:
             command.extend(["--force-update", "true"])
-        result = run_command(command)
-        logging.info("update-cluster --wait response: %s", result.stdout)
+        if extra_args:
+            command.extend(extra_args)
+        result = run_command(command, raise_on_error=raise_on_error, log_error=log_error)
+        logging.info("update-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
         if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
             error = f"Cluster update failed for {self.name}"
-            logging.error(error)
-            raise Exception(error)
+            if log_error:
+                logging.error(error)
+            if raise_on_error:
+                raise Exception(error)
         logging.info("Cluster {0} updated successfully".format(self.name))
         # Only update config file attribute if update is successful
         self.config_file = config_file
@@ -103,7 +112,7 @@ class Cluster:
         # reset cached properties
         self._reset_cached_properties()
 
-        return result
+        return response
 
     def delete(self, delete_logs=False):
         """Delete this cluster."""
@@ -129,6 +138,7 @@ class Cluster:
         else:
             logging.warning("CloudWatch logs for cluster %s are preserved due to failure.", self.name)
         try:
+            self.cfn_stack_arn  # Cache cfn_stack_arn attribute before stack deletion
             result = run_command(cmd_args, log_error=False)
             if "DELETE_FAILED" in result.stdout:
                 error = "Cluster deletion failed for {0} with output: {1}".format(self.name, result.stdout)
@@ -187,25 +197,38 @@ class Cluster:
             logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def instances(self, desired_instance_role=None):
-        """Run pcluster instances and return the result."""
-        if desired_instance_role:
-            if desired_instance_role == "HeadNode":
-                desired_instance_role = "HEAD"
-            elif desired_instance_role == "Compute":
-                desired_instance_role = "COMPUTE"
+    def describe_compute_fleet(self):
+        """Run pcluster describe-compute-fleet and return the result."""
+        cmd_args = ["pcluster", "describe-compute-fleet", "--cluster-name", self.name]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            response = json.loads(result.stdout)
+            logging.info("Describe cluster %s compute fleet successfully", self.name)
+            return response
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                "Failed when getting cluster compute fleet with error:\n%s\nand output:\n%s", e.stderr, e.stdout
+            )
+            raise
+
+    def get_cluster_instance_ids(self, node_type=None, queue_name=None):
+        """Run pcluster describe-cluster-instances and collect instance ids."""
+        cmd_args = ["pcluster", "describe-cluster-instances", "--cluster-name", self.name]
+        if node_type:
+            if node_type == "HeadNode":
+                node_type = "HEAD"
+            elif node_type == "Compute":
+                node_type = "COMPUTE"
             else:
                 raise ValueError
-        cmd_args = ["pcluster", "describe-cluster-instances", "--cluster-name", self.name]
+            cmd_args.extend(["--node-type", node_type])
+        if queue_name:
+            cmd_args.extend(["--queue-name", queue_name])
         try:
             result = run_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Get cluster {0} instances successfully".format(self.name))
-            cluster_instances = []
-            for instance in response["instances"]:
-                if not desired_instance_role or desired_instance_role == instance["nodeType"]:
-                    cluster_instances.append(instance["instanceId"])
-            return cluster_instances
+            return [instance["instanceId"] for instance in response["instances"]]
         except subprocess.CalledProcessError as e:
             logging.error("Failed when getting cluster instances with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
@@ -301,6 +324,15 @@ class Cluster:
             self.__cfn_resources = retrieve_cfn_resources(self.cfn_name, self.region)
         return self.__cfn_resources
 
+    @property
+    def cfn_stack_arn(self):
+        """Return CloudFormation stack ARN."""
+        if not self.__cfn_stack_arn:
+            self.__cfn_stack_arn = boto3.client("cloudformation").describe_stacks(StackName=self.name)["Stacks"][0][
+                "StackId"
+            ]
+        return self.__cfn_stack_arn
+
     def _reset_cached_properties(self):
         """Discard cached data."""
         self.__cfn_parameters = None
@@ -334,12 +366,14 @@ class ClustersFactory:
         self.__created_clusters = {}
         self._delete_logs_on_success = delete_logs_on_success
 
-    def create_cluster(self, cluster, extra_args=None, raise_on_error=True):
+    def create_cluster(self, cluster, extra_args=None, raise_on_error=True, wait=True, log_error=True):
         """
         Create a cluster with a given config.
         :param cluster: cluster to create.
         :param extra_args: list of strings; extra args to pass to `pcluster create`
         :param raise_on_error: raise exception if cluster creation fails
+        :param wait: wait for creation completion
+        :param log_error: log error when error occurs. This can be set to False when error is expected
         """
         name = cluster.name
         config = cluster.config_file
@@ -358,31 +392,30 @@ class ClustersFactory:
             config,
             "--cluster-name",
             name,
-            "--wait",
         ]
+        if wait:
+            create_cmd_args.append("--wait")
         if extra_args:
             create_cmd_args.extend(extra_args)
-        result = run_command(
-            create_cmd_args,
-            timeout=7200,
-            raise_on_error=raise_on_error,
-        )
+        result = run_command(create_cmd_args, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
         logging.info("create-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
-        cluster.cfn_stack_arn = response["cloudformationStackArn"]
-        if response.get("cloudFormationStackStatus") != "CREATE_COMPLETE":
-            error = f"Cluster creation failed for {name}"
-            logging.error(error)
-            if raise_on_error:
-                raise Exception(error)
+        if wait:
+            if response.get("cloudFormationStackStatus") != "CREATE_COMPLETE":
+                error = f"Cluster creation failed for {name}"
+                logging.error(error)
+                if raise_on_error:
+                    raise Exception(error)
+            else:
+                logging.info("Cluster {0} created successfully".format(name))
+                cluster.mark_as_created()
+            # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
+            # job submission right after creation. We need to investigate this further.
+            logging.info("Sleeping for 30 seconds in case cluster is not ready yet")
+            time.sleep(30)
         else:
-            logging.info("Cluster {0} created successfully".format(name))
-            cluster.mark_as_created()
-
-        # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
-        # job submission right after creation. We need to investigate this further.
-        logging.info("Sleeping for 30 seconds in case cluster is not ready yet")
-        time.sleep(30)
+            logging.info("Cluster {0} creation started successfully".format(name))
+        return response
 
     def destroy_cluster(self, name, test_passed):
         """Destroy a created cluster."""
