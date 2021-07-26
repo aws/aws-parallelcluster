@@ -1,4 +1,7 @@
+import json
 from collections import namedtuple
+
+from pcluster.api import encoder
 
 MockedBoto3Request = namedtuple(
     "MockedBoto3Request", ["method", "response", "expected_params", "generate_error", "error_code"]
@@ -13,3 +16,7 @@ def read_text(path):
     """Read the content of a file."""
     with path.open() as f:
         return f.read()
+
+
+def wire_translate(data):
+    return json.loads(encoder.JSONEncoder().encode(data))
