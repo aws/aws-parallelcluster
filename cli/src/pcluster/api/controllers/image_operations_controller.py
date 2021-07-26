@@ -45,6 +45,7 @@ from pcluster.api.models import (
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
@@ -203,10 +204,21 @@ def describe_image(image_id, region=None):
             raise NotFoundException("No image or stack associated to parallelcluster image id {}.".format(image_id))
 
 
+def _presigned_config_url(imagebuilder):
+    """Get the URL for the config as a pre-signed S3 URL."""
+    # Do not fail request when S3 bucket is not available
+    config_url = "NOT_AVAILABLE"
+    try:
+        config_url = imagebuilder.presigned_config_url
+    except AWSClientError as e:
+        LOGGER.error(e)
+    return config_url
+
+
 def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
         creation_time=to_iso_time(imagebuilder.image.creation_date),
-        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
         ec2_ami_info=Ec2AmiInfo(
@@ -225,7 +237,7 @@ def _image_to_describe_image_response(imagebuilder):
 def _stack_to_describe_image_response(imagebuilder):
     imagebuilder_image_state = imagebuilder.stack.image_state or dict()
     return DescribeImageResponseContent(
-        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
         image_build_status=imagebuilder.imagebuild_status,
         image_build_logs_arn=imagebuilder.stack.build_log,
