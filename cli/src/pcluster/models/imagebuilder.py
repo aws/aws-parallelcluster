@@ -76,7 +76,6 @@ from pcluster.validators.common import FailureLevel
 ImageBuilderStatusMapping = {
     "BUILD_IN_PROGRESS": [
         "CREATE_IN_PROGRESS",
-        "ROLLBACK_IN_PROGRESS",
         "UPDATE_IN_PROGRESS",
         "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
         "UPDATE_ROLLBACK_IN_PROGRESS",
@@ -86,6 +85,7 @@ ImageBuilderStatusMapping = {
         "IMPORT_ROLLBACK_IN_PROGRESS",
     ],
     "BUILD_FAILED": [
+        "ROLLBACK_IN_PROGRESS",
         "CREATE_FAILED",
         "ROLLBACK_FAILED",
         "ROLLBACK_COMPLETE",

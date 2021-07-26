@@ -345,6 +345,9 @@ def _image_status_to_cloudformation_status(image_status):
         ImageStatusFilteringOption.FAILED: {
             CloudFormationStackStatus.CREATE_FAILED,
             CloudFormationStackStatus.DELETE_FAILED,
+            CloudFormationStackStatus.ROLLBACK_FAILED,
+            CloudFormationStackStatus.ROLLBACK_COMPLETE,
+            CloudFormationStackStatus.ROLLBACK_IN_PROGRESS,
         },
     }
     return mapping.get(image_status, set())
