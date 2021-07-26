@@ -797,10 +797,10 @@ paths:
             nullable: true
         - name: rollbackOnFailure
           in: query
-          description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
+          description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
+            description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.)
             nullable: true
         - name: region
           in: query

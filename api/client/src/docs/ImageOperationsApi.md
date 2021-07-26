@@ -65,7 +65,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
     validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.) (optional)
     dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.) (optional)
-    rollback_on_failure = True # bool, none_type | When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.) (optional)
+    rollback_on_failure = True # bool, none_type | When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.) (optional)
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
@@ -93,7 +93,7 @@ Name | Type | Description  | Notes
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
  **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
  **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to &#39;false&#39;.) | [optional]
- **rollback_on_failure** | **bool, none_type**| When set, will automatically initiate an image stack rollback on failure. (Defaults to &#39;true&#39;.) | [optional]
+ **rollback_on_failure** | **bool, none_type**| When set, will automatically initiate an image stack rollback on failure. (Defaults to &#39;false&#39;.) | [optional]
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type

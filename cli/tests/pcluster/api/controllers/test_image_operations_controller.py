@@ -529,7 +529,7 @@ class TestBuildImage:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
         mocked_call.assert_called_with(
-            disable_rollback=rollback_on_failure is False,
+            disable_rollback=not rollback_on_failure if rollback_on_failure is not None else True,
             validator_suppressors=mocker.ANY,
             validation_failure_level=FailureLevel[ValidationLevel.INFO],
         )
