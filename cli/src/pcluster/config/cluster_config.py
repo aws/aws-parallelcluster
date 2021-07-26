@@ -67,6 +67,7 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
+    OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
 )
@@ -837,13 +838,9 @@ class BaseComputeResource(Resource):
     def __init__(
         self,
         name: str,
-        disable_simultaneous_multithreading: bool = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
-        self.disable_simultaneous_multithreading = Resource.init_param(
-            disable_simultaneous_multithreading, default=False
-        )
 
     def _register_validators(self):
         self._register_validator(NameValidator, name=self.name)
@@ -1013,6 +1010,7 @@ class BaseClusterConfig(Resource):
                 )
 
         self._register_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
+        self._register_validator(OverlappingMountDirValidator, mount_dir_list=self.mount_dir_list)
 
     @property
     def region(self):
@@ -1258,6 +1256,7 @@ class SlurmComputeResource(BaseComputeResource):
         min_count: int = None,
         spot_price: float = None,
         efa: Efa = None,
+        disable_simultaneous_multithreading: bool = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1265,6 +1264,9 @@ class SlurmComputeResource(BaseComputeResource):
         self.max_count = Resource.init_param(max_count, default=DEFAULT_MAX_COUNT)
         self.min_count = Resource.init_param(min_count, default=DEFAULT_MIN_COUNT)
         self.spot_price = Resource.init_param(spot_price)
+        self.disable_simultaneous_multithreading = Resource.init_param(
+            disable_simultaneous_multithreading, default=False
+        )
         self.__instance_type_info = None
         efa_supported = self.instance_type_info.is_efa_supported()
         self.efa = efa or Efa(enabled=efa_supported, implied=True)

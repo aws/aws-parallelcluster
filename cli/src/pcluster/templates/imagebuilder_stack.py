@@ -648,7 +648,7 @@ class ImageBuilderCdkStack(Stack):
                         resource="role",
                         region="",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX + "Cleanup"),
                         ),
                     )
@@ -692,7 +692,7 @@ class ImageBuilderCdkStack(Stack):
                         resource="instance-profile",
                         region="",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )
@@ -708,7 +708,7 @@ class ImageBuilderCdkStack(Stack):
                         resource="role",
                         region="",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )
@@ -886,7 +886,7 @@ class ImageBuilderCdkStack(Stack):
                         region="",
                         resource="role",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )
@@ -915,7 +915,7 @@ class ImageBuilderCdkStack(Stack):
                         region="",
                         resource="instance-profile",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )

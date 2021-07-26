@@ -212,12 +212,17 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
       ManagedPolicyArns:
+        # Required for Lambda logging and XRay
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        # Required to run ParallelCluster functionalities
         - !Ref ParallelClusterClusterPolicy
         - !Ref ParallelClusterClusterPolicyBatch
         - !Ref ParallelClusterBuildImageManagedPolicy
         - !Ref ParallelClusterDeleteImageManagedPolicy
         - !Ref ParallelClusterListImagesManagedPolicy
         - !Ref ParallelClusterDescribeImageManagedPolicy
+        - !Ref ParallelClusterLogRetrievalPolicy
 
   ### IAM POLICIES
 
@@ -262,7 +267,8 @@ Resources:
             Condition:
               ArnLike:
                 iam:PolicyARN:
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster-*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
@@ -271,6 +277,8 @@ Resources:
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
             Effect: Allow
             Sid: IamPolicy
 
@@ -284,6 +292,17 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteServiceLinkedRole
+            Resource:
+              # AWS Batch creates a service linked role automatically for the ComputeEnvironment
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/batch.amazonaws.com/*
+            Effect: Allow
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - batch.amazonaws.com
           - Action:
               - codebuild:*
             Resource: !Sub arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/pcluster-*
@@ -789,6 +808,32 @@ Resources:
               - cloudformation:DescribeStacks
             Resource:
               - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
+
+  ### LOG COMMANDS
+
+  ParallelClusterLogRetrievalPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Policies needed to retrieve cluster and images logs
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+            - logs:DescribeLogGroups
+            - logs:FilterLogEvents
+            - logs:GetLogEvents
+            - logs:CreateExportTask
+            - logs:DescribeLogStreams
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
 
   ### -----------
 

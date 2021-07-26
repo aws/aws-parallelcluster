@@ -2,16 +2,16 @@ Image:
   Os: centos7
   CustomAmi: ami-12345678
 HeadNode:
-  InstanceType: t2.micro  # t2.micro
+  InstanceType: t2.micro
   Networking:
-    SubnetId: subnet-12345678  # subnet-xxx
+    SubnetId: subnet-12345678
     ElasticIp: true  # true|false|EIP-id
     AssignPublicIp: True  # true|false
     AdditionalSecurityGroups:
       - sg-34567890
       - sg-45678901
     Proxy:
-      HttpProxyAddress: String  # https://proxy-address:port
+      HttpProxyAddress: https://proxy-address:port
   DisableSimultaneousMultithreading: false
   Ssh:
     KeyName: ec2-key-name
@@ -34,13 +34,13 @@ HeadNode:
     OnNodeStart:
       Script: https://test.tgz  # s3:// | https:// | file://*
       Args:
-        - String  # arg1
-        - stirng2
+        - arg1
+        - arg2
     OnNodeConfigured:
       Script: https://test.tgz  # s3:// | https:// | file://*
       Args:
-        - String  # arg1
-        - stirng2
+        - arg1
+        - arg2
   Iam:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
     S3Access:
@@ -70,13 +70,13 @@ Scheduling:
         OnNodeStart:
           Script: https://test.tgz  # s3:// | https:// | file://*
           Args:
-            - String  # arg1
-            - stirng2
+            - arg1
+            - arg2
         OnNodeConfigured:
           Script: https://test.tgz  # s3:// | https:// | file://*
           Args:
-            - String  # arg1
-            - stirng2
+            - arg1
+            - arg2
       Iam:
         S3Access:
           - BucketName: string1
@@ -104,7 +104,7 @@ Scheduling:
           Enabled: true
           Id: String
         Proxy:
-          HttpProxyAddress: String  # https://proxy-address:port
+          HttpProxyAddress: https://proxy-address:port
       ComputeResources:
         - Name: compute-resource-1
           InstanceType: c4.2xlarge
@@ -146,16 +146,16 @@ SharedStorage:
       DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 1024
       DataCompressionType: LZ4
-      ExportPath: String  # s3://bucket/folder
-      ImportPath: String  # s3://bucket
+      ExportPath: s3://bucket/folder
+      ImportPath: s3://bucket
       WeeklyMaintenanceStartTime: "1:00:00"
       AutomaticBackupRetentionDays: 0
       CopyTagsToBackups: true
       DailyAutomaticBackupStartTime: 01:03
       PerUnitStorageThroughput: 200
       # BackupId: backup-fedcba98 # BackupId cannot coexist with some of the fields
-      KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      # FileSystemId: fs-12345678123456789 # FileSystemId cannot coexist with some of the fields
+      KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      # FileSystemId: fs-12345678123456789 # FileSystemId cannot coexist with other fields
       AutoImportPolicy: NEW  # NEW | NEW_CHANGED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
@@ -181,7 +181,7 @@ Tags:
   - Key: two
     Value: two22
 CustomS3Bucket: String
-AdditionalResources: String  # https://template.url
+AdditionalResources: https://template.url
 DevSettings:
   ClusterTemplate: file:///tests/aws-parallelcluster-template-3.0.tgz
   Cookbook:
