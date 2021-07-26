@@ -82,14 +82,14 @@ def build_image(
     (Defaults to &#39;false&#39;.)
     :type dryrun: bool
     :param rollback_on_failure: When set, will automatically initiate an image stack rollback on failure.
-    (Defaults to &#39;true&#39;.)
+    (Defaults to &#39;false&#39;.)
     :type rollback_on_failure: bool
     :param region: AWS Region that the operation corresponds to.
     :type region: str
 
     :rtype: BuildImageResponseContent
     """
-    rollback_on_failure = rollback_on_failure in {True, None}
+    rollback_on_failure = rollback_on_failure if rollback_on_failure is not None else False
     disable_rollback = not rollback_on_failure
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun or False
