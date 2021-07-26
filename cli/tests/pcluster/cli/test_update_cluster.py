@@ -187,7 +187,7 @@ class TestUpdateClusterCommand:
         ]
         out = run(command)
         assert_that(out).is_equal_to(response_dict)
-        assert_that(update_cluster_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
+        assert_that(update_cluster_mock.call_args).is_length(2)
         expected_args = {
             "update_cluster_request_content": {"clusterConfiguration": ""},
             "cluster_name": "cluster",
