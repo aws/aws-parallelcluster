@@ -11,6 +11,8 @@ from assertpy import assert_that
 from pcluster.api.models import DeleteClusterResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
+from tests.pcluster.aws.dummy_aws_api import mock_aws_api
+from tests.utils import wire_translate
 
 
 class TestDeleteClusterCommand:
@@ -48,6 +50,39 @@ class TestDeleteClusterCommand:
         out, err = capsys.readouterr()
         assert_that(out + err).contains(error_message)
 
+    def test_execut_with_wait(self, mocker):
+        response_dict = {
+            "cluster": {
+                "clusterName": "cluster",
+                "cloudformationStackStatus": "DELETE_IN_PROGRESS",
+                "cloudformationStackArn": "arn:aws:cloudformation:us-east-2:000000000000:stack/cluster/aa",
+                "region": "eu-west-1",
+                "version": "3.0.0",
+                "clusterStatus": "DELETE_IN_PROGRESS",
+            }
+        }
+
+        delete_response_dict = {"message": "Successfully deleted cluster 'cluster'."}
+
+        delete_response = DeleteClusterResponseContent().from_dict(response_dict)
+        delete_cluster_mock = mocker.patch(
+            "pcluster.api.controllers.cluster_operations_controller.delete_cluster",
+            return_value=delete_response,
+            autospec=True,
+        )
+
+        cf_waiter_mock = mocker.patch("botocore.waiter.Waiter.wait")
+        mock_aws_api(mocker)
+
+        command = ["delete-cluster", "--cluster-name", "cluster", "--wait"]
+        out = run(command)
+
+        assert_that(out).is_equal_to(delete_response_dict)
+        assert_that(delete_cluster_mock.call_args).is_length(2)  # this is due to the decorator on delete_cluster
+        args_expected = {"region": None, "cluster_name": "cluster"}
+        delete_cluster_mock.assert_called_with(**args_expected)
+        assert_that(cf_waiter_mock.call_args.kwargs).is_equal_to({"StackName": "cluster"})
+
     def test_execute(self, mocker):
         response_dict = {
             "cluster": {
@@ -68,7 +103,9 @@ class TestDeleteClusterCommand:
         )
 
         out = run(["delete-cluster", "--cluster-name", "cluster"])
-        assert_that(out).is_equal_to(response_dict)
+
+        expected = wire_translate(response)
+        assert_that(out).is_equal_to(expected)
         assert_that(delete_cluster_mock.call_args).is_length(2)  # this is due to the decorator on delete_cluster
         args_expected = {"region": None, "cluster_name": "cluster"}
         delete_cluster_mock.assert_called_with(**args_expected)
