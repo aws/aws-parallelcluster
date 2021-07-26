@@ -102,6 +102,7 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "root_directory": "parallelcluster",
     "root_cluster_directory": "clusters",
     "source_config_name": "cluster-config.yaml",
+    "image_config_name": "image-config.yaml",
     "config_name": "cluster-config-with-implied-values.yaml",
     "template_name": "aws-parallelcluster.cfn.yaml",
     "instance_types_data_name": "instance-types-data.json",
