@@ -51,11 +51,18 @@ Parameters:
   EnableIamAdminAccess:
     Description: WARNING - setting this to true grants IAM admin privileges to the Lambda function
     Type: String
-    Default: true
+    Default: false
     AllowedValues:
       - true
       - false
 
+  CreateApiUserRole:
+    Description: Creates a IAM role authorized to invoke the API. The Api is configured with a resource based policy to grant invoke permission to the created user only.
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
 
 Mappings:
   ParallelCluster:
@@ -74,6 +81,18 @@ Globals:
   Api:
     Auth:
       DefaultAuthorizer: AWS_IAM
+      ResourcePolicy:
+        CustomStatements:
+          Effect: 'Deny'
+          Action: 'execute-api:Invoke'
+          Resource: ['execute-api:/*/*/*']
+          Principal: '*'
+          Condition:
+            StringNotLike:
+              aws:PrincipalArn: !If
+                - CreateApiUserRoleCondition
+                - !Sub arn:${AWS::Partition}:*::${AWS::AccountId}:*/${AWS::StackName}-ParallelClusterApiUserRole-*
+                - '*'
     TracingEnabled: True
     EndpointConfiguration:
       Type: REGIONAL
@@ -103,7 +122,8 @@ Conditions:
     - !Not [!Equals [!Ref VpcEndpointId, '']]
   DoNotUseCustomDomain: !And
     - !Not [!Condition UsePrivateVpcEndpoint]
-    - !Not [!Condition UseCustomDomain]
+    - !Not [!Condition UseCustomDomainAndRoute53Configuration]
+  CreateApiUserRoleCondition: !Equals [!Ref CreateApiUserRole, true]
 
 
 Resources:
@@ -199,6 +219,36 @@ Resources:
             Version: !Join
               - '-'
               - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
+
+  ParallelClusterApiUserRole:
+    Type: AWS::IAM::Role
+    Condition: CreateApiUserRoleCondition
+    Properties:
+      Path: /parallelcluster/
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              AWS:
+                - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+      Policies:
+        - PolicyName: ParallelClusterApiInvokePolicy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - execute-api:Invoke
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*/*
+                  - ApiId: !If
+                    - UseCustomDomainAndRoute53Configuration
+                    - !Ref ApiGatewayApiWithCustomDomainAndRoute53Configuration
+                    - !If
+                      - UsePrivateVpcEndpoint
+                      - !Ref ApiGatewayApiWithPrivateVpcEndpoint
+                      - !Ref ApiGatewayApiWithoutCustomDomain
+            Version: '2012-10-17'
 
   ParallelClusterUserRole:
     Type: AWS::IAM::Role
