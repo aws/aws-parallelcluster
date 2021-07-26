@@ -181,6 +181,7 @@ def gen_parser(model):
             )
 
         subparser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
+        subparser.add_argument("--query", help="JMESPath query to perform on output.")
         subparser.set_defaults(func=partial(dispatch, model))
 
     return parser, parser_map
@@ -209,6 +210,8 @@ def _run_operation(model, args, extra_args):
         except KeyboardInterrupt as e:
             raise e
         except APIOperationException as e:
+            raise e
+        except ParameterException as e:
             raise e
         except Exception as e:
             # format exception messages in the same manner as the api

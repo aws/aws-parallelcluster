@@ -48,6 +48,7 @@ REQUIRES = [
     "werkzeug~=2.0",
     "connexion~=2.7",
     "flask~=2.0",
+    "jmespath~=0.10",
 ]
 
 LAMBDA_REQUIRES = [

@@ -1103,7 +1103,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/ParallelClusterImage-",
+                                                    ":role/parallelcluster/ParallelClusterImage-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
@@ -1120,7 +1120,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":instance-profile/ParallelClusterImage/ParallelClusterImage-",
+                                                    ":instance-profile/parallelcluster/ParallelClusterImage-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
@@ -1391,7 +1391,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/" "ParallelClusterImageCleanup-",
+                                                    ":role/parallelcluster/" "ParallelClusterImageCleanup-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
@@ -1447,7 +1447,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":instance-profile/ParallelClusterImage/ParallelClusterImage-",
+                                                    ":instance-profile/parallelcluster/ParallelClusterImage-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
@@ -1464,7 +1464,7 @@ def test_imagebuilder_instance_role(
                                                     {"Ref": "AWS::Partition"},
                                                     ":iam::",
                                                     {"Ref": "AWS::AccountId"},
-                                                    ":role/ParallelClusterImage/ParallelClusterImage-",
+                                                    ":role/parallelcluster/ParallelClusterImage-",
                                                     {"Fn::Select": [2, {"Fn::Split": ["/", {"Ref": "AWS::StackId"}]}]},
                                                 ],
                                             ]
