@@ -138,7 +138,7 @@ class TestCreateClusterCommand:
 
         expected = wire_translate(response)
         assert_that(out).is_equal_to(expected)
-        assert_that(create_cluster_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
+        assert_that(create_cluster_mock.call_args).is_length(2)
         expected_args = {
             "suppress_validators": None,
             "validation_failure_level": None,
@@ -175,7 +175,7 @@ class TestCreateClusterCommand:
             ["create-cluster", "--cluster-name", "cluster", "--cluster-configuration", path, "--region", "eu-west-1"]
         )
         assert_that(out).is_equal_to(response_dict)
-        assert_that(create_cluster_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
+        assert_that(create_cluster_mock.call_args).is_length(2)
         expected_args = {
             "suppress_validators": None,
             "validation_failure_level": None,

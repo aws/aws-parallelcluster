@@ -78,7 +78,7 @@ class TestDeleteClusterCommand:
         out = run(command)
 
         assert_that(out).is_equal_to(delete_response_dict)
-        assert_that(delete_cluster_mock.call_args).is_length(2)  # this is due to the decorator on delete_cluster
+        assert_that(delete_cluster_mock.call_args).is_length(2)
         args_expected = {"region": None, "cluster_name": "cluster"}
         delete_cluster_mock.assert_called_with(**args_expected)
         assert_that(cf_waiter_mock.call_args[1]).is_equal_to({"StackName": "cluster"})
@@ -106,7 +106,7 @@ class TestDeleteClusterCommand:
 
         expected = wire_translate(response)
         assert_that(out).is_equal_to(expected)
-        assert_that(delete_cluster_mock.call_args).is_length(2)  # this is due to the decorator on delete_cluster
+        assert_that(delete_cluster_mock.call_args).is_length(2)
         args_expected = {"region": None, "cluster_name": "cluster"}
         delete_cluster_mock.assert_called_with(**args_expected)
 
