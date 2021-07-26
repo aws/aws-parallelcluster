@@ -39,6 +39,7 @@ from conftest_markers import (
 )
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
+from framework.credential_providers import aws_credential_provider
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
@@ -57,9 +58,7 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
-    set_credentials,
     set_logger_formatter,
-    unset_credentials,
 )
 
 from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
@@ -302,7 +301,7 @@ def _add_properties_to_report(item):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("setup_sts_credentials")
+@pytest.mark.usefixtures("setup_credentials")
 def clusters_factory(request, region):
     """
     Define a fixture to manage the creation and destruction of clusters.
@@ -364,18 +363,14 @@ def api_server_factory(
 
         if server_region not in api_servers:
             logging.info(f"Creating API Server stack: {api_stack_name} in {server_region}")
-            try:
-                set_credentials(server_region, request.config.getoption("credential"))
-                stack = CfnStack(
-                    name=api_stack_name,
-                    region=server_region,
-                    parameters=params,
-                    capabilities=["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"],
-                    template=api_infrastructure_s3_uri or stack_template_data,
-                )
-                cfn_stacks_factory.create_stack(stack)
-            finally:
-                unset_credentials()
+            stack = CfnStack(
+                name=api_stack_name,
+                region=server_region,
+                parameters=params,
+                capabilities=["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"],
+                template=api_infrastructure_s3_uri or stack_template_data,
+            )
+            cfn_stacks_factory.create_stack(stack)
             api_servers[server_region] = stack
         else:
             logging.info(f"Found cached API Server stack: {api_stack_name} in {server_region}")
@@ -660,7 +655,7 @@ def cfn_stacks_factory(request):
 
 
 @pytest.fixture()
-@pytest.mark.usefixtures("setup_sts_credentials")
+@pytest.mark.usefixtures("setup_credentials")
 def parameterized_cfn_stacks_factory(request):
     """Define a fixture that returns a parameterized stack factory and manages the stack creation and deletion."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
@@ -740,11 +735,10 @@ def random_az_selector(request):
 
 
 @pytest.fixture(scope="class", autouse=True)
-def setup_sts_credentials(region, request):
+def setup_credentials(region, request):
     """Setup environment for the integ tests"""
-    set_credentials(region, request.config.getoption("credential"))
-    yield
-    unset_credentials()
+    with aws_credential_provider(region, request.config.getoption("credential")):
+        yield
 
 
 # FixMe: double check if this fixture introduce unnecessary implication.
@@ -761,15 +755,12 @@ def get_az_id_to_az_name_map(region, credential):
     """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
     # credentials are managed manually rather than via setup_sts_credentials because this function
     # is called by a session-scoped fixture, which cannot make use of a class-scoped fixture.
-    set_credentials(region, credential)
-    try:
+    with aws_credential_provider(region, credential):
         ec2_client = boto3.client("ec2", region_name=region)
         return {
             entry.get("ZoneId"): entry.get("ZoneName")
             for entry in ec2_client.describe_availability_zones().get("AvailabilityZones")
         }
-    finally:
-        unset_credentials()
 
 
 def get_availability_zones(region, credential):
@@ -780,9 +771,8 @@ def get_availability_zones(region, credential):
     it cannot utilize setup_sts_credentials, which is required in opt-in regions in order to call
     describe_availability_zones.
     """
-    set_credentials(region, credential)
     az_list = []
-    try:
+    with aws_credential_provider(region, credential):
         client = boto3.client("ec2", region_name=region)
         response_az = client.describe_availability_zones(
             Filters=[
@@ -792,8 +782,6 @@ def get_availability_zones(region, credential):
         )
         for az in response_az.get("AvailabilityZones"):
             az_list.append(az.get("ZoneName"))
-    finally:
-        unset_credentials()
     return az_list
 
 
@@ -1040,21 +1028,16 @@ def api_infrastructure_s3_uri(request):
     retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
 )
 def _create_vpc_stack(request, template, region, cfn_stacks_factory):
-    try:
-        set_credentials(region, request.config.getoption("credential"))
-        if request.config.getoption("vpc_stack"):
-            logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
-            stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
-        else:
-            stack = CfnStack(
-                name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
-                region=region,
-                template=template.to_json(),
-            )
-            cfn_stacks_factory.create_stack(stack)
-
-    finally:
-        unset_credentials()
+    if request.config.getoption("vpc_stack"):
+        logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
+        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
+    else:
+        stack = CfnStack(
+            name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(stack)
     return stack
 
 
