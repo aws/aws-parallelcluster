@@ -148,7 +148,7 @@ class TestUpdateClusterCommand:
             "validation_failure_level": None,
         }
         update_cluster_mock.assert_called_with(**expected_args)
-        assert_that(cf_waiter_mock.call_args.kwargs).is_equal_to({"StackName": "cluster"})
+        assert_that(cf_waiter_mock.call_args[1]).is_equal_to({"StackName": "cluster"})
         describe_cluster_mock.assert_called_with(cluster_name="cluster")
 
     def test_execute(self, mocker, test_datadir):
