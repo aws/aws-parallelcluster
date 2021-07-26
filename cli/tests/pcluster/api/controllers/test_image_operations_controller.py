@@ -168,6 +168,9 @@ class TestListImages:
             _create_stack("image4", CloudFormationStackStatus.DELETE_IN_PROGRESS),
             _create_stack("image5", CloudFormationStackStatus.DELETE_FAILED),
             _create_stack("image6", CloudFormationStackStatus.CREATE_FAILED),
+            _create_stack("image7", CloudFormationStackStatus.ROLLBACK_FAILED),
+            _create_stack("image8", CloudFormationStackStatus.ROLLBACK_COMPLETE),
+            _create_stack("image9", CloudFormationStackStatus.ROLLBACK_IN_PROGRESS),
         ]
         mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
 
@@ -188,6 +191,30 @@ class TestListImages:
                     "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
                     "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
                     "cloudformationStackArn": "arn:image6",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image7",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_FAILED,
+                    "cloudformationStackArn": "arn:image7",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image8",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_COMPLETE,
+                    "cloudformationStackArn": "arn:image8",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image9",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_IN_PROGRESS,
+                    "cloudformationStackArn": "arn:image9",
                     "region": "us-east-1",
                     "version": "3.0.0",
                 },
