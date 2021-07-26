@@ -81,6 +81,7 @@ class TestDeleteClusterCommand:
         assert_that(delete_cluster_mock.call_args).is_length(2)  # this is due to the decorator on delete_cluster
         args_expected = {"region": None, "cluster_name": "cluster"}
         delete_cluster_mock.assert_called_with(**args_expected)
+        print(cf_waiter_mock.call_args.kwargs)
         assert_that(cf_waiter_mock.call_args.kwargs).is_equal_to({"StackName": "cluster"})
 
     def test_execute(self, mocker):
