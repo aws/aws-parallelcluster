@@ -7,13 +7,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-usage="$(basename "$0") [-h] --s3-bucket bucket-name --ecr-repo repo-name --region aws-region)"
+usage="$(basename "$0") [-h] --s3-bucket bucket-name --ecr-repo repo-name --region aws-region [--stack-name name] [--enable-iam-admin true|false] [--create-api-user  true|false])"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 S3_BUCKET=
 ECR_REPO=
 STACK_NAME="ParallelClusterApi"
+ENABLE_IAM_ADMIN="true"
+CREATE_API_USER="false"
 while [[ $# -gt 0 ]]
 do
 key="$1"
@@ -40,6 +42,16 @@ case $key in
     ;;
     --stack-name)
     export STACK_NAME=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --enable-iam-admin)
+    export ENABLE_IAM_ADMIN=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --create-api-user)
+    export CREATE_API_USER=$2
     shift # past argument
     shift # past value
     ;;
@@ -75,6 +87,7 @@ aws cloudformation deploy \
     --stack-name ${STACK_NAME} \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
+                          EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
     --capabilities CAPABILITY_NAMED_IAM
 
 echo "Updating API Lambda since updates are not fully automated yet"
