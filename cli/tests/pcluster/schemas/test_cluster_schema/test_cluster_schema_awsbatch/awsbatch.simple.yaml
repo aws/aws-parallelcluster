@@ -1,9 +1,9 @@
 Image:
   Os: alinux2
 HeadNode:
-  InstanceType: String  # t2.micro
+  InstanceType: t2.micro
   Ssh:
-    KeyName: String  # ec2-key-name
+    KeyName: ec2-key-name
   Networking:
     SubnetId: subnet-12345678
 Scheduling:
