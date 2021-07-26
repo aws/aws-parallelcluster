@@ -921,14 +921,14 @@ paths:
           type: boolean
         style: form
       - description: "When set, will automatically initiate an image stack rollback\
-          \ on failure. (Defaults to 'true'.)"
+          \ on failure. (Defaults to 'false'.)"
         explode: true
         in: query
         name: rollbackOnFailure
         required: false
         schema:
           description: "When set, will automatically initiate an image stack rollback\
-            \ on failure. (Defaults to 'true'.)"
+            \ on failure. (Defaults to 'false'.)"
           nullable: true
           type: boolean
         style: form
