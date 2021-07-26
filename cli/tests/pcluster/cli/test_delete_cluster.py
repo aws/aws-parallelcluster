@@ -50,7 +50,7 @@ class TestDeleteClusterCommand:
         out, err = capsys.readouterr()
         assert_that(out + err).contains(error_message)
 
-    def test_execut_with_wait(self, mocker):
+    def test_execute_with_wait(self, mocker):
         response_dict = {
             "cluster": {
                 "clusterName": "cluster",
@@ -81,8 +81,7 @@ class TestDeleteClusterCommand:
         assert_that(delete_cluster_mock.call_args).is_length(2)  # this is due to the decorator on delete_cluster
         args_expected = {"region": None, "cluster_name": "cluster"}
         delete_cluster_mock.assert_called_with(**args_expected)
-        print(cf_waiter_mock.call_args.kwargs)
-        assert_that(cf_waiter_mock.call_args.kwargs).is_equal_to({"StackName": "cluster"})
+        assert_that(cf_waiter_mock.call_args[1]).is_equal_to({"StackName": "cluster"})
 
     def test_execute(self, mocker):
         response_dict = {
