@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import itertools
 import json
 import logging
@@ -19,12 +20,12 @@ import sys
 import time
 import urllib.request
 import zipfile
-from datetime import datetime
 from io import BytesIO
 from shlex import quote
 from typing import NoReturn
 from urllib.parse import urlparse
 
+import dateutil.parser
 import pkg_resources
 import yaml
 from dateutil import tz
@@ -121,6 +122,25 @@ def camelcase(snake_case_word):
     """Convert the given snake case word into a camel case one."""
     parts = iter(snake_case_word.split("_"))
     return "".join(word.title() for word in parts)
+
+
+def to_iso_time(time_in):
+    """
+    Convert a given string or datetime into ISO 8601 format with milliseconds.
+
+    :param time_in: Time in a format that may be parsed
+    :return time in ISO 8601 UTC format with ms (e.g. 2021-07-15T01:22:02.655Z)
+    """
+    if time_in:
+        if isinstance(time_in, str):
+            time_ = dateutil.parser.parse(time_in)
+        elif isinstance(time_in, datetime.date):
+            time_ = time_in.replace(tzinfo=datetime.timezone.utc)
+        else:
+            raise TypeError("to_iso_time object must be 'str' or 'datetime'.")
+        return time_.isoformat(timespec="milliseconds")[:-6] + "Z"
+    else:
+        return time_in
 
 
 def to_kebab_case(input):
@@ -255,6 +275,10 @@ def policy_name_to_arn(policy_name):
     return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
 
 
+def get_resource_name_from_resource_arn(resource_arn):
+    return resource_arn.rsplit("/", 1)[-1] if resource_arn else ""
+
+
 def grouper(iterable, size):
     """Slice iterable into chunks of size."""
     itr = iter(iterable)
@@ -294,7 +318,8 @@ def timestamp_to_isoformat(timestamp, timezone=None):
     if not timezone:
         timezone = tz.tzlocal()
     # Forcing microsecond to 0 to avoid having them displayed.
-    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).isoformat(timespec="seconds")
+    time_ = datetime.datetime.fromtimestamp(timestamp / 1000, tz=timezone)
+    return time_.isoformat(timespec="seconds")
 
 
 def isoformat_to_epoch(time_isoformat):

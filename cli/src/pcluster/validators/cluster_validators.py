@@ -13,7 +13,7 @@ from abc import ABC
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
+from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
@@ -52,6 +52,11 @@ FSX_MESSAGES = {
         "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when an existing Lustre file system is specified.",
     }
 }
+
+HOST_NAME_MAX_LENGTH = 64
+# Max fqdn size is 255 characters, the first 64 are used for the hostname (e.g. queuename-st|dy-computeresourcename-N),
+# then we need to add an extra ., so we have 190 characters to be used for the clustername + domain-name.
+CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH = 255 - HOST_NAME_MAX_LENGTH - 1
 
 
 class ClusterNameValidator(Validator):
@@ -112,7 +117,7 @@ class CustomAmiTagValidator(Validator):
                     "The custom AMI may not have been created by pcluster. "
                     "You can ignore this warning if the AMI is shared or copied from another pcluster AMI. "
                     "If the AMI is indeed not created by pcluster, cluster creation will fail. "
-                    "If the cluster creation fails, please goto"
+                    "If the cluster creation fails, please go to "
                     "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html"
                     "#troubleshooting-stack-creation-failures for troubleshooting."
                 ),
@@ -173,7 +178,7 @@ class DisableSimultaneousMultithreadingArchitectureValidator(Validator):
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
-    def _validate(self, efa_enabled, os, architecture: str):
+    def _validate(self, efa_enabled: bool, os: str, architecture: str):
         if efa_enabled and os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
                 f"EFA is currently not supported on {os} for {architecture} architecture.",
@@ -188,12 +193,19 @@ class ArchitectureOsValidator(Validator):
     ARM AMIs are only available for a subset of the supported OSes.
     """
 
-    def _validate(self, os, architecture: str):
+    def _validate(self, os: str, architecture: str, custom_ami: str):
         allowed_oses = get_supported_os_for_architecture(architecture)
         if os not in allowed_oses:
             self._add_failure(
                 f"The architecture {architecture} is only supported "
                 f"for the following operating systems: {allowed_oses}.",
+                FailureLevel.ERROR,
+            )
+        if custom_ami is None and os == "centos7" and architecture == "arm64":
+            self._add_failure(
+                "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
+                "(M6g, C6g, etc.). To proceed please provide a custom AMI, "
+                "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes",
                 FailureLevel.ERROR,
             )
 
@@ -904,3 +916,37 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             NetworkInterfaces=network_interfaces,
             DryRun=True,
         )
+
+
+class HostedZoneValidator(Validator):
+    """Validate custom private domain in the same VPC as headnode."""
+
+    def _validate(self, hosted_zone_id, cluster_vpc, cluster_name):
+        if AWSApi.instance().route53.is_hosted_zone_private(hosted_zone_id):
+            vpc_ids = AWSApi.instance().route53.get_hosted_zone_vpcs(hosted_zone_id)
+            if cluster_vpc not in vpc_ids:
+                self._add_failure(
+                    f"Private Route53 hosted zone {hosted_zone_id} need to be associated with "
+                    f"the VPC of the cluster: {cluster_vpc}. "
+                    f"The VPCs associated with hosted zone are {vpc_ids}.",
+                    FailureLevel.ERROR,
+                )
+        else:
+            self._add_failure(
+                f"Hosted zone {hosted_zone_id} cannot be used. "
+                f"Public Route53 hosted zone is not officially supported by ParallelCluster.",
+                FailureLevel.ERROR,
+            )
+
+        domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(hosted_zone_id)
+        total_length = len(cluster_name) + len(domain_name)
+        if total_length > CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH:
+            self._add_failure(
+                (
+                    "Error: When specifying HostedZoneId, "
+                    f"the total length of cluster name {cluster_name} and domain name {domain_name} can not be "
+                    f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
+                    f"current length is {total_length}"
+                ),
+                FailureLevel.ERROR,
+            )

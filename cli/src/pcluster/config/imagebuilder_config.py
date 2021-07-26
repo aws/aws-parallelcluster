@@ -20,7 +20,7 @@ from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag
 from pcluster.imagebuilder_utils import ROOT_VOLUME_TYPE
 from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
-from pcluster.validators.iam_validators import InstanceProfileValidator, RoleValidator
+from pcluster.validators.iam_validators import IamPolicyValidator, InstanceProfileValidator, RoleValidator
 from pcluster.validators.imagebuilder_validators import (
     AMIVolumeSizeValidator,
     ComponentsValidator,
@@ -90,13 +90,17 @@ class Iam(Resource):
     def __init__(
         self,
         instance_role: str = None,
+        instance_profile: str = None,
         cleanup_lambda_role: str = None,
         additional_iam_policies: List[AdditionalIamPolicy] = (),
+        permissions_boundary: str = None,
     ):
         super().__init__()
         self.instance_role = Resource.init_param(instance_role)
         self.cleanup_lambda_role = Resource.init_param(cleanup_lambda_role)
         self.additional_iam_policies = additional_iam_policies
+        self.instance_profile = Resource.init_param(instance_profile)
+        self.permissions_boundary = Resource.init_param(permissions_boundary)
 
     @property
     def additional_iam_policy_arns(self) -> List[str]:
@@ -108,13 +112,26 @@ class Iam(Resource):
 
     def _register_validators(self):
         if self.instance_role:
-            if self.instance_role.split("/", 1)[0].endswith("instance-profile"):
-                self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_role)
-            else:
-                self._register_validator(RoleValidator, role_arn=self.instance_role)
+            self._register_validator(RoleValidator, role_arn=self.instance_role)
+        elif self.instance_profile:
+            self._register_validator(InstanceProfileValidator, instance_profile_arn=self.instance_profile)
 
         if self.cleanup_lambda_role:
             self._register_validator(RoleValidator, role_arn=self.cleanup_lambda_role)
+
+        if self.permissions_boundary:
+            self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
+
+
+class UpdateOsPackages(Resource):
+    """Represent the UpdateOsPackages configuration for the ImageBuilder."""
+
+    def __init__(
+        self,
+        enabled: bool = None,
+    ):
+        super().__init__()
+        self.enabled = enabled
 
 
 class Build(Resource):
@@ -129,7 +146,7 @@ class Build(Resource):
         tags: List[BaseTag] = None,
         security_group_ids: List[str] = None,
         components: List[Component] = None,
-        update_os_and_reboot: bool = None,
+        update_os_packages: UpdateOsPackages = None,
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
@@ -139,7 +156,7 @@ class Build(Resource):
         self.subnet_id = Resource.init_param(subnet_id)
         self.security_group_ids = security_group_ids
         self.components = components
-        self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
+        self.update_os_packages = update_os_packages
 
     def _register_validators(self):
         self._register_validator(

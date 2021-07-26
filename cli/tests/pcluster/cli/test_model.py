@@ -6,12 +6,11 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import base64
-
 import pytest
 from assertpy import assert_that
 
 from pcluster.cli.entrypoint import ParameterException, gen_parser
+from pcluster.cli.middleware import queryable
 
 
 def _model(params):
@@ -19,7 +18,7 @@ def _model(params):
 
 
 def _run_model(model, params):
-    parser, _parser_map = gen_parser(model)
+    parser, parser_map = gen_parser(model)
     args, _ = parser.parse_known_args(params)
     del args.__dict__["debug"]
     return args.func(args)
@@ -89,12 +88,11 @@ class TestCliModel:
             _run_model(model, ["op"])
 
     def test_file(self, identity_dispatch, test_datadir):
-        model = _model([{"body": False, "name": "file", "required": True, "type": "byte"}])
+        model = _model([{"body": False, "name": "file", "required": True, "type": "file"}])
         path = str(test_datadir / "file.txt")
         ret = _run_model(model, ["op", "--file", path])
         file_data = "asdf\n"
-        expected = base64.b64encode(file_data.encode("utf-8")).decode("utf-8")
-        assert_that(ret["file"]).is_equal_to(expected)
+        assert_that(ret["file"]).is_equal_to(file_data)
         path = str(test_datadir / "notfound")
         with pytest.raises(ParameterException):
             _run_model(model, ["op", "--file", path])
@@ -118,3 +116,17 @@ class TestCliModel:
         ret = _run_model(model, ["op", "--qparam", "1", "--param", "0.0"])
         assert_that(ret["body"]["param"]).is_equal_to(0.1)
         assert_that(ret["qparam"]).is_equal_to(7)
+
+    def test_query(self, mocker, identity_dispatch):
+        def op_middle(func, _body, kwargs):
+            return func(kwargs)["body"]
+
+        mocker.patch("pcluster.cli.entrypoint.middleware_hooks", return_value={"op": queryable(op_middle)})
+
+        model = _model(
+            [
+                {"body": True, "name": "param", "required": False, "type": "integer"},
+            ]
+        )
+        ret = _run_model(model, ["op", "--param", "1", "--query", "body.param"])
+        assert_that(ret).is_equal_to(1)

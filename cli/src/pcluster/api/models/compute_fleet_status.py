@@ -28,6 +28,7 @@ class ComputeFleetStatus(Model):
     STOP_REQUESTED = "STOP_REQUESTED"
     STOPPING = "STOPPING"
     STOPPED = "STOPPED"
+    UNKNOWN = "UNKNOWN"
     ENABLED = "ENABLED"
     DISABLED = "DISABLED"
 

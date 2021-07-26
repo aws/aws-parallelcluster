@@ -555,10 +555,13 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
         additional_iam_policies = {"Policy": f"arn:{_get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
-        if dict_has_nested_key(node_config, ("Iam", "InstanceRole")):
-            # AdditionalIamPolicies and InstanceRole can not co-exist
+        if dict_has_nested_key(node_config, ("Iam", "InstanceRole")) or dict_has_nested_key(
+            node_config, ("Iam", "InstanceProfile")
+        ):
+            # AdditionalIamPolicies, InstanceRole or InstanceProfile can not co-exist
             logging.info(
-                f"InstanceRole is specified, skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
+                "InstanceRole/InstanceProfile is specified, "
+                f"skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
             )
         else:
             logging.info(
@@ -864,11 +867,11 @@ def role_factory(region):
                 }
             ],
         }
-        iam_client.create_role(
+        role_arn = iam_client.create_role(
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
-        )
+        )["Role"]["Arn"]
 
         logging.info(f"Attaching iam policy to the role {iam_role_name}...")
         for policy in policies:
@@ -878,9 +881,9 @@ def role_factory(region):
         # put_key_policy step for creating KMS key, read the following link for reference :
         # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
         time.sleep(60)
-        logging.info(f"Iam role is ready: {iam_role_name}")
+        logging.info(f"Iam role is ready: {role_arn}")
         roles.append({"role_name": iam_role_name, "policies": policies})
-        return iam_role_name
+        return iam_role_name, role_arn
 
     yield create_role
 
@@ -891,6 +894,41 @@ def role_factory(region):
             iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy)
         logging.info(f"Deleting iam role {role_name}")
         iam_client.delete_role(RoleName=role_name)
+
+
+@pytest.fixture(scope="class")
+def instance_profile_factory(region, role_factory):
+    instance_profiles = []
+    iam_client = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_instance_profile(policies=()):
+        instance_profile_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating instance profile {instance_profile_name}")
+        instance_profile_arn = iam_client.create_instance_profile(InstanceProfileName=instance_profile_name)[
+            "InstanceProfile"
+        ]["Arn"]
+        role_name, _ = role_factory("ec2", policies)
+        iam_client.add_role_to_instance_profile(InstanceProfileName=instance_profile_name, RoleName=role_name)
+        logging.info(f"Iam profile is ready: {instance_profile_arn}")
+        instance_profiles.append({"profile_name": instance_profile_name, "role_name": role_name})
+        return instance_profile_arn
+
+    yield create_instance_profile
+
+    for instance_profile in instance_profiles:
+        profile_name = instance_profile["profile_name"]
+        role_name = instance_profile["role_name"]
+        iam_client.remove_role_from_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
+        logging.info(f"Deleting instance profile {profile_name}")
+        iam_client.delete_instance_profile(InstanceProfileName=profile_name)
 
 
 def _create_iam_policies(iam_policy_name, region, policy_filename):
@@ -1075,26 +1113,37 @@ def build_image():
     image_id_post_test = None
     region_post_test = None
 
-    def _build_image(image_id, region, cluster_config):
+    def _build_image(image_id, region, image_config):
         nonlocal image_id_post_test
         nonlocal region_post_test
         image_id_post_test = image_id
         region_post_test = region
 
         pcluster_build_image_result = run_command(
-            ["pcluster", "build-image", "--id", image_id, "-r", region, "-c", cluster_config.as_posix()]
+            [
+                "pcluster",
+                "build-image",
+                "--image-id",
+                image_id,
+                "--region",
+                region,
+                "--image-configuration",
+                image_config.as_posix(),
+            ]
         )
         return pcluster_build_image_result.stdout
 
     yield _build_image
     if image_id_post_test:
         pcluster_describe_image_result = run_command(
-            ["pcluster", "describe-image", "--id", image_id_post_test, "-r", region_post_test]
+            ["pcluster", "describe-image", "--image-id", image_id_post_test, "--region", region_post_test]
         )
         logging.info("Build image post process. Describe image result: %s" % pcluster_describe_image_result.stdout)
 
         # FIXME once the command return proper JSON
         if "build_failed" in pcluster_describe_image_result.stdout.lower():
-            run_command(["pcluster", "delete-image", "--id", image_id_post_test, "-r", region_post_test, "--force"])
+            run_command(
+                ["pcluster", "delete-image", "--image-id", image_id_post_test, "--region", region_post_test, "--force"]
+            )
             # sleep 90 seconds for image deletion
             time.sleep(90)

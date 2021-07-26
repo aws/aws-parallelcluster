@@ -17,7 +17,7 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
+from pcluster.schemas.cluster_schema import ClusterSchema, IamSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
 from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -30,11 +30,11 @@ def _check_cluster_schema(test_datadir, config_file_name):
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     print(input_yaml)
     copy_input_yaml = deepcopy(input_yaml)
-    cluster = ClusterSchema().load(copy_input_yaml)
+    cluster = ClusterSchema(cluster_name="clustername").load(copy_input_yaml)
     print(cluster)
 
     # Re-create Yaml file from model and compare content
-    cluster_schema = ClusterSchema()
+    cluster_schema = ClusterSchema(cluster_name="clustername")
     cluster_schema.context = {"delete_defaults_when_dump": True}
     output_json = cluster_schema.dump(cluster)
     assert_that(json.dumps(input_yaml, sort_keys=True)).is_equal_to(json.dumps(output_json, sort_keys=True))
@@ -77,6 +77,42 @@ def test_image_schema(os, custom_ami, failure_message):
         image = ImageSchema().load(image_schema)
         assert_that(image.os).is_equal_to(os)
         assert_that(image.custom_ami).is_equal_to(custom_ami)
+
+
+@pytest.mark.parametrize(
+    "instance_role, instance_profile, additional_iam_policies, failure_message",
+    [
+        (None, None, "arn:aws:iam::aws:policy/AdministratorAccess", False),
+        ("arn:aws:iam::aws:role/CustomHeadNodeRole", None, "arn:aws:iam::aws:policy/AdministratorAccess", True),
+        (
+            "arn:aws:iam::aws:role/CustomHeadNodeRole",
+            "arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile",
+            None,
+            True,
+        ),
+        (None, "arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile", None, False),
+        ("arn:aws:iam::aws:role/CustomHeadNodeRole", None, None, False),
+    ],
+)
+def test_iam_schema(instance_role, instance_profile, additional_iam_policies, failure_message):
+    iam_dict = dict()
+    if instance_role:
+        iam_dict["InstanceRole"] = instance_role
+    if instance_profile:
+        iam_dict["InstanceProfile"] = instance_profile
+    if additional_iam_policies:
+        iam_dict["AdditionalIamPolicies"] = [{"Policy": additional_iam_policies}]
+
+    if failure_message:
+        with pytest.raises(
+            ValidationError,
+            match="InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.",
+        ):
+            IamSchema().load(iam_dict)
+    else:
+        iam = IamSchema().load(iam_dict)
+        assert_that(iam.instance_role).is_equal_to(instance_role)
+        assert_that(iam.instance_profile).is_equal_to(instance_profile)
 
 
 DUMMY_AWSBATCH_QUEUE = {

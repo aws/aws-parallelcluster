@@ -21,8 +21,10 @@ provided.
 
 import argparse
 import boto3
+import jmespath
 
 import pcluster.cli.model
+from pcluster.cli.exceptions import ParameterException
 
 
 def _cluster_status(cluster_name):
@@ -41,6 +43,7 @@ def add_additional_args(parser_map):
     """
     parser_map["create-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
     parser_map["delete-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
+    parser_map["update-cluster"].add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
 
 
 def middleware_hooks():
@@ -48,20 +51,46 @@ def middleware_hooks():
 
     The map has operation names as the keys and functions as values.
     """
-    return {"create-cluster": create_cluster, "delete-cluster": delete_cluster}
+    return {"create-cluster": create_cluster, "delete-cluster": delete_cluster, "update-cluster": update_cluster}
 
 
-def create_cluster(func, body, kwargs):
+def queryable(func):
+    def wrapper(dest_func, _body, kwargs):
+        query = kwargs.pop("query", None)
+        ret = func(dest_func, _body, kwargs)
+        try:
+            return jmespath.search(query, ret) if query else ret
+        except jmespath.exceptions.ParseError:
+            raise ParameterException({"message": "Invalid query string.", "query": query})
+
+    return wrapper
+
+
+@queryable
+def update_cluster(func, _body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)
-    if wait:
+    if wait and not kwargs.get("dryrun"):
         cloud_formation = boto3.client("cloudformation")
-        waiter = cloud_formation.get_waiter("stack_create_complete")
-        waiter.wait(StackName=body["name"])
-        ret = _cluster_status(body["name"])
+        waiter = cloud_formation.get_waiter("stack_update_complete")
+        waiter.wait(StackName=kwargs["cluster_name"])
+        ret = _cluster_status(kwargs["cluster_name"])
     return ret
 
 
+@queryable
+def create_cluster(func, body, kwargs):
+    wait = kwargs.pop("wait", False)
+    ret = func(**kwargs)
+    if wait and not kwargs.get("dryrun"):
+        cloud_formation = boto3.client("cloudformation")
+        waiter = cloud_formation.get_waiter("stack_create_complete")
+        waiter.wait(StackName=body["clusterName"])
+        ret = _cluster_status(body["clusterName"])
+    return ret
+
+
+@queryable
 def delete_cluster(func, _body, kwargs):
     wait = kwargs.pop("wait", False)
     ret = func(**kwargs)

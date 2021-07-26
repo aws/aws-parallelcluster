@@ -9,6 +9,8 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import functools
+import json
 import logging
 import re
 import subprocess
@@ -19,12 +21,24 @@ import yaml
 from retrying import retry
 from utils import (
     dict_add_nested_key,
+    get_stack_id_tag_filter,
     retrieve_cfn_outputs,
     retrieve_cfn_parameters,
     retrieve_cfn_resources,
     retry_if_subprocess_error,
     run_command,
 )
+
+
+def suppress_and_log_exception(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.error("Failed when running function %s. Ignoring exception. Error: %s", func.__name__, e)
+
+    return wrapper
 
 
 class Cluster:
@@ -42,6 +56,7 @@ class Cluster:
         self.__cfn_parameters = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
+        self.cfn_stack_arn = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
@@ -54,13 +69,22 @@ class Cluster:
         """
         # update the cluster
         logging.info("Updating cluster {0} with config {1}".format(self.name, config_file))
-        command = ["pcluster", "update", "--config", config_file]
+        command = [
+            "pcluster",
+            "update-cluster",
+            "--cluster-configuration",
+            config_file,
+            "--cluster-name",
+            self.name,
+            "--wait",
+        ]
         if force:
-            command.append("--force")
-        command.append(self.name)
+            command.extend(["--force-update", "true"])
         result = run_command(command)
-        if "Status: {0} - UPDATE_COMPLETE".format(self.cfn_name) not in result.stdout:
-            error = "Cluster update failed for {0} with output: {1}".format(self.name, result.stdout)
+        logging.info("update-cluster --wait response: %s", result.stdout)
+        response = json.loads(result.stdout)
+        if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
+            error = f"Cluster update failed for {self.name}"
             logging.error(error)
             raise Exception(error)
         logging.info("Cluster {0} updated successfully".format(self.name))
@@ -78,7 +102,7 @@ class Cluster:
         """Delete this cluster."""
         if self.has_been_deleted:
             return
-        cmd_args = ["pcluster", "delete", self.name]
+        cmd_args = ["pcluster", "delete-cluster", "--cluster-name", self.name, "--wait"]
         if delete_logs:
             logging.warning("Updating stack %s to delete CloudWatch logs on stack deletion.", self.name)
             try:
@@ -114,7 +138,12 @@ class Cluster:
 
     def start(self):
         """Run pcluster start and return the result."""
-        cmd_args = ["pcluster", "start", self.name]
+        cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
+        scheduler = self.config["Scheduling"]["Scheduler"]
+        if scheduler == "slurm":
+            cmd_args.append("START_REQUESTED")
+        elif scheduler == "awsbatch":
+            cmd_args.append("ENABLED")
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Cluster {0} started successfully".format(self.name))
@@ -125,7 +154,12 @@ class Cluster:
 
     def stop(self):
         """Run pcluster stop and return the result."""
-        cmd_args = ["pcluster", "stop", self.name]
+        cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
+        scheduler = self.config["Scheduling"]["Scheduler"]
+        if scheduler == "slurm":
+            cmd_args.append("STOP_REQUESTED")
+        elif scheduler == "awsbatch":
+            cmd_args.append("DISABLED")
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Cluster {0} stopped successfully".format(self.name))
@@ -134,31 +168,36 @@ class Cluster:
             logging.error("Failed stopping cluster with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def status(self):
-        """Run pcluster stop and return the result."""
-        cmd_args = ["pcluster", "status", self.name]
+    def describe_cluster(self):
+        """Run pcluster describe-cluster and return the result."""
+        cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
         try:
             result = run_command(cmd_args, log_error=False)
+            response = json.loads(result.stdout)
             logging.info("Get cluster {0} status successfully".format(self.name))
-            return result.stdout
+            return response
         except subprocess.CalledProcessError as e:
             logging.error("Failed when getting cluster status with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
     def instances(self, desired_instance_role=None):
         """Run pcluster instances and return the result."""
-        if desired_instance_role and desired_instance_role not in ("HeadNode", "Compute"):
-            raise ValueError
-        cmd_args = ["pcluster", "instances", self.name]
+        if desired_instance_role:
+            if desired_instance_role == "HeadNode":
+                desired_instance_role = "HEAD"
+            elif desired_instance_role == "Compute":
+                desired_instance_role = "COMPUTE"
+            else:
+                raise ValueError
+        cmd_args = ["pcluster", "describe-cluster-instances", "--cluster-name", self.name]
         try:
             result = run_command(cmd_args, log_error=False)
+            response = json.loads(result.stdout)
             logging.info("Get cluster {0} instances successfully".format(self.name))
             cluster_instances = []
-            for entry in result.stdout.splitlines():
-                instance_role, instance_id = re.split("\t", entry)
-                instance_id = instance_id.strip()
-                if not desired_instance_role or desired_instance_role == instance_role:
-                    cluster_instances.append(instance_id)
+            for instance in response["instances"]:
+                if not desired_instance_role or desired_instance_role == instance["nodeType"]:
+                    cluster_instances.append(instance["instanceId"])
             return cluster_instances
         except subprocess.CalledProcessError as e:
             logging.error("Failed when getting cluster instances with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
@@ -214,7 +253,7 @@ class Cluster:
         if "HeadNodePublicIP" in self.cfn_outputs:
             return self.cfn_outputs["HeadNodePublicIP"]
         else:
-            ec2 = boto3.client("ec2")
+            ec2 = boto3.client("ec2", region_name=self.region)
             filters = [
                 {"Name": "tag:parallelcluster:cluster-name", "Values": [self.cfn_name]},
                 {"Name": "instance-state-name", "Values": ["running"]},
@@ -266,6 +305,25 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
+    def delete_resource_by_stack_id_tag(self):
+        """Delete resources by stack id tag."""
+        self._delete_snapshots()
+        self._delete_volumes()
+
+    @suppress_and_log_exception
+    def _delete_snapshots(self):
+        ec2_client = boto3.client("ec2", region_name=self.region)
+        snapshots = ec2_client.describe_snapshots(Filters=[get_stack_id_tag_filter(self.cfn_stack_arn)])["Snapshots"]
+        for snapshot in snapshots:
+            ec2_client.delete_snapshot(SnapshotId=snapshot["SnapshotId"])
+
+    @suppress_and_log_exception
+    def _delete_volumes(self):
+        ec2_client = boto3.client("ec2", region_name=self.region)
+        volumes = ec2_client.describe_volumes(Filters=[get_stack_id_tag_filter(self.cfn_stack_arn)])["Volumes"]
+        for volume in volumes:
+            ec2_client.delete_snapshot(VolumeId=volume["VolumeId"])
+
 
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
@@ -289,25 +347,35 @@ class ClustersFactory:
         # create the cluster
         logging.info("Creating cluster {0} with config {1}".format(name, config))
         self.__created_clusters[name] = cluster
-        create_cmd_args = ["pcluster", "create", "--norollback", "--config", config]
+        create_cmd_args = [
+            "pcluster",
+            "create-cluster",
+            "--rollback-on-failure",
+            "false",
+            "--cluster-configuration",
+            config,
+            "--cluster-name",
+            name,
+            "--wait",
+        ]
         if extra_args:
             create_cmd_args.extend(extra_args)
-        create_cmd_args.append(name)
         result = run_command(
             create_cmd_args,
             timeout=7200,
             raise_on_error=raise_on_error,
         )
-        if "Status: {0} - CREATE_COMPLETE".format(cluster.cfn_name) not in result.stdout:
-            error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
+        logging.info("create-cluster response: %s", result.stdout)
+        response = json.loads(result.stdout)
+        cluster.cfn_stack_arn = response["cloudformationStackArn"]
+        if response.get("cloudFormationStackStatus") != "CREATE_COMPLETE":
+            error = f"Cluster creation failed for {name}"
             logging.error(error)
             if raise_on_error:
                 raise Exception(error)
-        elif "WARNING" in result.stdout:
-            error = "Cluster creation for {0} generated a warning: {1}".format(name, result.stdout)
-            logging.warning(error)
-        logging.info("Cluster {0} created successfully".format(name))
-        cluster.create_complete = True
+        else:
+            logging.info("Cluster {0} created successfully".format(name))
+            cluster.create_complete = True
 
         # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
         # job submission right after creation. We need to investigate this further.
@@ -320,12 +388,15 @@ class ClustersFactory:
         if name in self.__created_clusters:
             delete_logs = test_passed and self._delete_logs_on_success and self.__created_clusters[name].create_complete
             try:
-                self.__created_clusters[name].delete(delete_logs=delete_logs)
+                cluster = self.__created_clusters[name]
+                cluster.delete(delete_logs=delete_logs)
             except Exception as e:
                 logging.error(
                     "Failed when deleting cluster %s with error %s. Retrying deletion without deleting logs.", name, e
                 )
                 self._destroy_cluster(name)
+            finally:
+                cluster.delete_resource_by_stack_id_tag()
             del self.__created_clusters[name]
             logging.info("Cluster {0} deleted successfully".format(name))
         else:

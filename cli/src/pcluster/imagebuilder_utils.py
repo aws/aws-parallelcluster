@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from enum import Enum
 
 import yaml
 
@@ -19,7 +18,6 @@ from pcluster.utils import get_url_scheme
 ROOT_VOLUME_TYPE = "gp2"
 PCLUSTER_RESERVED_VOLUME_SIZE = 27
 AMI_NAME_REQUIRED_SUBSTRING = " {{ imagebuilder:buildDate }}"
-InstanceRole = Enum("InstanceRole", ("ROLE", "INSTANCE_PROFILE"))
 
 
 def get_ami_id(parent_image):

@@ -13,6 +13,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 S3_BUCKET=
 ECR_REPO=
+STACK_NAME="ParallelClusterApi"
 while [[ $# -gt 0 ]]
 do
 key="$1"
@@ -34,6 +35,11 @@ case $key in
     ;;
     --region)
     export AWS_DEFAULT_REGION=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --stack-name)
+    export STACK_NAME=$2
     shift # past argument
     shift # past value
     ;;
@@ -66,8 +72,16 @@ aws s3 cp "${SCRIPT_DIR}/../spec/openapi/ParallelCluster.openapi.yaml" "${S3_UPL
 
 echo "Deploying API template"
 aws cloudformation deploy \
-    --stack-name "ParallelClusterApi" \
+    --stack-name ${STACK_NAME} \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
-    --capabilities CAPABILITY_IAM
+    --capabilities CAPABILITY_NAMED_IAM
 
+echo "Updating API Lambda since updates are not fully automated yet"
+LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='ParallelClusterLambdaArn'].OutputValue" --output text)
+ECR_IMAGE_URI=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='UriOfCopyOfPublicEcrImage'].OutputValue" --output text)
+
+aws lambda update-function-code \
+    --function-name ${LAMBDA_FUNCTION_ARN} \
+    --image-uri ${ECR_IMAGE_URI} \
+    --publish

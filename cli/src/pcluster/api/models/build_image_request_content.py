@@ -21,23 +21,20 @@ class BuildImageRequestContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, image_configuration=None, id=None, region=None):
+    def __init__(self, image_configuration=None, image_id=None):
         """BuildImageRequestContent - a model defined in OpenAPI
 
         :param image_configuration: The image_configuration of this BuildImageRequestContent.
         :type image_configuration: str
-        :param id: The id of this BuildImageRequestContent.
-        :type id: str
-        :param region: The region of this BuildImageRequestContent.
-        :type region: str
+        :param image_id: The image_id of this BuildImageRequestContent.
+        :type image_id: str
         """
-        self.openapi_types = {"image_configuration": str, "id": str, "region": str}
+        self.openapi_types = {"image_configuration": str, "image_id": str}
 
-        self.attribute_map = {"image_configuration": "imageConfiguration", "id": "id", "region": "region"}
+        self.attribute_map = {"image_configuration": "imageConfiguration", "image_id": "imageId"}
 
         self._image_configuration = image_configuration
-        self._id = id
-        self._region = region
+        self._image_id = image_id
 
     @classmethod
     def from_dict(cls, dikt) -> "BuildImageRequestContent":
@@ -76,55 +73,31 @@ class BuildImageRequestContent(Model):
         self._image_configuration = image_configuration
 
     @property
-    def id(self):
-        """Gets the id of this BuildImageRequestContent.
+    def image_id(self):
+        """Gets the image_id of this BuildImageRequestContent.
 
-        Id of the image
+        Id of the image that will be built.
 
-        :return: The id of this BuildImageRequestContent.
+
+        :return: The image_id of this BuildImageRequestContent.
         :rtype: str
         """
-        return self._id
+        return self._image_id
 
-    @id.setter
-    def id(self, id):
-        """Sets the id of this BuildImageRequestContent.
+    @image_id.setter
+    def image_id(self, image_id):
+        """Sets the image_id of this BuildImageRequestContent.
 
-        Id of the image
+        Id of the image that will be built.
 
-        :param id: The id of this BuildImageRequestContent.
-        :type id: str
+        :param image_id: The image_id of this BuildImageRequestContent.
+        :type image_id: str
         """
-        if id is None:
-            raise ValueError("Invalid value for `id`, must not be `None`")
-        if id is not None and len(id) > 60:
-            raise ValueError("Invalid value for `id`, length must be less than or equal to `60`")
-        if id is not None and len(id) < 5:
-            raise ValueError("Invalid value for `id`, length must be greater than or equal to `5`")
-        if id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", id):
-            raise ValueError("Invalid value for `id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`")
+        if image_id is None:
+            raise ValueError("Invalid value for `image_id`, must not be `None`")
+        if image_id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", image_id):
+            raise ValueError(
+                "Invalid value for `image_id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
+            )
 
-        self._id = id
-
-    @property
-    def region(self):
-        """Gets the region of this BuildImageRequestContent.
-
-        AWS Region. Defaults to the region the API is deployed to.
-
-        :return: The region of this BuildImageRequestContent.
-        :rtype: str
-        """
-        return self._region
-
-    @region.setter
-    def region(self, region):
-        """Sets the region of this BuildImageRequestContent.
-
-        AWS Region. Defaults to the region the API is deployed to.
-
-        :param region: The region of this BuildImageRequestContent.
-        :type region: str
-        """
-
-        self._region = region
+        self._image_id = image_id

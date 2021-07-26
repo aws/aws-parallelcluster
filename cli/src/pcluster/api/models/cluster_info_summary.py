@@ -13,7 +13,7 @@ import re
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cloud_formation_status import CloudFormationStatus
+from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
 
 
@@ -37,7 +37,7 @@ class ClusterInfoSummary(Model):
         :param cluster_name: The cluster_name of this ClusterInfoSummary.
         :type cluster_name: str
         :param cloudformation_stack_status: The cloudformation_stack_status of this ClusterInfoSummary.
-        :type cloudformation_stack_status: CloudFormationStatus
+        :type cloudformation_stack_status: CloudFormationStackStatus
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ClusterInfoSummary.
         :type cloudformation_stack_arn: str
         :param region: The region of this ClusterInfoSummary.
@@ -49,7 +49,7 @@ class ClusterInfoSummary(Model):
         """
         self.openapi_types = {
             "cluster_name": str,
-            "cloudformation_stack_status": CloudFormationStatus,
+            "cloudformation_stack_status": CloudFormationStackStatus,
             "cloudformation_stack_arn": str,
             "region": str,
             "version": str,
@@ -122,7 +122,7 @@ class ClusterInfoSummary(Model):
 
 
         :return: The cloudformation_stack_status of this ClusterInfoSummary.
-        :rtype: CloudFormationStatus
+        :rtype: CloudFormationStackStatus
         """
         return self._cloudformation_stack_status
 
@@ -132,7 +132,7 @@ class ClusterInfoSummary(Model):
 
 
         :param cloudformation_stack_status: The cloudformation_stack_status of this ClusterInfoSummary.
-        :type cloudformation_stack_status: CloudFormationStatus
+        :type cloudformation_stack_status: CloudFormationStackStatus
         """
         if cloudformation_stack_status is None:
             raise ValueError("Invalid value for `cloudformation_stack_status`, must not be `None`")

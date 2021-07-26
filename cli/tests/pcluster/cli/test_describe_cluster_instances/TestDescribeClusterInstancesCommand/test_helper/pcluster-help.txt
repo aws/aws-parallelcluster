@@ -1,0 +1,20 @@
+usage: pcluster describe-cluster-instances [-h] --cluster-name CLUSTER_NAME
+                                           [--region REGION]
+                                           [--next-token NEXT_TOKEN]
+                                           [--node-type {HEAD,COMPUTE}]
+                                           [--queue-name QUEUE_NAME] [--debug]
+                                           [--query QUERY]
+
+Describe the instances belonging to a given cluster.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --cluster-name CLUSTER_NAME
+                        Name of the cluster
+  --region REGION       AWS Region that the operation corresponds to.
+  --next-token NEXT_TOKEN
+                        Token to use for paginated requests.
+  --node-type {HEAD,COMPUTE}
+  --queue-name QUEUE_NAME
+  --debug               Turn on debug logging.
+  --query QUERY         JMESPath query to perform on output.

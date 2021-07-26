@@ -8,7 +8,7 @@ docs/BuildImageBadRequestExceptionResponseContent.md
 docs/BuildImageRequestContent.md
 docs/BuildImageResponseContent.md
 docs/Change.md
-docs/CloudFormationStatus.md
+docs/CloudFormationStackStatus.md
 docs/ClusterComputeFleetApi.md
 docs/ClusterConfigurationStructure.md
 docs/ClusterInfoSummary.md
@@ -27,7 +27,7 @@ docs/DeleteClusterResponseContent.md
 docs/DeleteImageResponseContent.md
 docs/DescribeClusterInstancesResponseContent.md
 docs/DescribeClusterResponseContent.md
-docs/DescribeComputeFleetStatusResponseContent.md
+docs/DescribeComputeFleetResponseContent.md
 docs/DescribeImageResponseContent.md
 docs/DescribeOfficialImagesResponseContent.md
 docs/DryrunOperationExceptionResponseContent.md
@@ -53,7 +53,8 @@ docs/UnauthorizedClientErrorResponseContent.md
 docs/UpdateClusterBadRequestExceptionResponseContent.md
 docs/UpdateClusterRequestContent.md
 docs/UpdateClusterResponseContent.md
-docs/UpdateComputeFleetStatusRequestContent.md
+docs/UpdateComputeFleetRequestContent.md
+docs/UpdateComputeFleetResponseContent.md
 docs/UpdateError.md
 docs/ValidationLevel.md
 git_push.sh
@@ -74,7 +75,7 @@ pcluster_client/model/build_image_bad_request_exception_response_content.py
 pcluster_client/model/build_image_request_content.py
 pcluster_client/model/build_image_response_content.py
 pcluster_client/model/change.py
-pcluster_client/model/cloud_formation_status.py
+pcluster_client/model/cloud_formation_stack_status.py
 pcluster_client/model/cluster_configuration_structure.py
 pcluster_client/model/cluster_info_summary.py
 pcluster_client/model/cluster_instance.py
@@ -90,7 +91,7 @@ pcluster_client/model/delete_cluster_response_content.py
 pcluster_client/model/delete_image_response_content.py
 pcluster_client/model/describe_cluster_instances_response_content.py
 pcluster_client/model/describe_cluster_response_content.py
-pcluster_client/model/describe_compute_fleet_status_response_content.py
+pcluster_client/model/describe_compute_fleet_response_content.py
 pcluster_client/model/describe_image_response_content.py
 pcluster_client/model/describe_official_images_response_content.py
 pcluster_client/model/dryrun_operation_exception_response_content.py
@@ -115,7 +116,8 @@ pcluster_client/model/unauthorized_client_error_response_content.py
 pcluster_client/model/update_cluster_bad_request_exception_response_content.py
 pcluster_client/model/update_cluster_request_content.py
 pcluster_client/model/update_cluster_response_content.py
-pcluster_client/model/update_compute_fleet_status_request_content.py
+pcluster_client/model/update_compute_fleet_request_content.py
+pcluster_client/model/update_compute_fleet_response_content.py
 pcluster_client/model/update_error.py
 pcluster_client/model/validation_level.py
 pcluster_client/model_utils.py

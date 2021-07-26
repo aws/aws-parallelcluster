@@ -42,8 +42,12 @@ def _validate_module_schemas(module):
 
     :param module: the module with the schemas to validate
     """
-    for _, class_object in inspect.getmembers(module, _is_schema(module)):
-        _validate_list_has_update_key(class_object())
+    for _, schema_class in inspect.getmembers(module, _is_schema(module)):
+        if issubclass(schema_class, pcluster.schemas.cluster_schema.ClusterSchema):
+            schema_instance = schema_class(cluster_name="clustername")
+        else:
+            schema_instance = schema_class()
+        _validate_list_has_update_key(schema_instance)
 
 
 def test_schemas():

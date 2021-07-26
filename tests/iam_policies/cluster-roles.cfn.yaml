@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+
+  CustomLambdaResourcesRoleSlurm:
+    Properties:
+      Description: Role to be used in 'Iam:Roles:CustomLambdaResources' when the scheduler is Slurm
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /parallelcluster/
+      Policies:
+        - PolicyName: CustomLambdaResourcesRoleSlurmPolicy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - route53:ListResourceRecordSets
+                  - route53:ChangeResourceRecordSets
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:route53:::hostedzone/*
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+              - Action:
+                - dynamodb:DescribeTable
+                - dynamodb:Query
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
+                Effect: Allow
+              - Action: ec2:DescribeInstances
+                Effect: Allow
+                Resource: '*'
+              - Action: ec2:TerminateInstances
+                Condition:
+                  StringEquals:
+                    ec2:ResourceTag/parallelcluster:node-type: ComputeNode
+                Effect: Allow
+                Resource: '*'
+              - Action: ec2:DescribeInstances
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete
+                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
+            Version: '2012-10-17'
+    Type: AWS::IAM::Role
+
+  HeadNodeRoleSlurm:
+    Properties:
+      Description: Role to be used in 'HeadNode:Iam:InstanceRole' when the scheduler is Slurm
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: !Sub ec2.${AWS::URLSuffix}
+        Version: '2012-10-17'
+      Path: /parallelcluster/
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: HeadNodeRoleSlurmPolicy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*
+                  - !Sub arn:${AWS::Partition}:s3:::dcv-license.${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
+              - Action:
+                  - dynamodb:PutItem
+                  - dynamodb:BatchWriteItem
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
+                Effect: Allow
+              - Action: ec2:TerminateInstances
+                Condition:
+                  StringEquals:
+                    ec2:ResourceTag/parallelcluster:node-type: ComputeNode
+                Effect: Allow
+                Resource: '*'
+              - Action: ec2:RunInstances
+                Resource: '*'
+                Effect: Allow
+              - Action:
+                  - iam:PassRole
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
+                Effect: Allow
+                Condition:
+                  StringEquals:
+                    iam:PassedToService:
+                      - !Sub ec2.${AWS::URLSuffix}
+              - Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceStatus
+                  - ec2:CreateTags
+                  - ec2:DescribeVolumes
+                  - ec2:AttachVolume
+                  - ec2:DescribeInstanceAttribute
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:SignalResource
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - route53:ChangeResourceRecordSets
+                Resource: '*'
+                Effect: Allow
+            Version: '2012-10-17'
+    Type: AWS::IAM::Role
+
+  ComputeNodeRoleSlurm:
+    Properties:
+      Description: Role to be used in 'Scheduling:SlurmQueues:Iam:InstanceRole' when the scheduler is Slurm
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: !Sub ec2.${AWS::URLSuffix}
+        Version: '2012-10-17'
+      Path: /parallelcluster/
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: ComputeNodeRoleSlurmPolicy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - dynamodb:Query
+                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
+                Effect: Allow
+              - Action: s3:GetObject
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*
+              - Action: ec2:DescribeInstanceAttribute
+                Effect: Allow
+                Resource: '*'
+            Version: '2012-10-17'
+    Type: AWS::IAM::Role
+
+  CustomLambdaResourcesRoleBatch:
+    Properties:
+      Description: Role to be used in 'Iam:Roles:CustomLambdaResources' when the scheduler is AwsBatch
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /parallelcluster/
+      Policies:
+        - PolicyName: CustomLambdaResourcesRoleBatchPolicy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+              - Action:
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete
+                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
+              - Action:
+                  - ecr:BatchDeleteImage
+                  - ecr:ListImages
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/*parallelcluster*
+              - Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/pcluster-*
+            Version: '2012-10-17'
+    Type: AWS::IAM::Role
+
+  HeadNodeRoleBatch:
+    Properties:
+      Description: Role to be used in 'HeadNode:Iam:InstanceRole' when the scheduler is AwsBatch
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: !Sub ec2.${AWS::URLSuffix}
+        Version: '2012-10-17'
+      Path: /parallelcluster/
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
+      Policies:
+        - PolicyName: HeadNodeRoleBatchPolicy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetObjectVersion
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
+              - Action: s3:GetObject
+                Effect: Allow
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::dcv-license.${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*
+              - Action:
+                  - iam:PassRole
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
+                Effect: Allow
+                Condition:
+                  StringEquals:
+                    iam:PassedToService:
+                      - batch.amazonaws.com
+              - Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceStatus
+                  - ec2:CreateTags
+                  - ec2:DescribeVolumes
+                  - ec2:AttachVolume
+                  - ec2:DescribeInstanceAttribute
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStacks
+                  - cloudformation:SignalResource
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - route53:ChangeResourceRecordSets
+                Resource: '*'
+                Effect: Allow
+            Version: '2012-10-17'
+    Type: AWS::IAM::Role
+

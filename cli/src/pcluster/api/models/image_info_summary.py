@@ -13,7 +13,7 @@ import re
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cloud_formation_status import CloudFormationStatus
+from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster.api.models.image_build_status import ImageBuildStatus
 
 
@@ -39,7 +39,7 @@ class ImageInfoSummary(Model):
         :param image_build_status: The image_build_status of this ImageInfoSummary.
         :type image_build_status: ImageBuildStatus
         :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
-        :type cloudformation_stack_status: CloudFormationStatus
+        :type cloudformation_stack_status: CloudFormationStackStatus
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
         :type cloudformation_stack_arn: str
         :param region: The region of this ImageInfoSummary.
@@ -50,7 +50,7 @@ class ImageInfoSummary(Model):
         self.openapi_types = {
             "image_id": str,
             "image_build_status": ImageBuildStatus,
-            "cloudformation_stack_status": CloudFormationStatus,
+            "cloudformation_stack_status": CloudFormationStackStatus,
             "cloudformation_stack_arn": str,
             "region": str,
             "version": str,
@@ -87,7 +87,7 @@ class ImageInfoSummary(Model):
     def image_id(self):
         """Gets the image_id of this ImageInfoSummary.
 
-        Id of the image
+        Id of the image.
 
         :return: The image_id of this ImageInfoSummary.
         :rtype: str
@@ -98,17 +98,13 @@ class ImageInfoSummary(Model):
     def image_id(self, image_id):
         """Sets the image_id of this ImageInfoSummary.
 
-        Id of the image
+        Id of the image.
 
         :param image_id: The image_id of this ImageInfoSummary.
         :type image_id: str
         """
         if image_id is None:
             raise ValueError("Invalid value for `image_id`, must not be `None`")
-        if image_id is not None and len(image_id) > 60:
-            raise ValueError("Invalid value for `image_id`, length must be less than or equal to `60`")
-        if image_id is not None and len(image_id) < 5:
-            raise ValueError("Invalid value for `image_id`, length must be greater than or equal to `5`")
         if image_id is not None and not re.search(r"^[a-zA-Z][a-zA-Z0-9-]+$", image_id):
             raise ValueError(
                 "Invalid value for `image_id`, must be a follow pattern or equal to `/^[a-zA-Z][a-zA-Z0-9-]+$/`"
@@ -145,7 +141,7 @@ class ImageInfoSummary(Model):
 
 
         :return: The cloudformation_stack_status of this ImageInfoSummary.
-        :rtype: CloudFormationStatus
+        :rtype: CloudFormationStackStatus
         """
         return self._cloudformation_stack_status
 
@@ -155,7 +151,7 @@ class ImageInfoSummary(Model):
 
 
         :param cloudformation_stack_status: The cloudformation_stack_status of this ImageInfoSummary.
-        :type cloudformation_stack_status: CloudFormationStatus
+        :type cloudformation_stack_status: CloudFormationStackStatus
         """
         self._cloudformation_stack_status = cloudformation_stack_status
 
@@ -163,7 +159,7 @@ class ImageInfoSummary(Model):
     def cloudformation_stack_arn(self):
         """Gets the cloudformation_stack_arn of this ImageInfoSummary.
 
-        ARN of the main CloudFormation stack
+        ARN of the main CloudFormation stack.
 
         :return: The cloudformation_stack_arn of this ImageInfoSummary.
         :rtype: str
@@ -174,7 +170,7 @@ class ImageInfoSummary(Model):
     def cloudformation_stack_arn(self, cloudformation_stack_arn):
         """Sets the cloudformation_stack_arn of this ImageInfoSummary.
 
-        ARN of the main CloudFormation stack
+        ARN of the main CloudFormation stack.
 
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
         :type cloudformation_stack_arn: str
@@ -185,7 +181,7 @@ class ImageInfoSummary(Model):
     def region(self):
         """Gets the region of this ImageInfoSummary.
 
-        AWS region where the image is built
+        AWS region where the image is built.
 
         :return: The region of this ImageInfoSummary.
         :rtype: str
@@ -196,7 +192,7 @@ class ImageInfoSummary(Model):
     def region(self, region):
         """Sets the region of this ImageInfoSummary.
 
-        AWS region where the image is built
+        AWS region where the image is built.
 
         :param region: The region of this ImageInfoSummary.
         :type region: str
@@ -210,7 +206,7 @@ class ImageInfoSummary(Model):
     def version(self):
         """Gets the version of this ImageInfoSummary.
 
-        ParallelCluster version used to build the image
+        ParallelCluster version used to build the image.
 
         :return: The version of this ImageInfoSummary.
         :rtype: str
@@ -221,7 +217,7 @@ class ImageInfoSummary(Model):
     def version(self, version):
         """Sets the version of this ImageInfoSummary.
 
-        ParallelCluster version used to build the image
+        ParallelCluster version used to build the image.
 
         :param version: The version of this ImageInfoSummary.
         :type version: str

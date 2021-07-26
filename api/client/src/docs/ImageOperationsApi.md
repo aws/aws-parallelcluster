@@ -57,16 +57,16 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
     build_image_request_content = BuildImageRequestContent(
-        image_configuration='YQ==',
-        id="AqWzy",
-        region="region_example",
+        image_configuration="image_configuration_example",
+        image_id="AqWzy",
     ) # BuildImageRequestContent | 
     suppress_validators = [
         "type:u2LC",
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
-    validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. Defaults to 'error'. (optional)
-    dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200 (optional)
-    rollback_on_failure = True # bool, none_type | When set it automatically initiates an image stack rollback on failures. Defaults to true. (optional)
+    validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.) (optional)
+    dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.) (optional)
+    rollback_on_failure = True # bool, none_type | When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.) (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -78,7 +78,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_response = api_instance.build_image(build_image_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
+        api_response = api_instance.build_image(build_image_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure, region=region)
         pprint(api_response)
     except pcluster_client.ApiException as e:
         print("Exception when calling ImageOperationsApi->build_image: %s\n" % e)
@@ -91,9 +91,10 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **build_image_request_content** | [**BuildImageRequestContent**](BuildImageRequestContent.md)|  |
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
- **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. Defaults to &#39;error&#39;. | [optional]
- **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200 | [optional]
- **rollback_on_failure** | **bool, none_type**| When set it automatically initiates an image stack rollback on failures. Defaults to true. | [optional]
+ **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
+ **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to &#39;false&#39;.) | [optional]
+ **rollback_on_failure** | **bool, none_type**| When set, will automatically initiate an image stack rollback on failure. (Defaults to &#39;true&#39;.) | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
 
@@ -164,9 +165,9 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
-    image_id = "AqWzy" # str | Id of the image
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
-    force = True # bool, none_type | Force deletion in case there are instances using the AMI or in case the AMI is shared (optional)
+    image_id = "AqWzy" # str | Id of the image.
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
+    force = True # bool, none_type | Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -189,9 +190,9 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **image_id** | **str**| Id of the image |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
- **force** | **bool, none_type**| Force deletion in case there are instances using the AMI or in case the AMI is shared | [optional]
+ **image_id** | **str**| Id of the image. |
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
+ **force** | **bool, none_type**| Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 
@@ -261,8 +262,8 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
-    image_id = "AqWzy" # str | Id of the image
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
+    image_id = "AqWzy" # str | Id of the image.
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -285,8 +286,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **image_id** | **str**| Id of the image |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
+ **image_id** | **str**| Id of the image. |
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
 
@@ -355,9 +356,9 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
-    os = "os_example" # str | Filter by OS distribution (optional)
-    architecture = "architecture_example" # str | Filter by architecture (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
+    os = "os_example" # str | Filter by OS distribution (Default is to not filter.) (optional)
+    architecture = "architecture_example" # str | Filter by architecture (Default is to not filter.) (optional)
 
     # example passing only required values which don't have defaults set
     # and optional values
@@ -373,9 +374,9 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
- **os** | **str**| Filter by OS distribution | [optional]
- **architecture** | **str**| Filter by architecture | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
+ **os** | **str**| Filter by OS distribution (Default is to not filter.) | [optional]
+ **architecture** | **str**| Filter by architecture (Default is to not filter.) | [optional]
 
 ### Return type
 
@@ -407,7 +408,7 @@ Name | Type | Description  | Notes
 
 
 
-Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default
+Retrieve the list of existing custom images.
 
 ### Example
 
@@ -444,8 +445,8 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = image_operations_api.ImageOperationsApi(api_client)
-    image_status = ImageStatusFilteringOption("AVAILABLE") # ImageStatusFilteringOption | Filter by image status.
-    region = "region_example" # str | List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to. (optional)
+    image_status = ImageStatusFilteringOption("AVAILABLE") # ImageStatusFilteringOption | Filter images by the status provided.
+    region = "region_example" # str | List images built in a given AWS Region. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
 
     # example passing only required values which don't have defaults set
@@ -469,8 +470,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **image_status** | **ImageStatusFilteringOption**| Filter by image status. |
- **region** | **str**| List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to. | [optional]
+ **image_status** | **ImageStatusFilteringOption**| Filter images by the status provided. |
+ **region** | **str**| List images built in a given AWS Region. | [optional]
  **next_token** | **str**| Token to use for paginated requests. | [optional]
 
 ### Return type

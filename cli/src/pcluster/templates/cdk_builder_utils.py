@@ -17,20 +17,22 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
+from aws_cdk.aws_iam import ManagedPolicy, PermissionsBoundary
 from aws_cdk.core import CfnDeletionPolicy, CfnTag, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import (
     BaseClusterConfig,
     BaseComputeResource,
     BaseQueue,
-    Ebs,
     HeadNode,
     LocalStorage,
+    RootVolume,
     SharedStorageType,
 )
 from pcluster.constants import (
     COOKBOOK_PACKAGES_VERSIONS,
     CW_LOGS_RETENTION_DAYS_DEFAULT,
+    IAM_ROLE_PATH,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
     PCLUSTER_NODE_TYPE_TAG,
@@ -49,7 +51,7 @@ def get_block_device_mappings(local_storage: LocalStorage, os: str):
             ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
         )
 
-    root_volume = local_storage.root_volume or Ebs()
+    root_volume = local_storage.root_volume or RootVolume()
 
     block_device_mappings.append(
         ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
@@ -60,6 +62,7 @@ def get_block_device_mappings(local_storage: LocalStorage, os: str):
                 volume_type=root_volume.volume_type,
                 iops=root_volume.iops,
                 throughput=root_volume.throughput,
+                delete_on_termination=root_volume.delete_on_termination,
             ),
         )
     )
@@ -218,8 +221,18 @@ def get_cloud_watch_logs_retention_days(config: BaseClusterConfig) -> int:
     )
 
 
-def get_retain_log_on_delete(config: BaseClusterConfig):
-    return CfnDeletionPolicy.RETAIN if config.monitoring.logs.cloud_watch.retain_on_delete else CfnDeletionPolicy.DELETE
+def get_log_group_deletion_policy(config: BaseClusterConfig):
+    return convert_deletion_policy(config.monitoring.logs.cloud_watch.deletion_policy)
+
+
+def convert_deletion_policy(deletion_policy: str):
+    if deletion_policy == "Retain":
+        return CfnDeletionPolicy.RETAIN
+    elif deletion_policy == "Delete":
+        return CfnDeletionPolicy.DELETE
+    elif deletion_policy == "Snapshot":
+        return CfnDeletionPolicy.SNAPSHOT
+    return None
 
 
 def get_queue_security_groups_full(compute_security_groups: dict, queue: BaseQueue):
@@ -244,8 +257,8 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
     return iam.CfnRole(
         scope,
         f"{function_id}FunctionExecutionRole",
+        path=IAM_ROLE_PATH,
         assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
-        path="/",
         policies=[
             iam.CfnRole.PolicyProperty(
                 policy_document=iam.PolicyDocument(statements=statements),
@@ -253,6 +266,13 @@ def add_lambda_cfn_role(scope, function_id: str, statements: List[iam.PolicyStat
             ),
         ],
     )
+
+
+def apply_permissions_boundary(boundary, scope):
+    """Apply a permissions boundary to all IAM roles defined in the scope."""
+    if boundary:
+        boundary = ManagedPolicy.from_managed_policy_arn(scope, "Boundary", boundary)
+        PermissionsBoundary.of(scope).apply(boundary)
 
 
 class PclusterLambdaConstruct(Construct):
@@ -279,7 +299,7 @@ class PclusterLambdaConstruct(Construct):
             log_group_name=f"/aws/lambda/{function_name}",
             retention_in_days=get_cloud_watch_logs_retention_days(config),
         )
-        self.log_group.cfn_options.deletion_policy = get_retain_log_on_delete(config)
+        self.log_group.cfn_options.deletion_policy = get_log_group_deletion_policy(config)
 
         self.lambda_func = awslambda.CfnFunction(
             scope,

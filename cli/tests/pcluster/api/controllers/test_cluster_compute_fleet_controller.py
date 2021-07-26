@@ -12,6 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 
 from pcluster.aws.common import AWSClientError, StackNotFoundError
+from pcluster.utils import to_iso_time
 
 
 def cfn_describe_stack_mock_response(scheduler, stack_status="CREATE_COMPLETE"):
@@ -28,7 +29,7 @@ def cfn_describe_stack_mock_response(scheduler, stack_status="CREATE_COMPLETE"):
 
 
 class TestUpdateComputeFleetStatus:
-    url = "/v3/clusters/{cluster_name}/computefleet/status"
+    url = "/v3/clusters/{cluster_name}/computefleet"
     method = "PATCH"
 
     def _send_test_request(self, client, cluster_name="clustername", region="us-east-1", request_body=None):
@@ -49,33 +50,45 @@ class TestUpdateComputeFleetStatus:
         )
 
     @pytest.mark.parametrize(
-        "scheduler, status",
+        "scheduler, status, last_status_updated_time",
         [
-            ("slurm", "STOP_REQUESTED"),
-            ("slurm", "START_REQUESTED"),
-            ("awsbatch", "ENABLED"),
-            ("awsbatch", "DISABLED"),
+            ("slurm", "STOP_REQUESTED", datetime.now()),
+            ("slurm", "START_REQUESTED", datetime.now()),
+            ("awsbatch", "ENABLED", None),
+            ("awsbatch", "DISABLED", None),
         ],
     )
-    def test_successful_request(self, mocker, client, scheduler, status):
+    def test_successful_request(self, mocker, client, scheduler, status, last_status_updated_time):
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response(scheduler)
         )
         config_mock = mocker.patch("pcluster.models.cluster.Cluster.config")
         config_mock.scheduling.scheduler = scheduler
         if scheduler == "slurm":
+            if status == "UNKNOWN":
+                dynamodb_item = {}  # Test dynamodb item not exist
+            else:
+                dynamodb_item = {"Item": {"Status": status}}
+                if last_status_updated_time:
+                    last_status_updated_time = str(last_status_updated_time)
+                    dynamodb_item["Item"]["LastUpdatedTime"] = last_status_updated_time
             # mock the method to check the status before update
-            mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", return_value={"Item": {"Status": "RUNNING"}})
+            mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", return_value=dynamodb_item)
             # mock the method to update the item in dynamodb
             mocker.patch("pcluster.aws.dynamo.DynamoResource.put_item")
         elif scheduler == "awsbatch":
+            mocker.patch("pcluster.aws.batch.BatchClient.get_compute_environment_state", return_value=status)
             if status == "ENABLED":
                 mocker.patch("pcluster.aws.batch.BatchClient.enable_compute_environment")
             elif status == "DISABLED":
                 mocker.patch("pcluster.aws.batch.BatchClient.disable_compute_environment")
         response = self._send_test_request(client, request_body={"status": status})
         with soft_assertions():
-            assert_that(response.status_code).is_equal_to(204)
+            assert_that(response.status_code).is_equal_to(200)
+            expected_response = {"status": status}
+            if last_status_updated_time:
+                expected_response["lastStatusUpdatedTime"] = to_iso_time(last_status_updated_time)
+            assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
         "params, scheduler, request_body, expected_response",
@@ -221,8 +234,8 @@ class TestUpdateComputeFleetStatus:
         config_mock = mocker.patch("pcluster.models.cluster.Cluster.config")
         config_mock.scheduling.scheduler = "slurm"
         dynamodb_item = {"Item": {"Status": current_status}}
-        last_updated_time = str(datetime.now())
-        dynamodb_item["Item"]["Last_updated_time"] = last_updated_time
+        last_status_updated_time = str(datetime.now())
+        dynamodb_item["Item"]["Last_status_updated_time"] = last_status_updated_time
         mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", return_value=dynamodb_item)
         mocker.patch(
             "pcluster.aws.dynamo.DynamoResource.put_item",
@@ -238,8 +251,8 @@ class TestUpdateComputeFleetStatus:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
 
-class TestDescribeComputeFleetStatus:
-    url = "/v3/clusters/{cluster_name}/computefleet/status"
+class TestDescribeComputeFleet:
+    url = "/v3/clusters/{cluster_name}/computefleet"
     method = "GET"
 
     def _send_test_request(self, client, cluster_name="clustername", region="us-east-1"):
@@ -255,7 +268,7 @@ class TestDescribeComputeFleetStatus:
         )
 
     @pytest.mark.parametrize(
-        "scheduler, status, last_updated_time",
+        "scheduler, status, last_status_updated_time",
         [
             ("slurm", "RUNNING", datetime.now()),
             ("slurm", "STOPPED", datetime.now()),
@@ -268,7 +281,7 @@ class TestDescribeComputeFleetStatus:
             ("awsbatch", "DISABLED", None),
         ],
     )
-    def test_successful_request(self, mocker, client, scheduler, status, last_updated_time):
+    def test_successful_request(self, mocker, client, scheduler, status, last_status_updated_time):
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response(scheduler)
         )
@@ -277,9 +290,9 @@ class TestDescribeComputeFleetStatus:
                 dynamodb_item = {}  # Test dynamodb item not exist
             else:
                 dynamodb_item = {"Item": {"Status": status}}
-                if last_updated_time:
-                    last_updated_time = str(last_updated_time)
-                    dynamodb_item["Item"]["LastUpdatedTime"] = last_updated_time
+                if last_status_updated_time:
+                    last_status_updated_time = str(last_status_updated_time)
+                    dynamodb_item["Item"]["LastUpdatedTime"] = last_status_updated_time
             mocker.patch("pcluster.aws.dynamo.DynamoResource.get_item", return_value=dynamodb_item)
         elif scheduler == "awsbatch":
             mocker.patch("pcluster.aws.batch.BatchClient.get_compute_environment_state", return_value=status)
@@ -287,8 +300,8 @@ class TestDescribeComputeFleetStatus:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(200)
             expected_response = {"status": status}
-            if last_updated_time:
-                expected_response["lastUpdatedTime"] = last_updated_time
+            if last_status_updated_time:
+                expected_response["lastStatusUpdatedTime"] = to_iso_time(last_status_updated_time)
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     def test_slurm_dynamo_table_not_exist(self, mocker, client):

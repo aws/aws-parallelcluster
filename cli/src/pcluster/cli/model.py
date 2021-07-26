@@ -13,10 +13,12 @@
 
 import json
 
+import jmespath
 import yaml
 from connexion.utils import get_function_from_name
 
 from pcluster.api import encoder, openapi
+from pcluster.cli.exceptions import APIOperationException
 from pcluster.utils import to_kebab_case, to_snake_case
 
 # For importing package resources
@@ -24,6 +26,20 @@ try:
     import importlib.resources as pkg_resources
 except ImportError:
     import importlib_resources as pkg_resources
+
+
+def _param_overrides(operation, param):
+    """Provide updates to the model that are specific to the CLI."""
+    overrides = {
+        "create-cluster": {"clusterConfiguration": {"type": "file"}},
+        "update-cluster": {"clusterConfiguration": {"type": "file"}},
+        "build-image": {"imageConfiguration": {"type": "file"}},
+    }
+
+    try:
+        return overrides[to_kebab_case(operation["operationId"])][param]
+    except KeyError:
+        return {}
 
 
 def _resolve_ref(spec, subspec):
@@ -65,6 +81,7 @@ def _resolve_body(spec, operation):
         new_param.update({k: v for k, v in param_data.items() if k in copy_keys})
         if param_data.get("format", None) == "byte":
             new_param["type"] = "byte"
+        new_param.update(_param_overrides(operation, param_name))
         new_params.append(new_param)
 
     return new_params
@@ -145,7 +162,13 @@ def call(func_str, *args, **kwargs):
     tuple (instead of an object). Also uses the flask json-ifier to ensure data
     is converted the same as the API.
     """
+    query = kwargs.pop("query", None)
     func = get_function_from_name(func_str)
     ret = func(*args, **kwargs)
-    ret = ret[0] if isinstance(ret, tuple) else ret
-    return json.loads(encoder.JSONEncoder().encode(ret))
+    if isinstance(ret, tuple):
+        ret, status_code = ret
+        if status_code >= 400:
+            data = json.loads(encoder.JSONEncoder().encode(ret))
+            raise APIOperationException(data)
+    data = json.loads(encoder.JSONEncoder().encode(ret))
+    return jmespath.search(query, data) if query else data

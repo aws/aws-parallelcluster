@@ -11,13 +11,11 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-import base64
 import functools
 import logging
 import os
 from typing import List, Optional, Set
 
-from flask import request
 from pkg_resources import packaging
 
 from pcluster.api.errors import (
@@ -37,25 +35,19 @@ from pcluster.utils import get_installed_version
 LOGGER = logging.getLogger(__name__)
 
 
-def configure_aws_region(body_name: str = None):
+def configure_aws_region():
     """
     Handle region validation and configuration for API controllers.
 
     When a controller is decorated with @configure_aws_region, the region value passed either as a query string
     argument or as a body parameter is validated and then set in the environment so that all AWS clients make use
     of it.
-
-    :param is_query_string_arg: set to False when the region configuration is in the request body
     """
 
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            if body_name is not None:
-                body = kwargs.get(body_name, request and request.get_json())
-                region = body.get("region")
-            else:
-                region = kwargs.get("region")
+            region = kwargs.get("region")
 
             if not region:
                 region = os.environ.get("AWS_DEFAULT_REGION")
@@ -109,20 +101,6 @@ def check_cluster_version(cluster: Cluster, exact_match: bool = False) -> bool:
         )
 
 
-def read_config(base64_encoded_config: str) -> str:
-    try:
-        config = base64.b64decode(base64_encoded_config).decode("UTF-8")
-    except Exception as e:
-        LOGGER.error("Failed when decoding configuration: %s", e)
-        raise BadRequestException("invalid configuration. Please make sure the string is base64 encoded.")
-
-    if not config:
-        LOGGER.error("Failed: configuration is required and cannot be empty")
-        raise BadRequestException("configuration is required and cannot be empty")
-
-    return config
-
-
 def convert_errors():
     def _decorate_api(func):
         @functools.wraps(func)
@@ -130,16 +108,15 @@ def convert_errors():
             try:
                 return func(*args, **kwargs)
             except ParallelClusterApiException as e:
-                error = e
+                raise e
             except (LimitExceeded, LimitExceededError) as e:
-                error = LimitExceededException(str(e))
+                raise LimitExceededException(str(e)) from e
             except (BadRequest, BadRequestError) as e:
-                error = BadRequestException(str(e))
+                raise BadRequestException(str(e)) from e
             except Conflict as e:
-                error = ConflictException(str(e))
+                raise ConflictException(str(e)) from e
             except Exception as e:
-                error = InternalServiceException(str(e))
-            raise error
+                raise InternalServiceException(str(e)) from e
 
         return wrapper
 

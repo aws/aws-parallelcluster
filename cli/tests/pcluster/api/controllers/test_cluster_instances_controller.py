@@ -10,6 +10,7 @@ from assertpy import assert_that, soft_assertions
 
 from pcluster.api.models import NodeType
 from pcluster.aws.common import StackNotFoundError
+from pcluster.utils import to_iso_time
 
 
 def cfn_describe_instances_mock_response(
@@ -44,7 +45,7 @@ def describe_cluster_instances_mock_response(instances):
         response = {
             "instanceId": "i-0a9342a0000000000",
             "instanceType": "t2.micro",
-            "launchTime": "2021-04-30T00:00:00+00:00",
+            "launchTime": to_iso_time("2021-04-30T00:00:00+00:00"),
             "nodeType": node_type,
             "privateIpAddress": "10.0.0.79",
             "publicIpAddress": "1.2.3.4",

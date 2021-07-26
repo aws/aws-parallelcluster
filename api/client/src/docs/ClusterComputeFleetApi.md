@@ -4,16 +4,16 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**describe_compute_fleet_status**](ClusterComputeFleetApi.md#describe_compute_fleet_status) | **GET** /v3/clusters/{clusterName}/computefleet/status | 
-[**update_compute_fleet_status**](ClusterComputeFleetApi.md#update_compute_fleet_status) | **PATCH** /v3/clusters/{clusterName}/computefleet/status | 
+[**describe_compute_fleet**](ClusterComputeFleetApi.md#describe_compute_fleet) | **GET** /v3/clusters/{clusterName}/computefleet | 
+[**update_compute_fleet**](ClusterComputeFleetApi.md#update_compute_fleet) | **PATCH** /v3/clusters/{clusterName}/computefleet | 
 
 
-# **describe_compute_fleet_status**
-> DescribeComputeFleetStatusResponseContent describe_compute_fleet_status(cluster_name)
+# **describe_compute_fleet**
+> DescribeComputeFleetResponseContent describe_compute_fleet(cluster_name)
 
 
 
-Describe the status of the compute fleet
+Describe the status of the compute fleet.
 
 ### Example
 
@@ -23,11 +23,11 @@ import time
 import pcluster_client
 from pcluster_client.api import cluster_compute_fleet_api
 from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster_client.model.describe_compute_fleet_status_response_content import DescribeComputeFleetStatusResponseContent
 from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
 from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
 from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
+from pcluster_client.model.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -51,22 +51,22 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
     try:
-        api_response = api_instance.describe_compute_fleet_status(cluster_name)
+        api_response = api_instance.describe_compute_fleet(cluster_name)
         pprint(api_response)
     except pcluster_client.ApiException as e:
-        print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet_status: %s\n" % e)
+        print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet: %s\n" % e)
 
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_response = api_instance.describe_compute_fleet_status(cluster_name, region=region)
+        api_response = api_instance.describe_compute_fleet(cluster_name, region=region)
         pprint(api_response)
     except pcluster_client.ApiException as e:
-        print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet_status: %s\n" % e)
+        print("Exception when calling ClusterComputeFleetApi->describe_compute_fleet: %s\n" % e)
 ```
 
 
@@ -75,11 +75,11 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
 
-[**DescribeComputeFleetStatusResponseContent**](DescribeComputeFleetStatusResponseContent.md)
+[**DescribeComputeFleetResponseContent**](DescribeComputeFleetResponseContent.md)
 
 ### Authorization
 
@@ -94,7 +94,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** | DescribeComputeFleetStatus 200 response |  -  |
+**200** | DescribeComputeFleet 200 response |  -  |
 **400** | BadRequestException 400 response |  -  |
 **401** | UnauthorizedClientError 401 response |  -  |
 **404** | NotFoundException 404 response |  -  |
@@ -103,8 +103,8 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **update_compute_fleet_status**
-> update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content)
+# **update_compute_fleet**
+> UpdateComputeFleetResponseContent update_compute_fleet(cluster_name, update_compute_fleet_request_content)
 
 
 
@@ -118,9 +118,10 @@ import time
 import pcluster_client
 from pcluster_client.api import cluster_compute_fleet_api
 from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster_client.model.update_compute_fleet_status_request_content import UpdateComputeFleetStatusRequestContent
+from pcluster_client.model.update_compute_fleet_response_content import UpdateComputeFleetResponseContent
 from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
 from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.update_compute_fleet_request_content import UpdateComputeFleetRequestContent
 from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pprint import pprint
@@ -146,23 +147,25 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
-    update_compute_fleet_status_request_content = UpdateComputeFleetStatusRequestContent(
+    update_compute_fleet_request_content = UpdateComputeFleetRequestContent(
         status=RequestedComputeFleetStatus("START_REQUESTED"),
-    ) # UpdateComputeFleetStatusRequestContent | 
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
+    ) # UpdateComputeFleetRequestContent | 
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
     try:
-        api_instance.update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content)
+        api_response = api_instance.update_compute_fleet(cluster_name, update_compute_fleet_request_content)
+        pprint(api_response)
     except pcluster_client.ApiException as e:
-        print("Exception when calling ClusterComputeFleetApi->update_compute_fleet_status: %s\n" % e)
+        print("Exception when calling ClusterComputeFleetApi->update_compute_fleet: %s\n" % e)
 
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_instance.update_compute_fleet_status(cluster_name, update_compute_fleet_status_request_content, region=region)
+        api_response = api_instance.update_compute_fleet(cluster_name, update_compute_fleet_request_content, region=region)
+        pprint(api_response)
     except pcluster_client.ApiException as e:
-        print("Exception when calling ClusterComputeFleetApi->update_compute_fleet_status: %s\n" % e)
+        print("Exception when calling ClusterComputeFleetApi->update_compute_fleet: %s\n" % e)
 ```
 
 
@@ -171,12 +174,12 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
- **update_compute_fleet_status_request_content** | [**UpdateComputeFleetStatusRequestContent**](UpdateComputeFleetStatusRequestContent.md)|  |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
+ **update_compute_fleet_request_content** | [**UpdateComputeFleetRequestContent**](UpdateComputeFleetRequestContent.md)|  |
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
 
-void (empty response body)
+[**UpdateComputeFleetResponseContent**](UpdateComputeFleetResponseContent.md)
 
 ### Authorization
 
@@ -191,7 +194,7 @@ void (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** | UpdateComputeFleetStatus 204 response |  -  |
+**204** | UpdateComputeFleet 204 response |  -  |
 **400** | BadRequestException 400 response |  -  |
 **401** | UnauthorizedClientError 401 response |  -  |
 **404** | NotFoundException 404 response |  -  |

@@ -6,15 +6,15 @@ info:
 paths:
   /v3/clusters:
     get:
-      description: Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.
+      description: Retrieve the list of existing clusters.
       operationId: ListClusters
       parameters:
         - name: region
           in: query
-          description: List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to.
+          description: List clusters deployed to a given AWS Region.
           schema:
             type: string
-            description: List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to.
+            description: List clusters deployed to a given AWS Region.
         - name: nextToken
           in: query
           description: Token to use for paginated requests.
@@ -23,14 +23,14 @@ paths:
             description: Token to use for paginated requests.
         - name: clusterStatus
           in: query
-          description: Filter by cluster status.
+          description: Filter by cluster status. (Defaults to all clusters.)
           style: form
           schema:
             type: array
             items:
               $ref: '#/components/schemas/ClusterStatusFilteringOption'
             uniqueItems: true
-            description: Filter by cluster status.
+            description: Filter by cluster status. (Defaults to all clusters.)
           explode: true
       responses:
         "200":
@@ -74,7 +74,7 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
     post:
-      description: Create a ParallelCluster managed cluster in a given region.
+      description: Create a managed cluster in a given region.
       operationId: CreateCluster
       requestBody:
         content:
@@ -83,6 +83,12 @@ paths:
               $ref: '#/components/schemas/CreateClusterRequestContent'
         required: true
       parameters:
+        - name: region
+          in: query
+          description: AWS Region that the operation corresponds to.
+          schema:
+            type: string
+            description: AWS Region that the operation corresponds to.
         - name: suppressValidators
           in: query
           description: 'Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)'
@@ -97,22 +103,22 @@ paths:
           explode: true
         - name: validationFailureLevel
           in: query
-          description: Min validation level that will cause the creation to fail. Defaults to 'ERROR'.
+          description: Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.)
           schema:
             $ref: '#/components/schemas/ValidationLevel'
         - name: dryrun
           in: query
-          description: 'Only perform request validation without creating any resource. It can be used to validate the cluster configuration. Response code: 200'
+          description: Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: 'Only perform request validation without creating any resource. It can be used to validate the cluster configuration. Response code: 200'
+            description: Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.)
             nullable: true
         - name: rollbackOnFailure
           in: query
-          description: When set it automatically initiates a cluster stack rollback on failures. Defaults to true.
+          description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)
           schema:
             type: boolean
-            description: When set it automatically initiates a cluster stack rollback on failures. Defaults to true.
+            description: When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)
             nullable: true
       responses:
         "202":
@@ -177,17 +183,15 @@ paths:
           description: Name of the cluster
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
             description: Name of the cluster
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
       responses:
         "202":
           description: DeleteCluster 202 response
@@ -244,17 +248,15 @@ paths:
           description: Name of the cluster
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
             description: Name of the cluster
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
       responses:
         "200":
           description: DescribeCluster 200 response
@@ -303,6 +305,7 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
     put:
+      description: Update a cluster managed in a given region.
       operationId: UpdateCluster
       requestBody:
         content:
@@ -316,8 +319,6 @@ paths:
           description: Name of the cluster
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
             description: Name of the cluster
           required: true
@@ -335,28 +336,28 @@ paths:
           explode: true
         - name: validationFailureLevel
           in: query
-          description: Min validation level that will cause the update to fail. Defaults to 'error'.
+          description: Min validation level that will cause the update to fail. (Defaults to 'ERROR'.)
           schema:
             $ref: '#/components/schemas/ValidationLevel'
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
         - name: dryrun
           in: query
-          description: 'Only perform request validation without creating any resource. It can be used to validate the cluster configuration and update requirements. Response code: 200'
+          description: Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: 'Only perform request validation without creating any resource. It can be used to validate the cluster configuration and update requirements. Response code: 200'
+            description: Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.)
             nullable: true
         - name: forceUpdate
           in: query
-          description: Force update by ignoring the update validation errors.
+          description: Force update by ignoring the update validation errors. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Force update by ignoring the update validation errors.
+            description: Force update by ignoring the update validation errors. (Defaults to 'false'.)
             nullable: true
       responses:
         "202":
@@ -417,34 +418,32 @@ paths:
         type: aws_proxy
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
-  /v3/clusters/{clusterName}/computefleet/status:
+  /v3/clusters/{clusterName}/computefleet:
     get:
-      description: Describe the status of the compute fleet
-      operationId: DescribeComputeFleetStatus
+      description: Describe the status of the compute fleet.
+      operationId: DescribeComputeFleet
       parameters:
         - name: clusterName
           in: path
           description: Name of the cluster
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
             description: Name of the cluster
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
       responses:
         "200":
-          description: DescribeComputeFleetStatus 200 response
+          description: DescribeComputeFleet 200 response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DescribeComputeFleetStatusResponseContent'
+                $ref: '#/components/schemas/DescribeComputeFleetResponseContent'
         "400":
           description: BadRequestException 400 response
           content:
@@ -487,12 +486,12 @@ paths:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
     patch:
       description: Update the status of the cluster compute fleet.
-      operationId: UpdateComputeFleetStatus
+      operationId: UpdateComputeFleet
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateComputeFleetStatusRequestContent'
+              $ref: '#/components/schemas/UpdateComputeFleetRequestContent'
         required: true
       parameters:
         - name: clusterName
@@ -500,20 +499,22 @@ paths:
           description: Name of the cluster
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
             description: Name of the cluster
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
       responses:
         "204":
-          description: UpdateComputeFleetStatus 204 response
+          description: UpdateComputeFleet 204 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateComputeFleetResponseContent'
         "400":
           description: BadRequestException 400 response
           content:
@@ -556,7 +557,7 @@ paths:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
   /v3/clusters/{clusterName}/instances:
     delete:
-      description: Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters
+      description: Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters.
       operationId: DeleteClusterInstances
       parameters:
         - name: clusterName
@@ -564,23 +565,21 @@ paths:
           description: Name of the cluster
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
             description: Name of the cluster
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
         - name: force
           in: query
-          description: Force the deletion also when the cluster id is not found.
+          description: Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Force the deletion also when the cluster id is not found.
+            description: Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.)
             nullable: true
       responses:
         "202":
@@ -634,17 +633,15 @@ paths:
           description: Name of the cluster
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
             description: Name of the cluster
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
         - name: nextToken
           in: query
           description: Token to use for paginated requests.
@@ -702,15 +699,15 @@ paths:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
   /v3/images/custom:
     get:
-      description: Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default
+      description: Retrieve the list of existing custom images.
       operationId: ListImages
       parameters:
         - name: region
           in: query
-          description: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
+          description: List images built in a given AWS Region.
           schema:
             type: string
-            description: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
+            description: List images built in a given AWS Region.
         - name: nextToken
           in: query
           description: Token to use for paginated requests.
@@ -719,7 +716,7 @@ paths:
             description: Token to use for paginated requests.
         - name: imageStatus
           in: query
-          description: Filter by image status.
+          description: Filter images by the status provided.
           schema:
             $ref: '#/components/schemas/ImageStatusFilteringOption'
           required: true
@@ -788,23 +785,29 @@ paths:
           explode: true
         - name: validationFailureLevel
           in: query
-          description: Min validation level that will cause the creation to fail. Defaults to 'error'.
+          description: Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.)
           schema:
             $ref: '#/components/schemas/ValidationLevel'
         - name: dryrun
           in: query
-          description: 'Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200'
+          description: Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: 'Only perform request validation without creating any resource. It can be used to validate the image configuration. Response code: 200'
+            description: Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.)
             nullable: true
         - name: rollbackOnFailure
           in: query
-          description: When set it automatically initiates an image stack rollback on failures. Defaults to true.
+          description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
           schema:
             type: boolean
-            description: When set it automatically initiates an image stack rollback on failures. Defaults to true.
+            description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
             nullable: true
+        - name: region
+          in: query
+          description: AWS Region that the operation corresponds to.
+          schema:
+            type: string
+            description: AWS Region that the operation corresponds to.
       responses:
         "202":
           description: BuildImage 202 response
@@ -865,26 +868,24 @@ paths:
       parameters:
         - name: imageId
           in: path
-          description: Id of the image
+          description: Id of the image.
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-            description: Id of the image
+            description: Id of the image.
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
         - name: force
           in: query
-          description: Force deletion in case there are instances using the AMI or in case the AMI is shared
+          description: Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: Force deletion in case there are instances using the AMI or in case the AMI is shared
+            description: Force deletion in case there are instances using the AMI or in case the AMI is shared. (Defaults to 'false'.)
             nullable: true
       responses:
         "202":
@@ -939,20 +940,18 @@ paths:
       parameters:
         - name: imageId
           in: path
-          description: Id of the image
+          description: Id of the image.
           schema:
             type: string
-            maxLength: 60
-            minLength: 5
             pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-            description: Id of the image
+            description: Id of the image.
           required: true
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
       responses:
         "200":
           description: DescribeImage 200 response
@@ -1007,22 +1006,22 @@ paths:
       parameters:
         - name: region
           in: query
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           schema:
             type: string
-            description: AWS Region. Defaults to the region the API is deployed to.
+            description: AWS Region that the operation corresponds to.
         - name: os
           in: query
-          description: Filter by OS distribution
+          description: Filter by OS distribution (Default is to not filter.)
           schema:
             type: string
-            description: Filter by OS distribution
+            description: Filter by OS distribution (Default is to not filter.)
         - name: architecture
           in: query
-          description: Filter by architecture
+          description: Filter by architecture (Default is to not filter.)
           schema:
             type: string
-            description: Filter by architecture
+            description: Filter by architecture (Default is to not filter.)
       responses:
         "200":
           description: DescribeOfficialImages 200 response
@@ -1087,7 +1086,7 @@ components:
         - version
     BadRequestExceptionResponseContent:
       type: object
-      description: This exception is thrown when a client calls an API with wrong parameters
+      description: This exception is thrown when a client calls an API with wrong parameters.
       properties:
         message:
           type: string
@@ -1107,19 +1106,13 @@ components:
         imageConfiguration:
           type: string
           description: Image configuration as a YAML document
-          format: byte
-        id:
+        imageId:
           type: string
-          maxLength: 60
-          minLength: 5
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Id of the image
-        region:
-          type: string
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: Id of the Image that will be built.
       required:
-        - id
         - imageConfiguration
+        - imageId
     BuildImageResponseContent:
       type: object
       properties:
@@ -1129,7 +1122,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
-          description: List of messages collected during image config validation whose level is lower than the validationFailureLevel set by the user
+          description: List of messages collected during image config validation whose level is lower than the 'validationFailureLevel' set by the user.
       required:
         - image
     Change:
@@ -1141,7 +1134,7 @@ components:
           type: string
         currentValue:
           type: string
-    CloudFormationStatus:
+    CloudFormationStackStatus:
       type: string
       enum:
         - CREATE_IN_PROGRESS
@@ -1163,29 +1156,27 @@ components:
     ClusterConfigurationStructure:
       type: object
       properties:
-        s3Url:
+        url:
           type: string
-          description: S3 Url pointing to the cluster configuration file.
+          description: URL of the cluster configuration file.
     ClusterInfoSummary:
       type: object
       properties:
         clusterName:
           type: string
-          maxLength: 60
-          minLength: 5
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Name of the cluster
+          description: Name of the cluster.
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
           type: string
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
         region:
           type: string
-          description: AWS region where the cluster is created
+          description: AWS region where the cluster is created.
         version:
           type: string
-          description: ParallelCluster version used to create the cluster
+          description: ParallelCluster version used to create the cluster.
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
       required:
@@ -1264,16 +1255,16 @@ components:
           $ref: '#/components/schemas/ValidationLevel'
         id:
           type: string
-          description: Id of the validator
+          description: Id of the validator.
         type:
           type: string
-          description: Type of the validator
+          description: Type of the validator.
         message:
           type: string
           description: Validation message
     ConflictExceptionResponseContent:
       type: object
-      description: This exception is thrown when a client request to create/modify content would result in a conflict
+      description: This exception is thrown when a client request to create/modify content would result in a conflict.
       properties:
         message:
           type: string
@@ -1290,22 +1281,16 @@ components:
     CreateClusterRequestContent:
       type: object
       properties:
-        name:
+        clusterName:
           type: string
-          maxLength: 60
-          minLength: 5
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Name of the cluster
-        region:
-          type: string
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: Name of the cluster that will be created.
         clusterConfiguration:
           type: string
           description: Cluster configuration as a YAML document
-          format: byte
       required:
         - clusterConfiguration
-        - name
+        - clusterName
     CreateClusterResponseContent:
       type: object
       properties:
@@ -1315,7 +1300,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
-          description: List of messages collected during cluster config validation whose level is lower than the validationFailureLevel set by the user
+          description: List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.
       required:
         - cluster
     DeleteClusterResponseContent:
@@ -1349,47 +1334,45 @@ components:
       properties:
         creationTime:
           type: string
-          description: Timestamp representing the cluster creation time
+          description: Timestamp representing the cluster creation time.
           format: date-time
         headnode:
           $ref: '#/components/schemas/EC2Instance'
         version:
           type: string
-          description: ParallelCluster version used to create the cluster
+          description: ParallelCluster version used to create the cluster.
         clusterConfiguration:
           $ref: '#/components/schemas/ClusterConfigurationStructure'
         tags:
           type: array
           items:
             $ref: '#/components/schemas/Tag'
-          description: Tags associated with the cluster
-        cloudFormationStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          description: Tags associated with the cluster.
+        cloudFormationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterName:
           type: string
-          maxLength: 60
-          minLength: 5
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Name of the cluster
+          description: Name of the cluster.
         computeFleetStatus:
           $ref: '#/components/schemas/ComputeFleetStatus'
         failureReason:
           type: string
-          description: Describe the reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status
+          description: Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.
         cloudformationStackArn:
           type: string
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
         lastUpdatedTime:
           type: string
-          description: Timestamp representing the last cluster update time
+          description: Timestamp representing the last cluster update time.
           format: date-time
         region:
           type: string
-          description: AWS region where the cluster is created
+          description: AWS region where the cluster is created.
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
       required:
-        - cloudFormationStatus
+        - cloudFormationStackStatus
         - cloudformationStackArn
         - clusterConfiguration
         - clusterName
@@ -1400,15 +1383,15 @@ components:
         - region
         - tags
         - version
-    DescribeComputeFleetStatusResponseContent:
+    DescribeComputeFleetResponseContent:
       type: object
       properties:
-        lastUpdatedTime:
-          type: string
-          description: Timestamp representing the last status update time
-          format: date-time
         status:
           $ref: '#/components/schemas/ComputeFleetStatus'
+        lastStatusUpdatedTime:
+          type: string
+          description: Timestamp representing the last status update time.
+          format: date-time
       required:
         - status
     DescribeImageResponseContent:
@@ -1416,36 +1399,48 @@ components:
       properties:
         cloudformationStackStatusReason:
           type: string
-          description: Reason for the CloudFormation stack status
-        imageConfiguration:
-          $ref: '#/components/schemas/ImageConfigurationStructure'
+          description: Reason for the CloudFormation stack status.
         imagebuilderImageStatusReason:
           type: string
           description: Reason for the ImageBuilder Image status.
         imageId:
           type: string
-          description: Id of the Image
+          description: Id of the Image to retrieve detailed information for.
+        cloudformationStackTags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          description: Tags for the CloudFormation stack.
         imagebuilderImageStatus:
           $ref: '#/components/schemas/ImageBuilderImageStatus'
         creationTime:
           type: string
-          description: Timestamp representing the image creation time
+          description: Timestamp representing the image creation time.
           format: date-time
+        version:
+          type: string
+          description: ParallelCluster version used to build the image.
+        imageConfiguration:
+          $ref: '#/components/schemas/ImageConfigurationStructure'
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
+        imageBuildLogsArn:
+          type: string
+          description: ARN of the logs for the image build process.
         cloudformationStackArn:
           type: string
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
         region:
           type: string
-          description: AWS region where the image is created
+          description: AWS region where the image is created.
+        cloudformationStackCreationTime:
+          type: string
+          description: Timestamp representing the CloudFormation stack creation time.
+          format: date-time
         ec2AmiInfo:
           $ref: '#/components/schemas/Ec2AmiInfo'
-        version:
-          type: string
-          description: ParallelCluster version used to build the image
       required:
         - imageBuildStatus
         - imageConfiguration
@@ -1554,31 +1549,29 @@ components:
     ImageConfigurationStructure:
       type: object
       properties:
-        s3Url:
+        url:
           type: string
-          description: S3 Url pointing to the image configuration file.
+          description: URL of the image configuration file.
     ImageInfoSummary:
       type: object
       properties:
         imageId:
           type: string
-          maxLength: 60
-          minLength: 5
           pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-          description: Id of the image
+          description: Id of the image.
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
           type: string
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
         region:
           type: string
-          description: AWS region where the image is built
+          description: AWS region where the image is built.
         version:
           type: string
-          description: ParallelCluster version used to build the image
+          description: ParallelCluster version used to build the image.
       required:
         - imageBuildStatus
         - imageId
@@ -1601,7 +1594,7 @@ components:
         - stopped
     InternalServiceExceptionResponseContent:
       type: object
-      description: This exception is thrown on an unhandled service error
+      description: This exception is thrown on an unhandled service error.
       properties:
         message:
           type: string
@@ -1642,7 +1635,7 @@ components:
         - COMPUTE
     NotFoundExceptionResponseContent:
       type: object
-      description: This exception is thrown when the requested entity is not found
+      description: This exception is thrown when the requested entity is not found.
       properties:
         message:
           type: string
@@ -1664,7 +1657,7 @@ components:
           description: Tag name
     UnauthorizedClientErrorResponseContent:
       type: object
-      description: This exception is thrown when the client is not authorized to perform an action
+      description: This exception is thrown when the client is not authorized to perform an action.
       properties:
         message:
           type: string
@@ -1692,7 +1685,6 @@ components:
         clusterConfiguration:
           type: string
           description: Cluster configuration as a YAML document
-          format: byte
       required:
         - clusterConfiguration
     UpdateClusterResponseContent:
@@ -1704,20 +1696,31 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
-          description: List of messages collected during cluster config validation whose level is lower than the validationFailureLevel set by the user
+          description: List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.
         changeSet:
           type: array
           items:
             $ref: '#/components/schemas/Change'
-          description: List of configuration changes requested by the update operation
+          description: List of configuration changes requested by the update operation.
       required:
         - changeSet
         - cluster
-    UpdateComputeFleetStatusRequestContent:
+    UpdateComputeFleetRequestContent:
       type: object
       properties:
         status:
           $ref: '#/components/schemas/RequestedComputeFleetStatus'
+      required:
+        - status
+    UpdateComputeFleetResponseContent:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/ComputeFleetStatus'
+        lastStatusUpdatedTime:
+          type: string
+          description: Timestamp representing the last status update time.
+          format: date-time
       required:
         - status
     UpdateError:

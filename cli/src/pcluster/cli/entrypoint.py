@@ -12,7 +12,6 @@
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import inspect
 import json
 import logging.config
@@ -30,33 +29,16 @@ import pcluster.api.controllers.cluster_instances_controller
 import pcluster.api.controllers.cluster_operations_controller
 import pcluster.api.controllers.image_operations_controller
 import pcluster.api.errors
-import pcluster.cli.cmds as cli_commands
-import pcluster.cli.commands.cluster as cluster_commands
-import pcluster.cli.commands.image as image_commands
-import pcluster.cli.logging as pcluster_logging
+import pcluster.cli.commands.commands as cli_commands
+import pcluster.cli.logger as pcluster_logging
 import pcluster.cli.model
 from pcluster.api import encoder
 from pcluster.cli.commands.common import CliCommand
+from pcluster.cli.exceptions import APIOperationException, ParameterException
 from pcluster.cli.middleware import add_additional_args, middleware_hooks
 from pcluster.utils import camelcase, to_snake_case
 
 LOGGER = logging.getLogger(__name__)
-
-
-class APIOperationException(Exception):
-    """Thrown while calling API operations."""
-
-    def __init__(self, data):
-        super().__init__()
-        self.data = data
-
-
-class ParameterException(Exception):
-    """Thrown for invalid parameters."""
-
-    def __init__(self, data):
-        super().__init__()
-        self.data = data
 
 
 def _exit_msg(msg):
@@ -80,17 +62,14 @@ def re_validator(rexp_str, param, in_str):
     return in_str
 
 
-def read_file_b64(_param, path):
-    """Take file path, read the file and convert to base64 encoded string."""
+def read_file(_param, path):
+    """Take file path, read the file and return the data as a string."""
     try:
         with open(path) as file:
             file_data = file.read()
     except FileNotFoundError:
         _exit_msg(f"Bad Request: File not found: '{path}'")
-    except UnicodeDecodeError:
-        _exit_msg(f"Bad Request: Unicode error: Perhaps input file '{path}' is not yaml.")
-
-    return base64.b64encode(file_data.encode("utf-8")).decode("utf-8")
+    return file_data
 
 
 def to_number(param, in_str):
@@ -166,7 +145,12 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", title="COMMANDS", dest="operation")
     subparsers.required = True
-    type_map = {"number": to_number, "boolean": bool_converter, "integer": to_int, "byte": read_file_b64}
+    type_map = {
+        "number": to_number,
+        "boolean": bool_converter,
+        "integer": to_int,
+        "file": read_file,
+    }
     parser_map = {"subparser": subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments
@@ -186,7 +170,7 @@ def gen_parser(model):
             else:
                 type_coerce = None
 
-            # add teh parameter to the parser based on type from model / specification
+            # add the parameter to the parser based on type from model / specification
             subparser.add_argument(
                 f"--{param['name']}",
                 required=param.get("required", False),
@@ -197,6 +181,7 @@ def gen_parser(model):
             )
 
         subparser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
+        subparser.add_argument("--query", help="JMESPath query to perform on output.")
         subparser.set_defaults(func=partial(dispatch, model))
 
     return parser, parser_map
@@ -207,13 +192,34 @@ def add_cli_commands(parser_map):
     subparsers = parser_map["subparser"]
 
     # add all non-api commands via introspection
-    for _name, obj in (
-        inspect.getmembers(cluster_commands) + inspect.getmembers(image_commands) + inspect.getmembers(cli_commands)
-    ):
+    for _name, obj in inspect.getmembers(cli_commands):
         if inspect.isclass(obj) and issubclass(obj, CliCommand) and not inspect.isabstract(obj):
             obj(subparsers)
 
     add_additional_args(parser_map)
+
+
+def _run_operation(model, args, extra_args):
+    if args.operation in model:
+        # TODO: remove once all commands are converted
+        logging_handlers = logging.getLogger("pcluster").handlers
+        if len(logging_handlers) > 1:
+            logging.getLogger("pcluster").removeHandler(logging_handlers[1])
+        try:
+            return args.func(args)
+        except KeyboardInterrupt as e:
+            raise e
+        except APIOperationException as e:
+            raise e
+        except ParameterException as e:
+            raise e
+        except Exception as e:
+            # format exception messages in the same manner as the api
+            message = pcluster.api.errors.exception_message(e)
+            error_encoded = encoder.JSONEncoder().encode(message)
+            raise APIOperationException(json.loads(error_encoded))
+    else:
+        return args.func(args, extra_args)
 
 
 def run(sys_args, model=None):
@@ -244,21 +250,7 @@ def run(sys_args, model=None):
 
     LOGGER.debug("Handling CLI command %s", args.operation)  # ToDo: change the level to info after finishing API.
     LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
-
-    # TODO: remove when ready to switch over to spec-based implementations
-    v2_implemented = {"list-images", "build-image", "delete-image", "describe-image", "list-clusters"}
-    if args.operation in model and args.operation not in v2_implemented:
-        # TODO: remove once all commands are converted
-        logging.getLogger("pcluster").removeHandler(logging.getLogger("pcluster").handlers[1])
-        try:
-            return args.func(args)
-        except Exception as e:
-            # format exception messages in the same manner as the api
-            message = pcluster.api.errors.exception_message(e)
-            error_encoded = encoder.JSONEncoder().encode(message)
-            raise APIOperationException(json.loads(error_encoded))
-    else:
-        return args.func(args, extra_args)
+    return _run_operation(model, args, extra_args)
 
 
 def main():

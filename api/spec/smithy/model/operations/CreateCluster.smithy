@@ -2,7 +2,7 @@ namespace parallelcluster
 
 @http(method: "POST", uri: "/v3/clusters", code: 202)
 @tags(["Cluster Operations"])
-@documentation("Create a ParallelCluster managed cluster in a given region.")
+@documentation("Create a managed cluster in a given region.")
 @idempotent
 operation CreateCluster {
     input: CreateClusterRequest,
@@ -18,22 +18,24 @@ operation CreateCluster {
 }
 
 structure CreateClusterRequest {
+    @httpQuery("region")
+    region: Region,
     @httpQuery("suppressValidators")
     @documentation("Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+)")
     suppressValidators: SuppressValidatorsList,
     @httpQuery("validationFailureLevel")
-    @documentation("Min validation level that will cause the creation to fail. Defaults to 'ERROR'.")
+    @documentation("Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.)")
     validationFailureLevel: ValidationLevel,
     @httpQuery("dryrun")
-    @documentation("Only perform request validation without creating any resource. It can be used to validate the cluster configuration. Response code: 200")
+    @documentation("Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.)")
     dryrun: Boolean,
     @httpQuery("rollbackOnFailure")
-    @documentation("When set it automatically initiates a cluster stack rollback on failures. Defaults to true.")
+    @documentation("When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.)")
     rollbackOnFailure: Boolean,
 
     @required
-    name: ClusterName,
-    region: Region,
+    @documentation("Name of the cluster that will be created.")
+    clusterName: ClusterName,
     @required
     clusterConfiguration: ClusterConfigurationData,
 }
@@ -41,6 +43,6 @@ structure CreateClusterRequest {
 structure CreateClusterResponse {
     @required
     cluster: ClusterInfoSummary,
-    @documentation("List of messages collected during cluster config validation whose level is lower than the validationFailureLevel set by the user")
+    @documentation("List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.")
     validationMessages: ValidationMessages
 }
