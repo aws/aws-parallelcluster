@@ -225,7 +225,6 @@ class ImageBuilder:
     @property
     def config_url(self):
         """Return configuration file S3 bucket url."""
-        print("getting config url...")
         if not self.__config_url:
             # get config url in build image command
             if self.__source_config_text:
