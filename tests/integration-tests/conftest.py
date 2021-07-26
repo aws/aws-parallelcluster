@@ -335,6 +335,8 @@ def api_server_factory(
         params = [
             {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
             {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
+            {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
+            {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
         ]
 
         if server_region not in api_servers:
