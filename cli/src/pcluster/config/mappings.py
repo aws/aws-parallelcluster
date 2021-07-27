@@ -160,7 +160,7 @@ ALLOWED_VALUES = {
     "efs_fs_id": r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}|NONE$",
     "file_path": r"^\/?[^\/.\\][^\/\\]*(\/[^\/.\\][^\/]*)*$",
     "fsx_fs_id": r"^fs-[0-9a-z]{17}|NONE$",
-    "greater_than_35": r"^([1-9]+[0-9]{2}|[4-9][0-9]|3[5-9])$",
+    "greater_than_35": r"^([1-9][0-9]{2,}|[4-9][0-9]|3[5-9])$",
     "security_group_id": r"^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
     "snapshot_id": r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$",
     "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
