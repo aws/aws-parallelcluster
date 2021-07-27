@@ -189,13 +189,7 @@ class SlurmConstruct(Construct):
                     "sid": "PassRole",
                     "actions": ["iam:PassRole"],
                     "effect": iam.Effect.ALLOW,
-                    "resources": [
-                        self._format_arn(
-                            service="iam",
-                            region="",
-                            resource=f"role{IAM_ROLE_PATH}*",
-                        )
-                    ],
+                    "resources": self._generate_head_node_pass_role_resources(),
                 },
                 {
                     "sid": "EC2",
@@ -676,6 +670,39 @@ class SlurmConstruct(Construct):
                 ],
             ),
         )
+
+    def _generate_head_node_pass_role_resources(self):
+        """Return list of ARNs that head node ."""
+        default_pass_role_resource = self._format_arn(
+            service="iam",
+            region="",
+            resource=f"role{IAM_ROLE_PATH}*",
+        )
+
+        # If there are any queues where a custom instance role was specified,
+        # enable the head node to pass permissions to those roles.
+        custom_intance_roles = [
+            queue.iam.instance_role  # TODO: handle custom instance profile
+            for queue in self.config.scheduling.queues
+            if queue.iam.instance_role and not queue.iam.instance_role.implied
+        ]
+        if custom_intance_roles:
+            pass_role_resources = [
+                self._format_arn(
+                    service="iam",
+                    region="",
+                    resource=f"role/{custom_instance_role}/*",
+                )
+                for custom_instance_role in custom_intance_roles
+            ]
+
+            # Include the default IAM role path for the queues that
+            # aren't using a custom instance role.
+            if len(custom_intance_roles) < len(self.config.scheduling.queues):
+                pass_role_resources.append(default_pass_role_resource)
+        else:
+            pass_role_resources = [default_pass_role_resource]
+        return pass_role_resources
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
