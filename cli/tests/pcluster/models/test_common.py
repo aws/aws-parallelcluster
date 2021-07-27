@@ -15,7 +15,6 @@ import pytest
 from assertpy import assert_that
 from dateutil.parser import parse
 
-from pcluster.aws.common import AWSClientError
 from pcluster.models.common import (
     CloudWatchLogsExporter,
     FiltersParserError,
