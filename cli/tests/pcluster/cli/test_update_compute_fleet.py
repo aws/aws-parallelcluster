@@ -11,6 +11,7 @@ from assertpy import assert_that
 from pcluster.api.models import UpdateComputeFleetResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
+from tests.utils import wire_translate
 
 
 class TestUpdateComputeFleetCommand:
@@ -83,8 +84,7 @@ class TestUpdateComputeFleetCommand:
                 "START_REQUESTED",
             ]
         )
-        expected = {**response_dict, **{"lastStatusUpdatedTime": "2021-01-01T00:00:00+00:00"}}
-        assert_that(out).is_equal_to(expected)
+        assert_that(out).is_equal_to(wire_translate(response))
         assert_that(update_compute_fleet_status_mock.call_args).is_length(
             2
         )  # this is due to the decorator on list_clusters

@@ -21,7 +21,8 @@ optional arguments:
   --region REGION       AWS Region that the operation corresponds to.
   --dryrun DRYRUN       Only perform request validation without creating any
                         resource. May be used to validate the cluster
-                        configuration and update requirements.
+                        configuration and update requirements. (Defaults to
+                        'false'.)
   --force-update FORCE_UPDATE
                         Force update by ignoring the update validation errors.
                         (Defaults to 'false'.)

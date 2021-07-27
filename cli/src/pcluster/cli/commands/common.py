@@ -12,7 +12,7 @@ import sys
 from abc import ABC, abstractmethod
 
 import argparse
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 
 from pcluster import utils
 from pcluster.constants import SUPPORTED_REGIONS
@@ -89,60 +89,6 @@ class Iso8601Arg:
                 "Start time and end time filters must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
                 f"(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15). {e}"
             )
-
-
-class GetLogEventsCommand(ABC):
-    """Class to put in common code between image and cluster get log events commands."""
-
-    @staticmethod
-    def _register_common_command_args(parser: ArgumentParser) -> None:  # noqa: D102
-        # Filters
-        parser.add_argument(
-            "--start-time",
-            type=Iso8601Arg(),
-            help=(
-                "Start time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted."
-            ),
-        )
-        parser.add_argument(
-            "--end-time",
-            type=Iso8601Arg(),
-            help=(
-                "End time of interval of interest for log events, ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. "
-            ),
-        )
-        parser.add_argument("--head", help="Gets the first <head> lines of the log stream.", type=int)
-        parser.add_argument("--tail", help="Gets the last <tail> lines of the log stream.", type=int)
-        parser.add_argument("--next-token", help="Token for paginated requests.")
-        # Stream utilities
-        parser.add_argument(
-            "--stream",
-            help=(
-                "Gets the log stream and waits for additional output to be produced. "
-                "It can be used in conjunction with --tail to start from the latest <tail> lines of the log stream. "
-                "It doesn't work for CloudFormation Stack Events log stream."
-            ),
-            action="store_true",
-        )
-        parser.add_argument("--stream-period", help="Sets the streaming period. Default is 5 seconds.", type=int)
-
-    @staticmethod
-    def _validate_common_args(args: Namespace):
-        if args.head and args.tail:
-            utils.error("Parameters validation error: 'tail' and 'head' options cannot be set at the same time")
-
-        if args.stream:
-            if args.next_token:
-                utils.error(
-                    "Parameters validation error: 'stream' and 'next-token' options cannot be set at the same time"
-                )
-            if args.head:
-                utils.error("Parameters validation error: 'stream' and 'head' options cannot be set at the same time")
-        else:
-            if args.stream_period:
-                utils.error("Parameters validation error: 'stream-period' can be used only with 'stream' option")
 
 
 class ExportLogsCommand(ABC):

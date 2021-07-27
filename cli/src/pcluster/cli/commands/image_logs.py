@@ -9,15 +9,13 @@
 # pylint: disable=import-outside-toplevel
 import logging
 import os
-import time
 from datetime import datetime
 from typing import List
 
 from argparse import ArgumentParser, Namespace
 
 from pcluster import utils
-from pcluster.cli.commands.common import CliCommand, ExportLogsCommand, GetLogEventsCommand
-from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME_FORMAT
+from pcluster.cli.commands.common import CliCommand, ExportLogsCommand
 from pcluster.models.imagebuilder import ImageBuilder
 
 LOGGER = logging.getLogger(__name__)
@@ -72,90 +70,3 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
             end_time=args.end_time,
         )
         LOGGER.info("Image's logs exported correctly to %s", output_file_path)
-
-
-class ListImageLogsCommand(CliCommand):
-    """Implement pcluster list-image-logs command."""
-
-    # CLI
-    name = "list-image-logs"
-    help = "List the log streams associated to an image id."
-    description = help
-
-    def __init__(self, subparsers):
-        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
-
-    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("image_id", help="List the logs of the image id provided here.")
-        parser.add_argument("--next-token", help="Token for paginated requests")
-
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
-        try:
-            self._list_image_logs(args)
-        except Exception as e:
-            utils.error(f"Unable to list image's logs.\n{e}")
-
-    @staticmethod
-    def _list_image_logs(args: Namespace):
-        imagebuilder = ImageBuilder(image_id=args.image_id)
-        logs = imagebuilder.list_logs(next_token=args.next_token)
-        logs.print_stack_log_streams()
-        logs.print_cw_log_streams()
-
-
-class GetImageLogEventsCommand(GetLogEventsCommand, CliCommand):
-    """Implement pcluster get-image-log-events command."""
-
-    # CLI
-    name = "get-image-log-events"
-    help = "Retrieve the events of a log stream of the image."
-    description = help
-
-    def __init__(self, subparsers):
-        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
-
-    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        super()._register_common_command_args(parser)
-        parser.add_argument("image_id", help="Get the log stream of the image id provided here.")
-        parser.add_argument(
-            "--log-stream-name",
-            help="Log stream name, as reported by 'pcluster list-image-logs' command.",
-            required=True,
-        )
-
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
-        try:
-            self._validate_common_args(args)
-            self._get_image_log_events(args)
-        except Exception as e:
-            utils.error(f"Unable to get image's log events.\n{e}")
-
-    @staticmethod
-    def _get_image_log_events(args: Namespace):
-        """Get log events for a specific log stream of the image saved in CloudWatch."""
-        kwargs = {
-            "log_stream_name": args.log_stream_name,
-            "start_time": args.start_time,
-            "end_time": args.end_time,
-            "start_from_head": args.head is not None,
-            "limit": args.head or args.tail or None,
-            "next_token": args.next_token,
-        }
-        imagebuilder = ImageBuilder(image_id=args.image_id)
-        log_events = imagebuilder.get_log_events(**kwargs)
-
-        log_events.print_events()
-        if args.stream and args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(imagebuilder.image_id):
-            # stream content
-            next_token = log_events.next_ftoken
-            while next_token is not None:
-                period = args.stream_period or 5
-                LOGGER.debug("Waiting other %s seconds...", period)
-                time.sleep(period)
-
-                kwargs["next_token"] = next_token
-                log_events = imagebuilder.get_log_events(**kwargs)
-                next_token = log_events.next_ftoken
-                log_events.print_events()
-        else:
-            log_events.print_next_tokens()

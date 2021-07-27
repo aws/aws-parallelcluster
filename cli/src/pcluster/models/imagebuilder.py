@@ -21,7 +21,6 @@ from datetime import datetime
 from typing import Set
 
 import pkg_resources
-from dateutil.parser import parse
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
@@ -701,12 +700,15 @@ class ImageBuilder:
             if not stack_exists:
                 LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
 
-            cw_log_streams = None
+            log_streams = []
+
             if AWSApi.instance().logs.log_group_exists(self._log_group_name):
                 LOGGER.debug("Listing log streams from log group %s", self._log_group_name)
-                cw_log_streams = AWSApi.instance().logs.describe_log_streams(
+                log_stream_resp = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self._log_group_name, next_token=next_token
                 )
+                log_streams.extend(log_stream_resp["logStreams"])
+                next_token = log_stream_resp.get("nextToken")
                 log_group_exist = True
             else:
                 LOGGER.debug("Log Group %s doesn't exist.", self._log_group_name)
@@ -717,19 +719,20 @@ class ImageBuilder:
                     f"Unable to find image logs, please double check if image id={self.image_id} is correct."
                 )
 
-            stack_log_streams = None
-            if not next_token and stack_exists:
-                # add CFN Stack information only at the first request, when next-token is not specified
-                stack_log_streams = [
-                    {
-                        "Stack Events Stream": self._stack_events_stream_name,
-                        "Stack Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
-                    }
-                ]
-            return Logs(stack_log_streams, cw_log_streams)
+            return Logs(log_streams, next_token)
 
         except AWSClientError as e:
             raise ImageBuilderActionError(f"Unexpected error when retrieving image's logs: {e}")
+
+    def get_stack_events(self, next_token: str = None):
+        """
+        Get the CloudFormation stack events.
+
+        :param next_token Start from next_token if provided.
+        """
+        if not self._stack_exists():
+            raise ImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
+        return AWSApi.instance().cfn.get_stack_events(self.stack.name, next_token=next_token)
 
     def get_log_events(
         self,
@@ -753,31 +756,17 @@ class ImageBuilder:
         :param next_token: Token for paginated requests.
         """
         try:
-            if log_stream_name != self._stack_events_stream_name:
-                # get Image Builder log stream events
-                log_events_response = AWSApi.instance().logs.get_log_events(
-                    log_group_name=self._log_group_name,
-                    log_stream_name=log_stream_name,
-                    end_time=isoformat_to_epoch(end_time) if end_time else None,
-                    start_time=isoformat_to_epoch(start_time) if start_time else None,
-                    limit=limit,
-                    start_from_head=start_from_head,
-                    next_token=next_token,
-                )
-                return LogStream(self.image_id, log_stream_name, log_events_response)
-            else:
-                # Get Stack Events log stream
-                if not self._stack_exists():
-                    raise ImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
-
-                stack_events = AWSApi.instance().cfn.get_stack_events(self.stack.name)
-                stack_events.reverse()
-                if limit:
-                    if start_from_head:
-                        stack_events = stack_events[:limit]
-                    else:
-                        stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
-                return LogStream(self.image_id, log_stream_name, {"events": stack_events})
+            # get Image Builder log stream events
+            log_events_response = AWSApi.instance().logs.get_log_events(
+                log_group_name=self._log_group_name,
+                log_stream_name=log_stream_name,
+                end_time=isoformat_to_epoch(end_time) if end_time else None,
+                start_time=isoformat_to_epoch(start_time) if start_time else None,
+                limit=limit,
+                start_from_head=start_from_head,
+                next_token=next_token,
+            )
+            return LogStream(self.image_id, log_stream_name, log_events_response)
         except AWSClientError as e:
             raise ImageBuilderActionError(f"Unexpected error when retrieving log events: {e}")
 

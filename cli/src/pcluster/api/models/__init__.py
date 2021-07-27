@@ -45,6 +45,10 @@ from pcluster.api.models.dryrun_operation_exception_response_content import Dryr
 from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.ec2_ami_state import Ec2AmiState
 from pcluster.api.models.ec2_instance import EC2Instance
+from pcluster.api.models.get_cluster_log_events_response_content import GetClusterLogEventsResponseContent
+from pcluster.api.models.get_cluster_stack_events_response_content import GetClusterStackEventsResponseContent
+from pcluster.api.models.get_image_log_events_response_content import GetImageLogEventsResponseContent
+from pcluster.api.models.get_image_stack_events_response_content import GetImageStackEventsResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.api.models.image_builder_image_status import ImageBuilderImageStatus
 from pcluster.api.models.image_configuration_structure import ImageConfigurationStructure
@@ -53,11 +57,16 @@ from pcluster.api.models.image_status_filtering_option import ImageStatusFilteri
 from pcluster.api.models.instance_state import InstanceState
 from pcluster.api.models.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pcluster.api.models.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster.api.models.list_cluster_log_streams_response_content import ListClusterLogStreamsResponseContent
 from pcluster.api.models.list_clusters_response_content import ListClustersResponseContent
+from pcluster.api.models.list_image_log_streams_response_content import ListImageLogStreamsResponseContent
 from pcluster.api.models.list_images_response_content import ListImagesResponseContent
+from pcluster.api.models.log_event import LogEvent
+from pcluster.api.models.log_stream import LogStream
 from pcluster.api.models.node_type import NodeType
 from pcluster.api.models.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster.api.models.requested_compute_fleet_status import RequestedComputeFleetStatus
+from pcluster.api.models.stack_event import StackEvent
 from pcluster.api.models.tag import Tag
 from pcluster.api.models.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
 from pcluster.api.models.update_cluster_bad_request_exception_response_content import (

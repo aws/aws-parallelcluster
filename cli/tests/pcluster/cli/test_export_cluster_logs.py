@@ -52,7 +52,7 @@ class TestExportClusterLogsCommand:
             {},
             {"output": "output-path"},
             {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
-            {"filters": "Name=private-dns-name,Values=ip-10-10-10-10"},
+            {"filters": ["Name=private-dns-name,Values=ip-10-10-10-10"]},
             {
                 "output": "output-path",
                 "bucket": "bucket-name",
@@ -60,7 +60,7 @@ class TestExportClusterLogsCommand:
                 "keep_s3_objects": True,
                 "start_time": "2021-06-02T15:55:10+02:00",
                 "end_time": "2021-06-07",
-                "filters": "Name=private-dns-name,Values=ip-10-10-10-10",
+                "filters": ["Name=private-dns-name,Values=ip-10-10-10-10"],
             },
             {
                 "output": "output-path",
@@ -69,7 +69,7 @@ class TestExportClusterLogsCommand:
                 "keep_s3_objects": False,
                 "start_time": "2021-06-02T15:55:10+02:00",
                 "end_time": "2021-06-07",
-                "filters": "Name=node-type,Values=HeadNode",
+                "filters": ["Name=node-type,Values=HeadNode"],
             },
         ],
     )
@@ -112,7 +112,7 @@ class TestExportClusterLogsCommand:
         if "end_time" in args:
             cli_args.extend(["--end-time", args["end_time"]])
         if "filters" in args:
-            cli_args.extend(["--filters", args["filters"]])
+            cli_args.extend(["--filters", " ".join(args["filters"])])
         return cli_args
 
     @staticmethod
@@ -129,10 +129,6 @@ class TestExportClusterLogsCommand:
                 check_regex = True
 
             if check_regex:
-                assert_that(
-                    re.search(expected_value, call_param), f"Expected: {expected_value}, value is: {call_param}"
-                ).is_true()
+                assert_that(re.search(expected_value, call_param)).is_true()
             else:
-                assert_that(call_param, f"Expected: {expected_value}, value is: {call_param}").is_equal_to(
-                    expected_value
-                )
+                assert_that(call_param).is_equal_to(expected_value)

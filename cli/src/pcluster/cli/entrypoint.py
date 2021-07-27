@@ -36,7 +36,7 @@ from pcluster.api import encoder
 from pcluster.cli.commands.common import CliCommand
 from pcluster.cli.exceptions import APIOperationException, ParameterException
 from pcluster.cli.middleware import add_additional_args, middleware_hooks
-from pcluster.utils import camelcase, to_snake_case
+from pcluster.utils import to_camel_case, to_snake_case
 
 LOGGER = logging.getLogger(__name__)
 
@@ -102,8 +102,7 @@ def convert_args(model, op_name, args_in):
         value = args_in.pop(param_name)
 
         if param["body"]:
-            param_name = camelcase(param_name)
-            param_name = param_name[0].lower() + param_name[1:]
+            param_name = to_camel_case(param_name)
             body[param_name] = value
         else:
             kwargs[param_name] = value

@@ -24,7 +24,6 @@ from typing import List, Optional, Set, Tuple
 
 import pkg_resources
 import yaml
-from dateutil.parser import parse
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
@@ -904,7 +903,7 @@ class Cluster:
             raise ClusterActionError(str(e))
         return export_logs_filters
 
-    def list_logs(self, filters: str = None, next_token: str = None):
+    def list_logs(self, filters: List[str] = None, next_token: str = None):
         """
         List cluster's logs.
 
@@ -918,29 +917,22 @@ class Cluster:
             if not AWSApi.instance().cfn.stack_exists(self.stack_name):
                 raise ClusterActionError(f"Cluster {self.name} does not exist")
 
+            log_streams = []
+
             LOGGER.debug("Listing log streams from log group %s", self.stack.log_group_name)
-            cw_log_streams = None
             if self.stack.log_group_name:
                 list_logs_filters = self._init_list_logs_filters(filters)
-                cw_log_streams = AWSApi.instance().logs.describe_log_streams(
+                log_stream_resp = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self.stack.log_group_name,
                     log_stream_name_prefix=list_logs_filters.log_stream_prefix,
                     next_token=next_token,
                 )
+                log_streams.extend(log_stream_resp["logStreams"])
+                next_token = log_stream_resp.get("nextToken")
             else:
                 LOGGER.debug("CloudWatch logging is not enabled for cluster %s", self.name)
 
-            stack_log_streams = None
-            if not next_token:
-                # add CFN Stack information only at the first request, when next-token is not specified
-                stack_log_streams = [
-                    {
-                        "Stack Events Stream": self._stack_events_stream_name,
-                        "Cluster Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
-                        "Last Update Time": parse(self.stack.last_updated_time).isoformat(timespec="seconds"),
-                    }
-                ]
-            return Logs(stack_log_streams, cw_log_streams)
+            return Logs(log_streams, next_token)
 
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving cluster's logs: {e}")
@@ -960,6 +952,19 @@ class Cluster:
         except FiltersParserError as e:
             raise ClusterActionError(str(e))
         return list_logs_filters
+
+    def get_stack_events(self, next_token: str = None):
+        """
+        Get the CloudFormation stack events for the cluster.
+
+        :param next_token Start from next_token if provided.
+        """
+        try:
+            if not AWSApi.instance().cfn.stack_exists(self.stack_name):
+                raise ClusterActionError(f"Cluster {self.name} does not exist")
+            return AWSApi.instance().cfn.get_stack_events(self.stack_name, next_token=next_token)
+        except AWSClientError as e:
+            raise _cluster_error_mapper(e, f"Unexpected error when retrieving stack events: {e}")
 
     def get_log_events(
         self,
@@ -982,34 +987,23 @@ class Cluster:
             the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
         :param next_token: Token for paginated requests.
         """
-        # check stack
         if not AWSApi.instance().cfn.stack_exists(self.stack_name):
             raise ClusterActionError(f"Cluster {self.name} does not exist")
 
         try:
-            if log_stream_name != self._stack_events_stream_name:
-                if not self.stack.log_group_name:
-                    raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
+            if not self.stack.log_group_name:
+                raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
 
-                log_events_response = AWSApi.instance().logs.get_log_events(
-                    log_group_name=self.stack.log_group_name,
-                    log_stream_name=log_stream_name,
-                    end_time=isoformat_to_epoch(end_time) if end_time else None,
-                    start_time=isoformat_to_epoch(start_time) if start_time else None,
-                    limit=limit,
-                    start_from_head=start_from_head,
-                    next_token=next_token,
-                )
-                return LogStream(self.stack_name, log_stream_name, log_events_response)
-            else:
-                stack_events = AWSApi.instance().cfn.get_stack_events(self.stack_name)
-                stack_events.reverse()
-                if limit:
-                    if start_from_head:
-                        stack_events = stack_events[:limit]
-                    else:
-                        stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
-                return LogStream(self.stack_name, log_stream_name, {"events": stack_events})
+            log_events_response = AWSApi.instance().logs.get_log_events(
+                log_group_name=self.stack.log_group_name,
+                log_stream_name=log_stream_name,
+                end_time=isoformat_to_epoch(end_time) if end_time else None,
+                start_time=isoformat_to_epoch(start_time) if start_time else None,
+                limit=limit,
+                start_from_head=start_from_head,
+                next_token=next_token,
+            )
+            return LogStream(self.stack_name, log_stream_name, log_events_response)
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}")
 

@@ -5,17 +5,19 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import os
-import re
 import time
 
 import pytest
 from assertpy import assert_that
 
+from pcluster.cli.entrypoint import run
 from pcluster.models.common import LogStream
+from pcluster.utils import to_kebab_case
 from tests.pcluster.test_imagebuilder_utils import FAKE_ID
 
-BASE_COMMAND = ["pcluster", "get-image-log-events"]
+BASE_COMMAND = ["pcluster", "get-image-log-events", "--region", "us-east-1"]
 REQUIRED_ARGS = {"image_id": FAKE_ID, "log_stream_name": "log-stream-name"}
 
 
@@ -28,7 +30,7 @@ class TestGetImageLogEventsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({}, "the following arguments are required: image_id, --log-stream-name")],
+        [({}, "the following arguments are required: --image-id, --log-stream-name")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -40,11 +42,10 @@ class TestGetImageLogEventsCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({"start_time": "wrong"}, "Start time and end time filters must be in the ISO 8601 format"),
-            ({"end_time": "1622802790248"}, "Start time and end time filters must be in the ISO 8601 format"),
-            ({"head": "wrong"}, "invalid int value"),
-            ({"tail": "wrong"}, "invalid int value"),
-            ({"stream_period": "wrong"}, "invalid int value"),
+            ({"start_time": "wrong"}, "start_time filter must be in the ISO 8601 format"),
+            ({"end_time": "1622802790248"}, "end_time filter must be in the ISO 8601 format"),
+            ({"start_from_head": "wrong"}, "expected 'boolean' for parameter 'start-from-head'"),
+            ({"limit": "wrong"}, "expected 'number' for parameter 'limit'"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -55,48 +56,29 @@ class TestGetImageLogEventsCommand:
         assert_that(out + err).contains(error_message)
 
     @pytest.mark.parametrize(
-        "args, expected_error",
+        "args",
         [
-            # errors
-            (
-                {"log_stream_name": "log-stream-name", "tail": "2", "head": "5"},
-                "options cannot be set at the same time",
-            ),
-            (
-                {"log_stream_name": "log-stream-name", "stream": True, "next_token": "f/123456"},
-                "options cannot be set at the same time",
-            ),
-            (
-                {"log_stream_name": "log-stream-name", "stream": True, "head": "5"},
-                "options cannot be set at the same time",
-            ),
-            ({"log_stream_name": "log-stream-name", "stream_period": "5"}, "can be used only with"),
-            # success
-            ({"log_stream_name": "log-stream-name"}, None),
+            ({"log_stream_name": "log-stream-name"}),
             (
                 {
                     "log_stream_name": "log-stream-name",
-                    "tail": "6",
+                    "limit": "6",
                     "start_time": "2021-06-02",
                     "end_time": "2021-06-02",
-                },
-                None,
+                }
             ),
-            ({"log_stream_name": f"{FAKE_ID}-cfn-events", "tail": "6"}, None),
             (
                 {
                     "log_stream_name": "log-stream-name",
-                    "head": "6",
+                    "limit": "6",
                     "start_time": "2021-06-02T15:55:10+02:00",
                     "end_time": "2021-06-02T17:55:10+02:00",
                     "next_token": "f/1234",
-                },
-                None,
+                }
             ),
-            ({"log_stream_name": "log-stream-name", "tail": "2", "stream": True, "stream_period": "6"}, None),
         ],
     )
-    def test_execute(self, mocker, capsys, set_env, run_cli, test_datadir, assert_out_err, args, expected_error):
+    def test_execute(self, mocker, set_env, test_datadir, args):
         mocked_result = [
             LogStream(
                 FAKE_ID,
@@ -135,68 +117,33 @@ class TestGetImageLogEventsCommand:
             )
         ] * 2 + [LogStream(FAKE_ID, "logstream", {})]
         get_image_log_events_mock = mocker.patch(
-            "pcluster.cli.commands.image_logs.ImageBuilder.get_log_events", side_effect=mocked_result
+            "pcluster.api.controllers.image_logs_controller.ImageBuilder.get_log_events", side_effect=mocked_result
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
-        mocker.patch("pcluster.cli.commands.image_logs.time.sleep")  # so we don't actually have to wait
+        base_args = ["get-image-log-events"]
+        command = base_args + self._build_cli_args({**REQUIRED_ARGS, **args})
 
-        command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
+        os.environ["TZ"] = "Europe/London"
+        time.tzset()
+        out = run(command)
 
-        if expected_error:
-            run_cli(command, expect_failure=True, expect_message=expected_error)
-        else:
-            os.environ["TZ"] = "Europe/London"
-            time.tzset()
-            run_cli(command, expect_failure=False)
-            expected_output = "pcluster-out-stream.txt" if args.get("stream") else "pcluster-out.txt"
-            assert_out_err(expected_out=(test_datadir / expected_output).read_text().strip(), expected_err="")
-            assert_that(get_image_log_events_mock.call_args).is_length(2)
+        expected = json.loads((test_datadir / "pcluster-out.txt").read_text().strip())
+        assert_that(expected).is_equal_to(out)
+        assert_that(get_image_log_events_mock.call_args).is_length(2)
 
-            # verify arguments
-            expected_params = {
-                "log_stream_name": args.get("log_stream_name", None),
-                "start_time": args.get("start_time", None),
-                "end_time": args.get("end_time", None),
-                "start_from_head": True if args.get("head") else False,
-                "limit": args.get("head") or args.get("tail") or None,
-                "next_token": "f/3618" if args.get("stream") else args.get("next_token", None),
-            }
-            self._check_params(get_image_log_events_mock, expected_params, args)
+        # verify arguments
+        kwargs = {
+            "start_time": args.get("start_time", None),
+            "end_time": args.get("end_time", None),
+            "start_from_head": True if args.get("start_from_head", None) else None,
+            "limit": int(args["limit"]) if args.get("limit", None) else None,
+            "next_token": args.get("next_token", None),
+        }
+        get_image_log_events_mock.assert_called_with("log-stream-name", **kwargs)
 
     @staticmethod
     def _build_cli_args(args):
         cli_args = []
-        if "image_id" in args:
-            cli_args.extend([args["image_id"]])
-        if "log_stream_name" in args:
-            cli_args.extend(["--log-stream-name", args["log_stream_name"]])
-        if "start_time" in args:
-            cli_args.extend(["--start-time", args["start_time"]])
-        if "end_time" in args:
-            cli_args.extend(["--end-time", args["end_time"]])
-        if "head" in args:
-            cli_args.extend(["--head", args["head"]])
-        if "tail" in args:
-            cli_args.extend(["--tail", args["tail"]])
-        if "next_token" in args:
-            cli_args.extend(["--next-token", args["next_token"]])
-        if "stream" in args:
-            cli_args.extend(["--stream"])
-        if "stream_period" in args:
-            cli_args.extend(["--stream-period", args["stream_period"]])
+        for k, val in args.items():
+            cli_args.extend([f"--{to_kebab_case(k)}", val])
         return cli_args
-
-    @staticmethod
-    def _check_params(list_logs_mock, expected_params, args):
-        for param_key, expected_value in expected_params.items():
-            for index in range(1, len(list_logs_mock.call_args)):
-                call_param = list_logs_mock.call_args[index].get(param_key)
-
-                if param_key != "limit" and param_key not in args and isinstance(expected_value, str):
-                    assert_that(
-                        re.search(expected_value, call_param), f"Expected: {expected_value}, value is: {call_param}"
-                    ).is_true()
-                else:
-                    assert_that(str(call_param), f"Expected: {expected_value}, value is: {call_param}").is_equal_to(
-                        str(expected_value)
-                    )
