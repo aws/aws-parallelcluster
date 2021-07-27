@@ -14,9 +14,9 @@ import os
 import tarfile
 import time
 from datetime import datetime
+from typing import List
 
 import yaml
-from tabulate import tabulate
 
 from pcluster import utils
 from pcluster.aws.aws_api import AWSApi
@@ -239,40 +239,9 @@ def create_logs_archive(folder_to_archive: str, archive_file_path: str):
 class Logs:
     """Class to manage list of logs, for both CW logs and Stack logs."""
 
-    def __init__(self, stack_log_streams: dict = None, cw_log_streams: dict = None):
-        self.stack_log_streams = stack_log_streams
-        self.cw_log_streams = cw_log_streams
-
-    def print_stack_log_streams(self):
-        """Print Stack Log streams."""
-        if not self.stack_log_streams:
-            print("No Stack logs available.\n")
-        else:
-            print("{}\n".format(tabulate(self.stack_log_streams, headers="keys", tablefmt="plain")))
-
-    def print_cw_log_streams(self):
-        """Print CloudWatch log streams."""
-        if not self.cw_log_streams:
-            print("No logs saved in CloudWatch.")
-        else:
-            # List CW log streams
-            output_headers = {
-                "logStreamName": "Log Stream Name",
-                "firstEventTimestamp": "First Event",
-                "lastEventTimestamp": "Last Event",
-            }
-            filtered_result = []
-            for item in self.cw_log_streams.get("logStreams", []):
-                filtered_item = {}
-                for key, output_key in output_headers.items():
-                    value = item.get(key)
-                    if key.endswith("Timestamp"):
-                        value = utils.timestamp_to_isoformat(value)
-                    filtered_item[output_key] = value
-                filtered_result.append(filtered_item)
-            print(tabulate(filtered_result, headers="keys", tablefmt="plain"))
-            if self.cw_log_streams.get("nextToken", None):
-                print("\nnextToken is: %s", self.cw_log_streams["nextToken"])
+    def __init__(self, log_streams: List[dict] = None, next_token: str = None):
+        self.log_streams = log_streams
+        self.next_token = next_token
 
 
 class LogStream:

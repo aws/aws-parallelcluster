@@ -100,9 +100,12 @@ class CfnClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @AWSExceptionHandler.retry_on_boto3_throttling
-    def get_stack_events(self, stack_name):
-        """Return all the events of a stack."""
-        return list(self._paginate_results(self._client.describe_stack_events, StackName=stack_name))
+    def get_stack_events(self, stack_name, next_token=None):
+        """Return the events of a stack, start from next_token if provided."""
+        if next_token:
+            return self._client.describe_stack_events(StackName=stack_name, NextToken=next_token)
+        else:
+            return self._client.describe_stack_events(StackName=stack_name)
 
     @staticmethod
     def format_event(event):

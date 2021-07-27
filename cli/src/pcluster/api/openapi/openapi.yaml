@@ -399,6 +399,7 @@ paths:
         style: form
       - description: Only perform request validation without creating any resource.
           May be used to validate the cluster configuration and update requirements.
+          (Defaults to 'false'.)
         explode: true
         in: query
         name: dryrun
@@ -406,6 +407,7 @@ paths:
         schema:
           description: Only perform request validation without creating any resource.
             May be used to validate the cluster configuration and update requirements.
+            (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
@@ -807,6 +809,315 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_instances_controller
+  /v3/clusters/{clusterName}/logstreams:
+    get:
+      description: Retrieve the list of log streams associated with a cluster.
+      operationId: list_cluster_log_streams
+      parameters:
+      - description: Name of the cluster
+        explode: false
+        in: path
+        name: clusterName
+        required: true
+        schema:
+          description: Name of the cluster
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Region that the given cluster belongs to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: Region that the given cluster belongs to.
+          type: string
+        style: form
+      - description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+          Accepted filters are:\nprivate-dns-name - The short form of the private\
+          \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type,\
+          \ the only accepted value for this filter is HeadNode."
+        explode: true
+        in: query
+        name: filters
+        required: false
+        schema:
+          description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+            Accepted filters are:\nprivate-dns-name - The short form of the private\
+            \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node\
+            \ type, the only accepted value for this filter is HeadNode."
+          items:
+            type: string
+          type: array
+          uniqueItems: true
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListClusterLogStreamsResponseContent'
+          description: ListClusterLogStreams 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Cluster Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
+  /v3/clusters/{clusterName}/logstreams/{logStreamName}:
+    get:
+      description: Retrieve the events associated with a log stream.
+      operationId: get_cluster_log_events
+      parameters:
+      - description: Name of the cluster
+        explode: false
+        in: path
+        name: clusterName
+        required: true
+        schema:
+          description: Name of the cluster
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Name of the log stream.
+        explode: false
+        in: path
+        name: logStreamName
+        required: true
+        schema:
+          description: Name of the log stream.
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      - description: "If the value is true, the earliest log events are returned first.\
+          \ If the value is false, the latest log events are returned first. (Defaults\
+          \ to 'false'.)"
+        explode: true
+        in: query
+        name: startFromHead
+        required: false
+        schema:
+          description: "If the value is true, the earliest log events are returned\
+            \ first. If the value is false, the latest log events are returned first.\
+            \ (Defaults to 'false'.)"
+          nullable: true
+          type: boolean
+        style: form
+      - description: "The maximum number of log events returned. If you don't specify\
+          \ a value, the maximum is as many log events as can fit in a response size\
+          \ of 1 MB, up to 10,000 log events."
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          description: "The maximum number of log events returned. If you don't specify\
+            \ a value, the maximum is as many log events as can fit in a response\
+            \ size of 1 MB, up to 10,000 log events."
+          format: int32
+          nullable: true
+          type: integer
+        style: form
+      - description: "The start of the time range, expressed in ISO8601 format (e.g.\
+          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
+          \ or later than this time are included."
+        explode: true
+        in: query
+        name: startTime
+        required: false
+        schema:
+          description: "The start of the time range, expressed in ISO8601 format (e.g.\
+            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
+            \ or later than this time are included."
+          format: date-time
+          type: string
+        style: form
+      - description: "The end of the time range, expressed in ISO8601 format (e.g.\
+          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
+          \ than this time are not included."
+        explode: true
+        in: query
+        name: endTime
+        required: false
+        schema:
+          description: "The end of the time range, expressed in ISO8601 format (e.g.\
+            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
+            \ than this time are not included."
+          format: date-time
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetClusterLogEventsResponseContent'
+          description: GetClusterLogEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Cluster Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
+  /v3/clusters/{clusterName}/stackevents:
+    get:
+      description: Retrieve the events associated with the stack for a given cluster.
+      operationId: get_cluster_stack_events
+      parameters:
+      - description: Name of the cluster
+        explode: false
+        in: path
+        name: clusterName
+        required: true
+        schema:
+          description: Name of the cluster
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetClusterStackEventsResponseContent'
+          description: GetClusterStackEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Cluster Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
   /v3/images/custom:
     get:
       description: Retrieve the list of existing custom images.
@@ -928,7 +1239,7 @@ paths:
         required: false
         schema:
           description: "When set, will automatically initiate an image stack rollback\
-            \ on failure. (Defaults to 'false'.)"
+            \ on failure. (Defaults to 'true'.)"
           nullable: true
           type: boolean
         style: form
@@ -1157,6 +1468,298 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
+  /v3/images/custom/{imageId}/logstreams:
+    get:
+      description: Retrieve the list of log streams associated with a cluster.
+      operationId: list_image_log_streams
+      parameters:
+      - description: Id of the image.
+        explode: false
+        in: path
+        name: imageId
+        required: true
+        schema:
+          description: Id of the image.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Region that the given cluster belongs to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: Region that the given cluster belongs to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListImageLogStreamsResponseContent'
+          description: ListImageLogStreams 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Image Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
+  /v3/images/custom/{imageId}/logstreams/{logStreamName}:
+    get:
+      description: Retrieve the events associated with an image build.
+      operationId: get_image_log_events
+      parameters:
+      - description: Id of the image.
+        explode: false
+        in: path
+        name: imageId
+        required: true
+        schema:
+          description: Id of the image.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Name of the log stream.
+        explode: false
+        in: path
+        name: logStreamName
+        required: true
+        schema:
+          description: Name of the log stream.
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      - description: "If the value is true, the earliest log events are returned first.\
+          \ If the value is false, the latest log events are returned first. (Defaults\
+          \ to 'false'.)"
+        explode: true
+        in: query
+        name: startFromHead
+        required: false
+        schema:
+          description: "If the value is true, the earliest log events are returned\
+            \ first. If the value is false, the latest log events are returned first.\
+            \ (Defaults to 'false'.)"
+          nullable: true
+          type: boolean
+        style: form
+      - description: "The maximum number of log events returned. If you don't specify\
+          \ a value, the maximum is as many log events as can fit in a response size\
+          \ of 1 MB, up to 10,000 log events."
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          description: "The maximum number of log events returned. If you don't specify\
+            \ a value, the maximum is as many log events as can fit in a response\
+            \ size of 1 MB, up to 10,000 log events."
+          format: int32
+          nullable: true
+          type: number
+        style: form
+      - description: "The start of the time range, expressed in ISO8601 format (e.g.\
+          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
+          \ or later than this time are included."
+        explode: true
+        in: query
+        name: startTime
+        required: false
+        schema:
+          description: "The start of the time range, expressed in ISO8601 format (e.g.\
+            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
+            \ or later than this time are included."
+          format: date-time
+          type: string
+        style: form
+      - description: "The end of the time range, expressed in ISO8601 format (e.g.\
+          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
+          \ than this time are not included."
+        explode: true
+        in: query
+        name: endTime
+        required: false
+        schema:
+          description: "The end of the time range, expressed in ISO8601 format (e.g.\
+            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
+            \ than this time are not included."
+          format: date-time
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetImageLogEventsResponseContent'
+          description: GetImageLogEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Image Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
+  /v3/images/custom/{imageId}/stackevents:
+    get:
+      description: Retrieve the events associated with the stack for a given image
+        build.
+      operationId: get_image_stack_events
+      parameters:
+      - description: Id of the image.
+        explode: false
+        in: path
+        name: imageId
+        required: true
+        schema:
+          description: Id of the image.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetImageStackEventsResponseContent'
+          description: GetImageStackEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Image Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
   /v3/images/official:
     get:
       description: Describe ParallelCluster AMIs.
@@ -1352,6 +1955,26 @@ components:
           type: string
       title: Change
       type: object
+    CloudFormationResourceStatus:
+      enum:
+      - CREATE_IN_PROGRESS
+      - CREATE_FAILED
+      - CREATE_COMPLETE
+      - DELETE_IN_PROGRESS
+      - DELETE_FAILED
+      - DELETE_COMPLETE
+      - DELETE_SKIPPED
+      - UPDATE_IN_PROGRESS
+      - UPDATE_FAILED
+      - UPDATE_COMPLETE
+      - IMPORT_FAILED
+      - IMPORT_COMPLETE
+      - IMPORT_IN_PROGRESS
+      - IMPORT_ROLLBACK_IN_PROGRESS
+      - IMPORT_ROLLBACK_FAILED
+      - IMPORT_ROLLBACK_COMPLETE
+      title: CloudFormationResourceStatus
+      type: string
     CloudFormationStackStatus:
       enum:
       - CREATE_IN_PROGRESS
@@ -1775,12 +2398,20 @@ components:
           url: url
         imagebuilderImageStatusReason: imagebuilderImageStatusReason
         imageId: imageId
+        cloudformationStackTags:
+        - value: value
+          key: key
+        - value: value
+          key: key
         imagebuilderImageStatus: null
         creationTime: 2000-01-23T04:56:07.000+00:00
+        version: version
         imageBuildStatus: null
         cloudformationStackStatus: null
+        imageBuildLogsArn: imageBuildLogsArn
         cloudformationStackArn: cloudformationStackArn
         region: region
+        cloudformationStackCreationTime: 2000-01-23T04:56:07.000+00:00
         ec2AmiInfo:
           amiName: amiName
           amiId: amiId
@@ -1981,6 +2612,132 @@ components:
       - ERROR
       title: Ec2AmiState
       type: string
+    GetClusterLogEventsResponseContent:
+      example:
+        nextToken: nextToken
+        prevToken: prevToken
+        events:
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        prevToken:
+          description: Token to use for paginated requests.
+          title: prevToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/LogEvent'
+          title: events
+          type: array
+      title: GetClusterLogEventsResponseContent
+      type: object
+    GetClusterStackEventsResponseContent:
+      example:
+        nextToken: nextToken
+        events:
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/StackEvent'
+          title: events
+          type: array
+      title: GetClusterStackEventsResponseContent
+      type: object
+    GetImageLogEventsResponseContent:
+      example:
+        nextToken: nextToken
+        prevToken: prevToken
+        events:
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        prevToken:
+          description: Token to use for paginated requests.
+          title: prevToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/LogEvent'
+          title: events
+          type: array
+      title: GetImageLogEventsResponseContent
+      type: object
+    GetImageStackEventsResponseContent:
+      example:
+        nextToken: nextToken
+        events:
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/StackEvent'
+          title: events
+          type: array
+      title: GetImageStackEventsResponseContent
+      type: object
     ImageBuildStatus:
       enum:
       - BUILD_IN_PROGRESS
@@ -2087,6 +2844,38 @@ components:
           type: string
       title: LimitExceededExceptionResponseContent
       type: object
+    ListClusterLogStreamsResponseContent:
+      example:
+        nextToken: nextToken
+        items:
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LogStream'
+          title: items
+          type: array
+      required:
+      - items
+      title: ListClusterLogStreamsResponseContent
+      type: object
     ListClustersResponseContent:
       example:
         nextToken: nextToken
@@ -2116,6 +2905,38 @@ components:
       required:
       - items
       title: ListClustersResponseContent
+      type: object
+    ListImageLogStreamsResponseContent:
+      example:
+        nextToken: nextToken
+        items:
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LogStream'
+          title: items
+          type: array
+      required:
+      - items
+      title: ListImageLogStreamsResponseContent
       type: object
     ListImagesResponseContent:
       example:
@@ -2147,6 +2968,78 @@ components:
       - items
       title: ListImagesResponseContent
       type: object
+    LogEvent:
+      example:
+        message: message
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        message:
+          title: message
+          type: string
+        timestamp:
+          format: date-time
+          title: timestamp
+          type: string
+      required:
+      - message
+      - timestamp
+      title: LogEvent
+      type: object
+    LogStream:
+      example:
+        logStreamArn: logStreamArn
+        creationTime: 2000-01-23T04:56:07.000+00:00
+        logStreamName: logStreamName
+        firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+        lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+        lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+        uploadSequenceToken: uploadSequenceToken
+      properties:
+        logStreamArn:
+          description: The Amazon Resource Name (ARN) of the log stream.
+          title: logStreamArn
+          type: string
+        creationTime:
+          description: The creation time of the stream.
+          format: date-time
+          title: creationTime
+          type: string
+        logStreamName:
+          description: Name of the log stream.
+          title: logStreamName
+          type: string
+        firstEventTimestamp:
+          description: The time of the first event of the stream.
+          format: date-time
+          title: firstEventTimestamp
+          type: string
+        lastEventTimestamp:
+          description: "The time of the last event of the stream. The lastEventTime\
+            \ value updates on an eventual consistency basis. It typically updates\
+            \ in less than an hour from ingestion, but in rare situations might take\
+            \ longer."
+          format: date-time
+          title: lastEventTimestamp
+          type: string
+        lastIngestionTime:
+          description: The last ingestion time.
+          format: date-time
+          title: lastIngestionTime
+          type: string
+        uploadSequenceToken:
+          description: The sequence token.
+          title: uploadSequenceToken
+          type: string
+      required:
+      - creationTime
+      - firstEventTimestamp
+      - lastEventTimestamp
+      - lastIngestionTime
+      - logStreamArn
+      - logStreamName
+      - uploadSequenceToken
+      title: LogStream
+      type: object
     NodeType:
       enum:
       - HEAD
@@ -2169,6 +3062,78 @@ components:
       - DISABLED
       title: RequestedComputeFleetStatus
       type: string
+    StackEvent:
+      example:
+        eventId: eventId
+        physicalResourceId: physicalResourceId
+        resourceStatus: null
+        resourceStatusReason: resourceStatusReason
+        clientRequestToken: clientRequestToken
+        resourceProperties: resourceProperties
+        stackId: stackId
+        stackName: stackName
+        logicalResourceId: logicalResourceId
+        resourceType: resourceType
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        eventId:
+          description: The unique ID of this event.
+          title: eventId
+          type: string
+        physicalResourceId:
+          description: The name or unique identifier associated with the physical
+            instance of the resource.
+          title: physicalResourceId
+          type: string
+        resourceStatus:
+          $ref: '#/components/schemas/CloudFormationResourceStatus'
+        resourceStatusReason:
+          description: Success/failure message associated with the resource.
+          title: resourceStatusReason
+          type: string
+        clientRequestToken:
+          description: The token passed to the operation that generated this event.
+          title: clientRequestToken
+          type: string
+        resourceProperties:
+          description: BLOB of the properties used to create the resource.
+          title: resourceProperties
+          type: string
+        stackId:
+          description: The unique ID name of the instance of the stack.
+          title: stackId
+          type: string
+        stackName:
+          description: The name associated with a stack.
+          title: stackName
+          type: string
+        logicalResourceId:
+          description: The logical name of the resource specified in the template.
+          title: logicalResourceId
+          type: string
+        resourceType:
+          description: Type of resource.
+          title: resourceType
+          type: string
+        timestamp:
+          description: Time the status was updated.
+          format: date-time
+          title: timestamp
+          type: string
+      required:
+      - clientRequestToken
+      - eventId
+      - logicalResourceId
+      - physicalResourceId
+      - resourceProperties
+      - resourceStatus
+      - resourceStatusReason
+      - resourceType
+      - stackId
+      - stackName
+      - timestamp
+      title: StackEvent
+      type: object
     Tag:
       example:
         value: value

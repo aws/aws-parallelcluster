@@ -116,7 +116,7 @@ class TestCfnClient:
             ),
         ]
         boto3_stubber("cloudformation", mocked_requests)
-        assert_that(CfnClient().get_stack_events(FAKE_NAME)).is_equal_to(expected_events)
+        assert_that(CfnClient().get_stack_events(FAKE_NAME)["StackEvents"]).is_equal_to(expected_events)
         sleep_mock.assert_called_with(5)
 
     def test_get_stack_retry(self, boto3_stubber, mocker):

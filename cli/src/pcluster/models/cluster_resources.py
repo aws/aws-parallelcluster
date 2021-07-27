@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from typing import List
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import InstanceInfo, StackInfo
@@ -111,7 +112,7 @@ class ClusterInstance(InstanceInfo):
 class ClusterLogsFiltersParser:
     """Class to parse filters."""
 
-    def __init__(self, head_node: ClusterInstance, filters: str = None):
+    def __init__(self, head_node: ClusterInstance, filters: List[str] = None):
         self.filters_list = []
         # The following attributes are used to compose log_stream_prefix,
         # that is the only filter that can be used for export-logs task
@@ -119,10 +120,15 @@ class ClusterLogsFiltersParser:
         self._private_dns_name = None
         self._node_type = None
         self._log_stream_prefix = None
+        rexp = r"Name=([^=,]+),Values=([^= ]+)(?: |$)"
+
+        def _filter_parse(filter_str):
+            match = re.match(rexp, filter_str)
+            return match.groups() if match else None
 
         if filters:
-            self.filters_list = re.findall(r"Name=([^=,]+),Values=([^= ]+)(?: |$)", filters)
-            if not self.filters_list:
+            self.filters_list = [_filter_parse(f) for f in filters]
+            if not self.filters_list or not all(self.filters_list):
                 raise FiltersParserError(f"Invalid filters {filters}. They must be in the form Name=...,Values=...")
 
         for name, values in self.filters_list:
