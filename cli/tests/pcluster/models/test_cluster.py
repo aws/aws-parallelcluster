@@ -389,7 +389,7 @@ class TestCluster:
             (True, "", "next_token"),
         ],
     )
-    def test_get_stack_events(self, cluster, mocker, stack_exists, expected_error, next_token):
+    def test_get_stack_events(self, cluster, mocker, set_env, stack_exists, expected_error, next_token):
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         mock_events = {
             "NextToken": "nxttkn",
