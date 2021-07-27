@@ -28,7 +28,7 @@ structure BuildImageRequest {
     @documentation("Only perform request validation without creating any resource. It can be used to validate the image configuration. (Defaults to 'false'.)")
     dryrun: Boolean,
     @httpQuery("rollbackOnFailure")
-    @documentation("When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)")
+    @documentation("When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.)")
     rollbackOnFailure: Boolean,
     @httpQuery("region")
     region: Region,

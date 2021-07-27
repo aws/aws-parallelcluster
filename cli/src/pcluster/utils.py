@@ -146,13 +146,12 @@ def to_iso_time(time_in):
 
 def to_camel_case(snake_case_word):
     """Convert the given snake case word into a camelCase one."""
-    parts = iter(snake_case_word.split("_"))
-    pascal = "".join(word.title() for word in parts)
+    pascal = to_pascal_case(snake_case_word)
     return pascal[0].lower() + pascal[1:]
 
 
 def to_pascal_case(snake_case_word):
-    """Convert the given snake case word into a PamelCase one."""
+    """Convert the given snake case word into a PascalCase one."""
     parts = iter(snake_case_word.split("_"))
     return "".join(word.title() for word in parts)
 

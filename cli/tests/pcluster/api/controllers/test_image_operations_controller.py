@@ -52,7 +52,7 @@ def _create_image_info(image_id):
             "Tags": [
                 {"Key": "parallelcluster:image_id", "Value": image_id},
                 {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                {"Key": "parallelcluster:build_config", "Value": "test_url"},
+                {"Key": "parallelcluster:build_config", "Value": "s3://bucket/key"},
             ],
         }
     )
@@ -67,7 +67,7 @@ def _create_stack(image_id, status, reason=None):
         "Tags": [
             {"Key": "parallelcluster:image_id", "Value": image_id},
             {"Key": "parallelcluster:version", "Value": "3.0.0"},
-            {"Key": "parallelcluster:build_config", "Value": "test_url"},
+            {"Key": "parallelcluster:build_config", "Value": "s3://bucket/key"},
             {"Key": "parallelcluster:build_log", "Value": f"arn:{image_id}:build_log"},
         ],
     }
@@ -168,6 +168,9 @@ class TestListImages:
             _create_stack("image4", CloudFormationStackStatus.DELETE_IN_PROGRESS),
             _create_stack("image5", CloudFormationStackStatus.DELETE_FAILED),
             _create_stack("image6", CloudFormationStackStatus.CREATE_FAILED),
+            _create_stack("image7", CloudFormationStackStatus.ROLLBACK_FAILED),
+            _create_stack("image8", CloudFormationStackStatus.ROLLBACK_COMPLETE),
+            _create_stack("image9", CloudFormationStackStatus.ROLLBACK_IN_PROGRESS),
         ]
         mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
 
@@ -188,6 +191,30 @@ class TestListImages:
                     "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
                     "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
                     "cloudformationStackArn": "arn:image6",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image7",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_FAILED,
+                    "cloudformationStackArn": "arn:image7",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image8",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_COMPLETE,
+                    "cloudformationStackArn": "arn:image8",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image9",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_IN_PROGRESS,
+                    "cloudformationStackArn": "arn:image9",
                     "region": "us-east-1",
                     "version": "3.0.0",
                 },
@@ -502,7 +529,7 @@ class TestBuildImage:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
         mocked_call.assert_called_with(
-            disable_rollback=rollback_on_failure is False,
+            disable_rollback=not rollback_on_failure if rollback_on_failure is not None else True,
             validator_suppressors=mocker.ANY,
             validation_failure_level=FailureLevel[ValidationLevel.INFO],
         )
@@ -745,6 +772,10 @@ class TestDescribeImage:
             "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
             return_value=_create_image_info("image1"),
         )
+        mocker.patch(
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
+            return_value="https://parallelcluster.aws.com/bucket/key",
+        )
 
         expected_response = {
             "creationTime": to_iso_time("2021-04-12T00:00:00Z"),
@@ -757,11 +788,11 @@ class TestDescribeImage:
                 "tags": [
                     {"key": "parallelcluster:image_id", "value": "image1"},
                     {"key": "parallelcluster:version", "value": "3.0.0"},
-                    {"key": "parallelcluster:build_config", "value": "test_url"},
+                    {"key": "parallelcluster:build_config", "value": "s3://bucket/key"},
                 ],
             },
             "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
-            "imageConfiguration": {"url": "test_url"},
+            "imageConfiguration": {"url": "https://parallelcluster.aws.com/bucket/key"},
             "imageId": "image1",
             "region": "us-east-1",
             "version": "3.0.0",
@@ -782,9 +813,13 @@ class TestDescribeImage:
             "pcluster.aws.cfn.CfnClient.describe_stack",
             return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS),
         )
+        mocker.patch(
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
+            return_value="https://parallelcluster.aws.com/bucket/key",
+        )
 
         expected_response = {
-            "imageConfiguration": {"url": "test_url"},
+            "imageConfiguration": {"url": "https://parallelcluster.aws.com/bucket/key"},
             "imageId": "image1",
             "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
@@ -792,10 +827,10 @@ class TestDescribeImage:
             "imageBuildLogsArn": "arn:image1:build_log",
             "cloudformationStackCreationTime": to_iso_time("2021-04-12 00:00:00"),
             "cloudformationStackTags": [
-                {"Key": "parallelcluster:image_id", "Value": "image1"},
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                {"Key": "parallelcluster:build_config", "Value": "test_url"},
-                {"Key": "parallelcluster:build_log", "Value": "arn:image1:build_log"},
+                {"key": "parallelcluster:image_id", "value": "image1"},
+                {"key": "parallelcluster:version", "value": "3.0.0"},
+                {"key": "parallelcluster:build_config", "value": "s3://bucket/key"},
+                {"key": "parallelcluster:build_log", "value": "arn:image1:build_log"},
             ],
             "region": "us-east-1",
             "version": "3.0.0",
@@ -824,21 +859,25 @@ class TestDescribeImage:
             "pcluster.aws.imagebuilder.ImageBuilderClient.get_image_state",
             return_value={"status": ImageBuilderImageStatus.FAILED, "reason": "img test reason"},
         )
+        mocker.patch(
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
+            return_value="https://parallelcluster.aws.com/bucket/key",
+        )
 
         expected_response = {
             "cloudformationStackArn": "arn:image1",
             "imageBuildLogsArn": "arn:image1:build_log",
             "cloudformationStackCreationTime": to_iso_time("2021-04-12 00:00:00"),
             "cloudformationStackTags": [
-                {"Key": "parallelcluster:image_id", "Value": "image1"},
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                {"Key": "parallelcluster:build_config", "Value": "test_url"},
-                {"Key": "parallelcluster:build_log", "Value": "arn:image1:build_log"},
+                {"key": "parallelcluster:image_id", "value": "image1"},
+                {"key": "parallelcluster:version", "value": "3.0.0"},
+                {"key": "parallelcluster:build_config", "value": "s3://bucket/key"},
+                {"key": "parallelcluster:build_log", "value": "arn:image1:build_log"},
             ],
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
             "cloudformationStackStatusReason": "cfn test reason",
             "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
-            "imageConfiguration": {"url": "test_url"},
+            "imageConfiguration": {"url": "https://parallelcluster.aws.com/bucket/key"},
             "imageId": "image1",
             "imagebuilderImageStatus": ImageBuilderImageStatus.FAILED,
             "imagebuilderImageStatusReason": "img test reason",

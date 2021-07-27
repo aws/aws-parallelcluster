@@ -45,6 +45,7 @@ from pcluster.api.models import (
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
@@ -81,14 +82,14 @@ def build_image(
     (Defaults to &#39;false&#39;.)
     :type dryrun: bool
     :param rollback_on_failure: When set, will automatically initiate an image stack rollback on failure.
-    (Defaults to &#39;true&#39;.)
+    (Defaults to &#39;false&#39;.)
     :type rollback_on_failure: bool
     :param region: AWS Region that the operation corresponds to.
     :type region: str
 
     :rtype: BuildImageResponseContent
     """
-    rollback_on_failure = rollback_on_failure in {True, None}
+    rollback_on_failure = rollback_on_failure if rollback_on_failure is not None else False
     disable_rollback = not rollback_on_failure
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun or False
@@ -203,10 +204,21 @@ def describe_image(image_id, region=None):
             raise NotFoundException("No image or stack associated to parallelcluster image id {}.".format(image_id))
 
 
+def _presigned_config_url(imagebuilder):
+    """Get the URL for the config as a pre-signed S3 URL."""
+    # Do not fail request when S3 bucket is not available
+    config_url = "NOT_AVAILABLE"
+    try:
+        config_url = imagebuilder.presigned_config_url
+    except AWSClientError as e:
+        LOGGER.error(e)
+    return config_url
+
+
 def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
         creation_time=to_iso_time(imagebuilder.image.creation_date),
-        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
         ec2_ami_info=Ec2AmiInfo(
@@ -225,7 +237,7 @@ def _image_to_describe_image_response(imagebuilder):
 def _stack_to_describe_image_response(imagebuilder):
     imagebuilder_image_state = imagebuilder.stack.image_state or dict()
     return DescribeImageResponseContent(
-        image_configuration=ImageConfigurationStructure(url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
         image_build_status=imagebuilder.imagebuild_status,
         image_build_logs_arn=imagebuilder.stack.build_log,
@@ -235,7 +247,7 @@ def _stack_to_describe_image_response(imagebuilder):
         cloudformation_stack_status_reason=imagebuilder.stack.status_reason,
         cloudformation_stack_arn=imagebuilder.stack.id,
         cloudformation_stack_creation_time=to_iso_time(imagebuilder.stack.creation_time),
-        cloudformation_stack_tags=imagebuilder.stack.tags,
+        cloudformation_stack_tags=[Tag(key=tag["Key"], value=tag["Value"]) for tag in imagebuilder.stack.tags],
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=imagebuilder.stack.version,
     )
@@ -333,6 +345,9 @@ def _image_status_to_cloudformation_status(image_status):
         ImageStatusFilteringOption.FAILED: {
             CloudFormationStackStatus.CREATE_FAILED,
             CloudFormationStackStatus.DELETE_FAILED,
+            CloudFormationStackStatus.ROLLBACK_FAILED,
+            CloudFormationStackStatus.ROLLBACK_COMPLETE,
+            CloudFormationStackStatus.ROLLBACK_IN_PROGRESS,
         },
     }
     return mapping.get(image_status, set())

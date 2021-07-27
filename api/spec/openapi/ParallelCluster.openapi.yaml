@@ -760,6 +760,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+        "404":
+          description: NotFoundException 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -862,6 +868,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+        "404":
+          description: NotFoundException 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -928,6 +940,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+        "404":
+          description: NotFoundException 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -1050,10 +1068,10 @@ paths:
             nullable: true
         - name: rollbackOnFailure
           in: query
-          description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
+          description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.)
           schema:
             type: boolean
-            description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'true'.)
+            description: When set, will automatically initiate an image stack rollback on failure. (Defaults to 'false'.)
             nullable: true
         - name: region
           in: query
@@ -1254,7 +1272,7 @@ paths:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
   /v3/images/custom/{imageId}/logstreams:
     get:
-      description: Retrieve the list of log streams associated with a cluster.
+      description: Retrieve the list of log streams associated with an image.
       operationId: ListImageLogStreams
       parameters:
         - name: imageId
@@ -1267,10 +1285,10 @@ paths:
           required: true
         - name: region
           in: query
-          description: Region that the given cluster belongs to.
+          description: Region that the given image belongs to.
           schema:
             type: string
-            description: Region that the given cluster belongs to.
+            description: Region that the given image belongs to.
         - name: nextToken
           in: query
           description: Token to use for paginated requests.
@@ -1296,6 +1314,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+        "404":
+          description: NotFoundException 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -1398,6 +1422,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+        "404":
+          description: NotFoundException 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:
@@ -1464,6 +1494,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+        "404":
+          description: NotFoundException 404 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
         "429":
           description: LimitExceededException 429 response
           content:

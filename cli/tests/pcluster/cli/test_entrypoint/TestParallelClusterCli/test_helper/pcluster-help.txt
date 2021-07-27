@@ -39,8 +39,8 @@ COMMANDS:
                         image.
     describe-image      Get detailed information about an existing image.
     list-image-log-streams
-                        Retrieve the list of log streams associated with a
-                        cluster.
+                        Retrieve the list of log streams associated with an
+                        image.
     get-image-log-events
                         Retrieve the events associated with an image build.
     get-image-stack-events

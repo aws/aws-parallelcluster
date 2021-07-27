@@ -404,7 +404,6 @@ class TestImageBuilder:
         [
             (False, "Image .* does not exist", None),
             (True, "", None),
-            (True, "", None),
             (True, "", "next_token"),
         ],
     )

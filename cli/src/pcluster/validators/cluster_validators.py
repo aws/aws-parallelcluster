@@ -19,6 +19,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
+    PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
@@ -513,6 +514,17 @@ def _find_duplicate_params(param_list):
     return duplicated_params
 
 
+def _find_overlapping_paths(paths_list):
+    overlapping_paths = []
+    if paths_list:
+        for path in paths_list:
+            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path))
+            if is_overlapping:
+                overlapping_paths.append(path)
+
+    return overlapping_paths
+
+
 class DuplicateMountDirValidator(Validator):
     """
     Mount dir validator.
@@ -524,9 +536,29 @@ class DuplicateMountDirValidator(Validator):
         duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
         if duplicated_mount_dirs:
             self._add_failure(
-                "Mount {0} {1} cannot be specified for multiple volumes".format(
+                "Mount {0} {1} cannot be specified for multiple file systems".format(
                     "directories" if len(duplicated_mount_dirs) > 1 else "directory",
                     ", ".join(mount_dir for mount_dir in duplicated_mount_dirs),
+                ),
+                FailureLevel.ERROR,
+            )
+
+
+class OverlappingMountDirValidator(Validator):
+    """
+    Mount dir validator.
+
+    Verify if there are overlapping mount dirs between shared storage and ephemeral volumes.
+    Two mount dirs are overlapped if one is contained into the other.
+    """
+
+    def _validate(self, mount_dir_list):
+        overlapping_mount_dirs = _find_overlapping_paths(mount_dir_list)
+        if overlapping_mount_dirs:
+            self._add_failure(
+                "Mount {0} {1} cannot contain other mount directories".format(
+                    "directories" if len(overlapping_mount_dirs) > 1 else "directory",
+                    ", ".join(mount_dir for mount_dir in overlapping_mount_dirs),
                 ),
                 FailureLevel.ERROR,
             )
@@ -571,6 +603,27 @@ class EfsIdValidator(Validator):  # TODO add tests
                     ),
                     FailureLevel.WARNING,
                 )
+
+
+class SharedStorageNameValidator(Validator):
+    """
+    Shared storage name validator.
+
+    Validate if the provided name for the shared storage complies with the acceptable pattern.
+    Since the storage name is used as a tag, the provided name must comply with the tag pattern.
+    """
+
+    def _validate(self, name: str):
+        if not re.match(PCLUSTER_TAG_VALUE_REGEX, name):
+            self._add_failure(
+                (
+                    f"Error: The shared storage name {name} is not valid. "
+                    "Allowed characters are letters, numbers and white spaces that can be represented in UTF-8 "
+                    "and the following characters: '+' '-' '=' '.' '_' ':' '/', "
+                    f"and it can't be longer than 256 characters."
+                ),
+                FailureLevel.ERROR,
+            )
 
 
 # --------------- Third party software validators --------------- #

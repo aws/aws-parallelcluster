@@ -102,12 +102,15 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "root_directory": "parallelcluster",
     "root_cluster_directory": "clusters",
     "source_config_name": "cluster-config.yaml",
+    "image_config_name": "image-config.yaml",
     "config_name": "cluster-config-with-implied-values.yaml",
     "template_name": "aws-parallelcluster.cfn.yaml",
     "instance_types_data_name": "instance-types-data.json",
     "custom_artifacts_name": "artifacts.zip",
     "scheduler_resources_name": "scheduler_resources.zip",
 }
+
+PCLUSTER_TAG_VALUE_REGEX = r"^([\w\+\-\=\.\_\:\@/]{0,256})$"
 
 IMAGEBUILDER_RESOURCE_NAME_PREFIX = "ParallelClusterImage"
 

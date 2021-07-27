@@ -30,6 +30,7 @@ from aws_cdk.core import (
     CfnParameter,
     CfnResourceSignal,
     CfnStack,
+    CfnTag,
     Construct,
     CustomResource,
     Fn,
@@ -654,6 +655,7 @@ class ClusterCdkStack(Stack):
                 storage_type=shared_fsx.fsx_storage_type,
                 subnet_ids=self.config.compute_subnet_ids,
                 security_group_ids=self._get_compute_security_groups(),
+                tags=[CfnTag(key="Name", value=shared_fsx.name)],
             )
             fsx_id = fsx_resource.ref
             # Get MountName for new filesystem
@@ -709,6 +711,7 @@ class ClusterCdkStack(Stack):
                 provisioned_throughput_in_mibps=shared_efs.provisioned_throughput,
                 throughput_mode=shared_efs.throughput_mode,
             )
+            efs_resource.tags.set_tag(key="Name", value=shared_efs.name)
             efs_id = efs_resource.ref
 
         checked_availability_zones = []
@@ -824,6 +827,7 @@ class ClusterCdkStack(Stack):
             size=shared_ebs.size,
             snapshot_id=shared_ebs.snapshot_id,
             volume_type=shared_ebs.volume_type,
+            tags=[CfnTag(key="Name", value=shared_ebs.name)],
         )
         volume.cfn_options.deletion_policy = convert_deletion_policy(shared_ebs.deletion_policy)
         return volume.ref

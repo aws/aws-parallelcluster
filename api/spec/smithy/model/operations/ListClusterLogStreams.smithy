@@ -12,6 +12,7 @@ operation ListClusterLogStreams {
     errors: [
         InternalServiceException,
         BadRequestException,
+        NotFoundException,
         UnauthorizedClientError,
         LimitExceededException,
     ]

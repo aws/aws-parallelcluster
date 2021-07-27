@@ -40,6 +40,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_ID_REGEX,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
@@ -74,7 +75,6 @@ from pcluster.validators.common import FailureLevel
 ImageBuilderStatusMapping = {
     "BUILD_IN_PROGRESS": [
         "CREATE_IN_PROGRESS",
-        "ROLLBACK_IN_PROGRESS",
         "UPDATE_IN_PROGRESS",
         "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
         "UPDATE_ROLLBACK_IN_PROGRESS",
@@ -84,6 +84,7 @@ ImageBuilderStatusMapping = {
         "IMPORT_ROLLBACK_IN_PROGRESS",
     ],
     "BUILD_FAILED": [
+        "ROLLBACK_IN_PROGRESS",
         "CREATE_FAILED",
         "ROLLBACK_FAILED",
         "ROLLBACK_COMPLETE",
@@ -235,6 +236,11 @@ class ImageBuilder:
                 else:
                     raise ImageBuilderActionError(f"Unable to get image {self.image_id} config url.")
         return self.__config_url
+
+    @property
+    def presigned_config_url(self) -> str:
+        """Return a pre-signed Url to download the config from the S3 bucket."""
+        return self.bucket.get_config_presigned_url(config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("image_config_name"))
 
     @property
     def stack(self):
