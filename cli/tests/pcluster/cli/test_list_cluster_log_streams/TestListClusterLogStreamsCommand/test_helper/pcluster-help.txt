@@ -1,0 +1,24 @@
+usage: pcluster list-cluster-log-streams [-h] --cluster-name CLUSTER_NAME
+                                         [--region REGION]
+                                         [--filters FILTERS [FILTERS ...]]
+                                         [--next-token NEXT_TOKEN] [--debug]
+                                         [--query QUERY]
+
+Retrieve the list of log streams associated with a cluster.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --cluster-name CLUSTER_NAME
+                        Name of the cluster
+  --region REGION       Region that the given cluster belongs to.
+  --filters FILTERS [FILTERS ...]
+                        Filter the log streams. Format: (Name=a,Values=1
+                        Name=b,Values=2,3). Accepted filters are: private-dns-
+                        name - The short form of the private DNS name of the
+                        instance (e.g. ip-10-0-0-101). node-type - The node
+                        type, the only accepted value for this filter is
+                        HeadNode.
+  --next-token NEXT_TOKEN
+                        Token to use for paginated requests.
+  --debug               Turn on debug logging.
+  --query QUERY         JMESPath query to perform on output.

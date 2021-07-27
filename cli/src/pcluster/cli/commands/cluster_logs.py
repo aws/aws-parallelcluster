@@ -10,7 +10,6 @@
 import logging
 import os
 import re
-import time
 from datetime import datetime
 from typing import List
 
@@ -18,8 +17,7 @@ import argparse
 from argparse import ArgumentParser, Namespace
 
 from pcluster import utils
-from pcluster.cli.commands.common import CliCommand, ExportLogsCommand, GetLogEventsCommand
-from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME_FORMAT
+from pcluster.cli.commands.common import CliCommand, ExportLogsCommand
 from pcluster.models.cluster import Cluster
 
 LOGGER = logging.getLogger(__name__)
@@ -85,48 +83,6 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         LOGGER.info("Cluster's logs exported correctly to %s", output_file_path)
 
 
-class ListClusterLogsCommand(CliCommand):
-    """Implement pcluster list-cluster-logs command."""
-
-    # CLI
-    name = "list-cluster-logs"
-    help = "List the log streams associated to a cluster."
-    description = help
-
-    def __init__(self, subparsers):
-        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
-
-    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("cluster_name", help="List the logs of the cluster name provided here.")
-        # Filters
-        filters_arg = _FiltersArg(accepted_filters=["private-dns-name", "node-type"])
-        parser.add_argument(
-            "--filters",
-            nargs="+",
-            type=filters_arg,
-            help=(
-                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
-                "private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\n"
-                "node-type - The node type, the only accepted value for this filter is HeadNode."
-            ),
-        )
-        parser.add_argument("--next-token", help="Token for paginated requests")
-
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
-        try:
-            self._list_cluster_logs(args)
-        except Exception as e:
-            utils.error(f"Unable to list cluster's logs.\n{e}")
-
-    @staticmethod
-    def _list_cluster_logs(args: Namespace):
-        cluster = Cluster(args.cluster_name)
-        logs = cluster.list_logs(filters=" ".join(args.filters) if args.filters else None, next_token=args.next_token)
-        if not args.next_token:
-            logs.print_stack_log_streams()
-        logs.print_cw_log_streams()
-
-
 class _FiltersArg:
     """Class to implement regex parsing for filters parameter."""
 
@@ -138,61 +94,3 @@ class _FiltersArg:
         if not self._pattern.match(value):
             raise argparse.ArgumentTypeError(f"filters parameter must be in the form {self._pattern.pattern} ")
         return value
-
-
-class GetClusterLogEventsCommand(GetLogEventsCommand, CliCommand):
-    """Implement pcluster get-cluster-log-events command."""
-
-    # CLI
-    name = "get-cluster-log-events"
-    help = "Retrieve the events of a log stream of the cluster."
-    description = help
-
-    def __init__(self, subparsers):
-        super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
-
-    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("cluster_name", help="Get the log stream of the cluster name provided here.")
-        parser.add_argument(
-            "--log-stream-name",
-            help="Log stream name, as reported by 'pcluster list-cluster-logs' command.",
-            required=True,
-        )
-        super()._register_common_command_args(parser)
-
-    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
-        try:
-            self._validate_common_args(args)
-            self._get_cluster_log_events(args)
-        except Exception as e:
-            utils.error(f"Unable to get cluster's log events.\n{e}")
-
-    @staticmethod
-    def _get_cluster_log_events(args: Namespace):
-        """Get log events for a specific log stream of the cluster saved in CloudWatch."""
-        kwargs = {
-            "log_stream_name": args.log_stream_name,
-            "start_time": args.start_time,
-            "end_time": args.end_time,
-            "start_from_head": args.head is not None,
-            "limit": args.head or args.tail or None,
-            "next_token": args.next_token,
-        }
-        cluster = Cluster(args.cluster_name)
-        log_events = cluster.get_log_events(**kwargs)
-
-        log_events.print_events()
-        if args.stream and args.log_stream_name != STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(cluster.stack_name):
-            # stream content
-            next_token = log_events.next_ftoken
-            while next_token is not None:
-                period = args.stream_period or 5
-                LOGGER.debug("Waiting other %s seconds...", period)
-                time.sleep(period)
-
-                kwargs["next_token"] = next_token
-                log_events = cluster.get_log_events(**kwargs)
-                next_token = log_events.next_ftoken
-                log_events.print_events()
-        else:
-            log_events.print_next_tokens()

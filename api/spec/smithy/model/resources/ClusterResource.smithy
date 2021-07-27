@@ -16,6 +16,17 @@ resource ClusterInstances {
     delete: DeleteClusterInstances,
 }
 
+resource ClusterLogStream {
+    identifiers: { clusterName: ClusterName, logStreamName: LogStreamName },
+    list: ListClusterLogStreams,
+    read: GetClusterLogEvents
+}
+
+resource ClusterStackEvents {
+    identifiers: { clusterName: ClusterName },
+    read: GetClusterStackEvents
+}
+
 resource ClusterComputeFleet {
     identifiers: { clusterName: ClusterName },
     read: DescribeComputeFleet,

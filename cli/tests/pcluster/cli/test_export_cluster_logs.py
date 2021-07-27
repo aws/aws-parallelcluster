@@ -129,10 +129,6 @@ class TestExportClusterLogsCommand:
                 check_regex = True
 
             if check_regex:
-                assert_that(
-                    re.search(expected_value, call_param), f"Expected: {expected_value}, value is: {call_param}"
-                ).is_true()
+                assert_that(re.search(expected_value, call_param)).is_true()
             else:
-                assert_that(call_param, f"Expected: {expected_value}, value is: {call_param}").is_equal_to(
-                    expected_value
-                )
+                assert_that(call_param).is_equal_to(expected_value)

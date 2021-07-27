@@ -118,29 +118,42 @@ def get_supported_os_for_architecture(architecture):
     return SUPPORTED_OSES_FOR_ARCHITECTURE.get(architecture, [])
 
 
-def camelcase(snake_case_word):
-    """Convert the given snake case word into a camel case one."""
-    parts = iter(snake_case_word.split("_"))
-    return "".join(word.title() for word in parts)
-
-
 def to_iso_time(time_in):
     """
-    Convert a given string or datetime into ISO 8601 format with milliseconds.
+    Convert a given string, datetime or int into ISO 8601 format with milliseconds.
 
     :param time_in: Time in a format that may be parsed
     :return time in ISO 8601 UTC format with ms (e.g. 2021-07-15T01:22:02.655Z)
     """
     if time_in:
-        if isinstance(time_in, str):
+        if isinstance(time_in, int):
+            if time_in > 1e12:
+                time_in /= 1000
+            time_ = datetime.datetime.fromtimestamp(time_in)
+            time_ = time_.replace(tzinfo=datetime.timezone.utc)
+        elif isinstance(time_in, str):
             time_ = dateutil.parser.parse(time_in)
         elif isinstance(time_in, datetime.date):
-            time_ = time_in.replace(tzinfo=datetime.timezone.utc)
+            time_ = time_in
+            if time_.tzinfo is None:
+                time_ = time_.replace(tzinfo=datetime.timezone.utc)
         else:
-            raise TypeError("to_iso_time object must be 'str' or 'datetime'.")
+            raise TypeError("to_iso_time object must be 'str', 'int' or 'datetime'.")
         return time_.isoformat(timespec="milliseconds")[:-6] + "Z"
     else:
         return time_in
+
+
+def to_camel_case(snake_case_word):
+    """Convert the given snake case word into a camelCase one."""
+    pascal = to_pascal_case(snake_case_word)
+    return pascal[0].lower() + pascal[1:]
+
+
+def to_pascal_case(snake_case_word):
+    """Convert the given snake case word into a PascalCase one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
 
 
 def to_kebab_case(input):
@@ -181,7 +194,7 @@ def verify_stack_status(stack_name, waiting_states, successful_states):
     resource_status = ""
     while status in waiting_states:
         status = AWSApi.instance().cfn.describe_stack(stack_name).get("StackStatus")
-        events = AWSApi.instance().cfn.get_stack_events(stack_name)[0]
+        events = AWSApi.instance().cfn.get_stack_events(stack_name)["StackEvents"][0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
             80
         )

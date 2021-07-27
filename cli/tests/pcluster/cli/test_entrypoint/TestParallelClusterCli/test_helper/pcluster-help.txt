@@ -1,5 +1,5 @@
 usage: pcluster [-h]
-                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,get-cluster-log-events,get-image-log-events,list-cluster-logs,list-image-logs,ssh,version}
+                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-cluster-log-streams,get-cluster-log-events,get-cluster-stack-events,list-images,build-image,delete-image,describe-image,list-image-log-streams,get-image-log-events,get-image-stack-events,describe-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,ssh,version}
                 ...
 
 pcluster is the AWS ParallelCluster CLI and permits launching and management
@@ -9,7 +9,7 @@ optional arguments:
   -h, --help            show this help message and exit
 
 COMMANDS:
-  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-images,build-image,delete-image,describe-image,describe-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,get-cluster-log-events,get-image-log-events,list-cluster-logs,list-image-logs,ssh,version}
+  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-cluster-log-streams,get-cluster-log-events,get-cluster-stack-events,list-images,build-image,delete-image,describe-image,list-image-log-streams,get-image-log-events,get-image-stack-events,describe-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,ssh,version}
     list-clusters       Retrieve the list of existing clusters.
     create-cluster      Create a managed cluster in a given region.
     delete-cluster      Initiate the deletion of a cluster.
@@ -24,12 +24,28 @@ COMMANDS:
                         nodes. Does not work with AWS Batch clusters.
     describe-cluster-instances
                         Describe the instances belonging to a given cluster.
+    list-cluster-log-streams
+                        Retrieve the list of log streams associated with a
+                        cluster.
+    get-cluster-log-events
+                        Retrieve the events associated with a log stream.
+    get-cluster-stack-events
+                        Retrieve the events associated with the stack for a
+                        given cluster.
     list-images         Retrieve the list of existing custom images.
     build-image         Create a custom ParallelCluster image in a given
                         region.
     delete-image        Initiate the deletion of the custom ParallelCluster
                         image.
     describe-image      Get detailed information about an existing image.
+    list-image-log-streams
+                        Retrieve the list of log streams associated with an
+                        image.
+    get-image-log-events
+                        Retrieve the events associated with an image build.
+    get-image-stack-events
+                        Retrieve the events associated with the stack for a
+                        given image build.
     describe-official-images
                         Describe ParallelCluster AMIs.
     configure           Start the AWS ParallelCluster configuration.
@@ -40,12 +56,6 @@ COMMANDS:
                         archive by passing through an Amazon S3 Bucket.
     export-image-logs   Export the logs of the image builder stack to a local
                         tar.gz archive by passing through an Amazon S3 Bucket.
-    get-cluster-log-events
-                        Retrieve the events of a log stream of the cluster.
-    get-image-log-events
-                        Retrieve the events of a log stream of the image.
-    list-cluster-logs   List the log streams associated to a cluster.
-    list-image-logs     List the log streams associated to an image id.
     ssh                 Connects to the head node instance using SSH.
     version             Displays the version of AWS ParallelCluster.
 
