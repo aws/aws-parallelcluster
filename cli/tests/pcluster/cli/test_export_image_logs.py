@@ -79,12 +79,7 @@ class TestExportImageLogsCommand:
         assert_that(out).is_equal_to(expected)
 
         # verify arguments
-        expected_params = {
-            "bucket_prefix": None,
-            "start_time": None,
-            "end_time": None,
-            "region": None
-        }
+        expected_params = {"bucket_prefix": None, "start_time": None, "end_time": None, "region": None}
         expected_params.update(REQUIRED_ARGS)
         expected_params.update(args)
         export_logs_mock.assert_called_with(**expected_params)
