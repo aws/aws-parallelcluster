@@ -110,6 +110,8 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "scheduler_resources_name": "scheduler_resources.zip",
 }
 
+PCLUSTER_TAG_VALUE_REGEX = r"^([\w\+\-\=\.\_\:\@/]{0,256})$"
+
 IMAGEBUILDER_RESOURCE_NAME_PREFIX = "ParallelClusterImage"
 
 IAM_ROLE_PATH = "/parallelcluster/"

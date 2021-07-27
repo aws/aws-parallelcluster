@@ -19,6 +19,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
+    PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
@@ -602,6 +603,27 @@ class EfsIdValidator(Validator):  # TODO add tests
                     ),
                     FailureLevel.WARNING,
                 )
+
+
+class SharedStorageNameValidator(Validator):
+    """
+    Shared storage name validator.
+
+    Validate if the provided name for the shared storage complies with the acceptable pattern.
+    Since the storage name is used as a tag, the provided name must comply with the tag pattern.
+    """
+
+    def _validate(self, name: str):
+        if not re.match(PCLUSTER_TAG_VALUE_REGEX, name):
+            self._add_failure(
+                (
+                    f"Error: The shared storage name {name} is not valid. "
+                    "Allowed characters are letters, numbers and white spaces that can be represented in UTF-8 "
+                    "and the following characters: '+' '-' '=' '.' '_' ':' '/', "
+                    f"and it can't be longer than 256 characters."
+                ),
+                FailureLevel.ERROR,
+            )
 
 
 # --------------- Third party software validators --------------- #

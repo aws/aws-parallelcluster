@@ -70,6 +70,7 @@ from pcluster.validators.cluster_validators import (
     OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
+    SharedStorageNameValidator,
 )
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
@@ -974,6 +975,10 @@ class BaseClusterConfig(Resource):
                 resource_name="Shared Storage",
             )
             for storage in self.shared_storage:
+                self._register_validator(
+                    SharedStorageNameValidator,
+                    name=storage.name,
+                )
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
                     if storage.file_system_id:
