@@ -1,6 +1,7 @@
 namespace parallelcluster
 
-@suppress(["MissingPaginatedTrait", "PaginatedTrait", "InputOutputStructureReuse"])
+// Reuse the response as it is identical between cluster / image stack event requests
+@suppress(["InputOutputStructureReuse"])
 @paginated
 @readonly
 @http(method: "GET", uri: "/v3/clusters/{clusterName}/logstreams/{logStreamName}", code: 200)
@@ -12,6 +13,7 @@ operation GetClusterLogEvents {
     errors: [
         InternalServiceException,
         BadRequestException,
+        NotFoundException,
         UnauthorizedClientError,
         LimitExceededException,
     ]

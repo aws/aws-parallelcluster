@@ -879,6 +879,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
           description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
         "429":
           content:
             application/json:
@@ -1020,6 +1026,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
           description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
         "429":
           content:
             application/json:
@@ -1095,6 +1107,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
           description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
         "429":
           content:
             application/json:
@@ -1239,7 +1257,7 @@ paths:
         required: false
         schema:
           description: "When set, will automatically initiate an image stack rollback\
-            \ on failure. (Defaults to 'true'.)"
+            \ on failure. (Defaults to 'false'.)"
           nullable: true
           type: boolean
         style: form
@@ -1470,7 +1488,7 @@ paths:
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
   /v3/images/custom/{imageId}/logstreams:
     get:
-      description: Retrieve the list of log streams associated with a cluster.
+      description: Retrieve the list of log streams associated with an image.
       operationId: list_image_log_streams
       parameters:
       - description: Id of the image.
@@ -1483,13 +1501,13 @@ paths:
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: Region that the given cluster belongs to.
+      - description: Region that the given image belongs to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: Region that the given cluster belongs to.
+          description: Region that the given image belongs to.
           type: string
         style: form
       - description: Token to use for paginated requests.
@@ -1520,6 +1538,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
           description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
         "429":
           content:
             application/json:
@@ -1661,6 +1685,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
           description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
         "429":
           content:
             application/json:
@@ -1737,6 +1767,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
           description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
         "429":
           content:
             application/json:

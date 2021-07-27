@@ -129,11 +129,11 @@ def get_image_stack_events(image_id, region=None, next_token=None):
 @convert_errors()
 def list_image_log_streams(image_id, region=None, next_token=None):
     """
-    Retrieve the list of log streams associated with a cluster.
+    Retrieve the list of log streams associated with an image.
 
     :param image_id: Id of the image.
     :type image_id: str
-    :param region: Region that the given cluster belongs to.
+    :param region: Region that the given image belongs to.
     :type region: str
     :param next_token: Token to use for paginated requests.
     :type next_token: str
