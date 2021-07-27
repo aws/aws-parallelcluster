@@ -10,6 +10,7 @@ resource CustomImage {
     list: ListImages,
     read: DescribeImage,
     delete: DeleteImage,
+    operations: [ExportImageLogs],
 }
 
 resource ImageLogStream {

@@ -640,6 +640,145 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_compute_fleet_controller
+  /v3/clusters/{clusterName}/export_logs:
+    get:
+      description: Export the logs and stack events for a given cluster.
+      operationId: export_cluster_logs
+      parameters:
+      - description: Name of the cluster
+        explode: false
+        in: path
+        name: clusterName
+        required: true
+        schema:
+          description: Name of the cluster
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Region that the given cluster and bucket belong to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: Region that the given cluster and bucket belong to.
+          type: string
+        style: form
+      - description: S3 bucket to export cluster logs data to. It must be in the same
+          region of the cluster.
+        explode: true
+        in: query
+        name: bucket
+        required: true
+        schema:
+          description: S3 bucket to export cluster logs data to. It must be in the
+            same region of the cluster.
+          type: string
+        style: form
+      - description: Keypath under which exported logs data will be stored in s3 bucket.
+        explode: true
+        in: query
+        name: bucketPrefix
+        required: false
+        schema:
+          description: Keypath under which exported logs data will be stored in s3
+            bucket.
+          type: string
+        style: form
+      - description: "Start time of interval of interest for log events. ISO 8601\
+          \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+          \ elements might be omitted. Defaults to creation time."
+        explode: true
+        in: query
+        name: startTime
+        required: false
+        schema:
+          description: "Start time of interval of interest for log events. ISO 8601\
+            \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+            \ elements might be omitted. Defaults to creation time."
+          format: date-time
+          type: string
+        style: form
+      - description: "Start time of interval of interest for log events. ISO 8601\
+          \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+          \ elements might be omitted. Defaults to current time."
+        explode: true
+        in: query
+        name: EndTime
+        required: false
+        schema:
+          description: "Start time of interval of interest for log events. ISO 8601\
+            \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+            \ elements might be omitted. Defaults to current time."
+          format: date-time
+          type: string
+        style: form
+      - description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+          Accepted filters are:\nprivate-dns-name - The short form of the private\
+          \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type,\
+          \ the only accepted value for this filter is HeadNode."
+        explode: true
+        in: query
+        name: filters
+        required: false
+        schema:
+          description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+            Accepted filters are:\nprivate-dns-name - The short form of the private\
+            \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node\
+            \ type, the only accepted value for this filter is HeadNode."
+          items:
+            type: string
+          type: array
+          uniqueItems: true
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportClusterLogsResponseContent'
+          description: ExportClusterLogs 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Cluster Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
   /v3/clusters/{clusterName}/instances:
     delete:
       description: Initiate the forced termination of all cluster compute nodes. Does
@@ -1486,6 +1625,127 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
+  /v3/images/custom/{imageId}/export_logs:
+    get:
+      description: Export the logs and stack events for a given cluster.
+      operationId: export_image_logs
+      parameters:
+      - description: Id of the image.
+        explode: false
+        in: path
+        name: imageId
+        required: true
+        schema:
+          description: Id of the image.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Region that the given image and bucket belong to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: Region that the given image and bucket belong to.
+          type: string
+        style: form
+      - description: S3 bucket to export cluster logs data to. It must be in the same
+          region of the cluster.
+        explode: true
+        in: query
+        name: bucket
+        required: true
+        schema:
+          description: S3 bucket to export cluster logs data to. It must be in the
+            same region of the cluster.
+          type: string
+        style: form
+      - description: Keypath under which exported logs data will be stored in s3 bucket.
+        explode: true
+        in: query
+        name: bucketPrefix
+        required: false
+        schema:
+          description: Keypath under which exported logs data will be stored in s3
+            bucket.
+          type: string
+        style: form
+      - description: "Start time of interval of interest for log events. ISO 8601\
+          \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+          \ elements might be omitted. Defaults to creation time."
+        explode: true
+        in: query
+        name: startTime
+        required: false
+        schema:
+          description: "Start time of interval of interest for log events. ISO 8601\
+            \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+            \ elements might be omitted. Defaults to creation time."
+          format: date-time
+          type: string
+        style: form
+      - description: "Start time of interval of interest for log events. ISO 8601\
+          \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+          \ elements might be omitted. Defaults to current time."
+        explode: true
+        in: query
+        name: EndTime
+        required: false
+        schema:
+          description: "Start time of interval of interest for log events. ISO 8601\
+            \ format: YYYY-MM-DDThh:mm:ss.sssZ (e.g. 1984-09-15T19:20:30.000Z), time\
+            \ elements might be omitted. Defaults to current time."
+          format: date-time
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportImageLogsResponseContent'
+          description: ExportImageLogs 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Image Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
   /v3/images/custom/{imageId}/logstreams:
     get:
       description: Retrieve the list of log streams associated with an image.
@@ -2648,6 +2908,72 @@ components:
       - ERROR
       title: Ec2AmiState
       type: string
+    ExportClusterLogsResponseContent:
+      example:
+        logEventsUrl: logEventsUrl
+        logExportTaskId: logExportTaskId
+        message: message
+        stackEventsUrl: stackEventsUrl
+      properties:
+        logEventsUrl:
+          description: URL that points to the location of the stored logs.
+          title: logEventsUrl
+          type: string
+        logExportTaskId:
+          description: Task Id for the log export operation.
+          title: logExportTaskId
+          type: string
+        message:
+          description: Message corresponding to the status of the result of this request.
+          title: message
+          type: string
+        stackEventsUrl:
+          description: URL that points to the location of the stored stack events.
+          title: stackEventsUrl
+          type: string
+      required:
+      - logEventsUrl
+      - logExportTaskId
+      - message
+      - stackEventsUrl
+      title: ExportClusterLogsResponseContent
+      type: object
+    ExportImageLogsResponseContent:
+      example:
+        logEventsUrl: logEventsUrl
+        logEventsTaskId: logEventsTaskId
+        logExportTaskId: logExportTaskId
+        message: message
+        stackEventsUrl: stackEventsUrl
+      properties:
+        logEventsUrl:
+          description: URL that points to the location of the stored logs.
+          title: logEventsUrl
+          type: string
+        logEventsTaskId:
+          description: URL that points to the location of the stored logs.
+          title: logEventsTaskId
+          type: string
+        logExportTaskId:
+          description: Task Id for the log export operation.
+          title: logExportTaskId
+          type: string
+        message:
+          description: Message corresponding to the status of the result of this request.
+          title: message
+          type: string
+        stackEventsUrl:
+          description: URL that points to the location of the stored stack events.
+          title: stackEventsUrl
+          type: string
+      required:
+      - logEventsTaskId
+      - logEventsUrl
+      - logExportTaskId
+      - message
+      - stackEventsUrl
+      title: ExportImageLogsResponseContent
+      type: object
     GetClusterLogEventsResponseContent:
       example:
         nextToken: nextToken

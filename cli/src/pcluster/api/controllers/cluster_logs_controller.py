@@ -14,6 +14,7 @@ import dateutil
 from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, convert_errors
 from pcluster.api.errors import BadRequestException, NotFoundException
 from pcluster.api.models import (
+    ExportClusterLogsResponseContent,
     GetClusterLogEventsResponseContent,
     GetClusterStackEventsResponseContent,
     ListClusterLogStreamsResponseContent,
@@ -47,6 +48,63 @@ def _validate_timestamp(val, ts_name):
             f"{ts_name} filter must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD. "
             "(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15)."
         )
+
+
+@configure_aws_region()
+@convert_errors()
+def export_cluster_logs(
+    cluster_name, bucket, region=None, bucket_prefix=None, start_time=None, end_time=None, filters=None
+):
+    """
+    Export the logs and stack events for a given cluster.
+
+    :param cluster_name: Name of the cluster
+    :type cluster_name: str
+    :param region: Region that the given cluster and bucket belong to.
+    :type region: str
+    :param bucket: S3 bucket to export cluster logs data to. It must be in the same region of the cluster.
+    :type bucket: str
+    :param bucket_prefix: Keypath under which exported logs data will be stored in s3 bucket.
+    :type bucket_prefix: str
+    :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ss.sssZ
+                       (e.g. 1984-09-15T19:20:30.000Z), time elements might be omitted. Defaults to creation time.
+    :type start_time: str
+    :param end_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ss.sssZ
+                     (e.g. 1984-09-15T19:20:30.000Z), time elements might be omitted. Defaults to current time.
+    :type end_time: str
+    :param filters: Filter the log streams. Format: (Name&#x3D;a,Values&#x3D;1 Name&#x3D;b,Values&#x3D;2,3).
+                    Accepted filters are:
+                      private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).
+                      node-type - The node type, the only accepted value for this filter is HeadNode.
+    :type filters: List[str]
+
+    :rtype: ExportClusterLogsResponseContent
+    """
+    if start_time:
+        _validate_timestamp(start_time, "start_time")
+    if end_time:
+        _validate_timestamp(end_time, "end_time")
+
+    filter_parser = _Filter(accepted_filters=["private-dns-name", "node-type"])
+    filters = [filter_parser(f) for f in filters] if filters else None
+
+    cluster = Cluster(cluster_name)
+    try:
+        if not check_cluster_version(cluster):
+            raise BadRequestException(
+                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
+            )
+    except StackNotFoundError:
+        raise NotFoundException(
+            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
+        )
+    ret = cluster.export_logs(bucket, bucket_prefix=bucket_prefix, start_time=start_time, end_time=end_time)
+    return ExportClusterLogsResponseContent(
+        log_export_task_id=ret.log_export_task_id,
+        log_events_url=ret.log_events_url,
+        stack_events_url=ret.stack_events_url,
+        message=f"Successfully exported logs for {cluster_name}.",
+    )
 
 
 @configure_aws_region()

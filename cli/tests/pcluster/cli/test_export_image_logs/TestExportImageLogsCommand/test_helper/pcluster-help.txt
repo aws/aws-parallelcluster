@@ -1,37 +1,29 @@
-usage: pcluster export-image-logs [-h] [--debug]
-                                  [-r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}]
-                                  [--output OUTPUT]
+usage: pcluster export-image-logs [-h] --image-id IMAGE_ID [--region REGION]
+                                  --bucket BUCKET
                                   [--bucket-prefix BUCKET_PREFIX]
-                                  [--keep-s3-objects]
                                   [--start-time START_TIME]
-                                  [--end-time END_TIME] --bucket BUCKET
-                                  image_id
+                                  [--end-time END_TIME] [--debug]
+                                  [--query QUERY]
 
-Export the logs of the image builder stack to a local tar.gz archive by
-passing through an Amazon S3 Bucket.
-
-positional arguments:
-  image_id              Export the logs related to the image id provided here.
+Export the logs and stack events for a given cluster.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --debug               Turn on debug logging.
-  -r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}, --region {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}
-                        AWS Region to use.
-  --output OUTPUT       File path to save log archive to.
+  --image-id IMAGE_ID   Id of the image.
+  --region REGION       Region that the given image and bucket belong to.
+  --bucket BUCKET       S3 bucket to export cluster logs data to. It must be
+                        in the same region of the cluster.
   --bucket-prefix BUCKET_PREFIX
                         Keypath under which exported logs data will be stored
                         in s3 bucket.
-  --keep-s3-objects     Keep the exported objects exports to S3. The default
-                        behavior is to delete them.
   --start-time START_TIME
                         Start time of interval of interest for log events. ISO
-                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
-                        1984-09-15T19:20:30+01:00), time elements might be
-                        omitted. Defaults to creation time
-  --end-time END_TIME   End time of interval of interest for log events. ISO
-                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
-                        1984-09-15T19:20:30+01:00), time elements might be
-                        omitted. Defaults to current time
-  --bucket BUCKET       S3 bucket to export image builder logs data to. It
-                        must be in the same region of the image
+                        8601 format: YYYY-MM-DDThh:mm:ss.sssZ (e.g.
+                        1984-09-15T19:20:30.000Z), time elements might be
+                        omitted. Defaults to creation time.
+  --end-time END_TIME   Start time of interval of interest for log events. ISO
+                        8601 format: YYYY-MM-DDThh:mm:ss.sssZ (e.g.
+                        1984-09-15T19:20:30.000Z), time elements might be
+                        omitted. Defaults to current time.
+  --debug               Turn on debug logging.
+  --query QUERY         JMESPath query to perform on output.

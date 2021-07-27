@@ -7,7 +7,7 @@ resource Cluster {
     read: DescribeCluster,
     delete: DeleteCluster,
     update: UpdateCluster,
-    operations: [],
+    operations: [ExportClusterLogs],
 }
 
 resource ClusterInstances {

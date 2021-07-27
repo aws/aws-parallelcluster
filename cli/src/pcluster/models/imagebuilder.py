@@ -14,10 +14,8 @@
 #
 import copy
 import logging
-import os
 import re
-import tempfile
-from datetime import datetime
+from collections import namedtuple
 from typing import Set
 
 import pkg_resources
@@ -55,7 +53,6 @@ from pcluster.models.common import (
     LogGroupTimeFiltersParser,
     Logs,
     LogStream,
-    create_logs_archive,
     export_stack_events,
     parse_config,
 )
@@ -615,21 +612,17 @@ class ImageBuilder:
 
     def export_logs(
         self,
-        output: str,
         bucket: str,
         bucket_prefix: str = None,
-        keep_s3_objects: bool = False,
         start_time: str = None,
         end_time: str = None,
     ):
         """
         Export image builder's logs in the given output path, by using given bucket as a temporary folder.
 
-        :param output: file path to save log file archive to
-        :param bucket: Temporary S3 bucket to be used to export cluster logs data
+        :param bucket: S3 bucket to be used to export cluster logs data
         :param bucket_prefix: Key path under which exported logs data will be stored in s3 bucket,
                also serves as top-level directory in resulting archive
-        :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
         :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
         :param end_time: End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
         """
@@ -639,39 +632,37 @@ class ImageBuilder:
             LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
 
         try:
-            with tempfile.TemporaryDirectory() as output_tempdir:
-                # Create root folder for the archive
-                root_archive_dir = os.path.join(
-                    output_tempdir, f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+            if AWSApi.instance().logs.log_group_exists(self._log_group_name):
+                # Export logs from CloudWatch
+                export_logs_filters = self._init_export_logs_filters(start_time, end_time)
+                logs_exporter = CloudWatchLogsExporter(
+                    resource_id=self.image_id,
+                    log_group_name=self._log_group_name,
+                    bucket=bucket,
+                    bucket_prefix=bucket_prefix,
                 )
-                os.makedirs(root_archive_dir, exist_ok=True)
+                log_export_task_id = logs_exporter.execute(
+                    start_time=export_logs_filters.start_time, end_time=export_logs_filters.end_time
+                )
+                log_events_url = f"s3://{bucket}/{bucket_prefix}"
+            else:
+                print("log group doesn't exist.")
+                log_events_url = log_export_task_id = None
+                LOGGER.debug(
+                    "Log streams not yet available for %s, only CFN Stack events will be exported.",
+                    {self.image_id},
+                )
 
-                if AWSApi.instance().logs.log_group_exists(self._log_group_name):
-                    # Export logs from CloudWatch
-                    export_logs_filters = self._init_export_logs_filters(start_time, end_time)
-                    logs_exporter = CloudWatchLogsExporter(
-                        resource_id=self.image_id,
-                        log_group_name=self._log_group_name,
-                        bucket=bucket,
-                        output_dir=root_archive_dir,
-                        bucket_prefix=bucket_prefix,
-                        keep_s3_objects=keep_s3_objects,
-                    )
-                    logs_exporter.execute(
-                        start_time=export_logs_filters.start_time, end_time=export_logs_filters.end_time
-                    )
-                else:
-                    LOGGER.debug(
-                        "Log streams not yet available for %s, only CFN Stack events will be exported.",
-                        {self.image_id},
-                    )
+            stack_events_url = None
+            if stack_exists:
+                # Export stack events to S3
+                stack_events_url = export_stack_events(self.stack.name, bucket, bucket_prefix)
+            else:
+                print("stack doesn't exist")
 
-                if stack_exists:
-                    # Get stack events and write them into a file
-                    stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
-                    export_stack_events(self.stack.name, stack_events_file)
+            ExportLogsInfo = namedtuple("ExportLogsInfo", "log_export_task_id log_events_url stack_events_url")
+            return ExportLogsInfo(log_export_task_id, log_events_url, stack_events_url)
 
-                create_logs_archive(root_archive_dir, output)
         except Exception as e:
             raise ImageBuilderActionError(f"Unexpected error when exporting image's logs: {e}")
 

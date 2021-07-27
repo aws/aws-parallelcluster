@@ -455,7 +455,6 @@ class TestImageBuilder:
             (True, False, "", {}),
             (True, True, "", {}),
             (False, True, "", {}),
-            (True, False, "", {"keep_s3_objects": True}),
             (True, False, "", {"bucket_prefix": "test_prefix"}),
             (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
@@ -474,8 +473,8 @@ class TestImageBuilder:
             "pcluster.models.imagebuilder.ImageBuilder._stack_exists", return_value=stack_exists
         )
         mocker.patch("pcluster.aws.logs.LogsClient.log_group_exists", return_value=log_group_exists)
-        download_stack_events_mock = mocker.patch("pcluster.models.imagebuilder.export_stack_events")
-        create_logs_archive_mock = mocker.patch("pcluster.models.imagebuilder.create_logs_archive")
+
+        mocker.patch("pcluster.models.imagebuilder.export_stack_events", return_value="s3://bucket/key")
 
         # Following mocks are used only if CW loggins is enabled
         logs_filter_mock = mocker.patch(
@@ -484,17 +483,13 @@ class TestImageBuilder:
         )
         cw_logs_exporter_mock = mocker.patch("pcluster.models.imagebuilder.CloudWatchLogsExporter", autospec=True)
 
-        kwargs.update({"output": "output_path", "bucket": "bucket_name"})
+        kwargs.update({"bucket": "bucket_name"})
         if expected_error:
             with pytest.raises(ImageBuilderActionError, match=expected_error):
                 image_builder.export_logs(**kwargs)
         else:
             image_builder.export_logs(**kwargs)
             stack_exists_mock.assert_called()
-            if stack_exists:
-                download_stack_events_mock.assert_called()
-            else:
-                download_stack_events_mock.assert_not_called()
 
             if log_group_exists:
                 cw_logs_exporter_mock.assert_called()
@@ -502,7 +497,6 @@ class TestImageBuilder:
             else:
                 cw_logs_exporter_mock.assert_not_called()
                 logs_filter_mock.assert_not_called()
-            create_logs_archive_mock.assert_called()
 
     @pytest.mark.parametrize(
         "stack_exists, log_group_exists, client_error, expected_error",

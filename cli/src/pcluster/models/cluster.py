@@ -14,11 +14,9 @@
 #
 import json
 import logging
-import os
-import tempfile
 import time
+from collections import namedtuple
 from copy import deepcopy
-from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Set, Tuple
 
@@ -53,7 +51,6 @@ from pcluster.models.common import (
     LimitExceeded,
     Logs,
     LogStream,
-    create_logs_archive,
     export_stack_events,
     parse_config,
 )
@@ -820,10 +817,8 @@ class Cluster:
 
     def export_logs(
         self,
-        output: str,
         bucket: str,
         bucket_prefix: str = None,
-        keep_s3_objects: bool = False,
         start_time: str = None,
         end_time: str = None,
         filters: str = None,
@@ -831,11 +826,9 @@ class Cluster:
         """
         Export cluster's logs in the given output path, by using given bucket as a temporary folder.
 
-        :param output: file path to save log file archive to
-        :param bucket: Temporary S3 bucket to be used to export cluster logs data
+        :param bucket: S3 bucket to be used to export cluster logs data
         :param bucket_prefix: Key path under which exported logs data will be stored in s3 bucket,
                also serves as top-level directory in resulting archive
-        :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
         :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
         :param end_time: End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD
         :param filters: Filters in the format Name=name,Values=value1,value2
@@ -846,40 +839,34 @@ class Cluster:
             raise ClusterActionError(f"Cluster {self.name} does not exist")
 
         try:
-            with tempfile.TemporaryDirectory() as output_tempdir:
-                # Create root folder for the archive
-                root_archive_dir = os.path.join(
-                    output_tempdir, f"{self.name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+            if self.stack.log_group_name:
+                # Export logs from CloudWatch
+                export_logs_filters = self._init_export_logs_filters(start_time, end_time, filters)
+                logs_exporter = CloudWatchLogsExporter(
+                    resource_id=self.name,
+                    log_group_name=self.stack.log_group_name,
+                    bucket=bucket,
+                    bucket_prefix=bucket_prefix,
                 )
-                os.makedirs(root_archive_dir, exist_ok=True)
+                log_export_task_id = logs_exporter.execute(
+                    log_stream_prefix=export_logs_filters.log_stream_prefix,
+                    start_time=export_logs_filters.start_time,
+                    end_time=export_logs_filters.end_time,
+                )
+                log_events_url = f"s3://{bucket}/{bucket_prefix}"
+            else:
+                log_events_url = log_export_task_id = None
+                LOGGER.debug(
+                    "CloudWatch logging is not enabled for cluster %s, only CFN Stack events will be exported.",
+                    {self.name},
+                )
 
-                if self.stack.log_group_name:
-                    # Export logs from CloudWatch
-                    export_logs_filters = self._init_export_logs_filters(start_time, end_time, filters)
-                    logs_exporter = CloudWatchLogsExporter(
-                        resource_id=self.name,
-                        log_group_name=self.stack.log_group_name,
-                        bucket=bucket,
-                        output_dir=root_archive_dir,
-                        bucket_prefix=bucket_prefix,
-                        keep_s3_objects=keep_s3_objects,
-                    )
-                    logs_exporter.execute(
-                        log_stream_prefix=export_logs_filters.log_stream_prefix,
-                        start_time=export_logs_filters.start_time,
-                        end_time=export_logs_filters.end_time,
-                    )
-                else:
-                    LOGGER.debug(
-                        "CloudWatch logging is not enabled for cluster %s, only CFN Stack events will be exported.",
-                        {self.name},
-                    )
+            # Export stack events to S3
+            stack_events_url = export_stack_events(self.stack.name, bucket, bucket_prefix)
 
-                # Get stack events and write them into a file
-                stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
-                export_stack_events(self.stack_name, stack_events_file)
+            ExportLogsInfo = namedtuple("ExportLogsInfo", "log_export_task_id log_events_url stack_events_url")
+            return ExportLogsInfo(log_export_task_id, log_events_url, stack_events_url)
 
-                create_logs_archive(root_archive_dir, output)
         except Exception as e:
             raise ClusterActionError(f"Unexpected error when exporting cluster's logs: {e}")
 

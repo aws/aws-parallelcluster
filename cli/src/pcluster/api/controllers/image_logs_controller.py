@@ -12,6 +12,7 @@ import dateutil
 from pcluster.api.controllers.common import configure_aws_region, convert_errors
 from pcluster.api.errors import BadRequestException
 from pcluster.api.models import (
+    ExportImageLogsResponseContent,
     GetImageLogEventsResponseContent,
     GetImageStackEventsResponseContent,
     ListImageLogStreamsResponseContent,
@@ -31,6 +32,45 @@ def _validate_timestamp(val, ts_name):
             f"{ts_name} filter must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD. "
             "(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15)."
         )
+
+
+@configure_aws_region()
+@convert_errors()
+def export_image_logs(image_id, bucket, region=None, bucket_prefix=None, start_time=None, end_time=None):
+    """
+    Export the logs and stack events for a given cluster.
+
+    :param image_id: Id of the image.
+    :type image_id: str
+    :param bucket: S3 bucket to export cluster logs data to. It must be in the same region of the cluster.
+    :type bucket: str
+    :param region: Region that the given image and bucket belong to.
+    :type region: str
+    :param bucket_prefix: Keypath under which exported logs data will be stored in s3 bucket.
+    :type bucket_prefix: str
+    :param start_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ss.sssZ
+                       (e.g. 1984-09-15T19:20:30.000Z), time elements might be omitted. Defaults to creation time.
+    :type start_time: str
+    :param end_time: Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ss.sssZ
+                     (e.g. 1984-09-15T19:20:30.000Z), time elements might be omitted. Defaults to current time.
+    :type end_time: str
+
+    :rtype: ExportImageLogsResponseContent
+    """
+    if start_time:
+        _validate_timestamp(start_time, "start_time")
+    if end_time:
+        _validate_timestamp(end_time, "end_time")
+
+    imagebuilder = ImageBuilder(image_id=image_id)
+    ret = imagebuilder.export_logs(bucket, bucket_prefix=bucket_prefix, start_time=start_time, end_time=end_time)
+
+    return ExportImageLogsResponseContent(
+        log_export_task_id=ret.log_export_task_id,
+        log_events_url=ret.log_events_url,
+        stack_events_url=ret.stack_events_url,
+        message=f"Successfully exported logs for {image_id}.",
+    )
 
 
 @configure_aws_region()

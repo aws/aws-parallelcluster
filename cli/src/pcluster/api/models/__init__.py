@@ -45,6 +45,8 @@ from pcluster.api.models.dryrun_operation_exception_response_content import Dryr
 from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.ec2_ami_state import Ec2AmiState
 from pcluster.api.models.ec2_instance import EC2Instance
+from pcluster.api.models.export_cluster_logs_response_content import ExportClusterLogsResponseContent
+from pcluster.api.models.export_image_logs_response_content import ExportImageLogsResponseContent
 from pcluster.api.models.get_cluster_log_events_response_content import GetClusterLogEventsResponseContent
 from pcluster.api.models.get_cluster_stack_events_response_content import GetClusterStackEventsResponseContent
 from pcluster.api.models.get_image_log_events_response_content import GetImageLogEventsResponseContent

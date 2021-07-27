@@ -436,7 +436,6 @@ class TestCluster:
             (False, False, "Cluster .* does not exist", {}),
             (True, False, "", {}),
             (True, True, "", {}),
-            (True, True, "", {"keep_s3_objects": True}),
             (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
     )
@@ -453,8 +452,6 @@ class TestCluster:
         mock_aws_api(mocker)
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
-        download_stack_events_mock = mocker.patch("pcluster.models.cluster.export_stack_events")
-        create_logs_archive_mock = mocker.patch("pcluster.models.cluster.create_logs_archive")
         mocker.patch(
             "pcluster.models.cluster.ClusterStack.log_group_name",
             new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
@@ -467,15 +464,14 @@ class TestCluster:
         )
         cw_logs_exporter_mock = mocker.patch("pcluster.models.cluster.CloudWatchLogsExporter", autospec=True)
 
-        kwargs.update({"output": "output_path", "bucket": "bucket_name"})
+        mocker.patch("pcluster.models.cluster.export_stack_events", return_value="s3://bucket/key")
+
+        kwargs.update({"bucket": "bucket_name"})
         if expected_error:
             with pytest.raises(ClusterActionError, match=expected_error):
                 cluster.export_logs(**kwargs)
         else:
             cluster.export_logs(**kwargs)
-            # check archive steps
-            download_stack_events_mock.assert_called()
-            create_logs_archive_mock.assert_called()
 
             # check preliminary steps
             stack_exists_mock.assert_called_with(cluster.stack_name)

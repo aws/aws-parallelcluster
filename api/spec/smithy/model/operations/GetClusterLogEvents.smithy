@@ -38,8 +38,10 @@ structure GetClusterLogEventsRequest {
     limit: Integer,
     @httpQuery("startTime")
     @documentation("The start of the time range, expressed in ISO8601 format (e.g. '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time or later than this time are included.")
+    @timestampFormat("date-time")
     startTime: Timestamp,
     @httpQuery("endTime")
     @documentation("The end of the time range, expressed in ISO8601 format (e.g. '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later than this time are not included.")
+    @timestampFormat("date-time")
     endTime: Timestamp,
 }
