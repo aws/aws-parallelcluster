@@ -289,8 +289,8 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     # Verify initial configuration
     _verify_initialization(region, cluster, cluster.config)
 
-    # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.update(str(init_config_file), force=False)
+    # Update cluster with the same configuration
+    cluster.update(str(init_config_file), force=True)
 
     # Update cluster with new configuration
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
