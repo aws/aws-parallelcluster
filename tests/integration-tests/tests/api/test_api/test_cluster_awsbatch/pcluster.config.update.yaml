@@ -25,7 +25,6 @@ Scheduling:
         - Name: compute-resource-0
           InstanceTypes:
             - {{ instance }}
-          MinvCpus: 8
+          MinvCpus: {{ vcpus }}
           MaxvCpus: 16
           DesiredvCpus: 12
-          SpotBidPercentage: 70
