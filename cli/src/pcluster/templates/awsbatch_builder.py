@@ -102,6 +102,10 @@ class AwsBatchConstruct(Construct):
     def _get_compute_env_prefix(self):
         Fn.select(1, Fn.split("compute-environment/", self._compute_env.ref))
 
+    def _cluster_scoped_iam_path(self):
+        """Return a path to be associated IAM roles and instance profiles."""
+        return f"{IAM_ROLE_PATH}{self.stack_name}/"
+
     # -- Resources --------------------------------------------------------------------------------------------------- #
 
     def _add_resources(self):
@@ -195,7 +199,7 @@ class AwsBatchConstruct(Construct):
         ecs_instance_role = iam.CfnRole(
             self.stack_scope,
             "EcsInstanceRole",
-            path=IAM_ROLE_PATH,
+            path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(
                     service="iam",
@@ -208,7 +212,7 @@ class AwsBatchConstruct(Construct):
         )
 
         iam_instance_profile = iam.CfnInstanceProfile(
-            self.stack_scope, "IamInstanceProfile", path=IAM_ROLE_PATH, roles=[ecs_instance_role.ref]
+            self.stack_scope, "IamInstanceProfile", path=self._cluster_scoped_iam_path(), roles=[ecs_instance_role.ref]
         )
 
         return ecs_instance_role, iam_instance_profile
@@ -217,7 +221,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "JobRole",
-            path=IAM_ROLE_PATH,
+            path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(service="iam", account="aws", region="", resource="policy/AmazonS3ReadOnlyAccess"),
                 self._format_arn(
@@ -309,7 +313,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "PclusterBatchUserRole",
-            path=IAM_ROLE_PATH,
+            path=self._cluster_scoped_iam_path(),
             max_session_duration=36000,
             assume_role_policy_document=iam.PolicyDocument(statements=[batch_user_role_statement]),
             policies=[
@@ -419,7 +423,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "BatchSpotRole",
-            path=IAM_ROLE_PATH,
+            path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(
                     service="iam",
@@ -473,7 +477,7 @@ class AwsBatchConstruct(Construct):
         return iam.CfnRole(
             self.stack_scope,
             "CodeBuildRole",
-            path=IAM_ROLE_PATH,
+            path=self._cluster_scoped_iam_path(),
             assume_role_policy_document=get_assume_role_policy_document("codebuild.amazonaws.com"),
         )
 
@@ -757,7 +761,7 @@ class AwsBatchConstruct(Construct):
                             self._format_arn(
                                 service="iam",
                                 region="",
-                                resource=f"role{IAM_ROLE_PATH}*",
+                                resource=f"role{self._cluster_scoped_iam_path()}*",
                             )
                         ],
                     ),

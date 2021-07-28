@@ -103,6 +103,10 @@ class SlurmConstruct(Construct):
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
 
+    def _cluster_scoped_iam_path(self):
+        """Return a path to be associated IAM roles and instance profiles."""
+        return f"{IAM_ROLE_PATH}{self.stack_name}/"
+
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_parameters(self):
@@ -676,7 +680,7 @@ class SlurmConstruct(Construct):
         default_pass_role_resource = self._format_arn(
             service="iam",
             region="",
-            resource=f"role{IAM_ROLE_PATH}*",
+            resource=f"role{self._cluster_scoped_iam_path()}*",
         )
 
         # If there are any queues where a custom instance role was specified,
