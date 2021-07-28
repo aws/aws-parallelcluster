@@ -34,7 +34,7 @@ from pcluster.constants import (
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
     MAX_STORAGE_COUNT,
 )
-from pcluster.utils import get_partition
+from pcluster.utils import get_partition, get_resource_name_from_resource_arn
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -611,6 +611,33 @@ class Iam(Resource):
         for policy in self.additional_iam_policies:
             arns.append(policy.policy)
         return arns
+
+    def _extract_roles_from_instance_profile(self, instance_profile_name) -> List[str]:
+        """Return the ARNs of the IAM roles attached to the given instance profile."""
+        return [
+            role.get("Arn")
+            for role in (
+                AWSApi.instance().iam.get_instance_profile(instance_profile_name).get("InstanceProfile").get("Roles")
+            )
+        ]
+
+    @property
+    def instance_role_arns(self) -> List[str]:
+        """
+        Get unique collection of ARNs of IAM roles underlying instance profile.
+
+        self.instance_role is used if it's specified. Otherwise the roles contained within self.instance_profile are
+        used. It's assumed that self.instance_profile and self.instance_role cannot both be specified.
+        """
+        if self.instance_role:
+            instance_role_arns = {self.instance_role}
+        elif self.instance_profile:
+            instance_role_arns = set(
+                self._extract_roles_from_instance_profile(get_resource_name_from_resource_arn(self.instance_profile))
+            )
+        else:
+            instance_role_arns = {}
+        return list(instance_role_arns)
 
     def _register_validators(self):
         if self.instance_role:
