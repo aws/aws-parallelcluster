@@ -155,6 +155,10 @@ class ClusterCdkStack(Stack):
 
         return compute_group_set
 
+    def _cluster_scoped_iam_path(self):
+        """Return a path to be associated IAM roles and instance profiles."""
+        return f"{IAM_ROLE_PATH}{self.stack_name}/"
+
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_parameters(self):
@@ -521,7 +525,7 @@ class ClusterCdkStack(Stack):
             )
 
     def _add_instance_profile(self, role_ref: str, name: str):
-        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path=IAM_ROLE_PATH).ref
+        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path=self._cluster_scoped_iam_path()).ref
 
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
         additional_iam_policies = node.iam.additional_iam_policy_arns
@@ -536,7 +540,7 @@ class ClusterCdkStack(Stack):
         return iam.CfnRole(
             self,
             name,
-            path=IAM_ROLE_PATH,
+            path=self._cluster_scoped_iam_path(),
             managed_policy_arns=additional_iam_policies,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
         ).ref
