@@ -131,6 +131,10 @@ class TestGetImageLogEventsCommand:
         assert_that(expected).is_equal_to(out)
         assert_that(get_image_log_events_mock.call_args).is_length(2)
 
+        if args.get("limit", None):
+            limit_val = get_image_log_events_mock.call_args[1].get("limit")
+            assert_that(limit_val).is_type_of(int)
+
         # verify arguments
         kwargs = {
             "start_time": args.get("start_time", None),
