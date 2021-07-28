@@ -489,7 +489,7 @@ storage:
       - regions: ["us-east-1"]
         instances: ["m5d.xlarge", "h1.2xlarge"]
         oss: ["alinux2"]
-        schedulers: ["slurm"]
+        schedulers: ["awsbatch"]
 tags:
   test_tag_propagation.py::test_tag_propagation:
     dimensions:

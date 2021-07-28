@@ -29,7 +29,3 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
-      ComputeSettings:
-        LocalStorage:
-          EphemeralVolume:
-            MountDir: {{ compute_ephemeral_mount }}

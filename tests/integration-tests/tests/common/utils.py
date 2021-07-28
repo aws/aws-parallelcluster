@@ -188,5 +188,5 @@ def reboot_head_node(cluster, remote_command_executor=None):
 def wait_head_node_running(cluster):
     logging.info(f"Waiting for head node to be running for cluster: {cluster.name}")
     boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
-        Filters=[{"Name": "ip-address", "Values": [cluster.head_node_ip]}], WaiterConfig={"Delay": 60, "MaxAttempts": 5}
+        InstanceIds=cluster.instances(desired_instance_role="HeadNode"), WaiterConfig={"Delay": 60, "MaxAttempts": 5}
     )

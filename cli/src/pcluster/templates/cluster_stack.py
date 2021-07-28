@@ -1160,13 +1160,6 @@ class ClusterCdkStack(Stack):
     def _condition_is_batch(self):
         return self.config.scheduling.scheduler == "awsbatch"
 
-    def _condition_head_node_has_public_ip(self):
-        head_node_networking = self.config.head_node.networking
-        assign_public_ip = head_node_networking.assign_public_ip
-        if assign_public_ip is None:
-            assign_public_ip = AWSApi.instance().ec2.get_subnet_auto_assign_public_ip(head_node_networking.subnet_id)
-        return assign_public_ip
-
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
     def _add_outputs(self):
@@ -1199,11 +1192,3 @@ class ClusterCdkStack(Stack):
             description="Private DNS name of the head node",
             value=self.head_node_instance.attr_private_dns_name,
         )
-
-        if self._condition_head_node_has_public_ip():
-            CfnOutput(
-                self,
-                "HeadNodePublicIP",
-                description="Public IP Address of the head node",
-                value=self.head_node_instance.attr_public_ip,
-            )

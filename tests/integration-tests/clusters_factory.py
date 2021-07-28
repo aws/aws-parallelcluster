@@ -257,19 +257,14 @@ class Cluster:
     @property
     def head_node_ip(self):
         """Return the public ip of the cluster head node."""
-        if "HeadNodePublicIP" in self.cfn_outputs:
-            return self.cfn_outputs["HeadNodePublicIP"]
-        else:
-            ec2 = boto3.client("ec2", region_name=self.region)
-            filters = [
-                {"Name": "tag:parallelcluster:cluster-name", "Values": [self.cfn_name]},
-                {"Name": "instance-state-name", "Values": ["running"]},
-                {"Name": "tag:parallelcluster:node-type", "Values": ["HeadNode"]},
-            ]
-            instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
-            return (
-                instance.get("PublicIpAddress") if instance.get("PublicIpAddress") else instance.get("PrivateIpAddress")
-            )
+        ec2 = boto3.client("ec2", region_name=self.region)
+        filters = [
+            {"Name": "tag:parallelcluster:cluster-name", "Values": [self.cfn_name]},
+            {"Name": "instance-state-name", "Values": ["running"]},
+            {"Name": "tag:parallelcluster:node-type", "Values": ["HeadNode"]},
+        ]
+        instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
+        return instance.get("PublicIpAddress") if instance.get("PublicIpAddress") else instance.get("PrivateIpAddress")
 
     @property
     def os(self):
