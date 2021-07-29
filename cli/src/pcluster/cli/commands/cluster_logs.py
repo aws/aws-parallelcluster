@@ -8,9 +8,7 @@
 # pylint: disable=import-outside-toplevel
 
 import logging
-import os
 import re
-from datetime import datetime
 from typing import List
 
 import argparse
@@ -35,7 +33,7 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("cluster_name", help="Export the logs of the cluster name provided here.")
+        parser.add_argument("--cluster-name", help="Export the logs of the cluster name provided here.", required=True)
         # Export options
         parser.add_argument(
             "--bucket",
@@ -50,7 +48,7 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
             nargs="+",
             type=filters_arg,
             help=(
-                "The filters in the form Name=a,Values=1 Name=b,Values=2,3.\nAccepted filters are:\n"
+                "Filter the logs. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\nAccepted filters are:\n"
                 "private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\n"
                 "node-type - The node type, the only accepted value for this filter is HeadNode."
             ),
@@ -58,21 +56,16 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
-            output_file_path = args.output or os.path.realpath(
-                f"{args.cluster_name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}.tar.gz"
-            )
-            self._validate_output_file_path(output_file_path)
-            self._export_cluster_logs(args, output_file_path)
+            return self._export_cluster_logs(args)
         except Exception as e:
             utils.error(f"Unable to export cluster's logs.\n{e}")
 
     @staticmethod
-    def _export_cluster_logs(args: Namespace, output_file_path: str):
+    def _export_cluster_logs(args: Namespace):
         """Export the logs associated to the cluster."""
-        LOGGER.info("Beginning export of logs for the cluster: %s", args.cluster_name)
+        LOGGER.debug("Beginning export of logs for the cluster: %s", args.cluster_name)
         cluster = Cluster(args.cluster_name)
-        cluster.export_logs(
-            output=output_file_path,
+        url = cluster.export_logs(
             bucket=args.bucket,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
@@ -80,7 +73,8 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
             end_time=args.end_time,
             filters=" ".join(args.filters) if args.filters else None,
         )
-        LOGGER.info("Cluster's logs exported correctly to %s", output_file_path)
+        LOGGER.debug("Cluster's logs exported correctly to %s", url)
+        return {"url": url}
 
 
 class _FiltersArg:

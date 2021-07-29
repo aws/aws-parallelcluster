@@ -15,6 +15,7 @@
 import copy
 import logging
 import os
+import os.path
 import re
 import tempfile
 from datetime import datetime
@@ -58,6 +59,7 @@ from pcluster.models.common import (
     create_logs_archive,
     export_stack_events,
     parse_config,
+    upload_archive,
 )
 from pcluster.models.imagebuilder_resources import (
     BadRequestStackError,
@@ -66,7 +68,7 @@ from pcluster.models.imagebuilder_resources import (
     NonExistingStackError,
     StackError,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, isoformat_to_epoch
@@ -615,7 +617,6 @@ class ImageBuilder:
 
     def export_logs(
         self,
-        output: str,
         bucket: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
@@ -625,8 +626,7 @@ class ImageBuilder:
         """
         Export image builder's logs in the given output path, by using given bucket as a temporary folder.
 
-        :param output: file path to save log file archive to
-        :param bucket: Temporary S3 bucket to be used to export cluster logs data
+        :param bucket: S3 bucket to be used to export cluster logs data
         :param bucket_prefix: Key path under which exported logs data will be stored in s3 bucket,
                also serves as top-level directory in resulting archive
         :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
@@ -641,9 +641,8 @@ class ImageBuilder:
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
                 # Create root folder for the archive
-                root_archive_dir = os.path.join(
-                    output_tempdir, f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
-                )
+                archive_name = f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                root_archive_dir = os.path.join(output_tempdir, archive_name)
                 os.makedirs(root_archive_dir, exist_ok=True)
 
                 if AWSApi.instance().logs.log_group_exists(self._log_group_name):
@@ -671,7 +670,9 @@ class ImageBuilder:
                     stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                     export_stack_events(self.stack.name, stack_events_file)
 
-                create_logs_archive(root_archive_dir, output)
+                archive_path = create_logs_archive(root_archive_dir)
+                s3_path = upload_archive(bucket, bucket_prefix, archive_path)
+                return create_s3_presigned_url(s3_path)
         except Exception as e:
             raise ImageBuilderActionError(f"Unexpected error when exporting image's logs: {e}")
 

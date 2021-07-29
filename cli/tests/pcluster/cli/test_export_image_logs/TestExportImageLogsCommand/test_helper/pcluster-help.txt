@@ -1,37 +1,34 @@
-usage: pcluster export-image-logs [-h] [--debug]
-                                  [-r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}]
+usage: pcluster export-image-logs [-h] [--debug] [--region REGION]
                                   [--output OUTPUT]
                                   [--bucket-prefix BUCKET_PREFIX]
-                                  [--keep-s3-objects]
+                                  [--keep-s3-objects KEEP_S3_OBJECTS]
                                   [--start-time START_TIME]
-                                  [--end-time END_TIME] --bucket BUCKET
-                                  image_id
+                                  [--end-time END_TIME] --image-id IMAGE_ID
+                                  --bucket BUCKET
 
 Export the logs of the image builder stack to a local tar.gz archive by
 passing through an Amazon S3 Bucket.
 
-positional arguments:
-  image_id              Export the logs related to the image id provided here.
-
 optional arguments:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
-  -r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}, --region {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}
-                        AWS Region to use.
+  --region REGION       AWS Region this operation corresponds to.
   --output OUTPUT       File path to save log archive to.
   --bucket-prefix BUCKET_PREFIX
                         Keypath under which exported logs data will be stored
                         in s3 bucket.
-  --keep-s3-objects     Keep the exported objects exports to S3. The default
-                        behavior is to delete them.
+  --keep-s3-objects KEEP_S3_OBJECTS
+                        Keep the exported objects exports to S3. (Defaults to
+                        'false'.)
   --start-time START_TIME
                         Start time of interval of interest for log events. ISO
-                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
-                        1984-09-15T19:20:30+01:00), time elements might be
-                        omitted. Defaults to creation time
+                        8601 format: YYYY-MM-DDThh:mm:ssZ (e.g.
+                        1984-09-15T19:20:30Z), time elements might be omitted.
+                        Defaults to creation time
   --end-time END_TIME   End time of interval of interest for log events. ISO
-                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
-                        1984-09-15T19:20:30+01:00), time elements might be
-                        omitted. Defaults to current time
+                        8601 format: YYYY-MM-DDThh:mm:ssZ (e.g.
+                        1984-09-15T19:20:30Z), time elements might be omitted.
+                        Defaults to current time
+  --image-id IMAGE_ID   Export the logs related to the image id provided here.
   --bucket BUCKET       S3 bucket to export image builder logs data to. It
                         must be in the same region of the image

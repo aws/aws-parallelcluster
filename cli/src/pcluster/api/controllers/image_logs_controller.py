@@ -28,8 +28,8 @@ def _validate_timestamp(val, ts_name):
         dateutil.parser.parse(val)
     except Exception:
         raise BadRequestException(
-            f"{ts_name} filter must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD. "
-            "(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15)."
+            f"{ts_name} filter must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssZ. "
+            "(e.g. 1984-09-15T19:20:30Z or 1984-09-15)."
         )
 
 
@@ -62,11 +62,11 @@ def get_image_log_events(
     :param limit: The maximum number of log events returned. If you don&#39;t specify a value, the maximum is as many
                   log events as can fit in a response size of 1 MB, up to 10,000 log events.
     :type limit:
-    :param start_time: The start of the time range, expressed in ISO8601 format
-                       (e.g. &#39;2021-01-01T20:00:00.000Z&#39;). Events with a timestamp equal to this time or later
+    :param start_time: The start of the time range, expressed in ISO 8601 format
+                       (e.g. &#39;2021-01-01T20:00:00Z&#39;). Events with a timestamp equal to this time or later
                        than this time are included.
     :type start_time: str
-    :param end_time: The end of the time range, expressed in ISO8601 format (e.g. &#39;2021-01-01T20:00:00.000Z&#39;).
+    :param end_time: The end of the time range, expressed in ISO 8601 format (e.g. &#39;2021-01-01T20:00:00Z&#39;).
                      Events with a timestamp equal to or later than this time are not included.
     :type end_time: str
 

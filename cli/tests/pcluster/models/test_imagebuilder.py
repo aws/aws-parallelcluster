@@ -476,6 +476,8 @@ class TestImageBuilder:
         mocker.patch("pcluster.aws.logs.LogsClient.log_group_exists", return_value=log_group_exists)
         download_stack_events_mock = mocker.patch("pcluster.models.imagebuilder.export_stack_events")
         create_logs_archive_mock = mocker.patch("pcluster.models.imagebuilder.create_logs_archive")
+        upload_archive_mock = mocker.patch("pcluster.models.imagebuilder.upload_archive")
+        presign_mock = mocker.patch("pcluster.models.imagebuilder.create_s3_presigned_url")
 
         # Following mocks are used only if CW loggins is enabled
         logs_filter_mock = mocker.patch(
@@ -484,7 +486,7 @@ class TestImageBuilder:
         )
         cw_logs_exporter_mock = mocker.patch("pcluster.models.imagebuilder.CloudWatchLogsExporter", autospec=True)
 
-        kwargs.update({"output": "output_path", "bucket": "bucket_name"})
+        kwargs.update({"bucket": "bucket_name"})
         if expected_error:
             with pytest.raises(ImageBuilderActionError, match=expected_error):
                 image_builder.export_logs(**kwargs)
@@ -503,6 +505,9 @@ class TestImageBuilder:
                 cw_logs_exporter_mock.assert_not_called()
                 logs_filter_mock.assert_not_called()
             create_logs_archive_mock.assert_called()
+
+        upload_archive_mock.assert_called()
+        presign_mock.assert_called()
 
     @pytest.mark.parametrize(
         "stack_exists, log_group_exists, client_error, expected_error",

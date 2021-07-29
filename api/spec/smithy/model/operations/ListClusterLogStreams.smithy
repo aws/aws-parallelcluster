@@ -24,7 +24,7 @@ structure ListClusterLogStreamsRequest {
     region: Region,
 
     @httpQuery("filters")
-    @documentation("Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\nAccepted filters are:\nprivate-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type, the only accepted value for this filter is HeadNode.")
+    @documentation("Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\nAccepted filters are:\nprivate-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type, the only accepted value for this filter is HeadNode.")
     filters: LogFilterList,
 
     @httpLabel

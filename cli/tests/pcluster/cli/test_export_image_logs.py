@@ -10,8 +10,11 @@ import re
 import pytest
 from assertpy import assert_that
 
+from pcluster.cli.entrypoint import run
+from pcluster.utils import to_kebab_case
+
 BASE_COMMAND = ["pcluster", "export-image-logs"]
-REQUIRED_ARGS = {"image_id": "id", "bucket": "bucketname"}
+REQUIRED_ARGS = {"image-id": "id", "bucket": "bucketname"}
 
 
 class TestExportImageLogsCommand:
@@ -23,7 +26,7 @@ class TestExportImageLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({"output": "path"}, "the following arguments are required: image_id, --bucket")],
+        [({"output": "path"}, "the following arguments are required: --image-id, --bucket")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -36,10 +39,8 @@ class TestExportImageLogsCommand:
         "args",
         [
             {},
-            {"output": "output-path"},
             {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
             {
-                "output": "output-path",
                 "bucket": "bucket-name",
                 "bucket_prefix": "test",
                 "keep_s3_objects": True,
@@ -47,7 +48,6 @@ class TestExportImageLogsCommand:
                 "end_time": "2021-06-07",
             },
             {
-                "output": "output-path",
                 "bucket": "bucket-name",
                 "bucket_prefix": "test",
                 "keep_s3_objects": False,
@@ -56,63 +56,30 @@ class TestExportImageLogsCommand:
             },
         ],
     )
-    def test_execute(self, mocker, capsys, set_env, assert_out_err, run_cli, args):
-        export_logs_mock = mocker.patch("pcluster.cli.commands.image_logs.ImageBuilder.export_logs")
+    def test_execute(self, mocker, set_env, args):
+        export_logs_mock = mocker.patch("pcluster.cli.commands.image_logs.ImageBuilder.export_logs",
+                                        return_value="https://u.r.l.")
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
-        command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
-        run_cli(command, expect_failure=False)
-        assert_out_err(expected_out="Image's logs exported correctly", expected_err="")
+        command = ["export-image-logs"] + self._build_cli_args({**REQUIRED_ARGS, **args})
+        out = run(command)
+        assert_that(out).is_equal_to({"url": "https://u.r.l."})
         assert_that(export_logs_mock.call_args).is_length(2)
 
         # verify arguments
         expected_params = {
-            "output": r".*id-logs-.*\.tar\.gz",
-            "bucket": "bucket",
+            "bucket": "bucketname",
             "bucket_prefix": None,
             "keep_s3_objects": False,
+            "start_time": None,
+            "end_time": None
         }
         expected_params.update(args)
-
-        self._check_params(export_logs_mock, expected_params, args)
+        export_logs_mock.assert_called_with(**expected_params)
 
     @staticmethod
     def _build_cli_args(args):
         cli_args = []
-        if "image_id" in args:
-            cli_args.extend([args["image_id"]])
-        if "output" in args:
-            cli_args.extend(["--output", args["output"]])
-        if "bucket" in args:
-            cli_args.extend(["--bucket", args["bucket"]])
-        if "bucket_prefix" in args:
-            cli_args.extend(["--bucket-prefix", args["bucket_prefix"]])
-        if "keep_s3_objects" in args and args["keep_s3_objects"]:
-            cli_args.extend(["--keep-s3-objects"])
-        if "start_time" in args:
-            cli_args.extend(["--start-time", args["start_time"]])
-        if "end_time" in args:
-            cli_args.extend(["--end-time", args["end_time"]])
+        for k, val in args.items():
+            cli_args.extend([f"--{to_kebab_case(k)}", str(val)])
         return cli_args
-
-    @staticmethod
-    def _check_params(export_logs_mock, expected_params, args):
-        for param_key, expected_value in expected_params.items():
-            call_param = export_logs_mock.call_args[1].get(param_key)
-            check_regex = False
-
-            if param_key == "output":
-                expected_value = f".*{expected_value}"
-                check_regex = True
-
-            if param_key not in args and isinstance(expected_value, str):
-                check_regex = True
-
-            if check_regex:
-                assert_that(
-                    re.search(expected_value, call_param), f"Expected: {expected_value}, value is: {call_param}"
-                ).is_true()
-            else:
-                assert_that(call_param, f"Expected: {expected_value}, value is: {call_param}").is_equal_to(
-                    expected_value
-                )
