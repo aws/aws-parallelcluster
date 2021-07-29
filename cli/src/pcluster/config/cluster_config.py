@@ -1438,6 +1438,11 @@ class SlurmScheduling(Resource):
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
+        self._register_validator(
+            DuplicateNameValidator,
+            name_list=[compute_resource.name for queue in self.queues for compute_resource in queue.compute_resources],
+            resource_name="Compute Resource",
+        )
 
 
 class SlurmClusterConfig(BaseClusterConfig):
