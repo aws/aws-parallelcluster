@@ -211,7 +211,6 @@ class EbsSettingsSchema(BaseSchema):
 class HeadNodeEphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
-    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     mount_dir = fields.Str(
         validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
@@ -225,7 +224,6 @@ class HeadNodeEphemeralVolumeSchema(BaseSchema):
 class QueueEphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
-    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     mount_dir = fields.Str(
         validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )

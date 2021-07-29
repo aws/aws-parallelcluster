@@ -159,6 +159,19 @@ def generate_random_string():
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))  # nosec
 
 
+def restart_head_node(cluster):
+    # stop/start headnode
+    logging.info(f"Restarting head node for cluster: {cluster.name}")
+    head_node_instance = cluster.instances(desired_instance_role="HeadNode")
+    ec2_client = boto3.client("ec2", region_name=cluster.region)
+    ec2_client.stop_instances(InstanceIds=head_node_instance)
+    ec2_client.get_waiter("instance_stopped").wait(InstanceIds=head_node_instance)
+    ec2_client.start_instances(InstanceIds=head_node_instance)
+    ec2_client.get_waiter("instance_status_ok").wait(InstanceIds=head_node_instance)
+    time.sleep(120)  # Wait time is required for the head node to complete the reboot
+    logging.info(f"Restarted head node for cluster: {cluster.name}")
+
+
 def reboot_head_node(cluster, remote_command_executor=None):
     logging.info(f"Rebooting head node for cluster: {cluster.name}")
     if not remote_command_executor:
@@ -175,5 +188,5 @@ def reboot_head_node(cluster, remote_command_executor=None):
 def wait_head_node_running(cluster):
     logging.info(f"Waiting for head node to be running for cluster: {cluster.name}")
     boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
-        Filters=[{"Name": "ip-address", "Values": [cluster.head_node_ip]}], WaiterConfig={"Delay": 60, "MaxAttempts": 5}
+        InstanceIds=cluster.instances(desired_instance_role="HeadNode"), WaiterConfig={"Delay": 60, "MaxAttempts": 5}
     )
