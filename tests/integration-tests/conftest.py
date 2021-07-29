@@ -39,7 +39,7 @@ from conftest_markers import (
 )
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
-from framework.credential_providers import aws_credential_provider
+from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
@@ -117,6 +117,11 @@ def pytest_addoption(parser):
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
     parser.addoption(
         "--delete-logs-on-success", help="delete CloudWatch logs when a test succeeds", action="store_true"
+    )
+    parser.addoption(
+        "--use-default-iam-credentials",
+        help="use default IAM creds when running pcluster commands",
+        action="store_true",
     )
 
 
@@ -652,6 +657,8 @@ def cfn_stacks_factory(request):
     yield factory
     if not request.config.getoption("no_delete"):
         factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture()
@@ -783,6 +790,30 @@ def get_availability_zones(region, credential):
         for az in response_az.get("AvailabilityZones"):
             az_list.append(az.get("ZoneName"))
     return az_list
+
+
+@pytest.fixture(scope="session", autouse=True)
+def initialize_cli_creds(cfn_stacks_factory, request):
+    if request.config.getoption("use_default_iam_credentials"):
+        logging.info("Using default IAM credentials to run pcluster commands")
+        return
+
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    for region in regions:
+        logging.info("Creating IAM roles for pcluster CLI")
+        stack_name = generate_stack_name("integ-tests-iam", request.config.getoption("stackname_suffix"))
+        stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
+        with open(stack_template_path) as stack_template_file:
+            stack_template_data = stack_template_file.read()
+        stack = CfnStack(
+            name=stack_name,
+            region=region,
+            capabilities=["CAPABILITY_IAM"],
+            template=stack_template_data,
+        )
+        cfn_stacks_factory.create_stack(stack)
+        # register providers
+        register_cli_credentials_for_region(region, stack.cfn_outputs["ParallelClusterUserRole"])
 
 
 @pytest.fixture(scope="session", autouse=True)
