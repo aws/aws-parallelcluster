@@ -45,7 +45,7 @@ class TestGetClusterLogEventsCommand:
             ({"start_time": "wrong"}, "start_time filter must be in the ISO 8601 format"),
             ({"end_time": "1622802790248"}, "end_time filter must be in the ISO 8601 format"),
             ({"start_from_head": "wrong"}, "expected 'boolean' for parameter 'start-from-head'"),
-            ({"limit": "wrong"}, "expected 'number' for parameter 'limit'"),
+            ({"limit": "wrong"}, "expected 'int' for parameter 'limit'"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
