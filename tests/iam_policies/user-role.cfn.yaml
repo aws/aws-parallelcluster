@@ -642,3 +642,7 @@ Resources:
               - StringEquals:
                   aws:RequestedRegion:
                     - !Ref Region
+
+Outputs:
+  ParallelClusterUserRole:
+    Value: !GetAtt ParallelClusterUserRole.Arn
