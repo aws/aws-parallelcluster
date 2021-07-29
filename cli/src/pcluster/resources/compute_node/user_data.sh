@@ -65,7 +65,6 @@ write_files:
           "fsx_options": "${FSXOptions}",
           "scheduler": "${Scheduler}",
           "disable_hyperthreading_manually": "${DisableHyperThreadingManually}",
-          "encrypted_ephemeral": "${EncryptedEphemeral}",
           "ephemeral_dir": "${EphemeralDir}",
           "ebs_shared_dirs": "${EbsSharedDirs}",
           "proxy": "${ProxyServer}",

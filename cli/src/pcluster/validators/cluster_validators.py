@@ -649,7 +649,8 @@ class DcvValidator(Validator):
             allowed_oses = get_supported_dcv_os(architecture)
             if os not in allowed_oses:
                 self._add_failure(
-                    f"NICE DCV can be used with one of the following operating systems: {allowed_oses}. "
+                    f"NICE DCV can be used with one of the following operating systems "
+                    f"when using {architecture} architecture: {allowed_oses}. "
                     "Please double check the os configuration.",
                     FailureLevel.ERROR,
                 )

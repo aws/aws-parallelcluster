@@ -21,7 +21,6 @@ HeadNode:
       Size: 40
       Encrypted: true
     EphemeralVolume:
-      Encrypted: true
       MountDir: /test
   Dcv:
     Enabled: true
@@ -85,7 +84,6 @@ Scheduling:
             Size:  35
             Encrypted:  true
           EphemeralVolume:
-            Encrypted: true
             MountDir: /scratch
       Networking:
         SubnetIds:

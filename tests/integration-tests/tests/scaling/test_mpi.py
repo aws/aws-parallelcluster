@@ -78,12 +78,12 @@ def _test_mpi_ssh(remote_command_executor, scheduler, test_datadir):
 
     # Gets remote host ip from hostname
     remote_host_ip = remote_command_executor.run_remote_command(
-        "getent hosts {0} | cut -d' ' -f1".format(remote_host), timeout=10
+        "getent hosts {0} | cut -d' ' -f1".format(remote_host), timeout=20
     ).stdout
 
     # Below job will timeout if the IP address is not in known_hosts
     mpirun_out_ip = remote_command_executor.run_remote_script(
-        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host_ip], timeout=10
+        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host_ip], timeout=20
     ).stdout.splitlines()
 
     # mpirun_out_ip = ["Warning: Permanently added '192.168.60.89' (ECDSA) to the list of known hosts.",
@@ -92,7 +92,7 @@ def _test_mpi_ssh(remote_command_executor, scheduler, test_datadir):
     assert_that(mpirun_out_ip[-1]).is_equal_to(remote_host)
 
     mpirun_out = remote_command_executor.run_remote_script(
-        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host], timeout=10
+        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host], timeout=20
     ).stdout.splitlines()
 
     # mpirun_out = ["Warning: Permanently added 'ip-192-168-60-89,192.168.60.89' (ECDSA) to the list of known hosts.",
