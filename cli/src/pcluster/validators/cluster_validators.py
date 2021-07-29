@@ -28,7 +28,8 @@ from pcluster.constants import (
 from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
 
-NAME_MAX_LENGTH = 30
+NAME_MAX_LENGTH = 25
+SHARED_STORAGE_NAME_MAX_LENGTH = 30
 NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
@@ -622,6 +623,17 @@ class SharedStorageNameValidator(Validator):
                     "and the following characters: '+' '-' '=' '.' '_' ':' '/', "
                     f"and it can't be longer than 256 characters."
                 ),
+                FailureLevel.ERROR,
+            )
+        if len(name) > SHARED_STORAGE_NAME_MAX_LENGTH:
+            self._add_failure(
+                f"Invalid name '{name}'. Name can be at most {SHARED_STORAGE_NAME_MAX_LENGTH} chars long.",
+                FailureLevel.ERROR,
+            )
+
+        if re.match("^default$", name):
+            self._add_failure(
+                f"It is forbidden to use '{name}' as a name.",
                 FailureLevel.ERROR,
             )
 
