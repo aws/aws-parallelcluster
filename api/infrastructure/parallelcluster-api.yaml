@@ -969,6 +969,8 @@ Resources:
         ZipFile: |
           import cfnresponse
           import boto3
+          import random
+          import string
 
           # Suggestion is to instantiate clients in global context to reuse them across Lambda invocations
           ecr = boto3.client('ecr')
@@ -984,6 +986,10 @@ Resources:
               build_number = parts[-1]
               return '{}-{}'.format(version, build_number)
 
+          def create_physical_resource_id():
+              alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
+              return ''.join(random.choice(alnum) for _ in range(16))
+
           def handler(event, context):
               print(event)
               print('boto version {}'.format(boto3.__version__))
@@ -993,7 +999,11 @@ Resources:
 
               if event['RequestType'] == 'Create':
                   response_data['Message'] = 'Resource creation successful!'
-              elif event['RequestType'] == 'Update' or event['RequestType'] == 'Delete':
+                  physical_resource_id = create_physical_resource_id()
+              else:
+                  physical_resource_id = event['PhysicalResourceId']
+
+              if event['RequestType'] == 'Update' or event['RequestType'] == 'Delete':
                   try:
                       resource_key = 'OldResourceProperties' if 'OldResourceProperties' in event else 'ResourceProperties'
 
@@ -1009,7 +1019,7 @@ Resources:
                       response_status = cfnresponse.FAILED
                       response_data['Message'] = 'Failed image deletion with error: {}'.format(exception)
 
-              cfnresponse.send(event, context, response_status, response_data)
+              cfnresponse.send(event, context, response_status, response_data, physical_resource_id)
 
       Handler: index.handler
       Runtime: python3.7
