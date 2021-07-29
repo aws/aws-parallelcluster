@@ -6,8 +6,9 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import pytest
 import os.path
+
+import pytest
 from assertpy import assert_that
 
 from pcluster.cli.entrypoint import run
@@ -85,8 +86,7 @@ class TestExportClusterLogsCommand:
     )
     def test_execute(self, mocker, set_env, args):
         export_logs_mock = mocker.patch(
-            "pcluster.cli.commands.cluster_logs.Cluster.export_logs",
-            return_value=args.get("output", "https://u.r.l.")
+            "pcluster.cli.commands.cluster_logs.Cluster.export_logs", return_value=args.get("output", "https://u.r.l.")
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
