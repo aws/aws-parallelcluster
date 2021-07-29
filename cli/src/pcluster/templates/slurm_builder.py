@@ -616,12 +616,6 @@ class SlurmConstruct(Construct):
                                     self.shared_storage_options, SharedStorageType.FSX
                                 ),
                                 "Scheduler": self.config.scheduling.scheduler,
-                                "EncryptedEphemeral": "true"
-                                if queue.compute_settings
-                                and queue.compute_settings.local_storage
-                                and queue.compute_settings.local_storage.ephemeral_volume
-                                and queue.compute_settings.local_storage.ephemeral_volume.encrypted
-                                else "NONE",
                                 "EphemeralDir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
                                 if queue.compute_settings
                                 and queue.compute_settings.local_storage
