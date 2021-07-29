@@ -50,11 +50,6 @@ class ClusterStack(StackInfo):
         return self._get_param("ClusterUser")
 
     @property
-    def head_node_ip(self):
-        """Return the IP to be used to connect to the head node, public or private."""
-        return self._get_output("HeadNodePublicIP") or self._get_output("HeadNodePrivateIP")
-
-    @property
     def scheduler(self):
         """Return the scheduler used in the cluster."""
         return self._get_param("Scheduler")

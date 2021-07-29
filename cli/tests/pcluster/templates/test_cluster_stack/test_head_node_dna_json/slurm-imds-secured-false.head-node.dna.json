@@ -17,7 +17,6 @@
     "efs_fs_id": "NONE",
     "efs_shared_dir": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     "enable_intel_hpc_platform": "false",
-    "encrypted_ephemeral": "NONE",
     "ephemeral_dir": "/scratch",
     "fsx_dns_name": "",
     "fsx_fs_id": "NONE",
