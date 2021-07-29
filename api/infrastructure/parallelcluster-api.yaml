@@ -995,6 +995,7 @@ Resources:
               print('boto version {}'.format(boto3.__version__))
 
               response_data = {}
+              reason = None
               response_status = cfnresponse.SUCCESS
 
               if event['RequestType'] == 'Create':
@@ -1012,14 +1013,14 @@ Resources:
 
                       ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=[{'imageTag': tag}])
 
-                      response_data['Message'] = 'Image deletion successful!'
+                      reason = 'Image deletion successful!'
                   except ecr.exceptions.RepositoryNotFoundException:
-                      response_data['Message'] = 'Repository was not found, considering image deletion successfull'
+                      reason = 'Repository was not found, considering image deletion successfull'
                   except Exception as exception:
                       response_status = cfnresponse.FAILED
-                      response_data['Message'] = 'Failed image deletion with error: {}'.format(exception)
+                      reason = 'Failed image deletion with error: {}'.format(exception)
 
-              cfnresponse.send(event, context, response_status, response_data, physical_resource_id)
+              cfnresponse.send(event, context, response_status, response_data, physical_resource_id, reason)
 
       Handler: index.handler
       Runtime: python3.7
