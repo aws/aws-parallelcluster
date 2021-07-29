@@ -919,6 +919,7 @@ Resources:
         - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
       TerminateInstanceOnFailure: true
+      SnsTopicArn: !Ref EcrImageBuilderSNSTopic
 
   PrivateEcrRepository:
     Condition: DoNotUseCustomEcrImageUri
@@ -960,6 +961,100 @@ Resources:
       ImageTestsConfiguration:
         ImageTestsEnabled: false
 
+  EcrImagePipeline:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::ImageBuilder::ImagePipeline
+    Properties:
+      Name: !Sub
+        - 'EcrImagePipeline-${Version}-${StackIdSuffix}'
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+      Status: ENABLED
+      ContainerRecipeArn: !Ref EcrImageRecipe
+      InfrastructureConfigurationArn: !Ref InfrastructureConfiguration
+      ImageTestsConfiguration:
+        ImageTestsEnabled: false
+
+  EcrImageBuilderSNSTopic:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "ParallelCluster ECR Image Builder SNS topic"
+
+  UpdateParallelClusterLambda:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::Serverless::Function
+    Properties:
+      MemorySize: 128
+      InlineCode: |
+        import boto3
+        import json
+        import os
+
+        client = boto3.client('lambda')
+
+        def handler(event, context):
+            for record in event['Records']:
+                print(event)
+                print('boto version {}'.format(boto3.__version__))
+
+                event_message = record['Sns']['Message']
+                message_json = json.loads(event_message)
+                image_state = message_json['state']['status']
+
+                if image_state == 'AVAILABLE':
+                    uri = message_json['outputResources']['containers'][0]['imageUris'][0]
+                    function_to_update = os.environ['LambdaFunctionToUpdate']
+                    client.update_function_code(FunctionName=function_to_update, ImageUri=uri, Publish=True)
+
+      Handler: index.handler
+      Runtime: python3.7
+      Role: !GetAtt UpdateParallelClusterLambdaRole.Arn
+      Environment:
+        Variables:
+          LambdaFunctionToUpdate: !GetAtt ParallelClusterFunction.Arn
+      Events:
+        SNSTopicEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref EcrImageBuilderSNSTopic
+
+  UpdateParallelClusterLambdaLogGroup:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${UpdateParallelClusterLambda}
+
+  UpdateParallelClusterLambdaRole:
+    Condition: DoNotUseCustomEcrImageUri
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: LoggingPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+        - PolicyName: UpdateParallelClusterLambdaPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:UpdateFunctionCode
+                Resource: !GetAtt ParallelClusterFunction.Arn
+
   EcrImageDeletionLambda:
     Condition: DoNotUseCustomEcrImageUri
     Type: AWS::Lambda::Function
@@ -972,19 +1067,24 @@ Resources:
           import random
           import string
 
-          # Suggestion is to instantiate clients in global context to reuse them across Lambda invocations
           ecr = boto3.client('ecr')
+          imagebuilder = boto3.client('imagebuilder')
 
-          def get_tag_from_image_arn(image_arn):
-              """ Returns the Docker image tag given an ImageBuilder image ARN
+          def get_image_ids(repository_name, version):
+              image_ids = []
+              paginator = ecr.get_paginator('list_images')
+              response_iterator = paginator.paginate(repositoryName=repository_name, filter={'tagStatus': 'TAGGED'})
+              for response in response_iterator:
+                  image_ids.extend([{'imageTag': image_id['imageTag']} for image_id in response['imageIds'] if image_id['imageTag'].startswith(version)])
+              return image_ids
 
-              Arn format: arn:aws:imagebuilder:<region>:<account id>:image/.../<version>/<build number>
-              Tag format: <version>-<build number>
-              """
-              parts = image_arn.split('/')
-              version = parts[-2]
-              build_number = parts[-1]
-              return '{}-{}'.format(version, build_number)
+          def get_imagebuilder_images(ecr_image_pipeline_arn):
+              response = imagebuilder.list_image_pipeline_images(imagePipelineArn=ecr_image_pipeline_arn)
+              images = [image['arn'] for image in response['imageSummaryList']]
+              while 'nextToken' in response:
+                  response = imagebuilder.list_image_pipeline_images(imagePipelineArn=ecr_image_pipeline_arn, nextToken=response['nextToken'])
+                  images.extend([image['arn'] for image in response['imageSummaryList']])
+              return images
 
           def create_physical_resource_id():
               alnum = string.ascii_uppercase + string.ascii_lowercase + string.digits
@@ -1007,13 +1107,20 @@ Resources:
               if event['RequestType'] == 'Update' or event['RequestType'] == 'Delete':
                   try:
                       resource_key = 'OldResourceProperties' if 'OldResourceProperties' in event else 'ResourceProperties'
-
                       ecr_repository_name = event[resource_key]['EcrRepositoryName']
-                      tag = get_tag_from_image_arn(event[resource_key]['ImageToDeleteArn'])
+                      ecr_image_pipeline_arn = event[resource_key]['EcrImagePipelineArn']
+                      version = event[resource_key]['Version']
 
-                      ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=[{'imageTag': tag}])
+                      image_ids = get_image_ids(ecr_repository_name, version)
+                      if image_ids:
+                          ecr.batch_delete_image(repositoryName=ecr_repository_name, imageIds=image_ids)
+                          reason = 'Image deletion successful!'
+                      else:
+                          reason = 'No image found, considering image deletion successful'
 
-                      reason = 'Image deletion successful!'
+                      for imagebuilder_image in get_imagebuilder_images(ecr_image_pipeline_arn):
+                          imagebuilder.delete_image(imageBuildVersionArn=imagebuilder_image)
+
                   except ecr.exceptions.RepositoryNotFoundException:
                       reason = 'Repository was not found, considering image deletion successfull'
                   except Exception as exception:
@@ -1061,7 +1168,13 @@ Resources:
               - Effect: Allow
                 Action:
                   - ecr:BatchDeleteImage
+                  - ecr:ListImages
                 Resource: !GetAtt PrivateEcrRepository.Arn
+              - Effect: Allow
+                Action:
+                  - imagebuilder:ListImagePipelineImages
+                  - imagebuilder:DeleteImage
+                Resource: '*'
 
   EcrImagesRemover:
     Condition: DoNotUseCustomEcrImageUri
@@ -1069,7 +1182,8 @@ Resources:
     Properties:
       ServiceToken: !GetAtt EcrImageDeletionLambda.Arn
       EcrRepositoryName: !Ref PrivateEcrRepository
-      ImageToDeleteArn: !Ref EcrImage
+      Version: !FindInMap [ParallelCluster, Constants, Version]
+      EcrImagePipelineArn: !GetAtt EcrImagePipeline.Arn
 
 
 Outputs:
