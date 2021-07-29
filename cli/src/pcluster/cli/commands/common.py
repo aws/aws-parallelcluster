@@ -47,7 +47,7 @@ def to_int(param, in_str):
     try:
         return int(in_str)
     except ValueError:
-        return exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
+        return exit_msg(f"Bad Request: Wrong type, expected 'int' for parameter '{param}'")
 
 
 class CliCommand(ABC):
