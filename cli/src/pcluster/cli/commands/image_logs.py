@@ -49,6 +49,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
             return self._export_image_logs(args, args.output)
         except Exception as e:
             utils.error(f"Unable to export image's logs.\n{e}")
+            return None
 
     @staticmethod
     def _export_image_logs(args: Namespace, output_path: str = None):
