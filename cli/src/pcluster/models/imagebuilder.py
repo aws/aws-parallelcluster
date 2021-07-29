@@ -622,6 +622,7 @@ class ImageBuilder:
         keep_s3_objects: bool = False,
         start_time: str = None,
         end_time: str = None,
+        output_path: str = None,
     ):
         """
         Export image builder's logs in the given output path, by using given bucket as a temporary folder.
@@ -670,9 +671,12 @@ class ImageBuilder:
                     stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                     export_stack_events(self.stack.name, stack_events_file)
 
-                archive_path = create_logs_archive(root_archive_dir)
-                s3_path = upload_archive(bucket, bucket_prefix, archive_path)
-                return create_s3_presigned_url(s3_path)
+                archive_path = create_logs_archive(root_archive_dir, output_path)
+                if output_path:
+                    return output_path
+                else:
+                    s3_path = upload_archive(bucket, bucket_prefix, archive_path)
+                    return create_s3_presigned_url(s3_path)
         except Exception as e:
             raise ImageBuilderActionError(f"Unexpected error when exporting image's logs: {e}")
 

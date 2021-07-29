@@ -456,6 +456,7 @@ class TestImageBuilder:
             (True, True, "", {}),
             (False, True, "", {}),
             (True, False, "", {"keep_s3_objects": True}),
+            (True, True, "", {"output_path": "path"}),
             (True, False, "", {"bucket_prefix": "test_prefix"}),
             (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
@@ -506,8 +507,9 @@ class TestImageBuilder:
                 logs_filter_mock.assert_not_called()
             create_logs_archive_mock.assert_called()
 
-        upload_archive_mock.assert_called()
-        presign_mock.assert_called()
+        if "output_path" not in kwargs:
+            upload_archive_mock.assert_called()
+            presign_mock.assert_called()
 
     @pytest.mark.parametrize(
         "stack_exists, log_group_exists, client_error, expected_error",

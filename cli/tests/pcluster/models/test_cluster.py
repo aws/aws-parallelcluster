@@ -437,6 +437,7 @@ class TestCluster:
             (True, False, "", {}),
             (True, True, "", {}),
             (True, True, "", {"keep_s3_objects": True}),
+            (True, True, "", {"output_path": "path"}),
             (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
     )
@@ -489,8 +490,10 @@ class TestCluster:
                 cw_logs_exporter_mock.assert_not_called()
                 logs_filter_mock.assert_not_called()
 
-            upload_archive_mock.assert_called()
-            presign_mock.assert_called()
+            if "output_path" not in kwargs:
+                print("kwargs", kwargs)
+                upload_archive_mock.assert_called()
+                presign_mock.assert_called()
 
     @pytest.mark.parametrize(
         "stack_exists, logging_enabled, client_error, expected_error",

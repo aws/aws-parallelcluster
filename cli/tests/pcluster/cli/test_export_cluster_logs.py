@@ -5,9 +5,9 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-import re
 
 import pytest
+import os.path
 from assertpy import assert_that
 
 from pcluster.cli.entrypoint import run
@@ -53,9 +53,11 @@ class TestExportClusterLogsCommand:
         "args",
         [
             {},
+            {"output": "output-path"},
             {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
             {"filters": "Name=private-dns-name,Values=ip-10-10-10-10"},
             {
+                "output": "output-path",
                 "bucket": "bucket-name",
                 "bucket_prefix": "test",
                 "keep_s3_objects": True,
@@ -83,17 +85,23 @@ class TestExportClusterLogsCommand:
     )
     def test_execute(self, mocker, set_env, args):
         export_logs_mock = mocker.patch(
-            "pcluster.cli.commands.cluster_logs.Cluster.export_logs", return_value="https://u.r.l."
+            "pcluster.cli.commands.cluster_logs.Cluster.export_logs",
+            return_value=args.get("output", "https://u.r.l.")
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = ["export-cluster-logs"] + self._build_cli_args({**REQUIRED_ARGS, **args})
         out = run(command)
-        assert_that(out).is_equal_to({"url": "https://u.r.l."})
+        if args.get("output") is not None:
+            expected = {"path": os.path.realpath(args.get("output"))}
+        else:
+            expected = {"url": "https://u.r.l."}
+        assert_that(out).is_equal_to(expected)
         assert_that(export_logs_mock.call_args).is_length(2)
 
         # verify arguments
         expected_params = {
+            "output_path": args.get("output") and os.path.realpath(args.get("output")),
             "bucket": "bucketname",
             "bucket_prefix": None,
             "keep_s3_objects": False,
@@ -102,6 +110,8 @@ class TestExportClusterLogsCommand:
             "end_time": None,
         }
         expected_params.update(args)
+        if "output" in expected_params:
+            del expected_params["output"]
         export_logs_mock.assert_called_with(**expected_params)
 
     @staticmethod
