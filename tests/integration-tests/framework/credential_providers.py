@@ -11,6 +11,29 @@ import re
 from contextlib import contextmanager
 
 import boto3
+from utils import run_command
+
+cli_credentials = {}
+
+
+def register_cli_credentials_for_region(region, iam_role):
+    """Register a IAM role to be used for the CLI commands in a given region."""
+    global cli_credentials
+    logging.info("Configuring CLI IAM role %s for region %s", iam_role, region)
+    cli_credentials[region] = iam_role
+
+
+def run_pcluster_command(*args, **kwargs):
+    """Run a command after assuming the role configured through register_cli_credentials_for_region."""
+    region = kwargs.get("region")
+    if not region:
+        region = os.environ["AWS_DEFAULT_REGION"]
+
+    if region in cli_credentials:
+        with sts_credential_provider(region, cli_credentials[region]):
+            return run_command(*args, **kwargs)
+    else:
+        return run_command(*args, **kwargs)
 
 
 @contextmanager
