@@ -55,8 +55,8 @@ from pcluster.models.common import (
     LogStream,
     create_logs_archive,
     export_stack_events,
-    upload_archive,
     parse_config,
+    upload_archive,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url

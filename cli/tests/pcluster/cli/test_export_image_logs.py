@@ -57,8 +57,9 @@ class TestExportImageLogsCommand:
         ],
     )
     def test_execute(self, mocker, set_env, args):
-        export_logs_mock = mocker.patch("pcluster.cli.commands.image_logs.ImageBuilder.export_logs",
-                                        return_value="https://u.r.l.")
+        export_logs_mock = mocker.patch(
+            "pcluster.cli.commands.image_logs.ImageBuilder.export_logs", return_value="https://u.r.l."
+        )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = ["export-image-logs"] + self._build_cli_args({**REQUIRED_ARGS, **args})
@@ -72,7 +73,7 @@ class TestExportImageLogsCommand:
             "bucket_prefix": None,
             "keep_s3_objects": False,
             "start_time": None,
-            "end_time": None
+            "end_time": None,
         }
         expected_params.update(args)
         export_logs_mock.assert_called_with(**expected_params)

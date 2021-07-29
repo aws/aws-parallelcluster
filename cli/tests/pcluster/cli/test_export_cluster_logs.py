@@ -82,8 +82,9 @@ class TestExportClusterLogsCommand:
         ],
     )
     def test_execute(self, mocker, set_env, args):
-        export_logs_mock = mocker.patch("pcluster.cli.commands.cluster_logs.Cluster.export_logs",
-                                        return_value="https://u.r.l.")
+        export_logs_mock = mocker.patch(
+            "pcluster.cli.commands.cluster_logs.Cluster.export_logs", return_value="https://u.r.l."
+        )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = ["export-cluster-logs"] + self._build_cli_args({**REQUIRED_ARGS, **args})
@@ -98,7 +99,7 @@ class TestExportClusterLogsCommand:
             "keep_s3_objects": False,
             "filters": None,
             "start_time": None,
-            "end_time": None
+            "end_time": None,
         }
         expected_params.update(args)
         export_logs_mock.assert_called_with(**expected_params)
