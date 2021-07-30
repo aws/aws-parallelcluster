@@ -193,11 +193,15 @@ def get_compute_nodes_instance_ids(stack_name, region, instance_types=None):
     return get_cluster_nodes_instance_ids(stack_name, region, instance_types, node_type="Compute")
 
 
-def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None):
+def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None, queue_name=None):
     """Return a list of cluster Instances Id's."""
     try:
         instances = _describe_cluster_instances(
-            stack_name, region, filter_by_node_type=node_type, filter_by_instance_types=instance_types
+            stack_name,
+            region,
+            filter_by_node_type=node_type,
+            filter_by_instance_types=instance_types,
+            filter_by_queue_name=queue_name,
         )
         instance_ids = []
         for instance in instances:
@@ -209,7 +213,12 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
 
 
 def _describe_cluster_instances(
-    stack_name, region, filter_by_node_type=None, filter_by_name=None, filter_by_instance_types=None
+    stack_name,
+    region,
+    filter_by_node_type=None,
+    filter_by_name=None,
+    filter_by_instance_types=None,
+    filter_by_queue_name=None,
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
@@ -218,6 +227,8 @@ def _describe_cluster_instances(
     ]
     if filter_by_node_type:
         filters.append({"Name": "tag:parallelcluster:node-type", "Values": [filter_by_node_type]})
+    if filter_by_queue_name:
+        filters.append({"Name": "tag:parallelcluster:queue-name", "Values": [filter_by_queue_name]})
     if filter_by_name:
         filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
     if filter_by_instance_types:

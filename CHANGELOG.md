@@ -5,10 +5,10 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 - Add possibility to use an existing Instance Profile for cluster creation and Imagebuilder.
+- Support restart/reboot for instance type with instance store (ephemeral drives).  
 - Add possibility to use an existing Private Route53 Hosted Zone when using Slurm as scheduler.
 
 **CHANGES**
-
 - Drop support for SGE and Torque schedulers.
 - Drop support for CentOS8.
 - Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
@@ -65,6 +65,7 @@ CHANGELOG
 - Add prompt for availability zone in pcluster configure automated subnets creation.
 - Add configuration HeadNode.Imds.Secured to enable/disable restricted access to IMDS.
 - Use different permissions in instance roles based on the scheduler and the node's role in the cluster.
+- Remove instance store software encryption option (encrypted_ephemeral).
 - Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
   in case recurrent failures are encountered when provisioning nodes.
 - Upgrade Slurm to version 20.11.8.
