@@ -305,17 +305,17 @@ phases:
               PLATFORM='{{ validate.PlatformName.outputs.stdout }}'
 
               if [ {{ validate.IntelMPISupported.outputs.stdout }} == true ]; then
-                echo "Checking efa rpm installed..."
+                echo "Checking efa packages installed..."
                 if [ ${PLATFORM} == RHEL ]; then
                   rpm -qa | grep libfabric && rpm -qa | grep efa-
                   [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
 
                   echo "Checking intel mpi installed..."
                   rpm -qa | grep intel-mpi
-                  [[ $? -ne 0 ]] && echo "Check intel mpi failed" && exit 1
+                  [[ $? -ne 0 ]] && echo "Check intel-mpi rpm failed" && exit 1
                 else
                   dpkg -l | grep libfabric && dpkg -l | grep 'efa '
-                  [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
+                  [[ $? -ne 0 ]] && echo "Check efa deb failed" && exit 1
                 fi
               fi
               echo "EFA test passed"
