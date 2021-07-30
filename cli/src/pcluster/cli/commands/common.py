@@ -8,17 +8,46 @@
 import json
 import logging
 import os
-import sys
 from abc import ABC, abstractmethod
+from functools import partial
 
 import argparse
 from argparse import ArgumentParser
 
 from pcluster import utils
-from pcluster.constants import SUPPORTED_REGIONS
+from pcluster.cli.exceptions import ParameterException
 from pcluster.utils import isoformat_to_epoch
 
 LOGGER = logging.getLogger(__name__)
+
+
+def exit_msg(msg):
+    raise ParameterException({"message": msg})
+
+
+def to_bool(param, in_str):
+    """Take a boolean string and convert it into a boolean value."""
+    if in_str in {"false", "False", "FALSE", False}:
+        return False
+    elif in_str in {"true", "True", "TRUE", True}:
+        return True
+    return exit_msg(f"Bad Request: Wrong type, expected 'boolean' for parameter '{param}'")
+
+
+def to_number(param, in_str):
+    """Take a string and convert it into a double."""
+    try:
+        return float(in_str)
+    except ValueError:
+        return exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
+
+
+def to_int(param, in_str):
+    """Take a string and convert it into an int."""
+    try:
+        return int(in_str)
+    except ValueError:
+        return exit_msg(f"Bad Request: Wrong type, expected 'int' for parameter '{param}'")
 
 
 class CliCommand(ABC):
@@ -28,8 +57,6 @@ class CliCommand(ABC):
         self,
         subparsers,
         region_arg: bool = True,
-        config_arg: bool = False,  # TODO: remove
-        nowait_arg: bool = False,  # TODO: remove
         expects_extra_args: bool = False,
         **argparse_kwargs,
     ):
@@ -38,18 +65,7 @@ class CliCommand(ABC):
         parser = subparsers.add_parser(parser_name, **argparse_kwargs)
         parser.add_argument("--debug", action="store_true", help="Turn on debug logging.", default=False)
         if region_arg:
-            parser.add_argument("-r", "--region", help="AWS Region to use.", choices=SUPPORTED_REGIONS)
-        if config_arg:
-            parser.add_argument(
-                "-c", "--config", dest="config_file", help="Defines an alternative config file.", required=True
-            )
-        if nowait_arg:
-            parser.add_argument(
-                "-nw",
-                "--nowait",
-                action="store_true",
-                help="Do not wait for stack events after executing stack command.",
-            )
+            parser.add_argument("--region", help="AWS Region this operation corresponds to.")
         self.register_command_args(parser)
         parser.set_defaults(func=self.execute, expects_extra_args=expects_extra_args)
 
@@ -62,13 +78,6 @@ class CliCommand(ABC):
     def execute(self, args, extra_args) -> None:
         """Execute CLI command."""
         pass
-
-    @staticmethod
-    def _exit_on_http_status(http_response):
-        if 200 <= http_response.status_code <= 299:
-            sys.exit(0)
-        else:
-            sys.exit(1)
 
 
 def print_json(obj):
@@ -86,8 +95,8 @@ class Iso8601Arg:
             return value
         except Exception as e:
             raise argparse.ArgumentTypeError(
-                "Start time and end time filters must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                f"(e.g. 1984-09-15T19:20:30+01:00 or 1984-09-15). {e}"
+                "Start time and end time filters must be in the ISO 8601 UTC format: YYYY-MM-DDThh:mm:ssZ "
+                f"(e.g. 1984-09-15T19:20:30Z or 1984-09-15). {e}"
             )
 
 
@@ -96,31 +105,38 @@ class ExportLogsCommand(ABC):
 
     @staticmethod
     def _register_common_command_args(parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("--output", help="File path to save log archive to.", type=os.path.realpath)
+        parser.add_argument(
+            "--output",
+            help="File path to save log archive to. If this is provided the logs are saved "
+            "locally. Otherwise they are uploaded to S3 with the url returned in the output. "
+            "Default is to upload to S3.",
+            type=os.path.realpath,
+        )
         # Export options
         parser.add_argument(
             "--bucket-prefix", help="Keypath under which exported logs data will be stored in s3 bucket."
         )
         parser.add_argument(
             "--keep-s3-objects",
-            action="store_true",
-            help="Keep the exported objects exports to S3. The default behavior is to delete them.",
+            type=partial(to_bool, "keep-s3-objects"),
+            default=False,
+            help="Keep the exported objects exports to S3. (Defaults to 'false'.)",
         )
         # Filters
         parser.add_argument(
             "--start-time",
             type=Iso8601Arg(),
             help=(
-                "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to creation time"
+                "Start time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssZ "
+                "(e.g. 1984-09-15T19:20:30Z), time elements might be omitted. Defaults to creation time"
             ),
         )
         parser.add_argument(
             "--end-time",
             type=Iso8601Arg(),
             help=(
-                "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssTZD "
-                "(e.g. 1984-09-15T19:20:30+01:00), time elements might be omitted. Defaults to current time"
+                "End time of interval of interest for log events. ISO 8601 format: YYYY-MM-DDThh:mm:ssZ "
+                "(e.g. 1984-09-15T19:20:30Z), time elements might be omitted. Defaults to current time"
             ),
         )
 

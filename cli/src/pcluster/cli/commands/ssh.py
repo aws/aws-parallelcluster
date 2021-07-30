@@ -88,11 +88,11 @@ class SshCommand(CliCommand):
         "Arbitrary arguments are appended to the end of the ssh command."
     )
     epilog = textwrap.dedent(
-        """Example::
+        """Example:
 
-  $ pcluster ssh mycluster -i ~/.ssh/id_rsa
+  $ pcluster ssh --cluster-name mycluster -i ~/.ssh/id_rsa
 
-Returns an ssh command with the cluster username and IP address pre-populated::
+Returns an ssh command with the cluster username and IP address pre-populated:
 
   $ ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa"""
     )
@@ -109,8 +109,8 @@ Returns an ssh command with the cluster username and IP address pre-populated::
         )
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("cluster_name", help="Name of the cluster to connect to.")
-        parser.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
+        parser.add_argument("--cluster-name", help="Name of the cluster to connect to.", required=True)
+        parser.add_argument("--dryrun", action="store_true", default=False, help="Prints command and exits.")
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
         _ssh(args, extra_args)

@@ -80,14 +80,7 @@ class Cluster:
         """
         # update the cluster
         logging.info("Updating cluster {0} with config {1}".format(self.name, config_file))
-        command = [
-            "pcluster",
-            "update-cluster",
-            "--cluster-configuration",
-            config_file,
-            "--cluster-name",
-            self.name,
-        ]
+        command = ["pcluster", "update-cluster", "--cluster-configuration", config_file, "--cluster-name", self.name]
         if wait:
             command.append("--wait")
         if force:
@@ -122,11 +115,7 @@ class Cluster:
         if delete_logs:
             logging.warning("Updating stack %s to delete CloudWatch logs on stack deletion.", self.name)
             try:
-                dict_add_nested_key(
-                    self.config,
-                    False,
-                    ("Monitoring", "Logs", "CloudWatch", "RetainOnDelete"),
-                )
+                dict_add_nested_key(self.config, False, ("Monitoring", "Logs", "CloudWatch", "RetainOnDelete"))
                 with open(self.config_file, "w") as conf_file:
                     yaml.dump(self.config, conf_file)
                 self.update(self.config_file, force=True)
@@ -235,13 +224,23 @@ class Cluster:
 
     def export_logs(self, bucket, output, bucket_prefix=None):
         """Run pcluster export-cluster-logs and return the result."""
-        cmd_args = ["pcluster", "export-cluster-logs", self.name, "--bucket", bucket, "--output", output]
+        cmd_args = [
+            "pcluster",
+            "export-cluster-logs",
+            "--cluster-name",
+            self.name,
+            "--bucket",
+            bucket,
+            "--output",
+            output,
+        ]
         if bucket_prefix:
             cmd_args += ["--bucket-prefix", bucket_prefix]
         try:
             result = run_command(cmd_args, log_error=False)
+            response = json.loads(result.stdout)
             logging.info("Cluster's logs exported successfully")
-            return result.stdout
+            return response
         except subprocess.CalledProcessError as e:
             logging.error("Failed exporting cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise

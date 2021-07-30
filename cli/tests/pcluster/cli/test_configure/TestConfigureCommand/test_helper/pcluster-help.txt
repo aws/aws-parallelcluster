@@ -1,13 +1,9 @@
-usage: pcluster configure [-h] [--debug]
-                          [-r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}]
-                          [-c CONFIG]
+usage: pcluster configure [-h] [--debug] [--region REGION] [--config CONFIG]
 
 Start the AWS ParallelCluster configuration.
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --debug               Turn on debug logging.
-  -r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}, --region {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}
-                        AWS Region to use.
-  -c CONFIG, --config CONFIG
-                        Path of the output config file.
+  -h, --help       show this help message and exit
+  --debug          Turn on debug logging.
+  --region REGION  AWS Region this operation corresponds to.
+  --config CONFIG  Path to output the generated config file.
