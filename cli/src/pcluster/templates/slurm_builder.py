@@ -103,6 +103,10 @@ class SlurmConstruct(Construct):
     def _format_arn(self, **kwargs):
         return Stack.of(self).format_arn(**kwargs)
 
+    def _cluster_scoped_iam_path(self):
+        """Return a path to be associated IAM roles and instance profiles."""
+        return f"{IAM_ROLE_PATH}{self.stack_name}/"
+
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_parameters(self):
@@ -189,13 +193,7 @@ class SlurmConstruct(Construct):
                     "sid": "PassRole",
                     "actions": ["iam:PassRole"],
                     "effect": iam.Effect.ALLOW,
-                    "resources": [
-                        self._format_arn(
-                            service="iam",
-                            region="",
-                            resource=f"role{IAM_ROLE_PATH}*",
-                        )
-                    ],
+                    "resources": self._generate_head_node_pass_role_resources(),
                 },
                 {
                     "sid": "EC2",
@@ -618,12 +616,6 @@ class SlurmConstruct(Construct):
                                     self.shared_storage_options, SharedStorageType.FSX
                                 ),
                                 "Scheduler": self.config.scheduling.scheduler,
-                                "EncryptedEphemeral": "true"
-                                if queue.compute_settings
-                                and queue.compute_settings.local_storage
-                                and queue.compute_settings.local_storage.ephemeral_volume
-                                and queue.compute_settings.local_storage.ephemeral_volume.encrypted
-                                else "NONE",
                                 "EphemeralDir": queue.compute_settings.local_storage.ephemeral_volume.mount_dir
                                 if queue.compute_settings
                                 and queue.compute_settings.local_storage
@@ -676,6 +668,33 @@ class SlurmConstruct(Construct):
                 ],
             ),
         )
+
+    def _generate_head_node_pass_role_resources(self):
+        """Return a unique list of ARNs that the head node should be able to use when calling PassRole."""
+        default_pass_role_resource = self._format_arn(
+            service="iam",
+            region="",
+            resource=f"role{self._cluster_scoped_iam_path()}*",
+        )
+
+        # If there are any queues where a custom instance role was specified,
+        # enable the head node to pass permissions to those roles.
+        custom_queue_role_arns = {
+            arn for queue in self.config.scheduling.queues for arn in queue.iam.instance_role_arns
+        }
+        if custom_queue_role_arns:
+            pass_role_resources = custom_queue_role_arns
+
+            # Include the default IAM role path for the queues that
+            # aren't using a custom instance role.
+            queues_without_custom_roles = [
+                queue for queue in self.config.scheduling.queues if not queue.iam.instance_role_arns
+            ]
+            if any(queues_without_custom_roles):
+                pass_role_resources.add(default_pass_role_resource)
+        else:
+            pass_role_resources = {default_pass_role_resource}
+        return list(pass_role_resources)
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 

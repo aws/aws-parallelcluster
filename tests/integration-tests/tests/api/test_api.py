@@ -16,6 +16,7 @@ import logging
 import boto3
 import pytest
 from assertpy import assert_that
+from benchmarks.common.util import get_instance_vcpus
 from botocore.config import Config
 from clusters_factory import Cluster, ClustersFactory
 from pcluster_client import ApiException
@@ -39,9 +40,11 @@ from pcluster_client.model.update_cluster_request_content import UpdateClusterRe
 from pcluster_client.model.update_compute_fleet_request_content import UpdateComputeFleetRequestContent
 from utils import generate_stack_name
 
+from tests.common.assertions import wait_for_num_instances_in_cluster
 from tests.common.utils import retrieve_latest_ami
 
 LOGGER = logging.getLogger(__name__)
+NUM_OF_COMPUTE_INSTANCES = 2
 
 
 @pytest.fixture()
@@ -99,28 +102,41 @@ def _cloudformation_wait(region, stack_name, status):
     waiter.wait(StackName=stack_name, WaiterConfig={"MaxAttempts": 180})
 
 
+def _ec2_wait_running(region, instances):
+    _ec2_wait(region, instances, "instance_running")
+
+
 def _ec2_wait_terminated(region, instances):
+    _ec2_wait(region, instances, "instance_terminated")
+
+
+def _ec2_wait(region, instances, waiter_type):
     config = Config(region_name=region)
     ec2 = boto3.client("ec2", config=config)
-    waiter = ec2.get_waiter("instance_terminated")
+    waiter = ec2.get_waiter(waiter_type)
     waiter.wait(InstanceIds=instances)
 
 
 @pytest.mark.usefixtures("os", "instance")
-def test_cluster_slurm(region, api_client, create_cluster, request, pcluster_config_reader, scheduler):
+def test_cluster_slurm(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance):
     assert_that(scheduler).is_equal_to("slurm")
-    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler)
+    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance)
 
 
 @pytest.mark.usefixtures("os", "instance")
-def test_cluster_awsbatch(region, api_client, create_cluster, request, pcluster_config_reader, scheduler):
+def test_cluster_awsbatch(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance):
     assert_that(scheduler).is_equal_to("awsbatch")
-    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler)
+    _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance)
 
 
-def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler):
-    initial_config_file = pcluster_config_reader()
-    updated_config_file = pcluster_config_reader("pcluster.config.update.yaml")
+def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster_config_reader, scheduler, instance):
+    if scheduler == "slurm":
+        initial_config_file = pcluster_config_reader()
+        updated_config_file = pcluster_config_reader("pcluster.config.update.yaml")
+    else:
+        vcpus = get_instance_vcpus(region, instance) * NUM_OF_COMPUTE_INSTANCES
+        initial_config_file = pcluster_config_reader(vcpus=vcpus)
+        updated_config_file = pcluster_config_reader("pcluster.config.update.yaml", vcpus=vcpus)
 
     cluster_name = generate_stack_name("integ-tests", request.config.getoption("stackname_suffix"))
     cluster_operations_client = cluster_operations_api.ClusterOperationsApi(api_client)
@@ -138,6 +154,10 @@ def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster
 
     _test_list_clusters(region, cluster_operations_client, cluster_name, "CREATE_COMPLETE")
     _test_describe_cluster(region, cluster_operations_client, cluster_name, "CREATE_COMPLETE")
+
+    # We wait for instances to be ready before transitioning stack to CREATE_COMPLETE only when using Slurm
+    if scheduler == "awsbatch":
+        wait_for_num_instances_in_cluster(region=region, cluster_name=cluster_name, desired=NUM_OF_COMPUTE_INSTANCES)
 
     # Update cluster with new configuration
     with open(updated_config_file) as config_file:
@@ -187,15 +207,18 @@ def _test_describe_cluster_compute_nodes(region, client, cluster_name, all_termi
 
 def _add_compute_nodes(instances, compute_node_map):
     for instance in instances:
-        if instance.queue_name not in compute_node_map:
-            compute_node_map[instance.queue_name] = set()
-        compute_node_map[instance.queue_name].add(instance.instance_id)
+        # The AWS Batch queue name is not populated
+        queue_name = instance.get("queue_name", "awsbatch_queue")
+        if queue_name not in compute_node_map:
+            compute_node_map[queue_name] = set()
+        compute_node_map[queue_name].add(instance.instance_id)
 
 
 def _test_delete_cluster_instances(region, client, cluster_name, head_node, compute_node_map):
     instances_to_terminate = _get_instances_to_terminate(compute_node_map)
     client.delete_cluster_instances(cluster_name=cluster_name, region=region)
     _ec2_wait_terminated(region, instances_to_terminate)
+    wait_for_num_instances_in_cluster(region=region, cluster_name=cluster_name, desired=NUM_OF_COMPUTE_INSTANCES)
 
     new_head_node = _test_describe_cluster_head_node(region, client, cluster_name)
     new_compute_node_map = _test_describe_cluster_compute_nodes(region, client, cluster_name)
@@ -219,6 +242,10 @@ def _test_stop_compute_fleet(region, cluster_compute_fleet_client, cluster_insta
     head_node = _test_describe_cluster_head_node(region, cluster_instances_client, cluster_name)
     compute_node_map = _test_describe_cluster_compute_nodes(region, cluster_instances_client, cluster_name)
     instances_to_terminate = _get_instances_to_terminate(compute_node_map)
+
+    # EC2 instances in "pending" or "stopping" state cannot be terminated, so we will wait for the instances we
+    # intend to terminate to go in the "running" state before terminating them.
+    _ec2_wait_running(region, instances_to_terminate)
 
     cluster_compute_fleet_client.update_compute_fleet(
         cluster_name=cluster_name,

@@ -119,7 +119,7 @@
         "CidrBlock": {
           "Ref": "PublicCIDR"
         },
-        "MapPublicIpOnLaunch": false,
+        "MapPublicIpOnLaunch": true,
         "Tags": [
           {
             "Key": "Name",
