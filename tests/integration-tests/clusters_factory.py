@@ -235,8 +235,16 @@ class Cluster:
 
     def export_logs(self, bucket, output, bucket_prefix=None):
         """Run pcluster export-cluster-logs and return the result."""
-        cmd_args = ["pcluster", "export-cluster-logs", "--cluster-name", self.name, "--bucket", bucket, "--output",
-                    output]
+        cmd_args = [
+            "pcluster",
+            "export-cluster-logs",
+            "--cluster-name",
+            self.name,
+            "--bucket",
+            bucket,
+            "--output",
+            output,
+        ]
         if bucket_prefix:
             cmd_args += ["--bucket-prefix", bucket_prefix]
         try:
