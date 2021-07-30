@@ -31,7 +31,7 @@ def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clus
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_intel_instance_tags(cluster.instances(), region)
+    _test_intel_instance_tags(cluster.get_cluster_instance_ids(), region)
     _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir, os)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)

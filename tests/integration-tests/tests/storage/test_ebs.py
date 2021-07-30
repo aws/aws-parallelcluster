@@ -268,7 +268,7 @@ def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
     logging.info("Testing root volume encryption.")
     if scheduler == "slurm":
         # If the scheduler is slurm, root volumes both on head and compute can be encrypted
-        instance_ids = cluster.instances()
+        instance_ids = cluster.get_cluster_instance_ids()
         for instance in instance_ids:
             root_volume_id = utils.get_root_volume_id(instance, region, os)
             _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
@@ -290,7 +290,7 @@ def _assert_root_volume_configuration(cluster, os, region, scheduler):
         _assert_volume_configuration(expected_settings, root_volume_id, region)
     if scheduler == "slurm":
         # Only if the scheduler is slurm, root volumes both on compute can be configured
-        instance_ids = cluster.instances()
+        instance_ids = cluster.get_cluster_instance_ids()
         for instance in instance_ids:
             if instance == head_node:
                 # head node is already checked
