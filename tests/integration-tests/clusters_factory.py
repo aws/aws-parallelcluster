@@ -212,13 +212,15 @@ class Cluster:
 
     def export_logs(self, bucket, output, bucket_prefix=None):
         """Run pcluster export-cluster-logs and return the result."""
-        cmd_args = ["pcluster", "export-cluster-logs", self.name, "--bucket", bucket, "--output", output]
+        cmd_args = ["pcluster", "export-cluster-logs", "--cluster-name", self.name, "--bucket", bucket, "--output",
+                    output]
         if bucket_prefix:
             cmd_args += ["--bucket-prefix", bucket_prefix]
         try:
             result = run_command(cmd_args, log_error=False)
+            response = json.loads(result.stdout)
             logging.info("Cluster's logs exported successfully")
-            return result.stdout
+            return response
         except subprocess.CalledProcessError as e:
             logging.error("Failed exporting cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
