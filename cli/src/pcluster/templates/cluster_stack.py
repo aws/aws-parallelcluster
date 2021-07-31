@@ -845,7 +845,6 @@ class ClusterCdkStack(Stack):
             ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                 device_index=0,
                 network_interface_id=self._head_eni.ref,
-                associate_public_ip_address=head_node.networking.assign_public_ip,
             )
         ]
         for device_index in range(1, head_node.max_network_interface_count):

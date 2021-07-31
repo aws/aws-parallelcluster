@@ -739,7 +739,7 @@ class _LaunchTemplateValidator(Validator, ABC):
     """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
 
     def _build_launch_network_interfaces(
-        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips
+        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
     ):
         """Build the needed NetworkInterfaces to launch an instance."""
         network_interfaces = []
@@ -842,7 +842,6 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 use_efa=False,  # EFA is not supported on head node
                 security_group_ids=head_node_security_groups,
                 subnet=head_node.networking.subnet_id,
-                use_public_ips=bool(head_node.networking.assign_public_ip),
             )
 
             # Test Head Node Instance Configuration
