@@ -401,13 +401,11 @@ class _BaseNetworking(Resource):
 
     def __init__(
         self,
-        assign_public_ip: str = None,
         security_groups: List[str] = None,
         additional_security_groups: List[str] = None,
         proxy: Proxy = None,
     ):
         super().__init__()
-        self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.security_groups = Resource.init_param(security_groups)
         self.additional_security_groups = Resource.init_param(additional_security_groups)
         self.proxy = proxy
@@ -450,8 +448,11 @@ class PlacementGroup(Resource):
 class QueueNetworking(_BaseNetworking):
     """Represent the networking configuration for the Queue."""
 
-    def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
+    def __init__(
+        self, subnet_ids: List[str], placement_group: PlacementGroup = None, assign_public_ip: str = None, **kwargs
+    ):
         super().__init__(**kwargs)
+        self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
         self.placement_group = placement_group
 

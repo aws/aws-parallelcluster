@@ -6,7 +6,6 @@ HeadNode:
   Networking:
     SubnetId: subnet-12345678
     ElasticIp: true  # true|false|EIP-id
-    AssignPublicIp: True  # true|false
     AdditionalSecurityGroups:
       - sg-34567890
       - sg-45678901
