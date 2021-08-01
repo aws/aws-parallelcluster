@@ -11,11 +11,13 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
+import datetime
 import functools
 import logging
 import os
 from typing import List, Optional, Set
 
+import dateutil
 from pkg_resources import packaging
 
 from pcluster.api.errors import (
@@ -23,13 +25,14 @@ from pcluster.api.errors import (
     ConflictException,
     InternalServiceException,
     LimitExceededException,
+    NotFoundException,
     ParallelClusterApiException,
 )
-from pcluster.aws.common import BadRequestError, LimitExceededError
+from pcluster.aws.common import BadRequestError, LimitExceededError, StackNotFoundError
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
 from pcluster.constants import SUPPORTED_REGIONS
 from pcluster.models.cluster import Cluster
-from pcluster.models.common import BadRequest, Conflict, LimitExceeded
+from pcluster.models.common import BadRequest, Conflict, LimitExceeded, NotFound
 from pcluster.utils import get_installed_version
 
 LOGGER = logging.getLogger(__name__)
@@ -101,6 +104,31 @@ def check_cluster_version(cluster: Cluster, exact_match: bool = False) -> bool:
         )
 
 
+def validate_cluster(cluster: Cluster):
+    try:
+        if not check_cluster_version(cluster):
+            raise BadRequestException(
+                f"Cluster '{cluster.name}' belongs to an incompatible ParallelCluster major version."
+            )
+    except StackNotFoundError:
+        raise NotFoundException(
+            f"Cluster '{cluster.name}' does not exist or belongs to an incompatible ParallelCluster major version."
+        )
+
+
+def validate_timestamp(date_str: str, ts_name: str = "Time"):
+    try:
+        time_ = dateutil.parser.parse(date_str)
+        if time_.tzinfo is None:
+            time_ = time_.replace(tzinfo=datetime.timezone.utc)
+        return time_
+    except Exception:
+        raise BadRequestException(
+            f"{ts_name} filter must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssZ. "
+            "(e.g. 1984-09-15T19:20:30Z or 1984-09-15)."
+        )
+
+
 def convert_errors():
     def _decorate_api(func):
         @functools.wraps(func)
@@ -115,6 +143,8 @@ def convert_errors():
                 raise BadRequestException(str(e)) from e
             except Conflict as e:
                 raise ConflictException(str(e)) from e
+            except NotFound as e:
+                raise NotFoundException(str(e)) from e
             except Exception as e:
                 raise InternalServiceException(str(e)) from e
 

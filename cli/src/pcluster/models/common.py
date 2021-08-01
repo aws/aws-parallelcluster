@@ -46,6 +46,12 @@ class Conflict(Exception):
     pass
 
 
+class NotFound(Exception):
+    """Base exception type for errors caused by resource not existing."""
+
+    pass
+
+
 def parse_config(config):
     """Parse a YAML configuration into a dictionary."""
     try:
@@ -254,8 +260,8 @@ def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
     return f"s3://{bucket}/{bucket_prefix}/{archive_filename}"
 
 
-class Logs:
-    """Class to manage list of logs, for both CW logs and Stack logs."""
+class LogStreams:
+    """Class to manage list of logs along with next_token."""
 
     def __init__(self, log_streams: List[dict] = None, next_token: str = None):
         self.log_streams = log_streams

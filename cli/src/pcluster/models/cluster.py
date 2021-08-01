@@ -43,7 +43,6 @@ from pcluster.models.cluster_resources import (
     ClusterInstance,
     ClusterStack,
     ExportClusterLogsFiltersParser,
-    FiltersParserError,
     ListClusterLogsFiltersParser,
 )
 from pcluster.models.common import (
@@ -51,8 +50,9 @@ from pcluster.models.common import (
     CloudWatchLogsExporter,
     Conflict,
     LimitExceeded,
-    Logs,
     LogStream,
+    LogStreams,
+    NotFound,
     create_logs_archive,
     export_stack_events,
     parse_config,
@@ -126,11 +126,11 @@ class ConflictClusterActionError(ClusterActionError, Conflict):
         super().__init__(message)
 
 
-class NotFoundClusterActionError(ClusterActionError):
-    """Represent an error if the cluster doesn't exist."""
+class NotFoundClusterActionError(ClusterActionError, NotFound):
+    """Represent an error if the cluster or an associated resource doesn't exist."""
 
-    def __init__(self, name):
-        super().__init__(f"Cluster {name} does not exist.")
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 def _cluster_error_mapper(error, message=None):
@@ -144,6 +144,8 @@ def _cluster_error_mapper(error, message=None):
         return BadRequestClusterActionError(message)
     elif isinstance(error, Conflict):
         return ConflictClusterActionError(message)
+    elif isinstance(error, NotFound):
+        return NotFoundClusterActionError(message)
     else:
         return ClusterActionError(message)
 
@@ -376,7 +378,7 @@ class Cluster:
 
     def _validate_no_existing_stack(self):
         if AWSApi.instance().cfn.stack_exists(self.stack_name):
-            raise BadRequestClusterActionError(f"cluster {self.name} already exists")
+            raise BadRequestClusterActionError(f"Cluster {self.name} already exists.")
 
     def _validate_and_parse_config(self, validator_suppressors, validation_failure_level, config_text=None):
         """
@@ -844,7 +846,7 @@ class Cluster:
         """
         # check stack
         if not AWSApi.instance().cfn.stack_exists(self.stack_name):
-            raise ClusterActionError(f"Cluster {self.name} does not exist")
+            raise NotFoundClusterActionError(f"Cluster {self.name} does not exist.")
 
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
@@ -889,26 +891,23 @@ class Cluster:
             raise ClusterActionError(f"Unexpected error when exporting cluster's logs: {e}")
 
     def _init_export_logs_filters(self, start_time, end_time, filters):
+        head_node = None
         try:
-            head_node = None
-            try:
-                head_node = self.head_node_instance
-            except ClusterActionError as e:
-                LOGGER.debug(e)
+            head_node = self.head_node_instance
+        except ClusterActionError as e:
+            LOGGER.debug(e)
 
-            export_logs_filters = ExportClusterLogsFiltersParser(
-                head_node=head_node,
-                log_group_name=self.stack.log_group_name,
-                start_time=start_time,
-                end_time=end_time,
-                filters=filters,
-            )
-            export_logs_filters.validate()
-        except FiltersParserError as e:
-            raise ClusterActionError(str(e))
+        export_logs_filters = ExportClusterLogsFiltersParser(
+            head_node=head_node,
+            log_group_name=self.stack.log_group_name,
+            start_time=start_time,
+            end_time=end_time,
+            filters=filters,
+        )
+        export_logs_filters.validate()
         return export_logs_filters
 
-    def list_logs(self, filters: List[str] = None, next_token: str = None):
+    def list_log_streams(self, filters: List[str] = None, next_token: str = None):
         """
         List cluster's logs.
 
@@ -920,7 +919,7 @@ class Cluster:
         try:
             # check stack
             if not AWSApi.instance().cfn.stack_exists(self.stack_name):
-                raise ClusterActionError(f"Cluster {self.name} does not exist")
+                raise NotFoundClusterActionError(f"Cluster {self.name} does not exist.")
 
             log_streams = []
 
@@ -935,27 +934,25 @@ class Cluster:
                 log_streams.extend(log_stream_resp["logStreams"])
                 next_token = log_stream_resp.get("nextToken")
             else:
-                LOGGER.debug("CloudWatch logging is not enabled for cluster %s", self.name)
+                LOGGER.debug("CloudWatch logging is not enabled for cluster %s.", self.name)
+                raise BadRequestClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
 
-            return Logs(log_streams, next_token)
+            return LogStreams(log_streams, next_token)
 
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving cluster's logs: {e}")
 
     def _init_list_logs_filters(self, filters):
+        head_node = None
         try:
-            head_node = None
-            try:
-                head_node = self.head_node_instance
-            except ClusterActionError as e:
-                LOGGER.debug(e)
+            head_node = self.head_node_instance
+        except ClusterActionError as e:
+            LOGGER.debug(e)
 
-            list_logs_filters = ListClusterLogsFiltersParser(
-                head_node=head_node, log_group_name=self.stack.log_group_name, filters=filters
-            )
-            list_logs_filters.validate()
-        except FiltersParserError as e:
-            raise ClusterActionError(str(e))
+        list_logs_filters = ListClusterLogsFiltersParser(
+            head_node=head_node, log_group_name=self.stack.log_group_name, filters=filters
+        )
+        list_logs_filters.validate()
         return list_logs_filters
 
     def get_stack_events(self, next_token: str = None):
@@ -966,7 +963,7 @@ class Cluster:
         """
         try:
             if not AWSApi.instance().cfn.stack_exists(self.stack_name):
-                raise ClusterActionError(f"Cluster {self.name} does not exist")
+                raise NotFoundClusterActionError(f"Cluster {self.name} does not exist.")
             return AWSApi.instance().cfn.get_stack_events(self.stack_name, next_token=next_token)
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving stack events: {e}")
@@ -993,12 +990,9 @@ class Cluster:
         :param next_token: Token for paginated requests.
         """
         if not AWSApi.instance().cfn.stack_exists(self.stack_name):
-            raise ClusterActionError(f"Cluster {self.name} does not exist")
+            raise NotFoundClusterActionError(f"Cluster {self.name} does not exist.")
 
         try:
-            if not self.stack.log_group_name:
-                raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
-
             log_events_response = AWSApi.instance().logs.get_log_events(
                 log_group_name=self.stack.log_group_name,
                 log_stream_name=log_stream_name,
@@ -1008,9 +1002,16 @@ class Cluster:
                 start_from_head=start_from_head,
                 next_token=next_token,
             )
+
             return LogStream(self.stack_name, log_stream_name, log_events_response)
         except AWSClientError as e:
-            raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}")
+            if e.message.startswith("The specified log group"):
+                LOGGER.debug("Log Group %s doesn't exist.", self.stack.log_group_name)
+                raise NotFoundClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
+            if e.message.startswith("The specified log stream"):
+                LOGGER.debug("Log Stream %s doesn't exist.", log_stream_name)
+                raise NotFoundClusterActionError(f"The specified log stream {log_stream_name} does not exist.")
+            raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}.")
 
     @property
     def _stack_events_stream_name(self):

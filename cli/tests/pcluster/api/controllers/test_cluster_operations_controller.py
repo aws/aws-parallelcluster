@@ -498,7 +498,7 @@ class TestDeleteCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "message": "Cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
                     "major version. In case you have running instances belonging to a deleted cluster please"
                     " use the DeleteClusterInstances API."
                 }
@@ -518,7 +518,7 @@ class TestDeleteCluster:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
+                    "message": "Bad Request: Cluster 'clustername' belongs to an incompatible ParallelCluster major"
                     " version."
                 }
             )
@@ -787,7 +787,7 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "message": "Cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
                     "major version."
                 }
             )
@@ -806,7 +806,7 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
+                    "message": "Bad Request: Cluster 'clustername' belongs to an incompatible ParallelCluster major"
                     " version."
                 }
             )
@@ -1610,7 +1610,7 @@ class TestUpdateCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clusterName' does not exist or belongs to "
+                    "message": "Cluster 'clusterName' does not exist or belongs to "
                     "an incompatible ParallelCluster major version."
                 }
             )

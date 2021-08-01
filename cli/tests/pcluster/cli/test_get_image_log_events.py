@@ -46,6 +46,10 @@ class TestGetImageLogEventsCommand:
             ({"end_time": "1622802790248"}, "end_time filter must be in the ISO 8601 format"),
             ({"start_from_head": "wrong"}, "expected 'boolean' for parameter 'start-from-head'"),
             ({"limit": "wrong"}, "expected 'int' for parameter 'limit'"),
+            (
+                {"start_time": "2021-01-01", "end_time": "2021-01-01"},
+                "start_time filter must be earlier than end_time filter.",
+            ),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -64,7 +68,7 @@ class TestGetImageLogEventsCommand:
                     "log_stream_name": "log-stream-name",
                     "limit": "6",
                     "start_time": "2021-06-02",
-                    "end_time": "2021-06-02",
+                    "end_time": "2021-06-03",
                 }
             ),
             (

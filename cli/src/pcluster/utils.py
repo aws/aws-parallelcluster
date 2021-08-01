@@ -135,10 +135,10 @@ def to_iso_time(time_in):
             time_ = dateutil.parser.parse(time_in)
         elif isinstance(time_in, datetime.date):
             time_ = time_in
-            if time_.tzinfo is None:
-                time_ = time_.replace(tzinfo=datetime.timezone.utc)
         else:
             raise TypeError("to_iso_time object must be 'str', 'int' or 'datetime'.")
+        if time_.tzinfo is None:
+            time_ = time_.replace(tzinfo=datetime.timezone.utc)
         return time_.isoformat(timespec="milliseconds")[:-6] + "Z"
     else:
         return time_in

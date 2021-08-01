@@ -241,8 +241,8 @@ def test_get_url_scheme(url, expect_output):
         (1622757600000, "Europe/London", "2021-06-03T23:00:00+01:00"),
     ],
 )
-def test_timestamp_to_isoformat(timestamp, time_zone, expect_output):
-    os.environ["TZ"] = time_zone
+def test_timestamp_to_isoformat(set_tz, timestamp, time_zone, expect_output):
+    set_tz(time_zone)
     time.tzset()
     assert_that(utils.timestamp_to_isoformat(timestamp)).is_equal_to(expect_output)
 
@@ -258,7 +258,7 @@ def test_timestamp_to_isoformat(timestamp, time_zone, expect_output):
         ("2021-06-04", "Europe/London", 1622761200000),
     ],
 )
-def test_isoformat_to_epoch(time_isoformat, time_zone, expect_output):
-    os.environ["TZ"] = time_zone
+def test_isoformat_to_epoch(set_tz, time_isoformat, time_zone, expect_output):
+    set_tz(time_zone)
     time.tzset()
     assert_that(utils.isoformat_to_epoch(time_isoformat)).is_equal_to(expect_output)

@@ -7,9 +7,8 @@
 # limitations under the License.
 
 # pylint: disable=W0613
-import dateutil
 
-from pcluster.api.controllers.common import configure_aws_region, convert_errors
+from pcluster.api.controllers.common import configure_aws_region, convert_errors, validate_timestamp
 from pcluster.api.errors import BadRequestException
 from pcluster.api.models import (
     GetImageLogEventsResponseContent,
@@ -21,16 +20,6 @@ from pcluster.api.models import (
 )
 from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.utils import to_iso_time
-
-
-def _validate_timestamp(val, ts_name):
-    try:
-        dateutil.parser.parse(val)
-    except Exception:
-        raise BadRequestException(
-            f"{ts_name} filter must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssZ. "
-            "(e.g. 1984-09-15T19:20:30Z or 1984-09-15)."
-        )
 
 
 @configure_aws_region()
@@ -73,9 +62,15 @@ def get_image_log_events(
     :rtype: GetImageLogEventsResponseContent
     """
     if start_time:
-        _validate_timestamp(start_time, "start_time")
+        start_dt = validate_timestamp(start_time, "start_time")
     if end_time:
-        _validate_timestamp(end_time, "end_time")
+        end_dt = validate_timestamp(end_time, "end_time")
+
+    if start_time and end_time and start_dt >= end_dt:
+        raise BadRequestException("start_time filter must be earlier than end_time filter.")
+
+    if limit and limit <= 0:
+        raise BadRequestException("'limit' must be a positive integer.")
 
     imagebuilder = ImageBuilder(image_id=image_id)
     log_events = imagebuilder.get_log_events(
@@ -150,7 +145,7 @@ def list_image_log_streams(image_id, region=None, next_token=None):
         return LogStream.from_dict(log)
 
     imagebuilder = ImageBuilder(image_id=image_id)
-    logs = imagebuilder.list_logs(next_token=next_token)
+    logs = imagebuilder.list_log_streams(next_token=next_token)
     log_streams = [convert_log(log) for log in logs.log_streams]
     next_token = logs.next_token
     return ListImageLogStreamsResponseContent(items=log_streams, next_token=next_token)

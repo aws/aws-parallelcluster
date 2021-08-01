@@ -46,6 +46,13 @@ class TestGetClusterLogEventsCommand:
             ({"end_time": "1622802790248"}, "end_time filter must be in the ISO 8601 format"),
             ({"start_from_head": "wrong"}, "expected 'boolean' for parameter 'start-from-head'"),
             ({"limit": "wrong"}, "expected 'int' for parameter 'limit'"),
+            (
+                {
+                    "start_time": "2021-06-02",
+                    "end_time": "2021-06-02",
+                },
+                "start_time filter must be earlier than end_time filter.",
+            ),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -59,19 +66,19 @@ class TestGetClusterLogEventsCommand:
         "args",
         [
             ({}),
-            ({"limit": "6", "start_time": "2021-06-02", "end_time": "2021-06-02"}),
+            ({"limit": "6", "start_time": "2021-06-02", "end_time": "2021-06-03"}),
             (
                 {
                     "start_from_head": "true",
                     "limit": "6",
                     "start_time": "2021-06-02T15:55:10+02:00",
-                    "end_time": "2021-06-02T17:55:10+02:00",
+                    "end_time": "2021-06-02T17:56:10+02:00",
                     "next_token": "f/1234",
                 }
             ),
         ],
     )
-    def test_execute(self, mocker, set_env, test_datadir, args):
+    def test_execute(self, mocker, mock_cluster_stack, set_env, test_datadir, args):
         mocked_result = [
             LogStream(
                 FAKE_NAME,
@@ -112,8 +119,9 @@ class TestGetClusterLogEventsCommand:
         get_cluster_log_events_mock = mocker.patch(
             "pcluster.api.controllers.cluster_logs_controller.Cluster.get_log_events", side_effect=mocked_result
         )
-        mocker.patch("pcluster.api.controllers.cluster_logs_controller.check_cluster_version", return_value=True)
+
         set_env("AWS_DEFAULT_REGION", "us-east-1")
+        mock_cluster_stack()
         base_args = ["get-cluster-log-events"]
         command = base_args + self._build_cli_args({**REQUIRED_ARGS, **args})
 

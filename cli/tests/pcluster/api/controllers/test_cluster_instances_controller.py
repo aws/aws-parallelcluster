@@ -235,7 +235,7 @@ class TestDeleteClusterInstances:
                 {"version": "2.11.0"},
                 True,
                 {
-                    "message": "Bad Request: cluster 'clustername' belongs to "
+                    "message": "Bad Request: Cluster 'clustername' belongs to "
                     "an incompatible ParallelCluster major version."
                 },
             ),
@@ -265,7 +265,7 @@ class TestDeleteClusterInstances:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clustername' does not exist or belongs to an "
+                    "message": "Cluster 'clustername' does not exist or belongs to an "
                     "incompatible ParallelCluster major version. To force the deletion of all compute nodes,"
                     " please use the `force` param."
                 }
