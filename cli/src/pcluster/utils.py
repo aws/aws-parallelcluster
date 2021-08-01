@@ -127,9 +127,12 @@ def to_iso_time(time_in):
     """
     if time_in:
         if isinstance(time_in, int):
+            ms_offset = 0
             if time_in > 1e12:
                 time_in /= 1000
-            time_ = datetime.datetime.fromtimestamp(time_in)
+                ms_offset = time_in % 1000
+            time_ = datetime.datetime.utcfromtimestamp(time_in)
+            time_ += datetime.timedelta(milliseconds=ms_offset)
             time_ = time_.replace(tzinfo=datetime.timezone.utc)
         elif isinstance(time_in, str):
             time_ = dateutil.parser.parse(time_in)

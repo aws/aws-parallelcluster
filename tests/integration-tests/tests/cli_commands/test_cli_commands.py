@@ -9,11 +9,13 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import datetime
 import json
 import logging
 import re
 import tarfile
 import tempfile
+from dateutil.parser import parse as date_parse
 
 import boto3
 import botocore
@@ -24,6 +26,12 @@ from utils import check_status, get_cluster_nodes_instance_ids, run_command
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
+
+
+def instance_stream_name(instance, stream_name):
+    "Return a stream name given an instance."
+    ip_str = instance["privateIpAddress"].replace(".", "-")
+    return "ip-{}.{}.{}".format(ip_str, instance["instanceId"], stream_name)
 
 
 @pytest.mark.regions(["us-east-2"])
@@ -45,19 +53,23 @@ def test_slurm_cli_commands(
         config_file="pcluster.config.with.warnings.yaml", custom_ami=custom_ami
     )
     cluster = _test_create_cluster(clusters_factory, cluster_config, cluster_config_with_warning, request)
-    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    _test_describe_cluster(cluster)
     _test_list_cluster(cluster.name, "CREATE_COMPLETE")
     _test_create_or_update_with_warnings(str(cluster_config_with_warning), cluster=cluster)
-
-    instance_ids = _test_describe_instances(cluster, region)
     check_status(cluster, "CREATE_COMPLETE", "running", "RUNNING")
-    _test_describe_instances(cluster, region, node_type="HeadNode")
-    _test_describe_instances(cluster, region, node_type="Compute")
-    _test_describe_instances(cluster, region, queue_name="ondemand1")
-    _test_pcluster_compute_fleet(cluster, region, expected_num_nodes=2)
-    _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, instance_ids)
-    cfn_init_log_stream = _test_pcluster_list_cluster_logs(cluster, instance_ids)
-    _test_pcluster_get_cluster_log_events(cluster, cfn_init_log_stream)
+
+    _test_describe_instances(cluster)
+    _test_describe_instances(cluster, node_type="HeadNode")
+    _test_describe_instances(cluster, node_type="Compute")
+    _test_describe_instances(cluster, queue_name="ondemand1")
+    _test_pcluster_compute_fleet(cluster, expected_num_nodes=2)
+    _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster)
+    _test_pcluster_list_cluster_log_streams(cluster)
+    _test_pcluster_get_cluster_log_events(cluster)
+    _test_pcluster_get_cluster_stack_events(cluster)
+
+    remote_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
@@ -107,11 +119,7 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
         "type": "NameValidator",
         "message": "Name must begin with a letter and only contain lowercase letters, digits and hyphens.",
     }
-    key_pair_warning = {
-        "level": "WARNING",
-        "type": "KeyPairValidator",
-        "message": ".*you do not specify a key pair.*",
-    }
+    key_pair_warning = {"level": "WARNING", "type": "KeyPairValidator", "message": ".*you do not specify a key pair.*"}
 
     test_cases = []
 
@@ -200,11 +208,7 @@ def _create_cluster_with_warnings(clusters_factory, cluster_config, extra_args=N
 
 def _check_response(cluster_config, expected_response, clusters_factory=None, cluster=None, extra_args=None):
     if clusters_factory:
-        actual_response = _create_cluster_with_warnings(
-            clusters_factory,
-            cluster_config,
-            extra_args=extra_args,
-        )
+        actual_response = _create_cluster_with_warnings(clusters_factory, cluster_config, extra_args=extra_args)
     else:
         actual_response = cluster.update(
             cluster_config, extra_args=extra_args, wait=False, log_error=False, raise_on_error=False
@@ -228,6 +232,18 @@ def _check_response(cluster_config, expected_response, clusters_factory=None, cl
     else:
         # Otherwise, assert the actual response is exactly as expected
         assert_that(actual_response).is_equal_to(expected_response)
+
+
+def _test_describe_cluster(cluster):
+    cluster_info = cluster.describe_cluster()
+    assert_that(cluster_info).is_not_none()
+    assert_that(cluster_info).contains("clusterName")
+    assert_that(cluster_info).contains("clusterStatus")
+    assert_that(cluster_info).contains("region")
+    assert_that(cluster_info).contains("clusterStatus")
+    assert_that(cluster_info).contains("cloudformationStackArn")
+    assert_that(cluster_info).contains("creationTime")
+    assert_that(cluster_info).contains("clusterConfiguration")
 
 
 def _test_list_cluster(cluster_name, expected_status):
@@ -265,17 +281,16 @@ def _find_cluster_in_list(cluster_name, cluster_list):
             return cluster
 
 
-def _test_describe_instances(cluster, region, node_type=None, queue_name=None):
+def _test_describe_instances(cluster, node_type=None, queue_name=None):
     logging.info("Testing the result from describe-cluster-instances is the same as calling boto3 directly.")
     cluster_instances_from_ec2 = get_cluster_nodes_instance_ids(
-        cluster.cfn_name, region, node_type=node_type, queue_name=queue_name
+        cluster.cfn_name, cluster.region, node_type=node_type, queue_name=queue_name
     )
     cluster_instances_from_cli = cluster.get_cluster_instance_ids(node_type=node_type, queue_name=queue_name)
     assert_that(set(cluster_instances_from_cli)).is_equal_to(set(cluster_instances_from_ec2))
-    return cluster_instances_from_cli
 
 
-def _test_pcluster_compute_fleet(cluster, region, expected_num_nodes):
+def _test_pcluster_compute_fleet(cluster, expected_num_nodes):
     """Test pcluster compute fleet commands."""
     logging.info("Testing pcluster stop functionalities")
     cluster.stop()
@@ -284,8 +299,8 @@ def _test_pcluster_compute_fleet(cluster, region, expected_num_nodes):
     # Request submitted successfully. It might take a while for the transition to complete.
     # Please run 'pcluster status' if you need to check compute fleet status
 
-    wait_for_num_instances_in_cluster(cluster.cfn_name, region, desired=0)
-    _test_describe_instances(cluster, region)
+    wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=0)
+    _test_describe_instances(cluster)
     compute_fleet = cluster.describe_compute_fleet()
     assert_that(compute_fleet["status"]).is_equal_to("STOPPED")
     last_stop_time = compute_fleet["lastStatusUpdatedTime"]
@@ -300,13 +315,15 @@ def _test_pcluster_compute_fleet(cluster, region, expected_num_nodes):
     last_start_time = compute_fleet["lastStatusUpdatedTime"]
     logging.info("Checking last status update time is updated")
     assert_that(last_stop_time < last_start_time)
-    wait_for_num_instances_in_cluster(cluster.cfn_name, region, desired=expected_num_nodes)
-    _test_describe_instances(cluster, region)
+    wait_for_num_instances_in_cluster(cluster.cfn_name, cluster.region, desired=expected_num_nodes)
+    _test_describe_instances(cluster)
     check_status(cluster, "CREATE_COMPLETE", "running", "RUNNING")
 
 
-def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, instance_ids):
+def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
     """Test pcluster export-cluster-logs functionality."""
+    instance_ids = cluster.get_cluster_instance_ids()
+
     logging.info("Testing that pcluster export-cluster-logs is working as expected")
     bucket_name = s3_bucket_factory()
     logging.info("bucket is %s", bucket_name)
@@ -319,14 +336,14 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
                 "Action": "s3:GetBucketAcl",
                 "Effect": "Allow",
                 "Resource": f"arn:aws:s3:::{bucket_name}",
-                "Principal": {"Service": f"logs.{region}.amazonaws.com"},
+                "Principal": {"Service": f"logs.{cluster.region}.amazonaws.com"},
             },
             {
                 "Action": "s3:PutObject",
                 "Effect": "Allow",
                 "Resource": f"arn:aws:s3:::{bucket_name}/*",
                 "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}},
-                "Principal": {"Service": f"logs.{region}.amazonaws.com"},
+                "Principal": {"Service": f"logs.{cluster.region}.amazonaws.com"},
             },
         ],
     }
@@ -368,43 +385,71 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
     assert_that(bucket_cleaned_up).is_true()
 
 
-def _test_pcluster_list_cluster_logs(cluster, instance_ids):
+def _test_pcluster_list_cluster_log_streams(cluster):
     """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
-    logging.info("Testing that pcluster list-cluster-logs is working as expected")
-    std_output = cluster.list_logs()
+    logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
+    list_streams_result = cluster.list_log_streams()
+    streams = list_streams_result["items"]
 
-    # check cfn stack events headers and log stream name
-    for item in ["Stack Events Stream", "Cluster Creation Time", "Last Update Time", f"{cluster.name}-cfn-events"]:
-        assert_that(std_output).contains(item)
-
-    # check CW log streams headers
-    for item in ["Log Stream Name", "First Event", "Last Event"]:
-        assert_that(std_output).contains(item)
+    stream_names = {stream["logStreamName"] for stream in streams}
+    expected_log_streams = {"cfn-init"}
 
     # check there are the logs of all the instances
-    for instance_id in set(instance_ids):
-        assert_that(std_output).contains(instance_id)
-
-    # search for cfn-init log stream name
-    cfn_init_log_stream = None
-    for line in std_output.split("\n"):
-        if "cfn-init" in line:
-            cfn_init_log_stream = line.split(" ")[0]
-            break
-    return cfn_init_log_stream
+    for instance in cluster.describe_cluster_instances():
+        for stream_name in expected_log_streams:
+            assert_that(stream_names).contains(instance_stream_name(instance, stream_name))
 
 
-def _test_pcluster_get_cluster_log_events(cluster, cfn_init_log_stream):
+def _test_pcluster_get_cluster_log_events(cluster):
     """Test pcluster get-cluster-log-events functionality."""
     logging.info("Testing that pcluster get-cluster-log-events is working as expected")
-    # Check cfn-init log stream
-    std_output = cluster.get_log_events(cfn_init_log_stream, head=10)
-    assert_that(std_output).contains("[DEBUG] CloudFormation client initialized with endpoint")
+    cluster_info = cluster.describe_cluster()
+    cfn_init_log_stream = instance_stream_name(cluster_info["headnode"], "cfn-init")
+    cloud_init_debug_msg = "[DEBUG] CloudFormation client initialized with endpoint"
 
-    # Check CFN Stack events stream with tail option
-    std_output = cluster.get_log_events(f"{cluster.name}-cfn-events", tail=10)
-    assert_that(std_output).contains(f"CREATE_COMPLETE AWS::CloudFormation::Stack {cluster.name}")
+    # Get the first event to establish time boundary for testing
+    initial_events = cluster.get_log_events(cfn_init_log_stream, limit=1, start_from_head=True)
+    first_event = initial_events["events"][0]
+    first_event_time_str = first_event["timestamp"]
+    first_event_time = date_parse(first_event_time_str)
+    before_first = (first_event_time - datetime.timedelta(seconds=1)).isoformat()
+    after_first = (first_event_time + datetime.timedelta(seconds=1)).isoformat()
 
-    # Check CFN Stack events stream with head option
-    std_output = cluster.get_log_events(f"{cluster.name}-cfn-events", head=10)
-    assert_that(std_output).contains(f"CREATE_IN_PROGRESS AWS::CloudFormation::Stack {cluster.name} User Initiated")
+    # args, expect_first, expect_count
+    test_cases = [
+        ({}, None, None),
+        ({"limit": 1}, False, 1),
+        ({"limit": 2, "start_from_head": True}, True, 2),
+        ({"limit": 1, "start_time": before_first, "end_time": after_first, "start_from_head": True}, True, 1),
+        ({"limit": 1, "end_time": before_first}, None, 0),
+        ({"limit": 1, "start_time": after_first, "start_from_head": True}, False, 1),
+        ({"limit": 1, "next_token": initial_events["nextToken"]}, False, 1),
+        ({"limit": 1, "next_token": initial_events["nextToken"], "start_from_head": True}, False, 1),
+    ]
+
+    for args, expect_first, expect_count in test_cases:
+        events = cluster.get_log_events(cfn_init_log_stream, **args)["events"]
+
+        if expect_count is not None:
+            assert_that(events).is_length(expect_count)
+
+        if expect_first is True:
+            assert_that(events[0]["message"]).contains(cloud_init_debug_msg)
+
+        if expect_first is False:
+            assert_that(events[0]["message"]).does_not_contain(cloud_init_debug_msg)
+
+
+def _test_pcluster_get_cluster_stack_events(cluster):
+    logging.info("Testing that pcluster get-cluster-stack-events is working as expected")
+    stack_events_resp = cluster.get_stack_events()
+    assert_that(stack_events_resp).is_not_none()
+    assert_that(stack_events_resp).contains("events")
+    assert_that(stack_events_resp["events"]).is_not_empty()
+
+    first_event = stack_events_resp["events"][0]
+    assert_that(first_event).contains("eventId")
+    assert_that(first_event).contains("logicalResourceId")
+    assert_that(first_event).contains("physicalResourceId")
+    assert_that(first_event).contains("stackId")
+    assert_that(first_event).contains("timestamp")
