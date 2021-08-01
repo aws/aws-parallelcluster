@@ -27,7 +27,7 @@ class TestExportClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({"output": "path"}, "the following arguments are required: --cluster-name, --bucket")],
+        [({"output_file": "path"}, "the following arguments are required: --cluster-name, --bucket")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -54,11 +54,11 @@ class TestExportClusterLogsCommand:
         "args",
         [
             {},
-            {"output": "output-path"},
+            {"output_file": "output-path"},
             {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
             {"filters": "Name=private-dns-name,Values=ip-10-10-10-10"},
             {
-                "output": "output-path",
+                "output_file": "output-path",
                 "bucket": "bucket-name",
                 "bucket_prefix": "test",
                 "keep_s3_objects": True,
@@ -86,14 +86,15 @@ class TestExportClusterLogsCommand:
     )
     def test_execute(self, mocker, set_env, args):
         export_logs_mock = mocker.patch(
-            "pcluster.cli.commands.cluster_logs.Cluster.export_logs", return_value=args.get("output", "https://u.r.l.")
+            "pcluster.cli.commands.cluster_logs.Cluster.export_logs",
+            return_value=args.get("output_file", "https://u.r.l."),
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
         command = ["export-cluster-logs"] + self._build_cli_args({**REQUIRED_ARGS, **args})
         out = run(command)
-        if args.get("output") is not None:
-            expected = {"path": os.path.realpath(args.get("output"))}
+        if args.get("output_file") is not None:
+            expected = {"path": os.path.realpath(args.get("output_file"))}
         else:
             expected = {"url": "https://u.r.l."}
         assert_that(out).is_equal_to(expected)
@@ -101,7 +102,6 @@ class TestExportClusterLogsCommand:
 
         # verify arguments
         expected_params = {
-            "output_path": args.get("output") and os.path.realpath(args.get("output")),
             "bucket": "bucketname",
             "bucket_prefix": None,
             "keep_s3_objects": False,
@@ -110,8 +110,7 @@ class TestExportClusterLogsCommand:
             "end_time": None,
         }
         expected_params.update(args)
-        if "output" in expected_params:
-            del expected_params["output"]
+        expected_params["output_file"] = args.get("output_file") and os.path.realpath(args.get("output_file"))
         export_logs_mock.assert_called_with(**expected_params)
 
     @staticmethod

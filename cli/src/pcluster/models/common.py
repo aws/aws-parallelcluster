@@ -236,14 +236,14 @@ def export_stack_events(stack_name: str, output_file: str):
         cfn_events_file.write(json.dumps(stack_events, cls=JSONEncoder, indent=2))
 
 
-def create_logs_archive(directory: str, output_path: str = None):
+def create_logs_archive(directory: str, output_file: str = None):
     base_directory = os.path.dirname(directory)
     base_name = os.path.basename(directory)
-    output_filepath = output_path or f"{os.path.join(base_directory, base_name)}.tar.gz"
-    LOGGER.debug("Creating archive of logs and saving it to %s", output_filepath)
-    with tarfile.open(output_filepath, "w:gz") as tar:
+    output_file = output_file or f"{os.path.join(base_directory, base_name)}.tar.gz"
+    LOGGER.debug("Creating archive of logs and saving it to %s", output_file)
+    with tarfile.open(output_file, "w:gz") as tar:
         tar.add(directory, arcname=base_name)
-    return output_filepath
+    return output_file
 
 
 def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
