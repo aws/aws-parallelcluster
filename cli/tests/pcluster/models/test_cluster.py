@@ -437,7 +437,7 @@ class TestCluster:
             (True, False, "", {}),
             (True, True, "", {}),
             (True, True, "", {"keep_s3_objects": True}),
-            (True, True, "", {"output_path": "path"}),
+            (True, True, "", {"output_file": "path"}),
             (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
     )
@@ -490,7 +490,7 @@ class TestCluster:
                 cw_logs_exporter_mock.assert_not_called()
                 logs_filter_mock.assert_not_called()
 
-            if "output_path" not in kwargs:
+            if "output_file" not in kwargs:
                 print("kwargs", kwargs)
                 upload_archive_mock.assert_called()
                 presign_mock.assert_called()

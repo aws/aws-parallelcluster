@@ -105,7 +105,7 @@ class ExportLogsCommand(ABC):
     @staticmethod
     def _register_common_command_args(parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument(
-            "--output",
+            "--output-file",
             help="File path to save log archive to. If this is provided the logs are saved "
             "locally. Otherwise they are uploaded to S3 with the url returned in the output. "
             "Default is to upload to S3.",

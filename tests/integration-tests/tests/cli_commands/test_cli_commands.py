@@ -336,7 +336,7 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster, region, insta
         # export archive
         output_file = f"{tempdir}/testfile.tar.gz"
         bucket_prefix = "test_prefix"
-        cluster.export_logs(bucket=bucket_name, output=output_file, bucket_prefix=bucket_prefix)
+        cluster.export_logs(bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix)
 
         # check archive prefix and content
         with tarfile.open(output_file) as archive:

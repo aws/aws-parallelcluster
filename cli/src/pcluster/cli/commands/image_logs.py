@@ -44,15 +44,15 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
-            if args.output:
-                self._validate_output_file_path(args.output)
-            return self._export_image_logs(args, args.output)
+            if args.output_file:
+                self._validate_output_file_path(args.output_file)
+            return self._export_image_logs(args, args.output_file)
         except Exception as e:
             utils.error(f"Unable to export image's logs.\n{e}")
             return None
 
     @staticmethod
-    def _export_image_logs(args: Namespace, output_path: str = None):
+    def _export_image_logs(args: Namespace, output_file: str = None):
         """Export the logs associated to the image."""
         LOGGER.debug("Beginning export of logs for the image: %s", args.image_id)
 
@@ -64,7 +64,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,
             end_time=args.end_time,
-            output_path=output_path,
+            output_file=output_file,
         )
         LOGGER.debug("Image's logs exported correctly to %s", url)
-        return {"path": output_path} if output_path else {"url": url}
+        return {"path": output_file} if output_file else {"url": url}
