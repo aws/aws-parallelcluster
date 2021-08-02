@@ -54,8 +54,9 @@ from pcluster.models.common import (
     Conflict,
     LimitExceeded,
     LogGroupTimeFiltersParser,
-    Logs,
     LogStream,
+    LogStreams,
+    NotFound,
     create_logs_archive,
     export_stack_events,
     parse_config,
@@ -71,7 +72,7 @@ from pcluster.models.imagebuilder_resources import (
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, isoformat_to_epoch
+from pcluster.utils import datetime_to_epoch, generate_random_name_with_prefix, get_installed_version, get_partition
 from pcluster.validators.common import FailureLevel
 
 ImageBuilderStatusMapping = {
@@ -109,7 +110,15 @@ class ImageBuilderActionError(Exception):
 
     def __init__(self, message: str, validation_failures: list = None):
         super().__init__(message)
+        self.message = message
         self.validation_failures = validation_failures or []
+
+
+class NotFoundImageBuilderActionError(ImageBuilderActionError, NotFound):
+    """Represent an error during the execution of an action due to resource not being found."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 class LimitExceededImageBuilderActionError(ImageBuilderActionError, LimitExceeded):
@@ -545,7 +554,9 @@ class ImageBuilder:
                     self.image_id,
                     str(result),
                 )
-                raise ImageBuilderActionError("Unable to delete image and stack")
+                raise BadRequestImageBuilderActionError(
+                    f"Image {self.image_id} is shared with accounts or group {result}."
+                )
             return False
         except (AWSClientError, ImageError) as e:
             if isinstance(e, NonExistingImageError):
@@ -564,7 +575,7 @@ class ImageBuilder:
                     str(result),
                 )
                 raise BadRequestImageBuilderActionError(
-                    "Unable to delete image and stack: image {} is used by instances {}.".format(
+                    "Unable to delete image and stack: Image {} is used by instances {}.".format(
                         self.image_id, str(result)
                     )
                 )
@@ -695,10 +706,10 @@ class ImageBuilder:
             )
             export_logs_filters.validate()
         except FiltersParserError as e:
-            raise ImageBuilderActionError(str(e))
+            raise BadRequestImageBuilderActionError(str(e))
         return export_logs_filters
 
-    def list_logs(self, next_token: str = None):
+    def list_log_streams(self, next_token: str = None):
         """
         List image builder's logs.
 
@@ -706,13 +717,7 @@ class ImageBuilder:
         :returns ListLogsResponse
         """
         try:
-            # check stack
-            stack_exists = self._stack_exists()
-            if not stack_exists:
-                LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
-
             log_streams = []
-
             if AWSApi.instance().logs.log_group_exists(self._log_group_name):
                 LOGGER.debug("Listing log streams from log group %s", self._log_group_name)
                 log_stream_resp = AWSApi.instance().logs.describe_log_streams(
@@ -720,17 +725,13 @@ class ImageBuilder:
                 )
                 log_streams.extend(log_stream_resp["logStreams"])
                 next_token = log_stream_resp.get("nextToken")
-                log_group_exist = True
             else:
                 LOGGER.debug("Log Group %s doesn't exist.", self._log_group_name)
-                log_group_exist = False
-
-            if not stack_exists and not log_group_exist:
-                raise ImageBuilderActionError(
-                    f"Unable to find image logs, please double check if image id={self.image_id} is correct."
+                raise NotFoundImageBuilderActionError(
+                    ("Unable to find image logs, please double check if image id=" f"{self.image_id} is correct.")
                 )
 
-            return Logs(log_streams, next_token)
+            return LogStreams(log_streams, next_token)
 
         except AWSClientError as e:
             raise ImageBuilderActionError(f"Unexpected error when retrieving image's logs: {e}")
@@ -742,14 +743,14 @@ class ImageBuilder:
         :param next_token Start from next_token if provided.
         """
         if not self._stack_exists():
-            raise ImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
+            raise NotFoundImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
         return AWSApi.instance().cfn.get_stack_events(self.stack.name, next_token=next_token)
 
     def get_log_events(
         self,
         log_stream_name: str,
-        start_time: str = None,
-        end_time: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
         start_from_head: bool = False,
         limit: int = None,
         next_token: str = None,
@@ -771,14 +772,22 @@ class ImageBuilder:
             log_events_response = AWSApi.instance().logs.get_log_events(
                 log_group_name=self._log_group_name,
                 log_stream_name=log_stream_name,
-                end_time=isoformat_to_epoch(end_time) if end_time else None,
-                start_time=isoformat_to_epoch(start_time) if start_time else None,
+                end_time=datetime_to_epoch(end_time) if end_time else None,
+                start_time=datetime_to_epoch(start_time) if start_time else None,
                 limit=limit,
                 start_from_head=start_from_head,
                 next_token=next_token,
             )
             return LogStream(self.image_id, log_stream_name, log_events_response)
         except AWSClientError as e:
+            if e.message.startswith("The specified log group"):
+                LOGGER.debug("Log Group %s doesn't exist.", self._log_group_name)
+                raise NotFoundImageBuilderActionError(
+                    ("Unable to find image logs, please double check if image id=" f"{self.image_id} is correct.")
+                )
+            if e.message.startswith("The specified log stream"):
+                LOGGER.debug("Log Stream %s doesn't exist.", log_stream_name)
+                raise NotFoundImageBuilderActionError(f"The specified log stream {log_stream_name} does not exist.")
             raise ImageBuilderActionError(f"Unexpected error when retrieving log events: {e}")
 
     @property

@@ -102,13 +102,13 @@ structure StackEvent {
     @required
     @documentation("Current status of the resource.")
     resourceStatus: CloudFormationResourceStatus,
-    @required
+
     @documentation("Success/failure message associated with the resource.")
     resourceStatusReason: String,
-    @required
+
     @documentation("BLOB of the properties used to create the resource.")
     resourceProperties: String,
-    @required
+
     @documentation("The token passed to the operation that generated this event.")
     clientRequestToken: String
 }

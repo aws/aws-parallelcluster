@@ -223,7 +223,7 @@ class SharedEbs(Ebs):
 
     def _register_validators(self):
         super()._register_validators()
-        self._register_validator(NameValidator, name=self.name)
+        self._register_validator(SharedStorageNameValidator, name=self.name)
         if self.kms_key_id:
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
@@ -257,7 +257,7 @@ class SharedEfs(Resource):
         self.file_system_id = Resource.init_param(file_system_id)
 
     def _register_validators(self):
-        self._register_validator(NameValidator, name=self.name)
+        self._register_validator(SharedStorageNameValidator, name=self.name)
         if self.kms_key_id:
             self._register_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
             self._register_validator(KmsKeyIdEncryptedValidator, kms_key_id=self.kms_key_id, encrypted=self.encrypted)
@@ -313,7 +313,7 @@ class SharedFsx(Resource):
         self.__file_system_data = None
 
     def _register_validators(self):
-        self._register_validator(NameValidator, name=self.name)
+        self._register_validator(SharedStorageNameValidator, name=self.name)
         self._register_validator(
             FsxS3Validator,
             import_path=self.import_path,
