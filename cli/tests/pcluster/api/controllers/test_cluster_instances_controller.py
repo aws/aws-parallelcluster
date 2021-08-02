@@ -10,7 +10,7 @@ from assertpy import assert_that, soft_assertions
 
 from pcluster.api.models import NodeType
 from pcluster.aws.common import StackNotFoundError
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
 def cfn_describe_instances_mock_response(
@@ -45,7 +45,7 @@ def describe_cluster_instances_mock_response(instances):
         response = {
             "instanceId": "i-0a9342a0000000000",
             "instanceType": "t2.micro",
-            "launchTime": to_iso_time("2021-04-30T00:00:00+00:00"),
+            "launchTime": to_iso_timestr(to_utc_datetime("2021-04-30T00:00:00+00:00")),
             "nodeType": node_type,
             "privateIpAddress": "10.0.0.79",
             "publicIpAddress": "1.2.3.4",
@@ -235,7 +235,7 @@ class TestDeleteClusterInstances:
                 {"version": "2.11.0"},
                 True,
                 {
-                    "message": "Bad Request: cluster 'clustername' belongs to "
+                    "message": "Bad Request: Cluster 'clustername' belongs to "
                     "an incompatible ParallelCluster major version."
                 },
             ),
@@ -265,7 +265,7 @@ class TestDeleteClusterInstances:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clustername' does not exist or belongs to an "
+                    "message": "Cluster 'clustername' does not exist or belongs to an "
                     "incompatible ParallelCluster major version. To force the deletion of all compute nodes,"
                     " please use the `force` param."
                 }

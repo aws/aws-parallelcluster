@@ -337,11 +337,11 @@ phases:
               echo "Testing Nvidia Fabric Manager version"
               nvidia_driver_version=$(modinfo -F version nvidia)
               if [ "${PLATFORM}" == "RHEL" ]; then
-                yum list installed | grep nvidia-fabricmanager | grep "${nvidia_driver_version}" || exit 1
-                yum versionlock list | grep nvidia-fabricmanager || exit 1
+                yum list installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                yum versionlock list | grep "nvidia-fabric.*manager" || exit 1
               else
-                apt list --installed | grep nvidia-fabricmanager | grep "${nvidia_driver_version}" || exit 1
-                apt-mark showhold | grep nvidia-fabricmanager || exit 1
+                apt list --installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                apt-mark showhold | grep "nvidia-fabric.*manager" || exit 1
               fi
               echo "Fabric Manager match Nvidia driver and version is locked"
 

@@ -512,19 +512,15 @@ class TestImageBuilder:
             presign_mock.assert_called()
 
     @pytest.mark.parametrize(
-        "stack_exists, log_group_exists, client_error, expected_error",
+        "log_group_exists, client_error, expected_error",
         [
-            (False, False, False, "Unable to find image logs"),
-            (True, False, False, ""),
-            (True, True, False, ""),
-            (True, False, True, ""),
+            (False, False, ""),
+            (True, False, ""),
+            (False, True, ""),
         ],
     )
-    def test_list_logs(self, image_builder, mocker, stack_exists, log_group_exists, client_error, expected_error):
+    def test_list_log_streams(self, image_builder, mocker, log_group_exists, client_error, expected_error):
         mock_aws_api(mocker)
-        stack_exists_mock = mocker.patch(
-            "pcluster.models.imagebuilder.ImageBuilder._stack_exists", return_value=stack_exists
-        )
         cw_log_exists_mock = mocker.patch(
             "pcluster.aws.logs.LogsClient.log_group_exists", return_value=log_group_exists
         )
@@ -533,15 +529,14 @@ class TestImageBuilder:
             side_effect=AWSClientError("describe_log_streams", "error") if client_error else None,
         )
 
-        if expected_error:
+        if expected_error or not log_group_exists:
             with pytest.raises(ImageBuilderActionError, match=expected_error):
-                image_builder.list_logs()
+                image_builder.list_log_streams()
         else:
             # Note: client error for describe_log_streams doesn't raise an exception
-            image_builder.list_logs()
+            image_builder.list_log_streams()
 
         # check steps
-        stack_exists_mock.assert_called()
         cw_log_exists_mock.assert_called()
         if log_group_exists:
             describe_log_streams_mock.assert_called()
