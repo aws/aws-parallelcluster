@@ -397,17 +397,14 @@ class Cluster:
             for failure in validation_failures:
                 if failure.level.value >= FailureLevel(validation_failure_level).value:
                     raise ConfigValidationError(
-                        "Invalid cluster configuration", validation_failures=validation_failures
+                        "Invalid cluster configuration.", validation_failures=validation_failures
                     )
             LOGGER.info("Validation succeeded.")
         except ValidationError as e:
             # syntactic failure
-            validation_failures = [
-                ValidationResult(
-                    str(sorted(e.messages.items())), FailureLevel.ERROR, validator_type="ConfigSchemaValidator"
-                )
-            ]
-            raise ConfigValidationError("Invalid cluster configuration", validation_failures=validation_failures)
+            data = str(sorted(e.messages.items()) if isinstance(e.messages, dict) else e)
+            validation_failures = [ValidationResult(data, FailureLevel.ERROR, validator_type="ConfigSchemaValidator")]
+            raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)
         except ConfigValidationError as e:
             raise e
         except Exception as e:

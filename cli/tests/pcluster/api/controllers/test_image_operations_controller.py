@@ -10,6 +10,7 @@ from datetime import datetime
 
 import pytest
 from assertpy import assert_that, soft_assertions
+from marshmallow.exceptions import ValidationError
 
 from pcluster.api.models import (
     CloudFormationStackStatus,
@@ -642,6 +643,14 @@ class TestBuildImage:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_error)
+
+    def test_parse_config_error(self, client, mocker):
+        mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", return_value=False)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        mocker.patch("marshmallow.Schema.load", side_effect=ValidationError(message={"Error": "error"}))
+        response = self._send_test_request(client)
+        assert_that(response.status_code).is_equal_to(400)
+        assert_that(response.get_json()["message"]).matches("Invalid image configuration.")
 
 
 def _create_official_image_info(version, os, architecture):
