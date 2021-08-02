@@ -8,9 +8,11 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import json
 
 from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client
+from pcluster.utils import datetime_to_epoch
 
 
 class LogsClient(Boto3Client):
@@ -84,13 +86,19 @@ class LogsClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def create_export_task(
-        self, log_group_name, bucket, bucket_prefix=None, log_stream_name_prefix=None, start_time=None, end_time=None
+        self,
+        log_group_name,
+        bucket,
+        bucket_prefix=None,
+        log_stream_name_prefix=None,
+        start_time: datetime.datetime = None,
+        end_time: datetime.datetime = None,
     ):
         """Start the task that will export a log group name to an s3 bucket, and return the task ID."""
         kwargs = {
             "logGroupName": log_group_name,
-            "fromTime": start_time,
-            "to": end_time,
+            "fromTime": start_time and datetime_to_epoch(start_time),
+            "to": end_time and datetime_to_epoch(end_time),
             "destination": bucket,
             "destinationPrefix": bucket_prefix,
         }

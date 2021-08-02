@@ -56,15 +56,15 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
-            if args.output:
-                self._validate_output_file_path(args.output)
-            return self._export_cluster_logs(args, args.output)
+            if args.output_file:
+                self._validate_output_file_path(args.output_file)
+            return self._export_cluster_logs(args, args.output_file)
         except Exception as e:
             utils.error(f"Unable to export cluster's logs.\n{e}")
             return None
 
     @staticmethod
-    def _export_cluster_logs(args: Namespace, output_path: str = None):
+    def _export_cluster_logs(args: Namespace, output_file: str = None):
         """Export the logs associated to the cluster."""
         LOGGER.debug("Beginning export of logs for the cluster: %s", args.cluster_name)
         cluster = Cluster(args.cluster_name)
@@ -75,10 +75,10 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
             start_time=args.start_time,
             end_time=args.end_time,
             filters=" ".join(args.filters) if args.filters else None,
-            output_path=output_path,
+            output_file=output_file,
         )
         LOGGER.debug("Cluster's logs exported correctly to %s", url)
-        return {"path": output_path} if output_path is not None else {"url": url}
+        return {"path": output_file} if output_file is not None else {"url": url}
 
 
 class _FiltersArg:

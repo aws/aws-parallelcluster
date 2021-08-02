@@ -231,7 +231,7 @@ class Cluster:
         instances = self.describe_cluster_instances(node_type=node_type, queue_name=queue_name)
         return [instance["instanceId"] for instance in instances]
 
-    def export_logs(self, bucket, output, bucket_prefix=None):
+    def export_logs(self, bucket, output_file, bucket_prefix=None):
         """Run pcluster export-cluster-logs and return the result."""
         cmd_args = [
             "pcluster",
@@ -240,8 +240,8 @@ class Cluster:
             self.name,
             "--bucket",
             bucket,
-            "--output",
-            output,
+            "--output-file",
+            output_file,
         ]
         if bucket_prefix:
             cmd_args += ["--bucket-prefix", bucket_prefix]

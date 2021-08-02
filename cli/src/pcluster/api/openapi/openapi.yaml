@@ -833,7 +833,7 @@ paths:
           description: Region that the given cluster belongs to.
           type: string
         style: form
-      - description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+      - description: "Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\n\
           Accepted filters are:\nprivate-dns-name - The short form of the private\
           \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type,\
           \ the only accepted value for this filter is HeadNode."
@@ -842,7 +842,7 @@ paths:
         name: filters
         required: false
         schema:
-          description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+          description: "Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\n\
             Accepted filters are:\nprivate-dns-name - The short form of the private\
             \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node\
             \ type, the only accepted value for this filter is HeadNode."
@@ -3157,13 +3157,10 @@ components:
           title: timestamp
           type: string
       required:
-      - clientRequestToken
       - eventId
       - logicalResourceId
       - physicalResourceId
-      - resourceProperties
       - resourceStatus
-      - resourceStatusReason
       - resourceType
       - stackId
       - stackName
