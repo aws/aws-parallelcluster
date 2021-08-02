@@ -7,69 +7,59 @@ CHANGELOG
 - Add possibility to use an existing Instance Profile for cluster creation and Imagebuilder.
 - Support restart/reboot for instance type with instance store (ephemeral drives).  
 - Add possibility to use an existing Private Route53 Hosted Zone when using Slurm as scheduler.
+- Add possibility to suppress validators and filter validation failures by failure level at cluster creation and update time.
+- Add new set of commands to build and manage Custom AMIs.
+- Add new set of commands to list, view and export cluster and image builder logs.
+- Split head node and compute fleet instance roles and add possibility to configure a different instance role
+  for each queue.
+- Add possibility to configure different security groups for each queue.
+- Add support for multiple subnets when using AWS Batch.
+- Add support for associating an existing Elastic IP to the head node.
+- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket
+  per cluster.
+- Encrypt root EBS volumes and shared EBS volumes by default.
+  Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
+- Enable EFA for a compute resource by default if the instance type supports EFA.
+- Add multiple queues and compute resources support for `pcluster configure` when the scheduler is Slurm.
+- Add prompt for availability zone in `pcluster configure` automated subnets creation.
+- Use different permissions in instance roles based on the scheduler and the node's role in the cluster.
+- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
+  in case recurrent failures are encountered when provisioning nodes.
+- Add tag `Name` to every shared storage with the value specified in the shared storage name config.
 
 **CHANGES**
 - Drop support for SGE and Torque schedulers.
 - Drop support for CentOS8.
 - Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
-- Deprecate `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
-- Deprecate `--cluster-template`, `--extra-parameters`, `--reset-desired` and `--yes` parameters for the `update` command.
-- Deprecate `--config` parameter for `delete`, `status`, `start`, `stop`, `instances` and `list` commands.
-- Add `--suppress-validators`, `--validation-failure-level` and`--disable-update-check` parameters to `create` command.
-- Add `--suppress-validators` and `--validation-failure-level` parameters to `update` command.
+- Use AWS Cloud Development Kit to define and generate CloudFormation templates. Add Node.js as requirement.
+- Rename all the commands, refactor parameters and use JSON as output format.
+- Remove interactivity from commands used to create, update, delete and describe a cluster.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
-- Rename `createami` command to `build-image` command, deprecate `--ami-id`, `--os`, `--instance-type`,
-  `--ami-name-prefix`, `--custom-cookbook`, `--post-install`, `--no-public-ip`, `--cluster-template`, `--vpc-id`,
-  `--subnet-id`.
-- Add `--image-name`, `--config`, `--region` parameters to `build-image` command.
-- Add `delete-image` command with `--name`, `--region`, `--force` parameters.
-- Add `describe-image` command with `--name`, `--region` parameters.
-- Add `list-images` command with `--region`, `--color`parameters.
-- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs
-  and CloudFormation Stack Events.
-  Add `export-image-logs`, `list-image-logs` and `get-image-log-events` commands to retrieve both Image Builder Logs
-  and CloudFormation Stack Events.
 - Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
   as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
-- Split head node and compute fleet instance roles and add possibility to configure a different instance role
-  for each queue.
-- Add possibility to configure different security groups for each queue.
-- Add support for multiple subnets when using AWS Batch.
-- Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
-- Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
 - Remove `amis.txt` file.
+- Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
+- Add timestamp suffix to CloudWatch Log Group name created for the cluster.  
 - Remove additional EBS volume attached to the head node by default.
 - Change NICE DCV session storage path to `/home/{UserName}`.
-- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket
-  per cluster.
-- Rename MasterServer to HeadNode in cli outputs.
-- Rename variable exported in the AWS Batch job environment from MASTER_IP to PCLUSTER_HEAD_NODE_IP.
-- Rename all CFN outputs from Master* to HeadNode*.
-- Rename NodeType and tags from Master to HeadNode.
-- Remove Ganglia support.
-- Add support for associating an existing Elastic IP to the head node.
-- Encrypt root EBS volumes and shared EBS volumes by default.
-  Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
-- Enable EFA for a compute resource by default if the instance type supports EFA.
-- Remove parallelcluster- prefix from CloudFormation stack created by ParallelCluster.
+- Use inclusive language for internal variable, parameters and CloudFormation Outputs:  
+  - Rename variable exported in the AWS Batch job environment from `MASTER_IP` to `PCLUSTER_HEAD_NODE_IP`.
+  - Rename all CloudFormation outputs from `Master*` to `HeadNode*`.
+  - Rename `NodeType` and tags from `Master` to `HeadNode`.
+- Remove `parallelcluster-` prefix from CloudFormation stack created by ParallelCluster.
 - Rename tags (Note: the following tags are crucial for ParallelCluster scaling logic):
-  - aws-parallelcluster-node-type -> parallelcluster:node-type
-  - ClusterName -> parallelcluster:cluster-name
-  - aws-parallelcluster-attributes -> parallelcluster:attributes
-  - Version -> parallelcluster:version
-- Remove tag: Application.
-- Prevent runtime baking, i.e. pcluster create-cluster only works for official AMIs or custom AMIs created by pcluster createami command.
-- Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set Monitoring > Logs > CloudWatch > RetainOnDeletion to False in the configuration file.
-- Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
-- Add prompt for availability zone in pcluster configure automated subnets creation.
-- Add configuration HeadNode.Imds.Secured to enable/disable restricted access to IMDS.
-- Use different permissions in instance roles based on the scheduler and the node's role in the cluster.
+  - `aws-parallelcluster-node-type` -> `parallelcluster:node-type`
+  - `ClusterName` -> `parallelcluster:cluster-name`
+  - `aws-parallelcluster-attributes` -> `parallelcluster:attributes`
+  - `Version` -> `parallelcluster:version`
+- Remove tag: `Application`.
+- Prevent runtime baking, i.e. `pcluster create-cluster` only works for official AMIs or custom AMIs created by `pcluster build-image` command.
+- Retain CloudWatch logs on cluster deletion by default.
+- Remove Ganglia support.
+- Restrict access to Instance Metadata Service (IMDS) and add configuration parameter to manage it.
 - Remove instance store software encryption option (encrypted_ephemeral).
-- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
-  in case recurrent failures are encountered when provisioning nodes.
 - Upgrade Slurm to version 20.11.8.
-- Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
 
 2.11.0
 ------
