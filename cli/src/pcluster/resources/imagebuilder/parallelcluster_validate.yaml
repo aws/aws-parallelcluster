@@ -212,15 +212,6 @@ phases:
               HAS_GPU=$(lspci | grep -o "NVIDIA") || HAS_GPU="false"
               echo "${HAS_GPU}"
 
-      - name: NvSwitches
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              NVSWITCHES=$(lspci -d 10de:1af1 | wc -l)
-              echo "${NVSWITCHES}"
-
       ### paths ###
       - name: SystemPyenvRoot
         action: ExecuteBash
@@ -305,71 +296,67 @@ phases:
               PLATFORM='{{ validate.PlatformName.outputs.stdout }}'
 
               if [ {{ validate.IntelMPISupported.outputs.stdout }} == true ]; then
-                echo "Checking efa rpm installed..."
+                echo "Checking efa packages installed..."
                 if [ ${PLATFORM} == RHEL ]; then
                   rpm -qa | grep libfabric && rpm -qa | grep efa-
                   [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
 
                   echo "Checking intel mpi installed..."
                   rpm -qa | grep intel-mpi
-                  [[ $? -ne 0 ]] && echo "Check intel mpi failed" && exit 1
+                  [[ $? -ne 0 ]] && echo "Check intel-mpi rpm failed" && exit 1
                 else
                   dpkg -l | grep libfabric && dpkg -l | grep 'efa '
-                  [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
+                  [[ $? -ne 0 ]] && echo "Check efa deb failed" && exit 1
                 fi
               fi
               echo "EFA test passed"
 
-      - name: Nvidia
+      - name: NvidiaCudaFabricManager
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -vx
+              PLATFORM='{{ validate.PlatformName.outputs.stdout }}'
+
               if [ {{ validate.NvidiaEnabled.outputs.stdout }} == "no" ]; then
-                echo "NVIDIA recipe not enabled, no test needed." && exit 0
+                echo "Nvidia recipe not enabled, skipping." && exit 0
               fi
               if [ {{ validate.HasGPU.outputs.stdout }} == "false" ]; then
-                echo "No GPU detected, no test needed." && exit 0
+                echo "No GPU detected, skipping." && exit 0
               fi
 
               driver_ver="{{ validate.NvidiaDriverVersion.outputs.stdout }}"
               export PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin"
 
-              echo "Testing NVIDIA driver install..."
+              echo "Testing Nvidia driver version"
               driver_output=$(nvidia-smi | grep -E -o "Driver Version: [0-9.]+")
-              [[ "${driver_output}" != "Driver Version: ${driver_ver}" ]] && "NVIDIA driver installed incorrectly! Installed ${driver_output} but expected version ${driver_ver}" && exit 1
-              echo "Correctly installed NVIDIA ${driver_output}"
+              [[ "${driver_output}" != "Driver Version: ${driver_ver}" ]] && "ERROR Installed version ${driver_output} but expected ${driver_ver}" && exit 1
+              echo "Correctly installed Nvidia ${driver_output}"
 
-      - name: Cuda
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              OS='{{ validate.OperatingSystemName.outputs.stdout }}'
-
-              if [ ${OS} != "alinux2" ] || [ {{ validate.NvSwitches.outputs.stdout }} -lt 1 ]; then
-                if [ {{ validate.NvidiaEnabled.outputs.stdout }} == "no" ]; then
-                  echo "NVIDIA recipe not enabled, no test needed." && exit 0
-                fi
-                if [ {{ validate.HasGPU.outputs.stdout }} == "false" ]; then
-                  echo "No GPU detected, no test needed." && exit 0
-                fi
-
-                cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
-                echo "Testing CUDA install with nvcc..."
-                export PATH=/usr/local/cuda-${cuda_ver}/bin:${PATH}
-                export LD_LIBRARY_PATH=/usr/local/cuda-${cuda_ver}/lib64:${LD_LIBRARY_PATH}
-                cuda_output=$(nvcc -V | grep -E -o "release [0-9]+.[0-9]+")
-                [[ "${cuda_output}" != "release ${cuda_ver}" ]] && echo "CUDA installed incorrectly! Installed ${cuda_output} but expected ${cuda_ver}" && exit 1
-                echo "CUDA nvcc test passed, $cuda_output"
-
-                echo "Testing CUDA install with deviceQuery..."
-                /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
-                [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
-                echo "CUDA deviceQuery test passed. Correctly installed CUDA ${cuda_output}"
+              echo "Testing Nvidia Fabric Manager version"
+              nvidia_driver_version=$(modinfo -F version nvidia)
+              if [ "${PLATFORM}" == "RHEL" ]; then
+                yum list installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                yum versionlock list | grep "nvidia-fabric.*manager" || exit 1
+              else
+                apt list --installed | grep "nvidia-fabric.*manager" | grep "${nvidia_driver_version}" || exit 1
+                apt-mark showhold | grep "nvidia-fabric.*manager" || exit 1
               fi
+              echo "Fabric Manager match Nvidia driver and version is locked"
+
+              echo "Testing CUDA installation with nvcc"
+              cuda_ver="{{ validate.CudaVersion.outputs.stdout }}"
+              export PATH=/usr/local/cuda-${cuda_ver}/bin:${PATH}
+              export LD_LIBRARY_PATH=/usr/local/cuda-${cuda_ver}/lib64:${LD_LIBRARY_PATH}
+              cuda_output=$(nvcc -V | grep -E -o "release [0-9]+.[0-9]+")
+              [[ "${cuda_output}" != "release ${cuda_ver}" ]] && echo "ERROR Installed version ${cuda_output} but expected ${cuda_ver}" && exit 1
+              echo "Correctly installed CUDA ${cuda_output}"
+
+              echo "Testing CUDA with deviceQuery..."
+              /usr/local/cuda-${cuda_ver}/extras/demo_suite/deviceQuery | grep -o "Result = PASS"
+              [[ $? -ne 0 ]] && echo "CUDA deviceQuery test failed" && exit 1
+              echo "CUDA deviceQuery test passed"
 
       - name: FSxLustre
         action: ExecuteBash

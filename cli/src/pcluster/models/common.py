@@ -8,21 +8,22 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import gzip
+import json
 import logging
 import os
+import os.path
 import tarfile
 import time
-from datetime import datetime
 from typing import List
 
 import yaml
 
-from pcluster import utils
+from pcluster.api.encoder import JSONEncoder
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME_FORMAT
-from pcluster.utils import isoformat_to_epoch
+from pcluster.utils import to_utc_datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +42,12 @@ class BadRequest(Exception):
 
 class Conflict(Exception):
     """Base exception type for errors caused by some conflict (such as a resource already existing)."""
+
+    pass
+
+
+class NotFound(Exception):
+    """Base exception type for errors caused by resource not existing."""
 
     pass
 
@@ -71,8 +78,9 @@ class LogGroupTimeFiltersParser:
     def __init__(self, log_group_name: str, start_time: str = None, end_time: str = None):
         self._log_group_name = log_group_name
         try:
-            self._start_time = isoformat_to_epoch(start_time) if start_time else None
-            self.end_time = isoformat_to_epoch(end_time) if end_time else int(datetime.now().timestamp() * 1000)
+            self._start_time = to_utc_datetime(start_time) if start_time else None
+            now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
+            self.end_time = to_utc_datetime(end_time) if end_time else now_utc
         except Exception as e:
             raise FiltersParserError(f"Unable to parse time. It must be in ISO8601 format. {e}")
 
@@ -81,7 +89,8 @@ class LogGroupTimeFiltersParser:
         """Get start time filter."""
         if not self._start_time:
             try:
-                self._start_time = AWSApi.instance().logs.describe_log_group(self._log_group_name).get("creationTime")
+                creation_time = AWSApi.instance().logs.describe_log_group(self._log_group_name).get("creationTime")
+                self._start_time = to_utc_datetime(creation_time)
             except AWSClientError as e:
                 raise FiltersParserError(
                     f"Unable to retrieve creation time of log group {self._log_group_name}, {str(e)}"
@@ -137,7 +146,7 @@ class CloudWatchLogsExporter:
             # If the default bucket prefix is being used and there's nothing underneath that prefix already
             # then we can delete everything under that prefix after downloading the data
             # (unless keep-s3-objects is specified)
-            self.bucket_prefix = f"{resource_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+            self.bucket_prefix = f"{resource_id}-logs-{datetime.datetime.now().strftime('%Y%m%d%H%M')}"
             self.delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, self.bucket_prefix)
 
     def execute(self, log_stream_prefix=None, start_time=None, end_time=None):
@@ -157,13 +166,13 @@ class CloudWatchLogsExporter:
                     delete_key = self.bucket_prefix
                 else:
                     delete_key = "/".join((self.bucket_prefix, task_id))
-                LOGGER.info("Cleaning up S3 bucket %s. Deleting all objects under %s", self.bucket, delete_key)
+                LOGGER.debug("Cleaning up S3 bucket %s. Deleting all objects under %s", self.bucket, delete_key)
                 AWSApi.instance().s3_resource.delete_objects(bucket_name=self.bucket, prefix=delete_key)
 
     def _export_logs_to_s3(self, log_stream_prefix=None, start_time=None, end_time=None):
         """Export the contents of a image's CloudWatch log group to an s3 bucket."""
         try:
-            LOGGER.info("Starting export of logs from log group %s to s3 bucket %s", self.log_group_name, self.bucket)
+            LOGGER.debug("Starting export of logs from log group %s to s3 bucket %s", self.log_group_name, self.bucket)
             task_id = AWSApi.instance().logs.create_export_task(
                 log_group_name=self.log_group_name,
                 log_stream_name_prefix=log_stream_prefix,
@@ -190,7 +199,7 @@ class CloudWatchLogsExporter:
     @staticmethod
     def _wait_for_task_completion(task_id):
         """Wait for the CloudWatch logs export task given by task_id to finish."""
-        LOGGER.info("Waiting for export task with task ID=%s to finish...", task_id)
+        LOGGER.debug("Waiting for export task with task ID=%s to finish...", task_id)
         status = "PENDING"
         still_running_statuses = ("PENDING", "PENDING_CANCEL", "RUNNING")
         while status in still_running_statuses:
@@ -224,20 +233,37 @@ class CloudWatchLogsExporter:
 
 def export_stack_events(stack_name: str, output_file: str):
     """Save CFN stack events into a file."""
-    stack_events = AWSApi.instance().cfn.get_stack_events(stack_name)
+    stack_events = []
+    chunk = AWSApi.instance().cfn.get_stack_events(stack_name)
+    stack_events.append(chunk["StackEvents"])
+    while chunk.get("nextToken"):
+        chunk = AWSApi.instance().cfn.get_stack_events(stack_name, next_token=chunk["nextToken"])
+        stack_events.append(chunk["StackEvents"])
+
     with open(output_file, "w") as cfn_events_file:
-        for event in stack_events:
-            cfn_events_file.write("%s\n" % AWSApi.instance().cfn.format_event(event))
+        cfn_events_file.write(json.dumps(stack_events, cls=JSONEncoder, indent=2))
 
 
-def create_logs_archive(folder_to_archive: str, archive_file_path: str):
-    LOGGER.debug("Creating archive of logs and saving it to %s", archive_file_path)
-    with tarfile.open(archive_file_path, "w:gz") as tar:
-        tar.add(folder_to_archive, arcname=os.path.basename(folder_to_archive))
+def create_logs_archive(directory: str, output_path: str = None):
+    base_directory = os.path.dirname(directory)
+    base_name = os.path.basename(directory)
+    output_filepath = output_path or f"{os.path.join(base_directory, base_name)}.tar.gz"
+    LOGGER.debug("Creating archive of logs and saving it to %s", output_filepath)
+    with tarfile.open(output_filepath, "w:gz") as tar:
+        tar.add(directory, arcname=base_name)
+    return output_filepath
 
 
-class Logs:
-    """Class to manage list of logs, for both CW logs and Stack logs."""
+def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
+    archive_filename = os.path.basename(archive_path)
+    with open(archive_path, "rb") as archive_file:
+        archive_data = archive_file.read()
+    AWSApi.instance().s3.put_object(bucket, archive_data, f"{bucket_prefix}/{archive_filename}")
+    return f"s3://{bucket}/{bucket_prefix}/{archive_filename}"
+
+
+class LogStreams:
+    """Class to manage list of logs along with next_token."""
 
     def __init__(self, log_streams: List[dict] = None, next_token: str = None):
         self.log_streams = log_streams
@@ -255,24 +281,3 @@ class LogStream:
         # The next_tokens are not present when the log stream is the Stack Events log stream
         self.next_ftoken = log_events_response.get("nextForwardToken", None)
         self.next_btoken = log_events_response.get("nextBackwardToken", None)
-
-    def print_events(self):
-        """Print log stream events."""
-        if self.log_stream_name == STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.resource_id):
-            # Print CFN stack events
-            for event in self.events:
-                print(AWSApi.instance().cfn.format_event(event))
-        else:
-            # Print CW log stream events
-            if not self.events:
-                print("No events found.")
-            else:
-                for event in self.events:
-                    print("{0}: {1}".format(utils.timestamp_to_isoformat(event["timestamp"]), event["message"]))
-
-    def print_next_tokens(self):
-        """Print next tokens."""
-        if self.next_btoken:
-            LOGGER.info("\nnextBackwardToken is: %s", self.next_btoken)
-        if self.next_ftoken:
-            LOGGER.info("nextForwardToken is: %s", self.next_ftoken)

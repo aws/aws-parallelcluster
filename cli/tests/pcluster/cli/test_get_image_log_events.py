@@ -14,7 +14,7 @@ from assertpy import assert_that
 
 from pcluster.cli.entrypoint import run
 from pcluster.models.common import LogStream
-from pcluster.utils import to_kebab_case
+from pcluster.utils import to_kebab_case, to_utc_datetime
 from tests.pcluster.test_imagebuilder_utils import FAKE_ID
 
 BASE_COMMAND = ["pcluster", "get-image-log-events", "--region", "us-east-1"]
@@ -45,7 +45,11 @@ class TestGetImageLogEventsCommand:
             ({"start_time": "wrong"}, "start_time filter must be in the ISO 8601 format"),
             ({"end_time": "1622802790248"}, "end_time filter must be in the ISO 8601 format"),
             ({"start_from_head": "wrong"}, "expected 'boolean' for parameter 'start-from-head'"),
-            ({"limit": "wrong"}, "expected 'number' for parameter 'limit'"),
+            ({"limit": "wrong"}, "expected 'int' for parameter 'limit'"),
+            (
+                {"start_time": "2021-01-01", "end_time": "2021-01-01"},
+                "start_time filter must be earlier than end_time filter.",
+            ),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -64,7 +68,7 @@ class TestGetImageLogEventsCommand:
                     "log_stream_name": "log-stream-name",
                     "limit": "6",
                     "start_time": "2021-06-02",
-                    "end_time": "2021-06-02",
+                    "end_time": "2021-06-03",
                 }
             ),
             (
@@ -137,8 +141,8 @@ class TestGetImageLogEventsCommand:
 
         # verify arguments
         kwargs = {
-            "start_time": args.get("start_time", None),
-            "end_time": args.get("end_time", None),
+            "start_time": args.get("start_time", None) and to_utc_datetime(args["start_time"]),
+            "end_time": args.get("end_time", None) and to_utc_datetime(args["end_time"]),
             "start_from_head": True if args.get("start_from_head", None) else None,
             "limit": int(args["limit"]) if args.get("limit", None) else None,
             "next_token": args.get("next_token", None),

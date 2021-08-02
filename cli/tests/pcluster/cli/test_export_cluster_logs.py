@@ -5,13 +5,17 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-import re
+
+import os.path
 
 import pytest
 from assertpy import assert_that
 
+from pcluster.cli.entrypoint import run
+from pcluster.utils import to_kebab_case, to_utc_datetime
+
 BASE_COMMAND = ["pcluster", "export-cluster-logs"]
-REQUIRED_ARGS = {"cluster_name": "clustername", "bucket": "bucketname"}
+REQUIRED_ARGS = {"cluster-name": "clustername", "bucket": "bucketname"}
 
 
 class TestExportClusterLogsCommand:
@@ -23,7 +27,7 @@ class TestExportClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({"output": "path"}, "the following arguments are required: cluster_name, --bucket")],
+        [({"output": "path"}, "the following arguments are required: --cluster-name, --bucket")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -35,8 +39,8 @@ class TestExportClusterLogsCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({"filters": "Name=wrong,Value=test"}, "filters parameter must be in the form"),
-            ({"filters": "private-dns-name=test"}, "filters parameter must be in the form"),
+            ({"filters": ["Name=wrong,Value=test"]}, "filters parameter must be in the form"),
+            ({"filters": ["private-dns-name=test"]}, "filters parameter must be in the form"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -58,12 +62,19 @@ class TestExportClusterLogsCommand:
                 "bucket": "bucket-name",
                 "bucket_prefix": "test",
                 "keep_s3_objects": True,
+                "start_time": "2021-06-02T00:00:00Z",
+                "end_time": "2021-06-08T00:00:00Z",
+                "filters": "Name=private-dns-name,Values=ip-10-10-10-10",
+            },
+            {
+                "bucket": "bucket-name",
+                "bucket_prefix": "test",
+                "keep_s3_objects": True,
                 "start_time": "2021-06-02T15:55:10+02:00",
                 "end_time": "2021-06-07",
                 "filters": "Name=private-dns-name,Values=ip-10-10-10-10",
             },
             {
-                "output": "output-path",
                 "bucket": "bucket-name",
                 "bucket_prefix": "test",
                 "keep_s3_objects": False,
@@ -73,62 +84,45 @@ class TestExportClusterLogsCommand:
             },
         ],
     )
-    def test_execute(self, mocker, capsys, set_env, assert_out_err, run_cli, args):
-        export_logs_mock = mocker.patch("pcluster.cli.commands.cluster_logs.Cluster.export_logs")
+    def test_execute(self, mocker, set_env, args):
+        export_logs_mock = mocker.patch(
+            "pcluster.cli.commands.cluster_logs.Cluster.export_logs", return_value=args.get("output", "https://u.r.l.")
+        )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
-        command = BASE_COMMAND + self._build_cli_args({**REQUIRED_ARGS, **args})
-        run_cli(command, expect_failure=False)
-        assert_out_err(expected_out="Cluster's logs exported correctly", expected_err="")
+        command = ["export-cluster-logs"] + self._build_cli_args({**REQUIRED_ARGS, **args})
+        out = run(command)
+        if args.get("output") is not None:
+            expected = {"path": os.path.realpath(args.get("output"))}
+        else:
+            expected = {"url": "https://u.r.l."}
+        assert_that(out).is_equal_to(expected)
         assert_that(export_logs_mock.call_args).is_length(2)
 
         # verify arguments
         expected_params = {
-            "output": r".*clustername-logs-.*\.tar\.gz",
-            "bucket": "bucket",
+            "output_path": args.get("output") and os.path.realpath(args.get("output")),
+            "bucket": "bucketname",
             "bucket_prefix": None,
             "keep_s3_objects": False,
             "filters": None,
+            "start_time": None,
+            "end_time": None,
         }
         expected_params.update(args)
-
-        self._check_params(export_logs_mock, expected_params, args)
+        expected_params.update(
+            {
+                "start_time": args.get("start_time") and to_utc_datetime(args["start_time"]),
+                "end_time": args.get("end_time") and to_utc_datetime(args["end_time"]),
+            }
+        )
+        if "output" in expected_params:
+            del expected_params["output"]
+        export_logs_mock.assert_called_with(**expected_params)
 
     @staticmethod
     def _build_cli_args(args):
         cli_args = []
-        if "cluster_name" in args:
-            cli_args.extend([args["cluster_name"]])
-        if "output" in args:
-            cli_args.extend(["--output", args["output"]])
-        if "bucket" in args:
-            cli_args.extend(["--bucket", args["bucket"]])
-        if "bucket_prefix" in args:
-            cli_args.extend(["--bucket-prefix", args["bucket_prefix"]])
-        if "keep_s3_objects" in args and args["keep_s3_objects"]:
-            cli_args.extend(["--keep-s3-objects"])
-        if "start_time" in args:
-            cli_args.extend(["--start-time", args["start_time"]])
-        if "end_time" in args:
-            cli_args.extend(["--end-time", args["end_time"]])
-        if "filters" in args:
-            cli_args.extend(["--filters", args["filters"]])
+        for k, val in args.items():
+            cli_args.extend([f"--{to_kebab_case(k)}", str(val)])
         return cli_args
-
-    @staticmethod
-    def _check_params(export_logs_mock, expected_params, args):
-        for param_key, expected_value in expected_params.items():
-            call_param = export_logs_mock.call_args[1].get(param_key)
-            check_regex = False
-
-            if param_key == "output":
-                expected_value = f".*{expected_value}"
-                check_regex = True
-
-            if param_key not in args and isinstance(expected_value, str):
-                check_regex = True
-
-            if check_regex:
-                assert_that(re.search(expected_value, call_param)).is_true()
-            else:
-                assert_that(call_param).is_equal_to(expected_value)

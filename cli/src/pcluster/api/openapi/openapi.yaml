@@ -833,7 +833,7 @@ paths:
           description: Region that the given cluster belongs to.
           type: string
         style: form
-      - description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+      - description: "Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\n\
           Accepted filters are:\nprivate-dns-name - The short form of the private\
           \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type,\
           \ the only accepted value for this filter is HeadNode."
@@ -842,7 +842,7 @@ paths:
         name: filters
         required: false
         schema:
-          description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+          description: "Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.\n\
             Accepted filters are:\nprivate-dns-name - The short form of the private\
             \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node\
             \ type, the only accepted value for this filter is HeadNode."
@@ -979,31 +979,31 @@ paths:
           nullable: true
           type: integer
         style: form
-      - description: "The start of the time range, expressed in ISO8601 format (e.g.\
-          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
-          \ or later than this time are included."
+      - description: "The start of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or\
+          \ later than this time are included."
         explode: true
         in: query
         name: startTime
         required: false
         schema:
-          description: "The start of the time range, expressed in ISO8601 format (e.g.\
-            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
-            \ or later than this time are included."
+          description: "The start of the time range, expressed in ISO 8601 format\
+            \ (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this\
+            \ time or later than this time are included."
           format: date-time
           type: string
         style: form
-      - description: "The end of the time range, expressed in ISO8601 format (e.g.\
-          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
-          \ than this time are not included."
+      - description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+          \ this time are not included."
         explode: true
         in: query
         name: endTime
         required: false
         schema:
-          description: "The end of the time range, expressed in ISO8601 format (e.g.\
-            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
-            \ than this time are not included."
+          description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+            \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+            \ this time are not included."
           format: date-time
           type: string
         style: form
@@ -1638,31 +1638,31 @@ paths:
           nullable: true
           type: integer
         style: form
-      - description: "The start of the time range, expressed in ISO8601 format (e.g.\
-          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
-          \ or later than this time are included."
+      - description: "The start of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or\
+          \ later than this time are included."
         explode: true
         in: query
         name: startTime
         required: false
         schema:
-          description: "The start of the time range, expressed in ISO8601 format (e.g.\
-            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time\
-            \ or later than this time are included."
+          description: "The start of the time range, expressed in ISO 8601 format\
+            \ (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this\
+            \ time or later than this time are included."
           format: date-time
           type: string
         style: form
-      - description: "The end of the time range, expressed in ISO8601 format (e.g.\
-          \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
-          \ than this time are not included."
+      - description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+          \ this time are not included."
         explode: true
         in: query
         name: endTime
         required: false
         schema:
-          description: "The end of the time range, expressed in ISO8601 format (e.g.\
-            \ '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later\
-            \ than this time are not included."
+          description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+            \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+            \ this time are not included."
           format: date-time
           type: string
         style: form
@@ -3157,13 +3157,10 @@ components:
           title: timestamp
           type: string
       required:
-      - clientRequestToken
       - eventId
       - logicalResourceId
       - physicalResourceId
-      - resourceProperties
       - resourceStatus
-      - resourceStatusReason
       - resourceType
       - stackId
       - stackName
