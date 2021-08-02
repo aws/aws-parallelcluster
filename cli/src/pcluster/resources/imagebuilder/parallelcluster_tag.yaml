@@ -179,7 +179,6 @@ phases:
               CUDA_VERSION="$(cat /usr/local/cuda/version.txt | cut -d' ' -f3)"
               add_tag "parallelcluster:cuda_version" "${CUDA_VERSION}"
               append_description "cuda" "${CUDA_VERSION}"
-              add_tag "parallelcluster:nvidia_fabricmanager_version" "$(get_package_version "nvidia-fabricmanager")"
 
               # Add description
               add_description
