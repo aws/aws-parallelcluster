@@ -18,7 +18,7 @@ from pcluster.api.models import ClusterInstance, DescribeClusterInstancesRespons
 from pcluster.api.models import NodeType as ApiNodeType
 from pcluster.aws.common import StackNotFoundError
 from pcluster.models.cluster import Cluster, NodeType
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_utc_datetime
 
 # pylint: disable=W0613
 
@@ -85,7 +85,7 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
         ec2_instances.append(
             ClusterInstance(
                 instance_id=instance.id,
-                launch_time=to_iso_time(instance.launch_time),
+                launch_time=to_utc_datetime(instance.launch_time),
                 public_ip_address=instance.public_ip,
                 instance_type=instance.instance_type,
                 state=instance.state,

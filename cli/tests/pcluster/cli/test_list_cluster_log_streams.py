@@ -11,7 +11,7 @@ from assertpy import assert_that
 
 from pcluster.cli.entrypoint import run
 from pcluster.models.common import LogStreams
-from pcluster.utils import to_iso_time, to_kebab_case
+from pcluster.utils import to_iso_timestr, to_kebab_case, to_utc_datetime
 
 BASE_COMMAND = ["pcluster", "list-cluster-log-streams", "--region", "eu-west-1"]
 REQUIRED_ARGS = {"cluster_name": "clustername"}
@@ -101,13 +101,13 @@ class TestListClusterLogStreamsCommand:
         expected_out = [
             {
                 "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
-                "firstEventTimestamp": to_iso_time(1622802790248),
-                "lastEventTimestamp": to_iso_time(1622802893126),
+                "firstEventTimestamp": to_iso_timestr(to_utc_datetime(1622802790248)),
+                "lastEventTimestamp": to_iso_timestr(to_utc_datetime(1622802893126)),
             },
             {
                 "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.chef-client",
-                "firstEventTimestamp": to_iso_time(1622802837114),
-                "lastEventTimestamp": to_iso_time(1622802861226),
+                "firstEventTimestamp": to_iso_timestr(to_utc_datetime(1622802837114)),
+                "lastEventTimestamp": to_iso_timestr(to_utc_datetime(1622802861226)),
             },
         ]
         assert_that(out["nextToken"]).is_equal_to(logs.next_token)

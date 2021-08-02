@@ -234,31 +234,18 @@ def test_get_url_scheme(url, expect_output):
 
 
 @pytest.mark.parametrize(
-    "timestamp, time_zone, expect_output",
-    [
-        (1622802892000, "Europe/London", "2021-06-04T11:34:52+01:00"),
-        (1622802892000, "America/Los_Angeles", "2021-06-04T03:34:52-07:00"),
-        (1622757600000, "Europe/London", "2021-06-03T23:00:00+01:00"),
-    ],
-)
-def test_timestamp_to_isoformat(set_tz, timestamp, time_zone, expect_output):
-    set_tz(time_zone)
-    time.tzset()
-    assert_that(utils.timestamp_to_isoformat(timestamp)).is_equal_to(expect_output)
-
-
-@pytest.mark.parametrize(
     "time_isoformat, time_zone, expect_output",
     [
         ("2021-06-04T03:34:52-07:00", "America/Los_Angeles", 1622802892000),
         ("2021-06-04T11:34:52+02:00", "Europe/Rome", 1622799292000),
-        ("2021-06-04T11:34:52", "Europe/Rome", 1622799292000),
-        ("2021-06-04T11:34", "Europe/Rome", 1622799240000),
-        ("2021-06-04T11", "Europe/London", 1622800800000),
-        ("2021-06-04", "Europe/London", 1622761200000),
+        ("2021-06-04T11:34:52", "Europe/Rome", 1622806492000),
+        ("2021-06-04T11:34", "Europe/Rome", 1622806440000),
+        ("2021-06-04T11", "Europe/London", 1622804400000),
+        ("2021-06-04", "Europe/London", 1622764800000),
     ],
 )
-def test_isoformat_to_epoch(set_tz, time_isoformat, time_zone, expect_output):
+def test_datetime_to_epoch(set_tz, time_isoformat, time_zone, expect_output):
     set_tz(time_zone)
     time.tzset()
-    assert_that(utils.isoformat_to_epoch(time_isoformat)).is_equal_to(expect_output)
+    datetime_ = utils.to_utc_datetime(time_isoformat)
+    assert_that(utils.datetime_to_epoch(datetime_)).is_equal_to(expect_output)

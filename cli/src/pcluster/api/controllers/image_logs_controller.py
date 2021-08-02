@@ -19,7 +19,7 @@ from pcluster.api.models import (
     StackEvent,
 )
 from pcluster.models.imagebuilder import ImageBuilder
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
 @configure_aws_region()
@@ -31,8 +31,8 @@ def get_image_log_events(
     next_token=None,
     start_from_head=None,
     limit=None,
-    start_time=None,
-    end_time=None,
+    start_time: str = None,
+    end_time: str = None,
 ):
     """
     Retrieve the events associated with an image build.
@@ -61,10 +61,8 @@ def get_image_log_events(
 
     :rtype: GetImageLogEventsResponseContent
     """
-    if start_time:
-        start_dt = validate_timestamp(start_time, "start_time")
-    if end_time:
-        end_dt = validate_timestamp(end_time, "end_time")
+    start_dt = start_time and validate_timestamp(start_time, "start_time")
+    end_dt = end_time and validate_timestamp(end_time, "end_time")
 
     if start_time and end_time and start_dt >= end_dt:
         raise BadRequestException("start_time filter must be earlier than end_time filter.")
@@ -75,8 +73,8 @@ def get_image_log_events(
     imagebuilder = ImageBuilder(image_id=image_id)
     log_events = imagebuilder.get_log_events(
         log_stream_name,
-        start_time=start_time,
-        end_time=end_time,
+        start_time=start_dt,
+        end_time=end_dt,
         start_from_head=start_from_head,
         limit=limit,
         next_token=next_token,
@@ -84,7 +82,7 @@ def get_image_log_events(
 
     def convert_log_event(event):
         del event["ingestionTime"]
-        event["timestamp"] = to_iso_time(event["timestamp"])
+        event["timestamp"] = to_iso_timestr(to_utc_datetime(event["timestamp"]))
         return LogEvent.from_dict(event)
 
     events = [convert_log_event(e) for e in log_events.events]
@@ -113,7 +111,7 @@ def get_image_stack_events(image_id, region=None, next_token=None):
 
     def convert_event(event):
         event = {k[0].lower() + k[1:]: v for k, v in event.items()}
-        event["timestamp"] = to_iso_time(event["timestamp"])
+        event["timestamp"] = to_iso_timestr(to_utc_datetime(event["timestamp"]))
         return StackEvent.from_dict(event)
 
     events = [convert_event(event) for event in stack_events["StackEvents"]]
@@ -141,7 +139,7 @@ def list_image_log_streams(image_id, region=None, next_token=None):
         if "storedBytes" in log:
             del log["storedBytes"]
         for ts_name in ["creationTime", "firstEventTimestamp", "lastEventTimestamp", "lastIngestionTime"]:
-            log[ts_name] = to_iso_time(log[ts_name])
+            log[ts_name] = to_iso_timestr(to_utc_datetime(log[ts_name]))
         return LogStream.from_dict(log)
 
     imagebuilder = ImageBuilder(image_id=image_id)

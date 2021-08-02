@@ -11,6 +11,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.models.common import LogStream
+from pcluster.utils import to_utc_datetime
 
 
 class TestGetClusterLogEvents:
@@ -72,12 +73,12 @@ class TestGetClusterLogEvents:
             {
                 "ingestionTime": 1627524017632,
                 "message": "Jan 01 00:00:00 ip-10-0-0-1 systemd: Started Session c20325 of " "user root.",
-                "timestamp": 1609484400000,
+                "timestamp": 1609459200000,
             },
             {
                 "ingestionTime": 1627524017632,
                 "message": "Jan 01 00:00:00 ip-10-0-0-1 systemd: Removed slice User Slice " "of root.",
-                "timestamp": 1609484400000,
+                "timestamp": 1609459207000,
             },
         ]
         uid = "00000000-dddd-4444-bbbb-555555555555"
@@ -113,8 +114,8 @@ class TestGetClusterLogEvents:
         )
 
         expected_args = {
-            "start_time": start_time,
-            "end_time": end_time,
+            "start_time": start_time and to_utc_datetime(start_time),
+            "end_time": end_time and to_utc_datetime(end_time),
             "limit": limit,
             "start_from_head": start_from_head,
             "next_token": next_token,
@@ -129,7 +130,7 @@ class TestGetClusterLogEvents:
                 },
                 {
                     "message": "Jan 01 00:00:00 ip-10-0-0-1 systemd: Removed slice User Slice of root.",
-                    "timestamp": "2021-01-01T00:00:00.000Z",
+                    "timestamp": "2021-01-01T00:00:07.000Z",
                 },
             ],
             "nextToken": "f/456",
@@ -351,10 +352,10 @@ class TestListClusterLogStreams:
                     f"arn:aws:logs:us-east-2:{account_id}:log-group:/aws/parallelcluster/"
                     f"{cluster_name}-202101010000:log-stream:ip-10-0-0-100.{inst}.cfn-init"
                 ),
-                "creationTime": 1609484407000,
-                "firstEventTimestamp": 1609484414000,
-                "lastEventTimestamp": 1609484449000,
-                "lastIngestionTime": 1609484454000,
+                "creationTime": 1609459207000,
+                "firstEventTimestamp": 1609459214000,
+                "lastEventTimestamp": 1609459249000,
+                "lastIngestionTime": 1609459254000,
                 "logStreamName": f"ip-10-0-0-100.{inst}.cfn-init",
                 "storedBytes": 0,
                 "uploadSequenceToken": "123",

@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import os
 import time
 
@@ -119,7 +120,11 @@ class TestExportClusterLogsFiltersParser:
         [
             (
                 {"start_time": "2012-07-09", "end_time": "2012-07-29"},
-                {"log_stream_prefix": None, "start_time": 1341788400000, "end_time": 1343516400000},
+                {
+                    "log_stream_prefix": None,
+                    "start_time": datetime.datetime(2012, 7, 9, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2012, 7, 29, tzinfo=datetime.timezone.utc),
+                },
             ),
         ],
     )

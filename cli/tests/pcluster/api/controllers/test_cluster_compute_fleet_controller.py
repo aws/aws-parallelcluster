@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 
 from pcluster.aws.common import AWSClientError, StackNotFoundError
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
 def cfn_describe_stack_mock_response(scheduler, stack_status="CREATE_COMPLETE"):
@@ -87,7 +87,7 @@ class TestUpdateComputeFleetStatus:
             assert_that(response.status_code).is_equal_to(200)
             expected_response = {"status": status}
             if last_status_updated_time:
-                expected_response["lastStatusUpdatedTime"] = to_iso_time(last_status_updated_time)
+                expected_response["lastStatusUpdatedTime"] = to_iso_timestr(to_utc_datetime(last_status_updated_time))
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     @pytest.mark.parametrize(
@@ -301,7 +301,7 @@ class TestDescribeComputeFleet:
             assert_that(response.status_code).is_equal_to(200)
             expected_response = {"status": status}
             if last_status_updated_time:
-                expected_response["lastStatusUpdatedTime"] = to_iso_time(last_status_updated_time)
+                expected_response["lastStatusUpdatedTime"] = to_iso_timestr(to_utc_datetime(last_status_updated_time))
             assert_that(response.get_json()).is_equal_to(expected_response)
 
     def test_slurm_dynamo_table_not_exist(self, mocker, client):

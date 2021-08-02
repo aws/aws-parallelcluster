@@ -26,7 +26,7 @@ from pcluster.models.cluster import (
     LimitExceededClusterActionError,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_iso_timestr
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
@@ -589,8 +589,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -604,7 +604,7 @@ class TestDescribeCluster:
                     "headnode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
-                        "launchTime": to_iso_time("2021-05-10T13:55:48Z"),
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
                         "state": "running",
@@ -622,8 +622,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -647,8 +647,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -674,8 +674,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_FAILED",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-05-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 5, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -705,8 +705,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -720,7 +720,7 @@ class TestDescribeCluster:
                     "headnode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
-                        "launchTime": to_iso_time("2021-05-10T13:55:48Z"),
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "state": "running",
                     },

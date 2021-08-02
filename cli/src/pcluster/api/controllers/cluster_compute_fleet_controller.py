@@ -17,7 +17,7 @@ from pcluster.api.models import (
     UpdateComputeFleetResponseContent,
 )
 from pcluster.models.cluster import Cluster
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_utc_datetime
 
 
 @configure_aws_region()
@@ -37,7 +37,8 @@ def describe_compute_fleet(cluster_name, region=None):
     validate_cluster(cluster)
     status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
     return DescribeComputeFleetResponseContent(
-        last_status_updated_time=to_iso_time(last_status_updated_time), status=status.value
+        last_status_updated_time=last_status_updated_time and to_utc_datetime(last_status_updated_time),
+        status=status.value,
     )
 
 
@@ -85,5 +86,5 @@ def update_compute_fleet(update_compute_fleet_request_content, cluster_name, reg
                     " `ENABLED` or `DISABLED` for AWS Batch clusters."
                 )
     status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
-    last_status_updated_time = to_iso_time(last_status_updated_time)
+    last_status_updated_time = last_status_updated_time and to_utc_datetime(last_status_updated_time)
     return UpdateComputeFleetResponseContent(last_status_updated_time=last_status_updated_time, status=status.value)

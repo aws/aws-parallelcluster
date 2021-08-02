@@ -14,7 +14,7 @@ from assertpy import assert_that
 
 from pcluster.cli.entrypoint import run
 from pcluster.models.common import LogStream
-from pcluster.utils import to_kebab_case
+from pcluster.utils import to_kebab_case, to_utc_datetime
 from tests.pcluster.test_utils import FAKE_NAME
 
 BASE_COMMAND = ["pcluster", "get-cluster-log-events", "--region", "us-east-1"]
@@ -139,8 +139,8 @@ class TestGetClusterLogEventsCommand:
 
         # verify arguments
         kwargs = {
-            "start_time": args.get("start_time", None),
-            "end_time": args.get("end_time", None),
+            "start_time": args.get("start_time", None) and to_utc_datetime(args["start_time"]),
+            "end_time": args.get("end_time", None) and to_utc_datetime(args["end_time"]),
             "start_from_head": True if args.get("start_from_head", None) else None,
             "limit": int(args["limit"]) if args.get("limit", None) else None,
             "next_token": args.get("next_token", None),

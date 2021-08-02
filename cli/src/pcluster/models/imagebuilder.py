@@ -72,7 +72,7 @@ from pcluster.models.imagebuilder_resources import (
 from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, isoformat_to_epoch
+from pcluster.utils import datetime_to_epoch, generate_random_name_with_prefix, get_installed_version, get_partition
 from pcluster.validators.common import FailureLevel
 
 ImageBuilderStatusMapping = {
@@ -749,8 +749,8 @@ class ImageBuilder:
     def get_log_events(
         self,
         log_stream_name: str,
-        start_time: str = None,
-        end_time: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
         start_from_head: bool = False,
         limit: int = None,
         next_token: str = None,
@@ -772,8 +772,8 @@ class ImageBuilder:
             log_events_response = AWSApi.instance().logs.get_log_events(
                 log_group_name=self._log_group_name,
                 log_stream_name=log_stream_name,
-                end_time=isoformat_to_epoch(end_time) if end_time else None,
-                start_time=isoformat_to_epoch(start_time) if start_time else None,
+                end_time=datetime_to_epoch(end_time) if end_time else None,
+                start_time=datetime_to_epoch(start_time) if start_time else None,
                 limit=limit,
                 start_from_head=start_from_head,
                 next_token=next_token,

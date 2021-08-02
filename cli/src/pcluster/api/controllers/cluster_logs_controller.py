@@ -21,7 +21,7 @@ from pcluster.api.models import (
 )
 from pcluster.models.cluster import Cluster
 from pcluster.models.cluster_resources import FiltersParserError
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
 def join_filters(accepted_filters, filters):
@@ -69,8 +69,8 @@ def get_cluster_log_events(
     next_token: str = None,
     start_from_head: bool = None,
     limit: int = None,
-    start_time=None,
-    end_time=None,
+    start_time: str = None,
+    end_time: str = None,
 ):
     """
     Retrieve the events associated with a log stream.
@@ -99,10 +99,8 @@ def get_cluster_log_events(
 
     :rtype: GetClusterLogEventsResponseContent
     """
-    if start_time:
-        start_dt = validate_timestamp(start_time, "start_time")
-    if end_time:
-        end_dt = validate_timestamp(end_time, "end_time")
+    start_dt = start_time and validate_timestamp(start_time, "start_time")
+    end_dt = end_time and validate_timestamp(end_time, "end_time")
 
     if start_time and end_time and start_dt >= end_dt:
         raise BadRequestException("start_time filter must be earlier than end_time filter.")
@@ -118,8 +116,8 @@ def get_cluster_log_events(
 
     log_events = cluster.get_log_events(
         log_stream_name,
-        start_time=start_time,
-        end_time=end_time,
+        start_time=start_dt,
+        end_time=end_dt,
         start_from_head=start_from_head,
         limit=limit,
         next_token=next_token,
@@ -127,7 +125,7 @@ def get_cluster_log_events(
 
     def convert_log_event(event):
         del event["ingestionTime"]
-        event["timestamp"] = to_iso_time(event["timestamp"])
+        event["timestamp"] = to_iso_timestr(to_utc_datetime(event["timestamp"]))
         return LogEvent.from_dict(event)
 
     events = [convert_log_event(e) for e in log_events.events]
@@ -157,7 +155,7 @@ def get_cluster_stack_events(cluster_name, region=None, next_token=None):
 
     def convert_event(event):
         event = {k[0].lower() + k[1:]: v for k, v in event.items()}
-        event["timestamp"] = to_iso_time(event["timestamp"])
+        event["timestamp"] = to_iso_timestr(to_utc_datetime(event["timestamp"]))
         return StackEvent.from_dict(event)
 
     events = [convert_event(event) for event in stack_events["StackEvents"]]
@@ -191,7 +189,7 @@ def list_cluster_log_streams(cluster_name, region=None, filters=None, next_token
         if "storedBytes" in log:
             del log["storedBytes"]
         for ts_name in ["creationTime", "firstEventTimestamp", "lastEventTimestamp", "lastIngestionTime"]:
-            log[ts_name] = to_iso_time(log[ts_name])
+            log[ts_name] = to_iso_timestr(to_utc_datetime(log[ts_name]))
         return LogStream.from_dict(log)
 
     try:

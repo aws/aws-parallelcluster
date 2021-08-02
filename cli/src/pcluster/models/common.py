@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import gzip
 import json
 import logging
@@ -15,7 +16,6 @@ import os
 import os.path
 import tarfile
 import time
-from datetime import datetime
 from typing import List
 
 import yaml
@@ -23,7 +23,7 @@ import yaml
 from pcluster.api.encoder import JSONEncoder
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.utils import isoformat_to_epoch
+from pcluster.utils import to_utc_datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -78,8 +78,9 @@ class LogGroupTimeFiltersParser:
     def __init__(self, log_group_name: str, start_time: str = None, end_time: str = None):
         self._log_group_name = log_group_name
         try:
-            self._start_time = isoformat_to_epoch(start_time) if start_time else None
-            self.end_time = isoformat_to_epoch(end_time) if end_time else int(datetime.now().timestamp() * 1000)
+            self._start_time = to_utc_datetime(start_time) if start_time else None
+            now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
+            self.end_time = to_utc_datetime(end_time) if end_time else now_utc
         except Exception as e:
             raise FiltersParserError(f"Unable to parse time. It must be in ISO8601 format. {e}")
 
@@ -88,7 +89,8 @@ class LogGroupTimeFiltersParser:
         """Get start time filter."""
         if not self._start_time:
             try:
-                self._start_time = AWSApi.instance().logs.describe_log_group(self._log_group_name).get("creationTime")
+                creation_time = AWSApi.instance().logs.describe_log_group(self._log_group_name).get("creationTime")
+                self._start_time = to_utc_datetime(creation_time)
             except AWSClientError as e:
                 raise FiltersParserError(
                     f"Unable to retrieve creation time of log group {self._log_group_name}, {str(e)}"
@@ -144,7 +146,7 @@ class CloudWatchLogsExporter:
             # If the default bucket prefix is being used and there's nothing underneath that prefix already
             # then we can delete everything under that prefix after downloading the data
             # (unless keep-s3-objects is specified)
-            self.bucket_prefix = f"{resource_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+            self.bucket_prefix = f"{resource_id}-logs-{datetime.datetime.now().strftime('%Y%m%d%H%M')}"
             self.delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, self.bucket_prefix)
 
     def execute(self, log_stream_prefix=None, start_time=None, end_time=None):
