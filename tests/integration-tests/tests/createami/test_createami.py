@@ -34,6 +34,21 @@ def test_build_image(
     images_factory,
 ):
     """Test build image for given region and os"""
+    # Test validation error
+    arm64_ami = retrieve_latest_ami(region, os, architecture="arm64")
+    image_id = f"integ-test-build-image-{generate_random_string()}"
+    # Get custom instance role
+    instance_role = build_image_custom_resource(image_id=image_id)
+
+    # Get custom S3 bucket
+    bucket_name = s3_bucket_factory()
+    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=arm64_ami, instance_role=instance_role,
+                                          bucket_name=bucket_name)
+    image = images_factory(image_id, image_config, region, raise_on_error=False, log_error=False)
+    logging.info(image.creation_response)
+
+    exit(1)
+
     # Get base AMI
     # remarkable AMIs are not available for ARM and ubuntu2004, centos7 yet
     if os not in ["ubuntu2004", "centos7"]:
@@ -41,18 +56,9 @@ def test_build_image(
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
-    image_id = f"integ-test-build-image-{generate_random_string()}"
-
-    # Get custom instance role
-    instance_role = build_image_custom_resource(image_id=image_id)
-
-    # Get custom S3 bucket
-    bucket_name = s3_bucket_factory()
-
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
-        instance_type=instance,
         instance_role=instance_role,
         bucket_name=bucket_name,
     )

@@ -31,7 +31,7 @@ class Image:
         self.version = None
         self.image_status = None
 
-    def build(self):
+    def build(self, raise_on_error=True, log_error=True):
         """Build image."""
         command = [
             "pcluster",
@@ -43,8 +43,9 @@ class Image:
             "--image-configuration",
             self.config_file,
         ]
-        result = run_command(command).stdout
-        self._update_image_info(json.loads(result).get("image"))
+        result = run_command(command, raise_on_error=raise_on_error, log_error=log_error).stdout
+        if "BUILD_IN_PROGRESS" in result:
+            self._update_image_info(json.loads(result).get("image"))
         return result
 
     def delete(self, force=False):
@@ -86,14 +87,17 @@ class ImagesFactory:
     def __init__(self):
         self.__created_images = {}
 
-    def create_image(self, image: Image):
+    def create_image(self, image: Image, raise_on_error=True, log_error=True):
         """
         Create a image with a given config.
         :param image: image to create.
+        :param raise_on_error: raise exception if image creation fails
+        :param log_error: log error when error occurs. This can be set to False when error is expected
         """
         logging.info("Build image %s with config %s", image.image_id, image.config_file)
-        result = image.build()
-        self.__created_images[image.image_id] = image
+        result = image.build(raise_on_error=raise_on_error, log_error=log_error)
+        if "BUILD_IN_PROGRESS" in result:
+            self.__created_images[image.image_id] = image
         return result
 
     def destroy_image(self, image: Image):
