@@ -16,7 +16,7 @@ Method | HTTP request | Description
 
 
 
-Create a ParallelCluster managed cluster in a given region.
+Create a managed cluster in a given region.
 
 ### Example
 
@@ -57,16 +57,16 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     create_cluster_request_content = CreateClusterRequestContent(
-        name="AqWzy",
-        region="region_example",
-        cluster_configuration='YQ==',
+        cluster_name="AqWzy",
+        cluster_configuration="cluster_configuration_example",
     ) # CreateClusterRequestContent | 
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
     suppress_validators = [
         "type:u2LC",
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
-    validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. Defaults to 'ERROR'. (optional)
-    dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the cluster configuration. Response code: 200 (optional)
-    rollback_on_failure = True # bool, none_type | When set it automatically initiates a cluster stack rollback on failures. Defaults to true. (optional)
+    validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the creation to fail. (Defaults to 'ERROR'.) (optional)
+    dryrun = True # bool, none_type | Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to 'false'.) (optional)
+    rollback_on_failure = True # bool, none_type | When set it automatically initiates a cluster stack rollback on failures. (Defaults to 'true'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -78,7 +78,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # example passing only required values which don't have defaults set
     # and optional values
     try:
-        api_response = api_instance.create_cluster(create_cluster_request_content, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
+        api_response = api_instance.create_cluster(create_cluster_request_content, region=region, suppress_validators=suppress_validators, validation_failure_level=validation_failure_level, dryrun=dryrun, rollback_on_failure=rollback_on_failure)
         pprint(api_response)
     except pcluster_client.ApiException as e:
         print("Exception when calling ClusterOperationsApi->create_cluster: %s\n" % e)
@@ -90,10 +90,11 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **create_cluster_request_content** | [**CreateClusterRequestContent**](CreateClusterRequestContent.md)|  |
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
- **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. Defaults to &#39;ERROR&#39;. | [optional]
- **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the cluster configuration. Response code: 200 | [optional]
- **rollback_on_failure** | **bool, none_type**| When set it automatically initiates a cluster stack rollback on failures. Defaults to true. | [optional]
+ **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the creation to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
+ **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. May be used to validate the cluster configuration. (Defaults to &#39;false&#39;.) | [optional]
+ **rollback_on_failure** | **bool, none_type**| When set it automatically initiates a cluster stack rollback on failures. (Defaults to &#39;true&#39;.) | [optional]
 
 ### Return type
 
@@ -165,7 +166,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -189,7 +190,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
 
@@ -260,7 +261,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -284,7 +285,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
 
 ### Return type
 
@@ -317,7 +318,7 @@ Name | Type | Description  | Notes
 
 
 
-Retrieve the list of existing clusters managed by the API. Deleted clusters are not listed by default.
+Retrieve the list of existing clusters.
 
 ### Example
 
@@ -354,11 +355,11 @@ configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
-    region = "region_example" # str | List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to. (optional)
+    region = "region_example" # str | List clusters deployed to a given AWS Region. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
     cluster_status = [
         ClusterStatusFilteringOption("CREATE_IN_PROGRESS"),
-    ] # [ClusterStatusFilteringOption] | Filter by cluster status. (optional)
+    ] # [ClusterStatusFilteringOption] | Filter by cluster status. (Defaults to all clusters.) (optional)
 
     # example passing only required values which don't have defaults set
     # and optional values
@@ -374,9 +375,9 @@ with pcluster_client.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **region** | **str**| List clusters deployed to a given AWS Region. Defaults to the AWS region the API is deployed to. | [optional]
+ **region** | **str**| List clusters deployed to a given AWS Region. | [optional]
  **next_token** | **str**| Token to use for paginated requests. | [optional]
- **cluster_status** | [**[ClusterStatusFilteringOption]**](ClusterStatusFilteringOption.md)| Filter by cluster status. | [optional]
+ **cluster_status** | [**[ClusterStatusFilteringOption]**](ClusterStatusFilteringOption.md)| Filter by cluster status. (Defaults to all clusters.) | [optional]
 
 ### Return type
 
@@ -407,6 +408,8 @@ Name | Type | Description  | Notes
 > UpdateClusterResponseContent update_cluster(cluster_name, update_cluster_request_content)
 
 
+
+Update a cluster managed in a given region.
 
 ### Example
 
@@ -449,15 +452,15 @@ with pcluster_client.ApiClient(configuration) as api_client:
     api_instance = cluster_operations_api.ClusterOperationsApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
     update_cluster_request_content = UpdateClusterRequestContent(
-        cluster_configuration='YQ==',
+        cluster_configuration="cluster_configuration_example",
     ) # UpdateClusterRequestContent | 
     suppress_validators = [
         "type:u2LC",
     ] # [str] | Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) (optional)
-    validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the update to fail. Defaults to 'error'. (optional)
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
-    dryrun = True # bool, none_type | Only perform request validation without creating any resource. It can be used to validate the cluster configuration and update requirements. Response code: 200 (optional)
-    force_update = True # bool, none_type | Force update by ignoring the update validation errors. (optional)
+    validation_failure_level = ValidationLevel("INFO") # ValidationLevel | Min validation level that will cause the update to fail. (Defaults to 'ERROR'.) (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
+    dryrun = True # bool, none_type | Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to 'false'.) (optional)
+    force_update = True # bool, none_type | Force update by ignoring the update validation errors. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -483,10 +486,10 @@ Name | Type | Description  | Notes
  **cluster_name** | **str**| Name of the cluster |
  **update_cluster_request_content** | [**UpdateClusterRequestContent**](UpdateClusterRequestContent.md)|  |
  **suppress_validators** | **[str]**| Identifies one or more config validators to suppress. Format: (ALL|type:[A-Za-z0-9]+) | [optional]
- **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the update to fail. Defaults to &#39;error&#39;. | [optional]
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
- **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. It can be used to validate the cluster configuration and update requirements. Response code: 200 | [optional]
- **force_update** | **bool, none_type**| Force update by ignoring the update validation errors. | [optional]
+ **validation_failure_level** | **ValidationLevel**| Min validation level that will cause the update to fail. (Defaults to &#39;ERROR&#39;.) | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
+ **dryrun** | **bool, none_type**| Only perform request validation without creating any resource. May be used to validate the cluster configuration and update requirements. (Defaults to &#39;false&#39;.) | [optional]
+ **force_update** | **bool, none_type**| Force update by ignoring the update validation errors. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 

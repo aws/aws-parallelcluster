@@ -15,13 +15,13 @@
 import copy
 import logging
 import os
+import os.path
 import re
 import tempfile
 from datetime import datetime
 from typing import Set
 
 import pkg_resources
-from dateutil.parser import parse
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
@@ -41,6 +41,7 @@ from pcluster.constants import (
     PCLUSTER_IMAGE_ID_REGEX,
     PCLUSTER_IMAGE_ID_TAG,
     PCLUSTER_IMAGE_NAME_TAG,
+    PCLUSTER_S3_ARTIFACTS_DICT,
     PCLUSTER_S3_BUCKET_TAG,
     PCLUSTER_S3_IMAGE_DIR_TAG,
     PCLUSTER_VERSION_TAG,
@@ -58,6 +59,7 @@ from pcluster.models.common import (
     create_logs_archive,
     export_stack_events,
     parse_config,
+    upload_archive,
 )
 from pcluster.models.imagebuilder_resources import (
     BadRequestStackError,
@@ -66,7 +68,7 @@ from pcluster.models.imagebuilder_resources import (
     NonExistingStackError,
     StackError,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, get_partition, isoformat_to_epoch
@@ -75,7 +77,6 @@ from pcluster.validators.common import FailureLevel
 ImageBuilderStatusMapping = {
     "BUILD_IN_PROGRESS": [
         "CREATE_IN_PROGRESS",
-        "ROLLBACK_IN_PROGRESS",
         "UPDATE_IN_PROGRESS",
         "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
         "UPDATE_ROLLBACK_IN_PROGRESS",
@@ -85,6 +86,7 @@ ImageBuilderStatusMapping = {
         "IMPORT_ROLLBACK_IN_PROGRESS",
     ],
     "BUILD_FAILED": [
+        "ROLLBACK_IN_PROGRESS",
         "CREATE_FAILED",
         "ROLLBACK_FAILED",
         "ROLLBACK_COMPLETE",
@@ -236,6 +238,11 @@ class ImageBuilder:
                 else:
                     raise ImageBuilderActionError(f"Unable to get image {self.image_id} config url.")
         return self.__config_url
+
+    @property
+    def presigned_config_url(self) -> str:
+        """Return a pre-signed Url to download the config from the S3 bucket."""
+        return self.bucket.get_config_presigned_url(config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("image_config_name"))
 
     @property
     def stack(self):
@@ -610,18 +617,17 @@ class ImageBuilder:
 
     def export_logs(
         self,
-        output: str,
         bucket: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
         start_time: str = None,
         end_time: str = None,
+        output_path: str = None,
     ):
         """
         Export image builder's logs in the given output path, by using given bucket as a temporary folder.
 
-        :param output: file path to save log file archive to
-        :param bucket: Temporary S3 bucket to be used to export cluster logs data
+        :param bucket: S3 bucket to be used to export cluster logs data
         :param bucket_prefix: Key path under which exported logs data will be stored in s3 bucket,
                also serves as top-level directory in resulting archive
         :param keep_s3_objects: Keep the exported objects exports to S3. The default behavior is to delete them
@@ -636,9 +642,8 @@ class ImageBuilder:
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
                 # Create root folder for the archive
-                root_archive_dir = os.path.join(
-                    output_tempdir, f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
-                )
+                archive_name = f"{self.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                root_archive_dir = os.path.join(output_tempdir, archive_name)
                 os.makedirs(root_archive_dir, exist_ok=True)
 
                 if AWSApi.instance().logs.log_group_exists(self._log_group_name):
@@ -666,7 +671,12 @@ class ImageBuilder:
                     stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                     export_stack_events(self.stack.name, stack_events_file)
 
-                create_logs_archive(root_archive_dir, output)
+                archive_path = create_logs_archive(root_archive_dir, output_path)
+                if output_path:
+                    return output_path
+                else:
+                    s3_path = upload_archive(bucket, bucket_prefix, archive_path)
+                    return create_s3_presigned_url(s3_path)
         except Exception as e:
             raise ImageBuilderActionError(f"Unexpected error when exporting image's logs: {e}")
 
@@ -701,12 +711,15 @@ class ImageBuilder:
             if not stack_exists:
                 LOGGER.debug("CloudFormation Stack for Image %s does not exist.", self.image_id)
 
-            cw_log_streams = None
+            log_streams = []
+
             if AWSApi.instance().logs.log_group_exists(self._log_group_name):
                 LOGGER.debug("Listing log streams from log group %s", self._log_group_name)
-                cw_log_streams = AWSApi.instance().logs.describe_log_streams(
+                log_stream_resp = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self._log_group_name, next_token=next_token
                 )
+                log_streams.extend(log_stream_resp["logStreams"])
+                next_token = log_stream_resp.get("nextToken")
                 log_group_exist = True
             else:
                 LOGGER.debug("Log Group %s doesn't exist.", self._log_group_name)
@@ -717,19 +730,20 @@ class ImageBuilder:
                     f"Unable to find image logs, please double check if image id={self.image_id} is correct."
                 )
 
-            stack_log_streams = None
-            if not next_token and stack_exists:
-                # add CFN Stack information only at the first request, when next-token is not specified
-                stack_log_streams = [
-                    {
-                        "Stack Events Stream": self._stack_events_stream_name,
-                        "Stack Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
-                    }
-                ]
-            return Logs(stack_log_streams, cw_log_streams)
+            return Logs(log_streams, next_token)
 
         except AWSClientError as e:
             raise ImageBuilderActionError(f"Unexpected error when retrieving image's logs: {e}")
+
+    def get_stack_events(self, next_token: str = None):
+        """
+        Get the CloudFormation stack events.
+
+        :param next_token Start from next_token if provided.
+        """
+        if not self._stack_exists():
+            raise ImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
+        return AWSApi.instance().cfn.get_stack_events(self.stack.name, next_token=next_token)
 
     def get_log_events(
         self,
@@ -753,31 +767,17 @@ class ImageBuilder:
         :param next_token: Token for paginated requests.
         """
         try:
-            if log_stream_name != self._stack_events_stream_name:
-                # get Image Builder log stream events
-                log_events_response = AWSApi.instance().logs.get_log_events(
-                    log_group_name=self._log_group_name,
-                    log_stream_name=log_stream_name,
-                    end_time=isoformat_to_epoch(end_time) if end_time else None,
-                    start_time=isoformat_to_epoch(start_time) if start_time else None,
-                    limit=limit,
-                    start_from_head=start_from_head,
-                    next_token=next_token,
-                )
-                return LogStream(self.image_id, log_stream_name, log_events_response)
-            else:
-                # Get Stack Events log stream
-                if not self._stack_exists():
-                    raise ImageBuilderActionError(f"CloudFormation Stack for Image {self.image_id} does not exist.")
-
-                stack_events = AWSApi.instance().cfn.get_stack_events(self.stack.name)
-                stack_events.reverse()
-                if limit:
-                    if start_from_head:
-                        stack_events = stack_events[:limit]
-                    else:
-                        stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
-                return LogStream(self.image_id, log_stream_name, {"events": stack_events})
+            # get Image Builder log stream events
+            log_events_response = AWSApi.instance().logs.get_log_events(
+                log_group_name=self._log_group_name,
+                log_stream_name=log_stream_name,
+                end_time=isoformat_to_epoch(end_time) if end_time else None,
+                start_time=isoformat_to_epoch(start_time) if start_time else None,
+                limit=limit,
+                start_from_head=start_from_head,
+                next_token=next_token,
+            )
+            return LogStream(self.image_id, log_stream_name, log_events_response)
         except AWSClientError as e:
             raise ImageBuilderActionError(f"Unexpected error when retrieving log events: {e}")
 

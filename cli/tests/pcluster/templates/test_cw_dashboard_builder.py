@@ -42,10 +42,10 @@ def test_cw_dashboard_builder(mocker, test_datadir, config_file_name):
     mock_bucket(mocker)
 
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
-    cluster_config = ClusterSchema().load(input_yaml)
+    cluster_config = ClusterSchema(cluster_name="clustername").load(input_yaml)
     print(cluster_config)
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="parallelcluster-dummyname"
+        cluster_config=cluster_config, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     output_yaml = yaml.dump(generated_template, width=float("inf"))
     print(output_yaml)

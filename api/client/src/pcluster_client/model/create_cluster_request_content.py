@@ -55,9 +55,7 @@ class CreateClusterRequestContent(ModelNormal):
     }
 
     validations = {
-        ('name',): {
-            'max_length': 60,
-            'min_length': 5,
+        ('cluster_name',): {
             'regex': {
                 'pattern': r'^[a-zA-Z][a-zA-Z0-9-]+$',  # noqa: E501
             },
@@ -79,9 +77,8 @@ class CreateClusterRequestContent(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'name': (str,),  # noqa: E501
+            'cluster_name': (str,),  # noqa: E501
             'cluster_configuration': (str,),  # noqa: E501
-            'region': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -90,9 +87,8 @@ class CreateClusterRequestContent(ModelNormal):
 
 
     attribute_map = {
-        'name': 'name',  # noqa: E501
+        'cluster_name': 'clusterName',  # noqa: E501
         'cluster_configuration': 'clusterConfiguration',  # noqa: E501
-        'region': 'region',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -107,11 +103,11 @@ class CreateClusterRequestContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, name, cluster_configuration, *args, **kwargs):  # noqa: E501
+    def __init__(self, cluster_name, cluster_configuration, *args, **kwargs):  # noqa: E501
         """CreateClusterRequestContent - a model defined in OpenAPI
 
         Args:
-            name (str): Name of the cluster
+            cluster_name (str): Name of the cluster that will be created.
             cluster_configuration (str): Cluster configuration as a YAML document
 
         Keyword Args:
@@ -145,7 +141,6 @@ class CreateClusterRequestContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            region (str): AWS Region. Defaults to the region the API is deployed to.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -171,7 +166,7 @@ class CreateClusterRequestContent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.name = name
+        self.cluster_name = cluster_name
         self.cluster_configuration = cluster_configuration
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \

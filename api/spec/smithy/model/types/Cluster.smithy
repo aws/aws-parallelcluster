@@ -1,7 +1,6 @@
 namespace parallelcluster
 
 @pattern("^[a-zA-Z][a-zA-Z0-9-]+$")
-@length(min: 5, max: 60)
 @documentation("Name of the cluster")
 string ClusterName
 
@@ -14,22 +13,22 @@ string SuppressValidatorExpression
 
 structure ClusterInfoSummary {
     @required
-    @documentation("Name of the cluster")
+    @documentation("Name of the cluster.")
     clusterName: ClusterName,
     @required
-    @documentation("AWS region where the cluster is created")
+    @documentation("AWS region where the cluster is created.")
     region: Region,
     @required
-    @documentation("ParallelCluster version used to create the cluster")
+    @documentation("ParallelCluster version used to create the cluster.")
     version: Version,
     @required
-    @documentation("ARN of the main CloudFormation stack")
+    @documentation("ARN of the main CloudFormation stack.")
     cloudformationStackArn: String,
     @required
     @documentation("Status of the CloudFormation stack provisioning the cluster infrastructure.")
-    cloudformationStackStatus: CloudFormationStatus,
+    cloudformationStackStatus: CloudFormationStackStatus,
     @required
-    @documentation("Status of the cluster infrastructure")
+    @documentation("Status of the cluster infrastructure.")
     clusterStatus: ClusterStatus,
 }
 
@@ -47,21 +46,22 @@ structure ClusterInfoSummary {
 string ClusterStatus
 
 @enum([
-    {name: "START_REQUESTED", value: "START_REQUESTED"},
-    {name: "STARTING", value: "STARTING"},
-    {name: "RUNNING", value: "RUNNING"},
-    {name: "STOP_REQUESTED", value: "STOP_REQUESTED"},
-    {name: "STOPPING", value: "STOPPING"},
-    {name: "STOPPED", value: "STOPPED"},
+    {name: "START_REQUESTED", value: "START_REQUESTED"},  // works only with Slurm
+    {name: "STARTING", value: "STARTING"},  // works only with Slurm
+    {name: "RUNNING", value: "RUNNING"},  // works only with Slurm
+    {name: "STOP_REQUESTED", value: "STOP_REQUESTED"},  // works only with Slurm
+    {name: "STOPPING", value: "STOPPING"},  // works only with Slurm
+    {name: "STOPPED", value: "STOPPED"},  // works only with Slurm
+    {name: "UNKNOWN", value: "UNKNOWN"},  // works only with Slurm
     {name: "ENABLED", value: "ENABLED"},  // works only with AWS Batch
     {name: "DISABLED", value: "DISABLED"},  // works only with AWS Batch
 ])
 string ComputeFleetStatus
 
 structure ClusterConfigurationStructure {
-    @documentation("S3 Url pointing to the cluster configuration file.")
-    s3Url: String,
+    @documentation("URL of the cluster configuration file.")
+    url: String,
 }
 
 @documentation("Cluster configuration as a YAML document")
-blob ClusterConfigurationData
+string ClusterConfigurationData

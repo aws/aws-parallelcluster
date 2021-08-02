@@ -15,7 +15,7 @@ from typing import List
 
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
-from pcluster.api.models.cloud_formation_status import CloudFormationStatus
+from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
 from pcluster.api.models.cluster_configuration_structure import ClusterConfigurationStructure
 from pcluster.api.models.cluster_status import ClusterStatus
 from pcluster.api.models.compute_fleet_status import ComputeFleetStatus
@@ -36,7 +36,7 @@ class DescribeClusterResponseContent(Model):
         version=None,
         cluster_configuration=None,
         tags=None,
-        cloud_formation_status=None,
+        cloud_formation_stack_status=None,
         cluster_name=None,
         compute_fleet_status=None,
         failure_reason=None,
@@ -57,8 +57,8 @@ class DescribeClusterResponseContent(Model):
         :type cluster_configuration: ClusterConfigurationStructure
         :param tags: The tags of this DescribeClusterResponseContent.
         :type tags: List[Tag]
-        :param cloud_formation_status: The cloud_formation_status of this DescribeClusterResponseContent.
-        :type cloud_formation_status: CloudFormationStatus
+        :param cloud_formation_stack_status: The cloud_formation_stack_status of this DescribeClusterResponseContent.
+        :type cloud_formation_stack_status: CloudFormationStackStatus
         :param cluster_name: The cluster_name of this DescribeClusterResponseContent.
         :type cluster_name: str
         :param compute_fleet_status: The compute_fleet_status of this DescribeClusterResponseContent.
@@ -80,7 +80,7 @@ class DescribeClusterResponseContent(Model):
             "version": str,
             "cluster_configuration": ClusterConfigurationStructure,
             "tags": List[Tag],
-            "cloud_formation_status": CloudFormationStatus,
+            "cloud_formation_stack_status": CloudFormationStackStatus,
             "cluster_name": str,
             "compute_fleet_status": ComputeFleetStatus,
             "failure_reason": str,
@@ -96,7 +96,7 @@ class DescribeClusterResponseContent(Model):
             "version": "version",
             "cluster_configuration": "clusterConfiguration",
             "tags": "tags",
-            "cloud_formation_status": "cloudFormationStatus",
+            "cloud_formation_stack_status": "cloudFormationStackStatus",
             "cluster_name": "clusterName",
             "compute_fleet_status": "computeFleetStatus",
             "failure_reason": "failureReason",
@@ -111,7 +111,7 @@ class DescribeClusterResponseContent(Model):
         self._version = version
         self._cluster_configuration = cluster_configuration
         self._tags = tags
-        self._cloud_formation_status = cloud_formation_status
+        self._cloud_formation_stack_status = cloud_formation_stack_status
         self._cluster_name = cluster_name
         self._compute_fleet_status = compute_fleet_status
         self._failure_reason = failure_reason
@@ -251,27 +251,27 @@ class DescribeClusterResponseContent(Model):
         self._tags = tags
 
     @property
-    def cloud_formation_status(self):
-        """Gets the cloud_formation_status of this DescribeClusterResponseContent.
+    def cloud_formation_stack_status(self):
+        """Gets the cloud_formation_stack_status of this DescribeClusterResponseContent.
 
 
-        :return: The cloud_formation_status of this DescribeClusterResponseContent.
-        :rtype: CloudFormationStatus
+        :return: The cloud_formation_stack_status of this DescribeClusterResponseContent.
+        :rtype: CloudFormationStackStatus
         """
-        return self._cloud_formation_status
+        return self._cloud_formation_stack_status
 
-    @cloud_formation_status.setter
-    def cloud_formation_status(self, cloud_formation_status):
-        """Sets the cloud_formation_status of this DescribeClusterResponseContent.
+    @cloud_formation_stack_status.setter
+    def cloud_formation_stack_status(self, cloud_formation_stack_status):
+        """Sets the cloud_formation_stack_status of this DescribeClusterResponseContent.
 
 
-        :param cloud_formation_status: The cloud_formation_status of this DescribeClusterResponseContent.
-        :type cloud_formation_status: CloudFormationStatus
+        :param cloud_formation_stack_status: The cloud_formation_stack_status of this DescribeClusterResponseContent.
+        :type cloud_formation_stack_status: CloudFormationStackStatus
         """
-        if cloud_formation_status is None:
-            raise ValueError("Invalid value for `cloud_formation_status`, must not be `None`")
+        if cloud_formation_stack_status is None:
+            raise ValueError("Invalid value for `cloud_formation_stack_status`, must not be `None`")
 
-        self._cloud_formation_status = cloud_formation_status
+        self._cloud_formation_stack_status = cloud_formation_stack_status
 
     @property
     def cluster_name(self):

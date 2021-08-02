@@ -9,19 +9,20 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import gzip
+import json
 import logging
 import os
+import os.path
 import tarfile
 import time
 from datetime import datetime
+from typing import List
 
 import yaml
-from tabulate import tabulate
 
-from pcluster import utils
+from pcluster.api.encoder import JSONEncoder
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.constants import STACK_EVENTS_LOG_STREAM_NAME_FORMAT
 from pcluster.utils import isoformat_to_epoch
 
 LOGGER = logging.getLogger(__name__)
@@ -157,13 +158,13 @@ class CloudWatchLogsExporter:
                     delete_key = self.bucket_prefix
                 else:
                     delete_key = "/".join((self.bucket_prefix, task_id))
-                LOGGER.info("Cleaning up S3 bucket %s. Deleting all objects under %s", self.bucket, delete_key)
+                LOGGER.debug("Cleaning up S3 bucket %s. Deleting all objects under %s", self.bucket, delete_key)
                 AWSApi.instance().s3_resource.delete_objects(bucket_name=self.bucket, prefix=delete_key)
 
     def _export_logs_to_s3(self, log_stream_prefix=None, start_time=None, end_time=None):
         """Export the contents of a image's CloudWatch log group to an s3 bucket."""
         try:
-            LOGGER.info("Starting export of logs from log group %s to s3 bucket %s", self.log_group_name, self.bucket)
+            LOGGER.debug("Starting export of logs from log group %s to s3 bucket %s", self.log_group_name, self.bucket)
             task_id = AWSApi.instance().logs.create_export_task(
                 log_group_name=self.log_group_name,
                 log_stream_name_prefix=log_stream_prefix,
@@ -190,7 +191,7 @@ class CloudWatchLogsExporter:
     @staticmethod
     def _wait_for_task_completion(task_id):
         """Wait for the CloudWatch logs export task given by task_id to finish."""
-        LOGGER.info("Waiting for export task with task ID=%s to finish...", task_id)
+        LOGGER.debug("Waiting for export task with task ID=%s to finish...", task_id)
         status = "PENDING"
         still_running_statuses = ("PENDING", "PENDING_CANCEL", "RUNNING")
         while status in still_running_statuses:
@@ -224,55 +225,41 @@ class CloudWatchLogsExporter:
 
 def export_stack_events(stack_name: str, output_file: str):
     """Save CFN stack events into a file."""
-    stack_events = AWSApi.instance().cfn.get_stack_events(stack_name)
+    stack_events = []
+    chunk = AWSApi.instance().cfn.get_stack_events(stack_name)
+    stack_events.append(chunk["StackEvents"])
+    while chunk.get("nextToken"):
+        chunk = AWSApi.instance().cfn.get_stack_events(stack_name, next_token=chunk["nextToken"])
+        stack_events.append(chunk["StackEvents"])
+
     with open(output_file, "w") as cfn_events_file:
-        for event in stack_events:
-            cfn_events_file.write("%s\n" % AWSApi.instance().cfn.format_event(event))
+        cfn_events_file.write(json.dumps(stack_events, cls=JSONEncoder, indent=2))
 
 
-def create_logs_archive(folder_to_archive: str, archive_file_path: str):
-    LOGGER.debug("Creating archive of logs and saving it to %s", archive_file_path)
-    with tarfile.open(archive_file_path, "w:gz") as tar:
-        tar.add(folder_to_archive, arcname=os.path.basename(folder_to_archive))
+def create_logs_archive(directory: str, output_path: str = None):
+    base_directory = os.path.dirname(directory)
+    base_name = os.path.basename(directory)
+    output_filepath = output_path or f"{os.path.join(base_directory, base_name)}.tar.gz"
+    LOGGER.debug("Creating archive of logs and saving it to %s", output_filepath)
+    with tarfile.open(output_filepath, "w:gz") as tar:
+        tar.add(directory, arcname=base_name)
+    return output_filepath
+
+
+def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
+    archive_filename = os.path.basename(archive_path)
+    with open(archive_path, "rb") as archive_file:
+        archive_data = archive_file.read()
+    AWSApi.instance().s3.put_object(bucket, archive_data, f"{bucket_prefix}/{archive_filename}")
+    return f"s3://{bucket}/{bucket_prefix}/{archive_filename}"
 
 
 class Logs:
     """Class to manage list of logs, for both CW logs and Stack logs."""
 
-    def __init__(self, stack_log_streams: dict = None, cw_log_streams: dict = None):
-        self.stack_log_streams = stack_log_streams
-        self.cw_log_streams = cw_log_streams
-
-    def print_stack_log_streams(self):
-        """Print Stack Log streams."""
-        if not self.stack_log_streams:
-            print("No Stack logs available.\n")
-        else:
-            print("{}\n".format(tabulate(self.stack_log_streams, headers="keys", tablefmt="plain")))
-
-    def print_cw_log_streams(self):
-        """Print CloudWatch log streams."""
-        if not self.cw_log_streams:
-            print("No logs saved in CloudWatch.")
-        else:
-            # List CW log streams
-            output_headers = {
-                "logStreamName": "Log Stream Name",
-                "firstEventTimestamp": "First Event",
-                "lastEventTimestamp": "Last Event",
-            }
-            filtered_result = []
-            for item in self.cw_log_streams.get("logStreams", []):
-                filtered_item = {}
-                for key, output_key in output_headers.items():
-                    value = item.get(key)
-                    if key.endswith("Timestamp"):
-                        value = utils.timestamp_to_isoformat(value)
-                    filtered_item[output_key] = value
-                filtered_result.append(filtered_item)
-            print(tabulate(filtered_result, headers="keys", tablefmt="plain"))
-            if self.cw_log_streams.get("nextToken", None):
-                print("\nnextToken is: %s", self.cw_log_streams["nextToken"])
+    def __init__(self, log_streams: List[dict] = None, next_token: str = None):
+        self.log_streams = log_streams
+        self.next_token = next_token
 
 
 class LogStream:
@@ -286,24 +273,3 @@ class LogStream:
         # The next_tokens are not present when the log stream is the Stack Events log stream
         self.next_ftoken = log_events_response.get("nextForwardToken", None)
         self.next_btoken = log_events_response.get("nextBackwardToken", None)
-
-    def print_events(self):
-        """Print log stream events."""
-        if self.log_stream_name == STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.resource_id):
-            # Print CFN stack events
-            for event in self.events:
-                print(AWSApi.instance().cfn.format_event(event))
-        else:
-            # Print CW log stream events
-            if not self.events:
-                print("No events found.")
-            else:
-                for event in self.events:
-                    print("{0}: {1}".format(utils.timestamp_to_isoformat(event["timestamp"]), event["message"]))
-
-    def print_next_tokens(self):
-        """Print next tokens."""
-        if self.next_btoken:
-            LOGGER.info("\nnextBackwardToken is: %s", self.next_btoken)
-        if self.next_ftoken:
-            LOGGER.info("nextForwardToken is: %s", self.next_ftoken)

@@ -17,7 +17,16 @@ from tests.pcluster.test_utils import dummy_cluster
 
 @pytest.mark.parametrize(
     "is_fleet_stopped, old_max, new_max, expected_result",
-    [(True, 10, 11, True), (True, 10, 9, True), (False, 10, 9, False), (False, 10, 11, True)],
+    [
+        pytest.param(True, 10, 9, True, id="stopped fleet and new_max < old_max"),
+        pytest.param(True, 10, 11, True, id="stopped fleet new_max > old_max"),
+        pytest.param(False, 10, 9, False, id="running fleet and new_max < old_max"),
+        pytest.param(False, 10, 11, True, id="running fleet and new_max > old_max"),
+        pytest.param(False, None, 0, False, id="running fleet and new_max < DEFAULT_MAX_COUNT"),
+        pytest.param(False, None, 11, True, id="running fleet and new_max > DEFAULT_MAX_COUNT"),
+        pytest.param(False, 11, None, False, id="running fleet and DEFAULT_MAX_COUNT < old_max"),
+        pytest.param(False, 0, None, True, id="running fleet and DEFAULT_MAX_COUNT > old_max"),
+    ],
 )
 def test_max_count_policy(mocker, is_fleet_stopped, old_max, new_max, expected_result):
     cluster = dummy_cluster()

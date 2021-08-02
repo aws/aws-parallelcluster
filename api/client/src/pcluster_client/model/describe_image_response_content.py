@@ -27,16 +27,18 @@ from pcluster_client.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
-    from pcluster_client.model.cloud_formation_status import CloudFormationStatus
+    from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
     from pcluster_client.model.ec2_ami_info import Ec2AmiInfo
     from pcluster_client.model.image_build_status import ImageBuildStatus
     from pcluster_client.model.image_builder_image_status import ImageBuilderImageStatus
     from pcluster_client.model.image_configuration_structure import ImageConfigurationStructure
-    globals()['CloudFormationStatus'] = CloudFormationStatus
+    from pcluster_client.model.tag import Tag
+    globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
     globals()['Ec2AmiInfo'] = Ec2AmiInfo
     globals()['ImageBuildStatus'] = ImageBuildStatus
     globals()['ImageBuilderImageStatus'] = ImageBuilderImageStatus
     globals()['ImageConfigurationStructure'] = ImageConfigurationStructure
+    globals()['Tag'] = Tag
 
 
 class DescribeImageResponseContent(ModelNormal):
@@ -85,17 +87,20 @@ class DescribeImageResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'image_configuration': (ImageConfigurationStructure,),  # noqa: E501
             'image_id': (str,),  # noqa: E501
+            'version': (str,),  # noqa: E501
+            'image_configuration': (ImageConfigurationStructure,),  # noqa: E501
             'image_build_status': (ImageBuildStatus,),  # noqa: E501
             'region': (str,),  # noqa: E501
-            'version': (str,),  # noqa: E501
             'cloudformation_stack_status_reason': (str,),  # noqa: E501
             'imagebuilder_image_status_reason': (str,),  # noqa: E501
+            'cloudformation_stack_tags': ([Tag],),  # noqa: E501
             'imagebuilder_image_status': (ImageBuilderImageStatus,),  # noqa: E501
             'creation_time': (datetime,),  # noqa: E501
-            'cloudformation_stack_status': (CloudFormationStatus,),  # noqa: E501
+            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
+            'image_build_logs_arn': (str,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
+            'cloudformation_stack_creation_time': (datetime,),  # noqa: E501
             'ec2_ami_info': (Ec2AmiInfo,),  # noqa: E501
         }
 
@@ -105,17 +110,20 @@ class DescribeImageResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'image_configuration': 'imageConfiguration',  # noqa: E501
         'image_id': 'imageId',  # noqa: E501
+        'version': 'version',  # noqa: E501
+        'image_configuration': 'imageConfiguration',  # noqa: E501
         'image_build_status': 'imageBuildStatus',  # noqa: E501
         'region': 'region',  # noqa: E501
-        'version': 'version',  # noqa: E501
         'cloudformation_stack_status_reason': 'cloudformationStackStatusReason',  # noqa: E501
         'imagebuilder_image_status_reason': 'imagebuilderImageStatusReason',  # noqa: E501
+        'cloudformation_stack_tags': 'cloudformationStackTags',  # noqa: E501
         'imagebuilder_image_status': 'imagebuilderImageStatus',  # noqa: E501
         'creation_time': 'creationTime',  # noqa: E501
         'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
+        'image_build_logs_arn': 'imageBuildLogsArn',  # noqa: E501
         'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
+        'cloudformation_stack_creation_time': 'cloudformationStackCreationTime',  # noqa: E501
         'ec2_ami_info': 'ec2AmiInfo',  # noqa: E501
     }
 
@@ -131,15 +139,15 @@ class DescribeImageResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, image_configuration, image_id, image_build_status, region, version, *args, **kwargs):  # noqa: E501
+    def __init__(self, image_id, version, image_configuration, image_build_status, region, *args, **kwargs):  # noqa: E501
         """DescribeImageResponseContent - a model defined in OpenAPI
 
         Args:
+            image_id (str): Id of the Image to retrieve detailed information for.
+            version (str): ParallelCluster version used to build the image.
             image_configuration (ImageConfigurationStructure):
-            image_id (str): Id of the Image
             image_build_status (ImageBuildStatus):
-            region (str): AWS region where the image is created
-            version (str): ParallelCluster version used to build the image
+            region (str): AWS region where the image is created.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -172,12 +180,15 @@ class DescribeImageResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            cloudformation_stack_status_reason (str): Reason for the CloudFormation stack status. [optional]  # noqa: E501
+            cloudformation_stack_status_reason (str): Reason for the CloudFormation stack status.. [optional]  # noqa: E501
             imagebuilder_image_status_reason (str): Reason for the ImageBuilder Image status.. [optional]  # noqa: E501
+            cloudformation_stack_tags ([Tag]): Tags for the CloudFormation stack.. [optional]  # noqa: E501
             imagebuilder_image_status (ImageBuilderImageStatus): [optional]  # noqa: E501
-            creation_time (datetime): Timestamp representing the image creation time. [optional]  # noqa: E501
-            cloudformation_stack_status (CloudFormationStatus): [optional]  # noqa: E501
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack. [optional]  # noqa: E501
+            creation_time (datetime): Timestamp representing the image creation time.. [optional]  # noqa: E501
+            cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
+            image_build_logs_arn (str): ARN of the logs for the image build process.. [optional]  # noqa: E501
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
+            cloudformation_stack_creation_time (datetime): Timestamp representing the CloudFormation stack creation time.. [optional]  # noqa: E501
             ec2_ami_info (Ec2AmiInfo): [optional]  # noqa: E501
         """
 
@@ -204,11 +215,11 @@ class DescribeImageResponseContent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.image_configuration = image_configuration
         self.image_id = image_id
+        self.version = version
+        self.image_configuration = image_configuration
         self.image_build_status = image_build_status
         self.region = region
-        self.version = version
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

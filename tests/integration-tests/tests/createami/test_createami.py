@@ -18,7 +18,7 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from troposphere import Template, iam
-from utils import generate_stack_name, run_command
+from utils import generate_stack_name
 
 from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 
@@ -31,12 +31,12 @@ def test_build_image(
     architecture,
     s3_bucket_factory,
     build_image_custom_resource,
-    build_image,
+    images_factory,
 ):
     """Test build image for given region and os"""
     # Get base AMI
-    # remarkable AMIs are not available for ARM and ubuntu2004 yet
-    if os != "ubuntu2004":
+    # remarkable AMIs are not available for ARM and ubuntu2004, centos7 yet
+    if os not in ["ubuntu2004", "centos7"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
@@ -57,16 +57,16 @@ def test_build_image(
         bucket_name=bucket_name,
     )
 
-    result = build_image(image_id, region, image_config)
+    image = images_factory(image_id, image_config, region)
 
-    _assert_build_tag(image_id)
-    _assert_build_image_success(result, image_id, region)
-    _assert_image_tag_and_volume(image_id)
+    _assert_build_tag(image)
+    _assert_build_image_success(image)
+    _assert_image_tag_and_volume(image)
 
 
-def _assert_build_tag(image_id):
+def _assert_build_tag(image):
     logging.info("Check the build tag is present as specified in config file.")
-    stack_list = boto3.client("cloudformation").describe_stacks(StackName=image_id).get("Stacks")
+    stack_list = boto3.client("cloudformation").describe_stacks(StackName=image.image_id).get("Stacks")
     logging.info(stack_list)
     assert_that(len(stack_list)).is_equal_to(1)
     stack_tags = stack_list[0].get("Tags")
@@ -74,22 +74,20 @@ def _assert_build_tag(image_id):
     assert_that(stack_tags).contains({"Key": "dummyBuildTag", "Value": "dummyBuildTag"})
 
 
-def _assert_image_tag_and_volume(image_id):
+def _assert_image_tag_and_volume(image):
     logging.info("Check the image tag is present as specified in config file.")
     image_list = (
         boto3.client("ec2")
         .describe_images(
-            ImageIds=[], Filters=[{"Name": "tag:parallelcluster:image_id", "Values": [image_id]}], Owners=["self"]
+            ImageIds=[], Filters=[{"Name": "tag:parallelcluster:image_id", "Values": [image.image_id]}], Owners=["self"]
         )
         .get("Images")
     )
     logging.info(image_list)
     assert_that(len(image_list)).is_equal_to(1)
-    image_tags = image_list[0].get("Tags")
     volume_size = image_list[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
-    logging.info(image_tags)
-    assert_that(image_tags).contains({"Key": "dummyImageTag", "Value": "dummyImageTag"})
     assert_that(volume_size).is_equal_to(200)
+    assert_that(image.image_tags).contains({"key": "dummyImageTag", "value": "dummyImageTag"})
 
 
 @pytest.fixture()
@@ -153,7 +151,7 @@ def build_image_custom_resource(cfn_stacks_factory, region):
             name=custom_resource_stack_name,
             region=region,
             template=custom_resource_template.to_json(),
-            capabilities="CAPABILITY_NAMED_IAM",
+            capabilities=["CAPABILITY_NAMED_IAM"],
         )
         cfn_stacks_factory.create_stack(custom_resource_stack)
 
@@ -168,7 +166,7 @@ def build_image_custom_resource(cfn_stacks_factory, region):
 
 
 def test_build_image_custom_components(
-    region, os, instance, test_datadir, pcluster_config_reader, architecture, s3_bucket_factory, build_image
+    region, os, instance, test_datadir, pcluster_config_reader, architecture, s3_bucket_factory, images_factory
 ):
     """Test custom components and base AMI is ParallelCluster AMI"""
     # Custom script
@@ -191,29 +189,28 @@ def test_build_image_custom_components(
         region=region,
     )
 
-    result = build_image(image_id, region, image_config)
+    image = images_factory(image_id, image_config, region)
 
-    _assert_build_image_success(result, image_id, region)
+    _assert_build_image_success(image)
 
 
-def _assert_build_image_success(result, image_id, region):
-    logging.info(f"Test build image process for image {image_id}.")
-    assert_that(result).contains("CREATE_IN_PROGRESS")
-    assert_that(result).contains("Build image started successfully.")
+def _assert_build_image_success(image):
+    logging.info("Test build image process for image %s.", image.image_id)
 
-    pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
-    logging.info(pcluster_describe_image_result.stdout)
+    pcluster_describe_image_result = image.describe()
+    logging.info(pcluster_describe_image_result)
 
-    while "BUILD_IN_PROGRESS" in pcluster_describe_image_result.stdout:
+    while image.image_status == "BUILD_IN_PROGRESS":
         time.sleep(600)
-        pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
-        logging.info(pcluster_describe_image_result.stdout)
-
-    assert_that(pcluster_describe_image_result.stdout).contains("BUILD_COMPLETE")
+        pcluster_describe_image_result = image.describe()
+        logging.info(pcluster_describe_image_result)
+    if image.image_status != "BUILD_COMPLETE":
+        image.keep_logs = True
+    assert_that(image.image_status).is_equal_to("BUILD_COMPLETE")
 
 
 def test_build_image_wrong_pcluster_version(
-    region, os, instance, pcluster_config_reader, architecture, pcluster_ami_without_standard_naming, build_image
+    region, os, instance, pcluster_config_reader, architecture, pcluster_ami_without_standard_naming, images_factory
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
     current_version = get_installed_parallelcluster_version()
@@ -231,23 +228,24 @@ def test_build_image_wrong_pcluster_version(
     )
     image_id = f"integ-test-build-image-wrong-version-{generate_random_string()}"
 
-    result = build_image(image_id, region, image_config)
+    image = images_factory(image_id, image_config, region)
 
-    _assert_build_image_failed(result, image_id, region)
-    # TODO get cloudwatch log
+    _assert_build_image_failed(image)
+    assert_that(image.get_log_events()).matches(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
-def _assert_build_image_failed(result, image_id, region):
-    logging.info(f"Test build image process for image {image_id}.")
-    assert_that(result).contains("CREATE_IN_PROGRESS")
-    assert_that(result).contains("Build image started successfully.")
+def _assert_build_image_failed(image):
+    logging.info("Test build image process for image %s.", image.image_id)
 
-    pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
-    logging.info(pcluster_describe_image_result.stdout)
+    pcluster_describe_image_result = image.describe()
+    logging.info(pcluster_describe_image_result)
 
-    while "BUILD_IN_PROGRESS" in pcluster_describe_image_result.stdout:
+    while image.image_status == "BUILD_IN_PROGRESS":
         time.sleep(600)
-        pcluster_describe_image_result = run_command(["pcluster", "describe-image", "--id", image_id, "-r", region])
-        logging.info(pcluster_describe_image_result.stdout)
+        pcluster_describe_image_result = image.describe()
+        logging.info(pcluster_describe_image_result)
 
-    assert_that(pcluster_describe_image_result.stdout).contains("BUILD_FAILED")
+    if image.image_status == "BUILD_FAILED":
+        image.keep_logs = True
+
+    assert_that(image.image_status).is_equal_to("BUILD_FAILED")

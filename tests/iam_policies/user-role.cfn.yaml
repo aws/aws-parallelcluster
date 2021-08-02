@@ -1,0 +1,652 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  Region:
+    Type: String
+    Default: '*'
+
+  EnableIamAdminAccess:
+    Description: WARNING - setting this to true grants IAM admin privileges
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+
+Conditions:
+  EnableIamPolicy: !Equals [!Ref EnableIamAdminAccess, true]
+  IsMultiRegion: !Equals [!Ref Region, '*']
+  CreateIamResources: !Equals [true, true]  # to keep aligned the resources in the API stack
+
+Resources:
+
+  ParallelClusterUserRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /parallelcluster/
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              AWS:
+                - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
+      ManagedPolicyArns:
+        - !Ref ParallelClusterClusterPolicy
+        - !Ref ParallelClusterClusterPolicyBatch
+        - !Ref ParallelClusterBuildImageManagedPolicy
+        - !Ref ParallelClusterDeleteImageManagedPolicy
+        - !Ref ParallelClusterListImagesManagedPolicy
+        - !Ref ParallelClusterDescribeImageManagedPolicy
+        - !Ref ParallelClusterLogRetrievalPolicy
+
+  ### IAM POLICIES
+
+  DefaultParallelClusterIamAdminPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: EnableIamPolicy
+    Properties:
+      Roles:
+        - !Ref ParallelClusterUserRole
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteRole
+              - iam:TagRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Sid: IamRole
+          - Action:
+              - iam:CreateRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            # Condition:
+            #   StringEquals:
+            #     iam:PermissionsBoundary:
+            #       - !Ref ParallelClusterPermissionBoundaryPolicy
+            Sid: IamCreateRole
+          - Action:
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Sid: IamInlinePolicy
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Condition:
+              ArnLike:
+                iam:PolicyARN:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonS3ReadOnlyAccess
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+            Effect: Allow
+            Sid: IamPolicy
+
+  ### CLUSTER ACTIONS POLICIES
+
+  ParallelClusterClusterPolicyBatch:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteServiceLinkedRole
+            Resource:
+              # AWS Batch creates a service linked role automatically for the ComputeEnvironment
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/batch.amazonaws.com/*
+            Effect: Allow
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - batch.amazonaws.com
+          - Action:
+              - codebuild:*
+            Resource: !Sub arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/pcluster-*
+            Effect: Allow
+          - Action:
+              - ecr:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: ECR
+          - Action:
+              - batch:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: Batch
+          - Action:
+              - events:*
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Resource: '*'
+            Sid: AmazonCloudWatchEvents
+          - Action:
+              - ecs:DescribeContainerInstances
+              - ecs:ListContainerInstances
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: ECS
+
+  ParallelClusterClusterPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - ec2:Describe*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: EC2Read
+          - Action:
+              - ec2:AllocateAddress
+              - ec2:AssociateAddress
+              - ec2:AttachNetworkInterface
+              - ec2:AuthorizeSecurityGroupEgress
+              - ec2:AuthorizeSecurityGroupIngress
+              - ec2:CreateLaunchTemplate
+              - ec2:CreateLaunchTemplateVersion
+              - ec2:CreateNetworkInterface
+              - ec2:CreatePlacementGroup
+              - ec2:CreateSecurityGroup
+              - ec2:CreateTags
+              - ec2:CreateVolume
+              - ec2:DeleteLaunchTemplate
+              - ec2:DeleteNetworkInterface
+              - ec2:DeletePlacementGroup
+              - ec2:DeleteSecurityGroup
+              - ec2:DeleteVolume
+              - ec2:DisassociateAddress
+              - ec2:ModifyLaunchTemplate
+              - ec2:ModifyNetworkInterfaceAttribute
+              - ec2:ModifyVolumeAttribute
+              - ec2:ReleaseAddress
+              - ec2:RevokeSecurityGroupEgress
+              - ec2:RevokeSecurityGroupIngress
+              - ec2:RunInstances
+              - ec2:TerminateInstances
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: EC2Write
+          - Action:
+              - dynamodb:DescribeTable
+              - dynamodb:ListTagsOfResource
+              - dynamodb:CreateTable
+              - dynamodb:DeleteTable
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:TagResource
+            Resource: !Sub arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*
+            Effect: Allow
+            Sid: DynamoDB
+          - Action:
+              - route53:ChangeResourceRecordSets
+              - route53:ChangeTagsForResource
+              - route53:CreateHostedZone
+              - route53:DeleteHostedZone
+              - route53:GetChange
+              - route53:GetHostedZone
+              - route53:ListResourceRecordSets
+              - route53:ListQueryLoggingConfigs
+            Resource: '*'
+            Effect: Allow
+            Sid: Route53HostedZones
+          - Action:
+              - cloudformation:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: CloudFormation
+          - Action:
+              - cloudwatch:PutDashboard
+              - cloudwatch:ListDashboards
+              - cloudwatch:DeleteDashboards
+              - cloudwatch:GetDashboard
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: CloudWatch
+          - Action:
+              - iam:GetRole
+              - iam:GetRolePolicy
+              - iam:GetPolicy
+              - iam:SimulatePrincipalPolicy
+              - iam:GetInstanceProfile
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*
+              - !Sub arn:${AWS::Partition}:iam::aws:policy/*
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*
+            Effect: Allow
+            Sid: IamRead
+          - Action:
+              - iam:CreateInstanceProfile
+              - iam:DeleteInstanceProfile
+              - iam:AddRoleToInstanceProfile
+              - iam:RemoveRoleFromInstanceProfile
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
+            Effect: Allow
+            Sid: IamInstanceProfile
+          - Action:
+              - iam:PassRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Condition:
+              StringEqualsIfExists:
+                iam:PassedToService:
+                  - ecs-tasks.amazonaws.com
+                  - lambda.amazonaws.com
+                  - !Sub ec2.${AWS::URLSuffix}
+                  - spotfleet.amazonaws.com
+                  - batch.amazonaws.com
+                  - codebuild.amazonaws.com
+            Sid: IamPassRole
+          - Action:
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:GetFunctionConfiguration
+              - lambda:GetFunction
+              - lambda:InvokeFunction
+              - lambda:AddPermission
+              - lambda:RemovePermission
+            Resource:
+              - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:parallelcluster-*
+              - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:pcluster-*
+            Effect: Allow
+            Sid: Lambda
+          - Action:
+              - s3:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*
+              - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*/*
+              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*
+              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*/*
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: S3ResourcesBucket
+          - Action:
+              - s3:Get*
+              - s3:List*
+            Resource: !Sub arn:${AWS::Partition}:s3:::${Region}-aws-parallelcluster*
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: S3ParallelClusterReadOnly
+          - Action:
+              - fsx:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: FSx
+          - Action:
+              - elasticfilesystem:*
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: EFS
+          - Action:
+              - logs:DeleteLogGroup
+              - logs:PutRetentionPolicy
+              - logs:DescribeLogGroups
+              - logs:CreateLogGroup
+              - logs:FilterLogEvents
+              - logs:GetLogEvents
+              - logs:CreateExportTask
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
+            Sid: CloudWatchLogs
+
+  ### IMAGE ACTIONS POLICIES
+
+  ParallelClusterBuildImageManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Managed policy to execute pcluster build-image command without IAM permission
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EC2
+            Effect: Allow
+            Action:
+              - ec2:DescribeImages
+              - ec2:DescribeInstanceTypeOfferings
+              - ec2:DescribeInstanceTypes
+            Resource: '*'
+          - Sid: IAM
+            Effect: Allow
+            Action:
+              - iam:CreateInstanceProfile
+              - iam:AddRoleToInstanceProfile
+              - iam:GetRole
+              - iam:GetRolePolicy
+              - iam:GetInstanceProfile
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/ParallelClusterImage*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+          - Sid: IAMPassRole
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+            Condition:
+              StringEquals:
+                iam:PassedToService:
+                  - lambda.amazonaws.com
+                  - !Sub 'ec2.${AWS::URLSuffix}'
+          - Sid: CloudWatch
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
+          - Sid: CloudFormation
+            Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+              - cloudformation:CreateStack
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
+          - Sid: Lambda
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:GetFunction
+              - lambda:AddPermission
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
+          - Sid: ImageBuilderGet
+            Effect: Allow
+            Action:
+              - imagebuilder:Get*
+            Resource: '*'
+          - Sid: ImageBuilder
+            Effect: Allow
+            Action:
+              - imagebuilder:CreateImage
+              - imagebuilder:TagResource
+              - imagebuilder:CreateImageRecipe
+              - imagebuilder:CreateComponent
+              - imagebuilder:CreateDistributionConfiguration
+              - imagebuilder:CreateInfrastructureConfiguration
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
+          - Sid: S3Bucket
+            Effect: Allow
+            Action:
+              - s3:CreateBucket
+              - s3:ListBucket
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*'
+          - Sid: SNS
+            Effect: Allow
+            Action:
+              - sns:GetTopicAttributes
+              - sns:TagResource
+              - sns:CreateTopic
+              - sns:Subscribe
+              - sns:Publish
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
+          - Sid: S3Objects
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
+
+  ParallelClusterDeleteImageManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Managed policy to execute pcluster delete-image command without IAM permission
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EC2
+            Effect: Allow
+            Action:
+              - ec2:DeregisterImage
+              - ec2:DescribeImages
+              - ec2:DeleteSnapshot
+            Resource: '*'
+          - Sid: IAM
+            Effect: Allow
+            Action:
+              - iam:RemoveRoleFromInstanceProfile
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*'
+              - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*'
+          - Sid: ImageBuilder
+            Effect: Allow
+            Action:
+              - imagebuilder:DeleteImage
+              - imagebuilder:DeleteComponent
+              - imagebuilder:DeleteImageRecipe
+              - imagebuilder:DeleteInfrastructureConfiguration
+              - imagebuilder:DeleteDistributionConfiguration
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image-recipe/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:component/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:distribution-configuration/parallelclusterimage-*'
+              - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:infrastructure-configuration/parallelclusterimage-*'
+          - Sid: CloudFormation
+            Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+              - cloudformation:DeleteStack
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
+          - Sid: Lambda
+            Effect: Allow
+            Action:
+              - lambda:RemovePermission
+              - lambda:DeleteFunction
+              - lambda:AddPermission
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:ParallelClusterImage-*'
+          - Sid: SNS
+            Effect: Allow
+            Action:
+              - SNS:DeleteTopic
+              - SNS:Unsubscribe
+              - SNS:GetTopicAttributes
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:sns:${Region}:${AWS::AccountId}:ParallelClusterImage-*'
+          - Sid: S3Bucket
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:ListBucketVersions
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*'
+          - Sid: S3Objects
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
+          - Sid: CloudWatch
+            Effect: Allow
+            Action:
+              - logs:DeleteLogGroup
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/imagebuilder/ParallelClusterImage-*'
+              - !Sub 'arn:${AWS::Partition}:logs:${Region}:${AWS::AccountId}:log-group:/aws/lambda/ParallelClusterImage-*'
+
+  ParallelClusterListImagesManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Managed policy to execute pcluster list-images command
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EC2
+            Effect: Allow
+            Action:
+              - ec2:DescribeImages
+            Resource: '*'
+          - Sid: CloudFormation
+            Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+            Resource:
+              - '*'
+
+  ParallelClusterDescribeImageManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Managed policy to execute pcluster describe-image command
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EC2
+            Effect: Allow
+            Action:
+              - ec2:DescribeImages
+            Resource: '*'
+          - Sid: CloudFormation
+            Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
+
+  ### LOG COMMANDS
+
+  ParallelClusterLogRetrievalPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Policies needed to retrieve cluster and images logs
+      Path: /parallelcluster/
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+            - logs:DescribeLogGroups
+            - logs:FilterLogEvents
+            - logs:GetLogEvents
+            - logs:CreateExportTask
+            - logs:DescribeLogStreams
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region

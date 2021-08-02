@@ -25,6 +25,7 @@ from pcluster.config.imagebuilder_config import (
     Image,
     ImageBuilderConfig,
     ImagebuilderDevSettings,
+    UpdateOsPackages,
     Volume,
 )
 from pcluster.constants import PCLUSTER_IMAGE_NAME_REGEX
@@ -132,20 +133,35 @@ class DistributionConfigurationSchema(BaseSchema):
 class IamSchema(BaseSchema):
     """Represent the schema of the ImageBuilder IAM."""
 
-    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:(role|instance-profile)/"))
+    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
+    instance_profile = fields.Str(validate=validate.Regexp("^arn:.*:instance-profile/"))
     cleanup_lambda_role = fields.Str(validate=validate.Regexp("^arn:.*:role/"))
     additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, many=True)
+    permissions_boundary = fields.Str(validate=validate.Regexp("^arn:.*:policy/"))
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):
-        """Validate that instance_role and additional_security_groups do not co-exist."""
-        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
-            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
+        """Validate that instance_role, instance_profile or additional_iam_policies do not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "instance_profile", "additional_iam_policies"], **kwargs):
+            raise ValidationError(
+                "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together."
+            )
 
     @post_load()
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Iam(**data)
+
+
+class UpdateOsPackagesSchema(BaseSchema):
+    """Represents the schema of ImageBuilder UpdateOsPackages."""
+
+    enabled = fields.Bool()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return UpdateOsPackages(**data)
 
 
 class BuildSchema(BaseSchema):
@@ -158,7 +174,7 @@ class BuildSchema(BaseSchema):
     tags = fields.List(fields.Nested(TagSchema))
     security_group_ids = fields.List(fields.Str)
     subnet_id = fields.Str(validate=get_field_validator("subnet_id"))
-    update_os_and_reboot = fields.Bool()
+    update_os_packages = fields.Nested(UpdateOsPackagesSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):

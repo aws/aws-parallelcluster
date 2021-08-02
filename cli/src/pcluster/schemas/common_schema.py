@@ -23,7 +23,7 @@ from pcluster.config.cluster_config import BaseTag
 from pcluster.config.common import AdditionalIamPolicy, Cookbook
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_PREFIX, SUPPORTED_ARCHITECTURES
-from pcluster.utils import camelcase
+from pcluster.utils import to_pascal_case
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -64,14 +64,14 @@ class BaseSchema(Schema):
 
     def on_bind_field(self, field_name, field_obj):
         """
-        Bind CamelCase in the config with with snake_case in Python.
+        Bind PascalCase in the config with with snake_case in Python.
 
         For example, subnet_id in the code is automatically bind with SubnetId in the config file.
         The bind can be overwritten by specifying data_key.
-        For example, `EBS` in the config file is not CamelCase, we have to bind it with ebs manually.
+        For example, `EBS` in the config file is not PascalCase, we have to bind it with ebs manually.
         """
         if field_obj.data_key is None:
-            field_obj.data_key = camelcase(field_name)
+            field_obj.data_key = to_pascal_case(field_name)
 
     @staticmethod
     def fields_coexist(data, field_list, one_required=False, **kwargs):
@@ -136,8 +136,12 @@ def _is_implied(resource, attr, value):
 class TagSchema(BaseSchema):
     """Represent the schema of Tag section."""
 
-    key = fields.Str(validate=validate.Length(max=128), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    value = fields.Str(validate=validate.Length(max=256), metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    key = fields.Str(
+        required=True, validate=validate.Length(max=128), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+    value = fields.Str(
+        required=True, validate=validate.Length(max=256), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

@@ -7,7 +7,7 @@
 #  limitations under the License.
 from typing import List
 
-from pcluster.api.models import CloudFormationStatus, ClusterStatus, ConfigValidationMessage, ImageBuildStatus
+from pcluster.api.models import CloudFormationStackStatus, ClusterStatus, ConfigValidationMessage, ImageBuildStatus
 from pcluster.api.models import NodeType as ApiNodeType
 from pcluster.api.models import ValidationLevel
 from pcluster.models.cluster import NodeType
@@ -16,36 +16,36 @@ from pcluster.validators.common import ValidationResult
 
 def cloud_formation_status_to_cluster_status(cfn_status):
     mapping = {
-        CloudFormationStatus.ROLLBACK_IN_PROGRESS: ClusterStatus.CREATE_FAILED,
-        CloudFormationStatus.ROLLBACK_FAILED: ClusterStatus.CREATE_FAILED,
-        CloudFormationStatus.ROLLBACK_COMPLETE: ClusterStatus.CREATE_FAILED,
-        CloudFormationStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS: ClusterStatus.UPDATE_IN_PROGRESS,
-        CloudFormationStatus.UPDATE_ROLLBACK_IN_PROGRESS: ClusterStatus.UPDATE_IN_PROGRESS,
-        CloudFormationStatus.UPDATE_ROLLBACK_FAILED: ClusterStatus.UPDATE_FAILED,
-        CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS: ClusterStatus.UPDATE_IN_PROGRESS,
-        CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE: ClusterStatus.UPDATE_FAILED,
+        CloudFormationStackStatus.ROLLBACK_IN_PROGRESS: ClusterStatus.CREATE_FAILED,
+        CloudFormationStackStatus.ROLLBACK_FAILED: ClusterStatus.CREATE_FAILED,
+        CloudFormationStackStatus.ROLLBACK_COMPLETE: ClusterStatus.CREATE_FAILED,
+        CloudFormationStackStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS: ClusterStatus.UPDATE_IN_PROGRESS,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_IN_PROGRESS: ClusterStatus.UPDATE_IN_PROGRESS,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_FAILED: ClusterStatus.UPDATE_FAILED,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS: ClusterStatus.UPDATE_IN_PROGRESS,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE: ClusterStatus.UPDATE_FAILED,
     }
     return mapping.get(cfn_status, cfn_status)
 
 
 def cloud_formation_status_to_image_status(cfn_status):
     mapping = {
-        CloudFormationStatus.CREATE_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
-        CloudFormationStatus.CREATE_FAILED: ImageBuildStatus.BUILD_FAILED,
-        CloudFormationStatus.CREATE_COMPLETE: ImageBuildStatus.BUILD_COMPLETE,
-        CloudFormationStatus.ROLLBACK_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
-        CloudFormationStatus.ROLLBACK_FAILED: ImageBuildStatus.BUILD_FAILED,
-        CloudFormationStatus.ROLLBACK_COMPLETE: ImageBuildStatus.BUILD_FAILED,
-        CloudFormationStatus.DELETE_IN_PROGRESS: ImageBuildStatus.DELETE_IN_PROGRESS,
-        CloudFormationStatus.DELETE_FAILED: ImageBuildStatus.DELETE_FAILED,
-        CloudFormationStatus.DELETE_COMPLETE: ImageBuildStatus.DELETE_COMPLETE,
-        CloudFormationStatus.UPDATE_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
-        CloudFormationStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
-        CloudFormationStatus.UPDATE_COMPLETE: ImageBuildStatus.BUILD_COMPLETE,
-        CloudFormationStatus.UPDATE_ROLLBACK_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
-        CloudFormationStatus.UPDATE_ROLLBACK_FAILED: ImageBuildStatus.BUILD_FAILED,
-        CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
-        CloudFormationStatus.UPDATE_ROLLBACK_COMPLETE: ImageBuildStatus.BUILD_FAILED,
+        CloudFormationStackStatus.CREATE_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
+        CloudFormationStackStatus.CREATE_FAILED: ImageBuildStatus.BUILD_FAILED,
+        CloudFormationStackStatus.CREATE_COMPLETE: ImageBuildStatus.BUILD_COMPLETE,
+        CloudFormationStackStatus.ROLLBACK_IN_PROGRESS: ImageBuildStatus.BUILD_FAILED,
+        CloudFormationStackStatus.ROLLBACK_FAILED: ImageBuildStatus.BUILD_FAILED,
+        CloudFormationStackStatus.ROLLBACK_COMPLETE: ImageBuildStatus.BUILD_FAILED,
+        CloudFormationStackStatus.DELETE_IN_PROGRESS: ImageBuildStatus.DELETE_IN_PROGRESS,
+        CloudFormationStackStatus.DELETE_FAILED: ImageBuildStatus.DELETE_FAILED,
+        CloudFormationStackStatus.DELETE_COMPLETE: ImageBuildStatus.DELETE_COMPLETE,
+        CloudFormationStackStatus.UPDATE_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
+        CloudFormationStackStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
+        CloudFormationStackStatus.UPDATE_COMPLETE: ImageBuildStatus.BUILD_COMPLETE,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_FAILED: ImageBuildStatus.BUILD_FAILED,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
+        CloudFormationStackStatus.UPDATE_ROLLBACK_COMPLETE: ImageBuildStatus.BUILD_FAILED,
     }
     return mapping.get(cfn_status, cfn_status)
 

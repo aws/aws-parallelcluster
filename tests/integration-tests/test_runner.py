@@ -27,6 +27,7 @@ from framework.tests_configuration.config_renderer import dump_rendered_config_f
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
 from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
+from retrying import retry
 from utils import InstanceTypesData
 
 logger = logging.getLogger()
@@ -65,8 +66,10 @@ TEST_DEFAULTS = {
     "pre_install": None,
     "post_install": None,
     "vpc_stack": None,
+    "api_uri": None,
     "cluster": None,
     "api_definition_s3_uri": None,
+    "api_infrastructure_s3_uri": None,
     "public_ecr_image_uri": None,
     "no_delete": False,
     "benchmarks": False,
@@ -288,22 +291,34 @@ def _init_argparser():
         type=int,
     )
 
+    api_group = parser.add_argument_group("API options")
+    api_group.add_argument(
+        "--api-definition-s3-uri",
+        help="URI of the Docker image for the Lambda of the ParallelCluster API",
+        default=TEST_DEFAULTS.get("api_definition_s3_uri"),
+    )
+    api_group.add_argument(
+        "--api-infrastructure-s3-uri",
+        help="URI of the CloudFormation template for the ParallelCluster API",
+        default=TEST_DEFAULTS.get("api_definition_s3_uri"),
+    )
+    api_group.add_argument(
+        "--public-ecr-image-uri",
+        help="S3 URI of the ParallelCluster API spec",
+        default=TEST_DEFAULTS.get("public_ecr_image_uri"),
+    )
+    api_group.add_argument(
+        "--api-uri",
+        help="URI of an existing ParallelCluster API",
+        default=TEST_DEFAULTS.get("api_uri"),
+    )
+
     debug_group = parser.add_argument_group("Debugging/Development options")
     debug_group.add_argument(
         "--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack")
     )
     debug_group.add_argument(
         "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
-    )
-    debug_group.add_argument(
-        "--api-definition-s3-uri",
-        help="URI of the Docker image for the Lambda of the ParallelCluster API",
-        default=TEST_DEFAULTS.get("api_definition_s3_uri"),
-    )
-    debug_group.add_argument(
-        "--public-ecr-image-uri",
-        help="S3 URI of the ParallelCluster API spec",
-        default=TEST_DEFAULTS.get("public_ecr_image_uri"),
     )
     debug_group.add_argument(
         "--no-delete",
@@ -338,6 +353,7 @@ def _is_file(value):
     return value
 
 
+@retry(stop_max_attempt_number=3, wait_fixed=5000)
 def _is_url(value):
     scheme = urllib.request.urlparse(value).scheme
     if scheme in ["https", "s3", "file"]:
@@ -509,6 +525,9 @@ def _set_custom_stack_args(args, pytest_args):
 
     if args.public_ecr_image_uri:
         pytest_args.extend(["--public-ecr-image-uri", args.public_ecr_image_uri])
+
+    if args.api_uri:
+        pytest_args.extend(["--api-uri", args.api_uri])
 
     if args.no_delete:
         pytest_args.append("--no-delete")

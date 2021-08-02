@@ -18,6 +18,7 @@ from pcluster.config.imagebuilder_config import (
     Image,
     ImageBuilderConfig,
     ImagebuilderDevSettings,
+    UpdateOsPackages,
     Volume,
 )
 
@@ -33,6 +34,7 @@ CLASS_DICT = {
     "distribution_configuration": DistributionConfiguration,
     "iam": Iam,
     "additional_iam_policies": AdditionalIamPolicy,
+    "update_os_packages": UpdateOsPackages,
 }
 
 

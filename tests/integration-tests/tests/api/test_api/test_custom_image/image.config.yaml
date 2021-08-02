@@ -1,0 +1,5 @@
+Build:
+  InstanceType: {{ instance }}
+  ParentImage: {{ parent_image }}
+  UpdateOsPackages:
+    Enabled: true

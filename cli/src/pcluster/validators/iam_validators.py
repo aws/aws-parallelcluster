@@ -11,7 +11,7 @@
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.iam import IamClient
-from pcluster.utils import policy_name_to_arn
+from pcluster.utils import get_resource_name_from_resource_arn, policy_name_to_arn
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -24,7 +24,7 @@ class RoleValidator(Validator):
 
     def _validate(self, role_arn: str):
         try:
-            AWSApi.instance().iam.get_role(_get_resource_name_from_resource_arn(role_arn))
+            AWSApi.instance().iam.get_role(get_resource_name_from_resource_arn(role_arn))
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
@@ -38,12 +38,12 @@ class InstanceProfileValidator(Validator):
 
     def _validate(self, instance_profile_arn: str):
         try:
-            AWSApi.instance().iam.get_instance_profile(_get_resource_name_from_resource_arn(instance_profile_arn))
+            AWSApi.instance().iam.get_instance_profile(get_resource_name_from_resource_arn(instance_profile_arn))
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
 
-class AdditionalIamPolicyValidator(Validator):
+class IamPolicyValidator(Validator):
     """
     EC2 IAM Policy validator.
 
@@ -52,15 +52,22 @@ class AdditionalIamPolicyValidator(Validator):
 
     def _validate(self, policy: str):
         try:
-            if policy not in self._get_base_additional_iam_policies():
-                IamClient().get_policy(policy)
+            IamClient().get_policy(policy)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
+
+
+class AdditionalIamPolicyValidator(IamPolicyValidator):
+    """
+    EC2 IAM Policy validator.
+
+    Verify the given policy is correct.
+    """
+
+    def _validate(self, policy: str):
+        if policy not in self._get_base_additional_iam_policies():
+            super()._validate(policy)
 
     @staticmethod
     def _get_base_additional_iam_policies():
         return [policy_name_to_arn("CloudWatchAgentServerPolicy"), policy_name_to_arn("AWSBatchFullAccess")]
-
-
-def _get_resource_name_from_resource_arn(resource_arn):
-    return resource_arn.rsplit("/", 1)[-1] if resource_arn else ""

@@ -21,7 +21,7 @@ def readme():
 
 
 VERSION = "3.0.0"
-CDK_VERSION = "1.94"
+CDK_VERSION = "1.116"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
@@ -48,6 +48,7 @@ REQUIRES = [
     "werkzeug~=2.0",
     "connexion~=2.7",
     "flask~=2.0",
+    "jmespath~=0.10",
 ]
 
 LAMBDA_REQUIRES = [

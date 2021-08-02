@@ -13,12 +13,13 @@ from abc import ABC
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
-from pcluster.cli_commands.dcv.utils import get_supported_dcv_os
+from pcluster.cli.commands.dcv_util import get_supported_dcv_os
 from pcluster.constants import (
     CIDR_ALL_IPS,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_NAME_MAX_LENGTH,
     PCLUSTER_NAME_REGEX,
+    PCLUSTER_TAG_VALUE_REGEX,
     PCLUSTER_VERSION_TAG,
     SCHEDULERS_SUPPORTING_IMDS_SECURED,
     SUPPORTED_OSES,
@@ -52,6 +53,11 @@ FSX_MESSAGES = {
         "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when an existing Lustre file system is specified.",
     }
 }
+
+HOST_NAME_MAX_LENGTH = 64
+# Max fqdn size is 255 characters, the first 64 are used for the hostname (e.g. queuename-st|dy-computeresourcename-N),
+# then we need to add an extra ., so we have 190 characters to be used for the clustername + domain-name.
+CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH = 255 - HOST_NAME_MAX_LENGTH - 1
 
 
 class ClusterNameValidator(Validator):
@@ -112,7 +118,7 @@ class CustomAmiTagValidator(Validator):
                     "The custom AMI may not have been created by pcluster. "
                     "You can ignore this warning if the AMI is shared or copied from another pcluster AMI. "
                     "If the AMI is indeed not created by pcluster, cluster creation will fail. "
-                    "If the cluster creation fails, please goto"
+                    "If the cluster creation fails, please go to "
                     "https://docs.aws.amazon.com/parallelcluster/latest/ug/troubleshooting.html"
                     "#troubleshooting-stack-creation-failures for troubleshooting."
                 ),
@@ -173,7 +179,7 @@ class DisableSimultaneousMultithreadingArchitectureValidator(Validator):
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
-    def _validate(self, efa_enabled, os, architecture: str):
+    def _validate(self, efa_enabled: bool, os: str, architecture: str):
         if efa_enabled and os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
                 f"EFA is currently not supported on {os} for {architecture} architecture.",
@@ -188,12 +194,19 @@ class ArchitectureOsValidator(Validator):
     ARM AMIs are only available for a subset of the supported OSes.
     """
 
-    def _validate(self, os, architecture: str):
+    def _validate(self, os: str, architecture: str, custom_ami: str):
         allowed_oses = get_supported_os_for_architecture(architecture)
         if os not in allowed_oses:
             self._add_failure(
                 f"The architecture {architecture} is only supported "
                 f"for the following operating systems: {allowed_oses}.",
+                FailureLevel.ERROR,
+            )
+        if custom_ami is None and os == "centos7" and architecture == "arm64":
+            self._add_failure(
+                "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
+                "(M6g, C6g, etc.). To proceed please provide a custom AMI, "
+                "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes",
                 FailureLevel.ERROR,
             )
 
@@ -501,6 +514,17 @@ def _find_duplicate_params(param_list):
     return duplicated_params
 
 
+def _find_overlapping_paths(paths_list):
+    overlapping_paths = []
+    if paths_list:
+        for path in paths_list:
+            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path))
+            if is_overlapping:
+                overlapping_paths.append(path)
+
+    return overlapping_paths
+
+
 class DuplicateMountDirValidator(Validator):
     """
     Mount dir validator.
@@ -512,9 +536,29 @@ class DuplicateMountDirValidator(Validator):
         duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
         if duplicated_mount_dirs:
             self._add_failure(
-                "Mount {0} {1} cannot be specified for multiple volumes".format(
+                "Mount {0} {1} cannot be specified for multiple file systems".format(
                     "directories" if len(duplicated_mount_dirs) > 1 else "directory",
                     ", ".join(mount_dir for mount_dir in duplicated_mount_dirs),
+                ),
+                FailureLevel.ERROR,
+            )
+
+
+class OverlappingMountDirValidator(Validator):
+    """
+    Mount dir validator.
+
+    Verify if there are overlapping mount dirs between shared storage and ephemeral volumes.
+    Two mount dirs are overlapped if one is contained into the other.
+    """
+
+    def _validate(self, mount_dir_list):
+        overlapping_mount_dirs = _find_overlapping_paths(mount_dir_list)
+        if overlapping_mount_dirs:
+            self._add_failure(
+                "Mount {0} {1} cannot contain other mount directories".format(
+                    "directories" if len(overlapping_mount_dirs) > 1 else "directory",
+                    ", ".join(mount_dir for mount_dir in overlapping_mount_dirs),
                 ),
                 FailureLevel.ERROR,
             )
@@ -561,6 +605,27 @@ class EfsIdValidator(Validator):  # TODO add tests
                 )
 
 
+class SharedStorageNameValidator(Validator):
+    """
+    Shared storage name validator.
+
+    Validate if the provided name for the shared storage complies with the acceptable pattern.
+    Since the storage name is used as a tag, the provided name must comply with the tag pattern.
+    """
+
+    def _validate(self, name: str):
+        if not re.match(PCLUSTER_TAG_VALUE_REGEX, name):
+            self._add_failure(
+                (
+                    f"Error: The shared storage name {name} is not valid. "
+                    "Allowed characters are letters, numbers and white spaces that can be represented in UTF-8 "
+                    "and the following characters: '+' '-' '=' '.' '_' ':' '/', "
+                    f"and it can't be longer than 256 characters."
+                ),
+                FailureLevel.ERROR,
+            )
+
+
 # --------------- Third party software validators --------------- #
 
 
@@ -584,7 +649,8 @@ class DcvValidator(Validator):
             allowed_oses = get_supported_dcv_os(architecture)
             if os not in allowed_oses:
                 self._add_failure(
-                    f"NICE DCV can be used with one of the following operating systems: {allowed_oses}. "
+                    f"NICE DCV can be used with one of the following operating systems "
+                    f"when using {architecture} architecture: {allowed_oses}. "
                     "Please double check the os configuration.",
                     FailureLevel.ERROR,
                 )
@@ -873,3 +939,37 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             NetworkInterfaces=network_interfaces,
             DryRun=True,
         )
+
+
+class HostedZoneValidator(Validator):
+    """Validate custom private domain in the same VPC as headnode."""
+
+    def _validate(self, hosted_zone_id, cluster_vpc, cluster_name):
+        if AWSApi.instance().route53.is_hosted_zone_private(hosted_zone_id):
+            vpc_ids = AWSApi.instance().route53.get_hosted_zone_vpcs(hosted_zone_id)
+            if cluster_vpc not in vpc_ids:
+                self._add_failure(
+                    f"Private Route53 hosted zone {hosted_zone_id} need to be associated with "
+                    f"the VPC of the cluster: {cluster_vpc}. "
+                    f"The VPCs associated with hosted zone are {vpc_ids}.",
+                    FailureLevel.ERROR,
+                )
+        else:
+            self._add_failure(
+                f"Hosted zone {hosted_zone_id} cannot be used. "
+                f"Public Route53 hosted zone is not officially supported by ParallelCluster.",
+                FailureLevel.ERROR,
+            )
+
+        domain_name = AWSApi.instance().route53.get_hosted_zone_domain_name(hosted_zone_id)
+        total_length = len(cluster_name) + len(domain_name)
+        if total_length > CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH:
+            self._add_failure(
+                (
+                    "Error: When specifying HostedZoneId, "
+                    f"the total length of cluster name {cluster_name} and domain name {domain_name} can not be "
+                    f"longer than {CLUSTER_NAME_AND_CUSTOM_DOMAIN_NAME_MAX_LENGTH} character, "
+                    f"current length is {total_length}"
+                ),
+                FailureLevel.ERROR,
+            )

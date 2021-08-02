@@ -6,8 +6,19 @@ resource OfficialImage {
 
 resource CustomImage {
     identifiers: { imageId: ImageId },
-    create: BuildImage,
+    put: BuildImage,
     list: ListImages,
     read: DescribeImage,
     delete: DeleteImage,
+}
+
+resource ImageLogStream {
+    identifiers: { imageId: ImageId, logStreamName: LogStreamName },
+    list: ListImageLogStreams,
+    read: GetImageLogEvents
+}
+
+resource ImageStackEvents {
+    identifiers: { imageId: ImageId},
+    read: GetImageStackEvents
 }

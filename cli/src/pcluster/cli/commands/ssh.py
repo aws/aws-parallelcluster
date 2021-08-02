@@ -1,0 +1,116 @@
+# Copyright 2013-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
+# with the License. A copy of the License is located at
+#
+# http://aws.amazon.com/apache2.0/
+#
+# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
+# limitations under the License.
+# FIXME
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+
+import logging
+import os
+import sys
+import textwrap
+from builtins import str
+from typing import List
+
+import argparse
+from argparse import ArgumentParser, Namespace
+
+from pcluster import utils
+from pcluster.api.pcluster_api import PclusterApi
+from pcluster.aws.common import get_region
+from pcluster.cli.commands.common import CliCommand
+from pcluster.models.cluster import NodeType
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _ssh(args, extra_args):
+    # pylint: disable=import-outside-toplevel
+    """
+    Execute an SSH command to the head node instance, according to the [aliases] section if there.
+
+    :param args: pcluster CLI args
+    :param extra_args: pcluster CLI extra_args
+    """
+    try:
+        try:
+            from shlex import quote as cmd_quote
+        except ImportError:
+            from pipes import quote as cmd_quote
+
+        result = PclusterApi().describe_cluster_instances(
+            cluster_name=args.cluster_name, region=get_region(), node_type=NodeType.HEAD_NODE
+        )
+        if isinstance(result, list) and len(result) == 1:
+            # build command
+            cmd = "ssh {CFN_USER}@{HEAD_NODE_IP} {ARGS}".format(
+                CFN_USER=result[0].user,
+                HEAD_NODE_IP=result[0].public_ip_address or result[0].private_ip_address,
+                ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args),
+            )
+
+            # run command
+            log_message = "SSH command: {0}".format(cmd)
+            if not args.dryrun:
+                LOGGER.debug(log_message)
+                # A nosec comment is appended to the following line in order to disable the B605 check.
+                # This check is disabled for the following reasons:
+                # - The args passed to the remote command are sanitized.
+                # - The default command to which these args is known.
+                # - Users have full control over any customization of the command to which args are passed.
+                os.system(cmd)  # nosec nosemgrep
+            else:
+                LOGGER.info(log_message)
+        else:
+            utils.error(f"Unable to connect to the cluster {args.cluster_name}.\n{result.message}")
+
+    except KeyboardInterrupt:
+        LOGGER.info("\nExiting...")
+        sys.exit(0)
+
+
+class SshCommand(CliCommand):
+    """Implement pcluster ssh command."""
+
+    # CLI
+    name = "ssh"
+    help = "Connects to the head node instance using SSH."
+    description = (
+        "Run ssh command with the cluster username and IP address pre-populated. "
+        "Arbitrary arguments are appended to the end of the ssh command."
+    )
+    epilog = textwrap.dedent(
+        """Example:
+
+  $ pcluster ssh --cluster-name mycluster -i ~/.ssh/id_rsa
+
+Returns an ssh command with the cluster username and IP address pre-populated:
+
+  $ ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa"""
+    )
+
+    def __init__(self, subparsers):
+        super().__init__(
+            subparsers,
+            name=self.name,
+            help=self.help,
+            description=self.description,
+            epilog=self.epilog,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            expects_extra_args=True,
+        )
+
+    def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
+        parser.add_argument("--cluster-name", help="Name of the cluster to connect to.", required=True)
+        parser.add_argument("--dryrun", action="store_true", default=False, help="Prints command and exits.")
+
+    def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
+        _ssh(args, extra_args)

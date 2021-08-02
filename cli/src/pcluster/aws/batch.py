@@ -43,6 +43,13 @@ class BatchClient(Boto3Client):
         self._client.update_compute_environment(computeEnvironment=ce_name, state="DISABLED")
 
     @AWSExceptionHandler.handle_client_exception
+    def get_compute_environment_state(self, ce_name: str):
+        """Get the state (ENABLED/DISABLED) of a compute environment."""
+        return self._client.describe_compute_environments(computeEnvironments=[ce_name])["computeEnvironments"][0][
+            "state"
+        ]
+
+    @AWSExceptionHandler.handle_client_exception
     def get_compute_environment_capacity(self, ce_name: str):
         """Describe compute environment and return ."""
         return (

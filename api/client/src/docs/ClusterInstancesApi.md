@@ -13,7 +13,7 @@ Method | HTTP request | Description
 
 
 
-Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters
+Initiate the forced termination of all cluster compute nodes. Does not work with AWS Batch clusters.
 
 ### Example
 
@@ -50,8 +50,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_instances_api.ClusterInstancesApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
-    force = True # bool, none_type | Force the deletion also when the cluster id is not found. (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
+    force = True # bool, none_type | Force the deletion also when the cluster with the given name is not found. (Defaults to 'false'.) (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -73,8 +73,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
- **force** | **bool, none_type**| Force the deletion also when the cluster id is not found. | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
+ **force** | **bool, none_type**| Force the deletion also when the cluster with the given name is not found. (Defaults to &#39;false&#39;.) | [optional]
 
 ### Return type
 
@@ -145,7 +145,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_instances_api.ClusterInstancesApi(api_client)
     cluster_name = "AqWzy" # str | Name of the cluster
-    region = "region_example" # str | AWS Region. Defaults to the region the API is deployed to. (optional)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
     node_type = NodeType("HEAD") # NodeType |  (optional)
     queue_name = "queueName_example" # str |  (optional)
@@ -172,7 +172,7 @@ with pcluster_client.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **cluster_name** | **str**| Name of the cluster |
- **region** | **str**| AWS Region. Defaults to the region the API is deployed to. | [optional]
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
  **next_token** | **str**| Token to use for paginated requests. | [optional]
  **node_type** | **NodeType**|  | [optional]
  **queue_name** | **str**|  | [optional]

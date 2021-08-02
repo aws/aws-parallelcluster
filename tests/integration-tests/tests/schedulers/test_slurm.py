@@ -19,7 +19,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids, get_instance_info
+from utils import check_status, get_compute_nodes_instance_ids, get_instance_info
 
 from tests.common.assertions import (
     assert_errors_in_logs,
@@ -139,7 +139,14 @@ def test_slurm_scaling(scheduler, region, instance, pcluster_config_reader, clus
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 20, 20, 4)
+    _assert_cluster_initial_conditions(scheduler_commands, 20, 20, 4)
+    _test_online_node_configured_correctly(
+        scheduler_commands,
+        partition="ondemand1",
+        num_static_nodes=2,
+        num_dynamic_nodes=2,
+        dynamic_instance_type=instance,
+    )
     _test_partition_states(
         scheduler_commands,
         cluster.cfn_name,
@@ -191,7 +198,7 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1)
+    _assert_cluster_initial_conditions(scheduler_commands, 10, 10, 1)
     _test_cloud_node_health_check(
         remote_command_executor,
         scheduler_commands,
@@ -248,11 +255,7 @@ def test_slurm_protected_mode(
 
 
 def _assert_cluster_initial_conditions(
-    scheduler_commands,
-    instance,
-    expected_num_dummy,
-    expected_num_instance_node,
-    expected_num_static,
+    scheduler_commands, expected_num_dummy, expected_num_instance_node, expected_num_static
 ):
     """Assert that expected nodes are in cluster."""
     cluster_node_states = scheduler_commands.get_nodes_status()
@@ -269,6 +272,35 @@ def _assert_cluster_initial_conditions(
     assert_that(len(c5l_nodes)).is_equal_to(expected_num_dummy)
     assert_that(len(instance_nodes)).is_equal_to(expected_num_instance_node)
     assert_that(len(static_nodes)).is_equal_to(expected_num_static)
+
+
+def _test_online_node_configured_correctly(
+    scheduler_commands, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
+):
+    logging.info("Testing that online nodes' nodeaddr and nodehostname are configured correctly.")
+    init_job_id = submit_initial_job(
+        scheduler_commands,
+        "sleep infinity",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    static_nodes, dynamic_nodes = assert_initial_conditions(
+        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition, cancel_job_id=init_job_id
+    )
+    node_attr_map = {}
+    for node_entry in scheduler_commands.get_node_addr_host():
+        nodename, nodeaddr, nodehostname = node_entry.split()
+        node_attr_map[nodename] = {"nodeaddr": nodeaddr, "nodehostname": nodehostname}
+    logging.info(node_attr_map)
+    for nodename in static_nodes + dynamic_nodes:
+        # For online nodes:
+        # Nodeaddr should be set to private ip of instance
+        # Nodehostname should be the same with nodename
+        assert_that(nodename in node_attr_map).is_true()
+        assert_that(nodename).is_not_equal_to(node_attr_map.get(nodename).get("nodeaddr"))
+        assert_that(nodename).is_equal_to(node_attr_map.get(nodename).get("nodehostname"))
 
 
 def _test_partition_states(
@@ -811,7 +843,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 20.11.7")
+    assert_that(version).is_equal_to("slurm 20.11.8")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
@@ -959,7 +991,7 @@ def _get_num_gpus_on_instance(instance_type_info):
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
 def _wait_for_computefleet_changed(cluster, desired_status):
-    assert_that(cluster.status()).contains(f"ComputeFleetStatus: {desired_status}")
+    check_status(cluster, compute_fleet_status=desired_status)
 
 
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
@@ -1062,7 +1094,7 @@ def _test_protected_mode(scheduler_commands, remote_command_executor, cluster):
         ],
     )
     # Assert bootstrap failure queues are inactive and compute fleet status is PROTECTED
-    assert_that(cluster.status()).contains("ComputeFleetStatus: PROTECTED")
+    check_status(cluster, compute_fleet_status="PROTECTED")
     assert_that(scheduler_commands.get_partition_state(partition="normal")).is_equal_to("UP")
     _wait_for_partition_state_changed(scheduler_commands, "broken", "INACTIVE")
     _wait_for_partition_state_changed(scheduler_commands, "half-broken", "INACTIVE")
@@ -1106,4 +1138,4 @@ def _test_recover_from_protected_mode(
         scheduler_commands.assert_job_succeeded(job_id)
     # Test after pcluster stop and then start, static nodes are not treated as bootstrap failure nodes,
     # not enter protected mode
-    assert_that(cluster.status()).contains("ComputeFleetStatus: RUNNING")
+    check_status(cluster, compute_fleet_status="RUNNING")

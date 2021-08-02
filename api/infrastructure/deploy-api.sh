@@ -7,12 +7,15 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-usage="$(basename "$0") [-h] --s3-bucket bucket-name --ecr-repo repo-name --region aws-region)"
+usage="$(basename "$0") [-h] --s3-bucket bucket-name --ecr-repo repo-name --region aws-region [--stack-name name] [--enable-iam-admin true|false] [--create-api-user  true|false])"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 S3_BUCKET=
 ECR_REPO=
+STACK_NAME="ParallelClusterApi"
+ENABLE_IAM_ADMIN="true"
+CREATE_API_USER="false"
 while [[ $# -gt 0 ]]
 do
 key="$1"
@@ -34,6 +37,21 @@ case $key in
     ;;
     --region)
     export AWS_DEFAULT_REGION=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --stack-name)
+    export STACK_NAME=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --enable-iam-admin)
+    export ENABLE_IAM_ADMIN=$2
+    shift # past argument
+    shift # past value
+    ;;
+    --create-api-user)
+    export CREATE_API_USER=$2
     shift # past argument
     shift # past value
     ;;
@@ -66,8 +84,17 @@ aws s3 cp "${SCRIPT_DIR}/../spec/openapi/ParallelCluster.openapi.yaml" "${S3_UPL
 
 echo "Deploying API template"
 aws cloudformation deploy \
-    --stack-name "ParallelClusterApi" \
+    --stack-name ${STACK_NAME} \
     --template-file ${SCRIPT_DIR}/parallelcluster-api.yaml \
     --parameter-overrides ApiDefinitionS3Uri="${S3_UPLOAD_URI}" PublicEcrImageUri="${ECR_ENDPOINT}/${ECR_REPO}:latest" \
-    --capabilities CAPABILITY_IAM
+                          EnableIamAdminAccess="${ENABLE_IAM_ADMIN}" CreateApiUserRole="${CREATE_API_USER}" \
+    --capabilities CAPABILITY_NAMED_IAM
 
+echo "Updating API Lambda since updates are not fully automated yet"
+LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='ParallelClusterLambdaArn'].OutputValue" --output text)
+ECR_IMAGE_URI=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='UriOfCopyOfPublicEcrImage'].OutputValue" --output text)
+
+aws lambda update-function-code \
+    --function-name ${LAMBDA_FUNCTION_ARN} \
+    --image-uri ${ECR_IMAGE_URI} \
+    --publish

@@ -5,22 +5,21 @@ info:
   version: 3.0.0
 servers:
 - url: /
+# security:
+# - aws.auth.sigv4: []
 paths:
   /v3/clusters:
     get:
-      description: Retrieve the list of existing clusters managed by the API. Deleted
-        clusters are not listed by default.
+      description: Retrieve the list of existing clusters.
       operationId: list_clusters
       parameters:
-      - description: List clusters deployed to a given AWS Region. Defaults to the
-          AWS region the API is deployed to.
+      - description: List clusters deployed to a given AWS Region.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: List clusters deployed to a given AWS Region. Defaults to the
-            AWS region the API is deployed to.
+          description: List clusters deployed to a given AWS Region.
           type: string
         style: form
       - description: Token to use for paginated requests.
@@ -32,13 +31,13 @@ paths:
           description: Token to use for paginated requests.
           type: string
         style: form
-      - description: Filter by cluster status.
+      - description: Filter by cluster status. (Defaults to all clusters.)
         explode: true
         in: query
         name: clusterStatus
         required: false
         schema:
-          description: Filter by cluster status.
+          description: Filter by cluster status. (Defaults to all clusters.)
           items:
             $ref: '#/components/schemas/ClusterStatusFilteringOption'
           type: array
@@ -87,9 +86,18 @@ paths:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
     post:
-      description: Create a ParallelCluster managed cluster in a given region.
+      description: Create a managed cluster in a given region.
       operationId: create_cluster
       parameters:
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
       - description: "Identifies one or more config validators to suppress. Format:\
           \ (ALL|type:[A-Za-z0-9]+)"
         explode: true
@@ -105,8 +113,8 @@ paths:
           type: array
           uniqueItems: true
         style: form
-      - description: Min validation level that will cause the creation to fail. Defaults
-          to 'ERROR'.
+      - description: Min validation level that will cause the creation to fail. (Defaults
+          to 'ERROR'.)
         explode: true
         in: query
         name: validationFailureLevel
@@ -114,28 +122,27 @@ paths:
         schema:
           $ref: '#/components/schemas/ValidationLevel'
         style: form
-      - description: "Only perform request validation without creating any resource.\
-          \ It can be used to validate the cluster configuration. Response code: 200"
+      - description: Only perform request validation without creating any resource.
+          May be used to validate the cluster configuration. (Defaults to 'false'.)
         explode: true
         in: query
         name: dryrun
         required: false
         schema:
-          description: "Only perform request validation without creating any resource.\
-            \ It can be used to validate the cluster configuration. Response code:\
-            \ 200"
+          description: Only perform request validation without creating any resource.
+            May be used to validate the cluster configuration. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
       - description: When set it automatically initiates a cluster stack rollback
-          on failures. Defaults to true.
+          on failures. (Defaults to 'true'.)
         explode: true
         in: query
         name: rollbackOnFailure
         required: false
         schema:
           description: When set it automatically initiates a cluster stack rollback
-            on failures. Defaults to true.
+            on failures. (Defaults to 'true'.)
           nullable: true
           type: boolean
         style: form
@@ -212,18 +219,16 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          maxLength: 60
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       responses:
@@ -285,18 +290,16 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          maxLength: 60
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       responses:
@@ -348,6 +351,7 @@ paths:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
     put:
+      description: Update a cluster managed in a given region.
       operationId: update_cluster
       parameters:
       - description: Name of the cluster
@@ -357,8 +361,6 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          maxLength: 60
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
@@ -377,8 +379,8 @@ paths:
           type: array
           uniqueItems: true
         style: form
-      - description: Min validation level that will cause the update to fail. Defaults
-          to 'error'.
+      - description: Min validation level that will cause the update to fail. (Defaults
+          to 'ERROR'.)
         explode: true
         in: query
         name: validationFailureLevel
@@ -386,36 +388,38 @@ paths:
         schema:
           $ref: '#/components/schemas/ValidationLevel'
         style: form
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
-      - description: "Only perform request validation without creating any resource.\
-          \ It can be used to validate the cluster configuration and update requirements.\
-          \ Response code: 200"
+      - description: Only perform request validation without creating any resource.
+          May be used to validate the cluster configuration and update requirements.
+          (Defaults to 'false'.)
         explode: true
         in: query
         name: dryrun
         required: false
         schema:
-          description: "Only perform request validation without creating any resource.\
-            \ It can be used to validate the cluster configuration and update requirements.\
-            \ Response code: 200"
+          description: Only perform request validation without creating any resource.
+            May be used to validate the cluster configuration and update requirements.
+            (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
-      - description: Force update by ignoring the update validation errors.
+      - description: Force update by ignoring the update validation errors. (Defaults
+          to 'false'.)
         explode: true
         in: query
         name: forceUpdate
         required: false
         schema:
-          description: Force update by ignoring the update validation errors.
+          description: Force update by ignoring the update validation errors. (Defaults
+            to 'false'.)
           nullable: true
           type: boolean
         style: form
@@ -486,10 +490,10 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_operations_controller
-  /v3/clusters/{clusterName}/computefleet/status:
+  /v3/clusters/{clusterName}/computefleet:
     get:
-      description: Describe the status of the compute fleet
-      operationId: describe_compute_fleet_status
+      description: Describe the status of the compute fleet.
+      operationId: describe_compute_fleet
       parameters:
       - description: Name of the cluster
         explode: false
@@ -498,18 +502,16 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          maxLength: 60
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       responses:
@@ -517,8 +519,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DescribeComputeFleetStatusResponseContent'
-          description: DescribeComputeFleetStatus 200 response
+                $ref: '#/components/schemas/DescribeComputeFleetResponseContent'
+          description: DescribeComputeFleet 200 response
         "400":
           content:
             application/json:
@@ -562,7 +564,7 @@ paths:
       x-openapi-router-controller: pcluster.api.controllers.cluster_compute_fleet_controller
     patch:
       description: Update the status of the cluster compute fleet.
-      operationId: update_compute_fleet_status
+      operationId: update_compute_fleet
       parameters:
       - description: Name of the cluster
         explode: false
@@ -571,30 +573,32 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          maxLength: 60
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       requestBody:
         content:
           application/json:
             schema:
-              x-body-name: update_compute_fleet_status_request_content
-              $ref: '#/components/schemas/UpdateComputeFleetStatusRequestContent'
+              x-body-name: update_compute_fleet_request_content
+              $ref: '#/components/schemas/UpdateComputeFleetRequestContent'
         required: true
       responses:
         "204":
-          description: UpdateComputeFleetStatus 204 response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateComputeFleetResponseContent'
+          description: UpdateComputeFleet 204 response
         "400":
           content:
             application/json:
@@ -639,7 +643,7 @@ paths:
   /v3/clusters/{clusterName}/instances:
     delete:
       description: Initiate the forced termination of all cluster compute nodes. Does
-        not work with AWS Batch clusters
+        not work with AWS Batch clusters.
       operationId: delete_cluster_instances
       parameters:
       - description: Name of the cluster
@@ -649,27 +653,27 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          maxLength: 60
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
-      - description: Force the deletion also when the cluster id is not found.
+      - description: Force the deletion also when the cluster with the given name
+          is not found. (Defaults to 'false'.)
         explode: true
         in: query
         name: force
         required: false
         schema:
-          description: Force the deletion also when the cluster id is not found.
+          description: Force the deletion also when the cluster with the given name
+            is not found. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
@@ -728,18 +732,16 @@ paths:
         required: true
         schema:
           description: Name of the cluster
-          maxLength: 60
-          minLength: 5
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       - description: Token to use for paginated requests.
@@ -807,21 +809,136 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.cluster_instances_controller
-  /v3/images/custom:
+  /v3/clusters/{clusterName}/logstreams:
     get:
-      description: Retrieve the list of existing custom images managed by the API.
-        Deleted images are not showed by default
-      operationId: list_images
+      description: Retrieve the list of log streams associated with a cluster.
+      operationId: list_cluster_log_streams
       parameters:
-      - description: List Images built into a given AWS Region. Defaults to the AWS
-          region the API is deployed to.
+      - description: Name of the cluster
+        explode: false
+        in: path
+        name: clusterName
+        required: true
+        schema:
+          description: Name of the cluster
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Region that the given cluster belongs to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: List Images built into a given AWS Region. Defaults to the
-            AWS region the API is deployed to.
+          description: Region that the given cluster belongs to.
+          type: string
+        style: form
+      - description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+          Accepted filters are:\nprivate-dns-name - The short form of the private\
+          \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node type,\
+          \ the only accepted value for this filter is HeadNode."
+        explode: true
+        in: query
+        name: filters
+        required: false
+        schema:
+          description: "Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).\n\
+            Accepted filters are:\nprivate-dns-name - The short form of the private\
+            \ DNS name of the instance (e.g. ip-10-0-0-101).\nnode-type - The node\
+            \ type, the only accepted value for this filter is HeadNode."
+          items:
+            type: string
+          type: array
+          uniqueItems: true
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListClusterLogStreamsResponseContent'
+          description: ListClusterLogStreams 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Cluster Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
+  /v3/clusters/{clusterName}/logstreams/{logStreamName}:
+    get:
+      description: Retrieve the events associated with a log stream.
+      operationId: get_cluster_log_events
+      parameters:
+      - description: Name of the cluster
+        explode: false
+        in: path
+        name: clusterName
+        required: true
+        schema:
+          description: Name of the cluster
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Name of the log stream.
+        explode: false
+        in: path
+        name: logStreamName
+        required: true
+        schema:
+          description: Name of the log stream.
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       - description: Token to use for paginated requests.
@@ -833,7 +950,216 @@ paths:
           description: Token to use for paginated requests.
           type: string
         style: form
-      - description: Filter by image status.
+      - description: "If the value is true, the earliest log events are returned first.\
+          \ If the value is false, the latest log events are returned first. (Defaults\
+          \ to 'false'.)"
+        explode: true
+        in: query
+        name: startFromHead
+        required: false
+        schema:
+          description: "If the value is true, the earliest log events are returned\
+            \ first. If the value is false, the latest log events are returned first.\
+            \ (Defaults to 'false'.)"
+          nullable: true
+          type: boolean
+        style: form
+      - description: "The maximum number of log events returned. If you don't specify\
+          \ a value, the maximum is as many log events as can fit in a response size\
+          \ of 1 MB, up to 10,000 log events."
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          description: "The maximum number of log events returned. If you don't specify\
+            \ a value, the maximum is as many log events as can fit in a response\
+            \ size of 1 MB, up to 10,000 log events."
+          format: int32
+          nullable: true
+          type: integer
+        style: form
+      - description: "The start of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or\
+          \ later than this time are included."
+        explode: true
+        in: query
+        name: startTime
+        required: false
+        schema:
+          description: "The start of the time range, expressed in ISO 8601 format\
+            \ (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this\
+            \ time or later than this time are included."
+          format: date-time
+          type: string
+        style: form
+      - description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+          \ this time are not included."
+        explode: true
+        in: query
+        name: endTime
+        required: false
+        schema:
+          description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+            \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+            \ this time are not included."
+          format: date-time
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetClusterLogEventsResponseContent'
+          description: GetClusterLogEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Cluster Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
+  /v3/clusters/{clusterName}/stackevents:
+    get:
+      description: Retrieve the events associated with the stack for a given cluster.
+      operationId: get_cluster_stack_events
+      parameters:
+      - description: Name of the cluster
+        explode: false
+        in: path
+        name: clusterName
+        required: true
+        schema:
+          description: Name of the cluster
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetClusterStackEventsResponseContent'
+          description: GetClusterStackEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Cluster Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.cluster_logs_controller
+  /v3/images/custom:
+    get:
+      description: Retrieve the list of existing custom images.
+      operationId: list_images
+      parameters:
+      - description: List images built in a given AWS Region.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: List images built in a given AWS Region.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      - description: Filter images by the status provided.
         explode: true
         in: query
         name: imageStatus
@@ -902,8 +1228,8 @@ paths:
           type: array
           uniqueItems: true
         style: form
-      - description: Min validation level that will cause the creation to fail. Defaults
-          to 'error'.
+      - description: Min validation level that will cause the creation to fail. (Defaults
+          to 'ERROR'.)
         explode: true
         in: query
         name: validationFailureLevel
@@ -911,29 +1237,38 @@ paths:
         schema:
           $ref: '#/components/schemas/ValidationLevel'
         style: form
-      - description: "Only perform request validation without creating any resource.\
-          \ It can be used to validate the image configuration. Response code: 200"
+      - description: Only perform request validation without creating any resource.
+          It can be used to validate the image configuration. (Defaults to 'false'.)
         explode: true
         in: query
         name: dryrun
         required: false
         schema:
-          description: "Only perform request validation without creating any resource.\
-            \ It can be used to validate the image configuration. Response code: 200"
+          description: Only perform request validation without creating any resource.
+            It can be used to validate the image configuration. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
-      - description: When set it automatically initiates an image stack rollback on
-          failures. Defaults to true.
+      - description: "When set, will automatically initiate an image stack rollback\
+          \ on failure. (Defaults to 'false'.)"
         explode: true
         in: query
         name: rollbackOnFailure
         required: false
         schema:
-          description: When set it automatically initiates an image stack rollback
-            on failures. Defaults to true.
+          description: "When set, will automatically initiate an image stack rollback\
+            \ on failure. (Defaults to 'false'.)"
           nullable: true
           type: boolean
+        style: form
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
         style: form
       requestBody:
         content:
@@ -1001,36 +1336,34 @@ paths:
       description: Initiate the deletion of the custom ParallelCluster image.
       operationId: delete_image
       parameters:
-      - description: Id of the image
+      - description: Id of the image.
         explode: false
         in: path
         name: imageId
         required: true
         schema:
-          description: Id of the image
-          maxLength: 60
-          minLength: 5
+          description: Id of the image.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       - description: Force deletion in case there are instances using the AMI or in
-          case the AMI is shared
+          case the AMI is shared. (Defaults to 'false'.)
         explode: true
         in: query
         name: force
         required: false
         schema:
           description: Force deletion in case there are instances using the AMI or
-            in case the AMI is shared
+            in case the AMI is shared. (Defaults to 'false'.)
           nullable: true
           type: boolean
         style: form
@@ -1086,25 +1419,23 @@ paths:
       description: Get detailed information about an existing image.
       operationId: describe_image
       parameters:
-      - description: Id of the image
+      - description: Id of the image.
         explode: false
         in: path
         name: imageId
         required: true
         schema:
-          description: Id of the image
-          maxLength: 60
-          minLength: 5
+          description: Id of the image.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         style: simple
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: AWS Region that the operation corresponds to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: AWS Region that the operation corresponds to.
           type: string
         style: form
       responses:
@@ -1155,36 +1486,346 @@ paths:
         uri:
           Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
       x-openapi-router-controller: pcluster.api.controllers.image_operations_controller
-  /v3/images/official:
+  /v3/images/custom/{imageId}/logstreams:
     get:
-      description: Describe ParallelCluster AMIs.
-      operationId: describe_official_images
+      description: Retrieve the list of log streams associated with an image.
+      operationId: list_image_log_streams
       parameters:
-      - description: AWS Region. Defaults to the region the API is deployed to.
+      - description: Id of the image.
+        explode: false
+        in: path
+        name: imageId
+        required: true
+        schema:
+          description: Id of the image.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Region that the given image belongs to.
         explode: true
         in: query
         name: region
         required: false
         schema:
-          description: AWS Region. Defaults to the region the API is deployed to.
+          description: Region that the given image belongs to.
           type: string
         style: form
-      - description: Filter by OS distribution
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListImageLogStreamsResponseContent'
+          description: ListImageLogStreams 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Image Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
+  /v3/images/custom/{imageId}/logstreams/{logStreamName}:
+    get:
+      description: Retrieve the events associated with an image build.
+      operationId: get_image_log_events
+      parameters:
+      - description: Id of the image.
+        explode: false
+        in: path
+        name: imageId
+        required: true
+        schema:
+          description: Id of the image.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: Name of the log stream.
+        explode: false
+        in: path
+        name: logStreamName
+        required: true
+        schema:
+          description: Name of the log stream.
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      - description: "If the value is true, the earliest log events are returned first.\
+          \ If the value is false, the latest log events are returned first. (Defaults\
+          \ to 'false'.)"
+        explode: true
+        in: query
+        name: startFromHead
+        required: false
+        schema:
+          description: "If the value is true, the earliest log events are returned\
+            \ first. If the value is false, the latest log events are returned first.\
+            \ (Defaults to 'false'.)"
+          nullable: true
+          type: boolean
+        style: form
+      - description: "The maximum number of log events returned. If you don't specify\
+          \ a value, the maximum is as many log events as can fit in a response size\
+          \ of 1 MB, up to 10,000 log events."
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          description: "The maximum number of log events returned. If you don't specify\
+            \ a value, the maximum is as many log events as can fit in a response\
+            \ size of 1 MB, up to 10,000 log events."
+          format: int32
+          nullable: true
+          type: integer
+        style: form
+      - description: "The start of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or\
+          \ later than this time are included."
+        explode: true
+        in: query
+        name: startTime
+        required: false
+        schema:
+          description: "The start of the time range, expressed in ISO 8601 format\
+            \ (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this\
+            \ time or later than this time are included."
+          format: date-time
+          type: string
+        style: form
+      - description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+          \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+          \ this time are not included."
+        explode: true
+        in: query
+        name: endTime
+        required: false
+        schema:
+          description: "The end of the time range, expressed in ISO 8601 format (e.g.\
+            \ '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than\
+            \ this time are not included."
+          format: date-time
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetImageLogEventsResponseContent'
+          description: GetImageLogEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Image Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
+  /v3/images/custom/{imageId}/stackevents:
+    get:
+      description: Retrieve the events associated with the stack for a given image
+        build.
+      operationId: get_image_stack_events
+      parameters:
+      - description: Id of the image.
+        explode: false
+        in: path
+        name: imageId
+        required: true
+        schema:
+          description: Id of the image.
+          pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
+          type: string
+        style: simple
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Token to use for paginated requests.
+        explode: true
+        in: query
+        name: nextToken
+        required: false
+        schema:
+          description: Token to use for paginated requests.
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetImageStackEventsResponseContent'
+          description: GetImageStackEvents 200 response
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequestExceptionResponseContent'
+          description: BadRequestException 400 response
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedClientErrorResponseContent'
+          description: UnauthorizedClientError 401 response
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundExceptionResponseContent'
+          description: NotFoundException 404 response
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededExceptionResponseContent'
+          description: LimitExceededException 429 response
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalServiceExceptionResponseContent'
+          description: InternalServiceException 500 response
+      tags:
+      - Image Logs
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${APIGatewayExecutionRole.Arn}"
+        httpMethod: POST
+        payloadFormatVersion: "2.0"
+        type: aws_proxy
+        uri:
+          Fn::Sub: "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations"
+      x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
+  /v3/images/official:
+    get:
+      description: Describe ParallelCluster AMIs.
+      operationId: describe_official_images
+      parameters:
+      - description: AWS Region that the operation corresponds to.
+        explode: true
+        in: query
+        name: region
+        required: false
+        schema:
+          description: AWS Region that the operation corresponds to.
+          type: string
+        style: form
+      - description: Filter by OS distribution (Default is to not filter.)
         explode: true
         in: query
         name: os
         required: false
         schema:
-          description: Filter by OS distribution
+          description: Filter by OS distribution (Default is to not filter.)
           type: string
         style: form
-      - description: Filter by architecture
+      - description: Filter by architecture (Default is to not filter.)
         explode: true
         in: query
         name: architecture
         required: false
         schema:
-          description: Filter by architecture
+          description: Filter by architecture (Default is to not filter.)
           type: string
         style: form
       responses:
@@ -1264,7 +1905,7 @@ components:
       type: object
     BadRequestExceptionResponseContent:
       description: This exception is thrown when a client calls an API with wrong
-        parameters
+        parameters.
       properties:
         message:
           title: message
@@ -1288,25 +1929,18 @@ components:
     BuildImageRequestContent:
       example:
         imageConfiguration: imageConfiguration
-        id: id
-        region: region
+        imageId: imageId
       properties:
         imageConfiguration:
           description: Image configuration as a YAML document
-          format: byte
           type: string
-        id:
-          description: Id of the image
-          maxLength: 60
-          minLength: 5
+        imageId:
+          description: Id of the Image that will be built.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
-        region:
-          description: AWS Region. Defaults to the region the API is deployed to.
-          type: string
       required:
-      - id
       - imageConfiguration
+      - imageId
       type: object
     BuildImageResponseContent:
       example:
@@ -1331,7 +1965,7 @@ components:
           $ref: '#/components/schemas/ImageInfoSummary'
         validationMessages:
           description: List of messages collected during image config validation whose
-            level is lower than the validationFailureLevel set by the user
+            level is lower than the 'validationFailureLevel' set by the user.
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
           title: validationMessages
@@ -1357,7 +1991,27 @@ components:
           type: string
       title: Change
       type: object
-    CloudFormationStatus:
+    CloudFormationResourceStatus:
+      enum:
+      - CREATE_IN_PROGRESS
+      - CREATE_FAILED
+      - CREATE_COMPLETE
+      - DELETE_IN_PROGRESS
+      - DELETE_FAILED
+      - DELETE_COMPLETE
+      - DELETE_SKIPPED
+      - UPDATE_IN_PROGRESS
+      - UPDATE_FAILED
+      - UPDATE_COMPLETE
+      - IMPORT_FAILED
+      - IMPORT_COMPLETE
+      - IMPORT_IN_PROGRESS
+      - IMPORT_ROLLBACK_IN_PROGRESS
+      - IMPORT_ROLLBACK_FAILED
+      - IMPORT_ROLLBACK_COMPLETE
+      title: CloudFormationResourceStatus
+      type: string
+    CloudFormationStackStatus:
       enum:
       - CREATE_IN_PROGRESS
       - CREATE_FAILED
@@ -1375,15 +2029,15 @@ components:
       - UPDATE_ROLLBACK_FAILED
       - UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS
       - UPDATE_ROLLBACK_COMPLETE
-      title: CloudFormationStatus
+      title: CloudFormationStackStatus
       type: string
     ClusterConfigurationStructure:
       example:
-        s3Url: s3Url
+        url: url
       properties:
-        s3Url:
-          description: S3 Url pointing to the cluster configuration file.
-          title: s3Url
+        url:
+          description: URL of the cluster configuration file.
+          title: url
           type: string
       title: ClusterConfigurationStructure
       type: object
@@ -1397,24 +2051,22 @@ components:
         clusterStatus: null
       properties:
         clusterName:
-          description: Name of the cluster
-          maxLength: 60
-          minLength: 5
+          description: Name of the cluster.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: clusterName
           type: string
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
         region:
-          description: AWS region where the cluster is created
+          description: AWS region where the cluster is created.
           title: region
           type: string
         version:
-          description: ParallelCluster version used to create the cluster
+          description: ParallelCluster version used to create the cluster.
           title: version
           type: string
         clusterStatus:
@@ -1504,6 +2156,7 @@ components:
       - STOP_REQUESTED
       - STOPPING
       - STOPPED
+      - UNKNOWN
       - ENABLED
       - DISABLED
       title: ComputeFleetStatus
@@ -1518,11 +2171,11 @@ components:
         level:
           $ref: '#/components/schemas/ValidationLevel'
         id:
-          description: Id of the validator
+          description: Id of the validator.
           title: id
           type: string
         type:
-          description: Type of the validator
+          description: Type of the validator.
           title: type
           type: string
         message:
@@ -1533,7 +2186,7 @@ components:
       type: object
     ConflictExceptionResponseContent:
       description: This exception is thrown when a client request to create/modify
-        content would result in a conflict
+        content would result in a conflict.
       properties:
         message:
           title: message
@@ -1557,26 +2210,19 @@ components:
       type: object
     CreateClusterRequestContent:
       example:
-        name: name
-        region: region
+        clusterName: clusterName
         clusterConfiguration: clusterConfiguration
       properties:
-        name:
-          description: Name of the cluster
-          maxLength: 60
-          minLength: 5
+        clusterName:
+          description: Name of the cluster that will be created.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
-          type: string
-        region:
-          description: AWS Region. Defaults to the region the API is deployed to.
           type: string
         clusterConfiguration:
           description: Cluster configuration as a YAML document
-          format: byte
           type: string
       required:
       - clusterConfiguration
-      - name
+      - clusterName
       type: object
     CreateClusterResponseContent:
       example:
@@ -1601,7 +2247,7 @@ components:
           $ref: '#/components/schemas/ClusterInfoSummary'
         validationMessages:
           description: List of messages collected during cluster config validation
-            whose level is lower than the validationFailureLevel set by the user
+            whose level is lower than the 'validationFailureLevel' set by the user.
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
           title: validationMessages
@@ -1688,13 +2334,13 @@ components:
           privateIpAddress: privateIpAddress
         version: version
         clusterConfiguration:
-          s3Url: s3Url
+          url: url
         tags:
         - value: value
           key: key
         - value: value
           key: key
-        cloudFormationStatus: null
+        cloudFormationStackStatus: null
         clusterName: clusterName
         computeFleetStatus: null
         failureReason: failureReason
@@ -1704,57 +2350,55 @@ components:
         clusterStatus: null
       properties:
         creationTime:
-          description: Timestamp representing the cluster creation time
+          description: Timestamp representing the cluster creation time.
           format: date-time
           title: creationTime
           type: string
         headnode:
           $ref: '#/components/schemas/EC2Instance'
         version:
-          description: ParallelCluster version used to create the cluster
+          description: ParallelCluster version used to create the cluster.
           title: version
           type: string
         clusterConfiguration:
           $ref: '#/components/schemas/ClusterConfigurationStructure'
         tags:
-          description: Tags associated with the cluster
+          description: Tags associated with the cluster.
           items:
             $ref: '#/components/schemas/Tag'
           title: tags
           type: array
-        cloudFormationStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+        cloudFormationStackStatus:
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         clusterName:
-          description: Name of the cluster
-          maxLength: 60
-          minLength: 5
+          description: Name of the cluster.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: clusterName
           type: string
         computeFleetStatus:
           $ref: '#/components/schemas/ComputeFleetStatus'
         failureReason:
-          description: "Describe the reason of the failure when the stack is in CREATE_FAILED,\
-            \ UPDATE_FAILED or DELETE_FAILED status"
+          description: "Reason of the failure when the stack is in CREATE_FAILED,\
+            \ UPDATE_FAILED or DELETE_FAILED status."
           title: failureReason
           type: string
         cloudformationStackArn:
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
         lastUpdatedTime:
-          description: Timestamp representing the last cluster update time
+          description: Timestamp representing the last cluster update time.
           format: date-time
           title: lastUpdatedTime
           type: string
         region:
-          description: AWS region where the cluster is created
+          description: AWS region where the cluster is created.
           title: region
           type: string
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
       required:
-      - cloudFormationStatus
+      - cloudFormationStackStatus
       - cloudformationStackArn
       - clusterConfiguration
       - clusterName
@@ -1767,36 +2411,43 @@ components:
       - version
       title: DescribeClusterResponseContent
       type: object
-    DescribeComputeFleetStatusResponseContent:
+    DescribeComputeFleetResponseContent:
       example:
-        lastUpdatedTime: 2000-01-23T04:56:07.000+00:00
         status: null
+        lastStatusUpdatedTime: 2000-01-23T04:56:07.000+00:00
       properties:
-        lastUpdatedTime:
-          description: Timestamp representing the last status update time
+        lastStatusUpdatedTime:
+          description: Timestamp representing the last status update time.
           format: date-time
-          title: lastUpdatedTime
+          title: lastStatusUpdatedTime
           type: string
         status:
           $ref: '#/components/schemas/ComputeFleetStatus'
       required:
-      - lastUpdatedTime
       - status
-      title: DescribeComputeFleetStatusResponseContent
+      title: DescribeComputeFleetResponseContent
       type: object
     DescribeImageResponseContent:
       example:
         cloudformationStackStatusReason: cloudformationStackStatusReason
         imageConfiguration:
-          s3Url: s3Url
+          url: url
         imagebuilderImageStatusReason: imagebuilderImageStatusReason
         imageId: imageId
+        cloudformationStackTags:
+        - value: value
+          key: key
+        - value: value
+          key: key
         imagebuilderImageStatus: null
         creationTime: 2000-01-23T04:56:07.000+00:00
+        version: version
         imageBuildStatus: null
         cloudformationStackStatus: null
+        imageBuildLogsArn: imageBuildLogsArn
         cloudformationStackArn: cloudformationStackArn
         region: region
+        cloudformationStackCreationTime: 2000-01-23T04:56:07.000+00:00
         ec2AmiInfo:
           amiName: amiName
           amiId: amiId
@@ -1811,7 +2462,7 @@ components:
         version: version
       properties:
         cloudformationStackStatusReason:
-          description: Reason for the CloudFormation stack status
+          description: Reason for the CloudFormation stack status.
           title: cloudformationStackStatusReason
           type: string
         imageConfiguration:
@@ -1821,32 +2472,48 @@ components:
           title: imagebuilderImageStatusReason
           type: string
         imageId:
-          description: Id of the Image
+          description: Id of the Image to retrieve detailed information for.
           title: imageId
           type: string
         imagebuilderImageStatus:
           $ref: '#/components/schemas/ImageBuilderImageStatus'
         creationTime:
-          description: Timestamp representing the image creation time
+          description: Timestamp representing the image creation time.
           format: date-time
           title: creationTime
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
+        imageBuildLogsArn:
+          description: ARN of the logs for the image build process.
+          title: imageBuildLogsArn
+          type: string
+          type: string
+        cloudformationStackCreationTime:
+          description: Timestamp representing the CloudFormation stack creation time.
+          format: date-time
+          title: cloudformationStackCreationTime
+          type: string
+        cloudformationStackTags:
+          description: Tags for the CloudFormation stack.
+          items:
+            $ref: '#/components/schemas/Tag'
+          title: cloudformationStackTags
+          type: array
         region:
-          description: AWS region where the image is created
+          description: AWS region where the image is created.
           title: region
           type: string
         ec2AmiInfo:
           $ref: '#/components/schemas/Ec2AmiInfo'
         version:
-          description: ParallelCluster version used to build the image
+          description: ParallelCluster version used to build the image.
           title: version
           type: string
       required:
@@ -1981,6 +2648,132 @@ components:
       - ERROR
       title: Ec2AmiState
       type: string
+    GetClusterLogEventsResponseContent:
+      example:
+        nextToken: nextToken
+        prevToken: prevToken
+        events:
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        prevToken:
+          description: Token to use for paginated requests.
+          title: prevToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/LogEvent'
+          title: events
+          type: array
+      title: GetClusterLogEventsResponseContent
+      type: object
+    GetClusterStackEventsResponseContent:
+      example:
+        nextToken: nextToken
+        events:
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/StackEvent'
+          title: events
+          type: array
+      title: GetClusterStackEventsResponseContent
+      type: object
+    GetImageLogEventsResponseContent:
+      example:
+        nextToken: nextToken
+        prevToken: prevToken
+        events:
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        prevToken:
+          description: Token to use for paginated requests.
+          title: prevToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/LogEvent'
+          title: events
+          type: array
+      title: GetImageLogEventsResponseContent
+      type: object
+    GetImageStackEventsResponseContent:
+      example:
+        nextToken: nextToken
+        events:
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - eventId: eventId
+          physicalResourceId: physicalResourceId
+          resourceStatus: null
+          resourceStatusReason: resourceStatusReason
+          clientRequestToken: clientRequestToken
+          resourceProperties: resourceProperties
+          stackId: stackId
+          stackName: stackName
+          logicalResourceId: logicalResourceId
+          resourceType: resourceType
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        events:
+          items:
+            $ref: '#/components/schemas/StackEvent'
+          title: events
+          type: array
+      title: GetImageStackEventsResponseContent
+      type: object
     ImageBuildStatus:
       enum:
       - BUILD_IN_PROGRESS
@@ -2008,11 +2801,11 @@ components:
       type: string
     ImageConfigurationStructure:
       example:
-        s3Url: s3Url
+        url: url
       properties:
-        s3Url:
-          description: S3 Url pointing to the image configuration file.
-          title: s3Url
+        url:
+          description: URL of the image configuration file.
+          title: url
           type: string
       title: ImageConfigurationStructure
       type: object
@@ -2026,26 +2819,24 @@ components:
         version: version
       properties:
         imageId:
-          description: Id of the image
-          maxLength: 60
-          minLength: 5
+          description: Id of the image.
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           title: imageId
           type: string
         imageBuildStatus:
           $ref: '#/components/schemas/ImageBuildStatus'
         cloudformationStackStatus:
-          $ref: '#/components/schemas/CloudFormationStatus'
+          $ref: '#/components/schemas/CloudFormationStackStatus'
         cloudformationStackArn:
-          description: ARN of the main CloudFormation stack
+          description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
         region:
-          description: AWS region where the image is built
+          description: AWS region where the image is built.
           title: region
           type: string
         version:
-          description: ParallelCluster version used to build the image
+          description: ParallelCluster version used to build the image.
           title: version
           type: string
       required:
@@ -2073,7 +2864,7 @@ components:
       title: InstanceState
       type: string
     InternalServiceExceptionResponseContent:
-      description: This exception is thrown on an unhandled service error
+      description: This exception is thrown on an unhandled service error.
       properties:
         message:
           title: message
@@ -2088,6 +2879,38 @@ components:
           title: message
           type: string
       title: LimitExceededExceptionResponseContent
+      type: object
+    ListClusterLogStreamsResponseContent:
+      example:
+        nextToken: nextToken
+        items:
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LogStream'
+          title: items
+          type: array
+      required:
+      - items
+      title: ListClusterLogStreamsResponseContent
       type: object
     ListClustersResponseContent:
       example:
@@ -2119,6 +2942,38 @@ components:
       - items
       title: ListClustersResponseContent
       type: object
+    ListImageLogStreamsResponseContent:
+      example:
+        nextToken: nextToken
+        items:
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+        - logStreamArn: logStreamArn
+          creationTime: 2000-01-23T04:56:07.000+00:00
+          logStreamName: logStreamName
+          firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+          lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+          uploadSequenceToken: uploadSequenceToken
+      properties:
+        nextToken:
+          description: Token to use for paginated requests.
+          title: nextToken
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LogStream'
+          title: items
+          type: array
+      required:
+      - items
+      title: ListImageLogStreamsResponseContent
+      type: object
     ListImagesResponseContent:
       example:
         nextToken: nextToken
@@ -2149,6 +3004,78 @@ components:
       - items
       title: ListImagesResponseContent
       type: object
+    LogEvent:
+      example:
+        message: message
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        message:
+          title: message
+          type: string
+        timestamp:
+          format: date-time
+          title: timestamp
+          type: string
+      required:
+      - message
+      - timestamp
+      title: LogEvent
+      type: object
+    LogStream:
+      example:
+        logStreamArn: logStreamArn
+        creationTime: 2000-01-23T04:56:07.000+00:00
+        logStreamName: logStreamName
+        firstEventTimestamp: 2000-01-23T04:56:07.000+00:00
+        lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
+        lastIngestionTime: 2000-01-23T04:56:07.000+00:00
+        uploadSequenceToken: uploadSequenceToken
+      properties:
+        logStreamArn:
+          description: The Amazon Resource Name (ARN) of the log stream.
+          title: logStreamArn
+          type: string
+        creationTime:
+          description: The creation time of the stream.
+          format: date-time
+          title: creationTime
+          type: string
+        logStreamName:
+          description: Name of the log stream.
+          title: logStreamName
+          type: string
+        firstEventTimestamp:
+          description: The time of the first event of the stream.
+          format: date-time
+          title: firstEventTimestamp
+          type: string
+        lastEventTimestamp:
+          description: "The time of the last event of the stream. The lastEventTime\
+            \ value updates on an eventual consistency basis. It typically updates\
+            \ in less than an hour from ingestion, but in rare situations might take\
+            \ longer."
+          format: date-time
+          title: lastEventTimestamp
+          type: string
+        lastIngestionTime:
+          description: The last ingestion time.
+          format: date-time
+          title: lastIngestionTime
+          type: string
+        uploadSequenceToken:
+          description: The sequence token.
+          title: uploadSequenceToken
+          type: string
+      required:
+      - creationTime
+      - firstEventTimestamp
+      - lastEventTimestamp
+      - lastIngestionTime
+      - logStreamArn
+      - logStreamName
+      - uploadSequenceToken
+      title: LogStream
+      type: object
     NodeType:
       enum:
       - HEAD
@@ -2156,7 +3083,7 @@ components:
       title: NodeType
       type: string
     NotFoundExceptionResponseContent:
-      description: This exception is thrown when the requested entity is not found
+      description: This exception is thrown when the requested entity is not found.
       properties:
         message:
           title: message
@@ -2171,6 +3098,78 @@ components:
       - DISABLED
       title: RequestedComputeFleetStatus
       type: string
+    StackEvent:
+      example:
+        eventId: eventId
+        physicalResourceId: physicalResourceId
+        resourceStatus: null
+        resourceStatusReason: resourceStatusReason
+        clientRequestToken: clientRequestToken
+        resourceProperties: resourceProperties
+        stackId: stackId
+        stackName: stackName
+        logicalResourceId: logicalResourceId
+        resourceType: resourceType
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        eventId:
+          description: The unique ID of this event.
+          title: eventId
+          type: string
+        physicalResourceId:
+          description: The name or unique identifier associated with the physical
+            instance of the resource.
+          title: physicalResourceId
+          type: string
+        resourceStatus:
+          $ref: '#/components/schemas/CloudFormationResourceStatus'
+        resourceStatusReason:
+          description: Success/failure message associated with the resource.
+          title: resourceStatusReason
+          type: string
+        clientRequestToken:
+          description: The token passed to the operation that generated this event.
+          title: clientRequestToken
+          type: string
+        resourceProperties:
+          description: BLOB of the properties used to create the resource.
+          title: resourceProperties
+          type: string
+        stackId:
+          description: The unique ID name of the instance of the stack.
+          title: stackId
+          type: string
+        stackName:
+          description: The name associated with a stack.
+          title: stackName
+          type: string
+        logicalResourceId:
+          description: The logical name of the resource specified in the template.
+          title: logicalResourceId
+          type: string
+        resourceType:
+          description: Type of resource.
+          title: resourceType
+          type: string
+        timestamp:
+          description: Time the status was updated.
+          format: date-time
+          title: timestamp
+          type: string
+      required:
+      - clientRequestToken
+      - eventId
+      - logicalResourceId
+      - physicalResourceId
+      - resourceProperties
+      - resourceStatus
+      - resourceStatusReason
+      - resourceType
+      - stackId
+      - stackName
+      - timestamp
+      title: StackEvent
+      type: object
     Tag:
       example:
         value: value
@@ -2188,7 +3187,7 @@ components:
       type: object
     UnauthorizedClientErrorResponseContent:
       description: This exception is thrown when the client is not authorized to perform
-        an action
+        an action.
       properties:
         message:
           title: message
@@ -2226,7 +3225,6 @@ components:
       properties:
         clusterConfiguration:
           description: Cluster configuration as a YAML document
-          format: byte
           type: string
       required:
       - clusterConfiguration
@@ -2261,13 +3259,13 @@ components:
           $ref: '#/components/schemas/ClusterInfoSummary'
         validationMessages:
           description: List of messages collected during cluster config validation
-            whose level is lower than the validationFailureLevel set by the user
+            whose level is lower than the 'validationFailureLevel' set by the user.
           items:
             $ref: '#/components/schemas/ConfigValidationMessage'
           title: validationMessages
           type: array
         changeSet:
-          description: List of configuration changes requested by the update operation
+          description: List of configuration changes requested by the update operation.
           items:
             $ref: '#/components/schemas/Change'
           title: changeSet
@@ -2277,7 +3275,7 @@ components:
       - cluster
       title: UpdateClusterResponseContent
       type: object
-    UpdateComputeFleetStatusRequestContent:
+    UpdateComputeFleetRequestContent:
       example:
         status: null
       properties:
@@ -2285,6 +3283,22 @@ components:
           $ref: '#/components/schemas/RequestedComputeFleetStatus'
       required:
       - status
+      type: object
+    UpdateComputeFleetResponseContent:
+      example:
+        status: null
+        lastStatusUpdatedTime: 2000-01-23T04:56:07.000+00:00
+      properties:
+        status:
+          $ref: '#/components/schemas/ComputeFleetStatus'
+        lastStatusUpdatedTime:
+          description: Timestamp representing the last status update time.
+          format: date-time
+          title: lastStatusUpdatedTime
+          type: string
+      required:
+      - status
+      title: UpdateComputeFleetResponseContent
       type: object
     UpdateError:
       properties:
@@ -2309,3 +3323,11 @@ components:
       - ERROR
       title: ValidationLevel
       type: string
+  # securitySchemes:
+  #   aws.auth.sigv4:
+  #     description: AWS Signature Version 4 authentication
+  #     in: header
+  #     name: Authorization
+  #     type: apiKey
+  #     x-amazon-apigateway-authtype: awsSigv4
+  #     x-apikeyInfoFunc: pcluster.api.controllers.security_controller_.info_from_aws.auth.sigv4

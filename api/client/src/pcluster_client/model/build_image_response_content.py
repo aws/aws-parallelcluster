@@ -142,7 +142,7 @@ class BuildImageResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            validation_messages ([ConfigValidationMessage]): List of messages collected during image config validation whose level is lower than the validationFailureLevel set by the user. [optional]  # noqa: E501
+            validation_messages ([ConfigValidationMessage]): List of messages collected during image config validation whose level is lower than the 'validationFailureLevel' set by the user.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

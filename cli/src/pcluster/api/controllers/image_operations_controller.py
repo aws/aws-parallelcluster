@@ -7,6 +7,7 @@
 # limitations under the License.
 
 # pylint: disable=W0613
+import logging
 import os as os_lib
 
 from pcluster.api.controllers.common import (
@@ -14,7 +15,6 @@ from pcluster.api.controllers.common import (
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
-    read_config,
 )
 from pcluster.api.converters import (
     cloud_formation_status_to_image_status,
@@ -31,7 +31,7 @@ from pcluster.api.models import (
     BuildImageBadRequestExceptionResponseContent,
     BuildImageRequestContent,
     BuildImageResponseContent,
-    CloudFormationStatus,
+    CloudFormationStackStatus,
     DescribeImageResponseContent,
     DescribeOfficialImagesResponseContent,
     Ec2AmiInfo,
@@ -39,19 +39,24 @@ from pcluster.api.models import (
     ImageInfoSummary,
     ImageStatusFilteringOption,
     ListImagesResponseContent,
+    Tag,
+    ValidationLevel,
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
 from pcluster.aws.aws_api import AWSApi
+from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
 from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
-from pcluster.utils import get_installed_version
+from pcluster.utils import get_installed_version, to_iso_time
 from pcluster.validators.common import FailureLevel
 
+LOGGER = logging.getLogger(__name__)
 
-@configure_aws_region(is_query_string_arg=False)
+
+@configure_aws_region()
 @http_success_status_code(202)
 @convert_errors()
 def build_image(
@@ -60,6 +65,7 @@ def build_image(
     validation_failure_level=None,
     dryrun=None,
     rollback_on_failure=None,
+    region=None,
 ):
     """
     Create a custom ParallelCluster image in a given region.
@@ -73,23 +79,31 @@ def build_image(
     :type validation_failure_level: dict | bytes
     :param dryrun: Only perform request validation without creating any resource.
     It can be used to validate the image configuration. Response code: 200
+    (Defaults to &#39;false&#39;.)
     :type dryrun: bool
-    :param rollback_on_failure: When set it automatically initiates an image stack rollback on failures.
-    Defaults to true.
+    :param rollback_on_failure: When set, will automatically initiate an image stack rollback on failure.
+    (Defaults to &#39;false&#39;.)
     :type rollback_on_failure: bool
+    :param region: AWS Region that the operation corresponds to.
+    :type region: str
 
     :rtype: BuildImageResponseContent
     """
-    rollback_on_failure = rollback_on_failure or False
+    rollback_on_failure = rollback_on_failure if rollback_on_failure is not None else False
     disable_rollback = not rollback_on_failure
-    validation_failure_level = validation_failure_level or FailureLevel.ERROR
+    validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun or False
 
     build_image_request_content = BuildImageRequestContent.from_dict(build_image_request_content)
 
     try:
-        image_id = build_image_request_content.id
-        config = read_config(build_image_request_content.image_configuration)
+        image_id = build_image_request_content.image_id
+        config = build_image_request_content.image_configuration
+
+        if not config:
+            LOGGER.error("Failed: configuration is required and cannot be empty")
+            raise BadRequestException("configuration is required and cannot be empty")
+
         imagebuilder = ImageBuilder(image_id=image_id, config=config)
 
         if dryrun:
@@ -125,9 +139,10 @@ def delete_image(image_id, region=None, force=None):
 
     :param image_id: Id of the image
     :type image_id: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
     :param force: Force deletion in case there are instances using the AMI or in case the AMI is shared
+    (Defaults to &#39;false&#39;.)
     :type force: bool
 
     :rtype: DeleteImageResponseContent
@@ -142,7 +157,7 @@ def delete_image(image_id, region=None, force=None):
         image=ImageInfoSummary(
             image_id=image_id,
             image_build_status=ImageBuildStatus.DELETE_IN_PROGRESS,
-            cloudformation_stack_status=CloudFormationStatus.DELETE_IN_PROGRESS if stack else None,
+            cloudformation_stack_status=CloudFormationStackStatus.DELETE_IN_PROGRESS if stack else None,
             cloudformation_stack_arn=stack.id if stack else None,
             region=os_lib.environ.get("AWS_DEFAULT_REGION"),
             version=stack.version if stack else image.version,
@@ -173,7 +188,7 @@ def describe_image(image_id, region=None):
 
     :param image_id: Id of the image
     :type image_id: str
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
 
     :rtype: DescribeImageResponseContent
@@ -189,17 +204,28 @@ def describe_image(image_id, region=None):
             raise NotFoundException("No image or stack associated to parallelcluster image id {}.".format(image_id))
 
 
+def _presigned_config_url(imagebuilder):
+    """Get the URL for the config as a pre-signed S3 URL."""
+    # Do not fail request when S3 bucket is not available
+    config_url = "NOT_AVAILABLE"
+    try:
+        config_url = imagebuilder.presigned_config_url
+    except AWSClientError as e:
+        LOGGER.error(e)
+    return config_url
+
+
 def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
-        creation_time=imagebuilder.image.creation_date,
-        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        creation_time=to_iso_time(imagebuilder.image.creation_date),
+        image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
         ec2_ami_info=Ec2AmiInfo(
             ami_name=imagebuilder.image.name,
             ami_id=imagebuilder.image.id,
             state=imagebuilder.image.state.upper(),
-            tags=imagebuilder.image.tags,
+            tags=[Tag(key=tag["Key"], value=tag["Value"]) for tag in imagebuilder.image.tags],
             architecture=imagebuilder.image.architecture,
             description=imagebuilder.image.description,
         ),
@@ -211,14 +237,17 @@ def _image_to_describe_image_response(imagebuilder):
 def _stack_to_describe_image_response(imagebuilder):
     imagebuilder_image_state = imagebuilder.stack.image_state or dict()
     return DescribeImageResponseContent(
-        image_configuration=ImageConfigurationStructure(s3_url=imagebuilder.config_url),
+        image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
         image_build_status=imagebuilder.imagebuild_status,
+        image_build_logs_arn=imagebuilder.stack.build_log,
         imagebuilder_image_status=imagebuilder_image_state.get("status", None),
         imagebuilder_image_status_reason=imagebuilder_image_state.get("reason", None),
         cloudformation_stack_status=imagebuilder.stack.status,
         cloudformation_stack_status_reason=imagebuilder.stack.status_reason,
         cloudformation_stack_arn=imagebuilder.stack.id,
+        cloudformation_stack_creation_time=to_iso_time(imagebuilder.stack.creation_time),
+        cloudformation_stack_tags=[Tag(key=tag["Key"], value=tag["Value"]) for tag in imagebuilder.stack.tags],
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=imagebuilder.stack.version,
     )
@@ -230,11 +259,11 @@ def describe_official_images(region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
 
-    :param region: AWS Region. Defaults to the region the API is deployed to.
+    :param region: AWS Region that the operation corresponds to.
     :type region: str
-    :param os: Filter by OS distribution
+    :param os: Filter by OS distribution (Default is to not filter.)
     :type os: str
-    :param architecture: Filter by architecture
+    :param architecture: Filter by architecture (Default is to not filter.)
     :type architecture: str
 
     :rtype: DescribeOfficialImagesResponseContent
@@ -275,11 +304,11 @@ def _image_info_to_ami_info(image):
 @convert_errors()
 def list_images(image_status, region=None, next_token=None):
     """
-    Retrieve the list of existing custom images managed by the API. Deleted images are not showed by default.
+    Retrieve the list of existing custom images.
 
     :param image_status: Filter by image status.
     :type image_status: dict | bytes
-    :param region: List Images built into a given AWS Region. Defaults to the AWS region the API is deployed to.
+    :param region: List images built in a given AWS Region.
     :type region: str
     :param next_token: Token to use for paginated requests.
     :type next_token: str
@@ -311,9 +340,15 @@ def _get_images_in_progress(image_status, next_token):
 
 def _image_status_to_cloudformation_status(image_status):
     mapping = {
-        ImageStatusFilteringOption.AVAILABLE: {CloudFormationStatus.CREATE_COMPLETE},
-        ImageStatusFilteringOption.PENDING: {CloudFormationStatus.CREATE_IN_PROGRESS},
-        ImageStatusFilteringOption.FAILED: {CloudFormationStatus.CREATE_FAILED, CloudFormationStatus.DELETE_FAILED},
+        ImageStatusFilteringOption.AVAILABLE: {CloudFormationStackStatus.CREATE_COMPLETE},
+        ImageStatusFilteringOption.PENDING: {CloudFormationStackStatus.CREATE_IN_PROGRESS},
+        ImageStatusFilteringOption.FAILED: {
+            CloudFormationStackStatus.CREATE_FAILED,
+            CloudFormationStackStatus.DELETE_FAILED,
+            CloudFormationStackStatus.ROLLBACK_FAILED,
+            CloudFormationStackStatus.ROLLBACK_COMPLETE,
+            CloudFormationStackStatus.ROLLBACK_IN_PROGRESS,
+        },
     }
     return mapping.get(image_status, set())
 

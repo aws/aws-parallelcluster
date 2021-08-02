@@ -193,11 +193,15 @@ def get_compute_nodes_instance_ids(stack_name, region, instance_types=None):
     return get_cluster_nodes_instance_ids(stack_name, region, instance_types, node_type="Compute")
 
 
-def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None):
+def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None, queue_name=None):
     """Return a list of cluster Instances Id's."""
     try:
         instances = _describe_cluster_instances(
-            stack_name, region, filter_by_node_type=node_type, filter_by_instance_types=instance_types
+            stack_name,
+            region,
+            filter_by_node_type=node_type,
+            filter_by_instance_types=instance_types,
+            filter_by_queue_name=queue_name,
         )
         instance_ids = []
         for instance in instances:
@@ -209,7 +213,12 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
 
 
 def _describe_cluster_instances(
-    stack_name, region, filter_by_node_type=None, filter_by_name=None, filter_by_instance_types=None
+    stack_name,
+    region,
+    filter_by_node_type=None,
+    filter_by_name=None,
+    filter_by_instance_types=None,
+    filter_by_queue_name=None,
 ):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
@@ -218,6 +227,8 @@ def _describe_cluster_instances(
     ]
     if filter_by_node_type:
         filters.append({"Name": "tag:parallelcluster:node-type", "Values": [filter_by_node_type]})
+    if filter_by_queue_name:
+        filters.append({"Name": "tag:parallelcluster:queue-name", "Values": [filter_by_queue_name]})
     if filter_by_name:
         filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
     if filter_by_instance_types:
@@ -449,6 +460,17 @@ def check_headnode_security_group(region, cluster, port, expected_cidr):
     assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)
 
 
+def check_status(cluster, cluster_status=None, head_node_status=None, compute_fleet_status=None):
+    """Check the cluster's status and its head and compute status is as expected."""
+    cluster_info = cluster.describe_cluster()
+    if cluster_status:
+        assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
+    if head_node_status:
+        assert_that(cluster_info["headnode"]["state"]).is_equal_to(head_node_status)
+    if compute_fleet_status:
+        assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
+
+
 def get_network_interfaces_count(instance_type, region_name=None):
     """Return the number of Network Interfaces for the provided instance type."""
     return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
@@ -501,3 +523,7 @@ def read_json_file(file):
     except Exception as e:
         logging.exception("Failed when reading json file %s", file)
         raise e
+
+
+def get_stack_id_tag_filter(stack_arn):
+    return {"Name": "tag:aws:cloudformation:stack-id", "Values": [stack_arn]}

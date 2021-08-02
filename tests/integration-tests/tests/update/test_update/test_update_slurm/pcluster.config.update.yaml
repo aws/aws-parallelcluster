@@ -126,8 +126,9 @@ SharedStorage:
     Name: ebs
     StorageType: Ebs
     EbsSettings:
-      VolumeType: io2
-      Iops: 140
+      VolumeType: gp3
+      Iops: 3200
+      Throughput: 130
   - MountDir: efs
     Name: efs
     StorageType: Efs
@@ -138,8 +139,9 @@ SharedStorage:
     StorageType: Ebs
     Name: raid
     EbsSettings:
-      VolumeType: io2
-      Iops: 110
+      VolumeType: gp3
+      Iops: 3200
+      Throughput: 130
       Raid:
         Type: 0
         NumberOfVolumes: 2

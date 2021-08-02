@@ -41,6 +41,7 @@ from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_fr
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
+from images_factory import Image, ImagesFactory
 from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
@@ -56,7 +57,6 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
-    run_command,
     set_credentials,
     set_logger_formatter,
     unset_credentials,
@@ -102,6 +102,10 @@ def pytest_addoption(parser):
     parser.addoption(
         "--api-definition-s3-uri", help="URI of the Docker image for the Lambda of the ParallelCluster API"
     )
+    parser.addoption(
+        "--api-infrastructure-s3-uri", help="URI of the CloudFormation template for the ParallelCluster API"
+    )
+    parser.addoption("--api-uri", help="URI of an existing ParallelCluster API")
     parser.addoption("--instance-types-data-file", help="JSON file with additional instance types data")
     parser.addoption(
         "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
@@ -290,8 +294,8 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True):
-        cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
+    def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True, wait=True, log_error=True):
+        cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
             if request.config.getoption("cluster")
@@ -305,7 +309,9 @@ def clusters_factory(request, region):
             region=region,
         )
         if not request.config.getoption("cluster"):
-            factory.create_cluster(cluster, extra_args=extra_args, raise_on_error=raise_on_error)
+            cluster.creation_response = factory.create_cluster(
+                cluster, extra_args=extra_args, raise_on_error=raise_on_error, wait=wait, log_error=log_error
+            )
         return cluster
 
     yield _cluster_factory
@@ -313,7 +319,97 @@ def clusters_factory(request, region):
         factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
 
 
-def _write_cluster_config_to_outdir(request, cluster_config):
+@pytest.fixture(scope="session")
+def api_server_factory(
+    cfn_stacks_factory, request, public_ecr_image_uri, api_definition_s3_uri, api_infrastructure_s3_uri
+):
+    """Creates a factory for deploying API servers on-demand to each region."""
+    api_servers = {}
+
+    def _api_server_factory(server_region):
+        api_stack_name = generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix"))
+
+        if not api_infrastructure_s3_uri:
+            stack_template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
+            with open(stack_template_path) as stack_template_file:
+                stack_template_data = stack_template_file.read()
+
+        params = [
+            {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
+            {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
+            {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
+            {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
+        ]
+
+        if server_region not in api_servers:
+            logging.info(f"Creating API Server stack: {api_stack_name} in {server_region}")
+            try:
+                set_credentials(server_region, request.config.getoption("credential"))
+                stack = CfnStack(
+                    name=api_stack_name,
+                    region=server_region,
+                    parameters=params,
+                    capabilities=["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"],
+                    template=api_infrastructure_s3_uri or stack_template_data,
+                )
+                cfn_stacks_factory.create_stack(stack)
+            finally:
+                unset_credentials()
+            api_servers[server_region] = stack
+        else:
+            logging.info(f"Found cached API Server stack: {api_stack_name} in {server_region}")
+
+        return api_servers[server_region]
+
+    yield _api_server_factory
+
+
+@pytest.fixture(scope="class")
+def api_client(region, api_server_factory, api_uri):
+    """Define a fixture for an API client that interacts with the pcluster api."""
+    from pcluster_client import ApiClient, Configuration
+
+    if api_uri:
+        host = api_uri
+    else:
+        stack = api_server_factory(region)
+        host = stack.cfn_outputs["ParallelClusterApiInvokeUrl"]
+
+    api_configuration = Configuration(host=host)
+
+    with ApiClient(api_configuration) as api_client_instance:
+        yield api_client_instance
+
+
+@pytest.fixture(scope="class")
+def images_factory(request):
+    """
+    Define a fixture to manage the creation and destruction of images.
+
+    The configs used to create clusters are dumped to output_dir/images_configs/{test_name}.config
+    """
+    factory = ImagesFactory()
+
+    def _image_factory(image_id, image_config, region):
+        image_config_file = _write_config_to_outdir(request, image_config, "image_configs")
+        image = Image(
+            image_id="-".join([image_id, request.config.getoption("stackname_suffix")])
+            if request.config.getoption("stackname_suffix")
+            else image_id,
+            config_file=image_config_file,
+            region=region,
+        )
+        result = factory.create_image(image)
+        if "BUILD_IN_PROGRESS" not in result:
+            logging.error("image %s creation failed", image_id)
+
+        return image
+
+    yield _image_factory
+    factory.destroy_all_images()
+
+
+def _write_config_to_outdir(request, config, config_dir):
     out_dir = request.config.getoption("output_dir")
 
     # Sanitize config file name to make it Windows compatible
@@ -323,14 +419,16 @@ def _write_cluster_config_to_outdir(request, cluster_config):
     config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
 
     os.makedirs(
-        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(test_file)),
+        "{out_dir}/{config_dir}/{test_dir}".format(
+            out_dir=out_dir, config_dir=config_dir, test_dir=os.path.dirname(test_file)
+        ),
         exist_ok=True,
     )
-    cluster_config_dst = "{out_dir}/clusters_configs/{config_file_name}.config".format(
-        out_dir=out_dir, config_file_name=config_file_name
+    config_dst = "{out_dir}/{config_dir}/{config_file_name}.config".format(
+        out_dir=out_dir, config_dir=config_dir, config_file_name=config_file_name
     )
-    copyfile(cluster_config, cluster_config_dst)
-    return cluster_config_dst
+    copyfile(config, config_dst)
+    return config_dst
 
 
 @pytest.fixture()
@@ -491,10 +589,13 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
         additional_iam_policies = {"Policy": f"arn:{_get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
-        if dict_has_nested_key(node_config, ("Iam", "InstanceRole")):
-            # AdditionalIamPolicies and InstanceRole can not co-exist
+        if dict_has_nested_key(node_config, ("Iam", "InstanceRole")) or dict_has_nested_key(
+            node_config, ("Iam", "InstanceProfile")
+        ):
+            # AdditionalIamPolicies, InstanceRole or InstanceProfile can not co-exist
             logging.info(
-                f"InstanceRole is specified, skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
+                "InstanceRole/InstanceProfile is specified, "
+                f"skipping insertion of AdditionalIamPolicies: {additional_iam_policies}"
             )
         else:
             logging.info(
@@ -800,11 +901,11 @@ def role_factory(region):
                 }
             ],
         }
-        iam_client.create_role(
+        role_arn = iam_client.create_role(
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
-        )
+        )["Role"]["Arn"]
 
         logging.info(f"Attaching iam policy to the role {iam_role_name}...")
         for policy in policies:
@@ -814,9 +915,9 @@ def role_factory(region):
         # put_key_policy step for creating KMS key, read the following link for reference :
         # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
         time.sleep(60)
-        logging.info(f"Iam role is ready: {iam_role_name}")
+        logging.info(f"Iam role is ready: {role_arn}")
         roles.append({"role_name": iam_role_name, "policies": policies})
-        return iam_role_name
+        return iam_role_name, role_arn
 
     yield create_role
 
@@ -827,6 +928,41 @@ def role_factory(region):
             iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy)
         logging.info(f"Deleting iam role {role_name}")
         iam_client.delete_role(RoleName=role_name)
+
+
+@pytest.fixture(scope="class")
+def instance_profile_factory(region, role_factory):
+    instance_profiles = []
+    iam_client = boto3.client(
+        "iam",
+        region_name=region,
+        config=Config(
+            retries={
+                "max_attempts": 10,
+            }
+        ),
+    )
+
+    def create_instance_profile(policies=()):
+        instance_profile_name = f"integ-tests_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating instance profile {instance_profile_name}")
+        instance_profile_arn = iam_client.create_instance_profile(InstanceProfileName=instance_profile_name)[
+            "InstanceProfile"
+        ]["Arn"]
+        role_name, _ = role_factory("ec2", policies)
+        iam_client.add_role_to_instance_profile(InstanceProfileName=instance_profile_name, RoleName=role_name)
+        logging.info(f"Iam profile is ready: {instance_profile_arn}")
+        instance_profiles.append({"profile_name": instance_profile_name, "role_name": role_name})
+        return instance_profile_arn
+
+    yield create_instance_profile
+
+    for instance_profile in instance_profiles:
+        profile_name = instance_profile["profile_name"]
+        role_name = instance_profile["role_name"]
+        iam_client.remove_role_from_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
+        logging.info(f"Deleting instance profile {profile_name}")
+        iam_client.delete_instance_profile(InstanceProfileName=profile_name)
 
 
 def _create_iam_policies(iam_policy_name, region, policy_filename):
@@ -855,14 +991,24 @@ def vpc_stack(vpc_stacks, region):
     return vpc_stacks[region]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
 def public_ecr_image_uri(request):
     return request.config.getoption("public_ecr_image_uri")
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="session")
+def api_uri(request):
+    return request.config.getoption("api_uri")
+
+
+@pytest.fixture(scope="session")
 def api_definition_s3_uri(request):
     return request.config.getoption("api_definition_s3_uri")
+
+
+@pytest.fixture(scope="session")
+def api_infrastructure_s3_uri(request):
+    return request.config.getoption("api_infrastructure_s3_uri")
 
 
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
@@ -993,34 +1139,3 @@ def pcluster_ami_without_standard_naming(region, os, architecture):
     if ami_id:
         client = boto3.client("ec2", region_name=region)
         client.deregister_image(ImageId=ami_id)
-
-
-@pytest.fixture()
-def build_image():
-    """Create a build image process."""
-    image_id_post_test = None
-    region_post_test = None
-
-    def _build_image(image_id, region, cluster_config):
-        nonlocal image_id_post_test
-        nonlocal region_post_test
-        image_id_post_test = image_id
-        region_post_test = region
-
-        pcluster_build_image_result = run_command(
-            ["pcluster", "build-image", "--id", image_id, "-r", region, "-c", cluster_config.as_posix()]
-        )
-        return pcluster_build_image_result.stdout
-
-    yield _build_image
-    if image_id_post_test:
-        pcluster_describe_image_result = run_command(
-            ["pcluster", "describe-image", "--id", image_id_post_test, "-r", region_post_test]
-        )
-        logging.info("Build image post process. Describe image result: %s" % pcluster_describe_image_result.stdout)
-
-        # FIXME once the command return proper JSON
-        if "build_failed" in pcluster_describe_image_result.stdout.lower():
-            run_command(["pcluster", "delete-image", "--id", image_id_post_test, "-r", region_post_test, "--force"])
-            # sleep 90 seconds for image deletion
-            time.sleep(90)

@@ -40,21 +40,6 @@ class TestConfigureAwsRegion:
             _decorated_func(region=region)
             assert_that(os.environ["AWS_DEFAULT_REGION"]).is_equal_to(region)
 
-    def test_validate_region_body(self, region, error, client):
-        client.post(json={"region": region})
-
-        @configure_aws_region(is_query_string_arg=False)
-        def _decorated_func():
-            pass
-
-        if error:
-            with pytest.raises(BadRequestException) as e:
-                _decorated_func()
-            assert_that(str(e.value.content)).contains(error)
-        else:
-            _decorated_func()
-            assert_that(os.environ["AWS_DEFAULT_REGION"]).is_equal_to(region)
-
     def test_validate_region_env(self, region, error, set_env, unset_env):
         @configure_aws_region()
         def _decorated_func():

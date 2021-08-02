@@ -100,9 +100,12 @@ class CfnClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     @AWSExceptionHandler.retry_on_boto3_throttling
-    def get_stack_events(self, stack_name):
-        """Return all the events of a stack."""
-        return list(self._paginate_results(self._client.describe_stack_events, StackName=stack_name))
+    def get_stack_events(self, stack_name, next_token=None):
+        """Return the events of a stack, start from next_token if provided."""
+        if next_token:
+            return self._client.describe_stack_events(StackName=stack_name, NextToken=next_token)
+        else:
+            return self._client.describe_stack_events(StackName=stack_name)
 
     @staticmethod
     def format_event(event):
@@ -130,8 +133,10 @@ class CfnClient(Boto3Client):
 
     @AWSExceptionHandler.handle_client_exception
     def list_pcluster_stacks(self, next_token=None):
-        """List existing pcluster stacks."""
-        return self._list_parentless_stacks_with_tag(PCLUSTER_VERSION_TAG, next_token)
+        """List existing pcluster cluster stacks."""
+        stacks, result_token = self._list_parentless_stacks_with_tag(PCLUSTER_VERSION_TAG, next_token)
+        # Only return stacks without image-id tag, which means they are cluster stacks.
+        return [stack for stack in stacks if StackInfo(stack).get_tag(PCLUSTER_IMAGE_ID_TAG) is None], result_token
 
     def describe_stack_resource(self, stack_name: str, logic_resource_id: str):
         """Get stack resource information."""

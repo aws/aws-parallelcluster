@@ -25,6 +25,7 @@ from pcluster.schemas.cluster_schema import (
     HeadNodeEphemeralVolumeSchema,
     HeadNodeNetworkingSchema,
     HeadNodeRootVolumeSchema,
+    IamSchema,
     ImageSchema,
     QueueEphemeralVolumeSchema,
     QueueNetworkingSchema,
@@ -470,6 +471,9 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"StorageType": "INVALID_VALUE"}, "Must be one of"),
         ({"DriveCacheType": "READ"}, None),
         ({"DriveCacheType": "INVALID_VALUE"}, "Must be one of"),
+        ({"DataCompressionType": None}, None),
+        ({"DataCompressionType": "LZ4"}, None),
+        ({"DataCompressionType": "INVALID_VALUE"}, "Must be one of"),
         ({"invalid_key": "fake_value"}, "Unknown field"),
     ],
 )
@@ -556,7 +560,9 @@ def test_subnet_id_validator(subnet_id, expected_message):
     ],
 )
 def test_tags_validator(key, expected_message):
-    _validate_and_assert_error(ClusterSchema(), {"Tags": [{"Key": key, "Value": "test_value"}]}, expected_message)
+    _validate_and_assert_error(
+        ClusterSchema(cluster_name="clustername"), {"Tags": [{"Key": key, "Value": "test_value"}]}, expected_message
+    )
 
 
 def _validate_and_assert_error(schema, section_dict, expected_message, partial=True):
@@ -575,3 +581,17 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
         assert_that(contain).is_true()
     else:
         schema.validate(section_dict, partial=partial)
+
+
+@pytest.mark.parametrize(
+    "instance_role, expected_message",
+    [
+        ("", "does not match expected pattern"),
+        ("arn:aws:iam::aws:role/CustomHeadNodeRole", None),
+        ("CustomHeadNodeRole", "does not match expected pattern"),
+        ("arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile", "does not match expected pattern"),
+    ],
+)
+def test_instance_role_validator(instance_role, expected_message):
+    """Verify that cw_log behaves as expected when parsed in a config file."""
+    _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)

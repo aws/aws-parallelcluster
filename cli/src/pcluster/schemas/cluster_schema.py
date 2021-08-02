@@ -39,7 +39,6 @@ from pcluster.config.cluster_config import (
     Dashboards,
     Dcv,
     Dns,
-    Ebs,
     Efa,
     EphemeralVolume,
     HeadNode,
@@ -56,6 +55,7 @@ from pcluster.config.cluster_config import (
     QueueNetworking,
     Raid,
     Roles,
+    RootVolume,
     S3Access,
     SharedEbs,
     SharedEfs,
@@ -68,7 +68,14 @@ from pcluster.config.cluster_config import (
     Ssh,
 )
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import EBS_VOLUME_SIZE_DEFAULT, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_OSES
+from pcluster.constants import (
+    DELETION_POLICIES,
+    DELETION_POLICIES_WITH_SNAPSHOT,
+    EBS_VOLUME_SIZE_DEFAULT,
+    FSX_HDD_THROUGHPUT,
+    FSX_SSD_THROUGHPUT,
+    SUPPORTED_OSES,
+)
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
@@ -108,11 +115,12 @@ class HeadNodeRootVolumeSchema(BaseSchema):
     kms_key_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Ebs(**data)
+        return RootVolume(**data)
 
     @validates("size")
     def validate_size(self, value):
@@ -135,7 +143,7 @@ class QueueRootVolumeSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Ebs(**data)
+        return RootVolume(**data)
 
     @validates("size")
     def validate_size(self, value):
@@ -195,12 +203,14 @@ class EbsSettingsSchema(BaseSchema):
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     raid = fields.Nested(RaidSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    deletion_policy = fields.Str(
+        validate=validate.OneOf(DELETION_POLICIES_WITH_SNAPSHOT), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
 
 class HeadNodeEphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
-    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     mount_dir = fields.Str(
         validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
@@ -214,7 +224,6 @@ class HeadNodeEphemeralVolumeSchema(BaseSchema):
 class QueueEphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
-    encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     mount_dir = fields.Str(
         validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
@@ -228,7 +237,7 @@ class QueueEphemeralVolumeSchema(BaseSchema):
 class HeadNodeStorageSchema(BaseSchema):
     """Represent the schema of storage attached to a node."""
 
-    root_volume = fields.Nested(HeadNodeRootVolumeSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    root_volume = fields.Nested(HeadNodeRootVolumeSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     ephemeral_volume = fields.Nested(
         HeadNodeEphemeralVolumeSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
@@ -335,6 +344,9 @@ class FsxLustreSettingsSchema(BaseSchema):
     )
     drive_cache_type = fields.Str(
         validate=validate.OneOf(["READ"]), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+    data_compression_type = fields.Str(
+        validate=validate.OneOf(["LZ4"]), metadata={"update_policy": UpdatePolicy.SUPPORTED}
     )
     fsx_storage_type = fields.Str(
         data_key="StorageType",
@@ -601,7 +613,9 @@ class CloudWatchLogsSchema(BaseSchema):
         validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
         metadata={"update_policy": UpdatePolicy.SUPPORTED},
     )
-    retain_on_delete = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    deletion_policy = fields.Str(
+        validate=validate.OneOf(DELETION_POLICIES), metadata={"update_policy": UpdatePolicy.SUPPORTED}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -689,7 +703,10 @@ class S3AccessSchema(BaseSchema):
 class ClusterIamSchema(BaseSchema):
     """Represent the schema of IAM for Cluster."""
 
-    roles = fields.Nested(RolesSchema)
+    roles = fields.Nested(RolesSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    permissions_boundary = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:policy/")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -700,7 +717,12 @@ class ClusterIamSchema(BaseSchema):
 class IamSchema(BaseSchema):
     """Represent the schema of IAM for HeadNode and Queue."""
 
-    instance_role = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    instance_role = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
+    )
+    instance_profile = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+    )
     s3_access = fields.Nested(
         S3AccessSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "BucketName"}
     )
@@ -712,9 +734,11 @@ class IamSchema(BaseSchema):
 
     @validates_schema
     def no_coexist_role_policies(self, data, **kwargs):
-        """Validate that instance_role and additional_security_groups do not co-exist."""
-        if self.fields_coexist(data, ["instance_role", "additional_iam_policies"], **kwargs):
-            raise ValidationError("InstanceRole and AdditionalIamPolicies can not be configured together.")
+        """Validate that instance_role, instance_profile or additional_iam_policies do not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "instance_profile", "additional_iam_policies"], **kwargs):
+            raise ValidationError(
+                "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together."
+            )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -879,7 +903,6 @@ class _ComputeResourceSchema(BaseSchema):
     """Represent the schema of the ComputeResource."""
 
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    disable_simultaneous_multithreading = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
 
 class SlurmComputeResourceSchema(_ComputeResourceSchema):
@@ -890,6 +913,7 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     min_count = fields.Int(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     spot_price = fields.Float(validate=validate.Range(min=0), metadata={"update_policy": UpdatePolicy.SUPPORTED})
     efa = fields.Nested(EfaSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    disable_simultaneous_multithreading = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -991,6 +1015,7 @@ class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
     disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    hosted_zone_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1122,6 +1147,10 @@ class ClusterSchema(BaseSchema):
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dev_settings = fields.Nested(ClusterDevSettingsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
+    def __init__(self, cluster_name: str):
+        super().__init__()
+        self.cluster_name = cluster_name
+
     @validates("tags")
     def validate_tags(self, tags):
         """Validate tags."""
@@ -1132,11 +1161,11 @@ class ClusterSchema(BaseSchema):
         """Generate cluster according to the scheduler. Save original configuration."""
         scheduler = data.get("scheduling").scheduler
         if scheduler == "slurm":
-            cluster = SlurmClusterConfig(**data)
+            cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         elif scheduler == "awsbatch":
-            cluster = AwsBatchClusterConfig(**data)
+            cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
         else:  # scheduler == "custom":
-            cluster = BaseClusterConfig(**data)  # FIXME Must be ByosCluster
+            cluster = BaseClusterConfig(cluster_name=self.cluster_name, **data)  # FIXME Must be ByosCluster
 
         cluster.source_config = original_data
         return cluster

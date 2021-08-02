@@ -24,12 +24,10 @@ from typing import List, Optional, Set, Tuple
 
 import pkg_resources
 import yaml
-from dateutil.parser import parse
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError, get_region
-from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
 from pcluster.config.config_patch import ConfigPatch
@@ -58,12 +56,13 @@ from pcluster.models.common import (
     create_logs_archive,
     export_stack_events,
     parse_config,
+    upload_archive,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
+from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, grouper, isoformat_to_epoch
-from pcluster.validators.cluster_validators import ClusterNameValidator
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 # pylint: disable=C0302
@@ -234,7 +233,7 @@ class Cluster:
         """Return ClusterConfig object."""
         if not self.__config:
             try:
-                self.__config = ClusterSchema().load(parse_config(self.source_config_text))
+                self.__config = ClusterSchema(cluster_name=self.name).load(parse_config(self.source_config_text))
             except Exception as e:
                 raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}")
         return self.__config
@@ -254,20 +253,27 @@ class Cluster:
     @property
     def compute_fleet_status(self) -> ComputeFleetStatus:
         """Status of the cluster compute fleet."""
-        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-        status = compute_fleet_status_manager.get_status()
-        if status == ComputeFleetStatus.UNKNOWN:
-            stack_status_to_fleet_status = {
-                "CREATE_IN_PROGRESS": ComputeFleetStatus.STARTING,
-                "DELETE_IN_PROGRESS": ComputeFleetStatus.STOPPING,
-                "CREATE_FAILED": ComputeFleetStatus.STOPPED,
-                "ROLLBACK_IN_PROGRESS": ComputeFleetStatus.STOPPING,
-                "ROLLBACK_FAILED": ComputeFleetStatus.STOPPED,
-                "ROLLBACK_COMPLETE": ComputeFleetStatus.STOPPED,
-                "DELETE_FAILED": ComputeFleetStatus.STOPPING,
-            }
-            return stack_status_to_fleet_status.get(self.status, status)
+        status, _ = self.compute_fleet_status_with_last_updated_time
         return status
+
+    @property
+    def compute_fleet_status_with_last_updated_time(self):
+        """Status of the cluster compute fleet and the last compute fleet status updated time."""
+        if self.stack.is_working_status or self.stack.status == "UPDATE_IN_PROGRESS":
+            if self.stack.scheduler == "slurm":
+                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+                status, last_updated_time = compute_fleet_status_manager.get_status_with_last_updated_time()
+            else:  # scheduler is AWS Batch:
+                status = ComputeFleetStatus(
+                    AWSApi.instance().batch.get_compute_environment_state(self.stack.batch_compute_environment)
+                )
+                last_updated_time = None
+            return status, last_updated_time
+        else:
+            LOGGER.info(
+                "stack %s is in status %s. Cannot retrieve compute fleet status.", self.stack_name, self.stack.status
+            )
+            return ComputeFleetStatus.UNKNOWN, None
 
     @property
     def stack_name(self):
@@ -383,13 +389,14 @@ class Cluster:
         try:
             LOGGER.info("Validating cluster configuration...")
             Cluster._load_additional_instance_type_data(cluster_config_dict)
-            config = ClusterSchema().load(cluster_config_dict)
+            config = ClusterSchema(cluster_name=self.name).load(cluster_config_dict)
 
-            validation_failures = ClusterNameValidator().execute(name=self.name)
-            validation_failures += config.validate(validator_suppressors)
+            validation_failures = config.validate(validator_suppressors)
             for failure in validation_failures:
                 if failure.level.value >= FailureLevel(validation_failure_level).value:
-                    raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
+                    raise ConfigValidationError(
+                        "Invalid cluster configuration", validation_failures=validation_failures
+                    )
             LOGGER.info("Validation succeeded.")
         except ValidationError as e:
             # syntactic failure
@@ -398,11 +405,11 @@ class Cluster:
                     str(sorted(e.messages.items())), FailureLevel.ERROR, validator_type="ConfigSchemaValidator"
                 )
             ]
-            raise ConfigValidationError("Configuration is invalid", validation_failures=validation_failures)
+            raise ConfigValidationError("Invalid cluster configuration", validation_failures=validation_failures)
         except ConfigValidationError as e:
             raise e
         except Exception as e:
-            raise ConfigValidationError(f"Configuration is invalid: {e}")
+            raise ConfigValidationError(f"Invalid cluster configuration: {e}")
 
         return config, validation_failures
 
@@ -420,7 +427,7 @@ class Cluster:
             # Upload config with default values and sections
             if self.config:
                 result = self.bucket.upload_config(
-                    config=ClusterSchema().dump(deepcopy(self.config)),
+                    config=ClusterSchema(cluster_name=self.name).dump(deepcopy(self.config)),
                     config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("config_name"),
                 )
 
@@ -627,73 +634,81 @@ class Cluster:
     def start(self):
         """Start the cluster."""
         try:
+            stack_status = self.stack.status
+            if not self.stack.is_working_status:
+                raise BadRequestClusterActionError(
+                    f"Cannot start/enable compute fleet while stack is in {stack_status} status."
+                )
             scheduler = self.config.scheduling.scheduler
             if scheduler == "awsbatch":
-                LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
-                try:
-                    compute_resource = self.config.scheduling.queues[0].compute_resources[0]
-
-                    AWSApi.instance().batch.enable_compute_environment(
-                        ce_name=self.stack.batch_compute_environment,
-                        min_vcpus=compute_resource.min_vcpus,
-                        max_vcpus=compute_resource.max_vcpus,
-                        desired_vcpus=compute_resource.desired_vcpus,
-                    )
-                except Exception as e:
-                    raise _cluster_error_mapper(e, f"Unable to enable Batch compute environment. {str(e)}")
-
+                self.enable_awsbatch_compute_environment()
             else:  # scheduler == "slurm"
-                stack_status = self.stack.status
-                if "IN_PROGRESS" in stack_status:
-                    raise ClusterActionError(f"Cannot start compute fleet while stack is in {stack_status} status.")
-                if "FAILED" in stack_status:
-                    LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
-
-                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-                compute_fleet_status_manager.update_status(
-                    ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
-                )
+                self.start_slurm_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
-            raise ClusterActionError(
+            raise BadRequestClusterActionError(
                 "Failed when starting compute fleet due to a concurrent update of the status. "
                 "Please retry the operation."
             )
-        except ClusterActionError as e:
-            raise e
         except Exception as e:
             raise _cluster_error_mapper(e, f"Failed when starting compute fleet with error: {str(e)}")
+
+    def start_slurm_compute_fleet(self):
+        """Start Slurm compute fleet."""
+        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+        compute_fleet_status_manager.update_status(
+            ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
+        )
+
+    def enable_awsbatch_compute_environment(self):
+        """Enable AWS Batch compute environment."""
+        LOGGER.info("Enabling AWS Batch compute environment : %s", self.name)
+        try:
+            compute_resource = self.config.scheduling.queues[0].compute_resources[0]
+
+            AWSApi.instance().batch.enable_compute_environment(
+                ce_name=self.stack.batch_compute_environment,
+                min_vcpus=compute_resource.min_vcpus,
+                max_vcpus=compute_resource.max_vcpus,
+                desired_vcpus=compute_resource.desired_vcpus,
+            )
+        except Exception as e:
+            raise _cluster_error_mapper(e, f"Unable to enable Batch compute environment. {str(e)}")
 
     def stop(self):
         """Stop compute fleet of the cluster."""
         try:
+            stack_status = self.stack.status
+            if not self.stack.is_working_status:
+                raise BadRequestClusterActionError(
+                    f"Cannot stop/disable compute fleet while stack is in {stack_status} status."
+                )
             scheduler = self.config.scheduling.scheduler
             if scheduler == "awsbatch":
-                LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
-                try:
-                    AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
-                except Exception as e:
-                    raise _cluster_error_mapper(e, f"Unable to disable Batch compute environment. {str(e)}")
-
+                self.disable_awsbatch_compute_environment()
             else:  # scheduler == "slurm"
-                stack_status = self.stack.status
-                if "IN_PROGRESS" in stack_status:
-                    raise ClusterActionError(f"Cannot stop compute fleet while stack is in {stack_status} status.")
-                if "FAILED" in stack_status:
-                    LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
-
-                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-                compute_fleet_status_manager.update_status(
-                    ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
-                )
+                self.stop_slurm_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
-            raise ClusterActionError(
+            raise BadRequestClusterActionError(
                 "Failed when stopping compute fleet due to a concurrent update of the status. "
                 "Please retry the operation."
             )
-        except ClusterActionError as e:
-            raise e
         except Exception as e:
             raise _cluster_error_mapper(e, f"Failed when stopping compute fleet with error: {str(e)}")
+
+    def stop_slurm_compute_fleet(self):
+        """Stop Slurm compute fleet."""
+        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+        compute_fleet_status_manager.update_status(
+            ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
+        )
+
+    def disable_awsbatch_compute_environment(self):
+        """Disable AWS Batch compute environment."""
+        LOGGER.info("Disabling AWS Batch compute environment : %s", self.name)
+        try:
+            AWSApi.instance().batch.disable_compute_environment(ce_name=self.stack.batch_compute_environment)
+        except Exception as e:
+            raise _cluster_error_mapper(e, f"Unable to disable Batch compute environment. {str(e)}")
 
     def validate_update_request(
         self,
@@ -806,13 +821,13 @@ class Cluster:
 
     def export_logs(
         self,
-        output: str,
         bucket: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
         start_time: str = None,
         end_time: str = None,
         filters: str = None,
+        output_path: str = None,
     ):
         """
         Export cluster's logs in the given output path, by using given bucket as a temporary folder.
@@ -834,9 +849,8 @@ class Cluster:
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
                 # Create root folder for the archive
-                root_archive_dir = os.path.join(
-                    output_tempdir, f"{self.name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
-                )
+                archive_name = f"{self.name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                root_archive_dir = os.path.join(output_tempdir, archive_name)
                 os.makedirs(root_archive_dir, exist_ok=True)
 
                 if self.stack.log_group_name:
@@ -865,7 +879,12 @@ class Cluster:
                 stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                 export_stack_events(self.stack_name, stack_events_file)
 
-                create_logs_archive(root_archive_dir, output)
+                archive_path = create_logs_archive(root_archive_dir, output_path)
+                if output_path:
+                    return output_path
+                else:
+                    s3_path = upload_archive(bucket, bucket_prefix, archive_path)
+                    return create_s3_presigned_url(s3_path)
         except Exception as e:
             raise ClusterActionError(f"Unexpected error when exporting cluster's logs: {e}")
 
@@ -889,7 +908,7 @@ class Cluster:
             raise ClusterActionError(str(e))
         return export_logs_filters
 
-    def list_logs(self, filters: str = None, next_token: str = None):
+    def list_logs(self, filters: List[str] = None, next_token: str = None):
         """
         List cluster's logs.
 
@@ -903,29 +922,22 @@ class Cluster:
             if not AWSApi.instance().cfn.stack_exists(self.stack_name):
                 raise ClusterActionError(f"Cluster {self.name} does not exist")
 
+            log_streams = []
+
             LOGGER.debug("Listing log streams from log group %s", self.stack.log_group_name)
-            cw_log_streams = None
             if self.stack.log_group_name:
                 list_logs_filters = self._init_list_logs_filters(filters)
-                cw_log_streams = AWSApi.instance().logs.describe_log_streams(
+                log_stream_resp = AWSApi.instance().logs.describe_log_streams(
                     log_group_name=self.stack.log_group_name,
                     log_stream_name_prefix=list_logs_filters.log_stream_prefix,
                     next_token=next_token,
                 )
+                log_streams.extend(log_stream_resp["logStreams"])
+                next_token = log_stream_resp.get("nextToken")
             else:
                 LOGGER.debug("CloudWatch logging is not enabled for cluster %s", self.name)
 
-            stack_log_streams = None
-            if not next_token:
-                # add CFN Stack information only at the first request, when next-token is not specified
-                stack_log_streams = [
-                    {
-                        "Stack Events Stream": self._stack_events_stream_name,
-                        "Cluster Creation Time": parse(self.stack.creation_time).isoformat(timespec="seconds"),
-                        "Last Update Time": parse(self.stack.last_updated_time).isoformat(timespec="seconds"),
-                    }
-                ]
-            return Logs(stack_log_streams, cw_log_streams)
+            return Logs(log_streams, next_token)
 
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving cluster's logs: {e}")
@@ -945,6 +957,19 @@ class Cluster:
         except FiltersParserError as e:
             raise ClusterActionError(str(e))
         return list_logs_filters
+
+    def get_stack_events(self, next_token: str = None):
+        """
+        Get the CloudFormation stack events for the cluster.
+
+        :param next_token Start from next_token if provided.
+        """
+        try:
+            if not AWSApi.instance().cfn.stack_exists(self.stack_name):
+                raise ClusterActionError(f"Cluster {self.name} does not exist")
+            return AWSApi.instance().cfn.get_stack_events(self.stack_name, next_token=next_token)
+        except AWSClientError as e:
+            raise _cluster_error_mapper(e, f"Unexpected error when retrieving stack events: {e}")
 
     def get_log_events(
         self,
@@ -967,34 +992,23 @@ class Cluster:
             the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.
         :param next_token: Token for paginated requests.
         """
-        # check stack
         if not AWSApi.instance().cfn.stack_exists(self.stack_name):
             raise ClusterActionError(f"Cluster {self.name} does not exist")
 
         try:
-            if log_stream_name != self._stack_events_stream_name:
-                if not self.stack.log_group_name:
-                    raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
+            if not self.stack.log_group_name:
+                raise ClusterActionError(f"CloudWatch logging is not enabled for cluster {self.name}.")
 
-                log_events_response = AWSApi.instance().logs.get_log_events(
-                    log_group_name=self.stack.log_group_name,
-                    log_stream_name=log_stream_name,
-                    end_time=isoformat_to_epoch(end_time) if end_time else None,
-                    start_time=isoformat_to_epoch(start_time) if start_time else None,
-                    limit=limit,
-                    start_from_head=start_from_head,
-                    next_token=next_token,
-                )
-                return LogStream(self.stack_name, log_stream_name, log_events_response)
-            else:
-                stack_events = AWSApi.instance().cfn.get_stack_events(self.stack_name)
-                stack_events.reverse()
-                if limit:
-                    if start_from_head:
-                        stack_events = stack_events[:limit]
-                    else:
-                        stack_events = stack_events[len(stack_events) - limit :]  # noqa E203
-                return LogStream(self.stack_name, log_stream_name, {"events": stack_events})
+            log_events_response = AWSApi.instance().logs.get_log_events(
+                log_group_name=self.stack.log_group_name,
+                log_stream_name=log_stream_name,
+                end_time=isoformat_to_epoch(end_time) if end_time else None,
+                start_time=isoformat_to_epoch(start_time) if start_time else None,
+                limit=limit,
+                start_from_head=start_from_head,
+                next_token=next_token,
+            )
+            return LogStream(self.stack_name, log_stream_name, log_events_response)
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Unexpected error when retrieving log events: {e}")
 

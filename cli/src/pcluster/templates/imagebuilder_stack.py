@@ -18,9 +18,7 @@
 import copy
 import json
 import os
-import re
 from typing import List
-from urllib.error import URLError
 
 import yaml
 from aws_cdk import aws_iam as iam
@@ -36,6 +34,7 @@ from pcluster.aws.common import get_region
 from pcluster.config.common import BaseTag
 from pcluster.config.imagebuilder_config import ImageBuilderConfig, ImageBuilderExtraChefAttributes, Volume
 from pcluster.constants import (
+    IAM_ROLE_PATH,
     IMAGEBUILDER_RESOURCE_NAME_PREFIX,
     PCLUSTER_IMAGE_BUILD_LOG_TAG,
     PCLUSTER_IMAGE_CONFIG_TAG,
@@ -49,11 +48,10 @@ from pcluster.imagebuilder_utils import (
     AMI_NAME_REQUIRED_SUBSTRING,
     PCLUSTER_RESERVED_VOLUME_SIZE,
     ROOT_VOLUME_TYPE,
-    InstanceRole,
     wrap_script_to_component,
 )
-from pcluster.models.s3_bucket import S3Bucket, S3FileType
-from pcluster.templates.cdk_builder_utils import get_assume_role_policy_document
+from pcluster.models.s3_bucket import S3Bucket, S3FileType, create_s3_presigned_url, parse_bucket_url
+from pcluster.templates.cdk_builder_utils import apply_permissions_boundary, get_assume_role_policy_document
 
 
 class ImageBuilderCdkStack(Stack):
@@ -78,6 +76,11 @@ class ImageBuilderCdkStack(Stack):
             if self.config.build.iam and self.config.build.iam.instance_role
             else None
         )
+        self.custom_instance_profile = (
+            self.config.build.iam.instance_profile
+            if self.config.build.iam and self.config.build.iam.instance_profile
+            else None
+        )
         self.custom_cleanup_lambda_role = (
             self.config.build.iam.cleanup_lambda_role
             if self.config.build.iam and self.config.build.iam.cleanup_lambda_role
@@ -86,6 +89,11 @@ class ImageBuilderCdkStack(Stack):
 
         self._add_cfn_parameters()
         self._add_resources()
+
+        try:
+            apply_permissions_boundary(image_config.build.iam.permissions_boundary, self)
+        except AttributeError:
+            pass
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
 
@@ -117,13 +125,6 @@ class ImageBuilderCdkStack(Stack):
             resource_name=f"/aws/imagebuilder/{self._build_image_recipe_name()}",
         )
         return log_group_arn
-
-    def _get_instance_role_type(self):
-        """Get instance role type based on instance_role in config."""
-        identifier = self.custom_instance_role.split("/", 1)[0]
-        if identifier.endswith("role"):
-            return InstanceRole.ROLE
-        return InstanceRole.INSTANCE_PROFILE
 
     def _get_image_tags(self):
         """Get image tags."""
@@ -192,7 +193,11 @@ class ImageBuilderCdkStack(Stack):
             self,
             "CfnParamUpdateOsAndReboot",
             type="String",
-            default="true" if self.config.build and self.config.build.update_os_and_reboot else "false",
+            default="true"
+            if self.config.build
+            and self.config.build.update_os_packages
+            and self.config.build.update_os_packages.enabled
+            else "false",
             description="UpdateOsAndReboot",
         )
 
@@ -220,16 +225,14 @@ class ImageBuilderCdkStack(Stack):
         # InstanceRole and InstanceProfile
         instance_profile_name = None
         if self.custom_instance_role:
-            instance_role_type = self._get_instance_role_type()
-            if instance_role_type == InstanceRole.ROLE:
-                resource_dependency_list.append(
-                    self._add_instance_profile(
-                        instance_role=self.custom_instance_role,
-                        cleanup_policy_statements=lambda_cleanup_policy_statements,
-                    )
+            resource_dependency_list.append(
+                self._add_instance_profile(
+                    instance_role=self.custom_instance_role,
+                    cleanup_policy_statements=lambda_cleanup_policy_statements,
                 )
-            else:
-                instance_profile_name = self.custom_instance_role
+            )
+        elif self.custom_instance_profile:
+            instance_profile_name = self.custom_instance_profile.split("/")[-1]
         else:
             resource_dependency_list.append(
                 self._add_default_instance_role(lambda_cleanup_policy_statements, build_tags_list)
@@ -387,7 +390,7 @@ class ImageBuilderCdkStack(Stack):
         # ImageBuilderComponents
         components = []
         components_resources = []
-        if self.config.build and self.config.build.update_os_and_reboot:
+        if self.config.build and self.config.build.update_os_packages and self.config.build.update_os_packages.enabled:
             update_os_component_resource = imagebuilder.CfnComponent(
                 self,
                 "UpdateOSComponent",
@@ -645,7 +648,7 @@ class ImageBuilderCdkStack(Stack):
                         resource="role",
                         region="",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX + "Cleanup"),
                         ),
                     )
@@ -689,7 +692,7 @@ class ImageBuilderCdkStack(Stack):
                         resource="instance-profile",
                         region="",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )
@@ -705,7 +708,7 @@ class ImageBuilderCdkStack(Stack):
                         resource="role",
                         region="",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )
@@ -734,7 +737,7 @@ class ImageBuilderCdkStack(Stack):
                 "DeleteStackFunctionExecutionRole",
                 managed_policy_arns=managed_lambda_policy,
                 assume_role_policy_document=get_assume_role_policy_document("lambda.amazonaws.com"),
-                path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
+                path=IAM_ROLE_PATH,
                 policies=[
                     iam.CfnRole.PolicyProperty(
                         policy_document=policy_document,
@@ -864,9 +867,9 @@ class ImageBuilderCdkStack(Stack):
         instance_role_resource = iam.CfnRole(
             self,
             "InstanceRole",
+            path=IAM_ROLE_PATH,
             managed_policy_arns=managed_policy_arns,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
-            path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
             policies=[
                 instancerole_policy,
             ],
@@ -883,7 +886,7 @@ class ImageBuilderCdkStack(Stack):
                         region="",
                         resource="role",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )
@@ -897,7 +900,7 @@ class ImageBuilderCdkStack(Stack):
         instance_profile_resource = iam.CfnInstanceProfile(
             self,
             "InstanceProfile",
-            path="/{0}/".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
+            path=IAM_ROLE_PATH,
             roles=[instance_role.split("/")[-1] if instance_role else Fn.ref("InstanceRole")],
             instance_profile_name=self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
         )
@@ -912,7 +915,7 @@ class ImageBuilderCdkStack(Stack):
                         region="",
                         resource="instance-profile",
                         resource_name="{0}/{1}".format(
-                            IMAGEBUILDER_RESOURCE_NAME_PREFIX,
+                            IAM_ROLE_PATH.strip("/"),
                             self._build_resource_name(IMAGEBUILDER_RESOURCE_NAME_PREFIX),
                         ),
                     )
@@ -1010,35 +1013,6 @@ class ImageBuilderCdkStack(Stack):
                 resources=resources,
             )
         )
-
-
-def parse_bucket_url(url):
-    """
-    Parse s3 url to get bucket name and object name.
-
-    input: s3://test/templates/3.0/post_install.sh
-    output: {"bucket_name": "test", "object_key": "templates/3.0/post_install.sh", "object_name": "post_install.sh"}
-    """
-    match = re.match(r"s3://(.*?)/(.*)", url)
-    if match:
-        bucket_name = match.group(1)
-        object_key = match.group(2)
-        object_name = object_key.split("/")[-1]
-    else:
-        raise URLError("Invalid s3 url: {0}".format(url))
-
-    return {"bucket_name": bucket_name, "object_key": object_key, "object_name": object_name}
-
-
-def create_s3_presigned_url(s3_uri, expiration=3600):
-    """Generate a presigned URL to share an S3 object.
-
-    :param s3_uri: s3 uri, e.g. s3://my.bucket/my.object
-    :param expiration: Time in seconds for the presigned URL to remain valid
-    :return: Presigned URL as string
-    """
-    s3_uri_info = parse_bucket_url(s3_uri)
-    return AWSApi.instance().s3.create_presigned_url(s3_uri_info["bucket_name"], s3_uri_info["object_key"], expiration)
 
 
 def _load_yaml(source_dir, file_name):

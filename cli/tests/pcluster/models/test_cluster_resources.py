@@ -33,10 +33,10 @@ class TestClusterLogsFiltersParser:
     @pytest.mark.parametrize(
         "filters, expected_error",
         [
-            ("Name=wrong,Value=test", "They must be in the form"),
-            ("Name=wrong,Values=test", "Filter wrong not supported."),
+            (["Name=wrong,Value=test"], "They must be in the form"),
+            (["Name=wrong,Values=test"], "Filter wrong not supported."),
             (
-                "Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11",
+                ["Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11"],
                 "Filter .* doesn't accept comma separated strings as value",
             ),
         ],
@@ -48,8 +48,8 @@ class TestClusterLogsFiltersParser:
     @pytest.mark.parametrize(
         "filters, expected_filters_size, expected_attrs",
         [
-            ("Name=private-dns-name,Values=ip-10-10-10-10 ", 1, {"log_stream_prefix": "ip-10-10-10-10"}),
-            ("Name=node-type,Values=HeadNode ", 1, {"log_stream_prefix": "ip-10-0-0-102"}),
+            (["Name=private-dns-name,Values=ip-10-10-10-10"], 1, {"log_stream_prefix": "ip-10-10-10-10"}),
+            (["Name=node-type,Values=HeadNode"], 1, {"log_stream_prefix": "ip-10-0-0-102"}),
             (None, 0, {"log_stream_prefix": None}),
         ],
     )
@@ -64,12 +64,12 @@ class TestClusterLogsFiltersParser:
         "filters, event_in_window, expected_error",
         [
             (
-                "Name=private-dns-name,Values=ip-10-10-10-10 Name=node-type,Values=HeadNode",
+                ["Name=private-dns-name,Values=ip-10-10-10-10", "Name=node-type,Values=HeadNode"],
                 True,
                 "cannot be set at the same time",
             ),
             (
-                "Name=node-type,Values=Compute",
+                ["Name=node-type,Values=Compute"],
                 True,
                 "The only accepted value for Node Type filter is 'HeadNode'",
             ),

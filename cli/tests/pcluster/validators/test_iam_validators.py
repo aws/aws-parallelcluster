@@ -17,7 +17,7 @@ from pcluster.validators.iam_validators import (
     AdditionalIamPolicyValidator,
     InstanceProfileValidator,
     RoleValidator,
-    _get_resource_name_from_resource_arn,
+    get_resource_name_from_resource_arn,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -90,7 +90,7 @@ def test_instance_profile_validator(mocker, instance_profile_arn, side_effect, e
 )
 def test_get_resource_name_from_resource_arn(resource_arn, expected_resource_name):
     """Verify function that return resource name from resource arn."""
-    assert_that(_get_resource_name_from_resource_arn(resource_arn)).is_equal_to(expected_resource_name)
+    assert_that(get_resource_name_from_resource_arn(resource_arn)).is_equal_to(expected_resource_name)
 
 
 @pytest.mark.parametrize(

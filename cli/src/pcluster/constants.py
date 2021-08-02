@@ -19,6 +19,8 @@ SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
 SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm"]
 SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]
 SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
+DELETION_POLICIES = ["Retain", "Delete"]
+DELETION_POLICIES_WITH_SNAPSHOT = DELETION_POLICIES + ["Snapshot"]
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
 SUPPORTED_OSES_FOR_ARCHITECTURE = {"x86_64": SUPPORTED_OSES, "arm64": SUPPORTED_OSES}
 
@@ -100,6 +102,7 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "root_directory": "parallelcluster",
     "root_cluster_directory": "clusters",
     "source_config_name": "cluster-config.yaml",
+    "image_config_name": "image-config.yaml",
     "config_name": "cluster-config-with-implied-values.yaml",
     "template_name": "aws-parallelcluster.cfn.yaml",
     "instance_types_data_name": "instance-types-data.json",
@@ -107,7 +110,11 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "scheduler_resources_name": "scheduler_resources.zip",
 }
 
+PCLUSTER_TAG_VALUE_REGEX = r"^([\w\+\-\=\.\_\:\@/]{0,256})$"
+
 IMAGEBUILDER_RESOURCE_NAME_PREFIX = "ParallelClusterImage"
+
+IAM_ROLE_PATH = "/parallelcluster/"
 
 PCLUSTER_S3_BUCKET_VERSION = "v1"
 

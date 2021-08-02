@@ -1,6 +1,6 @@
 # NotFoundExceptionResponseContent
 
-This exception is thrown when the requested entity is not found
+This exception is thrown when the requested entity is not found.
 
 ## Properties
 Name | Type | Description | Notes

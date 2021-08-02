@@ -17,7 +17,7 @@ class S3Client(Boto3Client):
     """S3 Boto3 client."""
 
     def __init__(self):
-        super().__init__("s3")
+        super().__init__("s3", botocore_config_kwargs={"s3": {"addressing_style": "virtual"}})
 
     @AWSExceptionHandler.handle_client_exception
     def download_file(self, bucket_name, object_name, file_name):

@@ -7,6 +7,9 @@
 # limitations under the License.
 from abc import ABC
 
+from connexion import ProblemException
+from werkzeug.exceptions import HTTPException
+
 from pcluster.api.models import (
     BadRequestExceptionResponseContent,
     ConflictExceptionResponseContent,
@@ -25,6 +28,35 @@ from pcluster.api.models.create_cluster_bad_request_exception_response_content i
 from pcluster.api.models.update_cluster_bad_request_exception_response_content import (
     UpdateClusterBadRequestExceptionResponseContent,
 )
+from pcluster.aws.common import AWSClientError
+
+
+def exception_message(exception):
+    if isinstance(exception, AWSClientError):
+        if exception.error_code == AWSClientError.ErrorCode.VALIDATION_ERROR.value:
+            return exception_message(BadRequestException(str(exception)))
+        if exception.error_code in AWSClientError.ErrorCode.throttling_error_codes():
+            return exception_message(LimitExceededException(str(exception)))
+        return exception_message(
+            InternalServiceException(f"Failed when calling AWS service in {exception.function_name}: {exception}")
+        )
+    elif isinstance(exception, ParallelClusterApiException):
+        return exception.content
+    elif isinstance(exception, HTTPException):
+        return {"message": exception.description}
+    elif isinstance(exception, ProblemException):
+        message = f"{exception.title}"
+        if exception.detail:
+            # Connexion does not return a clear error message on missing request body
+            if "None is not of type 'object'" in exception.detail:
+                exception.detail = "request body is required"
+            message += f": {exception.detail}"
+        return {"message": message}
+    else:
+        return {
+            "message": "Unexpected fatal exception. "
+            "Please look at the application logs for details on the encountered failure."
+        }
 
 
 class ParallelClusterApiException(ABC, Exception):

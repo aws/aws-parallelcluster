@@ -5,13 +5,14 @@
 #  or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 from unittest.mock import ANY
 
 import pytest
 from assertpy import assert_that
 
 from pcluster.api.models import ListClustersResponseContent
+from pcluster.cli.entrypoint import run
+from pcluster.cli.exceptions import APIOperationException
 
 
 class TestListClustersCommand:
@@ -25,7 +26,7 @@ class TestListClustersCommand:
         "args, error_message",
         [
             (["--invalid"], "Invalid arguments ['--invalid']"),
-            (["--region", "eu-west-"], "argument -r/--region: invalid choice: 'eu-west-'"),
+            (["--region", "eu-west-"], "Bad Request: invalid or unsupported region 'eu-west-'"),
             (["--cluster-status", "invalid"], "argument --cluster-status: invalid choice: 'invalid'"),
         ],
     )
@@ -46,14 +47,14 @@ class TestListClustersCommand:
                     "region": "us-east-1",
                 },
                 ListClustersResponseContent(items=[], next_token="token"),
-                json.dumps({"items": [], "nextToken": "token"}, indent=2),
+                {"items": [], "nextToken": "token"},
             ),
             (
                 {
                     "region": "us-east-1",
                 },
                 ListClustersResponseContent(items=[], next_token="token"),
-                json.dumps({"items": [], "nextToken": "token"}, indent=2),
+                {"items": [], "nextToken": "token"},
             ),
             (
                 {
@@ -61,22 +62,20 @@ class TestListClustersCommand:
                     "region": "us-east-1",
                 },
                 ListClustersResponseContent(items=[], next_token="token"),
-                json.dumps({"items": [], "nextToken": "token"}, indent=2),
+                {"items": [], "nextToken": "token"},
             ),
         ],
         ids=["all", "required", "duplicated_status"],
     )
-    def test_execute(self, mocker, capsys, assert_out_err, run_cli, args, mocked_api_response, expected_cli_response):
+    def test_execute(self, mocker, args, mocked_api_response, expected_cli_response):
         list_clusters_mock = mocker.patch(
             "pcluster.api.controllers.cluster_operations_controller.list_clusters",
             return_value=mocked_api_response,
             autospec=True,
         )
 
-        command = ["pcluster", "list-clusters"] + self._build_cli_args(args)
-        run_cli(command, expect_failure=False)
-
-        assert_out_err(expected_out=expected_cli_response, expected_err="")
+        out = run(["list-clusters"] + self._build_cli_args(args))
+        assert_that(out).is_equal_to(expected_cli_response)
         assert_that(list_clusters_mock.call_args).is_length(2)  # this is due to the decorator on list_clusters
         if "cluster_status" in args:
             # Asserting the cluster_status list separately because the order is not preserved
@@ -84,9 +83,10 @@ class TestListClustersCommand:
                 *args.get("cluster_status")
             )
             args["cluster_status"] = ANY
-        list_clusters_mock.assert_called_with(**args)
+        base_args = {"region": None, "next_token": None, "cluster_status": None}
+        list_clusters_mock.assert_called_with(**{**base_args, **args})
 
-    def test_error(self, mocker, run_cli, assert_out_err):
+    def test_error(self, mocker):
         api_response = {"message": "error"}, 400
         mocker.patch(
             "pcluster.api.controllers.cluster_operations_controller.list_clusters",
@@ -94,10 +94,10 @@ class TestListClustersCommand:
             autospec=True,
         )
 
-        command = ["pcluster", "list-clusters", "--region", "eu-west-1"]
-        run_cli(command, expect_failure=True)
-
-        assert_out_err(expected_out=json.dumps(api_response[0], indent=2), expected_err="")
+        with pytest.raises(APIOperationException) as exc_info:
+            command = ["list-clusters", "--region", "eu-west-1"]
+            run(command)
+        assert_that(exc_info.value.data).is_equal_to(api_response[0])
 
     @staticmethod
     def _build_cli_args(args):
@@ -107,5 +107,6 @@ class TestListClustersCommand:
         if "next_token" in args:
             cli_args.extend(["--next-token", args["next_token"]])
         if "cluster_status" in args:
-            cli_args.extend(["--cluster-status", ",".join(args["cluster_status"])])
+            cli_args.extend(["--cluster-status"])
+            cli_args.extend(args["cluster_status"])
         return cli_args
