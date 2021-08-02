@@ -15,12 +15,12 @@ import logging
 import re
 import tarfile
 import tempfile
-from dateutil.parser import parse as date_parse
 
 import boto3
 import botocore
 import pytest
 from assertpy import assert_that
+from dateutil.parser import parse as date_parse
 from remote_command_executor import RemoteCommandExecutor
 from utils import check_status, get_cluster_nodes_instance_ids, run_command
 
