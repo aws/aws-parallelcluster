@@ -12,7 +12,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.cli.entrypoint import run
-from pcluster.utils import to_kebab_case
+from pcluster.utils import to_kebab_case, to_utc_datetime
 
 BASE_COMMAND = ["pcluster", "export-cluster-logs"]
 REQUIRED_ARGS = {"cluster-name": "clustername", "bucket": "bucketname"}
@@ -110,6 +110,12 @@ class TestExportClusterLogsCommand:
             "end_time": None,
         }
         expected_params.update(args)
+        expected_params.update(
+            {
+                "start_time": args.get("start_time") and to_utc_datetime(args["start_time"]),
+                "end_time": args.get("end_time") and to_utc_datetime(args["end_time"]),
+            }
+        )
         if "output" in expected_params:
             del expected_params["output"]
         export_logs_mock.assert_called_with(**expected_params)

@@ -6,16 +6,21 @@ It's very useful for fixtures that need to be shared among all tests.
 import logging
 import os
 import sys
+import time
+from datetime import datetime
 
 import boto3
 import pytest
 from assertpy import assert_that, soft_assertions
 from botocore.stub import Stubber
+from dateutil import tz
 from flask.testing import FlaskClient
 from jinja2 import Environment, FileSystemLoader
 
 from pcluster.api.flask_app import ParallelClusterFlaskApp
+from pcluster.aws.common import StackNotFoundError
 from pcluster.cli.entrypoint import main
+from pcluster.constants import CW_LOGS_CFN_PARAM_NAME
 
 
 @pytest.fixture(autouse=True)
@@ -196,6 +201,17 @@ def unset_env():
     os.environ.update(old_environ)
 
 
+@pytest.fixture
+def set_tz(set_env):
+    def _set_tz(value):
+        set_env("TZ", value)
+        time.tzset()
+
+    yield _set_tz
+    os.environ.pop("TZ", default=None)
+    time.tzset()
+
+
 @pytest.fixture()
 def run_cli(mocker, capsys):
     def _run_cli(command, expect_failure=False, expect_message=None):
@@ -230,3 +246,93 @@ def enable_logging_propagation():
     # Since we disabled propagation by default we have to enable it in order to enable
     # unit tests to verify logging output.
     logging.getLogger("pcluster").propagate = True
+
+
+@pytest.fixture()
+def cfn_describe_stack_mock_response():
+    def _cfn_describe_stack_mock_response(edits=None):
+        stack_data = {
+            "StackId": "arn:aws:cloudformation:us-east-1:123:stack/cluster/123",
+            "StackName": "cluster",
+            "CreationTime": datetime(2021, 4, 30),
+            "StackStatus": "CREATE_COMPLETE",
+            "Outputs": [],
+            "Parameters": [{"ParameterKey": CW_LOGS_CFN_PARAM_NAME, "ParameterValue": "log_group"}],
+            "Tags": [
+                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:s3_bucket", "Value": "bucket_name"},
+                {
+                    "Key": "parallelcluster:cluster_dir",
+                    "Value": "parallelcluster/3.0.0/clusters/cluster-smkloc964uzpm12m",
+                },
+            ],
+        }
+        if edits:
+            stack_data.update(edits)
+        return stack_data
+
+    return _cfn_describe_stack_mock_response
+
+
+@pytest.fixture()
+def mock_cluster_stack(mocker, cfn_describe_stack_mock_response):
+    def _mock_cluster_stack(cluster_found=True, cluster_valid=True, logging_enabled=True):
+        if not cluster_found:
+            mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("func", "stack"))
+        else:
+            edits = {}
+            if not cluster_valid:
+                edits.update({"Tags": [{"Key": "parallelcluster:version", "Value": "2.0.0"}]})
+            if not logging_enabled:
+                edits.update({"Parameters": []})
+            mocker.patch(
+                "pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response(edits=edits)
+            )
+
+    return _mock_cluster_stack
+
+
+@pytest.fixture()
+def mock_image_stack(mocker):
+    def _mock_image_stack(image_id: str = "image", stack_exists: bool = True):
+        uid = "00000000-ffff-1111-9999-000000000000"
+        stack_data = {
+            "Capabilities": ["CAPABILITY_NAMED_IAM"],
+            "CreationTime": datetime(2021, 1, 1, 0, 0, 0, 0, tzinfo=tz.tzutc()),
+            "NotificationARNs": [],
+            "Parameters": [],
+            "RollbackConfiguration": {},
+            "StackId": f"arn:aws:cloudformation:us-east-1:000000000000:stack/{image_id}/{uid}",
+            "StackName": image_id,
+            "StackStatus": "CREATE_COMPLETE",
+            "Tags": [
+                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:image_name", "Value": image_id},
+                {"Key": "parallelcluster:image_id", "Value": image_id},
+                {"Key": "parallelcluster:s3_bucket", "Value": "parallelcluster-0000000000000000-v1-do-not-delete"},
+                {
+                    "Key": "parallelcluster:s3_image_dir",
+                    "Value": f"parallelcluster/3.0.0/images/{image_id}-aaaaaaaaaaaaaaaa",
+                },
+                {
+                    "Key": "parallelcluster:build_log",
+                    "Value": (
+                        "arn:aws:logs:us-east-1:000000000000:log-group:"
+                        "/aws/imagebuilder/ParallelClusterImage-{image_id}"
+                    ),
+                },
+                {
+                    "Key": "parallelcluster:build_config",
+                    "Value": (
+                        "s3://parallelcluster-0cd54f8004a2e0af-v1-do-not-delete/parallelcluster/"
+                        "3.0.0/images/custom-image-0-pgdlow92odu5dbvv/configs/image-config.yaml"
+                    ),
+                },
+            ],
+        }
+        if not stack_exists:
+            mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("func", "stack"))
+        else:
+            mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+
+    return _mock_image_stack
