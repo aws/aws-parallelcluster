@@ -194,7 +194,7 @@ class TestCluster:
             with pytest.raises(ClusterActionError, match=error_message):
                 _ = cluster._get_stack_template()
         else:
-            assert_that(cluster._get_stack_template()).is_equal_to(yaml.load(response))
+            assert_that(cluster._get_stack_template()).is_equal_to(yaml.safe_load(response))
 
     @pytest.mark.parametrize(
         "error_message",
@@ -499,12 +499,12 @@ class TestCluster:
         "stack_exists, logging_enabled, client_error, expected_error",
         [
             (False, False, False, "Cluster .* does not exist"),
-            (True, False, False, ""),
+            (True, False, False, "CloudWatch logging is not enabled"),
             (True, True, True, "Unexpected error when retrieving"),
             (True, True, False, ""),
         ],
     )
-    def test_list_logs(
+    def test_list_log_streams(
         self,
         cluster,
         mocker,
@@ -531,9 +531,9 @@ class TestCluster:
 
         if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
-                cluster.list_logs()
+                cluster.list_log_streams()
         else:
-            cluster.list_logs()
+            cluster.list_log_streams()
             if logging_enabled:
                 describe_logs_mock.assert_called()
 
@@ -563,14 +563,19 @@ class TestCluster:
         mock_aws_api(mocker)
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
-        get_stack_events_mock = mocker.patch(
-            "pcluster.aws.cfn.CfnClient.get_stack_events",
-            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
-        )
-        get_log_events_mock = mocker.patch(
-            "pcluster.aws.logs.LogsClient.get_log_events",
-            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
-        )
+        if not logging_enabled:
+            get_log_events_mock = mocker.patch(
+                "pcluster.aws.logs.LogsClient.get_log_events",
+                side_effect=AWSClientError("get_log_events", "The specified log group doesn't exist"),
+            )
+        elif client_error:
+            get_log_events_mock = mocker.patch(
+                "pcluster.aws.logs.LogsClient.get_log_events",
+                side_effect=AWSClientError("get_log_events", "error"),
+            )
+        else:
+            get_log_events_mock = mocker.patch("pcluster.aws.logs.LogsClient.get_log_events", side_effect=None)
+
         mocker.patch(
             "pcluster.models.cluster.ClusterStack.log_group_name",
             new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
@@ -581,15 +586,7 @@ class TestCluster:
                 cluster.get_log_events(log_stream_name)
         else:
             cluster.get_log_events(log_stream_name)
-
-            if log_stream_name == f"{FAKE_NAME}-cfn-events":
-                if stack_exists:
-                    get_stack_events_mock.assert_called()
-                else:
-                    get_stack_events_mock.assert_not_called()
-            else:
-                get_stack_events_mock.assert_not_called()
-                get_log_events_mock.assert_called()
+            get_log_events_mock.assert_called()
 
         stack_exists_mock.assert_called_with(cluster.stack_name)
 

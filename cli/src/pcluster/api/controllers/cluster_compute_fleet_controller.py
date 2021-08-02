@@ -8,17 +8,16 @@
 
 # pylint: disable=W0613
 
-from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, convert_errors
-from pcluster.api.errors import BadRequestException, NotFoundException
+from pcluster.api.controllers.common import configure_aws_region, convert_errors, validate_cluster
+from pcluster.api.errors import BadRequestException
 from pcluster.api.models import (
     DescribeComputeFleetResponseContent,
     RequestedComputeFleetStatus,
     UpdateComputeFleetRequestContent,
     UpdateComputeFleetResponseContent,
 )
-from pcluster.aws.common import StackNotFoundError
 from pcluster.models.cluster import Cluster
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_utc_datetime
 
 
 @configure_aws_region()
@@ -34,20 +33,13 @@ def describe_compute_fleet(cluster_name, region=None):
 
     :rtype: DescribeComputeFleetResponseContent
     """
-    try:
-        cluster = Cluster(cluster_name)
-        if not check_cluster_version(cluster):
-            raise BadRequestException(
-                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
-            )
-        status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
-        return DescribeComputeFleetResponseContent(
-            last_status_updated_time=to_iso_time(last_status_updated_time), status=status.value
-        )
-    except StackNotFoundError:
-        raise NotFoundException(
-            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
-        )
+    cluster = Cluster(cluster_name)
+    validate_cluster(cluster)
+    status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
+    return DescribeComputeFleetResponseContent(
+        last_status_updated_time=last_status_updated_time and to_utc_datetime(last_status_updated_time),
+        status=status.value,
+    )
 
 
 @configure_aws_region()
@@ -65,41 +57,34 @@ def update_compute_fleet(update_compute_fleet_request_content, cluster_name, reg
 
         :rtype: UpdateComputeFleetResponseContent
     """
-    try:
-        update_compute_fleet_request_content = UpdateComputeFleetRequestContent.from_dict(
-            update_compute_fleet_request_content
-        )
-        cluster = Cluster(cluster_name)
-        if not check_cluster_version(cluster):
+    update_compute_fleet_request_content = UpdateComputeFleetRequestContent.from_dict(
+        update_compute_fleet_request_content
+    )
+    cluster = Cluster(cluster_name)
+    validate_cluster(cluster)
+
+    status = update_compute_fleet_request_content.status
+    if cluster.stack.scheduler == "slurm":
+        if status == RequestedComputeFleetStatus.START_REQUESTED:
+            cluster.start()
+        elif status == RequestedComputeFleetStatus.STOP_REQUESTED:
+            cluster.stop()
+        else:
             raise BadRequestException(
-                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
+                "the update compute fleet status can only be set to"
+                " `START_REQUESTED` or `STOP_REQUESTED` for Slurm clusters."
             )
-        status = update_compute_fleet_request_content.status
-        if cluster.stack.scheduler == "slurm":
-            if status == RequestedComputeFleetStatus.START_REQUESTED:
+    else:
+        if cluster.stack.scheduler == "awsbatch":
+            if status == RequestedComputeFleetStatus.ENABLED:
                 cluster.start()
-            elif status == RequestedComputeFleetStatus.STOP_REQUESTED:
+            elif status == RequestedComputeFleetStatus.DISABLED:
                 cluster.stop()
             else:
                 raise BadRequestException(
                     "the update compute fleet status can only be set to"
-                    " `START_REQUESTED` or `STOP_REQUESTED` for Slurm clusters."
+                    " `ENABLED` or `DISABLED` for AWS Batch clusters."
                 )
-        else:
-            if cluster.stack.scheduler == "awsbatch":
-                if status == RequestedComputeFleetStatus.ENABLED:
-                    cluster.start()
-                elif status == RequestedComputeFleetStatus.DISABLED:
-                    cluster.stop()
-                else:
-                    raise BadRequestException(
-                        "the update compute fleet status can only be set to"
-                        " `ENABLED` or `DISABLED` for AWS Batch clusters."
-                    )
-        status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
-        last_status_updated_time = to_iso_time(last_status_updated_time)
-        return UpdateComputeFleetResponseContent(last_status_updated_time=last_status_updated_time, status=status.value)
-    except StackNotFoundError:
-        raise NotFoundException(
-            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
-        )
+    status, last_status_updated_time = cluster.compute_fleet_status_with_last_updated_time
+    last_status_updated_time = last_status_updated_time and to_utc_datetime(last_status_updated_time)
+    return UpdateComputeFleetResponseContent(last_status_updated_time=last_status_updated_time, status=status.value)
