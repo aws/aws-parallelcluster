@@ -153,16 +153,4 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
-test/test_cloud_formation_resource_status.py
-test/test_cluster_logs_api.py
-test/test_get_cluster_log_events_response_content.py
-test/test_get_cluster_stack_events_response_content.py
-test/test_get_image_log_events_response_content.py
-test/test_get_image_stack_events_response_content.py
-test/test_image_logs_api.py
-test/test_list_cluster_log_streams_response_content.py
-test/test_list_image_log_streams_response_content.py
-test/test_log_event.py
-test/test_log_stream.py
-test/test_stack_event.py
 tox.ini

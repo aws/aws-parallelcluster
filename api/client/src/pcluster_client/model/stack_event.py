@@ -80,14 +80,14 @@ class StackEvent(ModelNormal):
             'event_id': (str,),  # noqa: E501
             'physical_resource_id': (str,),  # noqa: E501
             'resource_status': (CloudFormationResourceStatus,),  # noqa: E501
-            'resource_status_reason': (str,),  # noqa: E501
-            'client_request_token': (str,),  # noqa: E501
-            'resource_properties': (str,),  # noqa: E501
             'stack_id': (str,),  # noqa: E501
             'stack_name': (str,),  # noqa: E501
             'logical_resource_id': (str,),  # noqa: E501
             'resource_type': (str,),  # noqa: E501
             'timestamp': (datetime,),  # noqa: E501
+            'resource_status_reason': (str,),  # noqa: E501
+            'client_request_token': (str,),  # noqa: E501
+            'resource_properties': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -99,14 +99,14 @@ class StackEvent(ModelNormal):
         'event_id': 'eventId',  # noqa: E501
         'physical_resource_id': 'physicalResourceId',  # noqa: E501
         'resource_status': 'resourceStatus',  # noqa: E501
-        'resource_status_reason': 'resourceStatusReason',  # noqa: E501
-        'client_request_token': 'clientRequestToken',  # noqa: E501
-        'resource_properties': 'resourceProperties',  # noqa: E501
         'stack_id': 'stackId',  # noqa: E501
         'stack_name': 'stackName',  # noqa: E501
         'logical_resource_id': 'logicalResourceId',  # noqa: E501
         'resource_type': 'resourceType',  # noqa: E501
         'timestamp': 'timestamp',  # noqa: E501
+        'resource_status_reason': 'resourceStatusReason',  # noqa: E501
+        'client_request_token': 'clientRequestToken',  # noqa: E501
+        'resource_properties': 'resourceProperties',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -121,16 +121,13 @@ class StackEvent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, event_id, physical_resource_id, resource_status, resource_status_reason, client_request_token, resource_properties, stack_id, stack_name, logical_resource_id, resource_type, timestamp, *args, **kwargs):  # noqa: E501
+    def __init__(self, event_id, physical_resource_id, resource_status, stack_id, stack_name, logical_resource_id, resource_type, timestamp, *args, **kwargs):  # noqa: E501
         """StackEvent - a model defined in OpenAPI
 
         Args:
             event_id (str): The unique ID of this event.
             physical_resource_id (str): The name or unique identifier associated with the physical instance of the resource.
             resource_status (CloudFormationResourceStatus):
-            resource_status_reason (str): Success/failure message associated with the resource.
-            client_request_token (str): The token passed to the operation that generated this event.
-            resource_properties (str): BLOB of the properties used to create the resource.
             stack_id (str): The unique ID name of the instance of the stack.
             stack_name (str): The name associated with a stack.
             logical_resource_id (str): The logical name of the resource specified in the template.
@@ -168,6 +165,9 @@ class StackEvent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            resource_status_reason (str): Success/failure message associated with the resource.. [optional]  # noqa: E501
+            client_request_token (str): The token passed to the operation that generated this event.. [optional]  # noqa: E501
+            resource_properties (str): BLOB of the properties used to create the resource.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -196,9 +196,6 @@ class StackEvent(ModelNormal):
         self.event_id = event_id
         self.physical_resource_id = physical_resource_id
         self.resource_status = resource_status
-        self.resource_status_reason = resource_status_reason
-        self.client_request_token = client_request_token
-        self.resource_properties = resource_properties
         self.stack_id = stack_id
         self.stack_name = stack_name
         self.logical_resource_id = logical_resource_id
