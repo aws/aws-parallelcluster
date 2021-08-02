@@ -29,7 +29,7 @@ from tests.common.utils import get_installed_parallelcluster_version, retrieve_l
 
 
 def instance_stream_name(instance, stream_name):
-    "Return a stream name given an instance."
+    """Return a stream name given an instance."""
     ip_str = instance["privateIpAddress"].replace(".", "-")
     return "ip-{}.{}.{}".format(ip_str, instance["instanceId"], stream_name)
 
