@@ -719,7 +719,7 @@ paths:
         - name: filters
           in: query
           description: |-
-            Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).
+            Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.
             Accepted filters are:
             private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).
             node-type - The node type, the only accepted value for this filter is HeadNode.
@@ -730,7 +730,7 @@ paths:
               type: string
             uniqueItems: true
             description: |-
-              Filter the log streams. Format: (Name=a,Values=1 Name=b,Values=2,3).
+              Filter the log streams. Format: 'Name=a,Values=1 Name=b,Values=2,3'.
               Accepted filters are:
               private-dns-name - The short form of the private DNS name of the instance (e.g. ip-10-0-0-101).
               node-type - The node type, the only accepted value for this filter is HeadNode.
