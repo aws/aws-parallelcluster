@@ -56,9 +56,10 @@ from pcluster.models.common import (
     create_logs_archive,
     export_stack_events,
     parse_config,
+    upload_archive,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import generate_random_name_with_prefix, get_installed_version, grouper, isoformat_to_epoch
@@ -820,13 +821,13 @@ class Cluster:
 
     def export_logs(
         self,
-        output: str,
         bucket: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
         start_time: str = None,
         end_time: str = None,
         filters: str = None,
+        output_path: str = None,
     ):
         """
         Export cluster's logs in the given output path, by using given bucket as a temporary folder.
@@ -848,9 +849,8 @@ class Cluster:
         try:
             with tempfile.TemporaryDirectory() as output_tempdir:
                 # Create root folder for the archive
-                root_archive_dir = os.path.join(
-                    output_tempdir, f"{self.name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
-                )
+                archive_name = f"{self.name}-logs-{datetime.now().strftime('%Y%m%d%H%M')}"
+                root_archive_dir = os.path.join(output_tempdir, archive_name)
                 os.makedirs(root_archive_dir, exist_ok=True)
 
                 if self.stack.log_group_name:
@@ -879,7 +879,12 @@ class Cluster:
                 stack_events_file = os.path.join(root_archive_dir, self._stack_events_stream_name)
                 export_stack_events(self.stack_name, stack_events_file)
 
-                create_logs_archive(root_archive_dir, output)
+                archive_path = create_logs_archive(root_archive_dir, output_path)
+                if output_path:
+                    return output_path
+                else:
+                    s3_path = upload_archive(bucket, bucket_prefix, archive_path)
+                    return create_s3_presigned_url(s3_path)
         except Exception as e:
             raise ClusterActionError(f"Unexpected error when exporting cluster's logs: {e}")
 

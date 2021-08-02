@@ -37,10 +37,10 @@ structure GetImageLogEventsRequest {
     @documentation("The maximum number of log events returned. If you don't specify a value, the maximum is as many log events as can fit in a response size of 1 MB, up to 10,000 log events.")
     limit: Integer,
     @httpQuery("startTime")
-    @documentation("The start of the time range, expressed in ISO8601 format (e.g. '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to this time or later than this time are included.")
+    @documentation("The start of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to this time or later than this time are included.")
     startTime: Timestamp,
     @httpQuery("endTime")
-    @documentation("The end of the time range, expressed in ISO8601 format (e.g. '2021-01-01T20:00:00.000Z'). Events with a timestamp equal to or later than this time are not included.")
+    @documentation("The end of the time range, expressed in ISO 8601 format (e.g. '2021-01-01T20:00:00Z'). Events with a timestamp equal to or later than this time are not included.")
     endTime: Timestamp,
 }
 

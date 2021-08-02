@@ -1,0 +1,11 @@
+--- setup.py	2021-07-30 10:10:10.777035834 -0600
++++ resources/setup.py	2021-07-30 10:16:34.134976487 -0600
+@@ -20,7 +20,7 @@
+ # http://pypi.python.org/pypi/setuptools
+ 
+ REQUIRES = [
+-  "urllib3 >= 1.25.3",
++  "urllib3 >= 1.26.6",
+   "python-dateutil",
+ ]
+ 

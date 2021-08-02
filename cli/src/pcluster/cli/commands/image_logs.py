@@ -8,8 +8,6 @@
 
 # pylint: disable=import-outside-toplevel
 import logging
-import os
-from datetime import datetime
 from typing import List
 
 from argparse import ArgumentParser, Namespace
@@ -36,7 +34,7 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         super()._register_common_command_args(parser)
-        parser.add_argument("image_id", help="Export the logs related to the image id provided here.")
+        parser.add_argument("--image-id", help="Export the logs related to the image id provided here.", required=True)
         # Export options
         parser.add_argument(
             "--bucket",
@@ -46,27 +44,27 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102 #pylint: disable=unused-argument
         try:
-            output_file_path = args.output or os.path.realpath(
-                f"{args.image_id}-logs-{datetime.now().strftime('%Y%m%d%H%M')}.tar.gz"
-            )
-            self._validate_output_file_path(output_file_path)
-            self._export_image_logs(args, output_file_path)
+            if args.output:
+                self._validate_output_file_path(args.output)
+            return self._export_image_logs(args, args.output)
         except Exception as e:
             utils.error(f"Unable to export image's logs.\n{e}")
+            return None
 
     @staticmethod
-    def _export_image_logs(args: Namespace, output_file_path: str):
+    def _export_image_logs(args: Namespace, output_path: str = None):
         """Export the logs associated to the image."""
-        LOGGER.info("Beginning export of logs for the image: %s", args.image_id)
+        LOGGER.debug("Beginning export of logs for the image: %s", args.image_id)
 
         # retrieve imagebuilder config and generate model
         imagebuilder = ImageBuilder(image_id=args.image_id)
-        imagebuilder.export_logs(
-            output=output_file_path,
+        url = imagebuilder.export_logs(
             bucket=args.bucket,
             bucket_prefix=args.bucket_prefix,
             keep_s3_objects=args.keep_s3_objects,
             start_time=args.start_time,
             end_time=args.end_time,
+            output_path=output_path,
         )
-        LOGGER.info("Image's logs exported correctly to %s", output_file_path)
+        LOGGER.debug("Image's logs exported correctly to %s", url)
+        return {"path": output_path} if output_path else {"url": url}

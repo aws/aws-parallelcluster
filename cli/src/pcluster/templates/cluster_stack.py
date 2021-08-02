@@ -155,6 +155,10 @@ class ClusterCdkStack(Stack):
 
         return compute_group_set
 
+    def _cluster_scoped_iam_path(self):
+        """Return a path to be associated IAM roles and instance profiles."""
+        return f"{IAM_ROLE_PATH}{self.stack_name}/"
+
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
     def _add_parameters(self):
@@ -521,7 +525,7 @@ class ClusterCdkStack(Stack):
             )
 
     def _add_instance_profile(self, role_ref: str, name: str):
-        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path=IAM_ROLE_PATH).ref
+        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path=self._cluster_scoped_iam_path()).ref
 
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
         additional_iam_policies = node.iam.additional_iam_policy_arns
@@ -536,7 +540,7 @@ class ClusterCdkStack(Stack):
         return iam.CfnRole(
             self,
             name,
-            path=IAM_ROLE_PATH,
+            path=self._cluster_scoped_iam_path(),
             managed_policy_arns=additional_iam_policies,
             assume_role_policy_document=get_assume_role_policy_document("ec2.{0}".format(self.url_suffix)),
         ).ref
@@ -938,11 +942,6 @@ class ClusterCdkStack(Stack):
                     ),
                     "volume": get_shared_storage_ids_by_type(self.shared_storage_mappings, SharedStorageType.EBS),
                     "scheduler": self.config.scheduling.scheduler,
-                    "encrypted_ephemeral": "true"
-                    if head_node.local_storage
-                    and head_node.local_storage.ephemeral_volume
-                    and head_node.local_storage.ephemeral_volume.encrypted
-                    else "NONE",
                     "ephemeral_dir": head_node.local_storage.ephemeral_volume.mount_dir
                     if head_node.local_storage and head_node.local_storage.ephemeral_volume
                     else "/scratch",
@@ -1165,13 +1164,6 @@ class ClusterCdkStack(Stack):
     def _condition_is_batch(self):
         return self.config.scheduling.scheduler == "awsbatch"
 
-    def _condition_head_node_has_public_ip(self):
-        head_node_networking = self.config.head_node.networking
-        assign_public_ip = head_node_networking.assign_public_ip
-        if assign_public_ip is None:
-            assign_public_ip = AWSApi.instance().ec2.get_subnet_auto_assign_public_ip(head_node_networking.subnet_id)
-        return assign_public_ip
-
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
     def _add_outputs(self):
@@ -1204,11 +1196,3 @@ class ClusterCdkStack(Stack):
             description="Private DNS name of the head node",
             value=self.head_node_instance.attr_private_dns_name,
         )
-
-        if self._condition_head_node_has_public_ip():
-            CfnOutput(
-                self,
-                "HeadNodePublicIP",
-                description="Public IP Address of the head node",
-                value=self.head_node_instance.attr_public_ip,
-            )

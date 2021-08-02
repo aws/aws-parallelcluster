@@ -24,7 +24,6 @@ HeadNode:
       Iops: 100
       DeleteOnTermination: true
     EphemeralVolume:
-      Encrypted: true
       MountDir: /test
   Dcv:
     Enabled: true
@@ -92,7 +91,6 @@ Scheduling:
             VolumeType: gp2
             Iops: 100
           EphemeralVolume:
-            Encrypted: true
             MountDir: /scratch
       Networking:
         SubnetIds:
