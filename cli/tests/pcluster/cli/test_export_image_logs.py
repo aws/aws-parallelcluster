@@ -87,7 +87,7 @@ class TestExportImageLogsCommand:
         expected_params.update(args)
         expected_params.update(
             {
-                "output_file": args.get("output_file") and os.path.realpath(args.get("output_file"))
+                "output_file": args.get("output_file") and os.path.realpath(args.get("output_file")),
                 "start_time": args.get("start_time") and to_utc_datetime(args["start_time"]),
                 "end_time": args.get("end_time") and to_utc_datetime(args["end_time"]),
             }
