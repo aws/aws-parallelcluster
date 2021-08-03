@@ -42,6 +42,7 @@ from pcluster.config.cluster_config import (
     Efa,
     EphemeralVolume,
     HeadNode,
+    HeadNodeImage,
     HeadNodeNetworking,
     Iam,
     Image,
@@ -52,6 +53,7 @@ from pcluster.config.cluster_config import (
     Monitoring,
     PlacementGroup,
     Proxy,
+    QueueImage,
     QueueNetworking,
     Raid,
     Roles,
@@ -827,6 +829,33 @@ class ImageSchema(BaseSchema):
         return Image(**data)
 
 
+class BaseImageSchema(BaseSchema):
+    """Represent the common attributes in HeadNode Image and Queue Image."""
+
+    custom_ami = fields.Str(
+        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
+
+
+class HeadNodeImageSchema(BaseImageSchema):
+    """Represent the schema of the HeadNode Image."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return HeadNodeImage(**data)
+
+
+class QueueImageSchema(BaseImageSchema):
+    """Represent the schema of the Queue Image."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return QueueImage(**data)
+
+
 class HeadNodeCustomActionSchema(BaseSchema):
     """Represent the schema of the custom action."""
 
@@ -891,6 +920,7 @@ class HeadNodeSchema(BaseSchema):
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     imds = fields.Nested(ImdsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    image = fields.Nested(HeadNodeImageSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -987,6 +1017,7 @@ class SlurmQueueSchema(BaseQueueSchema):
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1086,16 +1117,29 @@ class SchedulingSchema(BaseSchema):
             ("awsbatch", "aws_batch_settings", "aws_batch_queues"),
             ("slurm", "slurm_settings", "slurm_queues"),
         ]:
-            # Verify the settings section is associated to the right storage type
+            # Verify the settings section is associated to the right scheduler type
             configured_scheduler = data.get("scheduler")
-            if data.get(settings, None) and scheduler != configured_scheduler:
+            if settings in data and scheduler != configured_scheduler:
                 raise ValidationError(
                     f"Scheduling > *Settings section is not appropriate to the Scheduler: {configured_scheduler}."
                 )
-            if data.get(queues, None) and scheduler != configured_scheduler:
+            if queues in data and scheduler != configured_scheduler:
                 raise ValidationError(
                     f"Scheduling > *Queues section is not appropriate to the Scheduler: {configured_scheduler}."
                 )
+
+    @validates_schema
+    def same_subnet_in_different_queues(self, data, **kwargs):
+        """Validate subnet_ids configured in different queues are the same."""
+        for queues in ["slurm_queues", "aws_batch_queues"]:
+            if queues in data:
+
+                def _queue_has_subnet_ids(queue):
+                    return queue.networking and queue.networking.subnet_ids
+
+                subnet_ids = {tuple(set(q.networking.subnet_ids)) for q in data[queues] if _queue_has_subnet_ids(q)}
+                if len(subnet_ids) > 1:
+                    raise ValidationError("SubnetIds configured in different queues should be the same.")
 
     @post_load
     def make_resource(self, data, **kwargs):

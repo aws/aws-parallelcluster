@@ -82,6 +82,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import (
     CapacityTypeValidator,
+    ComputeAmiOsCompatibleValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -743,6 +744,30 @@ class Image(Resource):
             self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
 
 
+class HeadNodeImage(Resource):
+    """Represent the configuration of HeadNode Image."""
+
+    def __init__(self, custom_ami: str, **kwargs):
+        super().__init__()
+        self.custom_ami = Resource.init_param(custom_ami)
+
+    def _register_validators(self):
+        if self.custom_ami:
+            self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
+
+
+class QueueImage(Resource):
+    """Represent the configuration of Queue Image."""
+
+    def __init__(self, custom_ami: str, **kwargs):
+        super().__init__()
+        self.custom_ami = Resource.init_param(custom_ami)
+
+    def _register_validators(self):
+        if self.custom_ami:
+            self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
+
+
 class CustomAction(Resource):
     """Represent a custom action resource."""
 
@@ -778,6 +803,7 @@ class HeadNode(Resource):
         custom_actions: CustomActions = None,
         iam: Iam = None,
         imds: Imds = None,
+        image: HeadNodeImage = None,
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
@@ -791,6 +817,7 @@ class HeadNode(Resource):
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
         self.imds = imds or Imds(implied=True)
+        self.image = image
         self.__instance_type_info = None
 
     def _register_validators(self):
@@ -947,6 +974,7 @@ class BaseClusterConfig(Resource):
         self.source_config = None
         self.config_version = ""
         self.original_config_version = ""
+        self._official_ami = None
 
     def _register_validators(self):
         self._register_validator(RegionValidator, region=self.region)
@@ -957,17 +985,17 @@ class BaseClusterConfig(Resource):
             architecture=self.head_node.architecture,
             custom_ami=self.image.custom_ami,
         )
-        if self.ami_id:
+        if self.headnode_ami:
             self._register_validator(
                 InstanceTypeBaseAMICompatibleValidator,
                 instance_type=self.head_node.instance_type,
-                image=self.ami_id,
+                image=self.headnode_ami,
             )
         self._register_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         self._register_storage_validators()
-        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.ami_id)
+        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.headnode_ami)
 
         if self.head_node.dcv:
             self._register_validator(
@@ -1104,14 +1132,14 @@ class BaseClusterConfig(Resource):
         return AWSApi.instance().ec2.get_subnet_vpc(self.head_node.networking.subnet_id)
 
     @property
-    def ami_id(self):
-        """Get the image id of the cluster."""
-        ami_filters = self.dev_settings.ami_search_filters if self.dev_settings else None
-        return (
-            self.image.custom_ami
-            if self.image.custom_ami
-            else AWSApi.instance().ec2.get_official_image_id(self.image.os, self.head_node.architecture, ami_filters)
-        )
+    def headnode_ami(self):
+        """Get the image id of the HeadNode."""
+        if self.head_node.image and self.head_node.image.custom_ami:
+            return self.head_node.image.custom_ami
+        elif self.image.custom_ami:
+            return self.image.custom_ami
+        else:
+            return self.official_ami
 
     @property
     def scheduler_resources(self):
@@ -1177,6 +1205,16 @@ class BaseClusterConfig(Resource):
     def custom_aws_batch_cli_package(self):
         """Return custom custom aws batch cli package value or None."""
         return self.dev_settings.aws_batch_cli_package if self.dev_settings else None
+
+    @property
+    def official_ami(self):
+        """Return official ParallelCluster AMI by filter."""
+        if not self._official_ami:
+            ami_filters = self.dev_settings.ami_search_filters if self.dev_settings else None
+            self._official_ami = AWSApi.instance().ec2.get_official_image_id(
+                self.image.os, self.head_node.architecture, ami_filters
+            )
+        return self._official_ami
 
 
 class AwsBatchComputeResource(BaseComputeResource):
@@ -1385,6 +1423,7 @@ class SlurmQueue(BaseQueue):
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
+        image: QueueImage = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1392,6 +1431,7 @@ class SlurmQueue(BaseQueue):
         self.compute_settings = compute_settings or ComputeSettings(implied=True)
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
+        self.image = image
 
     def _register_validators(self):
         super()._register_validators()
@@ -1433,6 +1473,14 @@ class SlurmQueue(BaseQueue):
     def instance_profile(self):
         """Return the IAM instance profile for compute nodes, if set."""
         return self.iam.instance_profile if self.iam else None
+
+    @property
+    def queue_ami(self):
+        """Return queue image id."""
+        if self.image and self.image.custom_ami:
+            return self.image.custom_ami
+        else:
+            return None
 
 
 class Dns(Resource):
@@ -1479,6 +1527,7 @@ class SlurmClusterConfig(BaseClusterConfig):
     def __init__(self, cluster_name: str, scheduling: SlurmScheduling, **kwargs):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
+        self.__image_dict = None
 
     def get_instance_types_data(self):
         """Get instance type infos for all instance types used in the configuration file."""
@@ -1506,13 +1555,15 @@ class SlurmClusterConfig(BaseClusterConfig):
             )
 
         for queue in self.scheduling.queues:
-            self._register_validator(ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.ami_id)
+            self._register_validator(
+                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name]
+            )
             for compute_resource in queue.compute_resources:
-                if self.ami_id:
+                if self.image_dict[queue.name]:
                     self._register_validator(
                         InstanceTypeBaseAMICompatibleValidator,
                         instance_type=compute_resource.instance_type,
-                        image=self.ami_id,
+                        image=self.image_dict[queue.name],
                     )
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
@@ -1523,6 +1574,22 @@ class SlurmClusterConfig(BaseClusterConfig):
                     EfaOsArchitectureValidator,
                     efa_enabled=compute_resource.efa.enabled,
                     os=self.image.os,
-                    # FIXME: head_node.architecture vs compute_resource.architecture?
                     architecture=self.head_node.architecture,
                 )
+                self._register_validator(
+                    ComputeAmiOsCompatibleValidator,
+                    os=self.image.os,
+                    image_id=self.image_dict[queue.name],
+                )
+
+    @property
+    def image_dict(self):
+        """Return image dict of queues, key is queue name, value is image id."""
+        if self.__image_dict:
+            return self.__image_dict
+        self.__image_dict = {}
+
+        for queue in self.scheduling.queues:
+            self.__image_dict[queue.name] = queue.queue_ami or self.image.custom_ami or self.official_ami
+
+        return self.__image_dict

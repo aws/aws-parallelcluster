@@ -37,6 +37,8 @@ HeadNode:
     Enabled: true
     Port: 8443
     AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
+  Image:
+    CustomAmi: ami-23456789
 Scheduling:
   Scheduler: awsbatch
   AwsBatchQueues:

@@ -169,6 +169,23 @@ DUMMY_SLURM_QUEUE = {
             },
             None,
         ),
+        (
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [
+                    DUMMY_SLURM_QUEUE,
+                    {
+                        "Name": "queue2",
+                        "Networking": {"SubnetIds": ["subnet-00000000"]},
+                        "ComputeResources": [
+                            {"Name": "compute_resource3", "InstanceType": "c5.2xlarge", "MaxCount": 5},
+                            {"Name": "compute_resource4", "InstanceType": "c4.2xlarge"},
+                        ],
+                    },
+                ],
+            },
+            "SubnetIds configured in different queues should be the same",
+        ),
     ],
 )
 def test_scheduling_schema(mocker, config_dict, failure_message):

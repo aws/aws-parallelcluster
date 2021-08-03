@@ -869,7 +869,7 @@ class ClusterCdkStack(Stack):
                 block_device_mappings=get_block_device_mappings(head_node.local_storage, self.config.image.os),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
-                image_id=self.config.ami_id,
+                image_id=self.config.headnode_ami,
                 ebs_optimized=head_node.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=self.instance_profiles["HeadNode"]
