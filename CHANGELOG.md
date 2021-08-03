@@ -70,6 +70,7 @@ CHANGELOG
   in case recurrent failures are encountered when provisioning nodes.
 - Upgrade Slurm to version 20.11.8.
 - Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
+- Upgrade NICE DCV to version 2021.1-10851 and add DCV support for Ubuntu20.04.
 
 2.11.0
 ------
