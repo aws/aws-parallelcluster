@@ -39,9 +39,6 @@ HeadNode:
         - stirng2
   Iam:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
-    S3Access:
-      - BucketName: string
-        EnableWriteAccess: True
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
