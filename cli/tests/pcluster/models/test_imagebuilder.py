@@ -456,7 +456,7 @@ class TestImageBuilder:
             (True, True, "", {}),
             (False, True, "", {}),
             (True, False, "", {"keep_s3_objects": True}),
-            (True, True, "", {"output_path": "path"}),
+            (True, True, "", {"output_file": "path"}),
             (True, False, "", {"bucket_prefix": "test_prefix"}),
             (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
@@ -507,7 +507,7 @@ class TestImageBuilder:
                 logs_filter_mock.assert_not_called()
             create_logs_archive_mock.assert_called()
 
-        if "output_path" not in kwargs:
+        if "output_file" not in kwargs:
             upload_archive_mock.assert_called()
             presign_mock.assert_called()
 
