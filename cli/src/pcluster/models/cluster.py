@@ -235,7 +235,9 @@ class Cluster:
         """Return ClusterConfig object."""
         if not self.__config:
             try:
-                self.__config = ClusterSchema(cluster_name=self.name).load(parse_config(self.source_config_text))
+                self.__config = self._load_config(parse_config(self.source_config_text))
+            except ConfigValidationError:
+                raise e
             except Exception as e:
                 raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}")
         return self.__config
@@ -368,6 +370,18 @@ class Cluster:
                 self.bucket.delete_s3_artifacts()
             raise _cluster_error_mapper(e, str(e))
 
+    def _load_config(self, cluster_config: dict):
+        """
+        Load the config and catch / translate any errors that occur during loading.
+        """
+        try:
+            return ClusterSchema(cluster_name=self.name).load(cluster_config)
+        except ValidationError as e:
+            # syntactic failure
+            data = str(sorted(e.messages.items()) if isinstance(e.messages, dict) else e)
+            validation_failures = [ValidationResult(data, FailureLevel.ERROR, validator_type="ConfigSchemaValidator")]
+            raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)
+
     def validate_create_request(self, validator_suppressors, validation_failure_level):
         """Validate a create cluster request."""
         self._validate_no_existing_stack()
@@ -391,8 +405,7 @@ class Cluster:
         try:
             LOGGER.info("Validating cluster configuration...")
             Cluster._load_additional_instance_type_data(cluster_config_dict)
-            config = ClusterSchema(cluster_name=self.name).load(cluster_config_dict)
-
+            config = self._load_config(cluster_config_dict)
             validation_failures = config.validate(validator_suppressors)
             for failure in validation_failures:
                 if failure.level.value >= FailureLevel(validation_failure_level).value:
@@ -400,11 +413,6 @@ class Cluster:
                         "Invalid cluster configuration.", validation_failures=validation_failures
                     )
             LOGGER.info("Validation succeeded.")
-        except ValidationError as e:
-            # syntactic failure
-            data = str(sorted(e.messages.items()) if isinstance(e.messages, dict) else e)
-            validation_failures = [ValidationResult(data, FailureLevel.ERROR, validator_type="ConfigSchemaValidator")]
-            raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)
         except ConfigValidationError as e:
             raise e
         except Exception as e:
