@@ -16,6 +16,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import CapacityType
 from pcluster.validators.ec2_validators import (
     CapacityTypeValidator,
+    ComputeAmiOsCompatibleValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -186,4 +187,30 @@ def test_capacity_type_validator(mocker, capacity_type, supported_usage_classes,
         ),
     )
     actual_failures = CapacityTypeValidator().execute(capacity_type=capacity_type, instance_type="instance-type")
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "image_id, os, ami_info, expected_message",
+    [
+        ("ami-000000000000", "alinux2", ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "alinux2"}]}), None),
+        (
+            "ami-111111111111",
+            "alinux2",
+            ImageInfo({"Tags": [{"Key": "parallelcluster:os", "Value": "ubuntu1804"}]}),
+            "The OS of compute node AMI ami-111111111111 is ubuntu1804, it is not compatible with cluster OS alinux2.",
+        ),
+        (
+            "ami-222222222222",
+            "alinux2",
+            ImageInfo({"Tags": {}}),
+            "Could not check compute node AMI ami-222222222222 OS and cluster OS alinux2 compatibility, "
+            "please make sure they are compatible before cluster creation and update operations.",
+        ),
+    ],
+)
+def test_compute_ami_os_compatible_validator(mocker, image_id, os, ami_info, expected_message):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image", return_value=ami_info)
+    actual_failures = ComputeAmiOsCompatibleValidator().execute(image_id=image_id, os=os)
     assert_failure_messages(actual_failures, expected_message)

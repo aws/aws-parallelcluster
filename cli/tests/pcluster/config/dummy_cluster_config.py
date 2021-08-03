@@ -84,7 +84,6 @@ def dummy_head_node(mocker):
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     head_node_networking = HeadNodeNetworking(subnet_id="dummy-subnet-1")
-    head_node_networking.assign_public_ip = True
     head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
     head_node_dcv = Dcv(enabled=True, port=1024)
     head_node_imds = Imds(secured=True)
