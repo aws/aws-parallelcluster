@@ -61,6 +61,7 @@ CHANGELOG
 - Remove instance store software encryption option (encrypted_ephemeral).
 - Upgrade Slurm to version 20.11.8.
 - Upgrade Cinc Client to version 17.2.29.
+- CLI commands do not default to `~/.parallelcluster/config` file anymore. The cluster configuration is now a required parameter.
 
 2.11.0
 ------
