@@ -14,7 +14,7 @@ import six
 from connexion.apps.flask_app import FlaskJSONEncoder
 
 from pcluster.api.models.base_model_ import Model
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_iso_timestr
 
 
 class JSONEncoder(FlaskJSONEncoder):
@@ -34,5 +34,5 @@ class JSONEncoder(FlaskJSONEncoder):
                 dikt[attr] = value
             return dikt
         elif isinstance(obj, datetime.date):
-            return to_iso_time(obj)
+            return to_iso_timestr(obj)
         return FlaskJSONEncoder.default(self, obj)

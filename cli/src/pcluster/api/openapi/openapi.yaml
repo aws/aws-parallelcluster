@@ -3157,13 +3157,10 @@ components:
           title: timestamp
           type: string
       required:
-      - clientRequestToken
       - eventId
       - logicalResourceId
       - physicalResourceId
-      - resourceProperties
       - resourceStatus
-      - resourceStatusReason
       - resourceType
       - stackId
       - stackName

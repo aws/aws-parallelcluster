@@ -212,7 +212,7 @@ def test_retention_in_days_validator(retention_in_days, expected_message):
     ],
 )
 def test_dcv_validator(section_dict, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify that dcv behaves as expected when parsed in a config file."""
     _validate_and_assert_error(DcvSchema(), section_dict, expected_message)
 
 
@@ -238,7 +238,7 @@ def test_dcv_validator(section_dict, expected_message):
     ],
 )
 def test_cidr_validator(section_dict, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify that cidr behaves as expected when parsed in a config file."""
     _validate_and_assert_error(DcvSchema(), section_dict, expected_message)
     _validate_and_assert_error(SshSchema(), section_dict, expected_message)
 
@@ -293,7 +293,7 @@ def test_cidr_validator(section_dict, expected_message):
     ],
 )
 def test_ebs_validator(section_dict, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify that ebs settings behaves as expected when parsed in a config file."""
     _validate_and_assert_error(EbsSettingsSchema(), section_dict, expected_message)
 
 
@@ -332,7 +332,7 @@ def test_ebs_validator(section_dict, expected_message):
     ],
 )
 def test_efs_validator(section_dict, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify that efs settings expected when parsed in a config file."""
     _validate_and_assert_error(EfsSettingsSchema(), section_dict, expected_message)
 
 
@@ -502,7 +502,7 @@ def test_fsx_validator(section_dict, expected_message):
     ],
 )
 def test_raid_validator(section_dict, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify raid behaves as expected when parsed in a config file."""
     _validate_and_assert_error(RaidSchema(), section_dict, expected_message)
 
 
@@ -516,10 +516,6 @@ def test_raid_validator(section_dict, expected_message):
         ({"AdditionalSecurityGroups": ["NONE"]}, "does not match expected pattern"),
         ({"AdditionalSecurityGroups": ["sg-12345678"]}, None),
         ({"AdditionalSecurityGroups": ["sg-12345678901234567"]}, None),
-        ({"AssignPublicIp": ""}, "Not a valid boolean"),
-        ({"AssignPublicIp": "NONE"}, "Not a valid boolean"),
-        ({"AssignPublicIp": "true"}, None),
-        ({"AssignPublicIp": "false"}, None),
         ({"SecurityGroups": [""]}, "does not match expected pattern"),
         ({"SecurityGroups": ["wrong_value"]}, "does not match expected pattern"),
         ({"SecurityGroups": ["sg-12345"]}, "does not match expected pattern"),
@@ -530,7 +526,7 @@ def test_raid_validator(section_dict, expected_message):
     ],
 )
 def test_base_networking_validator(section_dict, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify networking behaves as expected when parsed in a config file."""
     _validate_and_assert_error(HeadNodeNetworkingSchema(), section_dict, expected_message)
     _validate_and_assert_error(QueueNetworkingSchema(), section_dict, expected_message)
 
@@ -547,7 +543,7 @@ def test_base_networking_validator(section_dict, expected_message):
     ],
 )
 def test_subnet_id_validator(subnet_id, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify that subnet ids behaves as expected when parsed in a config file."""
     _validate_and_assert_error(HeadNodeNetworkingSchema(), {"SubnetId": subnet_id}, expected_message)
     _validate_and_assert_error(QueueNetworkingSchema(), {"SubnetIds": [subnet_id]}, expected_message)
 
@@ -593,5 +589,5 @@ def _validate_and_assert_error(schema, section_dict, expected_message, partial=T
     ],
 )
 def test_instance_role_validator(instance_role, expected_message):
-    """Verify that cw_log behaves as expected when parsed in a config file."""
+    """Verify that instance role behaves as expected when parsed in a config file."""
     _validate_and_assert_error(IamSchema(), {"InstanceRole": instance_role}, expected_message)

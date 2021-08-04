@@ -22,6 +22,7 @@ from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
+from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
@@ -302,6 +303,44 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
     # verify updated parameters
     _verify_initialization(region, cluster, updated_config)
+
+
+@pytest.mark.usefixtures("instance")
+def test_update_compute_ami(region, os, pcluster_config_reader, clusters_factory, test_datadir):
+    # Create cluster with initial configuration
+    ec2 = boto3.client("ec2", region)
+    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster")
+    init_config_file = pcluster_config_reader(global_custom_ami=pcluster_ami_id)
+    cluster = clusters_factory(init_config_file)
+    instances = cluster.get_cluster_instance_ids(node_type="Compute")
+    logging.info(instances)
+    _check_instance_ami_id(ec2, instances, pcluster_ami_id)
+
+    # Update cluster with dlami as custom ami for compute queue
+    # Fixme it doesn't work on release branch, fix it during release process
+    filters = [
+        {
+            "Name": "name",
+            "Values": ["dlami-aws-parallelcluster-" + get_installed_parallelcluster_version() + "-amzn2-hvm-x86_64*"],
+        }
+    ]
+    pcluster_dlami_id = ec2.describe_images(ImageIds=[], Filters=filters, Owners=["self"]).get("Images")[0]["ImageId"]
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.yaml", global_custom_ami=pcluster_ami_id, custom_ami=pcluster_dlami_id
+    )
+
+    # stop compute fleet before updating queue image
+    cluster.stop()
+    cluster.update(str(updated_config_file))
+    instances = cluster.get_cluster_instance_ids(node_type="Compute")
+    logging.info(instances)
+    _check_instance_ami_id(ec2, instances, pcluster_dlami_id)
+
+
+def _check_instance_ami_id(ec2, instances, expected_queue_ami):
+    for instance_id in instances:
+        instance_info = ec2.describe_instances(Filters=[], InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
+        assert_that(instance_info["ImageId"]).is_equal_to(expected_queue_ami)
 
 
 def _verify_initialization(region, cluster, config):

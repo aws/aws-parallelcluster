@@ -28,7 +28,8 @@ from pcluster.constants import (
 from pcluster.utils import get_installed_version, get_supported_os_for_architecture, get_supported_os_for_scheduler
 from pcluster.validators.common import FailureLevel, Validator
 
-NAME_MAX_LENGTH = 30
+NAME_MAX_LENGTH = 25
+SHARED_STORAGE_NAME_MAX_LENGTH = 30
 NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
@@ -624,6 +625,17 @@ class SharedStorageNameValidator(Validator):
                 ),
                 FailureLevel.ERROR,
             )
+        if len(name) > SHARED_STORAGE_NAME_MAX_LENGTH:
+            self._add_failure(
+                f"Invalid name '{name}'. Name can be at most {SHARED_STORAGE_NAME_MAX_LENGTH} chars long.",
+                FailureLevel.ERROR,
+            )
+
+        if re.match("^default$", name):
+            self._add_failure(
+                f"It is forbidden to use '{name}' as a name.",
+                FailureLevel.ERROR,
+            )
 
 
 # --------------- Third party software validators --------------- #
@@ -727,7 +739,7 @@ class _LaunchTemplateValidator(Validator, ABC):
     """Abstract class to contain utility functions used by head node and queue LaunchTemplate validators."""
 
     def _build_launch_network_interfaces(
-        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips
+        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips=False
     ):
         """Build the needed NetworkInterfaces to launch an instance."""
         network_interfaces = []
@@ -830,7 +842,6 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 use_efa=False,  # EFA is not supported on head node
                 security_group_ids=head_node_security_groups,
                 subnet=head_node.networking.subnet_id,
-                use_public_ips=bool(head_node.networking.assign_public_ip),
             )
 
             # Test Head Node Instance Configuration

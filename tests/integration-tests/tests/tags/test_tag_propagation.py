@@ -10,7 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 # import logging
-
+import json
 import logging
 import subprocess as sp
 
@@ -194,4 +194,4 @@ def get_shared_volume_tags(cluster):
 
 def get_pcluster_version():
     """Return the installed version of the pclsuter CLI."""
-    return sp.check_output("pcluster version".split()).decode().strip()
+    return json.loads(sp.check_output("pcluster version".split()).decode().strip()).get("version")

@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 
 from pcluster import utils
 from pcluster.cli.exceptions import ParameterException
-from pcluster.utils import isoformat_to_epoch
+from pcluster.utils import to_utc_datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,8 +91,7 @@ class Iso8601Arg:
     def __call__(self, value):
         """Check if the given value is in the ISO8601 format."""
         try:
-            isoformat_to_epoch(value)
-            return value
+            return to_utc_datetime(value)
         except Exception as e:
             raise argparse.ArgumentTypeError(
                 "Start time and end time filters must be in the ISO 8601 UTC format: YYYY-MM-DDThh:mm:ssZ "
@@ -106,7 +105,7 @@ class ExportLogsCommand(ABC):
     @staticmethod
     def _register_common_command_args(parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument(
-            "--output",
+            "--output-file",
             help="File path to save log archive to. If this is provided the logs are saved "
             "locally. Otherwise they are uploaded to S3 with the url returned in the output. "
             "Default is to upload to S3.",

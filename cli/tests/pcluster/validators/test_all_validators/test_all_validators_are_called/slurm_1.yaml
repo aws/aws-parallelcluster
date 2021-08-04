@@ -6,7 +6,6 @@ HeadNode:
   Networking:
     SubnetId: subnet-12345678  # subnet-xxx
     ElasticIp: String  # true|false|EIP-id
-    AssignPublicIp: True  # true|false
     SecurityGroups:
       - sg-12345678
       - sg-23456789
@@ -39,9 +38,6 @@ HeadNode:
         - stirng2
   Iam:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
-    S3Access:
-      - BucketName: string
-        EnableWriteAccess: True
 Scheduling:
   Scheduler: slurm
   SlurmSettings:

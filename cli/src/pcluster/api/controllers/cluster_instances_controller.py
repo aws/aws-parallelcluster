@@ -18,7 +18,7 @@ from pcluster.api.models import ClusterInstance, DescribeClusterInstancesRespons
 from pcluster.api.models import NodeType as ApiNodeType
 from pcluster.aws.common import StackNotFoundError
 from pcluster.models.cluster import Cluster, NodeType
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_utc_datetime
 
 # pylint: disable=W0613
 
@@ -43,14 +43,14 @@ def delete_cluster_instances(cluster_name, region=None, force=None):
     try:
         if not check_cluster_version(cluster):
             raise BadRequestException(
-                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
+                f"Cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
             )
         if cluster.stack.scheduler == "awsbatch":
             raise BadRequestException("the delete cluster instances operation does not support AWS Batch clusters.")
     except StackNotFoundError:
         if not force:
             raise NotFoundException(
-                f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version. "
+                f"Cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version. "
                 "To force the deletion of all compute nodes, please use the `force` param."
             )
     cluster.terminate_nodes()
@@ -85,7 +85,7 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
         ec2_instances.append(
             ClusterInstance(
                 instance_id=instance.id,
-                launch_time=to_iso_time(instance.launch_time),
+                launch_time=to_utc_datetime(instance.launch_time),
                 public_ip_address=instance.public_ip,
                 instance_type=instance.instance_type,
                 state=instance.state,
