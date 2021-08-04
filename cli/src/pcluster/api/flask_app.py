@@ -97,21 +97,31 @@ class ParallelClusterFlaskApp:
 
         @self.flask_app.before_request
         def _log_request():  # pylint: disable=unused-variable
+            data = "INVALID"
+            try:
+                data = request.get_json() if request.data else "EMPTY"
+            except Exception:
+                pass
             LOGGER.info(
                 "Handling request: %s %s - Body: %s",
                 request.method,
                 request.full_path,
-                request.get_json() if request.data else "EMPTY",
+                data,
             )
 
         @self.flask_app.after_request
         def _log_response(response: Response):  # pylint: disable=unused-variable
+            data = "INVALID"
+            try:
+                data = response.get_json() if response.data else "EMPTY"
+            except Exception:
+                pass
             LOGGER.info(
                 "Responding to request %s %s: %s - Body: %s",
                 request.method,
                 request.full_path,
                 response.status_code,
-                response.get_json() if response.data else "EMPTY",
+                data
             )
             return response
 
