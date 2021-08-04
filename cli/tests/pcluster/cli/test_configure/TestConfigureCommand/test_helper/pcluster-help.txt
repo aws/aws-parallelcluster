@@ -1,4 +1,4 @@
-usage: pcluster configure [-h] [--debug] [--region REGION] [--config CONFIG]
+usage: pcluster configure [-h] [--debug] [--region REGION] --config CONFIG
 
 Start the AWS ParallelCluster configuration.
 
