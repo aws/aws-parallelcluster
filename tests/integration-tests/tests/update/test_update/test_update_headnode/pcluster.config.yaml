@@ -1,0 +1,26 @@
+Image:
+  Os: {{ os }}
+  CustomAmi: {{ global_custom_ami }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+CustomS3Bucket: {{ resource_bucket }}
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: queue1
+      ComputeResources:
+        - Name: queue1-i1
+          InstanceType: c5.xlarge
+          MinCount: 1
+          MaxCount: 2
+        - Name: queue1-i2
+          InstanceType: t2.micro
+          MinCount: 1
+          MaxCount: 2
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
