@@ -80,7 +80,7 @@ create:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"]  # os must be different from centos7 to test os validation logic when wrong os is provided
+        oss: ["ubuntu1804"]  # os must be different from ubuntu2004 to test os validation logic when wrong os is provided
         schedulers: ["slurm"]
   test_create.py::test_create_wrong_pcluster_version:
     dimensions:
@@ -508,6 +508,11 @@ update:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
+  test_update.py::test_update_compute_ami:
+    dimensions:
+      - regions: ["eu-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
 multiple_nics:
   test_multiple_nics.py::test_multiple_nics:
     dimensions:

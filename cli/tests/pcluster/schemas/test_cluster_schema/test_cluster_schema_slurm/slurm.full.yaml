@@ -6,7 +6,6 @@ HeadNode:
   Networking:
     SubnetId: subnet-12345678
     ElasticIp: true  # true|false|EIP-id
-    AssignPublicIp: True  # true|false
     AdditionalSecurityGroups:
       - sg-34567890
       - sg-45678901
@@ -44,6 +43,8 @@ HeadNode:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
   Imds:
     Secured: True
+  Image:
+    CustomAmi: ami-98765432
 Scheduling:
   Scheduler: slurm
   SlurmSettings:
@@ -78,6 +79,8 @@ Scheduling:
             EnableWriteAccess: False
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      Image:
+        CustomAmi: ami-12345678
     - Name: queue2
       ComputeSettings:
         LocalStorage:
@@ -113,6 +116,8 @@ Scheduling:
             GdrSupport: false
       Iam:
         InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
+      Image:
+        CustomAmi: ami-23456789
 SharedStorage:
   - MountDir: /my/mount/point1
     Name: name1

@@ -182,11 +182,14 @@ class SlurmConstruct(Construct):
                         self._format_arn(service="ec2", resource="network-interface/*"),
                         self._format_arn(service="ec2", resource="instance/*"),
                         self._format_arn(service="ec2", resource="volume/*"),
-                        self._format_arn(service="ec2", resource=f"image/{self.config.ami_id}", account=""),
                         self._format_arn(service="ec2", resource=f"key-pair/{self.config.head_node.ssh.key_name}"),
                         self._format_arn(service="ec2", resource="security-group/*"),
                         self._format_arn(service="ec2", resource="launch-template/*"),
                         self._format_arn(service="ec2", resource="placement-group/*"),
+                    ]
+                    + [
+                        self._format_arn(service="ec2", resource=f"image/{queue_ami}", account="")
+                        for _, queue_ami in self.config.image_dict.items()
                     ],
                 },
                 {
@@ -568,7 +571,7 @@ class SlurmConstruct(Construct):
                 # key_name=,
                 network_interfaces=compute_lt_nw_interfaces,
                 placement=ec2.CfnLaunchTemplate.PlacementProperty(group_name=queue_placement_group),
-                image_id=self.config.ami_id,
+                image_id=self.config.image_dict[queue.name],
                 ebs_optimized=compute_resource.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=self.instance_profiles[queue.name]
