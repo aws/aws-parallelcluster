@@ -48,7 +48,12 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
-from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
+from pcluster.models.imagebuilder import (
+    BadRequestImageBuilderActionError,
+    ConfigValidationError,
+    ImageBuilder,
+    NonExistingImageError,
+)
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
 from pcluster.utils import get_installed_version, to_utc_datetime
 from pcluster.validators.common import FailureLevel
@@ -123,6 +128,8 @@ def build_image(
             image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
             validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,
         )
+    except ConfigValidationError as e:
+        raise _handle_config_validation_error(e)
     except BadRequestImageBuilderActionError as e:
         errors = validation_results_to_config_validation_errors(e.validation_failures)
         raise BuildImageBadRequestException(
@@ -320,6 +327,15 @@ def list_images(image_status, region=None, next_token=None):
     else:
         items, next_token = _get_images_in_progress(image_status, next_token)
         return ListImagesResponseContent(items=items, next_token=next_token)
+
+
+def _handle_config_validation_error(e: ConfigValidationError) -> BuildImageBadRequestException:
+    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
+    return BuildImageBadRequestException(
+        BuildImageBadRequestExceptionResponseContent(
+            configuration_validation_errors=config_validation_messages, message=str(e)
+        )
+    )
 
 
 def _get_available_images():

@@ -10,6 +10,7 @@ from datetime import datetime
 
 import pytest
 from assertpy import assert_that, soft_assertions
+from marshmallow.exceptions import ValidationError
 
 from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStackStatus
@@ -311,7 +312,7 @@ class TestCreateCluster:
                             "type": "ConfigSchemaValidator",
                         }
                     ],
-                    "message": "Invalid cluster configuration",
+                    "message": "Invalid cluster configuration.",
                 },
             ),
             (
@@ -400,6 +401,20 @@ class TestCreateCluster:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_parse_config_error(self, client, mocker):
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        mocker.patch("marshmallow.Schema.load", side_effect=ValidationError(message={"Error": "error"}))
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content={
+                "clusterName": "clustername",
+                "clusterConfiguration": self.CONFIG,
+            },
+            region="us-east-1",
+        )
+        assert_that(response.status_code).is_equal_to(400)
+        assert_that(response.get_json()["message"]).matches("Invalid cluster configuration.")
 
 
 class TestDeleteCluster:
@@ -1549,7 +1564,7 @@ class TestUpdateCluster:
                             "type": "ConfigSchemaValidator",
                         }
                     ],
-                    "message": "Invalid cluster configuration",
+                    "message": "Invalid cluster configuration.",
                 },
                 id="request with validation error",
             ),
