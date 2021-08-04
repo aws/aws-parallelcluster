@@ -371,9 +371,7 @@ class Cluster:
             raise _cluster_error_mapper(e, str(e))
 
     def _load_config(self, cluster_config: dict):
-        """
-        Load the config and catch / translate any errors that occur during loading.
-        """
+        """Load the config and catch / translate any errors that occur during loading."""
         try:
             return ClusterSchema(cluster_name=self.name).load(cluster_config)
         except ValidationError as e:
