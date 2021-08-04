@@ -1131,6 +1131,8 @@ def update_failed_tests_config(item):
             with open(str(out_file)) as f:
                 failed_tests = yaml.safe_load(f)
 
+        # item.node.nodeid example:
+        # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
         feature, test_id = item.nodeid.split("/", 1)
         test_id = test_id.split("[", 1)[0]
         dimensions = {}
