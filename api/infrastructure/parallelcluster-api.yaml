@@ -1101,3 +1101,8 @@ Outputs:
         Version: !Join
           - '-'
           - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
+
+  ParallelClusterApiUserRole:
+    Condition: CreateApiUserRoleCondition
+    Description: 'IAM Role with permissions to invoke the ParallelCluster API'
+    Value: !GetAtt ParallelClusterApiUserRole.Arn
