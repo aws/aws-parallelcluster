@@ -741,6 +741,14 @@ class IamSchema(BaseSchema):
                 "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together."
             )
 
+    @validates_schema
+    def no_coexist_s3_access(self, data, **kwargs):
+        """Validate that instance_role, instance_profile or additional_iam_policies do not co-exist."""
+        if self.fields_coexist(data, ["instance_role", "s3_access"], **kwargs):
+            raise ValidationError("S3Access can not be configured when InstanceRole is set.")
+        if self.fields_coexist(data, ["instance_profile", "s3_access"], **kwargs):
+            raise ValidationError("S3Access can not be configured when InstanceProfile is set.")
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""

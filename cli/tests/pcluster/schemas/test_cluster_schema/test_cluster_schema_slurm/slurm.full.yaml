@@ -41,10 +41,6 @@ HeadNode:
         - arg2
   Iam:
     InstanceRole: arn:aws:iam::aws:role/CustomHeadNodeRole
-    S3Access:
-      - BucketName: string
-        KeyName: String
-        EnableWriteAccess: True
   Imds:
     Secured: True
   Image:

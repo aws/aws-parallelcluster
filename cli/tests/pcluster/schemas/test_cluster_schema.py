@@ -80,21 +80,42 @@ def test_image_schema(os, custom_ami, failure_message):
 
 
 @pytest.mark.parametrize(
-    "instance_role, instance_profile, additional_iam_policies, failure_message",
+    "instance_role, instance_profile, additional_iam_policies, s3_access, failure_message",
     [
-        (None, None, "arn:aws:iam::aws:policy/AdministratorAccess", False),
-        ("arn:aws:iam::aws:role/CustomHeadNodeRole", None, "arn:aws:iam::aws:policy/AdministratorAccess", True),
+        (None, None, "arn:aws:iam::aws:policy/AdministratorAccess", True, False),
+        (
+            "arn:aws:iam::aws:role/CustomHeadNodeRole",
+            None,
+            "arn:aws:iam::aws:policy/AdministratorAccess",
+            False,
+            "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.",
+        ),
+        (
+            "arn:aws:iam::aws:role/CustomHeadNodeRole",
+            None,
+            None,
+            True,
+            "S3Access can not be configured when InstanceRole is set.",
+        ),
+        (
+            None,
+            "arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile",
+            None,
+            True,
+            "S3Access can not be configured when InstanceProfile is set.",
+        ),
         (
             "arn:aws:iam::aws:role/CustomHeadNodeRole",
             "arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile",
             None,
-            True,
+            False,
+            "InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.",
         ),
-        (None, "arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile", None, False),
-        ("arn:aws:iam::aws:role/CustomHeadNodeRole", None, None, False),
+        (None, "arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile", None, False, False),
+        ("arn:aws:iam::aws:role/CustomHeadNodeRole", None, None, False, False),
     ],
 )
-def test_iam_schema(instance_role, instance_profile, additional_iam_policies, failure_message):
+def test_iam_schema(instance_role, instance_profile, additional_iam_policies, s3_access, failure_message):
     iam_dict = dict()
     if instance_role:
         iam_dict["InstanceRole"] = instance_role
@@ -102,11 +123,13 @@ def test_iam_schema(instance_role, instance_profile, additional_iam_policies, fa
         iam_dict["InstanceProfile"] = instance_profile
     if additional_iam_policies:
         iam_dict["AdditionalIamPolicies"] = [{"Policy": additional_iam_policies}]
+    if s3_access:
+        iam_dict["S3Access"] = [{"BucketName": "dummy-bucket-name"}]
 
     if failure_message:
         with pytest.raises(
             ValidationError,
-            match="InstanceProfile, InstanceRole or AdditionalIamPolicies can not be configured together.",
+            match=failure_message,
         ):
             IamSchema().load(iam_dict)
     else:
