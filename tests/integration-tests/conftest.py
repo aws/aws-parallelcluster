@@ -181,12 +181,14 @@ def pytest_sessionstart(session):
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
-    set_logger_formatter(logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - {item.name} - %(module)s - %(message)s"))
+    set_logger_formatter(
+        logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - %(process)d - {item.name} - %(module)s - %(message)s")
+    )
     logging.info("Running test " + item.name)
 
 
 def pytest_runtest_logfinish(nodeid, location):
-    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
+    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(process)d - %(module)s - %(message)s"))
 
 
 def pytest_collection_modifyitems(session, config, items):
@@ -268,7 +270,7 @@ def _parametrize_from_option(metafunc, test_arg_name, option_name):
 
 
 def _setup_custom_logger(log_file):
-    formatter = logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s")
+    formatter = logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(process)d - %(module)s - %(message)s")
     logger = logging.getLogger()
     logger.handlers = []
 
