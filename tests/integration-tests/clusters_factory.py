@@ -119,7 +119,7 @@ class Cluster:
         if delete_logs:
             logging.warning("Updating stack %s to delete CloudWatch logs on stack deletion.", self.name)
             try:
-                dict_add_nested_key(self.config, False, ("Monitoring", "Logs", "CloudWatch", "RetainOnDelete"))
+                dict_add_nested_key(self.config, "Delete", ("Monitoring", "Logs", "CloudWatch", "DeletionPolicy"))
                 with open(self.config_file, "w") as conf_file:
                     yaml.dump(self.config, conf_file)
                 self.update(self.config_file, force=True)

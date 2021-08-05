@@ -48,7 +48,6 @@ Resources:
     Properties:
       Roles:
         - !Ref ParallelClusterUserRole
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -104,7 +103,6 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Condition: CreateIamResources
     Properties:
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -173,7 +171,6 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Condition: CreateIamResources
     Properties:
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -397,7 +394,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster build-image command without IAM permission
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -503,7 +499,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster delete-image command without IAM permission
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -588,7 +583,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster list-images command
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -609,7 +603,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster describe-image command
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -632,7 +625,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Policies needed to retrieve cluster and images logs
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
