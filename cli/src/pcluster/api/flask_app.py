@@ -137,8 +137,8 @@ class ParallelClusterFlaskApp:
     @staticmethod
     @log_response_error
     def _handle_http_exception(exception: HTTPException):
-        response = jsonify(exception_message(exception))
         """Render a HTTPException according to ParallelCluster API specs."""
+        response = jsonify(exception_message(exception))
         response.status_code = exception.code
         return response
 
