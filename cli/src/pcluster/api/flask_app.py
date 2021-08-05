@@ -101,7 +101,7 @@ class ParallelClusterFlaskApp:
             try:
                 data = request.get_json() if request.data else "EMPTY"
             except Exception:
-                pass
+                LOGGER.error("Exception while reading json of request.")
             LOGGER.info(
                 "Handling request: %s %s - Body: %s",
                 request.method,
@@ -115,7 +115,7 @@ class ParallelClusterFlaskApp:
             try:
                 data = response.get_json() if response.data else "EMPTY"
             except Exception:
-                pass
+                LOGGER.error("Exception while reading json of response.")
             LOGGER.info(
                 "Responding to request %s %s: %s - Body: %s",
                 request.method,
