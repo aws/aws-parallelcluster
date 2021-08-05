@@ -44,7 +44,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
-        - Name: efa-disabled-by-default-i1
+        - Name: efa-disabled-by-def-i1
           InstanceType: {{ no_efa_instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: 1
@@ -55,7 +55,7 @@ Scheduling:
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:
-        - Name: efa-enabled-by-default-i1
+        - Name: efa-enabled-by-def-i1
           InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
           MinCount: 2
