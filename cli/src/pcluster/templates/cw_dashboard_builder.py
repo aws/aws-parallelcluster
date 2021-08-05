@@ -464,7 +464,7 @@ class CWDashboardConstruct(Construct):
                         query_lines = ["fields {0}".format(",".join(log_params.fields))]
                         for filter in log_params.filters:
                             query_lines.append(f"filter {filter.param} like /{filter.pattern}/")
-                        query_lines.extend([f"sort {log_params.sort}", "limit {log_params.limit}"])
+                        query_lines.extend([f"sort {log_params.sort}", f"limit {log_params.limit}"])
 
                         widget = cloudwatch.LogQueryWidget(
                             title=log_params.title,
@@ -489,5 +489,5 @@ class CWDashboardConstruct(Construct):
 
     def _new_filter(self, pattern=None, param=None):
         if param is None:
-            param = ["@logStream"]
+            param = "@logStream"
         return _Filter(pattern, param)
