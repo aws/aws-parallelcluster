@@ -91,7 +91,11 @@ def create_cluster(region, request):
 
     yield _create_cluster
     if not request.config.getoption("no_delete"):
-        factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
+        try:
+            test_passed = request.node.rep_call.passed
+        except AttributeError:
+            test_passed = False
+        factory.destroy_all_clusters(test_passed=test_passed)
 
 
 def _cloudformation_wait(region, stack_name, status):
