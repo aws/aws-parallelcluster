@@ -163,6 +163,21 @@ def pytest_configure(config):
     _setup_custom_logger(config.getoption("tests_log_file"))
 
 
+def pytest_sessionstart(session):
+    # The number of seconds before a connection to the instance metadata service should time out.
+    # When attempting to retrieve credentials on an Amazon EC2 instance that is configured with an IAM role,
+    # a connection to the instance metadata service will time out after 1 second by default. If you know you're
+    # running on an EC2 instance with an IAM role configured, you can increase this value if needed.
+    os.environ["AWS_METADATA_SERVICE_TIMEOUT"] = "5"
+    # When attempting to retrieve credentials on an Amazon EC2 instance that has been configured with an IAM role,
+    # Boto3 will make only one attempt to retrieve credentials from the instance metadata service before giving up.
+    # If you know your code will be running on an EC2 instance, you can increase this value to make Boto3 retry
+    # multiple times before giving up.
+    os.environ["AWS_METADATA_SERVICE_NUM_ATTEMPTS"] = "5"
+    # Increasing default max attempts retry
+    os.environ["AWS_MAX_ATTEMPTS"] = "10"
+
+
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
