@@ -134,7 +134,12 @@ def create_cluster(
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
     except ConfigValidationError as e:
-        raise _handle_config_validation_error(e)
+        config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
+        raise CreateClusterBadRequestException(
+            CreateClusterBadRequestExceptionResponseContent(
+                configuration_validation_errors=config_validation_messages, message=str(e)
+            )
+        )
 
 
 @configure_aws_region()
@@ -356,7 +361,12 @@ def update_cluster(
             change_set=change_set,
         )
     except ConfigValidationError as e:
-        raise _handle_config_validation_error(e)
+        config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
+        raise UpdateClusterBadRequestException(
+            UpdateClusterBadRequestExceptionResponseContent(
+                configuration_validation_errors=config_validation_messages, message=str(e)
+            )
+        )
     except ClusterUpdateError as e:
         raise _handle_cluster_update_error(e)
     except (NotFoundClusterActionError, StackNotFoundError):
@@ -377,15 +387,6 @@ def _handle_cluster_update_error(e):
     return UpdateClusterBadRequestException(
         UpdateClusterBadRequestExceptionResponseContent(
             message=str(e), change_set=change_set, update_validation_errors=errors or None
-        )
-    )
-
-
-def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBadRequestException:
-    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
-    return CreateClusterBadRequestException(
-        CreateClusterBadRequestExceptionResponseContent(
-            configuration_validation_errors=config_validation_messages, message=str(e)
         )
     )
 

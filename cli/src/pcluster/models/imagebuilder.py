@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Set
 
 import pkg_resources
+from marshmallow.exceptions import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.aws_resources import ImageInfo
@@ -73,7 +74,7 @@ from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, c
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import datetime_to_epoch, generate_random_name_with_prefix, get_installed_version, get_partition
-from pcluster.validators.common import FailureLevel
+from pcluster.validators.common import FailureLevel, ValidationResult
 
 ImageBuilderStatusMapping = {
     "BUILD_IN_PROGRESS": [
@@ -111,6 +112,14 @@ class ImageBuilderActionError(Exception):
     def __init__(self, message: str, validation_failures: list = None):
         super().__init__(message)
         self.message = message
+        self.validation_failures = validation_failures or []
+
+
+class ConfigValidationError(ImageBuilderActionError):
+    """Represent an error during the validation of the configuration."""
+
+    def __init__(self, message: str, validation_failures: list = None):
+        super().__init__(message)
         self.validation_failures = validation_failures or []
 
 
@@ -395,7 +404,13 @@ class ImageBuilder:
 
     def _validate_config(self, validator_suppressors, validation_failure_level):
         """Validate the configuration, throwing an exception for failures above a given failure level."""
-        validation_failures = self.config.validate(validator_suppressors)
+        try:
+            validation_failures = self.config.validate(validator_suppressors)
+        except ValidationError as e:
+            # syntactic failure
+            data = str(sorted(e.messages.items()) if isinstance(e.messages, dict) else e)
+            validation_failures = [ValidationResult(data, FailureLevel.ERROR, validator_type="ImageSchemaValidator")]
+            raise ConfigValidationError("Invalid image configuration.", validation_failures=validation_failures)
         for failure in validation_failures:
             if failure.level.value >= FailureLevel(validation_failure_level).value:
                 raise BadRequestImageBuilderActionError(
