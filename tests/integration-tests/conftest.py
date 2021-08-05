@@ -316,7 +316,11 @@ def clusters_factory(request, region):
 
     yield _cluster_factory
     if not request.config.getoption("no_delete"):
-        factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
+        try:
+            test_passed = request.node.rep_call.passed
+        except AttributeError:
+            test_passed = False
+        factory.destroy_all_clusters(test_passed=test_passed)
 
 
 @pytest.fixture(scope="session")
