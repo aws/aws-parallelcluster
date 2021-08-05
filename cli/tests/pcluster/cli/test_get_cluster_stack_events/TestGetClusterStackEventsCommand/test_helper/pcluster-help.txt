@@ -8,7 +8,7 @@ Retrieve the events associated with the stack for a given cluster.
 optional arguments:
   -h, --help            show this help message and exit
   --cluster-name CLUSTER_NAME
-                        Name of the cluster
+                        Name or Stack ID of the cluster
   --region REGION       AWS Region that the operation corresponds to.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.

@@ -4,6 +4,9 @@ namespace parallelcluster
 @documentation("Name of the cluster")
 string ClusterName
 
+@documentation("Name or Stack ID of the cluster")
+string ClusterNameOrId
+
 set SuppressValidatorsList {
    member: SuppressValidatorExpression
 }

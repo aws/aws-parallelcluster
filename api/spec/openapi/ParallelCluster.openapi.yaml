@@ -903,11 +903,10 @@ paths:
       parameters:
         - name: clusterName
           in: path
-          description: Name of the cluster
+          description: Name or Stack ID of the cluster
           schema:
             type: string
-            pattern: ^[a-zA-Z][a-zA-Z0-9-]+$
-            description: Name of the cluster
+            description: Name or Stack ID of the cluster
           required: true
         - name: region
           in: query

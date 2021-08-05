@@ -22,7 +22,7 @@ operation GetClusterStackEvents {
 structure GetClusterStackEventsRequest {
     @httpLabel
     @required
-    clusterName: ClusterName,
+    clusterName: ClusterNameOrId,
     @httpQuery("region")
     region: Region,
     @httpQuery("nextToken")

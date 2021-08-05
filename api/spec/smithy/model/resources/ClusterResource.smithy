@@ -23,7 +23,7 @@ resource ClusterLogStream {
 }
 
 resource ClusterStackEvents {
-    identifiers: { clusterName: ClusterName },
+    identifiers: { clusterName: ClusterNameOrId },
     read: GetClusterStackEvents
 }
 
