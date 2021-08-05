@@ -147,7 +147,7 @@ class CfnStacksFactory:
     @retry(
         retry_on_result=lambda result: result == "CREATE_IN_PROGRESS",
         wait_fixed=5000,
-        retry_on_exception=lambda e: False,
+        retry_on_exception=lambda exception: isinstance(exception, ClientError) and "Rate exceeded" in str(exception),
     )
     def __wait_for_stack_creation(self, name, cfn_client):
         return self.__get_stack_status(name, cfn_client)
@@ -155,7 +155,7 @@ class CfnStacksFactory:
     @retry(
         retry_on_result=lambda result: result == "DELETE_IN_PROGRESS",
         wait_fixed=5000,
-        retry_on_exception=lambda e: False,
+        retry_on_exception=lambda exception: isinstance(exception, ClientError) and "Rate exceeded" in str(exception),
     )
     def __wait_for_stack_deletion(self, name, cfn_client):
         return self.__get_stack_status(name, cfn_client)
