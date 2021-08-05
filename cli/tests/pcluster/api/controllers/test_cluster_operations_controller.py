@@ -10,6 +10,7 @@ from datetime import datetime
 
 import pytest
 from assertpy import assert_that, soft_assertions
+from marshmallow.exceptions import ValidationError
 
 from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStackStatus
@@ -26,7 +27,7 @@ from pcluster.models.cluster import (
     LimitExceededClusterActionError,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.utils import to_iso_time
+from pcluster.utils import to_iso_timestr
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
@@ -311,7 +312,7 @@ class TestCreateCluster:
                             "type": "ConfigSchemaValidator",
                         }
                     ],
-                    "message": "Invalid cluster configuration",
+                    "message": "Invalid cluster configuration.",
                 },
             ),
             (
@@ -400,6 +401,20 @@ class TestCreateCluster:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_response)
+
+    def test_parse_config_error(self, client, mocker):
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        mocker.patch("marshmallow.Schema.load", side_effect=ValidationError(message={"Error": "error"}))
+        response = self._send_test_request(
+            client,
+            create_cluster_request_content={
+                "clusterName": "clustername",
+                "clusterConfiguration": self.CONFIG,
+            },
+            region="us-east-1",
+        )
+        assert_that(response.status_code).is_equal_to(400)
+        assert_that(response.get_json()["message"]).matches("Invalid cluster configuration.")
 
 
 class TestDeleteCluster:
@@ -498,7 +513,7 @@ class TestDeleteCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "message": "Cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
                     "major version. In case you have running instances belonging to a deleted cluster please"
                     " use the DeleteClusterInstances API."
                 }
@@ -518,7 +533,7 @@ class TestDeleteCluster:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
+                    "message": "Bad Request: Cluster 'clustername' belongs to an incompatible ParallelCluster major"
                     " version."
                 }
             )
@@ -589,8 +604,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -604,7 +619,7 @@ class TestDescribeCluster:
                     "headnode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
-                        "launchTime": to_iso_time("2021-05-10T13:55:48Z"),
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "publicIpAddress": "34.251.236.164",
                         "state": "running",
@@ -622,8 +637,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -647,8 +662,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -674,8 +689,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_FAILED",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-05-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 5, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -705,8 +720,8 @@ class TestDescribeCluster:
                     "clusterName": "clustername",
                     "clusterStatus": "CREATE_COMPLETE",
                     "computeFleetStatus": "RUNNING",
-                    "creationTime": to_iso_time("2021-04-30 00:00:00"),
-                    "lastUpdatedTime": to_iso_time("2021-04-30 00:00:00"),
+                    "creationTime": to_iso_timestr(datetime(2021, 4, 30)),
+                    "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
                         {"key": "parallelcluster:version", "value": "3.0.0"},
@@ -720,7 +735,7 @@ class TestDescribeCluster:
                     "headnode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
-                        "launchTime": to_iso_time("2021-05-10T13:55:48Z"),
+                        "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
                         "privateIpAddress": "192.168.61.109",
                         "state": "running",
                     },
@@ -787,7 +802,7 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
+                    "message": "Cluster 'clustername' does not exist or belongs to an incompatible ParallelCluster "
                     "major version."
                 }
             )
@@ -806,7 +821,7 @@ class TestDescribeCluster:
             assert_that(response.status_code).is_equal_to(400)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "Bad Request: cluster 'clustername' belongs to an incompatible ParallelCluster major"
+                    "message": "Bad Request: Cluster 'clustername' belongs to an incompatible ParallelCluster major"
                     " version."
                 }
             )
@@ -1549,7 +1564,7 @@ class TestUpdateCluster:
                             "type": "ConfigSchemaValidator",
                         }
                     ],
-                    "message": "Invalid cluster configuration",
+                    "message": "Invalid cluster configuration.",
                 },
                 id="request with validation error",
             ),
@@ -1610,7 +1625,7 @@ class TestUpdateCluster:
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
                 {
-                    "message": "cluster 'clusterName' does not exist or belongs to "
+                    "message": "Cluster 'clusterName' does not exist or belongs to "
                     "an incompatible ParallelCluster major version."
                 }
             )

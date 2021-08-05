@@ -10,7 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 # import logging
-
+import json
 import logging
 import subprocess as sp
 
@@ -168,7 +168,7 @@ def get_head_node_tags(cluster):
 
 def get_compute_node_root_volume_tags(cluster, os):
     """Return the given cluster's compute node's root volume's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="Compute")
+    compute_nodes = cluster.get_cluster_instance_ids(node_type="Compute")
     assert_that(compute_nodes).is_length(1)
     root_volume_id = get_root_volume_id(compute_nodes[0], cluster.region, os)
     return get_tags_for_volume(root_volume_id, cluster.region)
@@ -176,7 +176,7 @@ def get_compute_node_root_volume_tags(cluster, os):
 
 def get_compute_node_tags(cluster):
     """Return the given cluster's compute node's tags."""
-    compute_nodes = cluster.instances(desired_instance_role="Compute")
+    compute_nodes = cluster.get_cluster_instance_ids(node_type="Compute")
     assert_that(compute_nodes).is_length(1)
     return get_ec2_instance_tags(compute_nodes[0], cluster.region)
 
@@ -194,4 +194,4 @@ def get_shared_volume_tags(cluster):
 
 def get_pcluster_version():
     """Return the installed version of the pclsuter CLI."""
-    return sp.check_output("pcluster version".split()).decode().strip()
+    return json.loads(sp.check_output("pcluster version".split()).decode().strip()).get("version")

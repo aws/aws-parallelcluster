@@ -1,44 +1,44 @@
 Image:
   Os: alinux2  # alinux2 | centos7 | ubuntu1804 | ubuntu2004
-  CustomAmi: ami-12345678  # ami-xxx
+  CustomAmi: ami-12345678
 HeadNode:
-  InstanceType: String  # t2.micro
+  InstanceType: t2.micro
   Networking:
-    SubnetId: subnet-12345678  # subnet-xxx
+    SubnetId: subnet-12345678
     ElasticIp: String  # true|false|EIP-id
-    AssignPublicIp: true  # true|false
     AdditionalSecurityGroups:
-      - sg-12345678  # sg-xxxx
+      - sg-12345678
       - sg-23456789
     Proxy:
-      HttpProxyAddress: String  # https://proxy-address:port
+      HttpProxyAddress: https://proxy-address:port
   DisableSimultaneousMultithreading: true
   CustomActions:
     OnNodeStart:
       Script: https://test.tgz  # s3:// | https:// | file://*
       Args:
-        - String  # arg1
-        - stirng2
+        - arg1
+        - arg2
     OnNodeConfigured:
       Script: https://test.tgz  # s3:// | https:// | file://*
       Args:
-        - String  # arg1
-        - stirng2
+        - arg1
+        - arg2
   Ssh:
-    KeyName: String  # ec2-key-name
-    AllowedIps: 1.2.3.4/32  # 1.2.3.4/32
+    KeyName: ec2-key-name
+    AllowedIps: 1.2.3.4/32
   LocalStorage:
     RootVolume:
-      Size: 37  # 35
-      Encrypted: true  # true
+      Size: 37
+      Encrypted: true
       DeleteOnTermination: true
     EphemeralVolume:
-      Encrypted: true  # true
-      MountDir: String  # /scratch
+      MountDir: /scratch
   Dcv:
-    Enabled: true  # true
-    Port: 8443  # 8443
+    Enabled: true
+    Port: 8443
     AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
+  Image:
+    CustomAmi: ami-23456789
 Scheduling:
   Scheduler: awsbatch
   AwsBatchQueues:
@@ -54,7 +54,7 @@ Scheduling:
           Enabled: true  # true
           Id: String
         Proxy:
-          HttpProxyAddress: String  # https://proxy-address:port
+          HttpProxyAddress: https://proxy-address:port
       ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
         - Name: compute_resource
           InstanceTypes:
@@ -65,7 +65,6 @@ Scheduling:
           DesiredvCpus: 10
           MaxvCpus: 20
           SpotBidPercentage: 50
-          DisableSimultaneousMultithreading: false
 SharedStorage:
   - MountDir: /my/mount/point
     StorageType: Ebs
@@ -90,8 +89,8 @@ SharedStorage:
       KmsKeyId: String  # id-xxx
       PerformanceMode: maxIO  # generalPurpose | maxIO
       ThroughputMode: provisioned  # bursting | provisioned
-      ProvisionedThroughput: 1024  # 1024
-      FileSystemId: fs-12345678  # fs-xxxx
+      ProvisionedThroughput: 1024
+      FileSystemId: fs-12345678
   - MountDir: /my/mount/point3
     StorageType: FsxLustre
     Name: name3
@@ -99,48 +98,44 @@ SharedStorage:
       StorageCapacity: 3600  # 3600
       DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       DataCompressionType: LZ4
-      ImportedFileChunkSize: 10  # 1024
-      ExportPath: String  # s3://bucket/folder
-      ImportPath: String  # s3://bucket
-      WeeklyMaintenanceStartTime: "1:00:00"  # "1:00:00"
-      AutomaticBackupRetentionDays: 1  # 0
-      CopyTagsToBackups: true  # true
-      DailyAutomaticBackupStartTime: 01:03  # 01:03
-      PerUnitStorageThroughput: 50  # 200
+      ImportedFileChunkSize: 1024
+      ExportPath: s3://bucket/folder
+      ImportPath: s3://bucket
+      WeeklyMaintenanceStartTime: "1:00:00"
+      AutomaticBackupRetentionDays: 1
+      CopyTagsToBackups: true
+      DailyAutomaticBackupStartTime: 01:03
+      PerUnitStorageThroughput: 50
       #BackupId: backup-12345678  # BackupId cannot coexist with some of the fields
-      KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      #FileSystemId: fs-12345678123456789  # FileSystemId cannot coexist with some of the fields
+      KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      #FileSystemId: fs-12345678123456789  # FileSystemId cannot coexist with other fields
       AutoImportPolicy: NEW_CHANGED  # NEW | NEW_CHANGED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
-    CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+    CustomLambdaResources: arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
-  DetailedMonitoring: true  # false
+  DetailedMonitoring: true
   Logs:
     CloudWatch:
-      Enabled: true  # true
-      RetentionInDays: 14  # 14
+      Enabled: true
+      RetentionInDays: 14
       DeletionPolicy: Delete
   Dashboards:
     CloudWatch:
-      Enabled: true  # true
-#AdditionalPackages:
-#  IntelSelectSolutions:
-#    InstallIntelSoftware: true  # false
-#ClusterS3ResourceBucket: String
+      Enabled: true
+CustomS3Bucket: String
 Tags:
   - Key: String
     Value: String
   - Key: two
     Value: two22
-#CustomS3Bucket: String
-#AdditionalResources: String  # https://template.url
-#DevSettings:
+AdditionalResources: https://template.url
+DevSettings:
 #  ClusterTemplate: String
-#  Cookbook:
-#    ChefCookbook: String
-#    ExtraChefAttributes: Object
-#  AwsBatchCliPackage: String
-#  NodePackage: String
+  Cookbook:
+    ChefCookbook: https://template.url
+    ExtraChefAttributes: '{ "cluster" : { "custom_node_package" : "https://s3.eu-west-1.amazonaws.com/cfncluster-fdm-build-artifacts-eu-west-1/node/aws-parallelcluster-node-2.8.1.tgz", "skip_install_recipes": "no" } }'
+  AwsBatchCliPackage: https://batchcli.url
+  NodePackage: https://nodepackage.url

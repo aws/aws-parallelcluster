@@ -10,3 +10,4 @@
 cp client/resources/sigv4_auth.py client/src/pcluster_client
 patch -u -N client/src/pcluster_client/api_client.py < client/resources/api_client.py.diff
 patch -u -N client/src/requirements.txt < client/resources/client-requirements.txt.diff
+patch -u -N client/src/setup.py < client/resources/setup.py.diff

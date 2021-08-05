@@ -1,42 +1,38 @@
-                                     [-r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}]
-                                     [--start-time START_TIME]
-                                     [--end-time END_TIME] [--head HEAD]
-                                     [--tail TAIL] [--next-token NEXT_TOKEN]
-                                     [--stream]
-                                     [--stream-period STREAM_PERIOD]
+usage: pcluster get-image-log-events [-h] --image-id IMAGE_ID
                                      --log-stream-name LOG_STREAM_NAME
-                                     image_id
+                                     [--region REGION]
+                                     [--next-token NEXT_TOKEN]
+                                     [--start-from-head START_FROM_HEAD]
+                                     [--limit LIMIT] [--start-time START_TIME]
+                                     [--end-time END_TIME] [--debug]
+                                     [--query QUERY]
 
-Retrieve the events of a log stream of the image.
-
-positional arguments:
-  image_id              Get the log stream of the image id provided here.
+Retrieve the events associated with an image build.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --debug               Turn on debug logging.
-  -r {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}, --region {af-south-1,ap-east-1,ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,cn-north-1,cn-northwest-1,eu-central-1,eu-north-1,eu-south-1,eu-west-1,eu-west-2,eu-west-3,me-south-1,sa-east-1,us-east-1,us-east-2,us-gov-east-1,us-gov-west-1,us-west-1,us-west-2}
-                        AWS Region to use.
-  --start-time START_TIME
-                        Start time of interval of interest for log events, ISO
-                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
-                        1984-09-15T19:20:30+01:00), time elements might be
-                        omitted.
-  --end-time END_TIME   End time of interval of interest for log events, ISO
-                        8601 format: YYYY-MM-DDThh:mm:ssTZD (e.g.
-                        1984-09-15T19:20:30+01:00), time elements might be
-                        omitted.
-  --head HEAD           Gets the first <head> lines of the log stream.
-  --tail TAIL           Gets the last <tail> lines of the log stream.
-  --next-token NEXT_TOKEN
-                        Token for paginated requests.
-  --stream              Gets the log stream and waits for additional output to
-                        be produced. It can be used in conjunction with --tail
-                        to start from the latest <tail> lines of the log
-                        stream. It doesn't work for CloudFormation Stack
-                        Events log stream.
-  --stream-period STREAM_PERIOD
-                        Sets the streaming period. Default is 5 seconds.
+  --image-id IMAGE_ID   Id of the image.
   --log-stream-name LOG_STREAM_NAME
-                        Log stream name, as reported by 'pcluster list-image-
-                        logs' command.
+                        Name of the log stream.
+  --region REGION       AWS Region that the operation corresponds to.
+  --next-token NEXT_TOKEN
+                        Token to use for paginated requests.
+  --start-from-head START_FROM_HEAD
+                        If the value is true, the earliest log events are
+                        returned first. If the value is false, the latest log
+                        events are returned first. (Defaults to 'false'.)
+  --limit LIMIT         The maximum number of log events returned. If you
+                        don't specify a value, the maximum is as many log
+                        events as can fit in a response size of 1 MB, up to
+                        10,000 log events.
+  --start-time START_TIME
+                        The start of the time range, expressed in ISO 8601
+                        format (e.g. '2021-01-01T20:00:00Z'). Events with a
+                        timestamp equal to this time or later than this time
+                        are included.
+  --end-time END_TIME   The end of the time range, expressed in ISO 8601
+                        format (e.g. '2021-01-01T20:00:00Z'). Events with a
+                        timestamp equal to or later than this time are not
+                        included.
+  --debug               Turn on debug logging.
+  --query QUERY         JMESPath query to perform on output.

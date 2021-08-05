@@ -8,12 +8,14 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import json
 from unittest.mock import PropertyMock
 
 import pytest
 import yaml
 from assertpy import assert_that
+from dateutil import tz
 
 from pcluster.api.models import ClusterStatus
 from pcluster.aws.common import AWSClientError
@@ -192,7 +194,7 @@ class TestCluster:
             with pytest.raises(ClusterActionError, match=error_message):
                 _ = cluster._get_stack_template()
         else:
-            assert_that(cluster._get_stack_template()).is_equal_to(yaml.load(response))
+            assert_that(cluster._get_stack_template()).is_equal_to(yaml.safe_load(response))
 
     @pytest.mark.parametrize(
         "error_message",
@@ -380,12 +382,62 @@ class TestCluster:
         assert_that(observed_return).is_equal_to(expected_return)
 
     @pytest.mark.parametrize(
+        "stack_exists, expected_error, next_token",
+        [
+            (False, "Cluster .* does not exist", None),
+            (True, "", None),
+            (True, "", "next_token"),
+        ],
+    )
+    def test_get_stack_events(self, cluster, mocker, set_env, stack_exists, expected_error, next_token):
+        set_env("AWS_DEFAULT_REGION", "us-east-2")
+        mock_events = {
+            "NextToken": "nxttkn",
+            "ResponseMetadata": {
+                "HTTPHeaders": {
+                    "content-length": "1234",
+                    "content-type": "text/xml",
+                    "date": "Sun, 25 Jul 2021 21:49:36 GMT",
+                    "vary": "accept-encoding",
+                    "x-amzn-requestid": "00000000-0000-0000-aaaa-010101010101",
+                },
+                "HTTPStatusCode": 200,
+                "RequestId": "00000000-0000-0000-aaaa-010101010101",
+                "RetryAttempts": 0,
+            },
+            "StackEvents": [
+                {
+                    "EventId": "44444444-eeee-1111-aaaa-000000000000",
+                    "LogicalResourceId": "pc",
+                    "PhysicalResourceId": "arn:aws:cloudformation:us-east-1:000000000000:stack/pc",
+                    "ResourceStatus": "UPDATE_COMPLETE",
+                    "ResourceType": "AWS::CloudFormation::Stack",
+                    "StackId": "arn:aws:cloudformation:us-east-1:000000000000:stack/pc",
+                    "StackName": "pc",
+                    "Timestamp": datetime.datetime(2021, 7, 13, 2, 20, 20, 000000, tzinfo=tz.tzutc()),
+                }
+            ],
+        }
+        stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
+        stack_events_mock = mocker.patch("pcluster.aws.cfn.CfnClient.get_stack_events", return_value=mock_events)
+        if not stack_exists:
+            with pytest.raises(ClusterActionError, match=expected_error):
+                cluster.get_stack_events(next_token)
+            stack_exists_mock.assert_called_with(cluster.stack_name)
+        else:
+            events = cluster.get_stack_events(next_token)
+            stack_exists_mock.assert_called_with(cluster.stack_name)
+            stack_events_mock.assert_called_with(cluster.stack_name, next_token=next_token)
+            assert_that(events).is_equal_to(mock_events)
+
+    @pytest.mark.parametrize(
         "stack_exists, logging_enabled, expected_error, kwargs",
         [
             (False, False, "Cluster .* does not exist", {}),
             (True, False, "", {}),
             (True, True, "", {}),
             (True, True, "", {"keep_s3_objects": True}),
+            (True, True, "", {"output_file": "path"}),
             (True, True, "", {"bucket_prefix": "test_prefix"}),
         ],
     )
@@ -404,6 +456,8 @@ class TestCluster:
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
         download_stack_events_mock = mocker.patch("pcluster.models.cluster.export_stack_events")
         create_logs_archive_mock = mocker.patch("pcluster.models.cluster.create_logs_archive")
+        upload_archive_mock = mocker.patch("pcluster.models.cluster.upload_archive")
+        presign_mock = mocker.patch("pcluster.models.cluster.create_s3_presigned_url")
         mocker.patch(
             "pcluster.models.cluster.ClusterStack.log_group_name",
             new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
@@ -416,7 +470,7 @@ class TestCluster:
         )
         cw_logs_exporter_mock = mocker.patch("pcluster.models.cluster.CloudWatchLogsExporter", autospec=True)
 
-        kwargs.update({"output": "output_path", "bucket": "bucket_name"})
+        kwargs.update({"bucket": "bucket_name"})
         if expected_error:
             with pytest.raises(ClusterActionError, match=expected_error):
                 cluster.export_logs(**kwargs)
@@ -436,16 +490,21 @@ class TestCluster:
                 cw_logs_exporter_mock.assert_not_called()
                 logs_filter_mock.assert_not_called()
 
+            if "output_file" not in kwargs:
+                print("kwargs", kwargs)
+                upload_archive_mock.assert_called()
+                presign_mock.assert_called()
+
     @pytest.mark.parametrize(
         "stack_exists, logging_enabled, client_error, expected_error",
         [
             (False, False, False, "Cluster .* does not exist"),
-            (True, False, False, ""),
+            (True, False, False, "CloudWatch logging is not enabled"),
             (True, True, True, "Unexpected error when retrieving"),
             (True, True, False, ""),
         ],
     )
-    def test_list_logs(
+    def test_list_log_streams(
         self,
         cluster,
         mocker,
@@ -472,9 +531,9 @@ class TestCluster:
 
         if expected_error or client_error:
             with pytest.raises(ClusterActionError, match=expected_error):
-                cluster.list_logs()
+                cluster.list_log_streams()
         else:
-            cluster.list_logs()
+            cluster.list_log_streams()
             if logging_enabled:
                 describe_logs_mock.assert_called()
 
@@ -484,10 +543,6 @@ class TestCluster:
     @pytest.mark.parametrize(
         "log_stream_name, stack_exists, logging_enabled, client_error, expected_error",
         [
-            (f"{FAKE_NAME}-cfn-events", False, False, False, "Cluster .* does not exist"),
-            (f"{FAKE_NAME}-cfn-events", True, False, False, ""),
-            (f"{FAKE_NAME}-cfn-events", True, True, True, "Unexpected error when retrieving log events"),
-            (f"{FAKE_NAME}-cfn-events", True, True, False, ""),
             ("log-group-name", False, False, False, "Cluster .* does not exist"),
             ("log-group-name", True, False, False, "CloudWatch logging is not enabled"),
             ("log-group-name", True, True, True, "Unexpected error when retrieving log events"),
@@ -508,14 +563,19 @@ class TestCluster:
         mock_aws_api(mocker)
         set_env("AWS_DEFAULT_REGION", "us-east-2")
         stack_exists_mock = mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=stack_exists)
-        get_stack_events_mock = mocker.patch(
-            "pcluster.aws.cfn.CfnClient.get_stack_events",
-            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
-        )
-        get_log_events_mock = mocker.patch(
-            "pcluster.aws.logs.LogsClient.get_log_events",
-            side_effect=AWSClientError("get_log_events", "error") if client_error else None,
-        )
+        if not logging_enabled:
+            get_log_events_mock = mocker.patch(
+                "pcluster.aws.logs.LogsClient.get_log_events",
+                side_effect=AWSClientError("get_log_events", "The specified log group doesn't exist"),
+            )
+        elif client_error:
+            get_log_events_mock = mocker.patch(
+                "pcluster.aws.logs.LogsClient.get_log_events",
+                side_effect=AWSClientError("get_log_events", "error"),
+            )
+        else:
+            get_log_events_mock = mocker.patch("pcluster.aws.logs.LogsClient.get_log_events", side_effect=None)
+
         mocker.patch(
             "pcluster.models.cluster.ClusterStack.log_group_name",
             new_callable=PropertyMock(return_value="log-group-name" if logging_enabled else None),
@@ -526,15 +586,7 @@ class TestCluster:
                 cluster.get_log_events(log_stream_name)
         else:
             cluster.get_log_events(log_stream_name)
-
-            if log_stream_name == f"{FAKE_NAME}-cfn-events":
-                if stack_exists:
-                    get_stack_events_mock.assert_called()
-                else:
-                    get_stack_events_mock.assert_not_called()
-            else:
-                get_stack_events_mock.assert_not_called()
-                get_log_events_mock.assert_called()
+            get_log_events_mock.assert_called()
 
         stack_exists_mock.assert_called_with(cluster.stack_name)
 

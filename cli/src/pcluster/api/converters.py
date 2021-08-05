@@ -33,7 +33,7 @@ def cloud_formation_status_to_image_status(cfn_status):
         CloudFormationStackStatus.CREATE_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
         CloudFormationStackStatus.CREATE_FAILED: ImageBuildStatus.BUILD_FAILED,
         CloudFormationStackStatus.CREATE_COMPLETE: ImageBuildStatus.BUILD_COMPLETE,
-        CloudFormationStackStatus.ROLLBACK_IN_PROGRESS: ImageBuildStatus.BUILD_IN_PROGRESS,
+        CloudFormationStackStatus.ROLLBACK_IN_PROGRESS: ImageBuildStatus.BUILD_FAILED,
         CloudFormationStackStatus.ROLLBACK_FAILED: ImageBuildStatus.BUILD_FAILED,
         CloudFormationStackStatus.ROLLBACK_COMPLETE: ImageBuildStatus.BUILD_FAILED,
         CloudFormationStackStatus.DELETE_IN_PROGRESS: ImageBuildStatus.DELETE_IN_PROGRESS,

@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import os
 import time
 
@@ -33,10 +34,10 @@ class TestClusterLogsFiltersParser:
     @pytest.mark.parametrize(
         "filters, expected_error",
         [
-            ("Name=wrong,Value=test", "They must be in the form"),
-            ("Name=wrong,Values=test", "Filter wrong not supported."),
+            (["Name=wrong,Value=test"], "They must be in the form"),
+            (["Name=wrong,Values=test"], "Filter wrong not supported."),
             (
-                "Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11",
+                ["Name=private-dns-name,Values=ip-10-10-10-10,ip-10-10-10-11"],
                 "Filter .* doesn't accept comma separated strings as value",
             ),
         ],
@@ -48,8 +49,8 @@ class TestClusterLogsFiltersParser:
     @pytest.mark.parametrize(
         "filters, expected_filters_size, expected_attrs",
         [
-            ("Name=private-dns-name,Values=ip-10-10-10-10 ", 1, {"log_stream_prefix": "ip-10-10-10-10"}),
-            ("Name=node-type,Values=HeadNode ", 1, {"log_stream_prefix": "ip-10-0-0-102"}),
+            (["Name=private-dns-name,Values=ip-10-10-10-10"], 1, {"log_stream_prefix": "ip-10-10-10-10"}),
+            (["Name=node-type,Values=HeadNode"], 1, {"log_stream_prefix": "ip-10-0-0-102"}),
             (None, 0, {"log_stream_prefix": None}),
         ],
     )
@@ -64,12 +65,12 @@ class TestClusterLogsFiltersParser:
         "filters, event_in_window, expected_error",
         [
             (
-                "Name=private-dns-name,Values=ip-10-10-10-10 Name=node-type,Values=HeadNode",
+                ["Name=private-dns-name,Values=ip-10-10-10-10", "Name=node-type,Values=HeadNode"],
                 True,
                 "cannot be set at the same time",
             ),
             (
-                "Name=node-type,Values=Compute",
+                ["Name=node-type,Values=Compute"],
                 True,
                 "The only accepted value for Node Type filter is 'HeadNode'",
             ),
@@ -119,7 +120,11 @@ class TestExportClusterLogsFiltersParser:
         [
             (
                 {"start_time": "2012-07-09", "end_time": "2012-07-29"},
-                {"log_stream_prefix": None, "start_time": 1341788400000, "end_time": 1343516400000},
+                {
+                    "log_stream_prefix": None,
+                    "start_time": datetime.datetime(2012, 7, 9, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2012, 7, 29, tzinfo=datetime.timezone.utc),
+                },
             ),
         ],
     )

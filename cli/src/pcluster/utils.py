@@ -28,8 +28,6 @@ from urllib.parse import urlparse
 import dateutil.parser
 import pkg_resources
 import yaml
-from dateutil import tz
-from dateutil.parser import parse
 from pkg_resources import packaging
 
 from pcluster.aws.common import get_region
@@ -118,29 +116,61 @@ def get_supported_os_for_architecture(architecture):
     return SUPPORTED_OSES_FOR_ARCHITECTURE.get(architecture, [])
 
 
-def camelcase(snake_case_word):
-    """Convert the given snake case word into a camel case one."""
-    parts = iter(snake_case_word.split("_"))
-    return "".join(word.title() for word in parts)
-
-
-def to_iso_time(time_in):
+def to_utc_datetime(time_in, default_timezone=datetime.timezone.utc):
     """
-    Convert a given string or datetime into ISO 8601 format with milliseconds.
+    Convert a given string, datetime or int into utc datetime.
 
-    :param time_in: Time in a format that may be parsed
+    :param time_in: Time in a format that may be parsed, integers are assumed to
+    be timestamps in UTC timezone.
+    :param default_timezone: Timezone to assum in the event that the time is
+    unspecified in the input parameter. This applies only for datetime and str inputs
+    :return time as a datetime in UTC timezone
+    """
+    if isinstance(time_in, int):
+        if time_in > 1e12:
+            time_in /= 1000
+        time_ = datetime.datetime.utcfromtimestamp(time_in)
+        time_ = time_.replace(tzinfo=datetime.timezone.utc)
+    elif isinstance(time_in, str):
+        time_ = dateutil.parser.parse(time_in)
+    elif isinstance(time_in, datetime.date):
+        time_ = time_in
+    else:
+        raise TypeError("to_utc_datetime object must be 'str', 'int' or 'datetime'.")
+    if time_.tzinfo is None:
+        time_ = time_.replace(tzinfo=default_timezone)
+    return time_.astimezone(datetime.timezone.utc)
+
+
+def to_iso_timestr(time_in: datetime.datetime):
+    """
+    Convert a given datetime ISO 8601 format with milliseconds.
+
+    :param time_in: datetime to be converted
     :return time in ISO 8601 UTC format with ms (e.g. 2021-07-15T01:22:02.655Z)
     """
-    if time_in:
-        if isinstance(time_in, str):
-            time_ = dateutil.parser.parse(time_in)
-        elif isinstance(time_in, datetime.date):
-            time_ = time_in.replace(tzinfo=datetime.timezone.utc)
-        else:
-            raise TypeError("to_iso_time object must be 'str' or 'datetime'.")
-        return time_.isoformat(timespec="milliseconds")[:-6] + "Z"
+    if time_in.tzinfo is None:
+        time_ = time_in.replace(tzinfo=datetime.timezone.utc)
     else:
-        return time_in
+        time_ = time_in.astimezone(datetime.timezone.utc)
+    return to_utc_datetime(time_).isoformat(timespec="milliseconds")[:-6] + "Z"
+
+
+def datetime_to_epoch(datetime_in: datetime.datetime):
+    """Convert UTC datetime to unix epoch datetime with milliseconds."""
+    return int(datetime_in.timestamp() * 1000)
+
+
+def to_camel_case(snake_case_word):
+    """Convert the given snake case word into a camelCase one."""
+    pascal = to_pascal_case(snake_case_word)
+    return pascal[0].lower() + pascal[1:]
+
+
+def to_pascal_case(snake_case_word):
+    """Convert the given snake case word into a PascalCase one."""
+    parts = iter(snake_case_word.split("_"))
+    return "".join(word.title() for word in parts)
 
 
 def to_kebab_case(input):
@@ -181,7 +211,7 @@ def verify_stack_status(stack_name, waiting_states, successful_states):
     resource_status = ""
     while status in waiting_states:
         status = AWSApi.instance().cfn.describe_stack(stack_name).get("StackStatus")
-        events = AWSApi.instance().cfn.get_stack_events(stack_name)[0]
+        events = AWSApi.instance().cfn.get_stack_events(stack_name)["StackEvents"][0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
             80
         )
@@ -305,26 +335,6 @@ def load_yaml_dict(file_path):
 
     # TODO use from cfn_flip import load_yaml
     return yaml_content
-
-
-def timestamp_to_isoformat(timestamp, timezone=None):
-    """
-    Convert timestamp to a readable date.
-
-    :param timestamp: timestamp to convert
-    :param timezone: timezone to use when converting. Defaults to local.
-    :return: the converted date
-    """
-    if not timezone:
-        timezone = tz.tzlocal()
-    # Forcing microsecond to 0 to avoid having them displayed.
-    time_ = datetime.datetime.fromtimestamp(timestamp / 1000, tz=timezone)
-    return time_.isoformat(timespec="seconds")
-
-
-def isoformat_to_epoch(time_isoformat):
-    """Convert iso8601 date format to unix epoch datetime with milliseconds."""
-    return int(parse(time_isoformat).timestamp() * 1000)
 
 
 def load_json_dict(file_path):

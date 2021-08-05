@@ -35,8 +35,10 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
+    OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
+    SharedStorageNameValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -408,8 +410,8 @@ def test_instance_architecture_compatibility_validator(
         ("aQUEUEa", "only contain lowercase letters, digits and hyphens"),
         ("queue1!2", "only contain lowercase letters, digits and hyphens"),
         ("my-default-queue2", None),
-        ("queue-123456789abcdefghijklmnop", "can be at most 30 chars long"),
-        ("queue-123456789abcdefghijklmno", None),
+        ("queue-123456789abcdefghijk", "can be at most 25 chars long"),
+        ("queue-123456789abcdefghij", None),
     ],
 )
 def test_queue_name_validator(name, expected_message):
@@ -655,16 +657,46 @@ def test_fsx_architecture_os_validator(architecture, os, expected_message):
         ),
         (
             ["dir1", "dir1", "dir2"],
-            "Mount directory dir1 cannot be specified for multiple volumes",
+            "Mount directory dir1 cannot be specified for multiple file systems",
         ),
         (
             ["dir1", "dir2", "dir3", "dir2", "dir1"],
-            "Mount directories dir2, dir1 cannot be specified for multiple volumes",
+            "Mount directories dir2, dir1 cannot be specified for multiple file systems",
         ),
     ],
 )
 def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
     actual_failures = DuplicateMountDirValidator().execute(mount_dir_list)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "mount_dir_list, expected_message",
+    [
+        (
+            ["dir1"],
+            None,
+        ),
+        (
+            ["dir1", "dir2"],
+            None,
+        ),
+        (
+            ["dir1", "dir2", "dir3"],
+            None,
+        ),
+        (
+            ["dir1", "dir1/subdir", "dir2"],
+            "Mount directory dir1 cannot contain other mount directories",
+        ),
+        (
+            ["dir1", "dir1/subdir", "dir2", "dir2/subdir", "dir3"],
+            "Mount directories dir1, dir2 cannot contain other mount directories",
+        ),
+    ],
+)
+def test_overlapping_mount_dir_validator(mount_dir_list, expected_message):
+    actual_failures = OverlappingMountDirValidator().execute(mount_dir_list)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -678,6 +710,23 @@ def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
 )
 def test_number_of_storage_validator(storage_type, max_number, storage_count, expected_message):
     actual_failures = NumberOfStorageValidator().execute(storage_type, max_number, storage_count)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "name, expected_message",
+    [
+        ("default", "It is forbidden"),
+        ("shared-ebs_1", None),
+        ("1aFsxa", None),
+        ("efs!2", "Allowed characters are letters, numbers and white spaces"),
+        ("my-default-ebs", None),
+        ("myefs-123456789abcdefghijklmnop", "can be at most 30 chars long"),
+        ("myfsx-123456789abcdefghijklmno", None),
+    ],
+)
+def test_shared_storage_name_validator(name, expected_message):
+    actual_failures = SharedStorageNameValidator().execute(name)
     assert_failure_messages(actual_failures, expected_message)
 
 

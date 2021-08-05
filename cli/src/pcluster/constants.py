@@ -90,6 +90,7 @@ PCLUSTER_IMAGE_CONFIG_TAG = f"{PCLUSTER_PREFIX}build_config"
 PCLUSTER_S3_IMAGE_DIR_TAG = f"{PCLUSTER_PREFIX}s3_image_dir"
 PCLUSTER_S3_CLUSTER_DIR_TAG = f"{PCLUSTER_PREFIX}cluster_dir"
 PCLUSTER_S3_BUCKET_TAG = f"{PCLUSTER_PREFIX}s3_bucket"
+PCLUSTER_IMAGE_OS_TAG = f"{PCLUSTER_PREFIX}os"
 PCLUSTER_IMAGE_BUILD_LOG_TAG = f"{PCLUSTER_PREFIX}build_log"
 PCLUSTER_VERSION_TAG = f"{PCLUSTER_PREFIX}version"
 # PCLUSTER_CLUSTER_NAME_TAG needs to be the same as the hard coded strings in node package
@@ -102,12 +103,15 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "root_directory": "parallelcluster",
     "root_cluster_directory": "clusters",
     "source_config_name": "cluster-config.yaml",
+    "image_config_name": "image-config.yaml",
     "config_name": "cluster-config-with-implied-values.yaml",
     "template_name": "aws-parallelcluster.cfn.yaml",
     "instance_types_data_name": "instance-types-data.json",
     "custom_artifacts_name": "artifacts.zip",
     "scheduler_resources_name": "scheduler_resources.zip",
 }
+
+PCLUSTER_TAG_VALUE_REGEX = r"^([\w\+\-\=\.\_\:\@/]{0,256})$"
 
 IMAGEBUILDER_RESOURCE_NAME_PREFIX = "ParallelClusterImage"
 

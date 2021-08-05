@@ -41,6 +41,7 @@ from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_fr
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
+from images_factory import Image, ImagesFactory
 from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
@@ -56,7 +57,6 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
-    run_command,
     set_credentials,
     set_logger_formatter,
     unset_credentials,
@@ -163,15 +163,32 @@ def pytest_configure(config):
     _setup_custom_logger(config.getoption("tests_log_file"))
 
 
+def pytest_sessionstart(session):
+    # The number of seconds before a connection to the instance metadata service should time out.
+    # When attempting to retrieve credentials on an Amazon EC2 instance that is configured with an IAM role,
+    # a connection to the instance metadata service will time out after 1 second by default. If you know you're
+    # running on an EC2 instance with an IAM role configured, you can increase this value if needed.
+    os.environ["AWS_METADATA_SERVICE_TIMEOUT"] = "5"
+    # When attempting to retrieve credentials on an Amazon EC2 instance that has been configured with an IAM role,
+    # Boto3 will make only one attempt to retrieve credentials from the instance metadata service before giving up.
+    # If you know your code will be running on an EC2 instance, you can increase this value to make Boto3 retry
+    # multiple times before giving up.
+    os.environ["AWS_METADATA_SERVICE_NUM_ATTEMPTS"] = "5"
+    # Increasing default max attempts retry
+    os.environ["AWS_MAX_ATTEMPTS"] = "10"
+
+
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
-    set_logger_formatter(logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - {item.name} - %(module)s - %(message)s"))
+    set_logger_formatter(
+        logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - %(process)d - {item.name} - %(module)s - %(message)s")
+    )
     logging.info("Running test " + item.name)
 
 
 def pytest_runtest_logfinish(nodeid, location):
-    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
+    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(process)d - %(module)s - %(message)s"))
 
 
 def pytest_collection_modifyitems(session, config, items):
@@ -253,7 +270,7 @@ def _parametrize_from_option(metafunc, test_arg_name, option_name):
 
 
 def _setup_custom_logger(log_file):
-    formatter = logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s")
+    formatter = logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(process)d - %(module)s - %(message)s")
     logger = logging.getLogger()
     logger.handlers = []
 
@@ -294,8 +311,8 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True):
-        cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
+    def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True, wait=True, log_error=True):
+        cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
             if request.config.getoption("cluster")
@@ -309,12 +326,18 @@ def clusters_factory(request, region):
             region=region,
         )
         if not request.config.getoption("cluster"):
-            factory.create_cluster(cluster, extra_args=extra_args, raise_on_error=raise_on_error)
+            cluster.creation_response = factory.create_cluster(
+                cluster, extra_args=extra_args, raise_on_error=raise_on_error, wait=wait, log_error=log_error
+            )
         return cluster
 
     yield _cluster_factory
     if not request.config.getoption("no_delete"):
-        factory.destroy_all_clusters(test_passed=request.node.rep_call.passed)
+        try:
+            test_passed = request.node.rep_call.passed
+        except AttributeError:
+            test_passed = False
+        factory.destroy_all_clusters(test_passed=test_passed)
 
 
 @pytest.fixture(scope="session")
@@ -335,6 +358,8 @@ def api_server_factory(
         params = [
             {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
             {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
+            {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
+            {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
         ]
 
         if server_region not in api_servers:
@@ -377,7 +402,35 @@ def api_client(region, api_server_factory, api_uri):
         yield api_client_instance
 
 
-def _write_cluster_config_to_outdir(request, cluster_config):
+@pytest.fixture(scope="class")
+def images_factory(request):
+    """
+    Define a fixture to manage the creation and destruction of images.
+
+    The configs used to create clusters are dumped to output_dir/images_configs/{test_name}.config
+    """
+    factory = ImagesFactory()
+
+    def _image_factory(image_id, image_config, region):
+        image_config_file = _write_config_to_outdir(request, image_config, "image_configs")
+        image = Image(
+            image_id="-".join([image_id, request.config.getoption("stackname_suffix")])
+            if request.config.getoption("stackname_suffix")
+            else image_id,
+            config_file=image_config_file,
+            region=region,
+        )
+        result = factory.create_image(image)
+        if "BUILD_IN_PROGRESS" not in result:
+            logging.error("image %s creation failed", image_id)
+
+        return image
+
+    yield _image_factory
+    factory.destroy_all_images()
+
+
+def _write_config_to_outdir(request, config, config_dir):
     out_dir = request.config.getoption("output_dir")
 
     # Sanitize config file name to make it Windows compatible
@@ -387,14 +440,16 @@ def _write_cluster_config_to_outdir(request, cluster_config):
     config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
 
     os.makedirs(
-        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(test_file)),
+        "{out_dir}/{config_dir}/{test_dir}".format(
+            out_dir=out_dir, config_dir=config_dir, test_dir=os.path.dirname(test_file)
+        ),
         exist_ok=True,
     )
-    cluster_config_dst = "{out_dir}/clusters_configs/{config_file_name}.config".format(
-        out_dir=out_dir, config_file_name=config_file_name
+    config_dst = "{out_dir}/{config_dir}/{config_file_name}.config".format(
+        out_dir=out_dir, config_dir=config_dir, config_file_name=config_file_name
     )
-    copyfile(cluster_config, cluster_config_dst)
-    return cluster_config_dst
+    copyfile(config, config_dst)
+    return config_dst
 
 
 @pytest.fixture()
@@ -1105,45 +1160,3 @@ def pcluster_ami_without_standard_naming(region, os, architecture):
     if ami_id:
         client = boto3.client("ec2", region_name=region)
         client.deregister_image(ImageId=ami_id)
-
-
-@pytest.fixture()
-def build_image():
-    """Create a build image process."""
-    image_id_post_test = None
-    region_post_test = None
-
-    def _build_image(image_id, region, image_config):
-        nonlocal image_id_post_test
-        nonlocal region_post_test
-        image_id_post_test = image_id
-        region_post_test = region
-
-        pcluster_build_image_result = run_command(
-            [
-                "pcluster",
-                "build-image",
-                "--image-id",
-                image_id,
-                "--region",
-                region,
-                "--image-configuration",
-                image_config.as_posix(),
-            ]
-        )
-        return pcluster_build_image_result.stdout
-
-    yield _build_image
-    if image_id_post_test:
-        pcluster_describe_image_result = run_command(
-            ["pcluster", "describe-image", "--image-id", image_id_post_test, "--region", region_post_test]
-        )
-        logging.info("Build image post process. Describe image result: %s" % pcluster_describe_image_result.stdout)
-
-        # FIXME once the command return proper JSON
-        if "build_failed" in pcluster_describe_image_result.stdout.lower():
-            run_command(
-                ["pcluster", "delete-image", "--image-id", image_id_post_test, "--region", region_post_test, "--force"]
-            )
-            # sleep 90 seconds for image deletion
-            time.sleep(90)

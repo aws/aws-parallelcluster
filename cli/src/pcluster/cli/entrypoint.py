@@ -33,32 +33,19 @@ import pcluster.cli.commands.commands as cli_commands
 import pcluster.cli.logger as pcluster_logging
 import pcluster.cli.model
 from pcluster.api import encoder
-from pcluster.cli.commands.common import CliCommand
+from pcluster.cli.commands.common import CliCommand, exit_msg, to_bool, to_int, to_number
 from pcluster.cli.exceptions import APIOperationException, ParameterException
 from pcluster.cli.middleware import add_additional_args, middleware_hooks
-from pcluster.utils import camelcase, to_snake_case
+from pcluster.utils import to_camel_case, to_snake_case
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _exit_msg(msg):
-    raise ParameterException({"message": msg})
-
-
-def bool_converter(param, in_str):
-    """Take a boolean string and convert it into a boolean value."""
-    if in_str in {"false", "False", "FALSE", False}:
-        return False
-    elif in_str in {"true", "True", "TRUE", True}:
-        return True
-    return _exit_msg(f"Bad Request: Wrong type, expected 'boolean' for parameter '{param}'")
 
 
 def re_validator(rexp_str, param, in_str):
     """Take a string and validate the input format."""
     rexp = re.compile(rexp_str)
     if rexp.match(in_str) is None:
-        _exit_msg(f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'")
+        exit_msg(f"Bad Request: '{in_str}' does not match '{rexp_str}' - '{param}'")
     return in_str
 
 
@@ -68,24 +55,8 @@ def read_file(_param, path):
         with open(path) as file:
             file_data = file.read()
     except FileNotFoundError:
-        _exit_msg(f"Bad Request: File not found: '{path}'")
+        exit_msg(f"Bad Request: File not found: '{path}'")
     return file_data
-
-
-def to_number(param, in_str):
-    """Take a string and convert it into a double."""
-    try:
-        return float(in_str)
-    except ValueError:
-        return _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
-
-
-def to_int(param, in_str):
-    """Take a string and convert it into an int."""
-    try:
-        return int(in_str)
-    except ValueError:
-        return _exit_msg(f"Bad Request: Wrong type, expected 'number' for parameter '{param}'")
 
 
 def convert_args(model, op_name, args_in):
@@ -102,8 +73,7 @@ def convert_args(model, op_name, args_in):
         value = args_in.pop(param_name)
 
         if param["body"]:
-            param_name = camelcase(param_name)
-            param_name = param_name[0].lower() + param_name[1:]
+            param_name = to_camel_case(param_name)
             body[param_name] = value
         else:
             kwargs[param_name] = value
@@ -147,7 +117,7 @@ def gen_parser(model):
     subparsers.required = True
     type_map = {
         "number": to_number,
-        "boolean": bool_converter,
+        "boolean": to_bool,
         "integer": to_int,
         "file": read_file,
     }

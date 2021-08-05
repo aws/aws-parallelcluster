@@ -10,6 +10,7 @@ from datetime import datetime
 
 import pytest
 from assertpy import assert_that, soft_assertions
+from marshmallow.exceptions import ValidationError
 
 from pcluster.api.models import (
     CloudFormationStackStatus,
@@ -36,7 +37,7 @@ from pcluster.models.imagebuilder import (
     LimitExceededImageError,
 )
 from pcluster.models.imagebuilder_resources import BadRequestStackError, LimitExceededStackError
-from pcluster.utils import get_installed_version, to_iso_time
+from pcluster.utils import get_installed_version, to_iso_timestr, to_utc_datetime
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
@@ -52,7 +53,7 @@ def _create_image_info(image_id):
             "Tags": [
                 {"Key": "parallelcluster:image_id", "Value": image_id},
                 {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                {"Key": "parallelcluster:build_config", "Value": "test_url"},
+                {"Key": "parallelcluster:build_config", "Value": "s3://bucket/key"},
             ],
         }
     )
@@ -67,7 +68,7 @@ def _create_stack(image_id, status, reason=None):
         "Tags": [
             {"Key": "parallelcluster:image_id", "Value": image_id},
             {"Key": "parallelcluster:version", "Value": "3.0.0"},
-            {"Key": "parallelcluster:build_config", "Value": "test_url"},
+            {"Key": "parallelcluster:build_config", "Value": "s3://bucket/key"},
             {"Key": "parallelcluster:build_log", "Value": f"arn:{image_id}:build_log"},
         ],
     }
@@ -123,6 +124,9 @@ class TestListImages:
         }
         mocker.patch("pcluster.aws.ec2.Ec2Client.get_images", return_value=describe_result)
 
+        # Ensure we don't hit AWS when creating ImageBuilderStack(s)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
+
         response = self._send_test_request(client, ImageStatusFilteringOption.AVAILABLE)
 
         with soft_assertions():
@@ -138,6 +142,9 @@ class TestListImages:
             _create_stack("image4", CloudFormationStackStatus.DELETE_IN_PROGRESS),
         ]
         mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
+
+        # Ensure we don't hit AWS when creating ImageBuilderStack(s)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
 
         response = self._send_test_request(client, ImageStatusFilteringOption.PENDING, next_token)
 
@@ -168,8 +175,14 @@ class TestListImages:
             _create_stack("image4", CloudFormationStackStatus.DELETE_IN_PROGRESS),
             _create_stack("image5", CloudFormationStackStatus.DELETE_FAILED),
             _create_stack("image6", CloudFormationStackStatus.CREATE_FAILED),
+            _create_stack("image7", CloudFormationStackStatus.ROLLBACK_FAILED),
+            _create_stack("image8", CloudFormationStackStatus.ROLLBACK_COMPLETE),
+            _create_stack("image9", CloudFormationStackStatus.ROLLBACK_IN_PROGRESS),
         ]
         mocker.patch("pcluster.aws.cfn.CfnClient.get_imagebuilder_stacks", return_value=(describe_result, "nextPage"))
+
+        # Ensure we don't hit AWS when creating ImageBuilderStack(s)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
 
         response = self._send_test_request(client, ImageStatusFilteringOption.FAILED, next_token)
 
@@ -188,6 +201,30 @@ class TestListImages:
                     "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
                     "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
                     "cloudformationStackArn": "arn:image6",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image7",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_FAILED,
+                    "cloudformationStackArn": "arn:image7",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image8",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_COMPLETE,
+                    "cloudformationStackArn": "arn:image8",
+                    "region": "us-east-1",
+                    "version": "3.0.0",
+                },
+                {
+                    "imageId": "image9",
+                    "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
+                    "cloudformationStackStatus": CloudFormationStackStatus.ROLLBACK_IN_PROGRESS,
+                    "cloudformationStackArn": "arn:image9",
                     "region": "us-east-1",
                     "version": "3.0.0",
                 },
@@ -281,6 +318,9 @@ class TestDeleteImage:
             )
 
         mocker.patch("pcluster.models.imagebuilder.ImageBuilder.delete", return_value=None)
+
+        # Ensure we don't hit AWS when creating ImageBuilderStack(s)
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
 
         response = self._send_test_request(client, image_id, region, force)
 
@@ -386,6 +426,24 @@ class TestDeleteImage:
             assert_that(response.get_json()).is_equal_to(expected_error)
 
     @pytest.mark.parametrize(
+        "instance_using, image_is_shared, expected_response",
+        [(True, False, r"Image.*is used by instances"), (False, True, r"Image.*is shared with accounts")],
+    )
+    def test_delete_using_shared_image(self, client, mocker, instance_using, image_is_shared, expected_response):
+        image = _create_image_info("image1")
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
+        instances = ["id1"] if instance_using else []
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_instance_ids_by_ami_id", return_value=instances)
+        accounts = ["acct_1"] if image_is_shared else []
+        mocker.patch("pcluster.aws.ec2.Ec2Client.get_image_shared_account_ids", return_value=accounts)
+
+        response = self._send_test_request(client, "image1", force=False)
+        with soft_assertions():
+            assert_that(response.status_code).is_equal_to(400)
+            assert_that(response.get_json()).contains("message")
+            assert_that(response.get_json()["message"]).matches(expected_response)
+
+    @pytest.mark.parametrize(
         "error", [LimitExceededImageError, LimitExceededStackError, LimitExceededImageBuilderActionError]
     )
     def test_that_limit_exceeded_error_is_converted(self, client, mocker, error):
@@ -414,20 +472,18 @@ class TestDeleteImage:
 class TestBuildImage:
     url = "/v3/images/custom"
     method = "POST"
-    encoded_config = (
-        "QnVpbGQ6CiAgSW5zdGFuY2VUeXBlOiBjNS54bGFyZ2UKICBQYXJlbnRJbWFnZTogYXJuOmF"
-        "3czppbWFnZWJ1aWxkZXI6dXMtZWFzdC0xOmF3czppbWFnZS9hbWF6b24tbGludXgtMi14OD"
-        "YveC54LngKCkRldlNldHRpbmdzOgogIENvb2tib29rOgogICAgQ2hlZkNvb2tib29rOiBod"
-        "HRwczovL2dpdGh1Yi5jb20vYXdzL2F3cy1wYXJhbGxlbGNsdXN0ZXItY29va2Jvb2svdGFy"
-        "YmFsbC8yNmFiODQyM2I4NGRlMWEwOThiYzI2ZThmZjE3NjhlOTMwZmM3NzA3CiAgTm9kZVB"
-        "hY2thZ2U6IGh0dHBzOi8vZ2l0aHViLmNvbS9hd3MvYXdzLXBhcmFsbGVsY2x1c3Rlci1ub2"
-        "RlL3RhcmJhbGwvODc1ZWY5Mzk4NmE4NmVhMzI2NzgzNWE4MTNkMzhlYWEwNWU1NzVmMwogI"
-        "EF3c0JhdGNoQ2xpUGFja2FnZTogaHR0cHM6Ly9naXRodWIuY29tL2F3cy9hd3MtcGFyYWxs"
-        "ZWxjbHVzdGVyL3RhcmJhbGwvZDVjMmExZWMyNjdhODY1Y2ZmM2NmMzUwYWYzMGQ0NGU2OGYwZWYxOA===="
+    config = (
+        "Build:\n  InstanceType: c5.xlarge\n  ParentImage: arn:aws:imagebuilder:us-east-1:aws:image/amazon-"
+        "linux-2-x86/x.x.x"
+        "\n\nDevSettings:\n  Cookbook:\n    ChefCookbook: https://github.com/aws/aws-par"
+        "allelcluster-cookbook/tarball/26ab8423b84de1a098bc26e8ff1768e930fc7707\n  NodePackage: https://git"
+        "hub.com/aws/aws-parallelcluster-node/tarball/875ef93986a86ea3267835a813d38eaa05e575f3\n  AwsBatchC"
+        "liPackage: https://github.com/aws/aws-parallelcluster/tarball/d5c2a1ec267a865cff3cf350af30d44e68f0"
+        "ef18"
     )
 
     def _send_test_request(self, client, dryrun=None, suppress_validators=None, rollback_on_failure=None):
-        build_image_request_content = {"imageConfiguration": self.encoded_config, "imageId": "imageid"}
+        build_image_request_content = {"imageConfiguration": self.config, "imageId": "imageid"}
         query_string = [
             ("validationFailureLevel", ValidationLevel.INFO),
             ("region", "eu-west-1"),
@@ -476,6 +532,7 @@ class TestBuildImage:
             "pcluster.aws.cfn.CfnClient.describe_stack",
             return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS),
         )
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
 
         expected_response = {
             "image": {
@@ -502,7 +559,7 @@ class TestBuildImage:
             assert_that(response.get_json()).is_equal_to(expected_response)
 
         mocked_call.assert_called_with(
-            disable_rollback=rollback_on_failure is False,
+            disable_rollback=not rollback_on_failure if rollback_on_failure is not None else True,
             validator_suppressors=mocker.ANY,
             validation_failure_level=FailureLevel[ValidationLevel.INFO],
         )
@@ -586,6 +643,14 @@ class TestBuildImage:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(error_code)
             assert_that(response.get_json()).is_equal_to(expected_error)
+
+    def test_parse_config_error(self, client, mocker):
+        mocker.patch("pcluster.aws.ec2.Ec2Client.image_exists", return_value=False)
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=False)
+        mocker.patch("marshmallow.Schema.load", side_effect=ValidationError(message={"Error": "error"}))
+        response = self._send_test_request(client)
+        assert_that(response.status_code).is_equal_to(400)
+        assert_that(response.get_json()["message"]).matches("Invalid image configuration.")
 
 
 def _create_official_image_info(version, os, architecture):
@@ -745,9 +810,14 @@ class TestDescribeImage:
             "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
             return_value=_create_image_info("image1"),
         )
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
+        mocker.patch(
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
+            return_value="https://parallelcluster.aws.com/bucket/key",
+        )
 
         expected_response = {
-            "creationTime": to_iso_time("2021-04-12T00:00:00Z"),
+            "creationTime": to_iso_timestr(datetime(2021, 4, 12)),
             "ec2AmiInfo": {
                 "amiId": "image1",
                 "amiName": "image1",
@@ -757,11 +827,11 @@ class TestDescribeImage:
                 "tags": [
                     {"key": "parallelcluster:image_id", "value": "image1"},
                     {"key": "parallelcluster:version", "value": "3.0.0"},
-                    {"key": "parallelcluster:build_config", "value": "test_url"},
+                    {"key": "parallelcluster:build_config", "value": "s3://bucket/key"},
                 ],
             },
             "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
-            "imageConfiguration": {"url": "test_url"},
+            "imageConfiguration": {"url": "https://parallelcluster.aws.com/bucket/key"},
             "imageId": "image1",
             "region": "us-east-1",
             "version": "3.0.0",
@@ -782,20 +852,25 @@ class TestDescribeImage:
             "pcluster.aws.cfn.CfnClient.describe_stack",
             return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_IN_PROGRESS),
         )
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
+        mocker.patch(
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
+            return_value="https://parallelcluster.aws.com/bucket/key",
+        )
 
         expected_response = {
-            "imageConfiguration": {"url": "test_url"},
+            "imageConfiguration": {"url": "https://parallelcluster.aws.com/bucket/key"},
             "imageId": "image1",
             "imageBuildStatus": ImageBuildStatus.BUILD_IN_PROGRESS,
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
             "cloudformationStackArn": "arn:image1",
             "imageBuildLogsArn": "arn:image1:build_log",
-            "cloudformationStackCreationTime": to_iso_time("2021-04-12 00:00:00"),
+            "cloudformationStackCreationTime": to_iso_timestr(datetime(2021, 4, 12)),
             "cloudformationStackTags": [
-                {"Key": "parallelcluster:image_id", "Value": "image1"},
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                {"Key": "parallelcluster:build_config", "Value": "test_url"},
-                {"Key": "parallelcluster:build_log", "Value": "arn:image1:build_log"},
+                {"key": "parallelcluster:image_id", "value": "image1"},
+                {"key": "parallelcluster:version", "value": "3.0.0"},
+                {"key": "parallelcluster:build_config", "value": "s3://bucket/key"},
+                {"key": "parallelcluster:build_log", "value": "arn:image1:build_log"},
             ],
             "region": "us-east-1",
             "version": "3.0.0",
@@ -816,6 +891,7 @@ class TestDescribeImage:
             "pcluster.aws.cfn.CfnClient.describe_stack",
             return_value=_create_stack("image1", CloudFormationStackStatus.CREATE_FAILED, "cfn test reason"),
         )
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
         mocker.patch(
             "pcluster.aws.cfn.CfnClient.describe_stack_resource",
             return_value={"StackResourceDetail": {"PhysicalResourceId": "test_id"}},
@@ -824,21 +900,25 @@ class TestDescribeImage:
             "pcluster.aws.imagebuilder.ImageBuilderClient.get_image_state",
             return_value={"status": ImageBuilderImageStatus.FAILED, "reason": "img test reason"},
         )
+        mocker.patch(
+            "pcluster.api.controllers.image_operations_controller._presigned_config_url",
+            return_value="https://parallelcluster.aws.com/bucket/key",
+        )
 
         expected_response = {
             "cloudformationStackArn": "arn:image1",
             "imageBuildLogsArn": "arn:image1:build_log",
-            "cloudformationStackCreationTime": to_iso_time("2021-04-12 00:00:00"),
+            "cloudformationStackCreationTime": to_iso_timestr(to_utc_datetime("2021-04-12 00:00:00")),
             "cloudformationStackTags": [
-                {"Key": "parallelcluster:image_id", "Value": "image1"},
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
-                {"Key": "parallelcluster:build_config", "Value": "test_url"},
-                {"Key": "parallelcluster:build_log", "Value": "arn:image1:build_log"},
+                {"key": "parallelcluster:image_id", "value": "image1"},
+                {"key": "parallelcluster:version", "value": "3.0.0"},
+                {"key": "parallelcluster:build_config", "value": "s3://bucket/key"},
+                {"key": "parallelcluster:build_log", "value": "arn:image1:build_log"},
             ],
             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_FAILED,
             "cloudformationStackStatusReason": "cfn test reason",
             "imageBuildStatus": ImageBuildStatus.BUILD_FAILED,
-            "imageConfiguration": {"url": "test_url"},
+            "imageConfiguration": {"url": "https://parallelcluster.aws.com/bucket/key"},
             "imageId": "image1",
             "imagebuilderImageStatus": ImageBuilderImageStatus.FAILED,
             "imagebuilderImageStatusReason": "img test reason",

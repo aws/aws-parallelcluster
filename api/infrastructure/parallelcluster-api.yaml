@@ -51,11 +51,18 @@ Parameters:
   EnableIamAdminAccess:
     Description: WARNING - setting this to true grants IAM admin privileges to the Lambda function
     Type: String
-    Default: true
+    Default: false
     AllowedValues:
       - true
       - false
 
+  CreateApiUserRole:
+    Description: Creates a IAM role authorized to invoke the API. The Api is configured with a resource based policy to grant invoke permission to the created user only.
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
 
 Mappings:
   ParallelCluster:
@@ -74,6 +81,18 @@ Globals:
   Api:
     Auth:
       DefaultAuthorizer: AWS_IAM
+      ResourcePolicy:
+        CustomStatements:
+          Effect: 'Deny'
+          Action: 'execute-api:Invoke'
+          Resource: ['execute-api:/*/*/*']
+          Principal: '*'
+          Condition:
+            StringNotLike:
+              aws:PrincipalArn: !If
+                - CreateApiUserRoleCondition
+                - !Sub arn:${AWS::Partition}:*::${AWS::AccountId}:*/${AWS::StackName}-ParallelClusterApiUserRole-*
+                - '*'
     TracingEnabled: True
     EndpointConfiguration:
       Type: REGIONAL
@@ -103,7 +122,8 @@ Conditions:
     - !Not [!Equals [!Ref VpcEndpointId, '']]
   DoNotUseCustomDomain: !And
     - !Not [!Condition UsePrivateVpcEndpoint]
-    - !Not [!Condition UseCustomDomain]
+    - !Not [!Condition UseCustomDomainAndRoute53Configuration]
+  CreateApiUserRoleCondition: !Equals [!Ref CreateApiUserRole, true]
 
 
 Resources:
@@ -200,11 +220,39 @@ Resources:
               - '-'
               - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
 
+  ParallelClusterApiUserRole:
+    Type: AWS::IAM::Role
+    Condition: CreateApiUserRoleCondition
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              AWS:
+                - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+      Policies:
+        - PolicyName: ParallelClusterApiInvokePolicy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - execute-api:Invoke
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*/*
+                  - ApiId: !If
+                    - UseCustomDomainAndRoute53Configuration
+                    - !Ref ApiGatewayApiWithCustomDomainAndRoute53Configuration
+                    - !If
+                      - UsePrivateVpcEndpoint
+                      - !Ref ApiGatewayApiWithPrivateVpcEndpoint
+                      - !Ref ApiGatewayApiWithoutCustomDomain
+            Version: '2012-10-17'
+
   ParallelClusterUserRole:
     Type: AWS::IAM::Role
     Condition: CreateIamResources
     Properties:
-      Path: /parallelcluster/
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -212,12 +260,17 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
       ManagedPolicyArns:
+        # Required for Lambda logging and XRay
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        # Required to run ParallelCluster functionalities
         - !Ref ParallelClusterClusterPolicy
         - !Ref ParallelClusterClusterPolicyBatch
         - !Ref ParallelClusterBuildImageManagedPolicy
         - !Ref ParallelClusterDeleteImageManagedPolicy
         - !Ref ParallelClusterListImagesManagedPolicy
         - !Ref ParallelClusterDescribeImageManagedPolicy
+        - !Ref ParallelClusterLogRetrievalPolicy
 
   ### IAM POLICIES
 
@@ -227,7 +280,6 @@ Resources:
     Properties:
       Roles:
         - !Ref ParallelClusterUserRole
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -262,7 +314,8 @@ Resources:
             Condition:
               ArnLike:
                 iam:PolicyARN:
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster-*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster*
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/parallelcluster/*
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSBatchFullAccess
@@ -271,6 +324,8 @@ Resources:
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
+                  - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
             Effect: Allow
             Sid: IamPolicy
 
@@ -280,10 +335,20 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Condition: CreateIamResources
     Properties:
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
+          - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteServiceLinkedRole
+            Resource:
+              # AWS Batch creates a service linked role automatically for the ComputeEnvironment
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/batch.amazonaws.com/*
+            Effect: Allow
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - batch.amazonaws.com
           - Action:
               - codebuild:*
             Resource: !Sub arn:${AWS::Partition}:codebuild:${Region}:${AWS::AccountId}:project/pcluster-*
@@ -338,7 +403,6 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Condition: CreateIamResources
     Properties:
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -562,7 +626,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster build-image command without IAM permission
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -668,7 +731,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster delete-image command without IAM permission
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -753,7 +815,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster list-images command
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -774,7 +835,6 @@ Resources:
     Condition: CreateIamResources
     Properties:
       Description: Managed policy to execute pcluster describe-image command
-      Path: /parallelcluster/
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -789,6 +849,31 @@ Resources:
               - cloudformation:DescribeStacks
             Resource:
               - !Sub 'arn:${AWS::Partition}:cloudformation:${Region}:${AWS::AccountId}:stack/*'
+
+  ### LOG COMMANDS
+
+  ParallelClusterLogRetrievalPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: CreateIamResources
+    Properties:
+      Description: Policies needed to retrieve cluster and images logs
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+            - logs:DescribeLogGroups
+            - logs:FilterLogEvents
+            - logs:GetLogEvents
+            - logs:CreateExportTask
+            - logs:DescribeLogStreams
+            Resource: '*'
+            Effect: Allow
+            Condition: !If
+              - IsMultiRegion
+              - !Ref AWS::NoValue
+              - StringEquals:
+                  aws:RequestedRegion:
+                    - !Ref Region
 
   ### -----------
 
@@ -1006,3 +1091,8 @@ Outputs:
         Version: !Join
           - '-'
           - [!Select [2, !Split ['/', !Ref EcrImage]], !Select [3, !Split ['/', !Ref EcrImage]]]
+
+  ParallelClusterApiUserRole:
+    Condition: CreateApiUserRoleCondition
+    Description: 'IAM Role with permissions to invoke the ParallelCluster API'
+    Value: !GetAtt ParallelClusterApiUserRole.Arn

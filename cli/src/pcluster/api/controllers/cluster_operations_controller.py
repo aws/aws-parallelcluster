@@ -17,6 +17,7 @@ from pcluster.api.controllers.common import (
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
+    validate_cluster,
 )
 from pcluster.api.converters import (
     cloud_formation_status_to_cluster_status,
@@ -60,7 +61,7 @@ from pcluster.models.cluster import (
     NotFoundClusterActionError,
 )
 from pcluster.models.cluster_resources import ClusterStack
-from pcluster.utils import get_installed_version, to_iso_time
+from pcluster.utils import get_installed_version, to_utc_datetime
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -133,7 +134,12 @@ def create_cluster(
             validation_messages=validation_results_to_config_validation_errors(ignored_validation_failures) or None,
         )
     except ConfigValidationError as e:
-        raise _handle_config_validation_error(e)
+        config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
+        raise CreateClusterBadRequestException(
+            CreateClusterBadRequestExceptionResponseContent(
+                configuration_validation_errors=config_validation_messages, message=str(e)
+            )
+        )
 
 
 @configure_aws_region()
@@ -152,10 +158,9 @@ def delete_cluster(cluster_name, region=None):
     """
     try:
         cluster = Cluster(cluster_name)
-
         if not check_cluster_version(cluster):
             raise BadRequestException(
-                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
+                f"Cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
             )
 
         if not cluster.status == CloudFormationStackStatus.DELETE_IN_PROGRESS:
@@ -174,7 +179,7 @@ def delete_cluster(cluster_name, region=None):
         )
     except StackNotFoundError:
         raise NotFoundException(
-            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version. "
+            f"Cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version. "
             "In case you have running instances belonging to a deleted cluster please use the DeleteClusterInstances "
             "API."
         )
@@ -193,16 +198,9 @@ def describe_cluster(cluster_name, region=None):
 
     :rtype: DescribeClusterResponseContent
     """
-    try:
-        cluster = Cluster(cluster_name)
-        cfn_stack = cluster.stack
-    except StackNotFoundError:
-        raise NotFoundException(
-            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
-        )
-
-    if not check_cluster_version(cluster):
-        raise BadRequestException(f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version.")
+    cluster = Cluster(cluster_name)
+    validate_cluster(cluster)
+    cfn_stack = cluster.stack
 
     fleet_status = cluster.compute_fleet_status
 
@@ -214,7 +212,7 @@ def describe_cluster(cluster_name, region=None):
         LOGGER.error(e)
 
     response = DescribeClusterResponseContent(
-        creation_time=to_iso_time(cfn_stack.creation_time),
+        creation_time=to_utc_datetime(cfn_stack.creation_time),
         version=cfn_stack.version,
         cluster_configuration=ClusterConfigurationStructure(url=config_url),
         tags=[Tag(value=tag.get("Value"), key=tag.get("Key")) for tag in cfn_stack.tags],
@@ -222,7 +220,7 @@ def describe_cluster(cluster_name, region=None):
         cluster_name=cluster_name,
         compute_fleet_status=fleet_status.value,
         cloudformation_stack_arn=cfn_stack.id,
-        last_updated_time=to_iso_time(cfn_stack.last_updated_time),
+        last_updated_time=to_utc_datetime(cfn_stack.last_updated_time),
         region=os.environ.get("AWS_DEFAULT_REGION"),
         cluster_status=cloud_formation_status_to_cluster_status(cfn_stack.status),
     )
@@ -231,7 +229,7 @@ def describe_cluster(cluster_name, region=None):
         head_node = cluster.head_node_instance
         response.headnode = EC2Instance(
             instance_id=head_node.id,
-            launch_time=to_iso_time(head_node.launch_time),
+            launch_time=to_utc_datetime(head_node.launch_time),
             public_ip_address=head_node.public_ip,
             instance_type=head_node.instance_type,
             state=InstanceState.from_dict(head_node.state),
@@ -363,12 +361,17 @@ def update_cluster(
             change_set=change_set,
         )
     except ConfigValidationError as e:
-        raise _handle_config_validation_error(e)
+        config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
+        raise UpdateClusterBadRequestException(
+            UpdateClusterBadRequestExceptionResponseContent(
+                configuration_validation_errors=config_validation_messages, message=str(e)
+            )
+        )
     except ClusterUpdateError as e:
         raise _handle_cluster_update_error(e)
     except (NotFoundClusterActionError, StackNotFoundError):
         raise NotFoundException(
-            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
+            f"Cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
         )
 
 
@@ -384,15 +387,6 @@ def _handle_cluster_update_error(e):
     return UpdateClusterBadRequestException(
         UpdateClusterBadRequestExceptionResponseContent(
             message=str(e), change_set=change_set, update_validation_errors=errors or None
-        )
-    )
-
-
-def _handle_config_validation_error(e: ConfigValidationError) -> CreateClusterBadRequestException:
-    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
-    return CreateClusterBadRequestException(
-        CreateClusterBadRequestExceptionResponseContent(
-            configuration_validation_errors=config_validation_messages, message=str(e)
         )
     )
 
