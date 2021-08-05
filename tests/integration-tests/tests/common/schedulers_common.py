@@ -288,7 +288,7 @@ class SlurmCommands(SchedulerCommands):
             for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]
         ),
         wait_fixed=seconds(3),
-        stop_max_delay=minutes(7),
+        stop_max_delay=minutes(12),
     )
     def wait_job_completed(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command(
