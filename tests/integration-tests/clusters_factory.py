@@ -14,7 +14,6 @@ import json
 import logging
 import re
 import subprocess
-import time
 
 import boto3
 import yaml
@@ -434,10 +433,6 @@ class ClustersFactory:
             else:
                 logging.info("Cluster {0} created successfully".format(name))
                 cluster.mark_as_created()
-            # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
-            # job submission right after creation. We need to investigate this further.
-            logging.info("Sleeping for 30 seconds in case cluster is not ready yet")
-            time.sleep(30)
         else:
             logging.info("Cluster {0} creation started successfully".format(name))
         return response
