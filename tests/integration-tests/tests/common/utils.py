@@ -162,7 +162,7 @@ def generate_random_string():
 def restart_head_node(cluster):
     # stop/start headnode
     logging.info(f"Restarting head node for cluster: {cluster.name}")
-    head_node_instance = cluster.instances(desired_instance_role="HeadNode")
+    head_node_instance = cluster.get_cluster_instance_ids(node_type="HeadNode")
     ec2_client = boto3.client("ec2", region_name=cluster.region)
     ec2_client.stop_instances(InstanceIds=head_node_instance)
     ec2_client.get_waiter("instance_stopped").wait(InstanceIds=head_node_instance)
@@ -188,5 +188,5 @@ def reboot_head_node(cluster, remote_command_executor=None):
 def wait_head_node_running(cluster):
     logging.info(f"Waiting for head node to be running for cluster: {cluster.name}")
     boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
-        InstanceIds=cluster.instances(desired_instance_role="HeadNode"), WaiterConfig={"Delay": 60, "MaxAttempts": 5}
+        InstanceIds=cluster.get_cluster_instance_ids(node_type="HeadNode"), WaiterConfig={"Delay": 60, "MaxAttempts": 5}
     )
