@@ -101,11 +101,11 @@ class UpdatePolicy:
 UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
     "operating system.",
-    "shared_storage_change": "Shared Storage cannot be added or removed during a 'pcluster update' operation",
+    "shared_storage_change": "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation",
     "cookbook_update": lambda change, patch: (
         "Updating cookbook related parameter is not supported because it only "
-        "applies updates to compute nodes. If you still want to proceed, first stop the cluster with the "
-        f"following command:\npcluster stop {patch.cluster_name} and then run an update with the --force flag"
+        "applies updates to compute nodes. If you still want to proceed, first stop the compute fleet with the "
+        "pcluster update-compute-fleet command and then run an update with the --force-update flag"
     ),
 }
 
@@ -115,9 +115,7 @@ UpdatePolicy.ACTIONS_NEEDED = {
         "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html",
         "modify-ebs-volume",
     ),
-    "pcluster_stop": lambda change, patch: (
-        f"Stop the cluster with the following command:\npcluster stop {patch.cluster_name}"
-    ),
+    "pcluster_stop": lambda change, patch: "Stop the compute fleet with the pcluster update-compute-fleet command",
 }
 
 # Base policies
