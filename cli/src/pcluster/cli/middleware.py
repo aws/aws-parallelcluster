@@ -82,7 +82,7 @@ def update_cluster(func, _body, kwargs):
             waiter.wait(StackName=kwargs["cluster_name"])
         except WaiterError as e:
             LOGGER.error("Failed when waiting for cluster update with error: %s", e)
-            raise APIOperationException(_cluster_status(_body["clusterName"]))
+            raise APIOperationException(_cluster_status(kwargs["cluster_name"]))
         ret = _cluster_status(kwargs["cluster_name"])
     return ret
 
