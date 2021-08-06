@@ -194,7 +194,7 @@ efa:
         schedulers: ["slurm"]
       - regions: [ "us-east-2" ]
         instances: [{{ common.instance("instance_type_1") }}]
-        oss: [ "alinux2", "centos8", "ubuntu2004" ]
+        oss: [ "alinux2", "centos7", "ubuntu2004" ]
         schedulers: [ "slurm" ]
 iam:
   test_iam.py::test_iam_policies:
