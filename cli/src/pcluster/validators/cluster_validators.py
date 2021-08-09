@@ -286,13 +286,18 @@ class EfaValidator(Validator):
 
     def _validate(self, instance_type, efa_enabled, gdr_support):
 
-        if efa_enabled:
-            if not AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported():
-                self._add_failure(
-                    f"Instance type '{instance_type}' does not support EFA.",
-                    FailureLevel.WARNING,
-                )
-        elif gdr_support:
+        instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
+        if efa_enabled and not instance_type_supports_efa:
+            self._add_failure(
+                f"Instance type '{instance_type}' does not support EFA.",
+                FailureLevel.ERROR,
+            )
+        if instance_type_supports_efa and not efa_enabled:
+            self._add_failure(
+                f"Instance type '{instance_type}' supports EFA, but it is not enabled.",
+                FailureLevel.WARNING,
+            )
+        if gdr_support and not efa_enabled:
             self._add_failure(
                 "The EFA GDR Support can be used only if EFA is enabled.",
                 FailureLevel.ERROR,

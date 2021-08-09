@@ -151,21 +151,22 @@ def test_duplicate_instance_type_validator(instance_type_list, expected_message)
         # Unsupported instance type
         ("t2.large", True, False, False, "does not support EFA"),
         ("t2.large", False, False, False, None),
+        # EFA not enabled for instance type that supports it
+        ("c5n.18xlarge", False, False, True, "supports EFA, but it is not enabled"),
     ],
 )
 def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
-    if efa_enabled:
-        mock_aws_api(mocker)
-        get_instance_type_info_mock = mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
-            return_value=InstanceTypeInfo(
-                {
-                    "InstanceType": instance_type,
-                    "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-                    "NetworkInfo": {"EfaSupported": instance_type == "c5n.18xlarge"},
-                }
-            ),
-        )
+    mock_aws_api(mocker)
+    get_instance_type_info_mock = mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "NetworkInfo": {"EfaSupported": instance_type == "c5n.18xlarge"},
+            }
+        ),
+    )
 
     actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support)
     assert_failure_messages(actual_failures, expected_message)
