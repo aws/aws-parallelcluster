@@ -654,11 +654,18 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
+          # Required to test AdditionalIamPolicies
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
             Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
+          # Required to use KMS encryption key in tests
+          - Action:
+              - kms:DescribeKey
+            Resource: '*'
+            Effect: Allow
+          # Required to use test bucket (e.g. to test pre/post_install scripts)
           - Action:
               - s3:*
             Resource:
