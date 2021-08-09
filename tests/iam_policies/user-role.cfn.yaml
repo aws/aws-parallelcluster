@@ -206,6 +206,7 @@ Resources:
               - ec2:DisassociateAddress
               - ec2:ModifyLaunchTemplate
               - ec2:ModifyNetworkInterfaceAttribute
+              - ec2:ModifyVolume
               - ec2:ModifyVolumeAttribute
               - ec2:ReleaseAddress
               - ec2:RevokeSecurityGroupEgress
