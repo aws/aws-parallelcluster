@@ -642,3 +642,28 @@ Resources:
               - StringEquals:
                   aws:RequestedRegion:
                     - !Ref Region
+
+  ### INTEG-TESTS POLICIES
+
+  IntegTestsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Roles:
+        - !Ref ParallelClusterUserRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+          - Action:
+              - s3:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::integ-tests-*
+            Effect: Allow
+
+Outputs:
+  ParallelClusterUserRole:
+    Value: !GetAtt ParallelClusterUserRole.Arn
