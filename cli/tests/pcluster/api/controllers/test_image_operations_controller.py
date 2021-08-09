@@ -380,7 +380,7 @@ class TestDeleteImage:
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(404)
             assert_that(response.get_json()).is_equal_to(
-                {"message": "Unable to find an image or stack for ParallelCluster image id: nonExistentImage"}
+                {"message": "No image or stack associated with ParallelCluster image id: nonExistentImage."}
             )
 
     @pytest.mark.parametrize(
@@ -954,7 +954,7 @@ class TestDescribeImage:
         mocker.patch(method_to_patch, side_effect=error(method, "test error"))
 
         if error == StackNotFoundError:
-            expected_error = {"message": "No image or stack associated to parallelcluster image id image1."}
+            expected_error = {"message": "No image or stack associated with ParallelCluster image id: image1."}
         elif error == BadRequestError:
             expected_error = {"message": "Bad Request: Unable to get image image1, due to test error."}
         else:

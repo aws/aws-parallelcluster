@@ -17,11 +17,10 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
+from dateutil.parser import parse as date_parse
+from images_factory import Image
 from troposphere import Template, iam
 from utils import generate_stack_name
-from images_factory import Image
-from dateutil.parser import parse as date_parse
-
 
 from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 
@@ -39,13 +38,12 @@ def test_invalid_config(
     # Test validation error
     arm64_ami = retrieve_latest_ami(region, os, architecture="arm64")
     image_id = f"integ-test-build-image-{generate_random_string()}"
-    # Get custom instance role
-    instance_role = build_image_custom_resource(image_id=image_id)
 
     # Get custom S3 bucket
     bucket_name = s3_bucket_factory()
-    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=arm64_ami, instance_role=instance_role,
-                                          bucket_name=bucket_name)
+    image_config = pcluster_config_reader(
+        config_file="image.config.yaml", parent_image=arm64_ami, bucket_name=bucket_name
+    )
     image = images_factory(image_id, image_config, region, raise_on_error=False, log_error=False)
 
     assert_that(image.configuration_errors).is_length(1)
@@ -81,10 +79,7 @@ def test_build_image(
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
     image_config = pcluster_config_reader(
-        config_file="image.config.yaml",
-        parent_image=base_ami,
-        instance_role=instance_role,
-        bucket_name=bucket_name,
+        config_file="image.config.yaml", parent_image=base_ami, instance_role=instance_role, bucket_name=bucket_name
     )
 
     image = images_factory(image_id, image_config, region)
@@ -317,19 +312,20 @@ def test_build_image_wrong_pcluster_version(
     wrong_ami = pcluster_ami_without_standard_naming(wrong_version)
 
     image_config = pcluster_config_reader(
-        config_file="image.config.yaml",
-        parent_image=wrong_ami,
-        instance_type=instance,
+        config_file="image.config.yaml", parent_image=wrong_ami, instance_type=instance
     )
     image_id = f"integ-test-build-image-wrong-version-{generate_random_string()}"
 
     image = images_factory(image_id, image_config, region)
 
-    _assert_build_image_failed(image)
-    assert_that(image.get_log_events()).matches(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
+    _test_build_image_failed(image)
+    log_stream_name = "3.0.0/1"
+    assert_that(image.get_log_events(log_stream_name)).matches(
+        fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}"
+    )
 
 
-def _assert_build_image_failed(image):
+def _test_build_image_failed(image):
     logging.info("Test build image process for image %s.", image.image_id)
 
     pcluster_describe_image_result = image.describe()
