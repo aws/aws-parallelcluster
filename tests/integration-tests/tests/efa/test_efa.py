@@ -249,7 +249,11 @@ def run_osu_benchmarks(
         str(init_script),
         args=[mpi_version],
         hide=True,
-        additional_files=[str(test_datadir / f"osu-micro-benchmarks-{osu_benchmark_version}.tgz")],
+        additional_files=[
+            str(test_datadir / "osu_benchmarks" / f"osu-micro-benchmarks-{osu_benchmark_version}.tgz"),
+            str(test_datadir / "osu_benchmarks" / "config.guess"),
+            str(test_datadir / "osu_benchmarks" / "config.sub"),
+        ],
     )
 
     # Prepare submission script and pass to the scheduler for the job submission
