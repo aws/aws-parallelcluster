@@ -19,12 +19,17 @@ function that is provided as the first argument and passing the **kwargs
 provided.
 """
 
+import logging
+
 import argparse
 import boto3
 import jmespath
+from botocore.exceptions import WaiterError
 
 import pcluster.cli.model
-from pcluster.cli.exceptions import ParameterException
+from pcluster.cli.exceptions import APIOperationException, ParameterException
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _cluster_status(cluster_name):
@@ -73,7 +78,11 @@ def update_cluster(func, _body, kwargs):
     if wait and not kwargs.get("dryrun"):
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_update_complete")
-        waiter.wait(StackName=kwargs["cluster_name"])
+        try:
+            waiter.wait(StackName=kwargs["cluster_name"])
+        except WaiterError as e:
+            LOGGER.error("Failed when waiting for cluster update with error: %s", e)
+            raise APIOperationException(_cluster_status(_body["clusterName"]))
         ret = _cluster_status(kwargs["cluster_name"])
     return ret
 
@@ -85,7 +94,11 @@ def create_cluster(func, body, kwargs):
     if wait and not kwargs.get("dryrun"):
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_create_complete")
-        waiter.wait(StackName=body["clusterName"])
+        try:
+            waiter.wait(StackName=body["clusterName"])
+        except WaiterError as e:
+            LOGGER.error("Failed when waiting for cluster creation with error: %s", e)
+            raise APIOperationException(_cluster_status(body["clusterName"]))
         ret = _cluster_status(body["clusterName"])
     return ret
 
@@ -97,7 +110,11 @@ def delete_cluster(func, _body, kwargs):
     if wait:
         cloud_formation = boto3.client("cloudformation")
         waiter = cloud_formation.get_waiter("stack_delete_complete")
-        waiter.wait(StackName=kwargs["cluster_name"])
+        try:
+            waiter.wait(StackName=kwargs["cluster_name"])
+        except WaiterError as e:
+            LOGGER.error("Failed when waiting for cluster deletion with error: %s", e)
+            raise APIOperationException({"message": f"Failed when deleting cluster '{kwargs['cluster_name']}'."})
         return {"message": f"Successfully deleted cluster '{kwargs['cluster_name']}'."}
     else:
         return ret

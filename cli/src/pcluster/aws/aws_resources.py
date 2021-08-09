@@ -143,18 +143,15 @@ class InstanceInfo:
     @property
     def node_type(self) -> str:
         """Return node type of the instance."""
-        return self._get_tag_value(PCLUSTER_NODE_TYPE_TAG)
+        return self._get_tag(PCLUSTER_NODE_TYPE_TAG)
 
     @property
     def queue_name(self) -> str:
         """Return queue name of the instance."""
-        return self._get_tag_value(PCLUSTER_QUEUE_NAME_TAG)
+        return self._get_tag(PCLUSTER_QUEUE_NAME_TAG)
 
-    def _get_tag_value(self, key):
-        for tag in self._tags:
-            if tag["Key"] == key:
-                return tag["Value"]
-        return None
+    def _get_tag(self, tag_key):
+        return next(iter([tag["Value"] for tag in self._tags if tag["Key"] == tag_key]), None)
 
 
 class InstanceTypeInfo:
@@ -316,7 +313,7 @@ class ImageInfo:
     @property
     def tags(self) -> list:
         """Return image tags."""
-        return self._image_data.get("Tags")
+        return self._image_data.get("Tags", [])
 
     @property
     def block_device_mappings(self) -> list:
