@@ -60,6 +60,7 @@ CHANGELOG
 - Restrict access to Instance Metadata Service (IMDS) and add configuration parameter to manage it.
 - Remove instance store software encryption option (encrypted_ephemeral).
 - Upgrade Slurm to version 20.11.8.
+- Upgrade Cinc Client to version 17.2.29.
 
 2.11.0
 ------
