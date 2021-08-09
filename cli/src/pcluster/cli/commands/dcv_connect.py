@@ -65,14 +65,14 @@ def _dcv_connect(args):
             url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
 
             if args.show_url:
-                LOGGER.info(url_message)
+                print(url_message)
                 return
 
             try:
                 if not webbrowser.open_new(url):
                     raise webbrowser.Error("Unable to open the Web browser.")
             except webbrowser.Error as e:
-                LOGGER.info("%s\n%s", e, url_message)
+                print("%s\n%s", e, url_message)
 
         except DCVConnectionError as e:
             error(

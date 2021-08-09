@@ -150,8 +150,8 @@ class NetworkConfiguration(Enum):
 
 
 def _create_network_stack(configuration, parameters):
-    LOGGER.info("Creating CloudFormation stack...")
-    LOGGER.info("Do not leave the terminal until the process has finished")
+    print("Creating CloudFormation stack...")
+    print("Do not leave the terminal until the process has finished")
     stack_name = "parallelclusternetworking-{0}{1}".format(configuration.stack_name_prefix, TIMESTAMP)
     try:
         cfn_client = boto3.client("cloudformation")
@@ -162,19 +162,18 @@ def _create_network_stack(configuration, parameters):
             Parameters=parameters,
             Capabilities=["CAPABILITY_IAM"],
         )
-        LOGGER.debug("StackId: %s", stack.get("StackId"))
-        LOGGER.info("Stack Name: %s", stack_name)
+        print("Stack Name: %s (id: %s)", stack_name, stack.get("StackId"))
         if not verify_stack_status(
             stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_states=["CREATE_COMPLETE"]
         ):
-            LOGGER.error("Could not create the network configuration")
+            print("Could not create the network configuration")
             sys.exit(0)
         print()
-        LOGGER.info("The stack has been created")
+        print("The stack has been created")
         return AWSApi.instance().cfn.describe_stack(stack_name).get("Outputs")
     except KeyboardInterrupt:
         print()
-        LOGGER.info(
+        print(
             "Unable to update the configuration file with the selected network configuration. "
             "Please manually check the status of the CloudFormation stack: %s",
             stack_name,
@@ -182,7 +181,7 @@ def _create_network_stack(configuration, parameters):
         sys.exit(0)
     except Exception as e:  # Any exception is a problem
         print()
-        LOGGER.error(
+        print(
             "An exception occured while creating the CloudFormation stack: %s. "
             "For details please check log file: %s",
             stack_name,
@@ -194,7 +193,7 @@ def _create_network_stack(configuration, parameters):
 
 def _validate_cidr(cidr):
     if not cidr:
-        LOGGER.error("Unable to create subnet. Please check the number of available IPs in the VPC")
+        print("Unable to create subnet. Please check the number of available IPs in the VPC")
         sys.exit(1)
 
 

@@ -153,11 +153,12 @@ class CloudWatchLogsExporter:
         """Start export task. Returns logs streams folder."""
         # Export logs to S3
         task_id = self._export_logs_to_s3(log_stream_prefix=log_stream_prefix, start_time=start_time, end_time=end_time)
+        LOGGER.info("Log export task id: %s", task_id)
         # Download exported S3 objects to output dir subfolder
         try:
             log_streams_dir = os.path.join(self.output_dir, "cloudwatch-logs")
             self._download_s3_objects_with_prefix(task_id, log_streams_dir)
-            LOGGER.debug("Archive of CloudWatch logs saved to %s", self.output_dir)
+            LOGGER.info("Archive of CloudWatch logs saved to %s", self.output_dir)
         except OSError:
             raise LogsExporterError("Unable to download archive logs from S3, double check your filters are correct.")
         finally:
