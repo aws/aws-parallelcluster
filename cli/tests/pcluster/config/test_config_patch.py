@@ -261,7 +261,9 @@ def _test_less_target_sections(base_conf, target_conf):
                 None,
                 UpdatePolicy(
                     UpdatePolicy.UNSUPPORTED,
-                    fail_reason="Shared Storage cannot be added or removed during a 'pcluster update' operation",
+                    fail_reason=(
+                        "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation"
+                    ),
                 ),
                 is_list=True,
             ),
@@ -315,7 +317,9 @@ def _test_more_target_sections(base_conf, target_conf):
                 _get_storage_by_name(target_conf, "ebs1"),
                 UpdatePolicy(
                     UpdatePolicy.UNSUPPORTED,
-                    fail_reason="Shared Storage cannot be added or removed during a 'pcluster update' operation",
+                    fail_reason=(
+                        "Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation"
+                    ),
                 ),
                 is_list=True,
             ),
@@ -373,7 +377,7 @@ def _test_different_names(base_conf, target_conf):
 
     unsupported_update_policy = UpdatePolicy(
         UpdatePolicy.UNSUPPORTED,
-        fail_reason="Shared Storage cannot be added or removed during a 'pcluster update' operation",
+        fail_reason="Shared Storage cannot be added or removed during a 'pcluster update-cluster' operation",
     )
 
     # The patch should contain 5 differences:
