@@ -4,6 +4,7 @@ aws-parallelcluster
 boto3
 cfn_flip
 fabric
+filelock
 jinja2
 junitparser
 pexpect
