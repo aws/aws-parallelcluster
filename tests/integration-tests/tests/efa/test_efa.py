@@ -57,11 +57,21 @@ def test_sit_efa(
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler)
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
-    _test_osu_benchmarks_pt2pt("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
-    if architecture == "x86_64":
+
+    benchmark_failures = []
+    benchmark_failures.extend(
         _test_osu_benchmarks_pt2pt(
-            "intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
+            "openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
         )
+    )
+    if architecture == "x86_64":
+        benchmark_failures.extend(
+            _test_osu_benchmarks_pt2pt(
+                "intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
+            )
+        )
+    assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
+
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
     if network_interfaces_count > 1:
         _test_osu_benchmarks_multiple_bandwidth(
@@ -103,27 +113,34 @@ def test_hit_efa(
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
+    benchmark_failures = []
     mpi_versions = ["openmpi"]
     if architecture == "x86_64":
         mpi_versions.append("intelmpi")
 
     for mpi_version in mpi_versions:
-        _test_osu_benchmarks_pt2pt(
-            mpi_version,
-            remote_command_executor,
-            scheduler_commands,
-            test_datadir,
-            slots_per_instance,
-            partition="efa-enabled",
+        benchmark_failures.extend(
+            _test_osu_benchmarks_pt2pt(
+                mpi_version,
+                remote_command_executor,
+                scheduler_commands,
+                test_datadir,
+                slots_per_instance,
+                partition="efa-enabled",
+            )
         )
-        _test_osu_benchmarks_collective(
-            mpi_version,
-            remote_command_executor,
-            scheduler_commands,
-            test_datadir,
-            slots_per_instance,
-            partition="efa-enabled",
+        benchmark_failures.extend(
+            _test_osu_benchmarks_collective(
+                mpi_version,
+                remote_command_executor,
+                scheduler_commands,
+                test_datadir,
+                slots_per_instance,
+                partition="efa-enabled",
+            )
         )
+    assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
+
     if network_interfaces_count > 1:
         _test_osu_benchmarks_multiple_bandwidth(
             remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
@@ -164,7 +181,10 @@ def _test_osu_benchmarks_pt2pt(
     # OSU pt2pt benchmarks cannot be executed with more than 2 MPI ranks.
     # Run them in 2 instances with 1 proc per instance, defined by map-by parameter.
     num_of_instances = 2
+    # Accept a max number of 3 failures on a total of 19-23 tests.
+    accepted_number_of_failures = 3
 
+    failed_benchmarks = []
     for benchmark_name in ["osu_latency", "osu_bibw"]:
         output = run_osu_benchmarks(
             mpi_version,
@@ -177,7 +197,11 @@ def _test_osu_benchmarks_pt2pt(
             slots_per_instance,
             test_datadir,
         )
-        _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output, accepted_tolerance=0.2)
+        failures = _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output)
+        if failures > accepted_number_of_failures:
+            failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
+
+    return failed_benchmarks
 
 
 def _test_osu_benchmarks_collective(
@@ -186,7 +210,10 @@ def _test_osu_benchmarks_collective(
     # OSU collective benchmarks can be executed with any number of instances,
     # 4 instances are enough to see performance differences
     num_of_instances = 4
+    # Accept a max number of 4 failures on a total of 23-24 tests.
+    accepted_number_of_failures = 4
 
+    failed_benchmarks = []
     for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
         output = run_osu_benchmarks(
             mpi_version,
@@ -199,7 +226,11 @@ def _test_osu_benchmarks_collective(
             slots_per_instance,
             test_datadir,
         )
-        _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output)
+        failures = _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output)
+        if failures > accepted_number_of_failures:
+            failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
+
+    return failed_benchmarks
 
 
 def _test_osu_benchmarks_multiple_bandwidth(
@@ -282,11 +313,10 @@ def run_osu_benchmarks(
     return output
 
 
-def _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output, accepted_tolerance=0.1):
-    # Check avg latency for all packet sizes, with a tolerance of 10% for collective tests and 20% for pt2pt tests.
-    # Accept a max number of 3 failures on a total of 24 tests.
-    accepted_number_of_failures = 3
-
+def _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output, accepted_tolerance=0.2):
+    # Check avg latency for all packet sizes, with a tolerance of 20%.
+    # The check can be improved by having more tolerance for small values (i.e. 2 digits)
+    # and less tolerance for big values
     failures = 0
     for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
         with open(str(test_datadir / "osu_benchmarks_results" / mpi_version / benchmark_name)) as osu_results:
@@ -303,9 +333,7 @@ def _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, out
             else:
                 logging.info(message)
 
-    assert_that(
-        failures, description=f"OSU Benchmark {benchmark_name} has more failures than accepted."
-    ).is_less_than_or_equal_to(accepted_number_of_failures)
+    return failures
 
 
 def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition=None):
