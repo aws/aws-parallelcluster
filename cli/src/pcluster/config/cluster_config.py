@@ -1338,8 +1338,7 @@ class SlurmComputeResource(BaseComputeResource):
             disable_simultaneous_multithreading, default=False
         )
         self.__instance_type_info = None
-        efa_supported = self.instance_type_info.is_efa_supported()
-        self.efa = efa or Efa(enabled=efa_supported, implied=True)
+        self.efa = efa or Efa(enabled=False, implied=True)
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
