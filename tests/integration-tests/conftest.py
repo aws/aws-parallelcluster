@@ -397,6 +397,7 @@ def api_client(region, api_server_factory, api_uri):
         host = stack.cfn_outputs["ParallelClusterApiInvokeUrl"]
 
     api_configuration = Configuration(host=host)
+    api_configuration.retries = 3
 
     with ApiClient(api_configuration) as api_client_instance:
         yield api_client_instance
