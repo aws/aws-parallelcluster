@@ -162,12 +162,11 @@ def _create_network_stack(configuration, parameters):
             Parameters=parameters,
             Capabilities=["CAPABILITY_IAM"],
         )
-        LOGGER.debug("StackId: %s", stack.get("StackId"))
-        print("Stack Name: %s", stack_name)
+        print("Stack Name: %s (id: %s)", stack_name, stack.get("StackId"))
         if not verify_stack_status(
             stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_states=["CREATE_COMPLETE"]
         ):
-            LOGGER.error("Could not create the network configuration")
+            print("Could not create the network configuration")
             sys.exit(0)
         print()
         print("The stack has been created")
@@ -182,7 +181,7 @@ def _create_network_stack(configuration, parameters):
         sys.exit(0)
     except Exception as e:  # Any exception is a problem
         print()
-        LOGGER.error(
+        print(
             "An exception occured while creating the CloudFormation stack: %s. "
             "For details please check log file: %s",
             stack_name,
@@ -194,7 +193,7 @@ def _create_network_stack(configuration, parameters):
 
 def _validate_cidr(cidr):
     if not cidr:
-        LOGGER.error("Unable to create subnet. Please check the number of available IPs in the VPC")
+        print("Unable to create subnet. Please check the number of available IPs in the VPC")
         sys.exit(1)
 
 
