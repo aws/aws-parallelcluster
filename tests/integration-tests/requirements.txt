@@ -3,6 +3,7 @@ assertpy
 aws-parallelcluster
 boto3
 fabric
+filelock
 jinja2
 junitparser
 pykwalify
