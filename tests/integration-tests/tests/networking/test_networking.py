@@ -36,7 +36,7 @@ def test_public_network_topology(region, vpc_stack, parameterized_cfn_stacks_fac
     _assert_internet_gateway_id(ec2_client, vpc_id, expected_internet_gateway_id=internet_gateway_id)
     _assert_internet_gateway_in_subnet_route(ec2_client, public_subnet_id, internet_gateway_id)
     _assert_subnet_property(
-        region, public_subnet_id, expected_autoassign_ip_value=False, expected_availability_zone=availability_zone
+        region, public_subnet_id, expected_autoassign_ip_value=True, expected_availability_zone=availability_zone
     )
 
 

@@ -111,3 +111,27 @@ class CapacityTypeValidator(Validator):
                 f"Usage type '{compute_type_value}' not supported with instance type '{instance_type}'",
                 FailureLevel.ERROR,
             )
+
+
+class ComputeAmiOsCompatibleValidator(Validator):
+    """
+    Compute node AMI and OS compatibility validator.
+
+    If image has tag of OS, compare AMI OS with cluster OS, else print out a warning message.
+    """
+
+    def _validate(self, os: str, image_id: str):
+        image_info = AWSApi.instance().ec2.describe_image(ami_id=image_id)
+        image_os = image_info.image_os
+        if image_os:
+            if image_os != os:
+                self._add_failure(
+                    f"The OS of compute node AMI {image_id} is {image_os}, it is not compatible with cluster OS {os}.",
+                    FailureLevel.ERROR,
+                )
+        else:
+            self._add_failure(
+                f"Could not check compute node AMI {image_id} OS and cluster OS {os} compatibility, please make sure "
+                f"they are compatible before cluster creation and update operations.",
+                FailureLevel.WARNING,
+            )

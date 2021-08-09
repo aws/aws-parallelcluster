@@ -41,6 +41,10 @@ def suppress_and_log_exception(func):
     return wrapper
 
 
+def _kebab_case(instr):
+    return instr.replace("_", "-")
+
+
 class Cluster:
     """Contain all static and dynamic data related to a cluster instance."""
 
@@ -115,7 +119,7 @@ class Cluster:
         if delete_logs:
             logging.warning("Updating stack %s to delete CloudWatch logs on stack deletion.", self.name)
             try:
-                dict_add_nested_key(self.config, False, ("Monitoring", "Logs", "CloudWatch", "RetainOnDelete"))
+                dict_add_nested_key(self.config, "Delete", ("Monitoring", "Logs", "CloudWatch", "DeletionPolicy"))
                 with open(self.config_file, "w") as conf_file:
                     yaml.dump(self.config, conf_file)
                 self.update(self.config_file, force=True)
@@ -200,8 +204,8 @@ class Cluster:
             )
             raise
 
-    def get_cluster_instance_ids(self, node_type=None, queue_name=None):
-        """Run pcluster describe-cluster-instances and collect instance ids."""
+    def describe_cluster_instances(self, node_type=None, queue_name=None):
+        """Run pcluster describe-cluster-instances and return the result"""
         cmd_args = ["pcluster", "describe-cluster-instances", "--cluster-name", self.name]
         if node_type:
             if node_type == "HeadNode":
@@ -217,12 +221,17 @@ class Cluster:
             result = run_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Get cluster {0} instances successfully".format(self.name))
-            return [instance["instanceId"] for instance in response["instances"]]
+            return response["instances"]
         except subprocess.CalledProcessError as e:
             logging.error("Failed when getting cluster instances with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def export_logs(self, bucket, output, bucket_prefix=None):
+    def get_cluster_instance_ids(self, node_type=None, queue_name=None):
+        """Run pcluster describe-cluster-instances and collect instance ids."""
+        instances = self.describe_cluster_instances(node_type=node_type, queue_name=queue_name)
+        return [instance["instanceId"] for instance in instances]
+
+    def export_logs(self, bucket, output_file, bucket_prefix=None):
         """Run pcluster export-cluster-logs and return the result."""
         cmd_args = [
             "pcluster",
@@ -231,8 +240,8 @@ class Cluster:
             self.name,
             "--bucket",
             bucket,
-            "--output",
-            output,
+            "--output-file",
+            output_file,
         ]
         if bucket_prefix:
             cmd_args += ["--bucket-prefix", bucket_prefix]
@@ -245,28 +254,45 @@ class Cluster:
             logging.error("Failed exporting cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def list_logs(self):
+    def list_log_streams(self):
         """Run pcluster list-cluster-logs and return the result."""
-        cmd_args = ["pcluster", "list-cluster-logs", self.name]
+        cmd_args = ["pcluster", "list-cluster-log-streams", "--cluster-name", self.name]
         try:
             result = run_command(cmd_args, log_error=False)
+            response = json.loads(result.stdout)
             logging.info("Cluster's logs listed successfully")
-            return result.stdout
+            return response
         except subprocess.CalledProcessError as e:
             logging.error("Failed listing cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def get_log_events(self, log_stream, head=None, tail=None):
+    def get_log_events(self, log_stream, **args):
         """Run pcluster get-cluster-log-events and return the result."""
-        cmd_args = ["pcluster", "get-cluster-log-events", self.name, "--log-stream-name", log_stream]
-        if head:
-            cmd_args += ["--head", str(head)]
-        if tail:
-            cmd_args += ["--tail", str(tail)]
+        cmd_args = ["pcluster", "get-cluster-log-events", "--cluster-name", self.name, "--log-stream-name", log_stream]
+        for k, val in args.items():
+            if val is not None:
+                cmd_args.extend([f"--{_kebab_case(k)}", str(val)])
+
         try:
             result = run_command(cmd_args, log_error=False)
-            logging.info("Log events listed successfully")
-            return result.stdout
+            response = json.loads(result.stdout)
+            logging.info("Log events retrieved successfully")
+            return response
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed listing log events with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
+    def get_stack_events(self, **args):
+        """Run pcluster get-cluster-log-events and return the result."""
+        cmd_args = ["pcluster", "get-cluster-stack-events", "--cluster-name", self.name]
+        for k, val in args.items():
+            cmd_args.extend([f"--{_kebab_case(k)}", str(val)])
+
+        try:
+            result = run_command(cmd_args, log_error=False)
+            response = json.loads(result.stdout)
+            logging.info("Stack events retrieved successfully")
+            return response
         except subprocess.CalledProcessError as e:
             logging.error("Failed listing log events with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise

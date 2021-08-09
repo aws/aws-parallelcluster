@@ -28,8 +28,8 @@ from tests.common.utils import get_installed_parallelcluster_version, reboot_hea
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, architecture):
     """Test error message when os provide is different from the os of custom AMI"""
-    # ubuntu1804 is specified in the config file but an AMI of centos7 is provided
-    wrong_os = "centos7"
+    # ubuntu1804 is specified in the config file but an AMI of ubuntu2004 is provided
+    wrong_os = "ubuntu2004"
     logging.info("Asserting os fixture is different from wrong_os variable")
     assert_that(os != wrong_os).is_true()
     custom_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture)
@@ -43,7 +43,7 @@ def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, a
     logging.info("Verifying error in logs")
     assert_errors_in_logs(
         remote_command_executor,
-        ["/var/log/cfn-init.log"],
+        ["/var/log/chef-client.log"],
         ["RuntimeError", fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}"],
     )
 

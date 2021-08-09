@@ -19,6 +19,7 @@
 import json
 import os
 import re
+import sys
 from collections import OrderedDict
 
 import argparse
@@ -129,15 +130,18 @@ def get_amis_for_architecture(images, architecture):
 
 
 def get_ami_list_by_git_refs(
-    main_region, regions, cli_git_ref, cookbook_git_ref, node_git_ref, build_date, owner, credentials
+    main_region, regions, cli_git_ref, cookbook_git_ref, node_git_ref, build_date, build_number, owner, credentials
 ):
     """Get the ParallelCluster AMIs by querying EC2 based on git refs and build date."""
     filters = [
-        {"Name": "tag:build:parallelcluster:cli_ref", "Values": ["%s" % cli_git_ref]},
-        {"Name": "tag:build:parallelcluster:cookbook_ref", "Values": ["%s" % cookbook_git_ref]},
-        {"Name": "tag:build:parallelcluster:node_ref", "Values": ["%s" % node_git_ref]},
+        {"Name": "tag:build:parallelcluster:cookbook_ref", "Values": [cookbook_git_ref]},
+        {"Name": "tag:build:parallelcluster:node_ref", "Values": [node_git_ref]},
         {"Name": "name", "Values": ["aws-parallelcluster-*%s" % (build_date if build_date else "")]},
     ]
+    if cli_git_ref:
+        filters.append({"Name": "tag:build:parallelcluster:cli_ref", "Values": [cli_git_ref]})
+    if build_number:
+        filters.append({"Name": "tag:build:parallelcluster:build_number", "Values": [build_number]})
     return get_ami_list_from_ec2(main_region, regions, owner, credentials, filters)
 
 
@@ -315,12 +319,11 @@ def parse_args():
     git_ref_group = parser.add_argument_group(
         "Retrieve instances from EC2 searching by cookbook and node git reference"
     )
-    git_ref_group.add_argument("--cli-git-ref", type=str, help="cli git hash reference", required=False)
-    git_ref_group.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
-    git_ref_group.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
-    git_ref_group.add_argument(
-        "--build-date", type=str, help="(optional) build date [timestamp] (e.g. 201801112350)", required=False
-    )
+    git_ref_group.add_argument("--cli-git-ref", help="cli git hash reference", required=False)
+    git_ref_group.add_argument("--cookbook-git-ref", help="cookbook git hash reference", required=False)
+    git_ref_group.add_argument("--node-git-ref", help="node git hash reference", required=False)
+    git_ref_group.add_argument("--build-date", help="build date [timestamp] (e.g. 201801112350)", required=False)
+    git_ref_group.add_argument("--build-number", help="build number", required=False)
     git_ref_group.add_argument(
         "--credential",
         type=str,
@@ -332,23 +335,19 @@ def parse_args():
 
     # Group of arguments to be used to retrieve list of AMIs from a local json file
     local_file_group = parser.add_argument_group("Retrieve instances from local json file for given regions")
+    local_file_group.add_argument("--json-amis", help="path to input json file containing the AMIs", required=False)
     local_file_group.add_argument(
-        "--json-amis", type=str, help="path to input json file containing the AMIs", required=False
-    )
-    local_file_group.add_argument(
-        "--json-regions", type=str, help="path to input json file containing the regions", required=False
+        "--json-regions", help="path to input json file containing the regions", required=False
     )
 
     # General inputs and outputs of the utility
-    parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
-    parser.add_argument(
-        "--partition", type=str, help="commercial | china | govcloud", required=True, choices=PARTITIONS
-    )
-    parser.add_argument("--account-id", type=str, help="AWS account id owning the AMIs", required=False)
-    parser.add_argument("--json-file", type=str, help="path to output json file", required=False, default="amis.json")
+    parser.add_argument("--txt-file", help="txt output file path", required=False, default="amis.txt")
+    parser.add_argument("--partition", help="commercial | china | govcloud", required=True, choices=PARTITIONS)
+    parser.add_argument("--account-id", help="AWS account id owning the AMIs", required=False)
+    parser.add_argument("--json-file", help="path to output json file", required=False, default="amis.json")
     args = parser.parse_args()
     if args.cookbook_git_ref and args.node_git_ref and not args.account_id:
-        raise Exception("Must specify value for --account-id when using --cookbook-git-ref and --node-git-ref.")
+        sys.exit("Must specify value for --account-id when using --cookbook-git-ref and --node-git-ref.")
     return args
 
 
@@ -365,8 +364,8 @@ def main():
             if credential_tuple.strip()
         ]
 
-    if args.cli_git_ref and args.cookbook_git_ref and args.node_git_ref:
-        # This path is used by the build_and_test and retrive_ami_list pipelines.
+    if args.cookbook_git_ref and args.node_git_ref:
+        # This path is used by the build_and_test and retrieve_ami_list pipelines.
         # Requiring all of the AMIs in the resulting mappings (for the applicable regions)
         # to be created from the same cookbook and node repo git refs on the same date
         # ensures that the AMIs were all produced by the same run of the build pipeline.
@@ -377,8 +376,14 @@ def main():
             cookbook_git_ref=args.cookbook_git_ref,
             node_git_ref=args.node_git_ref,
             build_date=args.build_date,
+            build_number=args.build_number,
             owner=args.account_id,
             credentials=credentials,
+        )
+    elif not args.json_regions or not args.json_amis:
+        sys.exit(
+            "Must specify value for --json-regions and --json-amis "
+            "when not using --cookbook-git-ref and --node-git-ref."
         )
     else:
         # This path is used by the pre_release_flow pipeline, which uses the

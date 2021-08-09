@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import os
 import time
 
@@ -53,7 +54,10 @@ class TestLogGrouptimeFiltersParser:
         [
             (
                 {"start_time": "2012-07-09", "end_time": "2012-07-29"},
-                {"start_time": 1341788400000, "end_time": 1343516400000},
+                {
+                    "start_time": datetime.datetime(2012, 7, 9, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2012, 7, 29, tzinfo=datetime.timezone.utc),
+                },
             ),
         ],
     )
@@ -132,8 +136,8 @@ class TestLogGroupTimeFiltersParser:
                 LogGroupTimeFiltersParser(**kwargs)
         else:
             time_parser = LogGroupTimeFiltersParser(**kwargs)
-            assert_that(time_parser.start_time).is_equal_to(int(parse(args.get("start_time")).timestamp() * 1000))
-            assert_that(time_parser.end_time).is_equal_to(int(parse(args.get("end_time")).timestamp() * 1000))
+            assert_that(time_parser.start_time).is_equal_to(parse(args.get("start_time")))
+            assert_that(time_parser.end_time).is_equal_to(parse(args.get("end_time")))
 
 
 class TestCloudWatchLogsExporter:

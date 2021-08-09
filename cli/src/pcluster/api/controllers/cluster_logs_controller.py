@@ -9,10 +9,8 @@
 # pylint: disable=W0613
 import re
 
-import dateutil
-
-from pcluster.api.controllers.common import check_cluster_version, configure_aws_region, convert_errors
-from pcluster.api.errors import BadRequestException, NotFoundException
+from pcluster.api.controllers.common import configure_aws_region, convert_errors, validate_cluster, validate_timestamp
+from pcluster.api.errors import BadRequestException
 from pcluster.api.models import (
     GetClusterLogEventsResponseContent,
     GetClusterStackEventsResponseContent,
@@ -21,32 +19,45 @@ from pcluster.api.models import (
     LogStream,
     StackEvent,
 )
-from pcluster.aws.common import StackNotFoundError
 from pcluster.models.cluster import Cluster
-from pcluster.utils import to_iso_time
+from pcluster.models.cluster_resources import FiltersParserError
+from pcluster.utils import to_iso_timestr, to_utc_datetime
 
 
-class _Filter:
-    """Class to implement regex parsing for filters parameter."""
+def join_filters(accepted_filters, filters):
+    combined = []
+    current = None
+    state = None
 
-    def __init__(self, accepted_filters: list):
-        filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
-        self._pattern = re.compile(fr"^({filter_regex})(\s+{filter_regex})*$")
+    filter_regex = rf"Name=({'|'.join(accepted_filters)}),Values=[\w\-_.,]+"
+    pattern = re.compile(fr"^({filter_regex})(\s+{filter_regex})*$")
 
-    def __call__(self, value):
-        if not self._pattern.match(value):
-            raise BadRequestException(f"filters parameter must be in the form {self._pattern.pattern}.")
-        return value
+    def fail():
+        raise BadRequestException(f"filters parameter must be in the form {pattern.pattern}.")
 
+    def add_filter(filter_):
+        if not pattern.match(filter_):
+            fail()
+        combined.append(current)
 
-def _validate_timestamp(val, ts_name):
-    try:
-        dateutil.parser.parse(val)
-    except Exception:
-        raise BadRequestException(
-            f"{ts_name} filter must be in the ISO 8601 format: YYYY-MM-DDThh:mm:ssZ. "
-            "(e.g. 1984-09-15T19:20:30Z or 1984-09-15)."
-        )
+    # State-machine that combines filters that were separated at the comma by url parsing
+    for f in filters:
+        if state is None and f.startswith("Name"):
+            current, state = f, "v"
+        elif state == "v" and f.startswith("Values"):
+            current, state = current + f",{f}", "v+"
+        elif state == "v+" and f.startswith("Name"):
+            add_filter(current)
+            current, state = f, "v"
+        elif state == "v+" and not f.startswith("Values"):
+            current += f",{f}"
+        else:
+            fail()
+
+    if current:
+        add_filter(current)
+
+    return combined
 
 
 @configure_aws_region()
@@ -54,12 +65,12 @@ def _validate_timestamp(val, ts_name):
 def get_cluster_log_events(
     cluster_name,
     log_stream_name,
-    region=None,
-    next_token=None,
-    start_from_head=None,
-    limit=None,
-    start_time=None,
-    end_time=None,
+    region: str = None,
+    next_token: str = None,
+    start_from_head: bool = None,
+    limit: int = None,
+    start_time: str = None,
+    end_time: str = None,
 ):
     """
     Retrieve the events associated with a log stream.
@@ -88,25 +99,25 @@ def get_cluster_log_events(
 
     :rtype: GetClusterLogEventsResponseContent
     """
-    if start_time:
-        _validate_timestamp(start_time, "start_time")
-    if end_time:
-        _validate_timestamp(end_time, "end_time")
+    start_dt = start_time and validate_timestamp(start_time, "start_time")
+    end_dt = end_time and validate_timestamp(end_time, "end_time")
+
+    if start_time and end_time and start_dt >= end_dt:
+        raise BadRequestException("start_time filter must be earlier than end_time filter.")
+
+    if limit and limit <= 0:
+        raise BadRequestException("'limit' must be a positive integer.")
 
     cluster = Cluster(cluster_name)
-    try:
-        if not check_cluster_version(cluster):
-            raise BadRequestException(
-                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
-            )
-    except StackNotFoundError:
-        raise NotFoundException(
-            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
-        )
+    validate_cluster(cluster)
+
+    if not cluster.stack.log_group_name:
+        raise BadRequestException(f"CloudWatch logging is not enabled for cluster {cluster.name}.")
+
     log_events = cluster.get_log_events(
         log_stream_name,
-        start_time=start_time,
-        end_time=end_time,
+        start_time=start_dt,
+        end_time=end_dt,
         start_from_head=start_from_head,
         limit=limit,
         next_token=next_token,
@@ -114,7 +125,7 @@ def get_cluster_log_events(
 
     def convert_log_event(event):
         del event["ingestionTime"]
-        event["timestamp"] = to_iso_time(event["timestamp"])
+        event["timestamp"] = to_iso_timestr(to_utc_datetime(event["timestamp"]))
         return LogEvent.from_dict(event)
 
     events = [convert_log_event(e) for e in log_events.events]
@@ -139,11 +150,12 @@ def get_cluster_stack_events(cluster_name, region=None, next_token=None):
     :rtype: GetClusterStackEventsResponseContent
     """
     cluster = Cluster(cluster_name)
+    validate_cluster(cluster)
     stack_events = cluster.get_stack_events(next_token=next_token)
 
     def convert_event(event):
         event = {k[0].lower() + k[1:]: v for k, v in event.items()}
-        event["timestamp"] = to_iso_time(event["timestamp"])
+        event["timestamp"] = to_iso_timestr(to_utc_datetime(event["timestamp"]))
         return StackEvent.from_dict(event)
 
     events = [convert_event(event) for event in stack_events["StackEvents"]]
@@ -167,28 +179,24 @@ def list_cluster_log_streams(cluster_name, region=None, filters=None, next_token
 
     :rtype: ListClusterLogStreamsResponseContent
     """
-    filter_parser = _Filter(accepted_filters=["private-dns-name", "node-type"])
-    filters = [filter_parser(f) for f in filters] if filters else None
+    accepted_filters = ["private-dns-name", "node-type"]
+    filters = join_filters(accepted_filters, filters) if filters else None
     cluster = Cluster(cluster_name)
-    try:
-        if not check_cluster_version(cluster):
-            raise BadRequestException(
-                f"cluster '{cluster_name}' belongs to an incompatible ParallelCluster major version."
-            )
-    except StackNotFoundError:
-        raise NotFoundException(
-            f"cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version. "
-        )
+    validate_cluster(cluster)
 
     def convert_log(log):
         log["logStreamArn"] = log.pop("arn")
         if "storedBytes" in log:
             del log["storedBytes"]
         for ts_name in ["creationTime", "firstEventTimestamp", "lastEventTimestamp", "lastIngestionTime"]:
-            log[ts_name] = to_iso_time(log[ts_name])
+            log[ts_name] = to_iso_timestr(to_utc_datetime(log[ts_name]))
         return LogStream.from_dict(log)
 
-    cluster_logs = cluster.list_logs(filters=filters, next_token=next_token)
+    try:
+        cluster_logs = cluster.list_log_streams(filters=filters, next_token=next_token)
+    except FiltersParserError as e:
+        raise BadRequestException(str(e))
+
     log_streams = [convert_log(log) for log in cluster_logs.log_streams]
     next_token = cluster_logs.next_token
     return ListClusterLogStreamsResponseContent(items=log_streams, next_token=next_token)

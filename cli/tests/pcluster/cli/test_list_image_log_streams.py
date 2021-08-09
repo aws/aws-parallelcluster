@@ -10,8 +10,8 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.cli.entrypoint import run
-from pcluster.models.common import Logs
-from pcluster.utils import to_iso_time, to_kebab_case
+from pcluster.models.common import LogStreams
+from pcluster.utils import to_iso_timestr, to_kebab_case, to_utc_datetime
 
 BASE_COMMAND = ["pcluster", "list-image-log-streams", "--region", "eu-west-1"]
 REQUIRED_ARGS = {"image_id": "id"}
@@ -37,7 +37,7 @@ class TestListImageLogStreamsCommand:
 
     @pytest.mark.parametrize("args", [{}, {"next_token": "123"}])
     def test_execute(self, mocker, set_env, args):
-        logs = Logs()
+        logs = LogStreams()
         logs.log_streams = [
             {
                 "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
@@ -69,8 +69,8 @@ class TestListImageLogStreamsCommand:
 
         logs.next_token = "123-456"
 
-        list_logs_mock = mocker.patch(
-            "pcluster.api.controllers.image_logs_controller.ImageBuilder.list_logs", return_value=logs
+        list_log_streams_mock = mocker.patch(
+            "pcluster.api.controllers.image_logs_controller.ImageBuilder.list_log_streams", return_value=logs
         )
         set_env("AWS_DEFAULT_REGION", "us-east-1")
 
@@ -82,13 +82,13 @@ class TestListImageLogStreamsCommand:
         expected_out = [
             {
                 "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.cfn-init",
-                "firstEventTimestamp": to_iso_time(1622802790248),
-                "lastEventTimestamp": to_iso_time(1622802893126),
+                "firstEventTimestamp": to_iso_timestr(to_utc_datetime(1622802790248)),
+                "lastEventTimestamp": to_iso_timestr(to_utc_datetime(1622802893126)),
             },
             {
                 "logStreamName": "ip-10-0-0-102.i-0717e670ad2549e72.chef-client",
-                "firstEventTimestamp": to_iso_time(1622802837114),
-                "lastEventTimestamp": to_iso_time(1622802861226),
+                "firstEventTimestamp": to_iso_timestr(to_utc_datetime(1622802837114)),
+                "lastEventTimestamp": to_iso_timestr(to_utc_datetime(1622802861226)),
             },
         ]
         assert_that(out["nextToken"]).is_equal_to(logs.next_token)
@@ -96,12 +96,12 @@ class TestListImageLogStreamsCommand:
             select_keys = {"logStreamName", "firstEventTimestamp", "lastEventTimestamp"}
             out_select = {k: v for k, v in out["items"][i].items() if k in select_keys}
             assert_that(out_select).is_equal_to(expected_out[i])
-        assert_that(list_logs_mock.call_args).is_length(2)
+        assert_that(list_log_streams_mock.call_args).is_length(2)
 
         # verify arguments
         kwargs = {"next_token": None}
         kwargs.update(args)
-        list_logs_mock.assert_called_with(**kwargs)
+        list_log_streams_mock.assert_called_with(**kwargs)
 
     @staticmethod
     def _build_cli_args(args):

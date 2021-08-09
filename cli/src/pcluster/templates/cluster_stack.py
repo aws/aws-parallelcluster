@@ -845,7 +845,6 @@ class ClusterCdkStack(Stack):
             ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                 device_index=0,
                 network_interface_id=self._head_eni.ref,
-                associate_public_ip_address=head_node.networking.assign_public_ip,
             )
         ]
         for device_index in range(1, head_node.max_network_interface_count):
@@ -870,7 +869,7 @@ class ClusterCdkStack(Stack):
                 block_device_mappings=get_block_device_mappings(head_node.local_storage, self.config.image.os),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
-                image_id=self.config.ami_id,
+                image_id=self.config.headnode_ami,
                 ebs_optimized=head_node.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=self.instance_profiles["HeadNode"]

@@ -16,5 +16,7 @@
 # Import APIs into API package:
 from pcluster_client.api.cluster_compute_fleet_api import ClusterComputeFleetApi
 from pcluster_client.api.cluster_instances_api import ClusterInstancesApi
+from pcluster_client.api.cluster_logs_api import ClusterLogsApi
 from pcluster_client.api.cluster_operations_api import ClusterOperationsApi
+from pcluster_client.api.image_logs_api import ImageLogsApi
 from pcluster_client.api.image_operations_api import ImageOperationsApi

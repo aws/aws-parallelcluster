@@ -48,9 +48,14 @@ from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
 from pcluster.constants import SUPPORTED_ARCHITECTURES, SUPPORTED_OSES
-from pcluster.models.imagebuilder import BadRequestImageBuilderActionError, ImageBuilder, NonExistingImageError
+from pcluster.models.imagebuilder import (
+    BadRequestImageBuilderActionError,
+    ConfigValidationError,
+    ImageBuilder,
+    NonExistingImageError,
+)
 from pcluster.models.imagebuilder_resources import ImageBuilderStack, NonExistingStackError
-from pcluster.utils import get_installed_version, to_iso_time
+from pcluster.utils import get_installed_version, to_utc_datetime
 from pcluster.validators.common import FailureLevel
 
 LOGGER = logging.getLogger(__name__)
@@ -123,6 +128,8 @@ def build_image(
             image=_imagebuilder_stack_to_image_info_summary(imagebuilder.stack),
             validation_messages=validation_results_to_config_validation_errors(suppressed_validation_failures) or None,
         )
+    except ConfigValidationError as e:
+        raise _handle_config_validation_error(e)
     except BadRequestImageBuilderActionError as e:
         errors = validation_results_to_config_validation_errors(e.validation_failures)
         raise BuildImageBadRequestException(
@@ -217,7 +224,7 @@ def _presigned_config_url(imagebuilder):
 
 def _image_to_describe_image_response(imagebuilder):
     return DescribeImageResponseContent(
-        creation_time=to_iso_time(imagebuilder.image.creation_date),
+        creation_time=to_utc_datetime(imagebuilder.image.creation_date),
         image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
@@ -246,7 +253,7 @@ def _stack_to_describe_image_response(imagebuilder):
         cloudformation_stack_status=imagebuilder.stack.status,
         cloudformation_stack_status_reason=imagebuilder.stack.status_reason,
         cloudformation_stack_arn=imagebuilder.stack.id,
-        cloudformation_stack_creation_time=to_iso_time(imagebuilder.stack.creation_time),
+        cloudformation_stack_creation_time=to_utc_datetime(imagebuilder.stack.creation_time),
         cloudformation_stack_tags=[Tag(key=tag["Key"], value=tag["Value"]) for tag in imagebuilder.stack.tags],
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=imagebuilder.stack.version,
@@ -320,6 +327,15 @@ def list_images(image_status, region=None, next_token=None):
     else:
         items, next_token = _get_images_in_progress(image_status, next_token)
         return ListImagesResponseContent(items=items, next_token=next_token)
+
+
+def _handle_config_validation_error(e: ConfigValidationError) -> BuildImageBadRequestException:
+    config_validation_messages = validation_results_to_config_validation_errors(e.validation_failures) or None
+    return BuildImageBadRequestException(
+        BuildImageBadRequestExceptionResponseContent(
+            configuration_validation_errors=config_validation_messages, message=str(e)
+        )
+    )
 
 
 def _get_available_images():

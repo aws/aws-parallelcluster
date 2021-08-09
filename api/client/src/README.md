@@ -100,11 +100,17 @@ Class | Method | HTTP request | Description
 *ClusterComputeFleetApi* | [**update_compute_fleet**](docs/ClusterComputeFleetApi.md#update_compute_fleet) | **PATCH** /v3/clusters/{clusterName}/computefleet | 
 *ClusterInstancesApi* | [**delete_cluster_instances**](docs/ClusterInstancesApi.md#delete_cluster_instances) | **DELETE** /v3/clusters/{clusterName}/instances | 
 *ClusterInstancesApi* | [**describe_cluster_instances**](docs/ClusterInstancesApi.md#describe_cluster_instances) | **GET** /v3/clusters/{clusterName}/instances | 
+*ClusterLogsApi* | [**get_cluster_log_events**](docs/ClusterLogsApi.md#get_cluster_log_events) | **GET** /v3/clusters/{clusterName}/logstreams/{logStreamName} | 
+*ClusterLogsApi* | [**get_cluster_stack_events**](docs/ClusterLogsApi.md#get_cluster_stack_events) | **GET** /v3/clusters/{clusterName}/stackevents | 
+*ClusterLogsApi* | [**list_cluster_log_streams**](docs/ClusterLogsApi.md#list_cluster_log_streams) | **GET** /v3/clusters/{clusterName}/logstreams | 
 *ClusterOperationsApi* | [**create_cluster**](docs/ClusterOperationsApi.md#create_cluster) | **POST** /v3/clusters | 
 *ClusterOperationsApi* | [**delete_cluster**](docs/ClusterOperationsApi.md#delete_cluster) | **DELETE** /v3/clusters/{clusterName} | 
 *ClusterOperationsApi* | [**describe_cluster**](docs/ClusterOperationsApi.md#describe_cluster) | **GET** /v3/clusters/{clusterName} | 
 *ClusterOperationsApi* | [**list_clusters**](docs/ClusterOperationsApi.md#list_clusters) | **GET** /v3/clusters | 
 *ClusterOperationsApi* | [**update_cluster**](docs/ClusterOperationsApi.md#update_cluster) | **PUT** /v3/clusters/{clusterName} | 
+*ImageLogsApi* | [**get_image_log_events**](docs/ImageLogsApi.md#get_image_log_events) | **GET** /v3/images/custom/{imageId}/logstreams/{logStreamName} | 
+*ImageLogsApi* | [**get_image_stack_events**](docs/ImageLogsApi.md#get_image_stack_events) | **GET** /v3/images/custom/{imageId}/stackevents | 
+*ImageLogsApi* | [**list_image_log_streams**](docs/ImageLogsApi.md#list_image_log_streams) | **GET** /v3/images/custom/{imageId}/logstreams | 
 *ImageOperationsApi* | [**build_image**](docs/ImageOperationsApi.md#build_image) | **POST** /v3/images/custom | 
 *ImageOperationsApi* | [**delete_image**](docs/ImageOperationsApi.md#delete_image) | **DELETE** /v3/images/custom/{imageId} | 
 *ImageOperationsApi* | [**describe_image**](docs/ImageOperationsApi.md#describe_image) | **GET** /v3/images/custom/{imageId} | 
@@ -120,6 +126,7 @@ Class | Method | HTTP request | Description
  - [BuildImageRequestContent](docs/BuildImageRequestContent.md)
  - [BuildImageResponseContent](docs/BuildImageResponseContent.md)
  - [Change](docs/Change.md)
+ - [CloudFormationResourceStatus](docs/CloudFormationResourceStatus.md)
  - [CloudFormationStackStatus](docs/CloudFormationStackStatus.md)
  - [ClusterConfigurationStructure](docs/ClusterConfigurationStructure.md)
  - [ClusterInfoSummary](docs/ClusterInfoSummary.md)
@@ -143,6 +150,10 @@ Class | Method | HTTP request | Description
  - [EC2Instance](docs/EC2Instance.md)
  - [Ec2AmiInfo](docs/Ec2AmiInfo.md)
  - [Ec2AmiState](docs/Ec2AmiState.md)
+ - [GetClusterLogEventsResponseContent](docs/GetClusterLogEventsResponseContent.md)
+ - [GetClusterStackEventsResponseContent](docs/GetClusterStackEventsResponseContent.md)
+ - [GetImageLogEventsResponseContent](docs/GetImageLogEventsResponseContent.md)
+ - [GetImageStackEventsResponseContent](docs/GetImageStackEventsResponseContent.md)
  - [ImageBuildStatus](docs/ImageBuildStatus.md)
  - [ImageBuilderImageStatus](docs/ImageBuilderImageStatus.md)
  - [ImageConfigurationStructure](docs/ImageConfigurationStructure.md)
@@ -151,11 +162,16 @@ Class | Method | HTTP request | Description
  - [InstanceState](docs/InstanceState.md)
  - [InternalServiceExceptionResponseContent](docs/InternalServiceExceptionResponseContent.md)
  - [LimitExceededExceptionResponseContent](docs/LimitExceededExceptionResponseContent.md)
+ - [ListClusterLogStreamsResponseContent](docs/ListClusterLogStreamsResponseContent.md)
  - [ListClustersResponseContent](docs/ListClustersResponseContent.md)
+ - [ListImageLogStreamsResponseContent](docs/ListImageLogStreamsResponseContent.md)
  - [ListImagesResponseContent](docs/ListImagesResponseContent.md)
+ - [LogEvent](docs/LogEvent.md)
+ - [LogStream](docs/LogStream.md)
  - [NodeType](docs/NodeType.md)
  - [NotFoundExceptionResponseContent](docs/NotFoundExceptionResponseContent.md)
  - [RequestedComputeFleetStatus](docs/RequestedComputeFleetStatus.md)
+ - [StackEvent](docs/StackEvent.md)
  - [Tag](docs/Tag.md)
  - [UnauthorizedClientErrorResponseContent](docs/UnauthorizedClientErrorResponseContent.md)
  - [UpdateClusterBadRequestExceptionResponseContent](docs/UpdateClusterBadRequestExceptionResponseContent.md)
