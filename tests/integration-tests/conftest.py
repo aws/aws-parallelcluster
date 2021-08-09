@@ -420,8 +420,8 @@ def images_factory(request):
             config_file=image_config_file,
             region=region,
         )
-        image.creation_response = factory.create_image(image, raise_on_error=raise_on_error, log_error=log_error)
-        if "BUILD_IN_PROGRESS" not in image.creation_response and log_error:
+        factory.create_image(image, raise_on_error=raise_on_error, log_error=log_error)
+        if image.image_status != "BUILD_IN_PROGRESS" and log_error:
             logging.error("image %s creation failed", image_id)
 
         return image

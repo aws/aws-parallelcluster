@@ -13,7 +13,7 @@ import json
 import logging
 
 import yaml
-from utils import run_command
+from utils import run_command, kebab_case
 
 
 class Image:
@@ -30,6 +30,7 @@ class Image:
         self.build_log = None
         self.version = None
         self.image_status = None
+        self.configuration_errors = None
 
     def build(self, raise_on_error=True, log_error=True):
         """Build image."""
@@ -43,10 +44,21 @@ class Image:
             "--image-configuration",
             self.config_file,
         ]
-        result = run_command(command, raise_on_error=raise_on_error, log_error=log_error).stdout
-        if "BUILD_IN_PROGRESS" in result:
-            self._update_image_info(json.loads(result).get("image"))
-        return result
+        result = run_command(command, raise_on_error=raise_on_error, log_error=log_error)
+        response = json.loads(result.stdout)
+        try:
+            if response["image"]["imageBuildStatus"] == "BUILD_IN_PROGRESS":
+                self._update_image_info(response["image"])
+            else:
+                logging.error("Error building image: %s", response)
+        except KeyError:
+            if log_error:
+                logging.error("Error building image: %s", result.stdout)
+
+        if "configurationValidationErrors" in response:
+            self.configuration_errors = response["configurationValidationErrors"]
+
+        return response["image"] if "image" in response else response
 
     def delete(self, force=False):
         """Delete image."""
@@ -54,22 +66,69 @@ class Image:
         if force:
             command.extend(["--force", "true"])
         result = run_command(command).stdout
-        return result
+        response = json.loads(result.stdout)
+        return response
 
     def describe(self):
         """Describe image."""
         logging.info("Describe image %s in region %s.", self.image_id, self.region)
         command = ["pcluster", "describe-image", "--image-id", self.image_id, "--region", self.region]
         result = run_command(command).stdout
-        self._update_image_info(json.loads(result))
-        return result
+        response = json.loads(result)
+        self._update_image_info(response)
+        return response
 
-    def get_log_events(self):
+    def get_log_events(self, log_stream_name, **args):
         """Get image build log events."""
         logging.info("Get image %s build log.", self.image_id)
-        command = ["pcluster", "get-image-log-events", "-r", self.region, "--log-stream-name", "3.0.0/1", self.image_id]
+        command = [
+            "pcluster",
+            "get-image-log-events",
+            "--image-id",
+            self.image_id,
+            "--region",
+            self.region,
+            "--log-stream-name",
+            log_stream_name,
+        ]
+        for k, val in args.items():
+            if val is not None:
+                command.extend([f"--{kebab_case(k)}", str(val)])
         result = run_command(command).stdout
-        return result
+        response = json.loads(result)
+        return response
+
+    def get_stack_events(self, **args):
+        """Get image build stack events."""
+        logging.info("Get image %s build log.", self.image_id)
+        command = [
+            "pcluster",
+            "get-image-stack-events",
+            "--region",
+            self.region,
+            "--image-id",
+            self.image_id,
+        ]
+        for k, val in args.items():
+            command.extend([f"--{kebab_case(k)}", str(val)])
+        result = run_command(command).stdout
+        response = json.loads(result)
+        return response
+
+    def list_log_streams(self):
+        """Get image build log streams."""
+        logging.info("Get image %s build log streams.", self.image_id)
+        command = [
+            "pcluster",
+            "list-image-log-streams",
+            "--region",
+            self.region,
+            "--image-id",
+            self.image_id,
+        ]
+        result = run_command(command).stdout
+        response = json.loads(result)
+        return response
 
     def _update_image_info(self, image_info):
         ec2_ami_info = image_info.get("ec2AmiInfo")
@@ -108,6 +167,8 @@ class ImagesFactory:
             result = image.delete(force=True)
             del self.__created_images[image.image_id]
             return result
+        logging.debug("Tried to delete non-existant image: %s", image.image.id)
+        return None
 
     def destroy_all_images(self):
         """Destroy all created images."""

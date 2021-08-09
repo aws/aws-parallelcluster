@@ -1,0 +1,18 @@
+Image:
+    Tags:
+        - Key: dummyImageTag
+          Value: dummyImageTag
+    RootVolume:
+        Size: 200
+        Encrypted: True
+
+Build:
+    Iam:
+        InstanceRole: {{ instance_role }}
+    InstanceType: {{ instance }}
+    ParentImage: {{ parent_image }}
+    Tags:
+        - Key: dummyBuildTag
+          Value: dummyBuildTag
+
+CustomS3Bucket: {{ bucket_name }}

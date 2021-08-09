@@ -9,7 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-
+import datetime
 import logging
 import time
 
@@ -19,8 +19,40 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from troposphere import Template, iam
 from utils import generate_stack_name
+from images_factory import Image
+from dateutil.parser import parse as date_parse
+
 
 from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
+
+
+def test_invalid_config(
+    region,
+    instance,
+    os,
+    pcluster_config_reader,
+    architecture,
+    s3_bucket_factory,
+    build_image_custom_resource,
+    images_factory,
+):
+    # Test validation error
+    arm64_ami = retrieve_latest_ami(region, os, architecture="arm64")
+    image_id = f"integ-test-build-image-{generate_random_string()}"
+    # Get custom instance role
+    instance_role = build_image_custom_resource(image_id=image_id)
+
+    # Get custom S3 bucket
+    bucket_name = s3_bucket_factory()
+    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=arm64_ami, instance_role=instance_role,
+                                          bucket_name=bucket_name)
+    image = images_factory(image_id, image_config, region, raise_on_error=False, log_error=False)
+
+    assert_that(image.configuration_errors).is_length(1)
+    assert_that(image.configuration_errors[0]).contains("level")
+    assert_that(image.configuration_errors[0]).contains("type")
+    assert_that(image.configuration_errors[0]).contains("message")
+    assert_that(image.configuration_errors[0]["type"]).is_equal_to("InstanceTypeBaseAMICompatibleValidator")
 
 
 def test_build_image(
@@ -34,20 +66,12 @@ def test_build_image(
     images_factory,
 ):
     """Test build image for given region and os"""
-    # Test validation error
-    arm64_ami = retrieve_latest_ami(region, os, architecture="arm64")
     image_id = f"integ-test-build-image-{generate_random_string()}"
     # Get custom instance role
     instance_role = build_image_custom_resource(image_id=image_id)
 
     # Get custom S3 bucket
     bucket_name = s3_bucket_factory()
-    image_config = pcluster_config_reader(config_file="image.config.yaml", parent_image=arm64_ami, instance_role=instance_role,
-                                          bucket_name=bucket_name)
-    image = images_factory(image_id, image_config, region, raise_on_error=False, log_error=False)
-    logging.info(image.creation_response)
-
-    exit(1)
 
     # Get base AMI
     # remarkable AMIs are not available for ARM and ubuntu2004, centos7 yet
@@ -64,13 +88,78 @@ def test_build_image(
     )
 
     image = images_factory(image_id, image_config, region)
+    _test_build_tag(image)
+    _test_image_stack_events(image)
+    _test_build_image_success(image)
+    _test_image_tag_and_volume(image)
+    _test_list_image_log_streams(image)
+    _test_get_image_log_events(image)
 
-    _assert_build_tag(image)
-    _assert_build_image_success(image)
-    _assert_image_tag_and_volume(image)
+
+def _test_image_stack_events(image):
+    stack_events_resp = image.get_stack_events()
+    assert_that(stack_events_resp).is_not_none()
+    assert_that(stack_events_resp).contains("events")
+    assert_that(stack_events_resp["events"]).is_not_empty()
+
+    first_event = stack_events_resp["events"][0]
+    assert_that(first_event).contains("eventId")
+    assert_that(first_event).contains("logicalResourceId")
+    assert_that(first_event).contains("physicalResourceId")
+    assert_that(first_event).contains("stackId")
+    assert_that(first_event).contains("timestamp")
 
 
-def _assert_build_tag(image):
+def _test_list_image_log_streams(image):
+    logging.info("Testing that pcluster list-image-log-streams is working as expected")
+    list_streams_result = image.list_log_streams()
+    streams = list_streams_result["items"]
+
+    stream_names = {stream["logStreamName"] for stream in streams}
+    expected_log_stream = "3.0.0/1"
+    assert_that(stream_names).contains(expected_log_stream)
+
+
+def _test_get_image_log_events(image):
+    """Test pcluster get-image-log-events functionality."""
+    logging.info("Testing that pcluster get-image-log-events is working as expected")
+    log_stream_name = "3.0.0/1"
+    cloud_init_debug_msg = "Document arn:aws:imagebuilder:"
+
+    # Get the first event to establish time boundary for testing
+    initial_events = image.get_log_events(log_stream_name, limit=1, start_from_head=True)
+    first_event = initial_events["events"][0]
+    first_event_time_str = first_event["timestamp"]
+    first_event_time = date_parse(first_event_time_str)
+    before_first = (first_event_time - datetime.timedelta(seconds=1)).isoformat()
+    after_first = (first_event_time + datetime.timedelta(seconds=1)).isoformat()
+
+    # args, expect_first, expect_count
+    test_cases = [
+        ({}, None, None),
+        ({"limit": 1}, False, 1),
+        ({"limit": 2, "start_from_head": True}, True, 2),
+        ({"limit": 1, "start_time": before_first, "end_time": after_first, "start_from_head": True}, True, 1),
+        ({"limit": 1, "end_time": before_first}, None, 0),
+        ({"limit": 1, "start_time": after_first, "start_from_head": True}, False, 1),
+        ({"limit": 1, "next_token": initial_events["nextToken"]}, False, 1),
+        ({"limit": 1, "next_token": initial_events["nextToken"], "start_from_head": True}, False, 1),
+    ]
+
+    for args, expect_first, expect_count in test_cases:
+        events = image.get_log_events(log_stream_name, **args)["events"]
+
+        if expect_count is not None:
+            assert_that(events).is_length(expect_count)
+
+        if expect_first is True:
+            assert_that(events[0]["message"]).contains(cloud_init_debug_msg)
+
+        if expect_first is False:
+            assert_that(events[0]["message"]).does_not_contain(cloud_init_debug_msg)
+
+
+def _test_build_tag(image):
     logging.info("Check the build tag is present as specified in config file.")
     stack_list = boto3.client("cloudformation").describe_stacks(StackName=image.image_id).get("Stacks")
     logging.info(stack_list)
@@ -80,7 +169,7 @@ def _assert_build_tag(image):
     assert_that(stack_tags).contains({"Key": "dummyBuildTag", "Value": "dummyBuildTag"})
 
 
-def _assert_image_tag_and_volume(image):
+def _test_image_tag_and_volume(image):
     logging.info("Check the image tag is present as specified in config file.")
     image_list = (
         boto3.client("ec2")
@@ -197,10 +286,10 @@ def test_build_image_custom_components(
 
     image = images_factory(image_id, image_config, region)
 
-    _assert_build_image_success(image)
+    _test_build_image_success(image)
 
 
-def _assert_build_image_success(image):
+def _test_build_image_success(image):
     logging.info("Test build image process for image %s.", image.image_id)
 
     pcluster_describe_image_result = image.describe()

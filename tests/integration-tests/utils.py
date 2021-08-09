@@ -120,6 +120,11 @@ def generate_stack_name(prefix, suffix):
     )
 
 
+def kebab_case(instr):
+    """Convert a snake case string to kebab case."""
+    return instr.replace("_", "-")
+
+
 def random_alphanumeric(size=16):
     """Generate a random alphanumeric string."""
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))

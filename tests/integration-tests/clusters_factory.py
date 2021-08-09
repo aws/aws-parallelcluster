@@ -22,6 +22,7 @@ from retrying import retry
 from utils import (
     dict_add_nested_key,
     get_stack_id_tag_filter,
+    kebab_case,
     retrieve_cfn_outputs,
     retrieve_cfn_parameters,
     retrieve_cfn_resources,
@@ -39,10 +40,6 @@ def suppress_and_log_exception(func):
             logging.error("Failed when running function %s. Ignoring exception. Error: %s", func.__name__, e)
 
     return wrapper
-
-
-def _kebab_case(instr):
-    return instr.replace("_", "-")
 
 
 class Cluster:
@@ -271,7 +268,7 @@ class Cluster:
         cmd_args = ["pcluster", "get-cluster-log-events", "--cluster-name", self.name, "--log-stream-name", log_stream]
         for k, val in args.items():
             if val is not None:
-                cmd_args.extend([f"--{_kebab_case(k)}", str(val)])
+                cmd_args.extend([f"--{kebab_case(k)}", str(val)])
 
         try:
             result = run_command(cmd_args, log_error=False)
@@ -286,7 +283,7 @@ class Cluster:
         """Run pcluster get-cluster-log-events and return the result."""
         cmd_args = ["pcluster", "get-cluster-stack-events", "--cluster-name", self.name]
         for k, val in args.items():
-            cmd_args.extend([f"--{_kebab_case(k)}", str(val)])
+            cmd_args.extend([f"--{kebab_case(k)}", str(val)])
 
         try:
             result = run_command(cmd_args, log_error=False)
