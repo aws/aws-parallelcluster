@@ -171,10 +171,6 @@ def add_cli_commands(parser_map):
 
 def _run_operation(model, args, extra_args):
     if args.operation in model:
-        # TODO: remove once all commands are converted
-        logging_handlers = logging.getLogger("pcluster").handlers
-        if len(logging_handlers) > 1:
-            logging.getLogger("pcluster").removeHandler(logging_handlers[1])
         try:
             return args.func(args)
         except KeyboardInterrupt as e:
@@ -218,8 +214,8 @@ def run(sys_args, model=None):
     if "region" in args and args.region:
         os.environ["AWS_DEFAULT_REGION"] = args.region
 
-    LOGGER.debug("Handling CLI command %s", args.operation)  # ToDo: change the level to info after finishing API.
-    LOGGER.debug("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
+    LOGGER.info("Handling CLI command %s", args.operation)
+    LOGGER.info("Parsed CLI arguments: args(%s), extra_args(%s)", args, extra_args)
     return _run_operation(model, args, extra_args)
 
 
@@ -234,7 +230,7 @@ def main():
         LOGGER.error("AWS Credentials not found.")
         sys.exit(1)
     except KeyboardInterrupt:
-        LOGGER.debug("Received KeyboardInterrupt. Exiting.")
+        LOGGER.info("Received KeyboardInterrupt. Exiting.")
         sys.exit(1)
     except ParameterException as e:
         print(json.dumps(e.data, indent=2))
