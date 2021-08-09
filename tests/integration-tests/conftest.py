@@ -28,6 +28,7 @@ import boto3
 import configparser
 import pkg_resources
 import pytest
+import yaml
 from botocore.config import Config
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
@@ -50,6 +51,8 @@ from utils import (
     InstanceTypesData,
     create_s3_bucket,
     delete_s3_bucket,
+    dict_add_nested_key,
+    dict_has_nested_key,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
     get_instance_info,

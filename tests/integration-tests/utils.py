@@ -450,6 +450,26 @@ def get_network_interfaces_count(instance_type, region_name=None):
     return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
 
 
+def dict_has_nested_key(d, keys):
+    """Check if *keys (nested) exists in d (dict)."""
+    _d = d
+    for key in keys:
+        try:
+            _d = _d[key]
+        except KeyError:
+            return False
+    return True
+
+
+def dict_add_nested_key(d, value, keys):
+    _d = d
+    for key in keys[:-1]:
+        if key not in _d:
+            _d[key] = {}
+        _d = _d[key]
+    _d[keys[-1]] = value
+
+
 def read_json_file(file):
     """Read a Json file into a String and raise an exception if the file is invalid."""
     try:
