@@ -14,7 +14,6 @@ import json
 import logging
 import re
 import subprocess
-import time
 
 import boto3
 import yaml
@@ -407,7 +406,6 @@ class ClustersFactory:
 
         # create the cluster
         logging.info("Creating cluster {0} with config {1}".format(name, config))
-        self.__created_clusters[name] = cluster
         create_cmd_args = [
             "pcluster",
             "create-cluster",
@@ -422,25 +420,30 @@ class ClustersFactory:
             create_cmd_args.append("--wait")
         if extra_args:
             create_cmd_args.extend(extra_args)
-        result = run_command(create_cmd_args, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
-        logging.info("create-cluster response: %s", result.stdout)
-        response = json.loads(result.stdout)
-        if wait:
-            if response.get("cloudFormationStackStatus") != "CREATE_COMPLETE":
-                error = f"Cluster creation failed for {name}"
-                logging.error(error)
-                if raise_on_error:
-                    raise Exception(error)
+        try:
+            result = run_command(create_cmd_args, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
+
+            logging.info("create-cluster response: %s", result.stdout)
+            response = json.loads(result.stdout)
+            if wait:
+                if response.get("cloudFormationStackStatus") != "CREATE_COMPLETE":
+                    error = f"Cluster creation failed for {name}"
+                    logging.error(error)
+                    if raise_on_error:
+                        raise Exception(error)
+                else:
+                    logging.info("Cluster {0} created successfully".format(name))
+                    cluster.mark_as_created()
             else:
-                logging.info("Cluster {0} created successfully".format(name))
-                cluster.mark_as_created()
-            # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
-            # job submission right after creation. We need to investigate this further.
-            logging.info("Sleeping for 30 seconds in case cluster is not ready yet")
-            time.sleep(30)
-        else:
-            logging.info("Cluster {0} creation started successfully".format(name))
-        return response
+                logging.info("Cluster {0} creation started successfully".format(name))
+            return response
+        finally:
+            # Only add cluster to created_clusters if stack creation started
+            try:
+                if cluster.cfn_stack_arn:
+                    self.__created_clusters[name] = cluster
+            except Exception:
+                pass
 
     def destroy_cluster(self, name, test_passed):
         """Destroy a created cluster."""

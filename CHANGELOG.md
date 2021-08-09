@@ -13,7 +13,6 @@ CHANGELOG
 - Split head node and compute fleet instance roles and add possibility to configure a different instance role
   for each queue.
 - Add possibility to configure different security groups for each queue.
-- Add support for multiple subnets when using AWS Batch.
 - Add support for associating an existing Elastic IP to the head node.
 - Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket
   per cluster.
@@ -60,6 +59,7 @@ CHANGELOG
 - Restrict access to Instance Metadata Service (IMDS) and add configuration parameter to manage it.
 - Remove instance store software encryption option (encrypted_ephemeral).
 - Upgrade Slurm to version 20.11.8.
+- Upgrade Cinc Client to version 17.2.29.
 
 2.11.0
 ------
