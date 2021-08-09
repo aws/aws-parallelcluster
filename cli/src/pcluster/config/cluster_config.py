@@ -1554,16 +1554,26 @@ class SlurmClusterConfig(BaseClusterConfig):
                 cluster_name=self.cluster_name,
             )
 
+        checked_images = []
+
         for queue in self.scheduling.queues:
             self._register_validator(
                 ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name]
             )
+            queue_image = self.image_dict[queue.name]
+            if queue_image not in checked_images:
+                checked_images.append(queue_image)
+                self._register_validator(
+                    ComputeAmiOsCompatibleValidator,
+                    os=self.image.os,
+                    image_id=queue_image,
+                )
             for compute_resource in queue.compute_resources:
                 if self.image_dict[queue.name]:
                     self._register_validator(
                         InstanceTypeBaseAMICompatibleValidator,
                         instance_type=compute_resource.instance_type,
-                        image=self.image_dict[queue.name],
+                        image=queue_image,
                     )
                 self._register_validator(
                     InstanceArchitectureCompatibilityValidator,
@@ -1575,11 +1585,6 @@ class SlurmClusterConfig(BaseClusterConfig):
                     efa_enabled=compute_resource.efa.enabled,
                     os=self.image.os,
                     architecture=self.head_node.architecture,
-                )
-                self._register_validator(
-                    ComputeAmiOsCompatibleValidator,
-                    os=self.image.os,
-                    image_id=self.image_dict[queue.name],
                 )
 
     @property
