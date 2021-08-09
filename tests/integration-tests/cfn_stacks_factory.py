@@ -12,8 +12,9 @@ import logging
 
 import boto3
 from botocore.exceptions import ClientError
+from framework.credential_providers import aws_credential_provider
 from retrying import retry
-from utils import retrieve_cfn_outputs, retrieve_cfn_resources, set_credentials, unset_credentials
+from utils import retrieve_cfn_outputs, retrieve_cfn_resources
 
 
 class CfnStack:
@@ -28,6 +29,11 @@ class CfnStack:
         self.cfn_stack_id = None
         self.__cfn_outputs = None
         self.__cfn_resources = None
+
+    def init_stack_data(self):
+        """Initialize cfn_outputs and cfn_resources."""
+        self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
+        self.__cfn_resources = retrieve_cfn_resources(self.name, self.region)
 
     @property
     def cfn_outputs(self):
@@ -71,30 +77,33 @@ class CfnStacksFactory:
             raise ValueError("Stack {0} already exists in region {1}".format(name, region))
 
         logging.info("Creating stack {0} in region {1}".format(name, region))
-        self.__created_stacks[id] = stack
         is_template_url = stack.template.startswith("s3://")
-        try:
-            cfn_client = boto3.client("cloudformation", region_name=region)
-            if is_template_url:
-                result = cfn_client.create_stack(
-                    StackName=name,
-                    TemplateURL=stack.template,
-                    Parameters=stack.parameters,
-                    Capabilities=stack.capabilities,
-                )
-            else:
-                result = cfn_client.create_stack(
-                    StackName=name,
-                    TemplateBody=stack.template,
-                    Parameters=stack.parameters,
-                    Capabilities=stack.capabilities,
-                )
-            stack.cfn_stack_id = result["StackId"]
-            final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
-            self.__assert_stack_status(final_status, "CREATE_COMPLETE")
-        except Exception as e:
-            logging.error("Creation of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
-            raise
+        with aws_credential_provider(region, self.__credentials):
+            try:
+                cfn_client = boto3.client("cloudformation", region_name=region)
+                if is_template_url:
+                    result = cfn_client.create_stack(
+                        StackName=name,
+                        TemplateURL=stack.template,
+                        Parameters=stack.parameters,
+                        Capabilities=stack.capabilities,
+                    )
+                else:
+                    result = cfn_client.create_stack(
+                        StackName=name,
+                        TemplateBody=stack.template,
+                        Parameters=stack.parameters,
+                        Capabilities=stack.capabilities,
+                    )
+                stack.cfn_stack_id = result["StackId"]
+                self.__created_stacks[id] = stack
+                final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
+                self.__assert_stack_status(final_status, "CREATE_COMPLETE")
+                # Initialize the stack data while still in the credential context
+                stack.init_stack_data()
+            except Exception as e:
+                logging.error("Creation of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
+                raise
 
         logging.info("Stack {0} created successfully in region {1}".format(name, region))
 
@@ -105,9 +114,7 @@ class CfnStacksFactory:
     )
     def delete_stack(self, name, region):
         """Destroy a created cfn stack."""
-        try:
-            set_credentials(region, self.__credentials)
-
+        with aws_credential_provider(region, self.__credentials):
             id = self.__get_stack_internal_id(name, region)
             if id in self.__created_stacks:
                 logging.info("Destroying stack {0} in region {1}".format(name, region))
@@ -128,8 +135,6 @@ class CfnStacksFactory:
                 logging.warning(
                     "Couldn't find stack with name {0} in region {1}. Skipping deletion.".format(name, region)
                 )
-        finally:
-            unset_credentials()
 
     def delete_all_stacks(self):
         """Destroy all created stacks."""

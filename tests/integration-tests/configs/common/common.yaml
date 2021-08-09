@@ -1,3 +1,27 @@
+api:
+  test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
+    dimensions:
+      - regions: ["ap-south-1", "cn-northwest-1", "us-gov-west-1"]
+  test_api.py::test_cluster_slurm:
+    dimensions:
+      - regions: ["sa-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
+  test_api.py::test_cluster_awsbatch:
+    dimensions:
+      - regions: ["sa-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+  test_api.py::test_custom_image:
+    dimensions:
+      - regions: ["sa-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+  test_api.py::test_official_images:
+    dimensions:
+      - regions: ["sa-east-1"]
 arm_pl:
   test_arm_pl.py::test_arm_pl:
     dimensions:
@@ -88,7 +112,12 @@ create:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
-
+  test_create.py::test_create_imds_secured:
+    dimensions:
+      - regions: ["eu-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{common.OSS_COMMERCIAL_X86}}
+        schedulers: ["slurm"]
 createami:
   test_createami.py::test_build_image:
     dimensions:
@@ -177,6 +206,12 @@ dns:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
+  test_dns.py::test_existing_hosted_zone:
+    dimensions:
+      - regions: ["eu-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
 efa:
   test_efa.py::test_hit_efa:
     dimensions:
@@ -194,7 +229,7 @@ efa:
         schedulers: ["slurm"]
       - regions: [ "us-east-2" ]
         instances: [{{ common.instance("instance_type_1") }}]
-        oss: [ "alinux2", "centos8", "ubuntu2004" ]
+        oss: [ "alinux2", "centos7", "ubuntu2004" ]
         schedulers: [ "slurm" ]
 iam:
   test_iam.py::test_iam_policies:
@@ -489,7 +524,7 @@ storage:
       - regions: ["us-east-1"]
         instances: ["m5d.xlarge", "h1.2xlarge"]
         oss: ["alinux2"]
-        schedulers: ["awsbatch"]
+        schedulers: ["slurm"]
 tags:
   test_tag_propagation.py::test_tag_propagation:
     dimensions:

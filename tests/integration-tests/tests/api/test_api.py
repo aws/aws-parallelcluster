@@ -328,7 +328,7 @@ def _test_delete_cluster(region, client, cluster_name):
     _cloudformation_wait(region, cluster_name, "stack_delete_complete")
 
     error_message = (
-        f"cluster '{cluster_name}' does not exist or belongs" f" to an incompatible ParallelCluster major version."
+        f"Cluster '{cluster_name}' does not exist or belongs to an incompatible ParallelCluster major version."
     )
     with pytest.raises(NotFoundException, match=error_message):
         client.describe_cluster(cluster_name, region=region)

@@ -62,9 +62,11 @@ def test_build_image(
     s3_bucket_factory,
     build_image_custom_resource,
     images_factory,
+    request,
 ):
     """Test build image for given region and os"""
-    image_id = f"integ-test-build-image-{generate_random_string()}"
+    image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
+
     # Get custom instance role
     instance_role = build_image_custom_resource(image_id=image_id)
 
@@ -181,7 +183,7 @@ def _test_image_tag_and_volume(image):
 
 
 @pytest.fixture()
-def build_image_custom_resource(cfn_stacks_factory, region):
+def build_image_custom_resource(cfn_stacks_factory, region, request):
     """
     Define a fixture to manage the creation and destruction of build image resource( custom instance role).
 
@@ -192,7 +194,9 @@ def build_image_custom_resource(cfn_stacks_factory, region):
     def _custom_resource(image_id):
         nonlocal stack_name_post_test
         # custom resource stack
-        custom_resource_stack_name = generate_stack_name("-".join([image_id, "custom", "resource"]), "")
+        custom_resource_stack_name = generate_stack_name(
+            "-".join([image_id, "custom", "resource"]), request.config.getoption("stackname_suffix")
+        )
         stack_name_post_test = custom_resource_stack_name
         custom_resource_template = Template()
         custom_resource_template.set_version()
@@ -231,7 +235,7 @@ def build_image_custom_resource(cfn_stacks_factory, region):
             },
             Description="custom instance role for build image test.",
             ManagedPolicyArns=managed_policy_arns,
-            Path="/myInstanceRole/",
+            Path="/parallelcluster/",
             Policies=[policy_document],
             RoleName=role_name,
         )
@@ -256,7 +260,7 @@ def build_image_custom_resource(cfn_stacks_factory, region):
 
 
 def test_build_image_custom_components(
-    region, os, instance, test_datadir, pcluster_config_reader, architecture, s3_bucket_factory, images_factory
+    region, os, instance, test_datadir, pcluster_config_reader, architecture, s3_bucket_factory, images_factory, request
 ):
     """Test custom components and base AMI is ParallelCluster AMI"""
     # Custom script
@@ -270,7 +274,9 @@ def test_build_image_custom_components(
     # Get ParallelCluster AMI as base AMI
     base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
 
-    image_id = f"integ-test-build-image-custom-components-{generate_random_string()}"
+    image_id = generate_stack_name(
+        "integ-tests-build-image-custom-components", request.config.getoption("stackname_suffix")
+    )
     image_config = pcluster_config_reader(
         config_file="image.config.yaml",
         parent_image=base_ami,
@@ -300,7 +306,14 @@ def _test_build_image_success(image):
 
 
 def test_build_image_wrong_pcluster_version(
-    region, os, instance, pcluster_config_reader, architecture, pcluster_ami_without_standard_naming, images_factory
+    region,
+    os,
+    instance,
+    pcluster_config_reader,
+    architecture,
+    pcluster_ami_without_standard_naming,
+    images_factory,
+    request,
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
     current_version = get_installed_parallelcluster_version()
@@ -314,7 +327,9 @@ def test_build_image_wrong_pcluster_version(
     image_config = pcluster_config_reader(
         config_file="image.config.yaml", parent_image=wrong_ami, instance_type=instance
     )
-    image_id = f"integ-test-build-image-wrong-version-{generate_random_string()}"
+    image_id = generate_stack_name(
+        "integ-tests-build-image-wrong-version", request.config.getoption("stackname_suffix")
+    )
 
     image = images_factory(image_id, image_config, region)
 
