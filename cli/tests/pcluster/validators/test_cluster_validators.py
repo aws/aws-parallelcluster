@@ -174,18 +174,27 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group_id, placement_group_enabled, expected_message",
+    "efa_enabled, placement_group_enabled, placement_group_config_implicit, expected_message",
     [
-        # Efa disabled, no check on placement group configuration
-        (False, None, False, None),
+        # Efa disabled
+        (False, False, False, None),
+        (False, True, False, None),
+        (False, False, True, None),
+        (False, True, True, None),
         # Efa enabled
-        (True, None, False, "You may see better performance using a placement group"),
-        (True, None, True, None),
-        (True, "existing_pg", False, None),
+        (True, False, False, "may see better performance using a placement group"),
+        (True, False, True, "placement group for EFA-enabled compute resources must be explicit"),
+        (True, True, True, "placement group for EFA-enabled compute resources must be explicit"),
+        (True, True, False, None),
     ],
 )
-def test_efa_placement_group_validator(efa_enabled, placement_group_id, placement_group_enabled, expected_message):
-    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group_id, placement_group_enabled)
+def test_efa_placement_group_validator(
+    efa_enabled, placement_group_enabled, placement_group_config_implicit, expected_message
+):
+    actual_failures = EfaPlacementGroupValidator().execute(
+        efa_enabled, placement_group_enabled, placement_group_config_implicit
+    )
+
     assert_failure_messages(actual_failures, expected_message)
 
 

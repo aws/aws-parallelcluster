@@ -302,8 +302,15 @@ class EfaValidator(Validator):
 class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
-    def _validate(self, efa_enabled, placement_group_id, placement_group_enabled):
-        if efa_enabled and not placement_group_id and not placement_group_enabled:
+    def _validate(self, efa_enabled, placement_group_enabled, placement_group_config_implicit):
+        if efa_enabled and placement_group_config_implicit:
+            self._add_failure(
+                "The placement group for EFA-enabled compute resources must be explicit. "
+                "You may see better performance using a placement group, but if you don't wish to use one please add "
+                "'Enabled: false' to the compute resource's configuration section.",
+                FailureLevel.ERROR,
+            )
+        elif efa_enabled and not placement_group_enabled:
             self._add_failure(
                 "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
             )
