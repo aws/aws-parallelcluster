@@ -35,7 +35,7 @@ from pcluster.cli.commands.configure.utils import (
     prompt_iterable,
 )
 from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
-from pcluster.utils import default_config_file_path, error, get_supported_os_for_scheduler
+from pcluster.utils import error, get_supported_os_for_scheduler
 from pcluster.validators.cluster_validators import NAME_REGEX
 
 LOGGER = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ def _get_subnets(conn, vpc_id):
 
 def configure(args):  # noqa: C901
 
-    config_file_path = args.config if args.config else default_config_file_path()
+    config_file_path = args.config
     # Check for invalid path (eg. a directory)
     if os.path.exists(config_file_path):
         error(f"A file/folder exists at {config_file_path}. Please specify a different file path")
@@ -156,14 +156,23 @@ def configure(args):  # noqa: C901
         number_of_queues = int(prompt("Number of queues", lambda x: str(x).isdigit() and int(x) >= 1, default_value=1))
     size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
     queues = []
+    queue_names = []
     compute_instance_types = []
     cluster_size = 0  # Sum of maximum count through all the compute resources
     for queue_index in range(number_of_queues):
-        queue_name = prompt(
-            f"Name of queue {queue_index+1}",
-            validator=lambda x: re.match(NAME_REGEX, x),
-            default_value=f"queue{queue_index+1}",
-        )
+        while True:
+            queue_name = prompt(
+                f"Name of queue {queue_index+1}",
+                validator=lambda x: re.match(NAME_REGEX, x),
+                default_value=f"queue{queue_index+1}",
+            )
+            if queue_name not in queue_names:
+                break
+            print(
+                f"Error: The name {queue_name} cannot be used for multiple queues. Please insert a different queue "
+                "name."
+            )
+
         if scheduler == "awsbatch":
             number_of_compute_resources = 1
         else:
@@ -177,11 +186,20 @@ def configure(args):  # noqa: C901
         compute_resources = []
         for compute_resource_index in range(number_of_compute_resources):
             if scheduler != "awsbatch":
-                compute_instance_type = prompt(
-                    f"Compute instance type for compute resource {compute_resource_index+1} in {queue_name}",
-                    validator=lambda x: x in AWSApi.instance().ec2.list_instance_types(),
-                    default_value=default_instance_type,
-                )
+                while True:
+                    compute_instance_type = prompt(
+                        f"Compute instance type for compute resource {compute_resource_index+1} in {queue_name}",
+                        validator=lambda x: x in AWSApi.instance().ec2.list_instance_types(),
+                        default_value=default_instance_type,
+                    )
+                    if compute_instance_type not in [
+                        compute_resource["InstanceType"] for compute_resource in compute_resources
+                    ]:
+                        break
+                    print(
+                        f"Error: Instance type {compute_instance_type} cannot be specified for multiple compute "
+                        "resources in the same queue. Please insert a different instance type."
+                    )
                 sanitized_instance_type = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
                 compute_resource_name = f"{queue_name}-{sanitized_instance_type}"
             min_cluster_size = DEFAULT_MIN_COUNT
@@ -213,6 +231,7 @@ def configure(args):  # noqa: C901
                 )
             if scheduler != "awsbatch":
                 compute_instance_types.append(compute_instance_type)
+            queue_names.append(queue_name)
             cluster_size += max_cluster_size  # Fixme: is it the right calculation for awsbatch?
         queues.append({"Name": queue_name, "ComputeResources": compute_resources})
     vpc_parameters = _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_types, cluster_size)
@@ -235,8 +254,8 @@ def configure(args):  # noqa: C901
 
     _write_configuration_file(config_file_path, result)
     print(
-        f"You can edit your configuration file or simply run 'pcluster create -c {config_file_path} cluster-name' "
-        "to create your cluster"
+        "You can edit your configuration file or simply run 'pcluster create-cluster --cluster-configuration "
+        f"{config_file_path} --cluster-name cluster-name' to create your cluster"
     )
 
 

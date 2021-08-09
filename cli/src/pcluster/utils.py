@@ -36,11 +36,6 @@ from pcluster.constants import SUPPORTED_OSES_FOR_ARCHITECTURE, SUPPORTED_OSES_F
 LOGGER = logging.getLogger(__name__)
 
 
-def default_config_file_path():
-    """Return the default path for the ParallelCluster configuration file."""
-    return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
-
-
 def get_partition():
     """Get partition for the region set in the environment."""
     return next(("aws-" + partition for partition in ["us-gov", "cn"] if get_region().startswith(partition)), "aws")

@@ -21,4 +21,4 @@ class TestConfigureCommand:
 
     def test_execute(self, mocker):
         mocker.patch("pcluster.cli.commands.configure.easyconfig.configure", return_value=True)
-        run(["configure"])
+        run(["configure", "--config", "./test/config"])
