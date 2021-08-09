@@ -206,6 +206,7 @@ Resources:
               - ec2:DisassociateAddress
               - ec2:ModifyLaunchTemplate
               - ec2:ModifyNetworkInterfaceAttribute
+              - ec2:ModifyVolume
               - ec2:ModifyVolumeAttribute
               - ec2:ReleaseAddress
               - ec2:RevokeSecurityGroupEgress
@@ -642,3 +643,35 @@ Resources:
               - StringEquals:
                   aws:RequestedRegion:
                     - !Ref Region
+
+  ### INTEG-TESTS POLICIES
+
+  IntegTestsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Roles:
+        - !Ref ParallelClusterUserRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Required to test AdditionalIamPolicies
+          - Action:
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+          # Required to use KMS encryption key in tests
+          - Action:
+              - kms:DescribeKey
+            Resource: '*'
+            Effect: Allow
+          # Required to use test bucket (e.g. to test pre/post_install scripts)
+          - Action:
+              - s3:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::integ-tests-*
+            Effect: Allow
+
+Outputs:
+  ParallelClusterUserRole:
+    Value: !GetAtt ParallelClusterUserRole.Arn
