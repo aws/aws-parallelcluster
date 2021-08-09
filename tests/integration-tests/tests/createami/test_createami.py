@@ -141,7 +141,7 @@ def build_image_custom_resource(cfn_stacks_factory, region):
             },
             Description="custom instance role for build image test.",
             ManagedPolicyArns=managed_policy_arns,
-            Path="/myInstanceRole/",
+            Path="/parallelcluster/",
             Policies=[policy_document],
             RoleName=role_name,
         )

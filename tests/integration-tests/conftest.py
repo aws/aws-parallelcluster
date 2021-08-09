@@ -948,6 +948,7 @@ def role_factory(region):
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
+            Path="/parallelcluster/",
         )["Role"]["Arn"]
 
         logging.info(f"Attaching iam policy to the role {iam_role_name}...")
