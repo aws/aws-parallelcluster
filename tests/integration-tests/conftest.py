@@ -19,6 +19,7 @@ import os
 import random
 import re
 import time
+from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
 
@@ -39,6 +40,7 @@ from conftest_markers import (
 )
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
+from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
@@ -397,6 +399,7 @@ def api_client(region, api_server_factory, api_uri):
         host = stack.cfn_outputs["ParallelClusterApiInvokeUrl"]
 
     api_configuration = Configuration(host=host)
+    api_configuration.retries = 3
 
     with ApiClient(api_configuration) as api_client_instance:
         yield api_client_instance
@@ -945,6 +948,7 @@ def role_factory(region):
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
+            Path="/parallelcluster/",
         )["Role"]["Arn"]
 
         logging.info(f"Attaching iam policy to the role {iam_role_name}...")
@@ -1107,6 +1111,43 @@ def pytest_runtest_makereport(item, call):
     # set a report attribute for each phase of a call, which can
     # be "setup", "call", "teardown"
     setattr(item, "rep_" + rep.when, rep)
+
+    if rep.when in ["setup", "call"] and rep.failed:
+        try:
+            update_failed_tests_config(item)
+        except Exception as e:
+            logging.error("Failed when generating config for failed tests: %s", e, exc_info=True)
+
+
+def update_failed_tests_config(item):
+    out_dir = Path(item.config.getoption("output_dir"))
+    if not str(out_dir).endswith(".out"):
+        # Navigate to the parent dir in case of parallel run so that we can access the shared parent dir
+        out_dir = out_dir.parent
+
+    out_file = out_dir / "failed_tests_config.yaml"
+    logging.info("Updating failed tests config file %s", out_file)
+    # We need to acquire a lock first to prevent concurrent edits to this file
+    with FileLock(str(out_file) + ".lock"):
+        failed_tests = {"test-suites": {}}
+        if out_file.is_file():
+            with open(str(out_file)) as f:
+                failed_tests = yaml.safe_load(f)
+
+        feature, test_id = item.nodeid.split("/", 1)
+        test_id = test_id.split("[", 1)[0]
+        dimensions = {}
+        for dimension in DIMENSIONS_MARKER_ARGS:
+            value = item.callspec.params.get(dimension)
+            if value:
+                dimensions[dimension + "s"] = [value]
+
+        if not dict_has_nested_key(failed_tests, ("test-suites", feature, test_id)):
+            dict_add_nested_key(failed_tests, [], ("test-suites", feature, test_id, "dimensions"))
+        if dimensions not in failed_tests["test-suites"][feature][test_id]["dimensions"]:
+            failed_tests["test-suites"][feature][test_id]["dimensions"].append(dimensions)
+            with open(out_file, "w") as f:
+                yaml.dump(failed_tests, f)
 
 
 @pytest.fixture()
