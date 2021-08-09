@@ -434,6 +434,7 @@ Resources:
               - ec2:CreateNetworkInterface
               - ec2:CreatePlacementGroup
               - ec2:CreateSecurityGroup
+              - ec2:CreateSnapshot
               - ec2:CreateTags
               - ec2:CreateVolume
               - ec2:DeleteLaunchTemplate
@@ -547,6 +548,16 @@ Resources:
                   - codebuild.amazonaws.com
             Sid: IamPassRole
           - Action:
+              - iam:CreateServiceLinkedRole
+              - iam:DeleteServiceLinkedRole
+            Resource: '*'
+            Effect: Allow
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - fsx.amazonaws.com
+                  - s3.data-source.lustre.fsx.amazonaws.com
+          - Action:
               - lambda:CreateFunction
               - lambda:DeleteFunction
               - lambda:GetFunctionConfiguration
@@ -554,6 +565,7 @@ Resources:
               - lambda:InvokeFunction
               - lambda:AddPermission
               - lambda:RemovePermission
+              - lambda:UpdateFunctionConfiguration
             Resource:
               - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:parallelcluster-*
               - !Sub arn:${AWS::Partition}:lambda:${Region}:${AWS::AccountId}:function:pcluster-*
@@ -588,25 +600,15 @@ Resources:
             Sid: S3ParallelClusterReadOnly
           - Action:
               - fsx:*
-            Resource: '*'
+            Resource:
+              - !Sub arn:${AWS::Partition}:fsx:${Region}:${AWS::AccountId}:*
             Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
             Sid: FSx
           - Action:
               - elasticfilesystem:*
-            Resource: '*'
+            Resource:
+              - !Sub arn:${AWS::Partition}:elasticfilesystem:${Region}:${AWS::AccountId}:*
             Effect: Allow
-            Condition: !If
-              - IsMultiRegion
-              - !Ref AWS::NoValue
-              - StringEquals:
-                  aws:RequestedRegion:
-                    - !Ref Region
             Sid: EFS
           - Action:
               - logs:DeleteLogGroup
