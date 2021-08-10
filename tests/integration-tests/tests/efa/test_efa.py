@@ -311,15 +311,16 @@ def run_osu_benchmarks(
     return output
 
 
-def _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output, accepted_tolerance=0.2):
-    # Check avg latency for all packet sizes, with a tolerance of 20%.
-    # The check can be improved by having more tolerance for small values (i.e. 2 digits)
-    # and less tolerance for big values
+def _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output):
+    # Check avg latency for all packet sizes
     failures = 0
     for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
         with open(str(test_datadir / "osu_benchmarks_results" / mpi_version / benchmark_name)) as osu_results:
             previous_result = re.search(rf"{packet_size}\s+(\d+)\.", osu_results.read()).group(1)
-            tolerated_latency = float(previous_result) + float(previous_result) * accepted_tolerance
+
+            # Use a tolerance of 10us for 2 digits values and 20% tolerance for 3+ digits values
+            accepted_tolerance = 10 if len(previous_result) <= 2 else float(previous_result) * 0.2
+            tolerated_latency = float(previous_result) + accepted_tolerance
 
             message = (
                 f"{mpi_version} - {benchmark_name} - packet size {packet_size}: "
