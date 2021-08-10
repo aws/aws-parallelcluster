@@ -292,19 +292,17 @@ def run_osu_benchmarks(
         test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}.sh",
         test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
     )
+    slots = num_of_instances * slots_per_instance
     submission_script = _render_jinja_template(
         template_file_path=test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
         benchmark_name=benchmark_name,
         osu_benchmark_version=osu_benchmark_version,
+        num_of_processes=slots,
     )
     if partition:
-        result = scheduler_commands.submit_script(
-            str(submission_script),
-            slots=num_of_instances * slots_per_instance,
-            partition=partition,
-        )
+        result = scheduler_commands.submit_script(str(submission_script), slots=slots, partition=partition)
     else:
-        result = scheduler_commands.submit_script(str(submission_script), slots=num_of_instances * slots_per_instance)
+        result = scheduler_commands.submit_script(str(submission_script), slots=slots)
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
