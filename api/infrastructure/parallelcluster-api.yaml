@@ -1075,7 +1075,7 @@ Resources:
               paginator = ecr.get_paginator('list_images')
               response_iterator = paginator.paginate(repositoryName=repository_name, filter={'tagStatus': 'TAGGED'})
               for response in response_iterator:
-                  image_ids.extend([{'imageTag': image_id['imageTag']} for image_id in response['imageIds'] if image_id['imageTag'].startswith(version)])
+                  image_ids.extend([{'imageTag': image_id['imageTag']} for image_id in response['imageIds'] if image_id['imageTag'].startswith(version + "-")])
               return image_ids
 
           def get_imagebuilder_images(ecr_image_pipeline_arn):
@@ -1174,7 +1174,8 @@ Resources:
                 Action:
                   - imagebuilder:ListImagePipelineImages
                   - imagebuilder:DeleteImage
-                Resource: '*'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/parallelclusterimage-*'
 
   EcrImagesRemover:
     Condition: DoNotUseCustomEcrImageUri
