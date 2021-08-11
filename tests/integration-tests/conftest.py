@@ -362,11 +362,13 @@ def api_server_factory(
                 stack_template_data = stack_template_file.read()
 
         params = [
-            {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
-            {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
             {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
             {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
         ]
+        if api_definition_s3_uri:
+            params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
+        if public_ecr_image_uri:
+            params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
 
         if server_region not in api_servers:
             logging.info(f"Creating API Server stack: {api_stack_name} in {server_region}")
