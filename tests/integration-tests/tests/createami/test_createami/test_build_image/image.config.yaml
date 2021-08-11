@@ -9,7 +9,7 @@ Image:
 Build:
     Iam:
         InstanceRole: {{ instance_role }}
-    InstanceType: {{ instance_type }}
+    InstanceType: {{ instance }}
     ParentImage: {{ parent_image }}
     Tags:
         - Key: dummyBuildTag

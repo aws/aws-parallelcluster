@@ -182,7 +182,7 @@ def _get_underlying_image_or_stack(imagebuilder):
             stack = imagebuilder.stack
         except NonExistingStackError:
             raise NotFoundException(
-                f"Unable to find an image or stack for ParallelCluster image id: {imagebuilder.image_id}"
+                f"No image or stack associated with ParallelCluster image id: {imagebuilder.image_id}."
             )
     return image, stack
 
@@ -208,7 +208,7 @@ def describe_image(image_id, region=None):
         try:
             return _stack_to_describe_image_response(imagebuilder)
         except NonExistingStackError:
-            raise NotFoundException("No image or stack associated to parallelcluster image id {}.".format(image_id))
+            raise NotFoundException("No image or stack associated with ParallelCluster image id: {}.".format(image_id))
 
 
 def _presigned_config_url(imagebuilder):
