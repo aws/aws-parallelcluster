@@ -195,7 +195,7 @@ class ArchitectureOsValidator(Validator):
     ARM AMIs are only available for a subset of the supported OSes.
     """
 
-    def _validate(self, os: str, architecture: str, custom_ami: str):
+    def _validate(self, os: str, architecture: str, custom_ami: str, ami_search_filters):
         allowed_oses = get_supported_os_for_architecture(architecture)
         if os not in allowed_oses:
             self._add_failure(
@@ -203,7 +203,7 @@ class ArchitectureOsValidator(Validator):
                 f"for the following operating systems: {allowed_oses}.",
                 FailureLevel.ERROR,
             )
-        if custom_ami is None and os == "centos7" and architecture == "arm64":
+        if custom_ami is None and os == "centos7" and architecture == "arm64" and not ami_search_filters:
             self._add_failure(
                 "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
                 "(M6g, C6g, etc.). To proceed please provide a custom AMI, "

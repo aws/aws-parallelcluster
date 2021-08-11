@@ -347,27 +347,34 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
 
 
 @pytest.mark.parametrize(
-    "os, architecture, custom_ami, expected_message",
+    "os, architecture, custom_ami, ami_search_filters, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux2", "x86_64", None, None),
-        ("alinux2", "x86_64", "custom-ami", None),
-        ("centos7", "x86_64", None, None),
-        ("centos7", "x86_64", "custom-ami", None),
-        ("ubuntu1804", "x86_64", None, None),
-        ("ubuntu2004", "x86_64", None, None),
+        ("alinux2", "x86_64", None, None, None),
+        ("alinux2", "x86_64", "custom-ami", None, None),
+        ("centos7", "x86_64", None, None, None),
+        ("centos7", "x86_64", "custom-ami", None, None),
+        ("ubuntu1804", "x86_64", None, None, None),
+        ("ubuntu2004", "x86_64", None, None, None),
         # All OSes supported for x86_64
-        ("alinux2", "arm64", None, None),
-        ("alinux2", "arm64", "custom-ami", None),
-        ("centos7", "arm64", None, "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances"),
-        ("centos7", "arm64", "custom-ami", None),
-        ("ubuntu1804", "arm64", None, None),
-        ("ubuntu2004", "arm64", None, None),
+        ("alinux2", "arm64", None, None, None),
+        ("alinux2", "arm64", "custom-ami", None, None),
+        (
+            "centos7",
+            "arm64",
+            None,
+            None,
+            "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances",
+        ),
+        ("centos7", "arm64", None, {"ami_search_filters"}, None),
+        ("centos7", "arm64", "custom-ami", None, None),
+        ("ubuntu1804", "arm64", None, None, None),
+        ("ubuntu2004", "arm64", None, None, None),
     ],
 )
-def test_architecture_os_validator(os, architecture, custom_ami, expected_message):
+def test_architecture_os_validator(os, architecture, custom_ami, ami_search_filters, expected_message):
     """Verify that the correct set of OSes is supported for each supported architecture."""
-    actual_failures = ArchitectureOsValidator().execute(os, architecture, custom_ami)
+    actual_failures = ArchitectureOsValidator().execute(os, architecture, custom_ami, ami_search_filters)
     assert_failure_messages(actual_failures, expected_message)
 
 
