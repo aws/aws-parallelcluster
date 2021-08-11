@@ -3,9 +3,10 @@ Image:
         Size: 200
         Encrypted: True
 
+DevSettings:
+    NodePackage: "s3://test/aws-parallelcluster-node-3.0.tgz"
+
 Build:
-    Iam:
-        InstanceRole: {{ instance_role }}
     InstanceType: c5.xlarge
     ParentImage: {{ parent_image }}
 

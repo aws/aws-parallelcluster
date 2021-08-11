@@ -31,9 +31,23 @@ class Image:
         self.version = None
         self.image_status = None
         self.configuration_errors = None
+        self.message = None
 
-    def build(self, raise_on_error=True, log_error=True):
+    @staticmethod
+    def list_images(**kwargs):
+        """List images."""
+        command = ["pcluster", "list-images"]
+        for k, val in kwargs.items():
+            command.extend([f"--{kebab_case(k)}", str(val)])
+        result = run_command(command)
+        response = json.loads(result.stdout)
+        return response
+
+    def build(self, **kwargs):
         """Build image."""
+        raise_on_error = kwargs.pop("raise_on_error", True)
+        log_error = kwargs.pop("log_error", True)
+
         command = [
             "pcluster",
             "build-image",
@@ -44,6 +58,10 @@ class Image:
             "--image-configuration",
             self.config_file,
         ]
+
+        for k, val in kwargs.items():
+            command.extend([f"--{kebab_case(k)}", str(val)])
+
         result = run_command(command, raise_on_error=raise_on_error, log_error=log_error)
         response = json.loads(result.stdout)
         try:
@@ -59,6 +77,9 @@ class Image:
 
         if "configurationValidationErrors" in response:
             self.configuration_errors = response["configurationValidationErrors"]
+
+        if "message" in response:
+            self.message = response["message"]
 
         return response["image"] if "image" in response else response
 
@@ -82,7 +103,8 @@ class Image:
         result = run_command(command).stdout
         response = json.loads(result)
         if "message" in response and response["message"].startswith("No image or stack associated"):
-            logging.error("Describe on non-existing image: %s", self.image_id)
+            if log_on_error:
+                logging.error("Describe on non-existing image: %s", self.image_id)
         else:
             self._update_image_info(response)
         return response
@@ -141,7 +163,7 @@ class ImagesFactory:
     def __init__(self):
         self.__created_images = {}
 
-    def create_image(self, image: Image, raise_on_error=True, log_error=True):
+    def create_image(self, image: Image, **kwargs):
         """
         Create a image with a given config.
         :param image: image to create.
@@ -149,7 +171,7 @@ class ImagesFactory:
         :param log_error: log error when error occurs. This can be set to False when error is expected
         """
         logging.info("Build image %s with config %s", image.image_id, image.config_file)
-        result = image.build(raise_on_error=raise_on_error, log_error=log_error)
+        result = image.build(**kwargs)
         if image.image_status == "BUILD_IN_PROGRESS":
             self.__created_images[image.image_id] = image
         return result
