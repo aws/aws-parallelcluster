@@ -224,7 +224,9 @@ def main():
     try:
         ret = run(sys.argv[1:])
         if ret:
-            print(json.dumps(ret, indent=2))
+            output_str = json.dumps(ret, indent=2)
+            print(output_str)
+            LOGGER.info(output_str)
         sys.exit(0)
     except NoCredentialsError:  # TODO: remove from here
         LOGGER.error("AWS Credentials not found.")
