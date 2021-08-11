@@ -411,7 +411,7 @@ def images_factory(request):
     """
     factory = ImagesFactory()
 
-    def _image_factory(image_id, image_config, region, raise_on_error=True, log_error=True):
+    def _image_factory(image_id, image_config, region, **kwargs):
         image_config_file = _write_config_to_outdir(request, image_config, "image_configs")
         image = Image(
             image_id="-".join([image_id, request.config.getoption("stackname_suffix")])
@@ -420,8 +420,8 @@ def images_factory(request):
             config_file=image_config_file,
             region=region,
         )
-        factory.create_image(image, raise_on_error=raise_on_error, log_error=log_error)
-        if image.image_status != "BUILD_IN_PROGRESS" and log_error:
+        factory.create_image(image, **kwargs)
+        if image.image_status != "BUILD_IN_PROGRESS" and kwargs.get("log_error", False):
             logging.error("image %s creation failed", image_id)
 
         return image

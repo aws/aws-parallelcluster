@@ -51,6 +51,28 @@ def test_invalid_config(
     assert_that(image.configuration_errors[0]).contains("message")
     assert_that(image.configuration_errors[0]["type"]).is_equal_to("InstanceTypeBaseAMICompatibleValidator")
 
+    # Test Suppression of a validator
+
+    # Get base AMI -- remarkable AMIs are not available for ARM and ubuntu2004, centos7 yet
+    if os not in ["ubuntu2004", "centos7"]:
+        base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+    else:
+        base_ami = retrieve_latest_ami(region, os, architecture=architecture)
+
+    image_config = pcluster_config_reader(
+        config_file="warnings.image.config.yaml", parent_image=base_ami, bucket_name=bucket_name
+    )
+    suppressed = images_factory(
+        image_id,
+        image_config,
+        region,
+        raise_on_error=False,
+        log_error=False,
+        dryrun=True,
+        suppress_validators="type:UrlValidator",
+    )
+    assert_that(suppressed.message).contains("Request would have succeeded")
+
 
 def test_build_image(
     region,
@@ -90,6 +112,17 @@ def test_build_image(
     _test_image_tag_and_volume(image)
     _test_list_image_log_streams(image)
     _test_get_image_log_events(image)
+    _test_list_images(image)
+
+
+def _test_list_images(image):
+    images = image.list_images(region=image.region, image_status="AVAILABLE")["items"]
+    matches = [img for img in images if img["imageId"] == image.image_id]
+    assert_that(matches).is_length(1)
+    assert_that(matches[0]["imageId"]).is_equal_to(image.image_id)
+    assert_that(matches[0]["region"]).is_equal_to(image.region)
+    assert_that(matches[0]["imageBuildStatus"]).is_equal_to("BUILD_COMPLETE")
+    assert_that(matches[0]).contains("version")
 
 
 def _test_image_stack_events(image):
