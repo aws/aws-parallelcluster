@@ -119,6 +119,11 @@ create:
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
 createami:
+  test_createami.py::test_invalid_config:
+    dimensions:
+      - regions: ["eu-west-3"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
   test_createami.py::test_build_image:
     dimensions:
       - regions: ["eu-west-3"]
