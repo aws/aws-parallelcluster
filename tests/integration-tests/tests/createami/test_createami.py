@@ -18,7 +18,6 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
-from images_factory import Image
 from troposphere import Template, iam
 from utils import generate_stack_name
 
