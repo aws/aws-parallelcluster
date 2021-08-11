@@ -356,11 +356,6 @@ def api_server_factory(
     def _api_server_factory(server_region):
         api_stack_name = generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix"))
 
-        if not api_infrastructure_s3_uri:
-            stack_template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
-            with open(stack_template_path) as stack_template_file:
-                stack_template_data = stack_template_file.read()
-
         params = [
             {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
             {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
@@ -377,7 +372,7 @@ def api_server_factory(
                 region=server_region,
                 parameters=params,
                 capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-                template=api_infrastructure_s3_uri or stack_template_data,
+                template=api_infrastructure_s3_uri,
             )
             cfn_stacks_factory.create_stack(stack)
             api_servers[server_region] = stack
