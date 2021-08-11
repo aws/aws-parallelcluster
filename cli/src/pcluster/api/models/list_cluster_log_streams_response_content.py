@@ -16,20 +16,20 @@ class ListClusterLogStreamsResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, next_token=None, items=None):  # noqa: E501
+    def __init__(self, log_streams=None, next_token=None):  # noqa: E501
         """ListClusterLogStreamsResponseContent - a model defined in OpenAPI
 
+        :param log_streams: The log_streams of this ListClusterLogStreamsResponseContent.  # noqa: E501
+        :type log_streams: List[LogStream]
         :param next_token: The next_token of this ListClusterLogStreamsResponseContent.  # noqa: E501
         :type next_token: str
-        :param items: The items of this ListClusterLogStreamsResponseContent.  # noqa: E501
-        :type items: List[LogStream]
         """
-        self.openapi_types = {"next_token": str, "items": List[LogStream]}
+        self.openapi_types = {"log_streams": List[LogStream], "next_token": str}
 
-        self.attribute_map = {"next_token": "nextToken", "items": "items"}
+        self.attribute_map = {"log_streams": "logStreams", "next_token": "nextToken"}
 
+        self._log_streams = log_streams
         self._next_token = next_token
-        self._items = items
 
     @classmethod
     def from_dict(cls, dikt) -> "ListClusterLogStreamsResponseContent":
@@ -41,6 +41,29 @@ class ListClusterLogStreamsResponseContent(Model):
         :rtype: ListClusterLogStreamsResponseContent
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def log_streams(self):
+        """Gets the log_streams of this ListClusterLogStreamsResponseContent.
+
+
+        :return: The log_streams of this ListClusterLogStreamsResponseContent.
+        :rtype: List[LogStream]
+        """
+        return self._log_streams
+
+    @log_streams.setter
+    def log_streams(self, log_streams):
+        """Sets the log_streams of this ListClusterLogStreamsResponseContent.
+
+
+        :param log_streams: The log_streams of this ListClusterLogStreamsResponseContent.
+        :type log_streams: List[LogStream]
+        """
+        if log_streams is None:
+            raise ValueError("Invalid value for `log_streams`, must not be `None`")  # noqa: E501
+
+        self._log_streams = log_streams
 
     @property
     def next_token(self):
@@ -64,26 +87,3 @@ class ListClusterLogStreamsResponseContent(Model):
         """
 
         self._next_token = next_token
-
-    @property
-    def items(self):
-        """Gets the items of this ListClusterLogStreamsResponseContent.
-
-
-        :return: The items of this ListClusterLogStreamsResponseContent.
-        :rtype: List[LogStream]
-        """
-        return self._items
-
-    @items.setter
-    def items(self, items):
-        """Sets the items of this ListClusterLogStreamsResponseContent.
-
-
-        :param items: The items of this ListClusterLogStreamsResponseContent.
-        :type items: List[LogStream]
-        """
-        if items is None:
-            raise ValueError("Invalid value for `items`, must not be `None`")  # noqa: E501
-
-        self._items = items
