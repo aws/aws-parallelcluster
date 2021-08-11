@@ -81,16 +81,14 @@ def _test_create_cluster(clusters_factory, cluster_config, cluster_config_with_w
     cluster = clusters_factory(cluster_config, wait=False)
     if not request.config.getoption("cluster"):
         expected_creation_response = {
-            "cluster": {
-                "clusterName": cluster.name,
-                "cloudformationStackStatus": "CREATE_IN_PROGRESS",
-                "cloudformationStackArn": cluster.cfn_stack_arn,
-                "region": cluster.region,
-                "version": get_installed_parallelcluster_version(),
-                "clusterStatus": "CREATE_IN_PROGRESS",
-            }
+            "clusterName": cluster.name,
+            "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+            "cloudformationStackArn": cluster.cfn_stack_arn,
+            "region": cluster.region,
+            "version": get_installed_parallelcluster_version(),
+            "clusterStatus": "CREATE_IN_PROGRESS",
         }
-        assert_that(cluster.creation_response).is_equal_to(expected_creation_response)
+        assert_that(cluster.creation_response.get("cluster")).is_equal_to(expected_creation_response)
         _test_list_cluster(cluster.name, "CREATE_IN_PROGRESS")
         logging.info("Waiting for CloudFormation stack creation completion")
         cloud_formation = boto3.client("cloudformation")
@@ -120,6 +118,11 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
         "message": "Name must begin with a letter and only contain lowercase letters, digits and hyphens.",
     }
     key_pair_warning = {"level": "WARNING", "type": "KeyPairValidator", "message": ".*you do not specify a key pair.*"}
+    compute_ami_os_compatible_validator = {
+        "level": "WARNING",
+        "type": "ComputeAmiOsCompatibleValidator",
+        "message": "Could not check compute node AMI*OS and cluster OS*compatibility,",
+    }
 
     test_cases = []
 
@@ -130,7 +133,7 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
         }
 
     expected_response = construct_validation_error_expected_response(
-        [custom_ami_tag_warning, key_pair_warning, name_error]
+        [custom_ami_tag_warning, key_pair_warning, name_error, compute_ami_os_compatible_validator]
     )
     test_cases.extend(
         [
@@ -142,7 +145,9 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
     )
 
     # Test suppressing a error and a warning
-    expected_response = construct_validation_error_expected_response([key_pair_warning])
+    expected_response = construct_validation_error_expected_response(
+        [key_pair_warning, compute_ami_os_compatible_validator]
+    )
     test_cases.append(
         (
             expected_response,
@@ -175,6 +180,7 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
                     "type:CustomAmiTagValidator",
                     "type:NameValidator",
                     "type:KeyPairValidator",
+                    "type:ComputeAmiOsCompatibleValidator",
                 ],
             ),
             # Test suppressing all validators
