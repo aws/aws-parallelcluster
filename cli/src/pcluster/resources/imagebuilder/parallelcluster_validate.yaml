@@ -305,7 +305,7 @@ phases:
                   rpm -qa | grep intel-mpi
                   [[ $? -ne 0 ]] && echo "Check intel-mpi rpm failed" && exit 1
                 else
-                  dpkg -l | grep libfabric && dpkg -l | grep 'efa '
+                  dpkg -l | grep libfabric && modinfo efa | grep efa && [ -d /opt/amazon/efa ]
                   [[ $? -ne 0 ]] && echo "Check efa deb failed" && exit 1
                 fi
               fi
