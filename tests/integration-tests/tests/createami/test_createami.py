@@ -38,11 +38,12 @@ def test_invalid_config(
     # Test validation error
     arm64_ami = retrieve_latest_ami(region, os, architecture="arm64")
     image_id = f"integ-test-build-image-{generate_random_string()}"
+    instance_role = build_image_custom_resource(image_id=image_id)
 
     # Get custom S3 bucket
     bucket_name = s3_bucket_factory()
     image_config = pcluster_config_reader(
-        config_file="image.config.yaml", parent_image=arm64_ami, bucket_name=bucket_name
+        config_file="image.config.yaml", parent_image=arm64_ami, bucket_name=bucket_name, instance_role=instance_role
     )
     image = images_factory(image_id, image_config, region, raise_on_error=False, log_error=False)
 
