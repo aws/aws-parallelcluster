@@ -376,7 +376,7 @@ def api_server_factory(
                 name=api_stack_name,
                 region=server_region,
                 parameters=params,
-                capabilities=["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"],
+                capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
                 template=api_infrastructure_s3_uri or stack_template_data,
             )
             cfn_stacks_factory.create_stack(stack)
