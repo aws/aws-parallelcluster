@@ -4,8 +4,6 @@ Image:
         Encrypted: True
 
 Build:
-    Iam:
-        InstanceRole: {{ instance_role }}
     InstanceType: {{ instance }}
     ParentImage: {{ parent_image }}
 
