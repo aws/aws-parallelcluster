@@ -156,7 +156,7 @@ class EBSSnapshotsFactory:
 
     def _attach_volume(self):
         result = self.boto_client.attach_volume(VolumeId=self.volume.id, InstanceId=self.instance.id, Device="/dev/sdf")
-        logging.info("Attach Volume Result: ", result)
+        logging.info("Attach Volume Result: %s", result)
 
     def _create_volume(self, subnet):
         vol = self.ec2.create_volume(

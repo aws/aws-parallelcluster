@@ -89,9 +89,12 @@ Globals:
           Principal: '*'
           Condition:
             StringNotLike:
+              # This allows also creds assumed through sts for the ParallelClusterApiUserRole role
               aws:PrincipalArn: !If
                 - CreateApiUserRoleCondition
-                - !Sub arn:${AWS::Partition}:*::${AWS::AccountId}:*/${AWS::StackName}-ParallelClusterApiUserRole-*
+                - !Sub
+                  - arn:${AWS::Partition}:*::${AWS::AccountId}:*/ParallelClusterApiUserRole-${StackIdSuffix}*
+                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
                 - '*'
     TracingEnabled: True
     EndpointConfiguration:
@@ -224,6 +227,9 @@ Resources:
     Type: AWS::IAM::Role
     Condition: CreateApiUserRoleCondition
     Properties:
+      RoleName:  !Sub
+        - ParallelClusterApiUserRole-${StackIdSuffix}
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -1075,7 +1081,7 @@ Resources:
               paginator = ecr.get_paginator('list_images')
               response_iterator = paginator.paginate(repositoryName=repository_name, filter={'tagStatus': 'TAGGED'})
               for response in response_iterator:
-                  image_ids.extend([{'imageTag': image_id['imageTag']} for image_id in response['imageIds'] if image_id['imageTag'].startswith(version)])
+                  image_ids.extend([{'imageTag': image_id['imageTag']} for image_id in response['imageIds'] if image_id['imageTag'].startswith(version + "-")])
               return image_ids
 
           def get_imagebuilder_images(ecr_image_pipeline_arn):
@@ -1173,8 +1179,13 @@ Resources:
               - Effect: Allow
                 Action:
                   - imagebuilder:ListImagePipelineImages
+                Resource: !Ref EcrImagePipeline
+              - Effect: Allow
+                Action:
                   - imagebuilder:DeleteImage
-                Resource: '*'
+                Resource: !Sub
+                  - arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/*${StackIdSuffix}*
+                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
 
   EcrImagesRemover:
     Condition: DoNotUseCustomEcrImageUri
@@ -1222,3 +1233,8 @@ Outputs:
     Condition: CreateApiUserRoleCondition
     Description: 'IAM Role with permissions to invoke the ParallelCluster API'
     Value: !GetAtt ParallelClusterApiUserRole.Arn
+
+  ParallelClusterDockerUpdateImagePipeline:
+    Condition: DoNotUseCustomEcrImageUri
+    Description: 'Image Builder pipeline that can be triggered to pull latest API Docker image for the deployed ParallelCluster version'
+    Value: !Ref EcrImagePipeline

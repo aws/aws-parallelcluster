@@ -79,7 +79,7 @@ def test_api_infrastructure_with_default_parameters(region, api_with_default_set
     _assert_parallelcluster_api(api_id=parallelcluster_api_id, api_url=parallelcluster_api_url)
     _test_auth(region, parallelcluster_user_role, parallelcluster_api_url)
     _test_docker_image_refresh(image_builder_pipeline, parallelcluster_lambda_name)
-    # _test_api_deletion(api_with_default_settings)
+    _test_api_deletion(api_with_default_settings)
 
 
 def _assert_parallelcluster_lambda(lambda_name, lambda_arn, lambda_image_uri):
