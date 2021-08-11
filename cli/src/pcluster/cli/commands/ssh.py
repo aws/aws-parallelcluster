@@ -68,12 +68,12 @@ def _ssh(args, extra_args):
                 # - Users have full control over any customization of the command to which args are passed.
                 os.system(cmd)  # nosec nosemgrep
             else:
-                LOGGER.info(log_message)
+                print(log_message)
         else:
             utils.error(f"Unable to connect to the cluster {args.cluster_name}.\n{result.message}")
 
     except KeyboardInterrupt:
-        LOGGER.info("\nExiting...")
+        print("\nExiting...")
         sys.exit(0)
 
 

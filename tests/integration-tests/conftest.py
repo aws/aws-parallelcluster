@@ -19,6 +19,7 @@ import os
 import random
 import re
 import time
+from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
 
@@ -39,6 +40,8 @@ from conftest_markers import (
 )
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
+from filelock import FileLock
+from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
@@ -57,9 +60,7 @@ from utils import (
     get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
-    set_credentials,
     set_logger_formatter,
-    unset_credentials,
 )
 
 from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
@@ -118,6 +119,11 @@ def pytest_addoption(parser):
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
     parser.addoption(
         "--delete-logs-on-success", help="delete CloudWatch logs when a test succeeds", action="store_true"
+    )
+    parser.addoption(
+        "--use-default-iam-credentials",
+        help="use default IAM creds when running pcluster commands",
+        action="store_true",
     )
 
 
@@ -302,7 +308,7 @@ def _add_properties_to_report(item):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("setup_sts_credentials")
+@pytest.mark.usefixtures("setup_credentials")
 def clusters_factory(request, region):
     """
     Define a fixture to manage the creation and destruction of clusters.
@@ -350,32 +356,25 @@ def api_server_factory(
     def _api_server_factory(server_region):
         api_stack_name = generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix"))
 
-        if not api_infrastructure_s3_uri:
-            stack_template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
-            with open(stack_template_path) as stack_template_file:
-                stack_template_data = stack_template_file.read()
-
         params = [
-            {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
-            {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
             {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
             {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
         ]
+        if api_definition_s3_uri:
+            params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
+        if public_ecr_image_uri:
+            params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
 
         if server_region not in api_servers:
             logging.info(f"Creating API Server stack: {api_stack_name} in {server_region}")
-            try:
-                set_credentials(server_region, request.config.getoption("credential"))
-                stack = CfnStack(
-                    name=api_stack_name,
-                    region=server_region,
-                    parameters=params,
-                    capabilities=["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"],
-                    template=api_infrastructure_s3_uri or stack_template_data,
-                )
-                cfn_stacks_factory.create_stack(stack)
-            finally:
-                unset_credentials()
+            stack = CfnStack(
+                name=api_stack_name,
+                region=server_region,
+                parameters=params,
+                capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
+                template=api_infrastructure_s3_uri,
+            )
+            cfn_stacks_factory.create_stack(stack)
             api_servers[server_region] = stack
         else:
             logging.info(f"Found cached API Server stack: {api_stack_name} in {server_region}")
@@ -397,6 +396,7 @@ def api_client(region, api_server_factory, api_uri):
         host = stack.cfn_outputs["ParallelClusterApiInvokeUrl"]
 
     api_configuration = Configuration(host=host)
+    api_configuration.retries = 3
 
     with ApiClient(api_configuration) as api_client_instance:
         yield api_client_instance
@@ -411,7 +411,7 @@ def images_factory(request):
     """
     factory = ImagesFactory()
 
-    def _image_factory(image_id, image_config, region):
+    def _image_factory(image_id, image_config, region, **kwargs):
         image_config_file = _write_config_to_outdir(request, image_config, "image_configs")
         image = Image(
             image_id="-".join([image_id, request.config.getoption("stackname_suffix")])
@@ -420,8 +420,8 @@ def images_factory(request):
             config_file=image_config_file,
             region=region,
         )
-        result = factory.create_image(image)
-        if "BUILD_IN_PROGRESS" not in result:
+        factory.create_image(image, **kwargs)
+        if image.image_status != "BUILD_IN_PROGRESS" and kwargs.get("log_error", False):
             logging.error("image %s creation failed", image_id)
 
         return image
@@ -657,10 +657,12 @@ def cfn_stacks_factory(request):
     yield factory
     if not request.config.getoption("no_delete"):
         factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of CFN stacks because --no-delete option is set")
 
 
 @pytest.fixture()
-@pytest.mark.usefixtures("setup_sts_credentials")
+@pytest.mark.usefixtures("setup_credentials")
 def parameterized_cfn_stacks_factory(request):
     """Define a fixture that returns a parameterized stack factory and manages the stack creation and deletion."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
@@ -740,11 +742,10 @@ def random_az_selector(request):
 
 
 @pytest.fixture(scope="class", autouse=True)
-def setup_sts_credentials(region, request):
+def setup_credentials(region, request):
     """Setup environment for the integ tests"""
-    set_credentials(region, request.config.getoption("credential"))
-    yield
-    unset_credentials()
+    with aws_credential_provider(region, request.config.getoption("credential")):
+        yield
 
 
 # FixMe: double check if this fixture introduce unnecessary implication.
@@ -761,15 +762,12 @@ def get_az_id_to_az_name_map(region, credential):
     """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
     # credentials are managed manually rather than via setup_sts_credentials because this function
     # is called by a session-scoped fixture, which cannot make use of a class-scoped fixture.
-    set_credentials(region, credential)
-    try:
+    with aws_credential_provider(region, credential):
         ec2_client = boto3.client("ec2", region_name=region)
         return {
             entry.get("ZoneId"): entry.get("ZoneName")
             for entry in ec2_client.describe_availability_zones().get("AvailabilityZones")
         }
-    finally:
-        unset_credentials()
 
 
 def get_availability_zones(region, credential):
@@ -780,9 +778,8 @@ def get_availability_zones(region, credential):
     it cannot utilize setup_sts_credentials, which is required in opt-in regions in order to call
     describe_availability_zones.
     """
-    set_credentials(region, credential)
     az_list = []
-    try:
+    with aws_credential_provider(region, credential):
         client = boto3.client("ec2", region_name=region)
         response_az = client.describe_availability_zones(
             Filters=[
@@ -792,9 +789,31 @@ def get_availability_zones(region, credential):
         )
         for az in response_az.get("AvailabilityZones"):
             az_list.append(az.get("ZoneName"))
-    finally:
-        unset_credentials()
     return az_list
+
+
+@pytest.fixture(scope="session", autouse=True)
+def initialize_cli_creds(cfn_stacks_factory, request):
+    if request.config.getoption("use_default_iam_credentials"):
+        logging.info("Using default IAM credentials to run pcluster commands")
+        return
+
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    for region in regions:
+        logging.info("Creating IAM roles for pcluster CLI")
+        stack_name = generate_stack_name("integ-tests-iam", request.config.getoption("stackname_suffix"))
+        stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
+        with open(stack_template_path) as stack_template_file:
+            stack_template_data = stack_template_file.read()
+        stack = CfnStack(
+            name=stack_name,
+            region=region,
+            capabilities=["CAPABILITY_IAM"],
+            template=stack_template_data,
+        )
+        cfn_stacks_factory.create_stack(stack)
+        # register providers
+        register_cli_credentials_for_region(region, stack.cfn_outputs["ParallelClusterUserRole"])
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -926,6 +945,7 @@ def role_factory(region):
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
+            Path="/parallelcluster/",
         )["Role"]["Arn"]
 
         logging.info(f"Attaching iam policy to the role {iam_role_name}...")
@@ -1040,21 +1060,16 @@ def api_infrastructure_s3_uri(request):
     retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
 )
 def _create_vpc_stack(request, template, region, cfn_stacks_factory):
-    try:
-        set_credentials(region, request.config.getoption("credential"))
-        if request.config.getoption("vpc_stack"):
-            logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
-            stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
-        else:
-            stack = CfnStack(
-                name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
-                region=region,
-                template=template.to_json(),
-            )
-            cfn_stacks_factory.create_stack(stack)
-
-    finally:
-        unset_credentials()
+    if request.config.getoption("vpc_stack"):
+        logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
+        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
+    else:
+        stack = CfnStack(
+            name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
+            region=region,
+            template=template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(stack)
     return stack
 
 
@@ -1093,6 +1108,43 @@ def pytest_runtest_makereport(item, call):
     # set a report attribute for each phase of a call, which can
     # be "setup", "call", "teardown"
     setattr(item, "rep_" + rep.when, rep)
+
+    if rep.when in ["setup", "call"] and rep.failed:
+        try:
+            update_failed_tests_config(item)
+        except Exception as e:
+            logging.error("Failed when generating config for failed tests: %s", e, exc_info=True)
+
+
+def update_failed_tests_config(item):
+    out_dir = Path(item.config.getoption("output_dir"))
+    if not str(out_dir).endswith(".out"):
+        # Navigate to the parent dir in case of parallel run so that we can access the shared parent dir
+        out_dir = out_dir.parent
+
+    out_file = out_dir / "failed_tests_config.yaml"
+    logging.info("Updating failed tests config file %s", out_file)
+    # We need to acquire a lock first to prevent concurrent edits to this file
+    with FileLock(str(out_file) + ".lock"):
+        failed_tests = {"test-suites": {}}
+        if out_file.is_file():
+            with open(str(out_file)) as f:
+                failed_tests = yaml.safe_load(f)
+
+        feature, test_id = item.nodeid.split("/", 1)
+        test_id = test_id.split("[", 1)[0]
+        dimensions = {}
+        for dimension in DIMENSIONS_MARKER_ARGS:
+            value = item.callspec.params.get(dimension)
+            if value:
+                dimensions[dimension + "s"] = [value]
+
+        if not dict_has_nested_key(failed_tests, ("test-suites", feature, test_id)):
+            dict_add_nested_key(failed_tests, [], ("test-suites", feature, test_id, "dimensions"))
+        if dimensions not in failed_tests["test-suites"][feature][test_id]["dimensions"]:
+            failed_tests["test-suites"][feature][test_id]["dimensions"].append(dimensions)
+            with open(out_file, "w") as f:
+                yaml.dump(failed_tests, f)
 
 
 @pytest.fixture()

@@ -120,6 +120,11 @@ def generate_stack_name(prefix, suffix):
     )
 
 
+def kebab_case(instr):
+    """Convert a snake case string to kebab case."""
+    return instr.replace("_", "-")
+
+
 def random_alphanumeric(size=16):
     """Generate a random alphanumeric string."""
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))
@@ -298,84 +303,6 @@ def delete_s3_bucket(bucket_name, region):
         bucket.delete()
     except boto3.client("s3").exceptions.NoSuchBucket:
         pass
-
-
-def set_credentials(region, credential_arg):
-    """
-    Set credentials for boto3 clients and cli commands
-
-    :param region: region of the bucket
-    :param credential_arg: credential list
-    """
-    if os.environ.get("AWS_CREDENTIALS_FOR_REGION", "no_region") == region:
-        logging.info(f"AWS credentials are already set for region: {region}")
-        return
-
-    if credential_arg:
-        # credentials = dict { region1: (endpoint1, arn1, external_id1),
-        #                      region2: (endpoint2, arn2, external_id2),
-        #                      [...],
-        #                    }
-        credentials = {
-            region: (endpoint, arn, external_id)
-            for region, endpoint, arn, external_id in [
-                tuple(credential_tuple.strip().split(","))
-                for credential_tuple in credential_arg
-                if credential_tuple.strip()
-            ]
-        }
-
-        if region in credentials:
-            credential_endpoint, credential_arn, credential_external_id = credentials.get(region)
-            aws_credentials = _retrieve_sts_credential(
-                credential_endpoint, credential_arn, credential_external_id, region
-            )
-
-            logging.info(f"Setting AWS credentials for region: {region}")
-
-            # Set credential for all boto3 client
-            boto3.setup_default_session(
-                aws_access_key_id=aws_credentials["AccessKeyId"],
-                aws_secret_access_key=aws_credentials["SecretAccessKey"],
-                aws_session_token=aws_credentials["SessionToken"],
-            )
-
-            # Set credential for all cli command e.g. pcluster create
-            os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
-            os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
-            os.environ["AWS_SESSION_TOKEN"] = aws_credentials["SessionToken"]
-            os.environ["AWS_CREDENTIALS_FOR_REGION"] = region
-
-
-def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_external_id, region):
-    match = re.search(r"https://sts\.(.*?)\.", credential_endpoint)
-    endpoint_region = match.group(1)
-
-    assert_that(credential_endpoint and endpoint_region and credential_arn and credential_external_id).is_true()
-
-    sts = boto3.client("sts", region_name=endpoint_region, endpoint_url=credential_endpoint)
-    assumed_role_object = sts.assume_role(
-        RoleArn=credential_arn, ExternalId=credential_external_id, RoleSessionName=region + "_integration_tests_session"
-    )
-    aws_credentials = assumed_role_object["Credentials"]
-
-    return aws_credentials
-
-
-def unset_credentials():
-    """Unset credentials"""
-    # Unset credential for all boto3 client
-    logging.info("Unsetting AWS credentials")
-    boto3.setup_default_session()
-    # Unset credential for cli command e.g. pcluster create
-    if "AWS_ACCESS_KEY_ID" in os.environ:
-        del os.environ["AWS_ACCESS_KEY_ID"]
-    if "AWS_SECRET_ACCESS_KEY" in os.environ:
-        del os.environ["AWS_SECRET_ACCESS_KEY"]
-    if "AWS_SESSION_TOKEN" in os.environ:
-        del os.environ["AWS_SESSION_TOKEN"]
-    if "AWS_CREDENTIALS_FOR_REGION" in os.environ:
-        del os.environ["AWS_CREDENTIALS_FOR_REGION"]
 
 
 def set_logger_formatter(formatter):

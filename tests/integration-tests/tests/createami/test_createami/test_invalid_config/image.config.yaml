@@ -1,0 +1,10 @@
+Image:
+    RootVolume:
+        Size: 200
+        Encrypted: True
+
+Build:
+    InstanceType: {{ instance }}
+    ParentImage: {{ parent_image }}
+
+CustomS3Bucket: {{ bucket_name }}

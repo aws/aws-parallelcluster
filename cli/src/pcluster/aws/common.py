@@ -131,7 +131,7 @@ def _log_boto3_calls(params, **kwargs):
     service = kwargs["event_name"].split(".")[-2]
     operation = kwargs["event_name"].split(".")[-1]
     region = kwargs["context"].get("client_region", boto3.session.Session().region_name)
-    LOGGER.debug(  # TODO: change this to info level once we disable printing logging output to stdout
+    LOGGER.info(
         "Executing boto3 call: region=%s, service=%s, operation=%s, params=%s", region, service, operation, params
     )
 

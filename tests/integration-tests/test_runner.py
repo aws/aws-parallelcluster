@@ -79,6 +79,7 @@ TEST_DEFAULTS = {
     "delete_logs_on_success": False,
     "tests_root_dir": "./tests",
     "instance_types_data": None,
+    "use_default_iam_credentials": False,
 }
 
 
@@ -108,6 +109,12 @@ def _init_argparser():
         " assume is defined, <externalId> is the id to use when assuming the role. "
         "(e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId)",
         required=False,
+    )
+    parser.add_argument(
+        "--use-default-iam-credentials",
+        help="Use the default IAM creds to run pcluster CLI commands. Skips the creation of pcluster CLI IAM role.",
+        action="store_true",
+        default=TEST_DEFAULTS.get("use_default_iam_credentials"),
     )
     parser.add_argument(
         "--retry-on-failures",
@@ -450,6 +457,9 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     if args.credential:
         pytest_args.append("--credential")
         pytest_args.extend(args.credential)
+
+    if args.use_default_iam_credentials:
+        pytest_args.append("--use-default-iam-credentials")
 
     if args.retry_on_failures:
         # Rerun tests on failures for one more time after 60 seconds delay
