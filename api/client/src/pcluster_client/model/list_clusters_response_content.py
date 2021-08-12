@@ -77,7 +77,7 @@ class ListClustersResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'items': ([ClusterInfoSummary],),  # noqa: E501
+            'clusters': ([ClusterInfoSummary],),  # noqa: E501
             'next_token': (str,),  # noqa: E501
         }
 
@@ -87,7 +87,7 @@ class ListClustersResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'items': 'items',  # noqa: E501
+        'clusters': 'clusters',  # noqa: E501
         'next_token': 'nextToken',  # noqa: E501
     }
 
@@ -103,11 +103,11 @@ class ListClustersResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, items, *args, **kwargs):  # noqa: E501
+    def __init__(self, clusters, *args, **kwargs):  # noqa: E501
         """ListClustersResponseContent - a model defined in OpenAPI
 
         Args:
-            items ([ClusterInfoSummary]):
+            clusters ([ClusterInfoSummary]):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -166,7 +166,7 @@ class ListClustersResponseContent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.items = items
+        self.clusters = clusters
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \
