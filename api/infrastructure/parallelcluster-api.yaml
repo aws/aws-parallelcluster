@@ -21,7 +21,7 @@ Parameters:
   ApiDefinitionS3Uri:
     Description: S3 URI of the ParallelCluster API spec
     Type: String
-    Default: '' # TODO change with actual URI
+    Default: s3://<REGION>-aws-parallelcluster/parallelcluster/3.0.0/api/ParallelCluster.openapi.yaml
 
   CustomDomainName:
     Description: When specified, the custom domain name of the ParallelCluster API. Requires specifying a custom domain certificate
@@ -41,7 +41,7 @@ Parameters:
   PublicEcrImageUri:
     Description: When specified, the URI of the Docker image for the Lambda of the ParallelCluster API
     Type: String
-    Default: '' # TODO change with actual URI
+    Default: public.ecr.aws/parallelcluster/pcluster-api:3.0.0
 
   VpcEndpointId:
     Description: When specified, configure a private API with the specified endpoint
