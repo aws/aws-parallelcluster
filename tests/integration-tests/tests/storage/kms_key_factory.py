@@ -81,6 +81,7 @@ class KMSKeyFactory:
             RoleName=iam_role_name,
             AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
             Description="Role for create custom KMS key",
+            Path="/parallelcluster/",
         )["Role"]["Arn"]
         # Having time.sleep here because because it take a while for the the IAM role to become valid for use in the
         # put_key_policy step for creating KMS key, read the following link for reference :
@@ -155,7 +156,7 @@ class KMSKeyFactory:
         file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/../../resources"))
         env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
         key_policy = env.get_template("key_policy.json").render(
-            partition=self.partition, account_id=self.account_id, iam_role_name=self.iam_role_name
+            partition=self.partition, account_id=self.account_id, iam_role_name=f"parallelcluster/{self.iam_role_name}"
         )
 
         # attach key policy to the key
