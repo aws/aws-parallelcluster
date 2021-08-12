@@ -1207,10 +1207,22 @@ class TestUpdateCluster:
     def test_dryrun(self, mocker, client):
         stack_data = cfn_describe_stack_mock_response()
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+        changes = [
+            ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+            [
+                ["Scheduling", "SlurmQueues[queue0]", "ComputeResources[queue0-i0]"],
+                "MaxCount",
+                10,
+                11,
+                "SUCCEEDED",
+                "-",
+                None,
+            ],
+        ]
         mocker.patch(
             "pcluster.models.cluster.Cluster.validate_update_request",
             auto_spec=True,
-            return_value=([]),
+            return_value=(None, changes, []),
         )
 
         update_cluster_request_content = {
@@ -1226,7 +1238,16 @@ class TestUpdateCluster:
             dryrun=True,
         )
 
-        expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        expected_response = {
+            "message": "Request would have succeeded, but DryRun flag is set.",
+            "changeSet": [
+                {
+                    "currentValue": 10,
+                    "parameter": "Scheduling.SlurmQueues[queue0].ComputeResources[queue0-i0].MaxCount",
+                    "requestedValue": 11,
+                }
+            ],
+        }
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(412)
             assert_that(response.get_json()).is_equal_to(expected_response)
