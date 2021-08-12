@@ -55,7 +55,7 @@ from pcluster.constants import (
     OS_MAPPING,
     PCLUSTER_S3_ARTIFACTS_DICT,
 )
-from pcluster.models.s3_bucket import S3Bucket
+from pcluster.models.s3_bucket import S3Bucket, parse_bucket_url
 from pcluster.templates.awsbatch_builder import AwsBatchConstruct
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -303,6 +303,10 @@ class ClusterCdkStack(Stack):
 
             # ParallelCluster Policies
             self._add_pcluster_policies_to_role(node_role_ref, f"ParallelClusterPolicies{suffix}")
+
+            # Custom Cookbook S3 url policy
+            if self._condition_custom_cookbook_with_s3_url():
+                self._add_custom_cookbook_policies_to_role(node_role_ref, f"CustomCookbookPolicies{suffix}")
 
             # S3 Access Policies
             if self._condition_create_s3_access_policies(node):
@@ -568,6 +572,46 @@ class ClusterCdkStack(Stack):
                             self.format_arn(
                                 service="s3",
                                 resource="{0}-aws-parallelcluster/*".format(self.region),
+                                region="",
+                                account="",
+                            )
+                        ],
+                    ),
+                ]
+            ),
+            roles=[role_ref],
+        )
+
+    def _add_custom_cookbook_policies_to_role(self, role_ref: str, name: str):
+        bucket_info = parse_bucket_url(self.config.dev_settings.cookbook.chef_cookbook)
+        bucket_name = bucket_info.get("bucket_name")
+        object_key = bucket_info.get("object_key")
+        iam.CfnPolicy(
+            self,
+            name,
+            policy_name="CustomCookbookS3Url",
+            policy_document=iam.PolicyDocument(
+                statements=[
+                    iam.PolicyStatement(
+                        actions=["s3:GetObject"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self.format_arn(
+                                region="",
+                                service="s3",
+                                account="",
+                                resource=bucket_name,
+                                resource_name=object_key,
+                            )
+                        ],
+                    ),
+                    iam.PolicyStatement(
+                        actions=["s3:GetBucketLocation"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self.format_arn(
+                                service="s3",
+                                resource=bucket_name,
                                 region="",
                                 account="",
                             )
@@ -1162,6 +1206,14 @@ class ClusterCdkStack(Stack):
 
     def _condition_is_batch(self):
         return self.config.scheduling.scheduler == "awsbatch"
+
+    def _condition_custom_cookbook_with_s3_url(self):
+        return (
+            self.config.dev_settings
+            and self.config.dev_settings.cookbook
+            and self.config.dev_settings.cookbook.chef_cookbook
+            and self.config.dev_settings.cookbook.chef_cookbook.startswith("s3://")
+        )
 
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
