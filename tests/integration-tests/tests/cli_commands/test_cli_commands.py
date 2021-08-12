@@ -21,8 +21,9 @@ import botocore
 import pytest
 from assertpy import assert_that
 from dateutil.parser import parse as date_parse
+from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
-from utils import check_status, get_cluster_nodes_instance_ids, run_command
+from utils import check_status, get_cluster_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
@@ -81,16 +82,14 @@ def _test_create_cluster(clusters_factory, cluster_config, cluster_config_with_w
     cluster = clusters_factory(cluster_config, wait=False)
     if not request.config.getoption("cluster"):
         expected_creation_response = {
-            "cluster": {
-                "clusterName": cluster.name,
-                "cloudformationStackStatus": "CREATE_IN_PROGRESS",
-                "cloudformationStackArn": cluster.cfn_stack_arn,
-                "region": cluster.region,
-                "version": get_installed_parallelcluster_version(),
-                "clusterStatus": "CREATE_IN_PROGRESS",
-            }
+            "clusterName": cluster.name,
+            "cloudformationStackStatus": "CREATE_IN_PROGRESS",
+            "cloudformationStackArn": cluster.cfn_stack_arn,
+            "region": cluster.region,
+            "version": get_installed_parallelcluster_version(),
+            "clusterStatus": "CREATE_IN_PROGRESS",
         }
-        assert_that(cluster.creation_response).is_equal_to(expected_creation_response)
+        assert_that(cluster.creation_response.get("cluster")).is_equal_to(expected_creation_response)
         _test_list_cluster(cluster.name, "CREATE_IN_PROGRESS")
         logging.info("Waiting for CloudFormation stack creation completion")
         cloud_formation = boto3.client("cloudformation")
@@ -120,6 +119,11 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
         "message": "Name must begin with a letter and only contain lowercase letters, digits and hyphens.",
     }
     key_pair_warning = {"level": "WARNING", "type": "KeyPairValidator", "message": ".*you do not specify a key pair.*"}
+    compute_ami_os_compatible_validator = {
+        "level": "WARNING",
+        "type": "ComputeAmiOsCompatibleValidator",
+        "message": "Could not check compute node AMI*OS and cluster OS*compatibility,",
+    }
 
     test_cases = []
 
@@ -130,7 +134,7 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
         }
 
     expected_response = construct_validation_error_expected_response(
-        [custom_ami_tag_warning, key_pair_warning, name_error]
+        [custom_ami_tag_warning, key_pair_warning, name_error, compute_ami_os_compatible_validator]
     )
     test_cases.extend(
         [
@@ -142,7 +146,9 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
     )
 
     # Test suppressing a error and a warning
-    expected_response = construct_validation_error_expected_response([key_pair_warning])
+    expected_response = construct_validation_error_expected_response(
+        [key_pair_warning, compute_ami_os_compatible_validator]
+    )
     test_cases.append(
         (
             expected_response,
@@ -175,6 +181,7 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
                     "type:CustomAmiTagValidator",
                     "type:NameValidator",
                     "type:KeyPairValidator",
+                    "type:ComputeAmiOsCompatibleValidator",
                 ],
             ),
             # Test suppressing all validators
@@ -264,12 +271,12 @@ def _test_list_cluster(cluster_name, expected_status):
 
 
 def _find_cluster_with_pagination(cmd_args, cluster_name):
-    result = run_command(cmd_args)
+    result = run_pcluster_command(cmd_args)
     response = json.loads(result.stdout)
     found_cluster = _find_cluster_in_list(cluster_name, response["clusters"])
     while response.get("nextToken") and found_cluster is None:
         cmd_args_with_next_token = cmd_args + ["--next-token", response["nextToken"]]
-        result = run_command(cmd_args_with_next_token)
+        result = run_pcluster_command(cmd_args_with_next_token)
         response = json.loads(result.stdout)
         found_cluster = _find_cluster_in_list(cluster_name, response["clusters"])
     return found_cluster

@@ -1051,10 +1051,6 @@ def _test_disable_protected_mode(remote_command_executor, cluster, bucket_name, 
 
 def _test_active_job_running(scheduler_commands, remote_command_executor):
     """Test cluster is not placed into protected mode when there is an active job running even reach threshold."""
-    # Re-enable protected mode
-    _enable_protected_mode(remote_command_executor)
-    # Decrease protected failure count for quicker enter protected mode.
-    _set_protected_failure_count(remote_command_executor, 2)
     # Submit a job to the queue contains broken nodes and normal node, submit the job to the normal node to test
     # the queue will not be disabled if there's active job running.
     cancel_job_id = scheduler_commands.submit_command_and_assert_job_accepted(
@@ -1062,6 +1058,12 @@ def _test_active_job_running(scheduler_commands, remote_command_executor):
     )
     # Wait for the job to run
     scheduler_commands.wait_job_running(cancel_job_id)
+
+    # Re-enable protected mode
+    _enable_protected_mode(remote_command_executor)
+    # Decrease protected failure count for quicker enter protected mode.
+    _set_protected_failure_count(remote_command_executor, 2)
+
     # Submit a job to the problematic compute resource, so the protected_failure count will increase
     job_id_pending = scheduler_commands.submit_command_and_assert_job_accepted(
         submit_command_args={"command": "sleep 60", "nodes": 2, "partition": "half-broken", "constraint": "c5.large"}

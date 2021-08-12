@@ -18,7 +18,6 @@ CHANGELOG
   per cluster.
 - Encrypt root EBS volumes and shared EBS volumes by default.
   Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
-- Enable EFA for a compute resource by default if the instance type supports EFA.
 - Add multiple queues and compute resources support for `pcluster configure` when the scheduler is Slurm.
 - Add prompt for availability zone in `pcluster configure` automated subnets creation.
 - Use different permissions in instance roles based on the scheduler and the node's role in the cluster.
