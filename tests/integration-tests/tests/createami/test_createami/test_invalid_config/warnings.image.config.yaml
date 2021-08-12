@@ -1,0 +1,13 @@
+Image:
+    RootVolume:
+        Size: 200
+        Encrypted: True
+
+DevSettings:
+    NodePackage: "s3://test/aws-parallelcluster-node-3.0.tgz"
+
+Build:
+    InstanceType: c5.xlarge
+    ParentImage: {{ parent_image }}
+
+CustomS3Bucket: {{ bucket_name }}

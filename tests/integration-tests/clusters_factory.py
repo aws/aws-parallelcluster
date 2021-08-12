@@ -17,15 +17,16 @@ import subprocess
 
 import boto3
 import yaml
+from framework.credential_providers import run_pcluster_command
 from retrying import retry
 from utils import (
     dict_add_nested_key,
     get_stack_id_tag_filter,
+    kebab_case,
     retrieve_cfn_outputs,
     retrieve_cfn_parameters,
     retrieve_cfn_resources,
     retry_if_subprocess_error,
-    run_command,
 )
 
 
@@ -38,10 +39,6 @@ def suppress_and_log_exception(func):
             logging.error("Failed when running function %s. Ignoring exception. Error: %s", func.__name__, e)
 
     return wrapper
-
-
-def _kebab_case(instr):
-    return instr.replace("_", "-")
 
 
 class Cluster:
@@ -90,7 +87,7 @@ class Cluster:
             command.extend(["--force-update", "true"])
         if extra_args:
             command.extend(extra_args)
-        result = run_command(command, raise_on_error=raise_on_error, log_error=log_error)
+        result = run_pcluster_command(command, raise_on_error=raise_on_error, log_error=log_error)
         logging.info("update-cluster response: %s", result.stdout)
         response = json.loads(result.stdout)
         if response.get("cloudFormationStackStatus") != "UPDATE_COMPLETE":
@@ -131,7 +128,7 @@ class Cluster:
             logging.warning("CloudWatch logs for cluster %s are preserved due to failure.", self.name)
         try:
             self.cfn_stack_arn  # Cache cfn_stack_arn attribute before stack deletion
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             if "DELETE_FAILED" in result.stdout:
                 error = "Cluster deletion failed for {0} with output: {1}".format(self.name, result.stdout)
                 logging.error(error)
@@ -154,7 +151,7 @@ class Cluster:
         elif scheduler == "awsbatch":
             cmd_args.append("ENABLED")
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             logging.info("Cluster {0} started successfully".format(self.name))
             return result.stdout
         except subprocess.CalledProcessError as e:
@@ -170,7 +167,7 @@ class Cluster:
         elif scheduler == "awsbatch":
             cmd_args.append("DISABLED")
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             logging.info("Cluster {0} stopped successfully".format(self.name))
             return result.stdout
         except subprocess.CalledProcessError as e:
@@ -181,7 +178,7 @@ class Cluster:
         """Run pcluster describe-cluster and return the result."""
         cmd_args = ["pcluster", "describe-cluster", "--cluster-name", self.name]
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Get cluster {0} status successfully".format(self.name))
             return response
@@ -193,7 +190,7 @@ class Cluster:
         """Run pcluster describe-compute-fleet and return the result."""
         cmd_args = ["pcluster", "describe-compute-fleet", "--cluster-name", self.name]
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Describe cluster %s compute fleet successfully", self.name)
             return response
@@ -217,7 +214,7 @@ class Cluster:
         if queue_name:
             cmd_args.extend(["--queue-name", queue_name])
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Get cluster {0} instances successfully".format(self.name))
             return response["instances"]
@@ -245,7 +242,7 @@ class Cluster:
         if bucket_prefix:
             cmd_args += ["--bucket-prefix", bucket_prefix]
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Cluster's logs exported successfully")
             return response
@@ -257,7 +254,7 @@ class Cluster:
         """Run pcluster list-cluster-logs and return the result."""
         cmd_args = ["pcluster", "list-cluster-log-streams", "--cluster-name", self.name]
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Cluster's logs listed successfully")
             return response
@@ -270,10 +267,10 @@ class Cluster:
         cmd_args = ["pcluster", "get-cluster-log-events", "--cluster-name", self.name, "--log-stream-name", log_stream]
         for k, val in args.items():
             if val is not None:
-                cmd_args.extend([f"--{_kebab_case(k)}", str(val)])
+                cmd_args.extend([f"--{kebab_case(k)}", str(val)])
 
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Log events retrieved successfully")
             return response
@@ -285,10 +282,10 @@ class Cluster:
         """Run pcluster get-cluster-log-events and return the result."""
         cmd_args = ["pcluster", "get-cluster-stack-events", "--cluster-name", self.name]
         for k, val in args.items():
-            cmd_args.extend([f"--{_kebab_case(k)}", str(val)])
+            cmd_args.extend([f"--{kebab_case(k)}", str(val)])
 
         try:
-            result = run_command(cmd_args, log_error=False)
+            result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
             logging.info("Stack events retrieved successfully")
             return response
@@ -421,7 +418,9 @@ class ClustersFactory:
         if extra_args:
             create_cmd_args.extend(extra_args)
         try:
-            result = run_command(create_cmd_args, timeout=7200, raise_on_error=raise_on_error, log_error=log_error)
+            result = run_pcluster_command(
+                create_cmd_args, timeout=7200, raise_on_error=raise_on_error, log_error=log_error
+            )
 
             logging.info("create-cluster response: %s", result.stdout)
             response = json.loads(result.stdout)

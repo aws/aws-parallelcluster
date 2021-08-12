@@ -11,13 +11,16 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: ondemand1
       ComputeResources:
         - Name: ondemand-i1
           InstanceType: {{ instance }}
           DisableSimultaneousMultithreading: true
           MinCount: 2
+          Efa:
+            Enabled: true
+            GdrSupport: true
       Networking:
         PlacementGroup:
           Enabled: true

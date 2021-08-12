@@ -130,13 +130,15 @@ custom_cookbook=${CustomChefCookbook}
 export _region=${AWS::Region}
 s3_url=${AWS::URLSuffix}
 if [ "${!custom_cookbook}" != "NONE" ]; then
-  if [[ "${!custom_cookbook}" =~ ^s3:// ]]; then
-    cookbook_url=$(aws s3 presign "${!custom_cookbook}" --region "${!_region}")
+  if [[ "${!custom_cookbook}" =~ ^s3://([^/]*)(.*) ]]; then
+    bucket_region=$(aws s3api get-bucket-location --bucket ${!BASH_REMATCH[1]} | jq -r '.LocationConstraint')
+    if [[ "${!bucket_region}" == null ]]; then
+      bucket_region="us-east-1"
+    fi
+    cookbook_url=$(aws s3 presign "${!custom_cookbook}" --region "${!bucket_region}")
   else
     cookbook_url=${!custom_cookbook}
   fi
-else
-  cookbook_url=https://s3.${!_region}.${!s3_url}/${!_region}-aws-parallelcluster/cookbooks/${CookbookVersion}.tgz
 fi
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 export parallelcluster_version=aws-parallelcluster-${ParallelClusterVersion}
@@ -152,7 +154,7 @@ else
   error_exit "This AMI was not baked by ParallelCluster. Please use pcluster createami command to create an AMI by providing your AMI as parent image."
 fi
 if [ "${!custom_cookbook}" != "NONE" ]; then
-  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z "$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)" ${!cookbook_url}
+  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
   vendor_cookbook
 fi
 cd /tmp

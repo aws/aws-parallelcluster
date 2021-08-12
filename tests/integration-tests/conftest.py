@@ -356,17 +356,14 @@ def api_server_factory(
     def _api_server_factory(server_region):
         api_stack_name = generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix"))
 
-        if not api_infrastructure_s3_uri:
-            stack_template_path = os.path.join("..", "..", "api", "infrastructure", "parallelcluster-api.yaml")
-            with open(stack_template_path) as stack_template_file:
-                stack_template_data = stack_template_file.read()
-
         params = [
-            {"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri},
-            {"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri},
             {"ParameterKey": "EnableIamAdminAccess", "ParameterValue": "true"},
             {"ParameterKey": "CreateApiUserRole", "ParameterValue": "false"},
         ]
+        if api_definition_s3_uri:
+            params.append({"ParameterKey": "ApiDefinitionS3Uri", "ParameterValue": api_definition_s3_uri})
+        if public_ecr_image_uri:
+            params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
 
         if server_region not in api_servers:
             logging.info(f"Creating API Server stack: {api_stack_name} in {server_region}")
@@ -374,8 +371,8 @@ def api_server_factory(
                 name=api_stack_name,
                 region=server_region,
                 parameters=params,
-                capabilities=["CAPABILITY_IAM", "CAPABILITY_AUTO_EXPAND"],
-                template=api_infrastructure_s3_uri or stack_template_data,
+                capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
+                template=api_infrastructure_s3_uri,
             )
             cfn_stacks_factory.create_stack(stack)
             api_servers[server_region] = stack
@@ -414,7 +411,7 @@ def images_factory(request):
     """
     factory = ImagesFactory()
 
-    def _image_factory(image_id, image_config, region):
+    def _image_factory(image_id, image_config, region, **kwargs):
         image_config_file = _write_config_to_outdir(request, image_config, "image_configs")
         image = Image(
             image_id="-".join([image_id, request.config.getoption("stackname_suffix")])
@@ -423,8 +420,8 @@ def images_factory(request):
             config_file=image_config_file,
             region=region,
         )
-        result = factory.create_image(image)
-        if "BUILD_IN_PROGRESS" not in result:
+        factory.create_image(image, **kwargs)
+        if image.image_status != "BUILD_IN_PROGRESS" and kwargs.get("log_error", False):
             logging.error("image %s creation failed", image_id)
 
         return image
@@ -1134,6 +1131,8 @@ def update_failed_tests_config(item):
             with open(str(out_file)) as f:
                 failed_tests = yaml.safe_load(f)
 
+        # item.node.nodeid example:
+        # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-slurm-8443-0.0.0.0/0-/shared]'
         feature, test_id = item.nodeid.split("/", 1)
         test_id = test_id.split("[", 1)[0]
         dimensions = {}
