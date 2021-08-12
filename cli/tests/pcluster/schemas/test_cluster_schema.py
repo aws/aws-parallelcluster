@@ -207,7 +207,7 @@ DUMMY_SLURM_QUEUE = {
                     },
                 ],
             },
-            "SubnetIds configured in different queues should be the same",
+            "The SubnetIds used for all of the queues should be the same",
         ),
     ],
 )
