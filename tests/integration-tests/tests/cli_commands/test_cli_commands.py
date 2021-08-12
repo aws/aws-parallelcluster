@@ -21,8 +21,9 @@ import botocore
 import pytest
 from assertpy import assert_that
 from dateutil.parser import parse as date_parse
+from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
-from utils import check_status, get_cluster_nodes_instance_ids, run_command
+from utils import check_status, get_cluster_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
@@ -270,12 +271,12 @@ def _test_list_cluster(cluster_name, expected_status):
 
 
 def _find_cluster_with_pagination(cmd_args, cluster_name):
-    result = run_command(cmd_args)
+    result = run_pcluster_command(cmd_args)
     response = json.loads(result.stdout)
     found_cluster = _find_cluster_in_list(cluster_name, response["items"])
     while response.get("nextToken") and found_cluster is None:
         cmd_args_with_next_token = cmd_args + ["--next-token", response["nextToken"]]
-        result = run_command(cmd_args_with_next_token)
+        result = run_pcluster_command(cmd_args_with_next_token)
         response = json.loads(result.stdout)
         found_cluster = _find_cluster_in_list(cluster_name, response["items"])
     return found_cluster
