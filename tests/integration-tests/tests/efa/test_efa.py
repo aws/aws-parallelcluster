@@ -46,7 +46,12 @@ def test_hit_efa(
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    max_queue_size = 4
+    # We collected OSU benchmarks results for c5n.18xlarge only.
+    osu_benchmarks_instances = ["c5n.18xlarge"]
+
+    # 4 instances are required to see performance differences in collective OSU benchmarks.
+    # 2 instances are enough for other EFA tests.
+    max_queue_size = 4 if instance in osu_benchmarks_instances else 2
     slots_per_instance = fetch_instance_slots(region, instance)
     no_efa_instance = "t3.micro" if architecture == "x86_64" else "t4g.micro"
     cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, no_efa_instance=no_efa_instance)
@@ -59,34 +64,39 @@ def test_hit_efa(
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
-    benchmark_failures = []
-    mpi_versions = ["openmpi"]
-    if architecture == "x86_64":
-        mpi_versions.append("intelmpi")
+    if instance in osu_benchmarks_instances:
+        benchmark_failures = []
+        mpi_versions = ["openmpi"]
+        if architecture == "x86_64":
+            mpi_versions.append("intelmpi")
 
-    # Run OSU benchmarks in efa-enabled queue.
-    for mpi_version in mpi_versions:
-        benchmark_failures.extend(
-            _test_osu_benchmarks_pt2pt(
-                mpi_version,
-                remote_command_executor,
-                scheduler_commands,
-                test_datadir,
-                slots_per_instance,
-                partition="efa-enabled",
+        # Run OSU benchmarks in efa-enabled queue.
+        for mpi_version in mpi_versions:
+            benchmark_failures.extend(
+                _test_osu_benchmarks_pt2pt(
+                    mpi_version,
+                    remote_command_executor,
+                    scheduler_commands,
+                    test_datadir,
+                    instance,
+                    slots_per_instance,
+                    partition="efa-enabled",
+                )
             )
-        )
-    benchmark_failures.extend(
-        _test_osu_benchmarks_collective(
-            mpi_version,
-            remote_command_executor,
-            scheduler_commands,
-            test_datadir,
-            slots_per_instance,
-            partition="efa-enabled",
-        )
-    )
-    assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
+            benchmark_failures.extend(
+                _test_osu_benchmarks_collective(
+                    mpi_version,
+                    remote_command_executor,
+                    scheduler_commands,
+                    test_datadir,
+                    instance,
+                    num_of_instances=max_queue_size,
+                    slots_per_instance=slots_per_instance,
+                    partition="efa-enabled",
+                )
+            )
+        assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
+
     if network_interfaces_count > 1:
         _test_osu_benchmarks_multiple_bandwidth(
             remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
@@ -104,6 +114,7 @@ def _test_efa_installation(scheduler_commands, remote_command_executor, efa_inst
         result = scheduler_commands.submit_command("lspci -n > /shared/lspci.out", partition=partition)
     else:
         result = scheduler_commands.submit_command("lspci -n > /shared/lspci.out")
+
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
@@ -121,23 +132,16 @@ def _test_efa_installation(scheduler_commands, remote_command_executor, efa_inst
 
 
 def _test_osu_benchmarks_pt2pt(
-    mpi_version,
-    remote_command_executor,
-    scheduler_commands,
-    test_datadir,
-    slots_per_instance,
-    benchmarks=None,
-    partition=None,
+    mpi_version, remote_command_executor, scheduler_commands, test_datadir, instance, slots_per_instance, partition=None
 ):
     # OSU pt2pt benchmarks cannot be executed with more than 2 MPI ranks.
-    # Run them it in 2 instances with 1 proc per instance, defined by map-by parameter.
+    # Run them in 2 instances with 1 proc per instance, defined by map-by parameter.
     num_of_instances = 2
     # Accept a max number of 4 failures on a total of 23-24 packet size tests.
     accepted_number_of_failures = 4
 
     failed_benchmarks = []
-    testing_benchmarks = benchmarks or ["osu_latency", "osu_bibw"]
-    for benchmark_name in testing_benchmarks:
+    for benchmark_name in ["osu_latency", "osu_bibw"]:
         output = run_osu_benchmarks(
             mpi_version,
             "pt2pt",
@@ -149,7 +153,7 @@ def _test_osu_benchmarks_pt2pt(
             slots_per_instance,
             test_datadir,
         )
-        failures = _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output)
+        failures = _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output)
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
@@ -161,19 +165,19 @@ def _test_osu_benchmarks_collective(
     remote_command_executor,
     scheduler_commands,
     test_datadir,
+    instance,
+    num_of_instances,
     slots_per_instance,
-    benchmarks=None,
     partition=None,
 ):
     # OSU collective benchmarks can be executed with any number of instances,
-    # 4 instances are enough to see performance differences
-    num_of_instances = 4
+    # 4 instances are enough to see performance differences with c5n.18xlarge.
+
     # Accept a max number of 3 failures on a total of 19-21 packet size tests.
     accepted_number_of_failures = 3
 
     failed_benchmarks = []
-    testing_benchmarks = benchmarks or ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]
-    for benchmark_name in testing_benchmarks:
+    for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
         output = run_osu_benchmarks(
             mpi_version,
             "collective",
@@ -185,7 +189,7 @@ def _test_osu_benchmarks_collective(
             slots_per_instance,
             test_datadir,
         )
-        failures = _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output)
+        failures = _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output)
         if failures > accepted_number_of_failures:
             failed_benchmarks.append(f"{mpi_version}-{benchmark_name}")
 
@@ -270,12 +274,13 @@ def run_osu_benchmarks(
     return output
 
 
-def _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, output):
+def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output):
+    logging.info(output)
     # Check avg latency for all packet sizes
     failures = 0
     for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
-        with open(str(test_datadir / "osu_benchmarks_results" / mpi_version / benchmark_name)) as osu_results:
-            previous_result = re.search(rf"{packet_size}\s+(\d+)\.", osu_results.read()).group(1)
+        with open(str(test_datadir / "osu_benchmarks" / "results" / instance / mpi_version / benchmark_name)) as result:
+            previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
 
             # Use a tolerance of 10us for 2 digits values and 20% tolerance for 3+ digits values
             accepted_tolerance = 10 if len(previous_result) <= 2 else float(previous_result) * 0.2
@@ -283,9 +288,9 @@ def _check_osu_benchmarks_results(test_datadir, mpi_version, benchmark_name, out
 
             message = (
                 f"{mpi_version} - {benchmark_name} - packet size {packet_size}: "
-                f"expected: {tolerated_latency}, current: {latency}"
+                f"tolerated: {tolerated_latency}, current: {latency}"
             )
-            if int(latency) >= tolerated_latency:
+            if int(latency) > tolerated_latency:
                 failures = failures + 1
                 logging.error(message)
             else:

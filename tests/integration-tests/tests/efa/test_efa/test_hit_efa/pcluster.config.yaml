@@ -22,7 +22,7 @@ Scheduling:
         - Name: efa-enabled-i1
           InstanceType: {{ instance }}
           MaxCount: {{ max_queue_size }}
-          MinCount: 2
+          MinCount: {{ max_queue_size }}
           Efa:
             Enabled: true
             {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}
