@@ -11,7 +11,7 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-    SlurmQueues:
+  SlurmQueues:
     - Name: ondemand1
       ComputeResources:
         - Name: ondemand-i1

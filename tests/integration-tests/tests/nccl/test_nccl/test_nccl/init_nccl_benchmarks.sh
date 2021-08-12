@@ -7,7 +7,7 @@ module load ${1}
 NCCL_BENCHMARKS_VERSION='2.0.0'
 NCCL_VERSION='2.7.8-1'
 ML_REPO_PKG='nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb'
-CUDA_VERSION='11.3'
+CUDA_VERSION='11.4'
 OFI_NCCL_VERSION='1.1.1'
 MPI_HOME=$(which mpirun | awk -F '/bin' '{print $1}')
 NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80" # Arch for NVIDIA A100
