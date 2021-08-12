@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+2.11.2
+-----
+
+**CHANGES**
+- Do not re-install EFA with GDR enabled at node bootstrap time in case EFA was already installed in the base AMI
+  during the createami process.
+
+**BUG FIXES**
+- Lock version of `nvidia-fabricmanager` package to prevent updates and misalignments with NVIDIA drivers.
+- Slurm: fix issue that was causing powering up nodes to not be correctly reset after a stop and start of the cluster.
+
 2.11.1
 -----
 
