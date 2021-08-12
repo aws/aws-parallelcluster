@@ -14,13 +14,13 @@ import re
 
 import pytest
 from assertpy import assert_that
+from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
 from utils import (
     add_keys_to_known_hosts,
     check_headnode_security_group,
     get_username_for_os,
     remove_keys_from_known_hosts,
-    run_command,
 )
 
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
@@ -113,7 +113,9 @@ def _test_dcv_configuration(
     add_keys_to_known_hosts(cluster.head_node_ip, host_keys_file)
 
     try:
-        result = run_command(["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"], env=env)
+        result = run_pcluster_command(
+            ["pcluster", "dcv-connect", "--cluster-name", cluster.name, "--show-url"], env=env
+        )
     finally:
         # remove ssh key from jenkins user known hosts file
         remove_keys_from_known_hosts(cluster.head_node_ip, host_keys_file, env=env)
