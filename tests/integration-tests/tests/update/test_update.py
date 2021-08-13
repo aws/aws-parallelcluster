@@ -23,7 +23,7 @@ from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import get_batch_ce, get_batch_ce_max_size, get_batch_ce_min_size
 from tests.common.schedulers_common import SlurmCommands
-from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
+from tests.common.utils import generate_random_string, retrieve_latest_ami
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
@@ -384,7 +384,7 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
 
 @pytest.mark.usefixtures("instance")
-def test_update_compute_ami(region, os, pcluster_config_reader, clusters_factory, test_datadir):
+def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir):
     # Create cluster with initial configuration
     ec2 = boto3.client("ec2", region)
     pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster")
@@ -394,25 +394,22 @@ def test_update_compute_ami(region, os, pcluster_config_reader, clusters_factory
     logging.info(instances)
     _check_instance_ami_id(ec2, instances, pcluster_ami_id)
 
-    # Update cluster with dlami as custom ami for compute queue
-    # Fixme it doesn't work on release branch, fix it during release process
-    filters = [
-        {
-            "Name": "name",
-            "Values": ["dlami-aws-parallelcluster-" + get_installed_parallelcluster_version() + "-amzn2-hvm-x86_64*"],
-        }
-    ]
-    pcluster_dlami_id = ec2.describe_images(ImageIds=[], Filters=filters, Owners=["self"]).get("Images")[0]["ImageId"]
+    pcluster_copy_ami_id = ami_copy(
+        pcluster_ami_id, "-".join(["test", "update", "computenode", generate_random_string()])
+    )
     updated_config_file = pcluster_config_reader(
-        config_file="pcluster.config.update.yaml", global_custom_ami=pcluster_ami_id, custom_ami=pcluster_dlami_id
+        config_file="pcluster.config.update.yaml", global_custom_ami=pcluster_ami_id, custom_ami=pcluster_copy_ami_id
     )
 
     # stop compute fleet before updating queue image
     cluster.stop()
+
+    logging.info("Sleep 120 seconds to wait cluster stop.")
+    time.sleep(120)
     cluster.update(str(updated_config_file), force_update="true")
     instances = cluster.get_cluster_instance_ids(node_type="Compute")
     logging.info(instances)
-    _check_instance_ami_id(ec2, instances, pcluster_dlami_id)
+    _check_instance_ami_id(ec2, instances, pcluster_copy_ami_id)
 
 
 def _check_instance_ami_id(ec2, instances, expected_queue_ami):
