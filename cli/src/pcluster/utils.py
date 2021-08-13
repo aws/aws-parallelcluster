@@ -219,36 +219,6 @@ def verify_stack_status(stack_name, waiting_states, successful_states):
     return status in successful_states
 
 
-def log_stack_failure_recursive(stack_name, failed_states=None, indent=2):
-    """Log stack failures in recursive manner, until there is no substack layer."""
-    if not failed_states:
-        failed_states = ["CREATE_FAILED"]
-
-    from pcluster.aws.aws_api import AWSApi  # pylint: disable=import-outside-toplevel
-
-    events = AWSApi.instance().cfn.get_stack_events(stack_name)
-    for event in events:
-        if event.get("ResourceStatus") in failed_states:
-            _log_cfn_event(event, indent)
-            if event.get("ResourceType") == "AWS::CloudFormation::Stack":
-                # Sample substack error:
-                # "Embedded stack arn:aws:cloudformation:us-east-2:704743599507:stack/
-                # parallelcluster-fsx-fail-FSXSubstack-65ITLJEZJ0DQ/
-                # 3a4ecf00-51e7-11ea-8e3e-022fd555c652 was not successfully created:
-                # The following resource(s) failed to create: [FileSystem]."
-                substack_error = re.search(".+ (arn:aws:cloudformation[^ ]+) ", event.get("ResourceStatusReason"))
-                substack_name = substack_error.group(1) if substack_error else None
-                if substack_name:
-                    log_stack_failure_recursive(substack_name, indent=indent + 2)
-
-
-def _log_cfn_event(event, indent):
-    """Log failed CFN events."""
-    from pcluster.aws.aws_api import AWSApi  # pylint: disable=import-outside-toplevel
-
-    print("{}- {}".format(" " * indent, AWSApi.instance().cfn.format_event(event)))
-
-
 def get_templates_bucket_path():
     """Return a string containing the path of bucket."""
     region = get_region()

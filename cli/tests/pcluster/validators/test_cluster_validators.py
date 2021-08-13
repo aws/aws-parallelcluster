@@ -151,21 +151,22 @@ def test_duplicate_instance_type_validator(instance_type_list, expected_message)
         # Unsupported instance type
         ("t2.large", True, False, False, "does not support EFA"),
         ("t2.large", False, False, False, None),
+        # EFA not enabled for instance type that supports it
+        ("c5n.18xlarge", False, False, True, "supports EFA, but it is not enabled"),
     ],
 )
 def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
-    if efa_enabled:
-        mock_aws_api(mocker)
-        get_instance_type_info_mock = mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
-            return_value=InstanceTypeInfo(
-                {
-                    "InstanceType": instance_type,
-                    "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-                    "NetworkInfo": {"EfaSupported": instance_type == "c5n.18xlarge"},
-                }
-            ),
-        )
+    mock_aws_api(mocker)
+    get_instance_type_info_mock = mocker.patch(
+        "pcluster.aws.ec2.Ec2Client.get_instance_type_info",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "NetworkInfo": {"EfaSupported": instance_type == "c5n.18xlarge"},
+            }
+        ),
+    )
 
     actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support)
     assert_failure_messages(actual_failures, expected_message)
@@ -174,18 +175,27 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
 
 
 @pytest.mark.parametrize(
-    "efa_enabled, placement_group_id, placement_group_enabled, expected_message",
+    "efa_enabled, placement_group_enabled, placement_group_config_implicit, expected_message",
     [
-        # Efa disabled, no check on placement group configuration
-        (False, None, False, None),
+        # Efa disabled
+        (False, False, False, None),
+        (False, True, False, None),
+        (False, False, True, None),
+        (False, True, True, None),
         # Efa enabled
-        (True, None, False, "You may see better performance using a placement group"),
-        (True, None, True, None),
-        (True, "existing_pg", False, None),
+        (True, False, False, "may see better performance using a placement group"),
+        (True, False, True, "placement group for EFA-enabled compute resources must be explicit"),
+        (True, True, True, "placement group for EFA-enabled compute resources must be explicit"),
+        (True, True, False, None),
     ],
 )
-def test_efa_placement_group_validator(efa_enabled, placement_group_id, placement_group_enabled, expected_message):
-    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group_id, placement_group_enabled)
+def test_efa_placement_group_validator(
+    efa_enabled, placement_group_enabled, placement_group_config_implicit, expected_message
+):
+    actual_failures = EfaPlacementGroupValidator().execute(
+        efa_enabled, placement_group_enabled, placement_group_config_implicit
+    )
+
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -347,27 +357,34 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
 
 
 @pytest.mark.parametrize(
-    "os, architecture, custom_ami, expected_message",
+    "os, architecture, custom_ami, ami_search_filters, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux2", "x86_64", None, None),
-        ("alinux2", "x86_64", "custom-ami", None),
-        ("centos7", "x86_64", None, None),
-        ("centos7", "x86_64", "custom-ami", None),
-        ("ubuntu1804", "x86_64", None, None),
-        ("ubuntu2004", "x86_64", None, None),
+        ("alinux2", "x86_64", None, None, None),
+        ("alinux2", "x86_64", "custom-ami", None, None),
+        ("centos7", "x86_64", None, None, None),
+        ("centos7", "x86_64", "custom-ami", None, None),
+        ("ubuntu1804", "x86_64", None, None, None),
+        ("ubuntu2004", "x86_64", None, None, None),
         # All OSes supported for x86_64
-        ("alinux2", "arm64", None, None),
-        ("alinux2", "arm64", "custom-ami", None),
-        ("centos7", "arm64", None, "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances"),
-        ("centos7", "arm64", "custom-ami", None),
-        ("ubuntu1804", "arm64", None, None),
-        ("ubuntu2004", "arm64", None, None),
+        ("alinux2", "arm64", None, None, None),
+        ("alinux2", "arm64", "custom-ami", None, None),
+        (
+            "centos7",
+            "arm64",
+            None,
+            None,
+            "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances",
+        ),
+        ("centos7", "arm64", None, {"ami_search_filters"}, None),
+        ("centos7", "arm64", "custom-ami", None, None),
+        ("ubuntu1804", "arm64", None, None, None),
+        ("ubuntu2004", "arm64", None, None, None),
     ],
 )
-def test_architecture_os_validator(os, architecture, custom_ami, expected_message):
+def test_architecture_os_validator(os, architecture, custom_ami, ami_search_filters, expected_message):
     """Verify that the correct set of OSes is supported for each supported architecture."""
-    actual_failures = ArchitectureOsValidator().execute(os, architecture, custom_ami)
+    actual_failures = ArchitectureOsValidator().execute(os, architecture, custom_ami, ami_search_filters)
     assert_failure_messages(actual_failures, expected_message)
 
 

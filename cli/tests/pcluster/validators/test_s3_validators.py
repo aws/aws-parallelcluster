@@ -9,12 +9,15 @@ from tests.pcluster.validators.utils import assert_failure_messages
     [
         ("s3://test/post_install.sh", True, None),
         ("https://test/cookbook.tgz", True, None),
-        ("file:///test/node.tgz", True, None),
+        (
+            "file:///test/node.tgz",
+            False,
+            "The value 'file:///test/node.tgz' is not a valid URL, " "choose URL with 'https' or 's3' prefix.",
+        ),
         (
             "fake://test/cookbook.tgz",
             False,
-            "The value 'fake://test/cookbook.tgz' is not a valid URL, "
-            "choose URL with 'https', 's3' or 'file' prefix.",
+            "The value 'fake://test/cookbook.tgz' is not a valid URL, " "choose URL with 'https' or 's3' prefix.",
         ),
     ],
 )

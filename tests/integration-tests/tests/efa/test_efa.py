@@ -55,13 +55,7 @@ def test_hit_efa(
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
-    _test_efa_installation(
-        scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled-by-default"
-    )
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=False, partition="efa-disabled")
-    _test_efa_installation(
-        scheduler_commands, remote_command_executor, efa_installed=False, partition="efa-disabled-by-default"
-    )
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
@@ -70,38 +64,34 @@ def test_hit_efa(
     if architecture == "x86_64":
         mpi_versions.append("intelmpi")
 
-    for efa_queue_name in ["efa-enabled", "efa-enabled-by-default"]:
-        # OSU benchmarks are time expensive.
-        # Run a subset of benchmarks in efa-enabled-by-default and all of them in efa-enabled.
-        for mpi_version in mpi_versions:
-            benchmark_failures.extend(
-                _test_osu_benchmarks_pt2pt(
-                    mpi_version,
-                    remote_command_executor,
-                    scheduler_commands,
-                    test_datadir,
-                    slots_per_instance,
-                    benchmarks=["osu_latency"] if efa_queue_name == "efa-enabled-by-default" else None,
-                    partition=efa_queue_name,
-                )
-            )
+    # Run OSU benchmarks in efa-enabled queue.
+    for mpi_version in mpi_versions:
         benchmark_failures.extend(
-            _test_osu_benchmarks_collective(
+            _test_osu_benchmarks_pt2pt(
                 mpi_version,
                 remote_command_executor,
                 scheduler_commands,
                 test_datadir,
                 slots_per_instance,
-                benchmarks=["osu_allgather", "osu_alltoall"] if efa_queue_name == "efa-enabled-by-default" else None,
-                partition=efa_queue_name,
+                partition="efa-enabled",
             )
         )
-        assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
-        if network_interfaces_count > 1:
-            _test_osu_benchmarks_multiple_bandwidth(
-                remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=efa_queue_name
-            )
-        _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition=efa_queue_name)
+    benchmark_failures.extend(
+        _test_osu_benchmarks_collective(
+            mpi_version,
+            remote_command_executor,
+            scheduler_commands,
+            test_datadir,
+            slots_per_instance,
+            partition="efa-enabled",
+        )
+    )
+    assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
+    if network_interfaces_count > 1:
+        _test_osu_benchmarks_multiple_bandwidth(
+            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
+        )
+    _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
