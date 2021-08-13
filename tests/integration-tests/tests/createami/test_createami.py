@@ -153,7 +153,7 @@ def _test_get_image_log_events(image):
     """Test pcluster get-image-log-events functionality."""
     logging.info("Testing that pcluster get-image-log-events is working as expected")
     log_stream_name = "3.0.0/1"
-    cloud_init_debug_msg = "Document arn:aws:imagebuilder:"
+    cloud_init_debug_msg = "Document arn:aws.*:imagebuilder:.*parallelclusterimage.*"
 
     # Get the first event to establish time boundary for testing
     initial_events = image.get_log_events(log_stream_name, limit=1, start_from_head=True)
