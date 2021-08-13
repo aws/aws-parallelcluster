@@ -5,12 +5,11 @@ CHANGELOG
 -----
 
 **CHANGES**
-- Do not re-install EFA with GDR enabled at node bootstrap time in case EFA was already installed in the base AMI
-  during the createami process.
+- When using a custom AMI with a preinstalled EFA package, no actions are taken at node bootstrap time in case GPUDirect RDMA is enabled. The original EFA package deployment is preserved as during the createami process.
 
 **BUG FIXES**
-- Lock version of `nvidia-fabricmanager` package to prevent updates and misalignments with NVIDIA drivers.
-- Slurm: fix issue that was causing powering up nodes to not be correctly reset after a stop and start of the cluster.
+- Lock the version of ``nvidia-fabricmanager`` package to the installed NVIDIA drivers to prevent updates and misalignments.
+- Slurm: fix issue that prevented powering-up nodes to be correctly reset after a stop and start of the cluster.
 
 2.11.1
 -----
