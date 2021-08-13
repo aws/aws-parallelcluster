@@ -87,6 +87,8 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
     - Name: queue3
       Iam:
         S3Access:
@@ -121,6 +123,8 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
 SharedStorage:
   - MountDir: shared
     Name: ebs
