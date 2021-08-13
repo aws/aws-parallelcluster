@@ -103,7 +103,7 @@ def test_imagebuilder_kms_key_id_encrypted_validator_and_ami_volume_size_validat
         (
             {
                 "dev_settings": {
-                    "cookbook": {"chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz"},
+                    "cookbook": {"chef_cookbook": "https:///test/aws-parallelcluster-cookbook-3.0.tgz"},
                     "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                     "aws_batch_cli_package": "ftp://test/aws-parallelcluster-batch-3.0.tgz",
                 },
@@ -112,11 +112,11 @@ def test_imagebuilder_kms_key_id_encrypted_validator_and_ami_volume_size_validat
             AWSClientError(function_name="head_object", message="error"),
             URLError("[Errno 2] No such file or directory: '/test/aws-parallelcluster-cookbook-3.0.tgz'"),
             [
-                "The url 'file:///test/aws-parallelcluster-cookbook-3.0.tgz' causes URLError, the error reason is "
+                "The url 'https:///test/aws-parallelcluster-cookbook-3.0.tgz' causes URLError, the error reason is "
                 "'[Errno 2] No such file or directory: '/test/aws-parallelcluster-cookbook-3.0.tgz''",
                 "The S3 object does not exist or you do not have access to it.",
                 "The value 'ftp://test/aws-parallelcluster-batch-3.0.tgz' is not a valid URL, choose URL with "
-                "'https', 's3' or 'file' prefix.",
+                "'https' or 's3' prefix.",
             ],
             [FailureLevel.WARNING, FailureLevel.ERROR, FailureLevel.ERROR],
         ),
