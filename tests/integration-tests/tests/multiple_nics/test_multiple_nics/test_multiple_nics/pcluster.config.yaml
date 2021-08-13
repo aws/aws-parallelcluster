@@ -22,10 +22,16 @@ Scheduling:
           {% else %}
           InstanceType: {{ instance }}
           MinCount: 1
+          Efa:
+            Enabled: true
           {% endif %}
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        {% if scheduler != "awsbatch" %}
+        PlacementGroup:
+          Enabled: true
+        {% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: name1

@@ -195,7 +195,7 @@ class ArchitectureOsValidator(Validator):
     ARM AMIs are only available for a subset of the supported OSes.
     """
 
-    def _validate(self, os: str, architecture: str, custom_ami: str):
+    def _validate(self, os: str, architecture: str, custom_ami: str, ami_search_filters):
         allowed_oses = get_supported_os_for_architecture(architecture)
         if os not in allowed_oses:
             self._add_failure(
@@ -203,7 +203,7 @@ class ArchitectureOsValidator(Validator):
                 f"for the following operating systems: {allowed_oses}.",
                 FailureLevel.ERROR,
             )
-        if custom_ami is None and os == "centos7" and architecture == "arm64":
+        if custom_ami is None and os == "centos7" and architecture == "arm64" and not ami_search_filters:
             self._add_failure(
                 "The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
                 "(M6g, C6g, etc.). To proceed please provide a custom AMI, "
@@ -286,13 +286,18 @@ class EfaValidator(Validator):
 
     def _validate(self, instance_type, efa_enabled, gdr_support):
 
-        if efa_enabled:
-            if not AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported():
-                self._add_failure(
-                    f"Instance type '{instance_type}' does not support EFA.",
-                    FailureLevel.WARNING,
-                )
-        elif gdr_support:
+        instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
+        if efa_enabled and not instance_type_supports_efa:
+            self._add_failure(
+                f"Instance type '{instance_type}' does not support EFA.",
+                FailureLevel.ERROR,
+            )
+        if instance_type_supports_efa and not efa_enabled:
+            self._add_failure(
+                f"Instance type '{instance_type}' supports EFA, but it is not enabled.",
+                FailureLevel.WARNING,
+            )
+        if gdr_support and not efa_enabled:
             self._add_failure(
                 "The EFA GDR Support can be used only if EFA is enabled.",
                 FailureLevel.ERROR,
@@ -302,8 +307,15 @@ class EfaValidator(Validator):
 class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
-    def _validate(self, efa_enabled, placement_group_id, placement_group_enabled):
-        if efa_enabled and not placement_group_id and not placement_group_enabled:
+    def _validate(self, efa_enabled, placement_group_enabled, placement_group_config_implicit):
+        if efa_enabled and placement_group_config_implicit:
+            self._add_failure(
+                "The placement group for EFA-enabled compute resources must be explicit. "
+                "You may see better performance using a placement group, but if you don't wish to use one please add "
+                "'Enabled: false' to the compute resource's configuration section.",
+                FailureLevel.ERROR,
+            )
+        elif efa_enabled and not placement_group_enabled:
             self._add_failure(
                 "You may see better performance using a placement group for the queue.", FailureLevel.WARNING
             )
