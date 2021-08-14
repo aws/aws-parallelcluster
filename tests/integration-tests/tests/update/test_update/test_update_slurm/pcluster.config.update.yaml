@@ -161,3 +161,7 @@ Monitoring:
     CloudWatch:
       Enabled: true
       RetentionInDays: 1
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: |
+      {"test_key" : "test_value"}
