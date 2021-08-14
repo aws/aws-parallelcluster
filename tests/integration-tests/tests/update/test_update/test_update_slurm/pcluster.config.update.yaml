@@ -87,6 +87,8 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
     - Name: queue3
       Iam:
         S3Access:
@@ -117,10 +119,12 @@ Scheduling:
           InstanceType: t2.xlarge
           DisableSimultaneousMultithreading: true
           Efa:
-            Enabled: true
+            Enabled: false
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
 SharedStorage:
   - MountDir: shared
     Name: ebs

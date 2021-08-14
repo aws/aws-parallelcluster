@@ -89,7 +89,7 @@ class Image:
         command = ["pcluster", "delete-image", "--image-id", self.image_id, "--region", self.region]
         if force:
             command.extend(["--force", "true"])
-        result = run_pcluster_command(command).stdout
+        result = run_pcluster_command(command)
         response = json.loads(result.stdout)
         if "message" in response and response["message"].startswith("No image or stack associated"):
             logging.error("Delete on non-existing image: %s", self.image_id)

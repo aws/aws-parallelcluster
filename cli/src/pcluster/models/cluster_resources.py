@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import re
 from typing import List
 
@@ -164,8 +165,8 @@ class ExportClusterLogsFiltersParser(ClusterLogsFiltersParser):
         self,
         head_node: ClusterInstance,
         log_group_name: str,
-        start_time: str = None,
-        end_time: str = None,
+        start_time: datetime.datetime = None,
+        end_time: datetime.datetime = None,
         filters: str = None,
     ):
         super().__init__(head_node, filters)

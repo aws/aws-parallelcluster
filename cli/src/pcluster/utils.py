@@ -111,7 +111,7 @@ def get_supported_os_for_architecture(architecture):
     return SUPPORTED_OSES_FOR_ARCHITECTURE.get(architecture, [])
 
 
-def to_utc_datetime(time_in, default_timezone=datetime.timezone.utc):
+def to_utc_datetime(time_in, default_timezone=datetime.timezone.utc) -> datetime.datetime:
     """
     Convert a given string, datetime or int into utc datetime.
 
@@ -137,7 +137,7 @@ def to_utc_datetime(time_in, default_timezone=datetime.timezone.utc):
     return time_.astimezone(datetime.timezone.utc)
 
 
-def to_iso_timestr(time_in: datetime.datetime):
+def to_iso_timestr(time_in: datetime.datetime) -> str:
     """
     Convert a given datetime ISO 8601 format with milliseconds.
 
@@ -151,7 +151,7 @@ def to_iso_timestr(time_in: datetime.datetime):
     return to_utc_datetime(time_).isoformat(timespec="milliseconds")[:-6] + "Z"
 
 
-def datetime_to_epoch(datetime_in: datetime.datetime):
+def datetime_to_epoch(datetime_in: datetime.datetime) -> int:
     """Convert UTC datetime to unix epoch datetime with milliseconds."""
     return int(datetime_in.timestamp() * 1000)
 

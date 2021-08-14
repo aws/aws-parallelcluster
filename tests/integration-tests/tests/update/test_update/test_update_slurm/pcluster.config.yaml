@@ -55,6 +55,8 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
 SharedStorage:
   - MountDir: shared
     Name: ebs

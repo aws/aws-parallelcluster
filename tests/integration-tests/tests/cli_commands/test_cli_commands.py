@@ -64,11 +64,11 @@ def test_slurm_cli_commands(
     _test_describe_instances(cluster, node_type="HeadNode")
     _test_describe_instances(cluster, node_type="Compute")
     _test_describe_instances(cluster, queue_name="ondemand1")
-    _test_pcluster_compute_fleet(cluster, expected_num_nodes=2)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster)
     _test_pcluster_list_cluster_log_streams(cluster)
     _test_pcluster_get_cluster_log_events(cluster)
     _test_pcluster_get_cluster_stack_events(cluster)
+    _test_pcluster_compute_fleet(cluster, expected_num_nodes=2)
 
     remote_command_executor = RemoteCommandExecutor(cluster)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
@@ -130,7 +130,7 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
     def construct_validation_error_expected_response(configuration_validation_errors):
         return {
             "configurationValidationErrors": configuration_validation_errors,
-            "message": "Invalid cluster configuration",
+            "message": "Invalid cluster configuration.",
         }
 
     expected_response = construct_validation_error_expected_response(
@@ -191,11 +191,11 @@ def _test_create_or_update_with_warnings(cluster_config_with_warning, clusters_f
             ),
         ]
     )
-    for test_case in test_cases:
+    for expected_response, extra_args in test_cases:
         _check_response(
             cluster_config_with_warning,
-            test_case[0],
-            extra_args=test_case[1],
+            expected_response,
+            extra_args=extra_args,
             clusters_factory=clusters_factory,
             cluster=cluster,
         )
@@ -220,25 +220,27 @@ def _check_response(cluster_config, expected_response, clusters_factory=None, cl
         actual_response = cluster.update(
             cluster_config, extra_args=extra_args, wait=False, log_error=False, raise_on_error=False
         )
-    expected_validation_errors = expected_response.get("configurationValidationErrors")
-    if expected_validation_errors:
-        # If validation error is expected. The code below checks for the validation error without enforcing the order
-        # of errors and warnings and use Regex to match the error message
-        actual_validation_errors = actual_response["configurationValidationErrors"]
-        assert_that(actual_validation_errors).is_length(len(expected_validation_errors))
-        for actual_error in actual_validation_errors:
-            for expected_error in expected_validation_errors:
-                if actual_error["type"] == expected_error["type"]:
-                    # Either check the regex of expected_message match actual failure or check the
-                    # whole strings are equal. This is to deal with strings having regex symbols (e.g. "[") inside
-                    assert_that(
-                        re.search(expected_error["message"], actual_error["message"])
-                        or expected_error["message"] == actual_error["message"]
-                    )
-                    assert_that(actual_error["level"]).is_equal_to(expected_error["level"])
-    else:
-        # Otherwise, assert the actual response is exactly as expected
-        assert_that(actual_response).is_equal_to(expected_response)
+
+    # validate errors
+    config_validation = "configurationValidationErrors"
+    expected_errors = {err["type"]: err for err in expected_response.get(config_validation, [])}
+    actual_errors = {err["type"]: err for err in actual_response.get(config_validation, [])}
+
+    if len(actual_errors) != len(expected_errors):
+        logging.info("%s", actual_errors)
+        logging.info("%s", expected_errors)
+
+    assert_that(actual_errors).is_length(len(expected_errors))
+    for err_type, expected_err in expected_errors.items():
+        assert_that(actual_errors).contains(err_type)
+        actual_err = actual_errors[err_type]
+        assert_that(re.search(expected_err["message"], actual_err["message"]))
+        assert_that(actual_err["level"]).is_equal_to(expected_err["level"])
+
+    # Filter out the configurationValidationMessages
+    expected_response_filtered = {k: v for k, v in expected_response.items() if k != config_validation}
+    actual_response_filtered = {k: v for k, v in actual_response.items() if k != config_validation}
+    assert_that(actual_response_filtered).is_equal_to(expected_response_filtered)
 
 
 def _test_describe_cluster(cluster):
@@ -396,14 +398,19 @@ def _test_pcluster_list_cluster_log_streams(cluster):
     """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
     logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
     list_streams_result = cluster.list_log_streams()
+    cluster_info = cluster.describe_cluster()
     streams = list_streams_result["items"]
 
     stream_names = {stream["logStreamName"] for stream in streams}
-    expected_log_streams = {"cfn-init"}
+    expected_log_streams = {
+        "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
+        "Compute": {"syslog", "computemgtd", "supervisord"},
+    }
 
     # check there are the logs of all the instances
     for instance in cluster.describe_cluster_instances():
-        for stream_name in expected_log_streams:
+        instance_type = "HeadNode" if instance["instanceId"] == cluster_info["headnode"]["instanceId"] else "Compute"
+        for stream_name in expected_log_streams[instance_type]:
             assert_that(stream_names).contains(instance_stream_name(instance, stream_name))
 
 

@@ -14,7 +14,6 @@ import time
 
 import pytest
 from assertpy import assert_that
-from dateutil.parser import parse
 
 from pcluster.aws.common import AWSClientError
 from pcluster.models.common import (
@@ -34,8 +33,9 @@ class TestLogGrouptimeFiltersParser:
     @pytest.mark.parametrize(
         "params, expected_error",
         [
-            ({"start_time": "1623071000"}, "Unable to parse time. It must be in ISO8601 format"),
-            ({"end_time": "1623071000"}, "Unable to parse time. It must be in ISO8601 format"),
+            ({"start_time": "1623071000"}, "Invalid time filter, must be of type 'datetime'"),
+            ({"start_time": datetime.datetime(2012, 7, 9)}, "Invalid time filter, must be of type 'datetime'"),
+            ({"end_time": "1623071000"}, "Invalid time filter, must be of type 'datetime'"),
         ],
     )
     def test_initialization_error(self, mocker, params, expected_error):
@@ -53,7 +53,10 @@ class TestLogGrouptimeFiltersParser:
         "params, expected_attrs",
         [
             (
-                {"start_time": "2012-07-09", "end_time": "2012-07-29"},
+                {
+                    "start_time": datetime.datetime(2012, 7, 9, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2012, 7, 29, tzinfo=datetime.timezone.utc),
+                },
                 {
                     "start_time": datetime.datetime(2012, 7, 9, tzinfo=datetime.timezone.utc),
                     "end_time": datetime.datetime(2012, 7, 29, tzinfo=datetime.timezone.utc),
@@ -76,14 +79,27 @@ class TestLogGrouptimeFiltersParser:
     @pytest.mark.parametrize(
         "attrs, event_in_window, log_stream_prefix, expected_error",
         [
-            ({"end_time": "2020-06-02"}, True, "test", "Start time must be earlier than end time"),
             (
-                {"start_time": "2021-06-07", "end_time": "2021-06-02"},
+                {"end_time": datetime.datetime(2020, 6, 2, tzinfo=datetime.timezone.utc)},
                 True,
                 "test",
                 "Start time must be earlier than end time",
             ),
-            ({"end_time": "2021-07-09T22:45:22+04:00"}, False, None, "No log events in the log group"),
+            (
+                {
+                    "start_time": datetime.datetime(2020, 6, 7, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2020, 6, 2, tzinfo=datetime.timezone.utc),
+                },
+                True,
+                "test",
+                "Start time must be earlier than end time",
+            ),
+            (
+                {"end_time": datetime.datetime(2021, 7, 9, 22, 45, 22, tzinfo=datetime.timezone.utc)},
+                False,
+                None,
+                "No log events in the log group",
+            ),
         ],
     )
     def test_validate(self, mocker, attrs, event_in_window, log_stream_prefix, expected_error):
@@ -122,10 +138,16 @@ class TestLogGroupTimeFiltersParser:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({"start_time": "wrong"}, "Unable to parse time"),
-            ({"end_time": "1622802790248"}, "Unable to parse time"),
-            ({"end_time": "1622802790"}, "Unable to parse time"),
-            ({"start_time": "2021-06-02T15:55:10+02:00", "end_time": "2021-06-02T15:55:10+02:00"}, None),
+            ({"start_time": "wrong"}, "Invalid time filter"),
+            ({"end_time": "1622802790248"}, "Invalid time filter"),
+            ({"end_time": "1622802790"}, "Invalid time filter"),
+            (
+                {
+                    "start_time": datetime.datetime(2021, 6, 2, 15, 15, 10, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2021, 6, 2, 15, 15, 10, tzinfo=datetime.timezone.utc),
+                },
+                None,
+            ),
         ],
     )
     def test_initialization(self, args, error_message, run_cli, capsys):
@@ -136,8 +158,8 @@ class TestLogGroupTimeFiltersParser:
                 LogGroupTimeFiltersParser(**kwargs)
         else:
             time_parser = LogGroupTimeFiltersParser(**kwargs)
-            assert_that(time_parser.start_time).is_equal_to(parse(args.get("start_time")))
-            assert_that(time_parser.end_time).is_equal_to(parse(args.get("end_time")))
+            assert_that(time_parser.start_time).is_equal_to(args.get("start_time"))
+            assert_that(time_parser.end_time).is_equal_to(args.get("end_time"))
 
 
 class TestCloudWatchLogsExporter:

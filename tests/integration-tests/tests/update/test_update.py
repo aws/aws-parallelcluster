@@ -143,6 +143,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                 },
             },
             "compute_type": "ondemand",
+            "networking": {"placement_group": {"enabled": False}}
         },
         "queue3": {
             "compute_resources": {
@@ -162,6 +163,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                 },
             },
             "compute_type": "ondemand",
+            "networking": {"placement_group": {"enabled": False}}
         },
     }
 
