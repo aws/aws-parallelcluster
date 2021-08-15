@@ -13,7 +13,6 @@ import json
 import logging
 
 import yaml
-
 from framework.credential_providers import run_pcluster_command
 from utils import kebab_case
 

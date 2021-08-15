@@ -22,9 +22,10 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
-from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 from troposphere import Template, iam
 from utils import generate_stack_name
+
+from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 
 
 def test_invalid_config(
