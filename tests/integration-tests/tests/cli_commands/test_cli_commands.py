@@ -23,9 +23,10 @@ from assertpy import assert_that
 from dateutil.parser import parse as date_parse
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
+from utils import check_status, get_cluster_nodes_instance_ids
+
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
-from utils import check_status, get_cluster_nodes_instance_ids
 
 
 @pytest.mark.regions(["us-east-2"])

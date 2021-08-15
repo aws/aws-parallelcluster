@@ -21,9 +21,8 @@ import subprocess
 
 import boto3
 from assertpy import assert_that
-from retrying import retry
-
 from constants import OS_TO_ROOT_VOLUME_DEVICE
+from retrying import retry
 
 
 class InstanceTypesData:

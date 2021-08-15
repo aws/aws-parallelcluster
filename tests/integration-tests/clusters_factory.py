@@ -17,9 +17,8 @@ import subprocess
 
 import boto3
 import yaml
-from retrying import retry
-
 from framework.credential_providers import run_pcluster_command
+from retrying import retry
 from utils import (
     dict_add_nested_key,
     get_stack_id_tag_filter,

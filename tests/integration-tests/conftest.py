@@ -28,10 +28,6 @@ import pkg_resources
 import pytest
 import yaml
 from botocore.config import Config
-from filelock import FileLock
-from jinja2 import Environment, FileSystemLoader
-from retrying import retry
-
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -44,12 +40,14 @@ from conftest_markers import (
 )
 from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
 from constants import SCHEDULERS_SUPPORTING_IMDS_SECURED
+from filelock import FileLock
 from framework.credential_providers import aws_credential_provider, register_cli_credentials_for_region
 from framework.tests_configuration.config_renderer import read_config_file
 from framework.tests_configuration.config_utils import get_all_regions
 from images_factory import Image, ImagesFactory
+from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
-from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
+from retrying import retry
 from utils import (
     InstanceTypesData,
     create_s3_bucket,
@@ -64,6 +62,8 @@ from utils import (
     random_alphanumeric,
     set_logger_formatter,
 )
+
+from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
 
 
 def pytest_addoption(parser):
