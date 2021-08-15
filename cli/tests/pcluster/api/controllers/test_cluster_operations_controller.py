@@ -187,23 +187,19 @@ class TestCreateCluster:
             _, kwargs = cluster_create_mock.call_args
             assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
 
-    def test_dryrun(self, client, mocker):
-        mocker.patch(
-            "pcluster.models.cluster.Cluster.validate_create_request",
-            auto_spec=True,
-            return_value=([]),
-        )
+    @pytest.mark.parametrize("errors", [([]), ([ValidationResult("message", FailureLevel.WARNING, "type")])])
+    def test_dryrun(self, client, mocker, errors):
+        mocker.patch("pcluster.models.cluster.Cluster.validate_create_request", auto_spec=True, return_value=(errors))
 
-        create_cluster_request_content = {
-            "clusterName": "cluster",
-            "clusterConfiguration": self.CONFIG,
-        }
+        create_cluster_request_content = {"clusterName": "cluster", "clusterConfiguration": self.CONFIG}
 
         response = self._send_test_request(
             client, create_cluster_request_content=create_cluster_request_content, dryrun=True, region="us-east-1"
         )
 
         expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(412)
             assert_that(response.get_json()).is_equal_to(expected_response)
@@ -1204,7 +1200,8 @@ class TestUpdateCluster:
             _, kwargs = cluster_update_mock.call_args
             assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
 
-    def test_dryrun(self, mocker, client):
+    @pytest.mark.parametrize("errors", [([]), ([ValidationResult("message", FailureLevel.WARNING, "type")])])
+    def test_dryrun(self, mocker, client, errors):
         stack_data = cfn_describe_stack_mock_response()
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
         changes = [
@@ -1222,7 +1219,7 @@ class TestUpdateCluster:
         mocker.patch(
             "pcluster.models.cluster.Cluster.validate_update_request",
             auto_spec=True,
-            return_value=(None, changes, []),
+            return_value=(None, changes, errors),
         )
 
         update_cluster_request_content = {
@@ -1248,6 +1245,8 @@ class TestUpdateCluster:
                 }
             ],
         }
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(412)
             assert_that(response.get_json()).is_equal_to(expected_response)
