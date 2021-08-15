@@ -13,12 +13,12 @@ class UrlValidator(Validator):
     """
     Url Validator.
 
-    Validate given url with s3, https or file prefix.
+    Validate given url with s3 or https prefix.
     """
 
     def _validate(self, url):
         scheme = get_url_scheme(url)
-        if scheme in ["https", "s3", "file"]:
+        if scheme in ["https", "s3"]:
             if scheme == "s3":
                 self._validate_s3_uri(url)
             else:
@@ -43,7 +43,7 @@ class UrlValidator(Validator):
                     )
         else:
             self._add_failure(
-                f"The value '{url}' is not a valid URL, choose URL with 'https', 's3' or 'file' prefix.",
+                f"The value '{url}' is not a valid URL, choose URL with 'https' or 's3' prefix.",
                 FailureLevel.ERROR,
             )
 
