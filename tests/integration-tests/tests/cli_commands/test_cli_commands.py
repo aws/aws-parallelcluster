@@ -111,16 +111,16 @@ def _test_update_with_warnings(cluster_config, cluster):
 
 
 def _validation_test_cases():
-    "Generates the test-case data for performing create / update operations with errors, suppresssion and dryrun."
+    """Generates the test-case data for performing create / update operations with errors, suppresssion and dryrun."""
 
     def _args(*suppressed_validators, dryrun=True, failure_level="WARNING"):
-        "Converts the supplied options into a dict that will be used for the parameters to the command."
+        """Converts the supplied options into a dict that will be used for the parameters to the command."""
         suppress_arg = {"suppress_validators": suppressed_validators} if suppressed_validators else {}
         failure_arg = {"validation_failure_level": failure_level} if failure_level else {}
         return {"dryrun": dryrun, **failure_arg, **suppress_arg}
 
     def _test_case(success, validation_messages, args):
-        "Return a tuple of expected, key for the messages in the response, args"
+        """Return a tuple of expected, key for the messages in the response, args"""
         if success:
             message = "Request would have succeeded, but DryRun flag is set."
         else:
