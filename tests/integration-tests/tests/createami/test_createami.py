@@ -10,7 +10,11 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import datetime
+import json
 import logging
+import re
+import tarfile
+import tempfile
 import time
 
 import boto3
@@ -18,10 +22,9 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
+from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 from troposphere import Template, iam
 from utils import generate_stack_name
-
-from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 
 
 def test_invalid_config(
@@ -113,6 +116,7 @@ def test_build_image(
     _test_list_image_log_streams(image)
     _test_get_image_log_events(image)
     _test_list_images(image)
+    _test_export_logs(s3_bucket_factory, image)
 
 
 def _test_list_images(image):
@@ -186,6 +190,42 @@ def _test_get_image_log_events(image):
 
         if expect_first is False:
             assert_that(events[0]["message"]).does_not_contain(cloud_init_debug_msg)
+
+
+def _test_export_logs(s3_bucket_factory, image):
+    bucket_name = s3_bucket_factory()
+    logging.info("bucket is %s", bucket_name)
+
+    # set bucket permissions
+    bucket_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": "s3:GetBucketAcl",
+                "Effect": "Allow",
+                "Resource": f"arn:aws:s3:::{bucket_name}",
+                "Principal": {"Service": f"logs.{image.region}.amazonaws.com"},
+            },
+            {
+                "Action": "s3:PutObject",
+                "Effect": "Allow",
+                "Resource": f"arn:aws:s3:::{bucket_name}/*",
+                "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}},
+                "Principal": {"Service": f"logs.{image.region}.amazonaws.com"},
+            },
+        ],
+    }
+    boto3.client("s3").put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
+    with tempfile.TemporaryDirectory() as tempdir:
+        output_file = f"{tempdir}/testfile.tar.gz"
+        bucket_prefix = "test_prefix"
+        ret = image.export_logs(bucket=bucket_name, output_file=output_file, bucket_prefix=bucket_prefix)
+        assert_that(ret["path"]).is_equal_to(output_file)
+
+        rexp = rf"{image.image_id}-logs.*/cloudwatch-logs/3.0.0-1"
+        with tarfile.open(output_file) as archive:
+            match = any(re.match(rexp, logfile.name) for logfile in archive)
+        assert_that(match).is_true()
 
 
 def _test_build_tag(image):
@@ -368,9 +408,7 @@ def test_build_image_wrong_pcluster_version(
     _test_build_image_failed(image)
     log_stream_name = "3.0.0/1"
     log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name)["events"])
-    assert_that(log_data).matches(
-        fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}"
-    )
+    assert_that(log_data).matches(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
 def _test_build_image_failed(image):

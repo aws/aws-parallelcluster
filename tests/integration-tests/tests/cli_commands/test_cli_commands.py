@@ -226,10 +226,6 @@ def _check_response(cluster_config, expected_response, clusters_factory=None, cl
     expected_errors = {err["type"]: err for err in expected_response.get(config_validation, [])}
     actual_errors = {err["type"]: err for err in actual_response.get(config_validation, [])}
 
-    if len(actual_errors) != len(expected_errors):
-        logging.info("%s", actual_errors)
-        logging.info("%s", expected_errors)
-
     assert_that(actual_errors).is_length(len(expected_errors))
     for err_type, expected_err in expected_errors.items():
         assert_that(actual_errors).contains(err_type)
@@ -237,10 +233,7 @@ def _check_response(cluster_config, expected_response, clusters_factory=None, cl
         assert_that(re.search(expected_err["message"], actual_err["message"]))
         assert_that(actual_err["level"]).is_equal_to(expected_err["level"])
 
-    # Filter out the configurationValidationMessages
-    expected_response_filtered = {k: v for k, v in expected_response.items() if k != config_validation}
-    actual_response_filtered = {k: v for k, v in actual_response.items() if k != config_validation}
-    assert_that(actual_response_filtered).is_equal_to(expected_response_filtered)
+    assert_that(actual_response).is_equal_to(expected_response, ignore=config_validation)
 
 
 def _test_describe_cluster(cluster):

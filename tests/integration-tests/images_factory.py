@@ -13,6 +13,7 @@ import json
 import logging
 
 import yaml
+
 from framework.credential_providers import run_pcluster_command
 from utils import kebab_case
 
@@ -109,6 +110,15 @@ class Image:
         else:
             self._update_image_info(response)
         return response
+
+    def export_logs(self, **args):
+        """Export the logs from the  image build process."""
+        logging.info("Get image %s build log.", self.image_id)
+        command = ["pcluster", "export-image-logs", "--region", self.region, "--image-id", self.image_id]
+        for k, val in args.items():
+            command.extend([f"--{kebab_case(k)}", str(val)])
+        result = run_pcluster_command(command)
+        return json.loads(result.stdout)
 
     def get_log_events(self, log_stream_name, **args):
         """Get image build log events."""
