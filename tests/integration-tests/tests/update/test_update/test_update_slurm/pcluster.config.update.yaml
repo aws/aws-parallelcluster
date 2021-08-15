@@ -87,6 +87,8 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
     - Name: queue3
       Iam:
         S3Access:
@@ -116,11 +118,11 @@ Scheduling:
         - Name: queue3-i2
           InstanceType: t2.xlarge
           DisableSimultaneousMultithreading: true
-          Efa:
-            Enabled: true
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+        PlacementGroup:
+          Enabled: false
 SharedStorage:
   - MountDir: shared
     Name: ebs
@@ -157,3 +159,7 @@ Monitoring:
     CloudWatch:
       Enabled: true
       RetentionInDays: 1
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: |
+      {"test_key" : "test_value"}
