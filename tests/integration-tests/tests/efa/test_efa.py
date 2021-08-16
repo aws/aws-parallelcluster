@@ -212,7 +212,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
         test_datadir,
     )
     max_bandwidth = remote_command_executor.run_remote_command(
-        "cat /shared/osu.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
+        "cat /shared/mbw_mr.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
     ).stdout
 
     # Expected bandwidth with 4 NICS:
