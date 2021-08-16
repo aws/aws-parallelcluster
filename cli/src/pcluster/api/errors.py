@@ -138,8 +138,17 @@ class DryrunOperationException(ParallelClusterApiException):
 
     code = 412
 
-    def __init__(self, content: str = "Request would have succeeded, but DryRun flag is set."):
-        super().__init__(DryrunOperationExceptionResponseContent(content))
+    def __init__(
+        self,
+        content: str = "Request would have succeeded, but DryRun flag is set.",
+        change_set=None,
+        validation_messages=None,
+    ):
+        super().__init__(
+            DryrunOperationExceptionResponseContent(
+                message=content, change_set=change_set, validation_messages=validation_messages
+            )
+        )
 
 
 class ConflictException(ParallelClusterApiException):
