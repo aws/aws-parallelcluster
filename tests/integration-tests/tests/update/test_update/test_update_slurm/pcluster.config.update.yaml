@@ -118,6 +118,8 @@ Scheduling:
         - Name: queue3-i2
           InstanceType: t2.xlarge
           DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: false
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
