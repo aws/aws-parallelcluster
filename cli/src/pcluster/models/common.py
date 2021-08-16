@@ -23,7 +23,7 @@ import yaml
 from pcluster.api.encoder import JSONEncoder
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, get_region
-from pcluster.utils import to_utc_datetime
+from pcluster.utils import datetime_to_epoch, to_utc_datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -75,14 +75,15 @@ class FiltersParserError(Exception):
 class LogGroupTimeFiltersParser:
     """Class to manage start-time and end-time filters for a log group."""
 
-    def __init__(self, log_group_name: str, start_time: str = None, end_time: str = None):
+    def __init__(self, log_group_name: str, start_time: datetime.datetime = None, end_time: datetime.datetime = None):
         self._log_group_name = log_group_name
-        try:
-            self._start_time = to_utc_datetime(start_time) if start_time else None
-            now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
-            self.end_time = to_utc_datetime(end_time) if end_time else now_utc
-        except Exception as e:
-            raise FiltersParserError(f"Unable to parse time. It must be in ISO8601 format. {e}")
+        if (
+            start_time and (not isinstance(start_time, datetime.datetime) or start_time.tzinfo != datetime.timezone.utc)
+        ) or (end_time and (not isinstance(end_time, datetime.datetime) or end_time.tzinfo != datetime.timezone.utc)):
+            raise FiltersParserError("Invalid time filter, must be of type 'datetime' with utc timezone.")
+        self._start_time = start_time
+        now_utc = datetime.datetime.now().astimezone(datetime.timezone.utc)
+        self.end_time = end_time or now_utc
 
     @property
     def start_time(self):
@@ -105,8 +106,8 @@ class LogGroupTimeFiltersParser:
         event_in_window = AWSApi.instance().logs.filter_log_events(
             log_group_name=self._log_group_name,
             log_stream_name_prefix=log_stream_prefix,
-            start_time=self.start_time,
-            end_time=self.end_time,
+            start_time=datetime_to_epoch(self.start_time),
+            end_time=datetime_to_epoch(self.end_time),
         )
         if not event_in_window:
             raise FiltersParserError(
@@ -149,7 +150,7 @@ class CloudWatchLogsExporter:
             self.bucket_prefix = f"{resource_id}-logs-{datetime.datetime.now().strftime('%Y%m%d%H%M')}"
             self.delete_everything_under_prefix = AWSApi.instance().s3_resource.is_empty(bucket, self.bucket_prefix)
 
-    def execute(self, log_stream_prefix=None, start_time=None, end_time=None):
+    def execute(self, log_stream_prefix=None, start_time: datetime.datetime = None, end_time: datetime.datetime = None):
         """Start export task. Returns logs streams folder."""
         # Export logs to S3
         task_id = self._export_logs_to_s3(log_stream_prefix=log_stream_prefix, start_time=start_time, end_time=end_time)
@@ -170,7 +171,9 @@ class CloudWatchLogsExporter:
                 LOGGER.debug("Cleaning up S3 bucket %s. Deleting all objects under %s", self.bucket, delete_key)
                 AWSApi.instance().s3_resource.delete_objects(bucket_name=self.bucket, prefix=delete_key)
 
-    def _export_logs_to_s3(self, log_stream_prefix=None, start_time=None, end_time=None):
+    def _export_logs_to_s3(
+        self, log_stream_prefix=None, start_time: datetime.datetime = None, end_time: datetime.datetime = None
+    ):
         """Export the contents of a image's CloudWatch log group to an s3 bucket."""
         try:
             LOGGER.debug("Starting export of logs from log group %s to s3 bucket %s", self.log_group_name, self.bucket)

@@ -77,7 +77,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "expected_power_saved_instances": 10,
                     "enable_efa": False,
                     "disable_hyperthreading": False,
-                },
+                }
             },
             "compute_type": "ondemand",
         },
@@ -141,9 +141,10 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                     "expected_power_saved_instances": 1,
                     "enable_efa": True,
                     "disable_hyperthreading": True,
-                },
+                }
             },
             "compute_type": "ondemand",
+            "networking": {"placement_group": {"enabled": False}},
         },
         "queue3": {
             "compute_resources": {
@@ -163,6 +164,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
                 },
             },
             "compute_type": "ondemand",
+            "networking": {"placement_group": {"enabled": False}},
         },
     }
 

@@ -829,8 +829,8 @@ class Cluster:
         bucket: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
-        start_time: str = None,
-        end_time: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
         filters: str = None,
         output_file: str = None,
     ):
