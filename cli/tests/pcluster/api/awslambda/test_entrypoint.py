@@ -93,11 +93,11 @@ def test_lambda_handler(apigw_event, lambda_context, mocker):
 
     mocker.patch(
         "pcluster.api.controllers.cluster_operations_controller.list_clusters",
-        return_value=ListClustersResponseContent(items=[]),
+        return_value=ListClustersResponseContent(clusters=[]),
     )
 
     ret = entrypoint.lambda_handler(apigw_event, lambda_context)
     data = json.loads(ret["body"])
 
     assert_that(ret["statusCode"]).is_equal_to(200)
-    assert_that(data).contains_key("items")
+    assert_that(data).contains_key("clusters")

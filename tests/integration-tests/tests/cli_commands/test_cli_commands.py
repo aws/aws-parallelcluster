@@ -268,12 +268,12 @@ def _test_list_cluster(cluster_name, expected_status):
 def _find_cluster_with_pagination(cmd_args, cluster_name):
     result = run_pcluster_command(cmd_args)
     response = json.loads(result.stdout)
-    found_cluster = _find_cluster_in_list(cluster_name, response["items"])
+    found_cluster = _find_cluster_in_list(cluster_name, response["clusters"])
     while response.get("nextToken") and found_cluster is None:
         cmd_args_with_next_token = cmd_args + ["--next-token", response["nextToken"]]
         result = run_pcluster_command(cmd_args_with_next_token)
         response = json.loads(result.stdout)
-        found_cluster = _find_cluster_in_list(cluster_name, response["items"])
+        found_cluster = _find_cluster_in_list(cluster_name, response["clusters"])
     return found_cluster
 
 
@@ -392,7 +392,7 @@ def _test_pcluster_list_cluster_log_streams(cluster):
     logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
     list_streams_result = cluster.list_log_streams()
     cluster_info = cluster.describe_cluster()
-    streams = list_streams_result["items"]
+    streams = list_streams_result["logStreams"]
 
     stream_names = {stream["logStreamName"] for stream in streams}
     expected_log_streams = {

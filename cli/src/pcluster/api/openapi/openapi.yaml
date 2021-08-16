@@ -2526,7 +2526,7 @@ components:
       type: object
     DescribeOfficialImagesResponseContent:
       example:
-        items:
+        images:
         - amiId: amiId
           os: os
           name: name
@@ -2538,13 +2538,13 @@ components:
           version: version
           architecture: architecture
       properties:
-        items:
+        images:
           items:
             $ref: '#/components/schemas/AmiInfo'
-          title: items
+          title: images
           type: array
       required:
-      - items
+      - images
       title: DescribeOfficialImagesResponseContent
       type: object
     DryrunOperationExceptionResponseContent:
@@ -2883,7 +2883,7 @@ components:
     ListClusterLogStreamsResponseContent:
       example:
         nextToken: nextToken
-        items:
+        logStreams:
         - logStreamArn: logStreamArn
           creationTime: 2000-01-23T04:56:07.000+00:00
           logStreamName: logStreamName
@@ -2899,23 +2899,23 @@ components:
           lastIngestionTime: 2000-01-23T04:56:07.000+00:00
           uploadSequenceToken: uploadSequenceToken
       properties:
+        logStreams:
+          items:
+            $ref: '#/components/schemas/LogStream'
+          title: logStreams
+          type: array
         nextToken:
           description: Token to use for paginated requests.
           title: nextToken
           type: string
-        items:
-          items:
-            $ref: '#/components/schemas/LogStream'
-          title: items
-          type: array
       required:
-      - items
+      - logStreams
       title: ListClusterLogStreamsResponseContent
       type: object
     ListClustersResponseContent:
       example:
         nextToken: nextToken
-        items:
+        clusters:
         - clusterName: clusterName
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
@@ -2933,19 +2933,18 @@ components:
           description: Token to use for paginated requests.
           title: nextToken
           type: string
-        items:
+        clusters:
           items:
             $ref: '#/components/schemas/ClusterInfoSummary'
-          title: items
+          title: clusters
           type: array
       required:
-      - items
+      - clusters
       title: ListClustersResponseContent
       type: object
     ListImageLogStreamsResponseContent:
       example:
-        nextToken: nextToken
-        items:
+        logStreams:
         - logStreamArn: logStreamArn
           creationTime: 2000-01-23T04:56:07.000+00:00
           logStreamName: logStreamName
@@ -2961,23 +2960,23 @@ components:
           lastIngestionTime: 2000-01-23T04:56:07.000+00:00
           uploadSequenceToken: uploadSequenceToken
       properties:
+        logStreams:
+          items:
+            $ref: '#/components/schemas/LogStream'
+          title: logStreams
+          type: array
         nextToken:
           description: Token to use for paginated requests.
           title: nextToken
           type: string
-        items:
-          items:
-            $ref: '#/components/schemas/LogStream'
-          title: items
-          type: array
       required:
-      - items
+      - logStreams
       title: ListImageLogStreamsResponseContent
       type: object
     ListImagesResponseContent:
       example:
         nextToken: nextToken
-        items:
+        images:
         - imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
@@ -2991,17 +2990,17 @@ components:
           region: region
           version: version
       properties:
+        images:
+          items:
+            $ref: '#/components/schemas/ImageInfoSummary'
+          title: images
+          type: array
         nextToken:
           description: Token to use for paginated requests.
           title: nextToken
           type: string
-        items:
-          items:
-            $ref: '#/components/schemas/ImageInfoSummary'
-          title: items
-          type: array
       required:
-      - items
+      - images
       title: ListImagesResponseContent
       type: object
     LogEvent:

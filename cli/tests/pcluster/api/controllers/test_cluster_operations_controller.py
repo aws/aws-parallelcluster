@@ -890,7 +890,7 @@ class TestListClusters:
                     },
                 ],
                 {
-                    "items": [
+                    "clusters": [
                         {
                             "cloudformationStackArn": "arn:id",
                             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
@@ -938,7 +938,7 @@ class TestListClusters:
                     },
                 ],
                 {
-                    "items": [
+                    "clusters": [
                         {
                             "cloudformationStackArn": "arn:id",
                             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
@@ -979,7 +979,7 @@ class TestListClusters:
                     },
                 ],
                 {
-                    "items": [
+                    "clusters": [
                         {
                             "cloudformationStackArn": "arn:id",
                             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,

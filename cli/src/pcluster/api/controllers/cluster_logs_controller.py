@@ -199,4 +199,4 @@ def list_cluster_log_streams(cluster_name, region=None, filters=None, next_token
 
     log_streams = [convert_log(log) for log in cluster_logs.log_streams]
     next_token = cluster_logs.next_token
-    return ListClusterLogStreamsResponseContent(items=log_streams, next_token=next_token)
+    return ListClusterLogStreamsResponseContent(log_streams=log_streams, next_token=next_token)

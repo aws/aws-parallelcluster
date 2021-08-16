@@ -33,7 +33,7 @@ structure ListImagesResponse {
     nextToken: PaginationToken,
 
     @required
-    items: ImageInfoSummaries,
+    images: ImageInfoSummaries,
 }
 
 list ImageInfoSummaries {

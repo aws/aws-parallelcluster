@@ -113,7 +113,7 @@ class TestListClusterLogStreamsCommand:
         assert_that(out["nextToken"]).is_equal_to(logs.next_token)
         for i in range(len(logs.log_streams)):
             select_keys = {"logStreamName", "firstEventTimestamp", "lastEventTimestamp"}
-            out_select = {k: v for k, v in out["items"][i].items() if k in select_keys}
+            out_select = {k: v for k, v in out["logStreams"][i].items() if k in select_keys}
             assert_that(out_select).is_equal_to(expected_out[i])
         assert_that(list_log_streams_mock.call_args).is_length(2)
 

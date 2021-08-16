@@ -77,7 +77,7 @@ class ListImageLogStreamsResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'items': ([LogStream],),  # noqa: E501
+            'log_streams': ([LogStream],),  # noqa: E501
             'next_token': (str,),  # noqa: E501
         }
 
@@ -87,7 +87,7 @@ class ListImageLogStreamsResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'items': 'items',  # noqa: E501
+        'log_streams': 'logStreams',  # noqa: E501
         'next_token': 'nextToken',  # noqa: E501
     }
 
@@ -103,11 +103,11 @@ class ListImageLogStreamsResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, items, *args, **kwargs):  # noqa: E501
+    def __init__(self, log_streams, *args, **kwargs):  # noqa: E501
         """ListImageLogStreamsResponseContent - a model defined in OpenAPI
 
         Args:
-            items ([LogStream]):
+            log_streams ([LogStream]):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -166,7 +166,7 @@ class ListImageLogStreamsResponseContent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.items = items
+        self.log_streams = log_streams
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

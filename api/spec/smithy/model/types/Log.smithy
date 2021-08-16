@@ -66,7 +66,7 @@ structure ListLogStreamsResponse {
     nextToken: PaginationToken,
 
     @required
-    items: LogStreams,
+    logStreams: LogStreams,
 }
 
 

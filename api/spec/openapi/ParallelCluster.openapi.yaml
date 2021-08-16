@@ -1992,12 +1992,12 @@ components:
     DescribeOfficialImagesResponseContent:
       type: object
       properties:
-        items:
+        images:
           type: array
           items:
             $ref: '#/components/schemas/AmiInfo'
       required:
-        - items
+        - images
     DryrunOperationExceptionResponseContent:
       type: object
       description: Communicates that the operation would have succeeded without the dryrun flag.
@@ -2195,51 +2195,51 @@ components:
     ListClusterLogStreamsResponseContent:
       type: object
       properties:
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
-        items:
+        logStreams:
           type: array
           items:
             $ref: '#/components/schemas/LogStream'
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
       required:
-        - items
+        - logStreams
     ListClustersResponseContent:
       type: object
       properties:
         nextToken:
           type: string
           description: Token to use for paginated requests.
-        items:
+        clusters:
           type: array
           items:
             $ref: '#/components/schemas/ClusterInfoSummary'
       required:
-        - items
+        - clusters
     ListImageLogStreamsResponseContent:
       type: object
       properties:
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
-        items:
+        logStreams:
           type: array
           items:
             $ref: '#/components/schemas/LogStream'
-      required:
-        - items
-    ListImagesResponseContent:
-      type: object
-      properties:
         nextToken:
           type: string
           description: Token to use for paginated requests.
-        items:
+      required:
+        - logStreams
+    ListImagesResponseContent:
+      type: object
+      properties:
+        images:
           type: array
           items:
             $ref: '#/components/schemas/ImageInfoSummary'
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
       required:
-        - items
+        - images
     LogEvent:
       type: object
       properties:
