@@ -56,6 +56,13 @@ Parameters:
       - true
       - false
 
+  PermissionsBoundaryPolicy:
+    Description: |
+      ARN of a IAM policy to use as PermissionsBoundary for all IAM resources created by ParallelCluster API.
+      When specified, IAM permissions assumed by the API are conditionally restricted to the usage of the given PermissionsBoundary
+    Type: String
+    Default: ''
+
   CreateApiUserRole:
     Description: Creates a IAM role authorized to invoke the API. The Api is configured with a resource based policy to grant invoke permission to the created user only.
     Type: String
@@ -120,6 +127,7 @@ Conditions:
   EnableIamPolicy: !And
     - !Equals [!Ref EnableIamAdminAccess, true]
     - !Not [!Condition UseCustomParallelClusterFunctionRole]
+  EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   UsePrivateVpcEndpoint: !And
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
     - !Not [!Equals [!Ref VpcEndpointId, '']]
@@ -302,10 +310,12 @@ Resources:
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
-            # Condition:
-            #   StringEquals:
-            #     iam:PermissionsBoundary:
-            #       - !Ref ParallelClusterPermissionBoundaryPolicy
+            Condition: !If
+              - EnablePermissionsBoundary
+              - StringEquals:
+                  iam:PermissionsBoundary:
+                    - !Ref PermissionsBoundaryPolicy
+              - !Ref AWS::NoValue
             Sid: IamCreateRole
           - Action:
               - iam:PutRolePolicy
@@ -313,6 +323,12 @@ Resources:
             Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
             Sid: IamInlinePolicy
+            Condition: !If
+              - EnablePermissionsBoundary
+              - StringEquals:
+                  iam:PermissionsBoundary:
+                    - !Ref PermissionsBoundaryPolicy
+              - !Ref AWS::NoValue
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
@@ -332,6 +348,11 @@ Resources:
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+              StringEquals: !If
+                - EnablePermissionsBoundary
+                - iam:PermissionsBoundary:
+                    - !Ref PermissionsBoundaryPolicy
+                - !Ref AWS::NoValue
             Effect: Allow
             Sid: IamPolicy
 
