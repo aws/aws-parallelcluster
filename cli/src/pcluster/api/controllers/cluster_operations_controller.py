@@ -261,7 +261,7 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
     stacks, next_token = AWSApi.instance().cfn.list_pcluster_stacks(next_token=next_token)
     stacks = [ClusterStack(stack) for stack in stacks]
 
-    cluster_info_list = []
+    clusters = []
     for stack in stacks:
         current_cluster_status = cloud_formation_status_to_cluster_status(stack.status)
         if not cluster_status or current_cluster_status in cluster_status:
@@ -273,9 +273,9 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
                 version=stack.version,
                 cluster_status=current_cluster_status,
             )
-            cluster_info_list.append(cluster_info)
+            clusters.append(cluster_info)
 
-    return ListClustersResponseContent(items=cluster_info_list, next_token=next_token)
+    return ListClustersResponseContent(clusters=clusters, next_token=next_token)
 
 
 @configure_aws_region()

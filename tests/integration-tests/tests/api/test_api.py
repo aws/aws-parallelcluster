@@ -281,11 +281,11 @@ def _get_instances_to_terminate(compute_node_map):
 
 def _test_list_clusters(region, client, cluster_name, status):
     response = client.list_clusters(region=region)
-    target_cluster = _get_cluster(cluster_name, response.items)
+    target_cluster = _get_cluster(cluster_name, response.clusters)
 
     while "next_token" in response and not target_cluster:
         response = client.list_clusters(region=region, next_token=response.next_token)
-        target_cluster = _get_cluster(cluster_name, response.items)
+        target_cluster = _get_cluster(cluster_name, response.clusters)
 
     assert_that(target_cluster).is_not_none()
     assert_that(target_cluster.cluster_name).is_equal_to(cluster_name)
@@ -337,7 +337,7 @@ def _test_delete_cluster(region, client, cluster_name):
 def test_official_images(region, api_client):
     client = image_operations_api.ImageOperationsApi(api_client)
     response = client.describe_official_images(region=region)
-    assert_that(response.items).is_not_empty()
+    assert_that(response.images).is_not_empty()
 
 
 @pytest.mark.usefixtures("instance")
@@ -380,13 +380,13 @@ def _test_describe_image(region, client, image_id, status):
 
 def _test_list_images(region, client, image_id, status):
     response = client.list_images(image_status=ImageStatusFilteringOption(status), region=region)
-    target_image = _get_image(image_id, response.items)
+    target_image = _get_image(image_id, response.images)
 
     while "next_token" in response and not target_image:
         response = client.list_images(
             image_status=ImageStatusFilteringOption(status), region=region, next_token=response.next_token
         )
-        target_image = _get_image(image_id, response.items)
+        target_image = _get_image(image_id, response.images)
 
     LOGGER.info("Target image in ListImages response is: %s", target_image)
 

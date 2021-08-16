@@ -336,7 +336,7 @@ def _test_pcluster_list_cluster_log_streams(cluster):
     logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
     list_streams_result = cluster.list_log_streams()
     cluster_info = cluster.describe_cluster()
-    streams = list_streams_result["items"]
+    streams = list_streams_result["logStreams"]
 
     stream_names = {stream["logStreamName"] for stream in streams}
     expected_log_streams = {

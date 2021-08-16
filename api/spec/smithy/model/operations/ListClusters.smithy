@@ -31,7 +31,7 @@ structure ListClustersResponse {
     nextToken: PaginationToken,
 
     @required
-    items: ClusterSummaries,
+    clusters: ClusterSummaries,
 }
 
 list ClusterSummaries {

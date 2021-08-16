@@ -77,7 +77,7 @@ class ListImagesResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'items': ([ImageInfoSummary],),  # noqa: E501
+            'images': ([ImageInfoSummary],),  # noqa: E501
             'next_token': (str,),  # noqa: E501
         }
 
@@ -87,7 +87,7 @@ class ListImagesResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'items': 'items',  # noqa: E501
+        'images': 'images',  # noqa: E501
         'next_token': 'nextToken',  # noqa: E501
     }
 
@@ -103,11 +103,11 @@ class ListImagesResponseContent(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, items, *args, **kwargs):  # noqa: E501
+    def __init__(self, images, *args, **kwargs):  # noqa: E501
         """ListImagesResponseContent - a model defined in OpenAPI
 
         Args:
-            items ([ImageInfoSummary]):
+            images ([ImageInfoSummary]):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -166,7 +166,7 @@ class ListImagesResponseContent(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.items = items
+        self.images = images
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

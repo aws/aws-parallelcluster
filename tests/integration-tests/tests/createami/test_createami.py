@@ -121,7 +121,7 @@ def test_build_image(
 
 
 def _test_list_images(image):
-    images = image.list_images(region=image.region, image_status="AVAILABLE")["items"]
+    images = image.list_images(region=image.region, image_status="AVAILABLE")["images"]
     matches = [img for img in images if img["imageId"] == image.image_id]
     assert_that(matches).is_length(1)
     assert_that(matches[0]["imageId"]).is_equal_to(image.image_id)
@@ -147,7 +147,7 @@ def _test_image_stack_events(image):
 def _test_list_image_log_streams(image):
     logging.info("Testing that pcluster list-image-log-streams is working as expected")
     list_streams_result = image.list_log_streams()
-    streams = list_streams_result["items"]
+    streams = list_streams_result["logStreams"]
 
     stream_names = {stream["logStreamName"] for stream in streams}
     expected_log_stream = "3.0.0/1"
