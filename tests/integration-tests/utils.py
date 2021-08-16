@@ -206,7 +206,7 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
         )
         return [instance["InstanceId"] for instance in instances]
     except Exception as e:
-        logging.error("Failed retrieving instance ids with exception: %", e)
+        logging.error("Failed retrieving instance ids with exception: %s", e)
         raise
 
 
