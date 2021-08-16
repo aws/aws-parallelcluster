@@ -94,8 +94,8 @@ class TestExportClusterLogsFiltersParser:
     @pytest.mark.parametrize(
         "params, expected_error",
         [
-            ({"start_time": "1623071000"}, "Unable to parse time. It must be in ISO8601 format"),
-            ({"end_time": "1623071000"}, "Unable to parse time. It must be in ISO8601 format"),
+            ({"start_time": "1623071000"}, "Invalid time filter, must be of type 'datetime'"),
+            ({"end_time": "1623071000"}, "Invalid time filter, must be of type 'datetime'"),
         ],
     )
     def test_initialization_error(self, mocker, mock_head_node, params, expected_error):
@@ -119,7 +119,10 @@ class TestExportClusterLogsFiltersParser:
         "params, expected_attrs",
         [
             (
-                {"start_time": "2012-07-09", "end_time": "2012-07-29"},
+                {
+                    "start_time": datetime.datetime(2012, 7, 9, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2012, 7, 29, tzinfo=datetime.timezone.utc),
+                },
                 {
                     "log_stream_prefix": None,
                     "start_time": datetime.datetime(2012, 7, 9, tzinfo=datetime.timezone.utc),
@@ -147,9 +150,24 @@ class TestExportClusterLogsFiltersParser:
     @pytest.mark.parametrize(
         "attrs, event_in_window, expected_error",
         [
-            ({"end_time": "2020-06-02"}, True, "Start time must be earlier than end time"),
-            ({"start_time": "2021-06-07", "end_time": "2021-06-02"}, True, "Start time must be earlier than end time"),
-            ({"end_time": "2021-07-09T22:45:22+04:00"}, False, "No log events in the log group"),
+            (
+                {"end_time": datetime.datetime(2020, 6, 2, tzinfo=datetime.timezone.utc)},
+                True,
+                "Start time must be earlier than end time",
+            ),
+            (
+                {
+                    "start_time": datetime.datetime(2021, 6, 7, tzinfo=datetime.timezone.utc),
+                    "end_time": datetime.datetime(2021, 6, 2, tzinfo=datetime.timezone.utc),
+                },
+                True,
+                "Start time must be earlier than end time",
+            ),
+            (
+                {"end_time": datetime.datetime(2021, 7, 9, 22, 45, 22, tzinfo=datetime.timezone.utc)},
+                False,
+                "No log events in the log group",
+            ),
         ],
     )
     def test_validate(self, mocker, mock_head_node, attrs, event_in_window, expected_error):

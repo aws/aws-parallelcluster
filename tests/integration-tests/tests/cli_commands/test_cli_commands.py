@@ -221,12 +221,12 @@ def _test_list_cluster(cluster_name, expected_status):
 def _find_cluster_with_pagination(cmd_args, cluster_name):
     result = run_pcluster_command(cmd_args)
     response = json.loads(result.stdout)
-    found_cluster = _find_cluster_in_list(cluster_name, response["items"])
+    found_cluster = _find_cluster_in_list(cluster_name, response["clusters"])
     while response.get("nextToken") and found_cluster is None:
         cmd_args_with_next_token = cmd_args + ["--next-token", response["nextToken"]]
         result = run_pcluster_command(cmd_args_with_next_token)
         response = json.loads(result.stdout)
-        found_cluster = _find_cluster_in_list(cluster_name, response["items"])
+        found_cluster = _find_cluster_in_list(cluster_name, response["clusters"])
     return found_cluster
 
 
