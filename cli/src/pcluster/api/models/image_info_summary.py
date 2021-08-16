@@ -27,6 +27,7 @@ class ImageInfoSummary(Model):
         self,
         image_id=None,
         image_build_status=None,
+        ec2_image_id=None,
         cloudformation_stack_status=None,
         cloudformation_stack_arn=None,
         region=None,
@@ -42,6 +43,8 @@ class ImageInfoSummary(Model):
         :type cloudformation_stack_status: CloudFormationStackStatus
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
         :type cloudformation_stack_arn: str
+        :param ec2_image_id: The ec2_image_id of this ImageInfoSummary.
+        :type ec2_image_id: str
         :param region: The region of this ImageInfoSummary.
         :type region: str
         :param version: The version of this ImageInfoSummary.
@@ -52,6 +55,7 @@ class ImageInfoSummary(Model):
             "image_build_status": ImageBuildStatus,
             "cloudformation_stack_status": CloudFormationStackStatus,
             "cloudformation_stack_arn": str,
+            "ec2_image_id": str,
             "region": str,
             "version": str,
         }
@@ -61,6 +65,7 @@ class ImageInfoSummary(Model):
             "image_build_status": "imageBuildStatus",
             "cloudformation_stack_status": "cloudformationStackStatus",
             "cloudformation_stack_arn": "cloudformationStackArn",
+            "ec2_image_id": "ec2ImageId",
             "region": "region",
             "version": "version",
         }
@@ -69,6 +74,7 @@ class ImageInfoSummary(Model):
         self._image_build_status = image_build_status
         self._cloudformation_stack_status = cloudformation_stack_status
         self._cloudformation_stack_arn = cloudformation_stack_arn
+        self._ec2_image_id = ec2_image_id
         self._region = region
         self._version = version
 
@@ -176,6 +182,31 @@ class ImageInfoSummary(Model):
         :type cloudformation_stack_arn: str
         """
         self._cloudformation_stack_arn = cloudformation_stack_arn
+
+    @property
+    def ec2_image_id(self):
+        """Gets the ec2_image_id of this ImageInfoSummary.
+
+        Ec2 Id of the imag.
+
+        :return: The ec2_image_id of this ImageInfoSummary.
+        :rtype: str
+        """
+        return self._ec2_image_id
+
+    @ec2_image_id.setter
+    def ec2_image_id(self, ec2_image_id):
+        """Sets the ec2_image_id of this ImageInfoSummary.
+
+        Ec2 Id of the image.
+
+        :param ec2_image_id: The ec2_image_id of this ImageInfoSummary.
+        :type ec2_image_id: str
+        """
+        if ec2_image_id is None:
+            raise ValueError("Invalid value for `ec2_image_id`, must not be `None`")
+
+        self._ec2_image_id = ec2_image_id
 
     @property
     def region(self):

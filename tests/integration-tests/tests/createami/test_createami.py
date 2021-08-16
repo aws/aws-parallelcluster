@@ -126,6 +126,8 @@ def _test_list_images(image):
     assert_that(matches).is_length(1)
     assert_that(matches[0]["imageId"]).is_equal_to(image.image_id)
     assert_that(matches[0]["region"]).is_equal_to(image.region)
+    image.describe()
+    assert_that(matches[0]["ec2ImageId"]).is_equal_to(image.ec2_image_id)
     assert_that(matches[0]["imageBuildStatus"]).is_equal_to("BUILD_COMPLETE")
     assert_that(matches[0]).contains("version")
 
