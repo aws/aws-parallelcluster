@@ -282,7 +282,7 @@ def describe_official_images(region=None, os=None, architecture=None):
         for image in AWSApi.instance().ec2.get_official_images(os=os, architecture=architecture)
     ]
 
-    return DescribeOfficialImagesResponseContent(items=images)
+    return DescribeOfficialImagesResponseContent(images=images)
 
 
 def _validate_optional_filters(os, architecture):
@@ -323,10 +323,10 @@ def list_images(image_status, region=None, next_token=None):
     :rtype: ListImagesResponseContent
     """
     if image_status == ImageStatusFilteringOption.AVAILABLE:
-        return ListImagesResponseContent(items=_get_available_images())
+        return ListImagesResponseContent(images=_get_available_images())
     else:
-        items, next_token = _get_images_in_progress(image_status, next_token)
-        return ListImagesResponseContent(items=items, next_token=next_token)
+        images, next_token = _get_images_in_progress(image_status, next_token)
+        return ListImagesResponseContent(images=images, next_token=next_token)
 
 
 def _handle_config_validation_error(e: ConfigValidationError) -> BuildImageBadRequestException:

@@ -159,7 +159,7 @@ def get_unsupported_test_runner_options(request):
 def assert_configure_workflow(region, stages, config_path):
     logging.info(f"Using `pcluster configure` to write a configuration to {config_path}")
     environ["AWS_DEFAULT_REGION"] = region
-    configure_process = pexpect.spawn(f"pcluster configure -c {config_path}")
+    configure_process = pexpect.spawn(f"pcluster configure --config {config_path}")
     for stage in stages:
         configure_prompt_status = configure_process.expect(stage.get("prompt"))
         assert_that(configure_prompt_status).is_equal_to(0)

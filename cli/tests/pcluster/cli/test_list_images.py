@@ -54,7 +54,7 @@ class TestListImagesCommand:
 
     def test_execute(self, mocker):
         response_dict = {
-            "items": [
+            "images": [
                 {
                     "imageId": "aws-parallelcluster-3-0-0-amzn2-hvm-x86-64-202107121836",
                     "imageBuildStatus": "BUILD_COMPLETE",

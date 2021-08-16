@@ -369,7 +369,7 @@ class TestListImageLogStreams:
         describe_log_streams_mock.assert_called_with(**expected_args)
 
         expected = {
-            "items": [
+            "logStreams": [
                 {
                     "creationTime": "2021-01-01T00:00:07.000Z",
                     "firstEventTimestamp": "2021-01-01T00:00:14.000Z",
