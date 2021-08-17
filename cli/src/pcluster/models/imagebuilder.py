@@ -686,7 +686,7 @@ class ImageBuilder:
                         start_time=export_logs_filters.start_time, end_time=export_logs_filters.end_time
                     )
                 else:
-                    LOGGER.debug(
+                    LOGGER.info(
                         "Log streams not yet available for %s, only CFN Stack events will be exported.", {self.image_id}
                     )
 
