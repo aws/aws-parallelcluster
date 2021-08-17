@@ -399,9 +399,6 @@ Resources:
               - logs:PutRetentionPolicy
               - logs:DescribeLogGroups
               - logs:CreateLogGroup
-              - logs:FilterLogEvents
-              - logs:GetLogEvents
-              - logs:CreateExportTask
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -659,6 +656,7 @@ Resources:
             - logs:GetLogEvents
             - logs:CreateExportTask
             - logs:DescribeLogStreams
+            - logs:DescribeExportTasks
             Resource: '*'
             Effect: Allow
             Condition: !If
