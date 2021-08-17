@@ -40,9 +40,7 @@ def instance_stream_name(instance, stream_name):
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["ubuntu1804"])
 @pytest.mark.usefixtures("region", "instance")
-def test_slurm_cli_commands(
-    request, scheduler, region, os, pcluster_config_reader, clusters_factory, s3_bucket_factory
-):
+def test_cluster_slurm(request, scheduler, region, os, pcluster_config_reader, clusters_factory, s3_bucket_factory):
     """Test pcluster cli commands are working."""
     # Use long scale down idle time so we know nodes are terminated by pcluster stop
     cluster_config = pcluster_config_reader(scaledown_idletime=60)

@@ -189,18 +189,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: ["slurm", "awsbatch"]
-  cli_commands:
-    test_cli_commands.py::test_hit_cli_commands:
+  cluster:
+    test_cluster.py::test_cluster_slurm:
       dimensions:
         - regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1804"]
-          schedulers: ["slurm"]
-    test_cli_commands.py::test_sit_cli_commands:
-      dimensions:
-        - regions: ["us-west-2"]
-          instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
           schedulers: ["slurm"]
   cloudwatch_logging:
     test_cloudwatch_logging.py::test_cloudwatch_logging:

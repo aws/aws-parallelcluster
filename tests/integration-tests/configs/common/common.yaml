@@ -42,8 +42,8 @@ cfn-init:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7"]
         schedulers: ["slurm"]
-cli_commands:
-  test_cli_commands.py::test_slurm_cli_commands:
+cluster:
+  test_cluster.py::test_cluster_slurm:
     dimensions:
       - regions: ["ap-northeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -118,13 +118,13 @@ create:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
-createami:
-  test_createami.py::test_invalid_config:
+image:
+  test_image.py::test_invalid_config:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-  test_createami.py::test_build_image:
+  test_image.py::test_build_image:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -132,7 +132,7 @@ createami:
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
-  test_createami.py::test_build_image_custom_components:
+  test_image.py::test_build_image_custom_components:
     dimensions:
       - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -140,7 +140,7 @@ createami:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
-  test_createami.py::test_build_image_wrong_pcluster_version:
+  test_image.py::test_build_image_wrong_pcluster_version:
     dimensions:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
