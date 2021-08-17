@@ -22,16 +22,20 @@ from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
-def _check_cluster_schema(test_datadir, config_file_name):
+def _load_cluster_model_from_yaml(test_datadir, config_file_name):
     # https://github.com/marshmallow-code/marshmallow/issues/1126
     # TODO use yaml render_module: https://marshmallow.readthedocs.io/en/3.0/api_reference.html#marshmallow.Schema.Meta
-
-    # Load cluster model from Yaml file
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     print(input_yaml)
     copy_input_yaml = deepcopy(input_yaml)
     cluster = ClusterSchema(cluster_name="clustername").load(copy_input_yaml)
     print(cluster)
+    return input_yaml, cluster
+
+
+def _check_cluster_schema(test_datadir, config_file_name):
+    # Load cluster model from Yaml file
+    input_yaml, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
 
     # Re-create Yaml file from model and compare content
     cluster_schema = ClusterSchema(cluster_name="clustername")
@@ -278,3 +282,31 @@ def test_shared_storage_schema(mocker, config_dict, failure_message):
             SharedStorageSchema().load(config_dict)
     else:
         SharedStorageSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "scheduler, install_intel_packages_enabled, failure_message",
+    [
+        ("slurm", True, None),
+        ("slurm", False, None),
+        ("awsbatch", True, "use of the IntelSelectSolutions package is not supported when using awsbatch"),
+        ("awsbatch", False, None),
+    ],
+)
+def test_scheduler_constraints_for_intel_packages(
+    mocker, test_datadir, scheduler, install_intel_packages_enabled, failure_message
+):
+    mock_aws_api(mocker)
+    config_file_name = f"{scheduler}.{'enabled' if install_intel_packages_enabled else 'disabled'}.yaml"
+    if failure_message:
+        with pytest.raises(
+            ValidationError,
+            match=failure_message,
+        ):
+            _load_cluster_model_from_yaml(test_datadir, config_file_name)
+    else:
+        _, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
+        assert_that(cluster.scheduling.scheduler).is_equal_to(scheduler)
+        assert_that(cluster.additional_packages.intel_select_solutions.install_intel_software).is_equal_to(
+            install_intel_packages_enabled
+        )
