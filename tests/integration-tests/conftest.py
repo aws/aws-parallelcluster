@@ -317,7 +317,7 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, extra_args=None, raise_on_error=True, wait=True, log_error=True):
+    def _cluster_factory(cluster_config, **kwargs):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
@@ -332,9 +332,7 @@ def clusters_factory(request, region):
             region=region,
         )
         if not request.config.getoption("cluster"):
-            cluster.creation_response = factory.create_cluster(
-                cluster, extra_args=extra_args, raise_on_error=raise_on_error, wait=wait, log_error=log_error
-            )
+            cluster.creation_response = factory.create_cluster(cluster, **kwargs)
         return cluster
 
     yield _cluster_factory
@@ -805,12 +803,7 @@ def initialize_cli_creds(cfn_stacks_factory, request):
         stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
         with open(stack_template_path) as stack_template_file:
             stack_template_data = stack_template_file.read()
-        stack = CfnStack(
-            name=stack_name,
-            region=region,
-            capabilities=["CAPABILITY_IAM"],
-            template=stack_template_data,
-        )
+        stack = CfnStack(name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data)
         cfn_stacks_factory.create_stack(stack)
         # register providers
         register_cli_credentials_for_region(region, stack.cfn_outputs["ParallelClusterUserRole"])
@@ -914,15 +907,7 @@ def common_pcluster_policies(region):
 @pytest.fixture(scope="class")
 def role_factory(region):
     roles = []
-    iam_client = boto3.client(
-        "iam",
-        region_name=region,
-        config=Config(
-            retries={
-                "max_attempts": 10,
-            }
-        ),
-    )
+    iam_client = boto3.client("iam", region_name=region, config=Config(retries={"max_attempts": 10}))
 
     def create_role(trusted_service, policies=()):
         iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
@@ -974,15 +959,7 @@ def role_factory(region):
 @pytest.fixture(scope="class")
 def instance_profile_factory(region, role_factory):
     instance_profiles = []
-    iam_client = boto3.client(
-        "iam",
-        region_name=region,
-        config=Config(
-            retries={
-                "max_attempts": 10,
-            }
-        ),
-    )
+    iam_client = boto3.client("iam", region_name=region, config=Config(retries={"max_attempts": 10}))
 
     def create_instance_profile(policies=()):
         instance_profile_name = f"integ-tests_{region}_{random_alphanumeric()}"
@@ -1017,10 +994,7 @@ def _create_iam_policies(iam_policy_name, region, policy_filename):
         .get("Account")
     )
     parallel_cluster_instance_policy = env.get_template(policy_filename).render(
-        partition=partition,
-        region=region,
-        account_id=account_id,
-        cluster_bucket_name="parallelcluster-*",
+        partition=partition, region=region, account_id=account_id, cluster_bucket_name="parallelcluster-*"
     )
     return boto3.client("iam", region_name=region).create_policy(
         PolicyName=iam_policy_name, PolicyDocument=parallel_cluster_instance_policy

@@ -65,3 +65,13 @@ structure ClusterConfigurationStructure {
 
 @documentation("Cluster configuration as a YAML document")
 string ClusterConfigurationData
+
+list ChangeSet {
+    member: Change
+}
+
+structure Change {
+    parameter: String,
+    currentValue: String,
+    requestedValue: String,
+}

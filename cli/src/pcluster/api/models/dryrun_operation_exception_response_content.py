@@ -10,8 +10,12 @@
 
 from __future__ import absolute_import
 
+from typing import List
+
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
+from pcluster.api.models.change import Change
+from pcluster.api.models.config_validation_message import ConfigValidationMessage
 
 
 class DryrunOperationExceptionResponseContent(Model):
@@ -20,17 +24,31 @@ class DryrunOperationExceptionResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None):
+    def __init__(self, validation_messages=None, message=None, change_set=None):
         """DryrunOperationExceptionResponseContent - a model defined in OpenAPI
 
+        :param validation_messages: The validation_messages of this DryrunOperationExceptionResponseContent.
+        :type validation_messages: List[ConfigValidationMessage]
         :param message: The message of this DryrunOperationExceptionResponseContent.
         :type message: str
+        :param change_set: The change_set of this DryrunOperationExceptionResponseContent.
+        :type change_set: List[Change]
         """
-        self.openapi_types = {"message": str}
+        self.openapi_types = {
+            "validation_messages": List[ConfigValidationMessage],
+            "message": str,
+            "change_set": List[Change],
+        }
 
-        self.attribute_map = {"message": "message"}
+        self.attribute_map = {
+            "validation_messages": "validationMessages",
+            "message": "message",
+            "change_set": "changeSet",
+        }
 
+        self._validation_messages = validation_messages
         self._message = message
+        self._change_set = change_set
 
     @classmethod
     def from_dict(cls, dikt) -> "DryrunOperationExceptionResponseContent":
@@ -42,6 +60,29 @@ class DryrunOperationExceptionResponseContent(Model):
         :rtype: DryrunOperationExceptionResponseContent
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def validation_messages(self):
+        """Gets the validation_messages of this DryrunOperationExceptionResponseContent.
+
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
+
+        :return: The validation_messages of this DryrunOperationExceptionResponseContent.
+        :rtype: List[ConfigValidationMessage]
+        """
+        return self._validation_messages
+
+    @validation_messages.setter
+    def validation_messages(self, validation_messages):
+        """Sets the validation_messages of this DryrunOperationExceptionResponseContent.
+
+        List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.  # noqa: E501
+
+        :param validation_messages: The validation_messages of this DryrunOperationExceptionResponseContent.
+        :type validation_messages: List[ConfigValidationMessage]
+        """
+
+        self._validation_messages = validation_messages
 
     @property
     def message(self):
@@ -63,3 +104,26 @@ class DryrunOperationExceptionResponseContent(Model):
         """
 
         self._message = message
+
+    @property
+    def change_set(self):
+        """Gets the change_set of this DryrunOperationExceptionResponseContent.
+
+        List of configuration changes requested by the operation.
+
+        :return: The change_set of this DryrunOperationExceptionResponseContent.
+        :rtype: List[Change]
+        """
+        return self._change_set
+
+    @change_set.setter
+    def change_set(self, change_set):
+        """Sets the change_set of this DryrunOperationExceptionResponseContent.
+
+        List of configuration changes requested by the operation.
+
+        :param change_set: The change_set of this DryrunOperationExceptionResponseContent.
+        :type change_set: List[Change]
+        """
+
+        self._change_set = change_set

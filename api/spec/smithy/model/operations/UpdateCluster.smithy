@@ -51,13 +51,3 @@ structure UpdateClusterResponse {
     @documentation("List of configuration changes requested by the update operation.")
     changeSet: ChangeSet
 }
-
-list ChangeSet {
-    member: Change
-}
-
-structure Change {
-    parameter: String,
-    currentValue: String,
-    requestedValue: String,
-}
