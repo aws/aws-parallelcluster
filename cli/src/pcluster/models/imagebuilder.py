@@ -527,7 +527,7 @@ class ImageBuilder:
             try:
                 if AWSApi.instance().cfn.stack_exists(self.image_id):
                     if self.stack.imagebuilder_image_is_building:
-                        raise LimitExceededImageBuilderActionError(
+                        raise BadRequestImageBuilderActionError(
                             "Image cannot be deleted because EC2 ImageBuilder Image has a running workflow."
                         )
                     # Delete stack
