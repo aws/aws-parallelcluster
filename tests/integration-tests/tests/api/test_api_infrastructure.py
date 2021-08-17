@@ -37,12 +37,17 @@ def api_with_default_settings(api_infrastructure_s3_uri, public_ecr_image_uri, a
     if public_ecr_image_uri:
         params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
 
+    template = (
+        api_infrastructure_s3_uri
+        or f"s3://{region}-aws-parallelcluster/parallelcluster/3.0.0/api/parallelcluster-api.yaml"
+    )
+    logging.info(f"Creating API Server stack in {region} with template {template}")
     stack = CfnStack(
         name=generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix")),
         region=region,
         parameters=params,
         capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-        template=api_infrastructure_s3_uri,
+        template=template,
     )
     factory.create_stack(stack)
     yield stack

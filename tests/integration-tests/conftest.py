@@ -363,14 +363,18 @@ def api_server_factory(
         if public_ecr_image_uri:
             params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
 
+        template = (
+            api_infrastructure_s3_uri
+            or f"s3://{server_region}-aws-parallelcluster/parallelcluster/3.0.0/api/parallelcluster-api.yaml"
+        )
         if server_region not in api_servers:
-            logging.info(f"Creating API Server stack: {api_stack_name} in {server_region}")
+            logging.info(f"Creating API Server stack: {api_stack_name} in {server_region} with template {template}")
             stack = CfnStack(
                 name=api_stack_name,
                 region=server_region,
                 parameters=params,
                 capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-                template=api_infrastructure_s3_uri,
+                template=template,
             )
             cfn_stacks_factory.create_stack(stack)
             api_servers[server_region] = stack
