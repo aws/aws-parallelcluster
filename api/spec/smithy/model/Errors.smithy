@@ -83,5 +83,9 @@ structure LimitExceededException {
 @error("client")
 @httpError(412)
 structure DryrunOperationException {
-    message: String
+    message: String,
+    @documentation("List of configuration changes requested by the operation.")
+    changeSet: ChangeSet,
+    @documentation("List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.")
+    validationMessages: ValidationMessages,
 }

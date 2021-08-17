@@ -2551,9 +2551,22 @@ components:
       description: Communicates that the operation would have succeeded without the
         dryrun flag.
       properties:
+        validationMessages:
+          description: List of messages collected during cluster config validation
+            whose level is lower than the 'validationFailureLevel' set by the user.
+          items:
+            $ref: '#/components/schemas/ConfigValidationMessage'
+          title: validationMessages
+          type: array
         message:
           title: message
           type: string
+        changeSet:
+          description: List of configuration changes requested by the operation.
+          items:
+            $ref: '#/components/schemas/Change'
+          title: changeSet
+          type: array
       title: DryrunOperationExceptionResponseContent
       type: object
     EC2Instance:
