@@ -14,7 +14,8 @@ Parameters:
     Default: ''
 
   ParallelClusterFunctionRole:
-    Description: When specified, the ARN of the execution role for the Lambda function
+    Description: |
+      When specified, the ARN of the execution role for the ParallelCluster Lambda function
     Type: String
     Default: ''
 
@@ -49,7 +50,9 @@ Parameters:
     Default: ''
 
   EnableIamAdminAccess:
-    Description: WARNING - setting this to true grants IAM admin privileges to the Lambda function
+    Description: |
+      When set to true the ParallelCluster API takes care of IAM resource creation when deploying clusters or generating custom AMIs.
+      WARNING - setting this to true grants IAM admin privileges to the Lambda function
     Type: String
     Default: false
     AllowedValues:
@@ -125,7 +128,9 @@ Conditions:
     - !Condition UseRoute53Configuration
   IsMultiRegion: !Equals [!Ref Region, '*']
   EnableIamPolicy: !And
-    - !Equals [!Ref EnableIamAdminAccess, true]
+    - !Or
+      - !Equals [!Ref EnableIamAdminAccess, true]
+      - !Condition EnablePermissionsBoundary
     - !Not [!Condition UseCustomParallelClusterFunctionRole]
   EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   UsePrivateVpcEndpoint: !And
@@ -1259,3 +1264,7 @@ Outputs:
     Condition: DoNotUseCustomEcrImageUri
     Description: 'Image Builder pipeline that can be triggered to pull latest API Docker image for the deployed ParallelCluster version'
     Value: !Ref EcrImagePipeline
+
+  ParallelClusterLambdaLogGroup:
+    Value: !Ref ParallelClusterFunctionLogGroup
+    Description: 'LogGroup for the Lambda function implementing ParallelCluster Api'
