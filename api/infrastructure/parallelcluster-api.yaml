@@ -226,6 +226,8 @@ Resources:
       PackageType: Image
       MemorySize: 512
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt ParallelClusterUserRole.Arn]
+      Tags:
+        'parallelcluster:resource': api
       ImageUri: !If
         - UseCustomEcrImageUri
         - !Ref EcrImageUri
