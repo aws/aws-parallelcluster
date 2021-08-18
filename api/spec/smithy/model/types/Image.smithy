@@ -29,6 +29,8 @@ structure ImageInfoSummary {
     @required
     @documentation("Id of the image.")
     imageId: ImageId,
+    @documentation("Ec2 Id of the image.")
+    ec2ImageId: String,
     @required
     @documentation("AWS region where the image is built.")
     region: Region,
