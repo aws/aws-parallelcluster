@@ -126,6 +126,8 @@ def _test_list_images(image):
     assert_that(matches).is_length(1)
     assert_that(matches[0]["imageId"]).is_equal_to(image.image_id)
     assert_that(matches[0]["region"]).is_equal_to(image.region)
+    image.describe()
+    assert_that(matches[0]["ec2ImageId"]).is_equal_to(image.ec2_image_id)
     assert_that(matches[0]["imageBuildStatus"]).is_equal_to("BUILD_COMPLETE")
     assert_that(matches[0]).contains("version")
 
@@ -187,10 +189,10 @@ def _test_get_image_log_events(image):
             assert_that(events).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).contains(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).matches(cloud_init_debug_msg)
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_contain(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).does_not_match(cloud_init_debug_msg)
 
 
 def _test_export_logs(s3_bucket_factory, image):

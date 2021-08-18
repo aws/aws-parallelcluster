@@ -480,6 +480,8 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     _set_custom_packages_args(args, pytest_args)
     _set_ami_args(args, pytest_args)
     _set_custom_stack_args(args, pytest_args)
+    _set_api_args(args, pytest_args)
+
     return pytest_args
 
 
@@ -530,6 +532,11 @@ def _set_custom_stack_args(args, pytest_args):
     if args.cluster:
         pytest_args.extend(["--cluster", args.cluster])
 
+    if args.no_delete:
+        pytest_args.append("--no-delete")
+
+
+def _set_api_args(args, pytest_args):
     if args.api_definition_s3_uri:
         pytest_args.extend(["--api-definition-s3-uri", args.api_definition_s3_uri])
 
@@ -539,8 +546,8 @@ def _set_custom_stack_args(args, pytest_args):
     if args.api_uri:
         pytest_args.extend(["--api-uri", args.api_uri])
 
-    if args.no_delete:
-        pytest_args.append("--no-delete")
+    if args.api_infrastructure_s3_uri:
+        pytest_args.extend(["--api-infrastructure-s3-uri", args.api_infrastructure_s3_uri])
 
 
 def _set_tests_config_args(args, pytest_args, out_dir):

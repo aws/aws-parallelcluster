@@ -90,6 +90,7 @@ class ImageInfoSummary(ModelNormal):
             'version': (str,),  # noqa: E501
             'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
+            'ec2_image_id': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -104,6 +105,7 @@ class ImageInfoSummary(ModelNormal):
         'version': 'version',  # noqa: E501
         'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
         'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
+        'ec2_image_id': 'ec2ImageId',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -160,6 +162,7 @@ class ImageInfoSummary(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
             cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
+            ec2_image_id (str): Ec2 Id of the image.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

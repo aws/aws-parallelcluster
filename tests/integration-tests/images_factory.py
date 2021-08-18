@@ -33,6 +33,7 @@ class Image:
         self.image_status = None
         self.configuration_errors = None
         self.message = None
+        self.ec2_image_id = None
 
     @staticmethod
     def list_images(**kwargs):
@@ -161,6 +162,7 @@ class Image:
         ec2_ami_info = image_info.get("ec2AmiInfo")
         if ec2_ami_info:
             self.image_tags = ec2_ami_info.get("tags")
+            self.ec2_image_id = ec2_ami_info.get("amiId")
         self.creation_time = image_info.get("creationTime")
         self.build_log = image_info.get("buildLog")
         self.version = image_info.get("version")
