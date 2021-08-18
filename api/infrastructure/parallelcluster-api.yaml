@@ -373,6 +373,18 @@ Resources:
         Version: '2012-10-17'
         Statement:
           - Action:
+              - iam:PassRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Condition:
+              StringEqualsIfExists:
+                iam:PassedToService:
+                  - ecs-tasks.amazonaws.com
+                  - batch.amazonaws.com
+                  - codebuild.amazonaws.com
+            Sid: IamPassRole
+          - Action:
               - iam:CreateServiceLinkedRole
               - iam:DeleteServiceLinkedRole
             Resource:
@@ -568,12 +580,9 @@ Resources:
             Condition:
               StringEqualsIfExists:
                 iam:PassedToService:
-                  - ecs-tasks.amazonaws.com
                   - lambda.amazonaws.com
                   - !Sub ec2.${AWS::URLSuffix}
                   - spotfleet.amazonaws.com
-                  - batch.amazonaws.com
-                  - codebuild.amazonaws.com
             Sid: IamPassRole
           - Action:
               - iam:CreateServiceLinkedRole
@@ -603,9 +612,7 @@ Resources:
               - s3:*
             Resource:
               - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*
-              - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*/*
               - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*
-              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*/*
             Effect: Allow
             Condition: !If
               - IsMultiRegion
