@@ -1,27 +1,3 @@
-api:
-  test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
-    dimensions:
-      - regions: ["ap-south-1", "cn-northwest-1", "us-gov-west-1"]
-  test_api.py::test_cluster_slurm:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004"]
-        schedulers: ["slurm"]
-  test_api.py::test_cluster_awsbatch:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["awsbatch"]
-  test_api.py::test_custom_image:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-  test_api.py::test_official_images:
-    dimensions:
-      - regions: ["sa-east-1"]
 arm_pl:
   test_arm_pl.py::test_arm_pl:
     dimensions:
