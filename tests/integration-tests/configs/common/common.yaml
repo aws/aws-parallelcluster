@@ -213,7 +213,8 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["eu-west-1"]
+        # TODO: remove p4d test
+      - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
         oss: ["ubuntu2004"]
         schedulers: ["slurm"]
@@ -603,10 +604,3 @@ resource_bucket:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
-#nccl:
-#  test_nccl.py::test_nccl:
-#    dimensions:
-#      - regions: ["eu-west-1"]
-#        instances: ["p4d.24xlarge"]
-#        oss: ["ubuntu1804"]
-#        schedulers: ["slurm"]
