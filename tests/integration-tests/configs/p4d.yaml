@@ -1,32 +1,11 @@
 {%- import 'common.jinja2' as common -%}
-  {%- set regions = ["us-east-1", "us-west-2"] -%}
-  {%- set instances = ["p4d.24xlarge"] -%}
+{%- set regions = ["us-west-2"] -%}
+{%- set instances = ["p4d.24xlarge"] -%}
 
 ---
 test-suites:
   efa:
-    test_efa.py::test_sit_efa:
-      dimensions:
-        - regions: {{ regions }}
-          instances: {{ instances }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          # Torque is not supported by OpenMPI distributed with EFA
-          schedulers: ["slurm"]
-  dns:
-    test_dns.py::test_hit_no_cluster_dns_mpi:
-      dimensions:
-        - regions: {{ regions }}
-          instances: {{ instances }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm"]
-  scaling:
-    test_mpi.py::test_mpi_ssh:
-      dimensions:
-        - regions: {{ regions }}
-          instances: {{ instances }}
-          oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm"]
-    test_scaling.py::test_multiple_jobs_submission:
+    test_efa.py::test_hit_efa:
       dimensions:
         - regions: {{ regions }}
           instances: {{ instances }}
