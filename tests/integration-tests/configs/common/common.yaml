@@ -209,15 +209,6 @@ dns:
 efa:
   test_efa.py::test_hit_efa:
     dimensions:
-      - regions: ["us-east-1"]
-        instances: ["c5n.18xlarge"]
-        oss: ["alinux2"]
-        schedulers: ["slurm"]
-        # TODO: remove p4d test
-      - regions: ["us-west-2"]
-        instances: ["p4d.24xlarge"]
-        oss: ["ubuntu2004"]
-        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
@@ -234,6 +225,19 @@ efa:
         # Torque is not supported by OpenMPI distributed with EFA
         # Slurm test is to verify EFA works correctly when using the SIT model in the config file
         schedulers: ["sge", "slurm"]
+  test_efa.py::test_efa_osu:
+    dimensions:
+      - regions: ["us-east-1"]
+        instances: ["c5n.18xlarge"]
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+  # TODO: remove p4d test
+  test_efa.py::test_efa_osu_nccl:
+    - dimensions:
+        - regions: ["us-west-2"]
+          instances: ["p4d.24xlarge"]
+          oss: ["ubuntu2004"]
+          schedulers: ["slurm"]
 iam:
   test_iam.py::test_iam_policies:
     dimensions:

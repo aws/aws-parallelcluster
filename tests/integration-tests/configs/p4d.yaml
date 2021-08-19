@@ -5,7 +5,7 @@
 ---
 test-suites:
   efa:
-    test_efa.py::test_hit_efa:
+    test_efa.py::test_efa_osu_nccl:
       dimensions:
         - regions: {{ regions }}
           instances: {{ instances }}

@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License").
 # You may not use this file except in compliance with the License.
@@ -26,91 +26,98 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.regions(["us-east-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
-# Torque is not supported by OpenMPI distributed with EFA
-# Slurm test is to verify EFA works correctly when using the SIT model in the config file
-@pytest.mark.schedulers(["sge", "slurm"])
 @pytest.mark.usefixtures("os")
-def test_sit_efa(
-    region,
-    scheduler,
-    instance,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    architecture,
-    network_interfaces_count,
-):
-    """
-    Test all EFA Features.
+def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory):
+    """Test EFA for SGE or Slurm with SIT config model. Torque is not supported by OpenMPI distributed with EFA."""
+    _test_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory)
 
-    Grouped all tests in a single function so that cluster can be reused for all of them.
-    """
+
+@pytest.mark.usefixtures("os")
+def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory):
+    """Test all EFA Features for Slurm with HIT configuration model."""
+    _test_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory)
+
+
+@pytest.mark.usefixtures("os")
+def test_efa_osu(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+    """Test all EFA Features + OSU benchmarks."""
     # We collected OSU benchmarks results for c5n.18xlarge only.
     osu_benchmarks_instances = ["c5n.18xlarge"]
+    if instance not in osu_benchmarks_instances:
+        raise Exception(
+            f"Wrong instance type {instance}, test_efa_osu can be executed only with {osu_benchmarks_instances}"
+        )
 
-    max_queue_size = 2
-    slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size)
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    # 4 instances are required to see performance differences in collective OSU benchmarks.
+    max_queue_size = 4
+    slots_per_instance, remote_command_executor, scheduler_commands = _test_efa(
+        region, scheduler, instance, pcluster_config_reader, clusters_factory, max_queue_size
+    )
 
-    _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True)
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler)
-    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
+    benchmark_failures = []
+    mpi_versions = ["openmpi"]
+    if architecture == "x86_64":
+        mpi_versions.append("intelmpi")
 
-    if instance in osu_benchmarks_instances:
-        benchmark_failures = []
+    for mpi_version in mpi_versions:
         benchmark_failures.extend(
             _test_osu_benchmarks_pt2pt(
-                "openmpi", remote_command_executor, scheduler_commands, test_datadir, instance, slots_per_instance
+                mpi_version,
+                remote_command_executor,
+                scheduler_commands,
+                test_datadir,
+                instance,
+                slots_per_instance,
+                partition="efa-enabled",
             )
         )
-        if architecture == "x86_64":
-            benchmark_failures.extend(
-                _test_osu_benchmarks_pt2pt(
-                    "intelmpi", remote_command_executor, scheduler_commands, test_datadir, instance, slots_per_instance
-                )
+        benchmark_failures.extend(
+            _test_osu_benchmarks_collective(
+                mpi_version,
+                remote_command_executor,
+                scheduler_commands,
+                test_datadir,
+                instance,
+                num_of_instances=max_queue_size,
+                slots_per_instance=slots_per_instance,
+                partition="efa-enabled",
             )
-        assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
+        )
+    assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
-    _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
-    if network_interfaces_count > 1:
-        _test_osu_benchmarks_multiple_bandwidth(
-            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
+
+@pytest.mark.usefixtures("os")
+def test_efa_osu_nccl(
+    region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, network_interfaces_count
+):
+    """Test EFA Features + OSU Multiple bandwidth benchmark + NCCL benchmarks."""
+    slots_per_instance, remote_command_executor, scheduler_commands = _test_efa(
+        region, scheduler, instance, pcluster_config_reader, clusters_factory
+    )
+
+    nccl_benchmarks_instances = ["p4d.24xlarge"]
+    if network_interfaces_count <= 1 or instance not in nccl_benchmarks_instances:
+        raise Exception(
+            f"Wrong instance type {instance} - {network_interfaces_count} network interfaces,"
+            f"test_efa_osu_nccl can be executed only with {nccl_benchmarks_instances} and "
+            "instances with more than 1 network interfaces"
         )
+
+    _test_osu_benchmarks_multiple_bandwidth(
+        remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
+    )
+    if "centos" in os:
+        logging.info("Skipping NCCL benchmarks for CentOS")
+    else:
+        _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-@pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5n.18xlarge"])
-@pytest.mark.oss(["alinux2"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os")
-def test_hit_efa(
-    region,
-    scheduler,
-    instance,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-    architecture,
-    network_interfaces_count,
-):
-    """
-    Test all EFA Features.
-
-    Grouped all tests in a single function so that cluster can be reused for all of them.
-    """
-    # We collected OSU benchmarks results for c5n.18xlarge only.
-    osu_benchmarks_instances = ["c5n.18xlarge"]
-
-    # 4 instances are required to see performance differences in collective OSU benchmarks.
-    # 2 instances are enough for other EFA tests.
-    max_queue_size = 4 if instance in osu_benchmarks_instances else 2
+def _test_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, max_queue_size=2):
+    """EFA tests independent by the instance type."""
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader(max_queue_size=max_queue_size)
     cluster = clusters_factory(cluster_config)
@@ -120,49 +127,10 @@ def test_hit_efa(
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
-
-    if instance in osu_benchmarks_instances:
-        benchmark_failures = []
-        mpi_versions = ["openmpi"]
-        if architecture == "x86_64":
-            mpi_versions.append("intelmpi")
-
-        for mpi_version in mpi_versions:
-            benchmark_failures.extend(
-                _test_osu_benchmarks_pt2pt(
-                    mpi_version,
-                    remote_command_executor,
-                    scheduler_commands,
-                    test_datadir,
-                    instance,
-                    slots_per_instance,
-                    partition="efa-enabled",
-                )
-            )
-            benchmark_failures.extend(
-                _test_osu_benchmarks_collective(
-                    mpi_version,
-                    remote_command_executor,
-                    scheduler_commands,
-                    test_datadir,
-                    instance,
-                    num_of_instances=max_queue_size,
-                    slots_per_instance=slots_per_instance,
-                    partition="efa-enabled",
-                )
-            )
-        assert_that(benchmark_failures, description="Some OSU benchmarks are failing").is_empty()
-
-    if network_interfaces_count > 1:
-        _test_osu_benchmarks_multiple_bandwidth(
-            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
-        )
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
-
-    if instance == "p4d.24xlarge":
-        _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
-
     assert_no_errors_in_logs(remote_command_executor, scheduler)
+
+    return slots_per_instance, remote_command_executor, scheduler_commands
 
 
 def _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition=None):
@@ -201,7 +169,7 @@ def _test_osu_benchmarks_pt2pt(
 
     failed_benchmarks = []
     for benchmark_name in ["osu_latency", "osu_bibw"]:
-        output = run_osu_benchmarks(
+        output = _run_osu_benchmarks(
             mpi_version,
             "pt2pt",
             benchmark_name,
@@ -237,7 +205,7 @@ def _test_osu_benchmarks_collective(
 
     failed_benchmarks = []
     for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
-        output = run_osu_benchmarks(
+        output = _run_osu_benchmarks(
             mpi_version,
             "collective",
             benchmark_name,
@@ -259,7 +227,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
     remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
 ):
     num_of_instances = 2
-    run_osu_benchmarks(
+    _run_osu_benchmarks(
         "openmpi",
         "mbw_mr",
         "osu_mbw_mr",
@@ -280,7 +248,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
     assert_that(float(max_bandwidth)).is_greater_than(41000)
 
 
-def run_osu_benchmarks(
+def _run_osu_benchmarks(
     mpi_version,
     benchmark_group,
     benchmark_name,
