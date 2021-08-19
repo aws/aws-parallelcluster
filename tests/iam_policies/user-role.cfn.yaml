@@ -928,13 +928,13 @@ Resources:
           - Effect: Allow
             Action:
               - s3:GetObject
-            Resource: arn:aws:s3:::ec2imagebuilder*
+            Resource: arn:${AWS::Partition}:s3:::ec2imagebuilder*
           - Effect: Allow
             Action:
               - logs:CreateLogStream
               - logs:CreateLogGroup
               - logs:PutLogEvents
-            Resource: arn:aws:logs:*:*:log-group:/aws/imagebuilder/*
+            Resource: arn:${AWS::Partition}:logs:*:*:log-group:/aws/imagebuilder/*
 
 Outputs:
   ParallelClusterUserRole:
