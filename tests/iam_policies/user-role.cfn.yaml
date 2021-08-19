@@ -761,13 +761,13 @@ Resources:
               - iam:PassRole
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
             Effect: Allow
             Condition:
               StringEquals:
                 iam:PassedToService:
                   - ec2.amazonaws.com
                   - ec2.amazonaws.com.cn
+                  - batch.amazonaws.com
           - Action:
               - ec2:DescribeInstances
               - ec2:DescribeInstanceStatus
@@ -805,22 +805,6 @@ Resources:
               - codebuild:StartBuild
             Effect: Allow
             Resource: !Sub arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/pcluster-*
-          - Action:
-              - iam:PassRole
-            Resource:
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
-              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/parallelcluster/*
-            Effect: Allow
-            Condition:
-              StringEquals:
-                iam:PassedToService:
-                  - batch.amazonaws.com
-          - Action:
-              - cloudformation:DescribeStackResource
-              - cloudformation:DescribeStacks
-              - cloudformation:SignalResource
-            Effect: Allow
-            Resource: '*'
           # Image Build
           - Action:
               - iam:DetachRolePolicy
