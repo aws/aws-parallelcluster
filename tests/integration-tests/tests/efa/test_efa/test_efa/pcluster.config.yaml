@@ -1,7 +1,7 @@
 Image:
   Os: {{ os }}
 HeadNode:
-  InstanceType: {{ instance }}
+  InstanceType: c5.xlarge  # Force c5.xlarge to limit usage of EFA instances to compute nodes only
   Networking:
     SubnetId: {{ public_subnet_id }}
     {% if instance == "p4d.24xlarge" %}ElasticIp: true{% endif %}
@@ -11,7 +11,7 @@ HeadNode:
     Secured: {{ imds_secured }}
 Scheduling:
   Scheduler: {{ scheduler }}
-  {% if scheduler == "awsbatch" %}AwsBatchQueues:{% else %}SlurmQueues:{% endif %}
+  SlurmQueues:
     - Name: efa-enabled
       Networking:
         PlacementGroup:
@@ -26,19 +26,6 @@ Scheduling:
           Efa:
             Enabled: true
             {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}
-    - Name: efa-disabled
-      Networking:
-        PlacementGroup:
-          Enabled: true
-        SubnetIds:
-          - {{ private_subnet_id }}
-      ComputeResources:
-        - Name: efa-disabled-i1
-          InstanceType: {{ instance }}
-          MaxCount: {{ max_queue_size }}
-          MinCount: 1
-          Efa:
-            Enabled: false
 SharedStorage:
   - MountDir: /shared
     Name: name1

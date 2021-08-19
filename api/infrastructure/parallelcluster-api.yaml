@@ -224,7 +224,7 @@ Resources:
     Properties:
       Tracing: Active
       PackageType: Image
-      MemorySize: 512
+      MemorySize: 1024
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt ParallelClusterUserRole.Arn]
       Tags:
         'parallelcluster:resource': api

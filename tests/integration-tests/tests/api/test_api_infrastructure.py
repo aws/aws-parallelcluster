@@ -96,7 +96,7 @@ def _assert_parallelcluster_lambda(lambda_name, lambda_arn, lambda_image_uri):
     lambda_configuration = lambda_resource["Configuration"]
     assert_that(lambda_configuration["FunctionArn"]).is_equal_to(lambda_arn)
     assert_that(lambda_configuration["Timeout"]).is_equal_to(30)
-    assert_that(lambda_configuration["MemorySize"]).is_equal_to(512)
+    assert_that(lambda_configuration["MemorySize"]).is_equal_to(1024)
     assert_that(lambda_configuration["TracingConfig"]["Mode"]).is_equal_to("Active")
     assert_that(lambda_resource["Tags"]).contains("parallelcluster:version")
     assert_that(lambda_resource["Code"]["ImageUri"]).is_equal_to(lambda_image_uri)
