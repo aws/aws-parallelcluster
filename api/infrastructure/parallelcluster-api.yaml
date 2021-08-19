@@ -104,7 +104,7 @@ Globals:
                 - CreateApiUserRoleCondition
                 - !Sub
                   - arn:${AWS::Partition}:*::${AWS::AccountId}:*/ParallelClusterApiUserRole-${StackIdSuffix}*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
                 - '*'
     TracingEnabled: True
     EndpointConfiguration:
@@ -244,7 +244,7 @@ Resources:
     Properties:
       RoleName:  !Sub
         - ParallelClusterApiUserRole-${StackIdSuffix}
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -957,7 +957,7 @@ Resources:
     Properties:
       Name: !Sub
         - ParallelClusterImageBuilderInfrastructureConfiguration-${Version}-${StackIdSuffix}
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref EcrImageBuilderSNSTopic
@@ -968,7 +968,7 @@ Resources:
     Properties:
       RepositoryName: !Sub
         - 'aws-parallelcluster-${StackIdSuffix}'
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Tags:
         - Key: 'parallelcluster:version'
           Value: !FindInMap [ParallelCluster, Constants, Version]
@@ -982,7 +982,7 @@ Resources:
       ContainerType: DOCKER
       Name: !Sub
         - 'ImportPublicEcrImage-${Version}-${StackIdSuffix}'
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Version: !FindInMap [ParallelCluster, Constants, Version]
       ParentImage: !Ref PublicEcrImageUri
       PlatformOverride: Linux
@@ -1008,7 +1008,7 @@ Resources:
     Properties:
       Name: !Sub
         - 'EcrImagePipeline-${Version}-${StackIdSuffix}'
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Status: ENABLED
       ContainerRecipeArn: !Ref EcrImageRecipe
       InfrastructureConfigurationArn: !Ref InfrastructureConfiguration
@@ -1220,7 +1220,7 @@ Resources:
                   - imagebuilder:DeleteImage
                 Resource: !Sub
                   - arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/*${StackIdSuffix}*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
 
   EcrImagesRemover:
     Condition: DoNotUseCustomEcrImageUri
