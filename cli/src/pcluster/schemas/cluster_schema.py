@@ -1207,6 +1207,21 @@ class ClusterSchema(BaseSchema):
         """Validate tags."""
         validate_no_reserved_tag(tags)
 
+    @validates_schema
+    def no_intel_select_solutions_for_batch(self, data, **kwargs):
+        """Ensure IntelSelectSolutions section is not included when AWS Batch is the scheduler."""
+        scheduling = data.get("scheduling")
+        additional_packages = data.get("additional_packages")
+        if (
+            scheduling
+            and scheduling.scheduler == "awsbatch"
+            and additional_packages
+            and additional_packages.intel_select_solutions.install_intel_software
+        ):
+            raise ValidationError(
+                "The use of the IntelSelectSolutions package is not supported when using awsbatch as the scheduler."
+            )
+
     @post_load(pass_original=True)
     def make_resource(self, data, original_data, **kwargs):
         """Generate cluster according to the scheduler. Save original configuration."""
