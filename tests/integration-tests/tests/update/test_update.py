@@ -98,7 +98,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
     )
-    cluster.update(str(updated_config_file))
+    cluster.update(str(updated_config_file), force_update="true")
 
     # Here is the expected list of nodes.
     # the cluster:
@@ -369,7 +369,7 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     _verify_initialization(region, cluster, cluster.config)
 
     # Update cluster with the same configuration
-    cluster.update(str(init_config_file), force=True)
+    cluster.update(str(init_config_file), force_update="true")
 
     # Update cluster with new configuration
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
