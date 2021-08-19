@@ -77,7 +77,7 @@ class CfnStacksFactory:
             raise ValueError("Stack {0} already exists in region {1}".format(name, region))
 
         logging.info("Creating stack {0} in region {1}".format(name, region))
-        is_template_url = stack.template.startswith("s3://")
+        is_template_url = stack.template.startswith("https://")
         with aws_credential_provider(region, self.__credentials):
             try:
                 cfn_client = boto3.client("cloudformation", region_name=region)
