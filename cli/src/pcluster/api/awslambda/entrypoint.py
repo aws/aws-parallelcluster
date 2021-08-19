@@ -49,8 +49,9 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             logger.info("Initializing Flask Application")
             pcluster_api = _init_flask_app()
             # Instrument X-Ray recorder to trace requests served by the Flask application
-            xray_recorder.configure(service="ParallelCluster Flask App")
-            XRayMiddleware(pcluster_api.flask_app, xray_recorder)
+            if event.get("version") == "2.0":
+                xray_recorder.configure(service="ParallelCluster Flask App")
+                XRayMiddleware(pcluster_api.flask_app, xray_recorder)
         # Setting default region to region where lambda function is executed
         os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
         return handle_request(pcluster_api.app, event, context)
