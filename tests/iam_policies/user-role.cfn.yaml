@@ -337,7 +337,8 @@ Resources:
               StringEqualsIfExists:
                 iam:PassedToService:
                   - lambda.amazonaws.com
-                  - !Sub ec2.${AWS::URLSuffix}
+                  - ec2.amazonaws.com
+                  - ec2.amazonaws.com.cn
                   - spotfleet.amazonaws.com
             Sid: IamPassRole
           - Action:
@@ -456,7 +457,8 @@ Resources:
               StringEquals:
                 iam:PassedToService:
                   - lambda.amazonaws.com
-                  - !Sub 'ec2.${AWS::URLSuffix}'
+                  - ec2.amazonaws.com
+                  - ec2.amazonaws.com.cn
           - Sid: CloudWatch
             Effect: Allow
             Action:
@@ -764,7 +766,8 @@ Resources:
             Condition:
               StringEquals:
                 iam:PassedToService:
-                  - !Sub ec2.${AWS::URLSuffix}
+                  - ec2.amazonaws.com
+                  - ec2.amazonaws.com.cn
           - Action:
               - ec2:DescribeInstances
               - ec2:DescribeInstanceStatus
