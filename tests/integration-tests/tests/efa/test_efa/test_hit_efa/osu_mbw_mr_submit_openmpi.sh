@@ -2,7 +2,7 @@
 set -e
 module load openmpi
 
-BENCHMARK_NAME=osu_mbw_mr
+BENCHMARK_NAME={{ benchmark_name }}
 OSU_BENCHMARK_VERSION={{ osu_benchmark_version }}
 
 # Run multiple bandwidth/message rate benchmark

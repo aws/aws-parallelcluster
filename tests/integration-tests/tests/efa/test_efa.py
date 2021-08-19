@@ -262,7 +262,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
     run_osu_benchmarks(
         "openmpi",
         "mbw_mr",
-        "mbw_mr",
+        "osu_mbw_mr",
         partition,
         remote_command_executor,
         scheduler_commands,
@@ -271,7 +271,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
         test_datadir,
     )
     max_bandwidth = remote_command_executor.run_remote_command(
-        "cat /shared/mbw_mr.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
+        "cat /shared/osu_mbw_mr.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
     ).stdout
 
     # Expected bandwidth with 4 NICS:
