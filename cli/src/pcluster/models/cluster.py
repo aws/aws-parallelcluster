@@ -236,8 +236,8 @@ class Cluster:
         if not self.__config:
             try:
                 self.__config = self._load_config(parse_config(self.source_config_text))
-            except ConfigValidationError:
-                raise e
+            except ConfigValidationError as exc:
+                raise exc
             except Exception as e:
                 raise _cluster_error_mapper(e, f"Unable to parse configuration file. {e}")
         return self.__config
@@ -750,7 +750,7 @@ class Cluster:
 
     def _validate_cluster_exists(self):
         if not AWSApi.instance().cfn.stack_exists(self.stack_name):
-            raise NotFoundClusterActionError(self.name)
+            raise NotFoundClusterActionError(f"Cluster {self.name} does not exist.")
 
     def update(
         self,

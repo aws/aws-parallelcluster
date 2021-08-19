@@ -14,7 +14,8 @@ Parameters:
     Default: ''
 
   ParallelClusterFunctionRole:
-    Description: When specified, the ARN of the execution role for the Lambda function
+    Description: |
+      When specified, the ARN of the execution role for the ParallelCluster Lambda function
     Type: String
     Default: ''
 
@@ -49,12 +50,21 @@ Parameters:
     Default: ''
 
   EnableIamAdminAccess:
-    Description: WARNING - setting this to true grants IAM admin privileges to the Lambda function
+    Description: |
+      When set to true the ParallelCluster API takes care of IAM resource creation when deploying clusters or generating custom AMIs.
+      WARNING - setting this to true grants IAM admin privileges to the Lambda function
     Type: String
     Default: false
     AllowedValues:
       - true
       - false
+
+  PermissionsBoundaryPolicy:
+    Description: |
+      ARN of a IAM policy to use as PermissionsBoundary for all IAM resources created by ParallelCluster API.
+      When specified, IAM permissions assumed by the API are conditionally restricted to the usage of the given PermissionsBoundary
+    Type: String
+    Default: ''
 
   CreateApiUserRole:
     Description: Creates a IAM role authorized to invoke the API. The Api is configured with a resource based policy to grant invoke permission to the created user only.
@@ -94,7 +104,7 @@ Globals:
                 - CreateApiUserRoleCondition
                 - !Sub
                   - arn:${AWS::Partition}:*::${AWS::AccountId}:*/ParallelClusterApiUserRole-${StackIdSuffix}*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
                 - '*'
     TracingEnabled: True
     EndpointConfiguration:
@@ -118,8 +128,11 @@ Conditions:
     - !Condition UseRoute53Configuration
   IsMultiRegion: !Equals [!Ref Region, '*']
   EnableIamPolicy: !And
-    - !Equals [!Ref EnableIamAdminAccess, true]
+    - !Or
+      - !Equals [!Ref EnableIamAdminAccess, true]
+      - !Condition EnablePermissionsBoundary
     - !Not [!Condition UseCustomParallelClusterFunctionRole]
+  EnablePermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundaryPolicy, '']]
   UsePrivateVpcEndpoint: !And
     - !Not [!Condition UseCustomDomainAndRoute53Configuration]
     - !Not [!Equals [!Ref VpcEndpointId, '']]
@@ -213,6 +226,8 @@ Resources:
       PackageType: Image
       MemorySize: 1024
       Role: !If [UseCustomParallelClusterFunctionRole, !Ref ParallelClusterFunctionRole, !GetAtt ParallelClusterUserRole.Arn]
+      Tags:
+        'parallelcluster:resource': api
       ImageUri: !If
         - UseCustomEcrImageUri
         - !Ref EcrImageUri
@@ -229,7 +244,7 @@ Resources:
     Properties:
       RoleName:  !Sub
         - ParallelClusterApiUserRole-${StackIdSuffix}
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -302,10 +317,12 @@ Resources:
             Resource:
               - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
-            # Condition:
-            #   StringEquals:
-            #     iam:PermissionsBoundary:
-            #       - !Ref ParallelClusterPermissionBoundaryPolicy
+            Condition: !If
+              - EnablePermissionsBoundary
+              - StringEquals:
+                  iam:PermissionsBoundary:
+                    - !Ref PermissionsBoundaryPolicy
+              - !Ref AWS::NoValue
             Sid: IamCreateRole
           - Action:
               - iam:PutRolePolicy
@@ -313,6 +330,12 @@ Resources:
             Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
             Effect: Allow
             Sid: IamInlinePolicy
+            Condition: !If
+              - EnablePermissionsBoundary
+              - StringEquals:
+                  iam:PermissionsBoundary:
+                    - !Ref PermissionsBoundaryPolicy
+              - !Ref AWS::NoValue
           - Action:
               - iam:AttachRolePolicy
               - iam:DetachRolePolicy
@@ -332,6 +355,11 @@ Resources:
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
                   - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+              StringEquals: !If
+                - EnablePermissionsBoundary
+                - iam:PermissionsBoundary:
+                    - !Ref PermissionsBoundaryPolicy
+                - !Ref AWS::NoValue
             Effect: Allow
             Sid: IamPolicy
 
@@ -344,6 +372,18 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
+          - Action:
+              - iam:PassRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster/*
+            Effect: Allow
+            Condition:
+              StringEqualsIfExists:
+                iam:PassedToService:
+                  - ecs-tasks.amazonaws.com
+                  - batch.amazonaws.com
+                  - codebuild.amazonaws.com
+            Sid: IamPassRole
           - Action:
               - iam:CreateServiceLinkedRole
               - iam:DeleteServiceLinkedRole
@@ -540,12 +580,10 @@ Resources:
             Condition:
               StringEqualsIfExists:
                 iam:PassedToService:
-                  - ecs-tasks.amazonaws.com
                   - lambda.amazonaws.com
-                  - !Sub ec2.${AWS::URLSuffix}
+                  - ec2.amazonaws.com
+                  - ec2.amazonaws.com.cn
                   - spotfleet.amazonaws.com
-                  - batch.amazonaws.com
-                  - codebuild.amazonaws.com
             Sid: IamPassRole
           - Action:
               - iam:CreateServiceLinkedRole
@@ -575,9 +613,7 @@ Resources:
               - s3:*
             Resource:
               - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*
-              - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*/*
               - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*
-              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*/*
             Effect: Allow
             Condition: !If
               - IsMultiRegion
@@ -615,9 +651,6 @@ Resources:
               - logs:PutRetentionPolicy
               - logs:DescribeLogGroups
               - logs:CreateLogGroup
-              - logs:FilterLogEvents
-              - logs:GetLogEvents
-              - logs:CreateExportTask
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -668,7 +701,8 @@ Resources:
               StringEquals:
                 iam:PassedToService:
                   - lambda.amazonaws.com
-                  - !Sub 'ec2.${AWS::URLSuffix}'
+                  - ec2.amazonaws.com
+                  - ec2.amazonaws.com.cn
           - Sid: CloudWatch
             Effect: Allow
             Action:
@@ -875,6 +909,7 @@ Resources:
             - logs:GetLogEvents
             - logs:CreateExportTask
             - logs:DescribeLogStreams
+            - logs:DescribeExportTasks
             Resource: '*'
             Effect: Allow
             Condition: !If
@@ -924,7 +959,7 @@ Resources:
     Properties:
       Name: !Sub
         - ParallelClusterImageBuilderInfrastructureConfiguration-${Version}-${StackIdSuffix}
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       InstanceProfileName: !Ref ImageBuilderInstanceProfile
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref EcrImageBuilderSNSTopic
@@ -935,7 +970,7 @@ Resources:
     Properties:
       RepositoryName: !Sub
         - 'aws-parallelcluster-${StackIdSuffix}'
-        - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Tags:
         - Key: 'parallelcluster:version'
           Value: !FindInMap [ParallelCluster, Constants, Version]
@@ -949,7 +984,7 @@ Resources:
       ContainerType: DOCKER
       Name: !Sub
         - 'ImportPublicEcrImage-${Version}-${StackIdSuffix}'
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Version: !FindInMap [ParallelCluster, Constants, Version]
       ParentImage: !Ref PublicEcrImageUri
       PlatformOverride: Linux
@@ -975,7 +1010,7 @@ Resources:
     Properties:
       Name: !Sub
         - 'EcrImagePipeline-${Version}-${StackIdSuffix}'
-        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+        - { Version: !Join ['_', !Split ['.', !FindInMap [ParallelCluster, Constants, Version]]], StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Status: ENABLED
       ContainerRecipeArn: !Ref EcrImageRecipe
       InfrastructureConfigurationArn: !Ref InfrastructureConfiguration
@@ -1187,7 +1222,7 @@ Resources:
                   - imagebuilder:DeleteImage
                 Resource: !Sub
                   - arn:${AWS::Partition}:imagebuilder:${Region}:${AWS::AccountId}:image/*${StackIdSuffix}*
-                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref AWS::StackId]] }
+                  - { StackIdSuffix: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
 
   EcrImagesRemover:
     Condition: DoNotUseCustomEcrImageUri
@@ -1240,3 +1275,7 @@ Outputs:
     Condition: DoNotUseCustomEcrImageUri
     Description: 'Image Builder pipeline that can be triggered to pull latest API Docker image for the deployed ParallelCluster version'
     Value: !Ref EcrImagePipeline
+
+  ParallelClusterLambdaLogGroup:
+    Value: !Ref ParallelClusterFunctionLogGroup
+    Description: 'LogGroup for the Lambda function implementing ParallelCluster Api'

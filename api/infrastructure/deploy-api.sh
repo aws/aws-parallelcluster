@@ -91,8 +91,8 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_NAMED_IAM
 
 echo "Updating API Lambda since updates are not fully automated yet"
-LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='ParallelClusterLambdaArn'].OutputValue" --output text)
-ECR_IMAGE_URI=$(aws cloudformation describe-stacks --stack-name ParallelClusterApi --query "Stacks[0].Outputs[?OutputKey=='UriOfCopyOfPublicEcrImage'].OutputValue" --output text)
+LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='ParallelClusterLambdaArn'].OutputValue" --output text)
+ECR_IMAGE_URI=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query "Stacks[0].Outputs[?OutputKey=='UriOfCopyOfPublicEcrImage'].OutputValue" --output text)
 
 aws lambda update-function-code \
     --function-name ${LAMBDA_FUNCTION_ARN} \

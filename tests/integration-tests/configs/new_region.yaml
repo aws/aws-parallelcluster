@@ -90,7 +90,7 @@ test-suites:
           oss: ["alinux2"]
           schedulers: ["slurm"]
   efa:
-    test_efa.py::test_hit_efa:
+    test_efa.py::test_efa:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: ["c5n.18xlarge"]
