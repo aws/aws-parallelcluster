@@ -148,11 +148,22 @@ DUMMY_AWSBATCH_QUEUE = {
     "ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}],
 }
 
-DUMMY_SLURM_QUEUE = {
-    "Name": "queue1",
-    "Networking": {"SubnetIds": ["subnet-12345678"]},
-    "ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}],
-}
+
+def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):
+    slurm_queue = {
+        "Name": name,
+        "Networking": {"SubnetIds": ["subnet-12345678"]},
+        "ComputeResources": [],
+    }
+    for index in range(number_of_compute_resource):
+        slurm_queue["ComputeResources"].append(
+            dummy_slurm_compute_resource(f"compute_resource{index}", f"c{index}.xlarge")
+        )
+    return slurm_queue
+
+
+def dummy_slurm_compute_resource(name, instance_type):
+    return {"Name": name, "InstanceType": instance_type}
 
 
 @pytest.mark.parametrize(
@@ -166,11 +177,11 @@ DUMMY_SLURM_QUEUE = {
             "Queues section is not appropriate to the Scheduler",
         ),
         (
-            {"Scheduler": "awsbatch", "SlurmQueues": [DUMMY_SLURM_QUEUE]},
+            {"Scheduler": "awsbatch", "SlurmQueues": [dummy_slurm_queue()]},
             "Queues section is not appropriate to the Scheduler",
         ),
         (
-            {"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE], "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
+            {"Scheduler": "slurm", "SlurmQueues": [dummy_slurm_queue()], "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
             "Queues section is not appropriate to the Scheduler",
         ),
         (
@@ -178,12 +189,12 @@ DUMMY_SLURM_QUEUE = {
             "Multiple .*Settings sections cannot be specified in the Scheduling section",
         ),
         # success
-        ({"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE]}, None),
+        ({"Scheduler": "slurm", "SlurmQueues": [dummy_slurm_queue()]}, None),
         (
             {
                 "Scheduler": "slurm",
                 "SlurmQueues": [
-                    DUMMY_SLURM_QUEUE,
+                    dummy_slurm_queue(),
                     {
                         "Name": "queue2",
                         "Networking": {"SubnetIds": ["subnet-12345678"]},
@@ -200,7 +211,7 @@ DUMMY_SLURM_QUEUE = {
             {
                 "Scheduler": "slurm",
                 "SlurmQueues": [
-                    DUMMY_SLURM_QUEUE,
+                    dummy_slurm_queue(),
                     {
                         "Name": "queue2",
                         "Networking": {"SubnetIds": ["subnet-00000000"]},
@@ -212,6 +223,47 @@ DUMMY_SLURM_QUEUE = {
                 ],
             },
             "The SubnetIds used for all of the queues should be the same",
+        ),
+        (  # maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [
+                    dummy_slurm_queue("queue1"),
+                    dummy_slurm_queue("queue2"),
+                    dummy_slurm_queue("queue3"),
+                    dummy_slurm_queue("queue4"),
+                    dummy_slurm_queue("queue5"),
+                ],
+            },
+            None,
+        ),
+        (  # beyond maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [
+                    dummy_slurm_queue("queue1"),
+                    dummy_slurm_queue("queue2"),
+                    dummy_slurm_queue("queue3"),
+                    dummy_slurm_queue("queue4"),
+                    dummy_slurm_queue("queue5"),
+                    dummy_slurm_queue("queue6"),
+                ],
+            },
+            "Queue.*Longer than maximum length 5",
+        ),
+        (  # maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=3)],
+            },
+            None,
+        ),
+        (  # beyond maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=4)],
+            },
+            "ComputeResources.*Longer than maximum length 3",
         ),
     ],
 )
