@@ -91,9 +91,10 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
-  nccl:
-    test_nccl.py::test_nccl:
+  efa:
+    test_efa.py::test_hit_efa:
       dimensions:
+          # TODO: remove p4d test
         - regions: ["us-west-2"]
           instances: ["p4d.24xlarge"]
           oss: ["alinux2", "ubuntu1804"]
