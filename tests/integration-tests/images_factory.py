@@ -24,7 +24,7 @@ class Image:
         self.image_id = image_id
         self.config_file = config_file
         self.region = region
-        with open(config_file) as conf_file:
+        with open(config_file, encoding="utf-8") as conf_file:
             self.config = yaml.safe_load(conf_file)
         self.image_tags = None
         self.creation_time = None

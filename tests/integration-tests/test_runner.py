@@ -553,7 +553,7 @@ def _set_api_args(args, pytest_args):
 def _set_tests_config_args(args, pytest_args, out_dir):
     # Dump the rendered file to avoid re-rendering in pytest processes
     rendered_config_file = f"{args.output_dir}/{out_dir}/tests_config.yaml"
-    with open(rendered_config_file, "x") as text_file:
+    with open(rendered_config_file, "x", encoding="utf-8") as text_file:
         text_file.write(dump_rendered_config_file(args.tests_config))
     pytest_args.append(f"--tests-config-file={rendered_config_file}")
 

@@ -183,7 +183,7 @@ class _InstancesConfigGenerator(_ConfigGenerator):
         if not self.__pricing_file_cache:
             if pricing_file:
                 logging.info("Reading pricing file...")
-                with open(pricing_file) as data_file:
+                with open(pricing_file, encoding="utf-8") as data_file:
                     self.__pricing_file_cache = json.load(data_file)
             else:
                 self.__pricing_file_cache = self._download_pricing_file(region)
@@ -199,7 +199,7 @@ class _InstancesConfigGenerator(_ConfigGenerator):
 
     def _load_overwrite_instance_data(self, data_path):
         try:
-            with open(data_path) as overwrite_file:
+            with open(data_path, encoding="utf-8") as overwrite_file:
                 overwrite_instance_config = json.load(overwrite_file)
                 logging.info("Loaded overwrite data:\n%s", json.dumps(overwrite_instance_config, indent=2))
                 logging.info("Overwrite instance data provided, validating overwrite data against schema")

@@ -244,7 +244,7 @@ def export_stack_events(stack_name: str, output_file: str):
         chunk = AWSApi.instance().cfn.get_stack_events(stack_name, next_token=chunk["nextToken"])
         stack_events.append(chunk["StackEvents"])
 
-    with open(output_file, "w") as cfn_events_file:
+    with open(output_file, "w", encoding="utf-8") as cfn_events_file:
         cfn_events_file.write(json.dumps(stack_events, cls=JSONEncoder, indent=2))
 
 
@@ -260,7 +260,7 @@ def create_logs_archive(directory: str, output_file: str = None):
 
 def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
     archive_filename = os.path.basename(archive_path)
-    with open(archive_path, "rb") as archive_file:
+    with open(archive_path, "rb", encoding="utf-8") as archive_file:
         archive_data = archive_file.read()
     AWSApi.instance().s3.put_object(bucket, archive_data, f"{bucket_prefix}/{archive_filename}")
     return f"s3://{bucket}/{bucket_prefix}/{archive_filename}"

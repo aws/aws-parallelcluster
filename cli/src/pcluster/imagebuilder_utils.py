@@ -50,7 +50,7 @@ def wrap_script_to_component(url):
 
     custom_component_script_template_file = os.path.join(current_dir, "resources", "imagebuilder", "custom_script.yaml")
 
-    with open(custom_component_script_template_file, "r") as file:
+    with open(custom_component_script_template_file, "r", encoding="utf-8") as file:
         custom_component_script_template = yaml.safe_load(file)
 
     script_url_action = _generate_action("ScriptUrl", "set -v\necho {0}\n".format(url))
