@@ -239,7 +239,7 @@ def _log_collected_tests(session):
             json.dumps(collected_tests, indent=2),
         )
         out_dir = session.config.getoption("output_dir")
-        with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
+        with open(f"{out_dir}/collected_tests.txt", "a", encoding="utf-8") as out_f:
             out_f.write("\n".join(collected_tests))
             out_f.write("\n")
 
@@ -506,7 +506,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
 
 
 def inject_additional_image_configs_settings(image_config, request):
-    with open(image_config) as conf_file:
+    with open(image_config, encoding="utf-8") as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     if request.config.getoption("createami_custom_chef_cookbook") and not dict_has_nested_key(
@@ -525,12 +525,12 @@ def inject_additional_image_configs_settings(image_config, request):
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
             dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
-    with open(image_config, "w") as conf_file:
+    with open(image_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
 
 
 def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
-    with open(cluster_config) as conf_file:
+    with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
     if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
@@ -602,7 +602,7 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
             dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
-    with open(cluster_config, "w") as conf_file:
+    with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
 
 
@@ -682,7 +682,7 @@ def parameterized_cfn_stacks_factory(request):
         return stack
 
     def extract_template(template_path):
-        with open(template_path) as cfn_file:
+        with open(template_path, encoding="utf-8") as cfn_file:
             file_content = cfn_file.read()
         return file_content
 
@@ -805,7 +805,7 @@ def initialize_cli_creds(cfn_stacks_factory, request):
         logging.info("Creating IAM roles for pcluster CLI")
         stack_name = generate_stack_name("integ-tests-iam", request.config.getoption("stackname_suffix"))
         stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
-        with open(stack_template_path) as stack_template_file:
+        with open(stack_template_path, encoding="utf-8") as stack_template_file:
             stack_template_data = stack_template_file.read()
         stack = CfnStack(name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data)
         cfn_stacks_factory.create_stack(stack)
@@ -1106,7 +1106,7 @@ def update_failed_tests_config(item):
     with FileLock(str(out_file) + ".lock"):
         failed_tests = {"test-suites": {}}
         if out_file.is_file():
-            with open(str(out_file)) as f:
+            with open(str(out_file), encoding="utf-8") as f:
                 failed_tests = yaml.safe_load(f)
 
         # item.node.nodeid example:
@@ -1123,7 +1123,7 @@ def update_failed_tests_config(item):
             dict_add_nested_key(failed_tests, [], ("test-suites", feature, test_id, "dimensions"))
         if dimensions not in failed_tests["test-suites"][feature][test_id]["dimensions"]:
             failed_tests["test-suites"][feature][test_id]["dimensions"].append(dimensions)
-            with open(out_file, "w") as f:
+            with open(out_file, "w", encoding="utf-8") as f:
                 yaml.dump(failed_tests, f)
 
 

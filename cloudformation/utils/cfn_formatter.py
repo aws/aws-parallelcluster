@@ -16,7 +16,7 @@ def _parse_args():
 
 
 def _format_yaml(filename):
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         try:
             unformatted_yaml = load_yaml(f)
         except Exception as e:
@@ -27,7 +27,7 @@ def _format_yaml(filename):
 
 
 def _format_json(filename):
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         try:
             unformatted_json = json.load(f, object_pairs_hook=OrderedDict)
         except json.decoder.JSONDecodeError as e:
@@ -51,7 +51,7 @@ def format_files(filenames, format):
         for file in glob(unexpanded_file):
             print("Formatting file: {filename}".format(filename=file))
             formatted_doc = FORMAT_TO_PARSING_FUNC[format](file)
-            with open(file, "w") as f:
+            with open(file, "w", encoding="utf-8") as f:
                 f.write(formatted_doc)
 
 
@@ -66,7 +66,7 @@ def check_formatting(filenames, format):
     for unexpanded_file in filenames:
         for file in glob(unexpanded_file):
             print("Checking file: {filename}".format(filename=file))
-            with open(file, "r") as f:
+            with open(file, "r", encoding="utf-8") as f:
                 data = f.read()
             formatted_doc = FORMAT_TO_PARSING_FUNC[format](file)
             if formatted_doc != data:

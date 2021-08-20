@@ -333,25 +333,25 @@ def _run_configuration(mocker, path, with_config=False, region=None):
 def _assert_configurations_are_equal(path_config_expected, path_config_after_input):
     assert_that(path_config_expected).exists().is_file()
     assert_that(path_config_after_input).exists().is_file()
-    with open(path_config_after_input) as after_input_conf_file:
+    with open(path_config_after_input, encoding="utf-8") as after_input_conf_file:
         after_input_content = yaml.safe_load(after_input_conf_file)
         copy_after_input_content = deepcopy(after_input_content)
         ClusterSchema(cluster_name="clustername").load(
             copy_after_input_content
         )  # Test if the generated yaml can be corrected loaded by Marshmallow.
-    with open(path_config_expected) as expected_conf_file:
+    with open(path_config_expected, encoding="utf-8") as expected_conf_file:
         expected_content = yaml.safe_load(expected_conf_file)
     assert_that(expected_content == after_input_content).is_true()
 
 
 def _assert_output_error_are_correct(capsys, output, error, config_path):
     readouterr = capsys.readouterr()
-    with open(output) as f:
+    with open(output, encoding="utf-8") as f:
         expected_output = f.read()
         expected_output = expected_output.replace("{{ CONFIG_FILE }}", config_path)
         print(readouterr.out)
         assert_that(readouterr.out).is_equal_to(expected_output)
-    with open(error) as f:
+    with open(error, encoding="utf-8") as f:
         assert_that(readouterr.err).is_equal_to(f.read())
 
 

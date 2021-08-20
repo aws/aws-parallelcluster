@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(nam
 
 
 def execute_rollback(rollback_file_path, sts_credentials, deploy):
-    with open(rollback_file_path) as rollback_file:
+    with open(rollback_file_path, encoding="utf-8") as rollback_file:
         rollback_data = json.load(rollback_file)
         logging.info("Loaded rollback data:\n%s", json.dumps(rollback_data, indent=2))
 
@@ -50,7 +50,7 @@ def _parse_args():
     def _json_file_type(value):
         if not os.path.isfile(value):
             raise argparse.ArgumentTypeError("'{0}' is not a valid file".format(value))
-        with open(value) as rollback_file:
+        with open(value, encoding="utf-8") as rollback_file:
             json.load(rollback_file)
         return value
 
@@ -90,7 +90,7 @@ def main():
     logging.info("Parsed cli args: %s", vars(args))
 
     regions = set()
-    with open(args.rollback_file_path) as rollback_file:
+    with open(args.rollback_file_path, encoding="utf-8") as rollback_file:
         rollback_data = json.load(rollback_file)
         for bucket in rollback_data.keys():
             regions.add(rollback_data[bucket]["region"])

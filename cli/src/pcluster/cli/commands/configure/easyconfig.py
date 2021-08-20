@@ -269,11 +269,11 @@ def _write_configuration_file(config_file_path, content):
                 raise  # can safely ignore EEXISTS for this purpose...
 
         # Fix permissions
-        with open(config_file_path, "a"):
+        with open(config_file_path, "a", encoding="utf-8"):
             os.chmod(config_file_path, stat.S_IRUSR | stat.S_IWUSR)
 
     # Write configuration to disk
-    with open(config_file_path, "w") as config_file:
+    with open(config_file_path, "w", encoding="utf-8") as config_file:
         yaml.dump(content, config_file, sort_keys=False)
     print(f"Configuration file written to {config_file_path}")
 

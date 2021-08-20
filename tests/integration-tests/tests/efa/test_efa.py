@@ -281,7 +281,9 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
     # Check avg latency for all packet sizes
     failures = 0
     for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
-        with open(str(test_datadir / "osu_benchmarks" / "results" / instance / mpi_version / benchmark_name)) as result:
+        with open(
+            str(test_datadir / "osu_benchmarks" / "results" / instance / mpi_version / benchmark_name), encoding="utf-8"
+        ) as result:
             previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
 
             # Use a tolerance of 10us for 2 digits values and 20% tolerance for 3+ digits values
@@ -318,7 +320,7 @@ def _render_jinja_template(template_file_path, **kwargs):
     file_loader = FileSystemLoader(str(os_lib.path.dirname(template_file_path)))
     env = Environment(loader=file_loader)
     rendered_template = env.get_template(os_lib.path.basename(template_file_path)).render(**kwargs)
-    with open(template_file_path, "w") as f:
+    with open(template_file_path, "w", encoding="utf-8") as f:
         f.write(rendered_template)
     return template_file_path
 

@@ -433,7 +433,7 @@ def dict_add_nested_key(d, value, keys):
 def read_json_file(file):
     """Read a Json file into a String and raise an exception if the file is invalid."""
     try:
-        with open(file) as f:
+        with open(file, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         logging.exception("Failed when reading json file %s", file)

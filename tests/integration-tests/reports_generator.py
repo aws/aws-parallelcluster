@@ -94,7 +94,7 @@ def generate_json_report(test_results_dir, save_to_file=True):
                     _record_result(results, property["name"], property["value"], label)
 
     if save_to_file:
-        with open("{0}/test_report.json".format(test_results_dir), "w") as out_f:
+        with open("{0}/test_report.json".format(test_results_dir), "w", encoding="utf-8") as out_f:
             out_f.write(json.dumps(results, indent=4))
 
     return results
