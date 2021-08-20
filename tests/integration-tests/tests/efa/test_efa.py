@@ -10,7 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import os
+import os as os_lib
 import re
 from shutil import copyfile
 
@@ -30,8 +30,8 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.instances(["c5n.18xlarge"])
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.usefixtures("os")
 def test_efa(
+    os,
     region,
     scheduler,
     instance,
@@ -315,9 +315,9 @@ def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, p
 
 
 def _render_jinja_template(template_file_path, **kwargs):
-    file_loader = FileSystemLoader(str(os.path.dirname(template_file_path)))
+    file_loader = FileSystemLoader(str(os_lib.path.dirname(template_file_path)))
     env = Environment(loader=file_loader)
-    rendered_template = env.get_template(os.path.basename(template_file_path)).render(**kwargs)
+    rendered_template = env.get_template(os_lib.path.basename(template_file_path)).render(**kwargs)
     with open(template_file_path, "w") as f:
         f.write(rendered_template)
     return template_file_path
