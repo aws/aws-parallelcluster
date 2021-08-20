@@ -97,13 +97,7 @@ def encode_query_string(event):
 
 
 def get_script_name(headers, request_context):
-    strip_stage_path = os.environ.get("STRIP_STAGE_PATH", "").lower().strip() in [
-        "yes",
-        "y",
-        "true",
-        "t",
-        "1",
-    ]
+    strip_stage_path = os.environ.get("STRIP_STAGE_PATH", "").lower().strip() in ["yes", "y", "true", "t", "1"]
 
     if u"amazonaws.com" in headers.get(u"Host", u"") and not strip_stage_path:
         script_name = "/{}".format(request_context.get(u"stage", ""))
@@ -142,10 +136,7 @@ def generate_response(response, event):
 
     if is_alb_event(event):
         # If the request comes from ALB we need to add a status description
-        returndict["statusDescription"] = u"%d %s" % (
-            response.status_code,
-            HTTP_STATUS_CODES[response.status_code],
-        )
+        returndict["statusDescription"] = u"%d %s" % (response.status_code, HTTP_STATUS_CODES[response.status_code])
 
     if response.data:
         mimetype = response.mimetype or "text/plain"
