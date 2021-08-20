@@ -2164,6 +2164,9 @@ components:
         cloudformationStackArn:
           type: string
           description: ARN of the main CloudFormation stack.
+        ec2ImageId:
+          type: string
+          description: Ec2 Id of the image.
         region:
           type: string
           description: AWS region where the image is built.

@@ -22,16 +22,20 @@ from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
-def _check_cluster_schema(test_datadir, config_file_name):
+def _load_cluster_model_from_yaml(test_datadir, config_file_name):
     # https://github.com/marshmallow-code/marshmallow/issues/1126
     # TODO use yaml render_module: https://marshmallow.readthedocs.io/en/3.0/api_reference.html#marshmallow.Schema.Meta
-
-    # Load cluster model from Yaml file
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     print(input_yaml)
     copy_input_yaml = deepcopy(input_yaml)
     cluster = ClusterSchema(cluster_name="clustername").load(copy_input_yaml)
     print(cluster)
+    return input_yaml, cluster
+
+
+def _check_cluster_schema(test_datadir, config_file_name):
+    # Load cluster model from Yaml file
+    input_yaml, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
 
     # Re-create Yaml file from model and compare content
     cluster_schema = ClusterSchema(cluster_name="clustername")
@@ -144,11 +148,22 @@ DUMMY_AWSBATCH_QUEUE = {
     "ComputeResources": [{"Name": "compute_resource1", "InstanceTypes": ["c5.xlarge"]}],
 }
 
-DUMMY_SLURM_QUEUE = {
-    "Name": "queue1",
-    "Networking": {"SubnetIds": ["subnet-12345678"]},
-    "ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}],
-}
+
+def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):
+    slurm_queue = {
+        "Name": name,
+        "Networking": {"SubnetIds": ["subnet-12345678"]},
+        "ComputeResources": [],
+    }
+    for index in range(number_of_compute_resource):
+        slurm_queue["ComputeResources"].append(
+            dummy_slurm_compute_resource(f"compute_resource{index}", f"c{index}.xlarge")
+        )
+    return slurm_queue
+
+
+def dummy_slurm_compute_resource(name, instance_type):
+    return {"Name": name, "InstanceType": instance_type}
 
 
 @pytest.mark.parametrize(
@@ -162,11 +177,11 @@ DUMMY_SLURM_QUEUE = {
             "Queues section is not appropriate to the Scheduler",
         ),
         (
-            {"Scheduler": "awsbatch", "SlurmQueues": [DUMMY_SLURM_QUEUE]},
+            {"Scheduler": "awsbatch", "SlurmQueues": [dummy_slurm_queue()]},
             "Queues section is not appropriate to the Scheduler",
         ),
         (
-            {"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE], "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
+            {"Scheduler": "slurm", "SlurmQueues": [dummy_slurm_queue()], "AwsBatchQueues": [DUMMY_AWSBATCH_QUEUE]},
             "Queues section is not appropriate to the Scheduler",
         ),
         (
@@ -174,12 +189,12 @@ DUMMY_SLURM_QUEUE = {
             "Multiple .*Settings sections cannot be specified in the Scheduling section",
         ),
         # success
-        ({"Scheduler": "slurm", "SlurmQueues": [DUMMY_SLURM_QUEUE]}, None),
+        ({"Scheduler": "slurm", "SlurmQueues": [dummy_slurm_queue()]}, None),
         (
             {
                 "Scheduler": "slurm",
                 "SlurmQueues": [
-                    DUMMY_SLURM_QUEUE,
+                    dummy_slurm_queue(),
                     {
                         "Name": "queue2",
                         "Networking": {"SubnetIds": ["subnet-12345678"]},
@@ -196,7 +211,7 @@ DUMMY_SLURM_QUEUE = {
             {
                 "Scheduler": "slurm",
                 "SlurmQueues": [
-                    DUMMY_SLURM_QUEUE,
+                    dummy_slurm_queue(),
                     {
                         "Name": "queue2",
                         "Networking": {"SubnetIds": ["subnet-00000000"]},
@@ -208,6 +223,47 @@ DUMMY_SLURM_QUEUE = {
                 ],
             },
             "The SubnetIds used for all of the queues should be the same",
+        ),
+        (  # maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [
+                    dummy_slurm_queue("queue1"),
+                    dummy_slurm_queue("queue2"),
+                    dummy_slurm_queue("queue3"),
+                    dummy_slurm_queue("queue4"),
+                    dummy_slurm_queue("queue5"),
+                ],
+            },
+            None,
+        ),
+        (  # beyond maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [
+                    dummy_slurm_queue("queue1"),
+                    dummy_slurm_queue("queue2"),
+                    dummy_slurm_queue("queue3"),
+                    dummy_slurm_queue("queue4"),
+                    dummy_slurm_queue("queue5"),
+                    dummy_slurm_queue("queue6"),
+                ],
+            },
+            "Queue.*Longer than maximum length 5",
+        ),
+        (  # maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=3)],
+            },
+            None,
+        ),
+        (  # beyond maximum slurm queue length
+            {
+                "Scheduler": "slurm",
+                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=4)],
+            },
+            "ComputeResources.*Longer than maximum length 3",
         ),
     ],
 )
@@ -278,3 +334,31 @@ def test_shared_storage_schema(mocker, config_dict, failure_message):
             SharedStorageSchema().load(config_dict)
     else:
         SharedStorageSchema().load(config_dict)
+
+
+@pytest.mark.parametrize(
+    "scheduler, install_intel_packages_enabled, failure_message",
+    [
+        ("slurm", True, None),
+        ("slurm", False, None),
+        ("awsbatch", True, "use of the IntelSelectSolutions package is not supported when using awsbatch"),
+        ("awsbatch", False, None),
+    ],
+)
+def test_scheduler_constraints_for_intel_packages(
+    mocker, test_datadir, scheduler, install_intel_packages_enabled, failure_message
+):
+    mock_aws_api(mocker)
+    config_file_name = f"{scheduler}.{'enabled' if install_intel_packages_enabled else 'disabled'}.yaml"
+    if failure_message:
+        with pytest.raises(
+            ValidationError,
+            match=failure_message,
+        ):
+            _load_cluster_model_from_yaml(test_datadir, config_file_name)
+    else:
+        _, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
+        assert_that(cluster.scheduling.scheduler).is_equal_to(scheduler)
+        assert_that(cluster.additional_packages.intel_select_solutions.install_intel_software).is_equal_to(
+            install_intel_packages_enabled
+        )

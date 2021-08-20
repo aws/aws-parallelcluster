@@ -1,27 +1,3 @@
-api:
-  test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
-    dimensions:
-      - regions: ["ap-south-1", "cn-northwest-1", "us-gov-west-1"]
-  test_api.py::test_cluster_slurm:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu2004"]
-        schedulers: ["slurm"]
-  test_api.py::test_cluster_awsbatch:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-        schedulers: ["awsbatch"]
-  test_api.py::test_custom_image:
-    dimensions:
-      - regions: ["sa-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
-  test_api.py::test_official_images:
-    dimensions:
-      - regions: ["sa-east-1"]
 arm_pl:
   test_arm_pl.py::test_arm_pl:
     dimensions:
@@ -218,15 +194,15 @@ dns:
         oss: ["alinux2"]
         schedulers: ["slurm"]
 efa:
-  test_efa.py::test_hit_efa:
+  test_efa.py::test_efa:
     dimensions:
       - regions: ["sa-east-1"]
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-east-1"]
+      - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos7", "ubuntu2004"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
@@ -556,13 +532,9 @@ update:
 multiple_nics:
   test_multiple_nics.py::test_multiple_nics:
     dimensions:
-      - regions: ["us-east-1"]
-        instances: ["p4d.24xlarge"]
-        oss: ["alinux2", "centos7", "ubuntu1804"]
-        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
-        oss: ["ubuntu2004"]
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
@@ -571,10 +543,3 @@ resource_bucket:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
-nccl:
-  test_nccl.py::test_nccl:
-    dimensions:
-      - regions: ["us-east-1"]
-        instances: ["p4d.24xlarge"]
-        oss: ["ubuntu1804", "ubuntu2004"]
-        schedulers: ["slurm"]

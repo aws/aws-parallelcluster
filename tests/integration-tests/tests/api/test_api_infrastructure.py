@@ -37,12 +37,17 @@ def api_with_default_settings(api_infrastructure_s3_uri, public_ecr_image_uri, a
     if public_ecr_image_uri:
         params.append({"ParameterKey": "PublicEcrImageUri", "ParameterValue": public_ecr_image_uri})
 
+    template = (
+        api_infrastructure_s3_uri
+        or f"s3://{region}-aws-parallelcluster/parallelcluster/3.0.0/api/parallelcluster-api.yaml"
+    )
+    logging.info(f"Creating API Server stack in {region} with template {template}")
     stack = CfnStack(
         name=generate_stack_name("integ-tests-api", request.config.getoption("stackname_suffix")),
         region=region,
         parameters=params,
         capabilities=["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"],
-        template=api_infrastructure_s3_uri,
+        template=template,
     )
     factory.create_stack(stack)
     yield stack
@@ -91,7 +96,7 @@ def _assert_parallelcluster_lambda(lambda_name, lambda_arn, lambda_image_uri):
     lambda_configuration = lambda_resource["Configuration"]
     assert_that(lambda_configuration["FunctionArn"]).is_equal_to(lambda_arn)
     assert_that(lambda_configuration["Timeout"]).is_equal_to(30)
-    assert_that(lambda_configuration["MemorySize"]).is_equal_to(512)
+    assert_that(lambda_configuration["MemorySize"]).is_equal_to(1024)
     assert_that(lambda_configuration["TracingConfig"]["Mode"]).is_equal_to("Active")
     assert_that(lambda_resource["Tags"]).contains("parallelcluster:version")
     assert_that(lambda_resource["Code"]["ImageUri"]).is_equal_to(lambda_image_uri)

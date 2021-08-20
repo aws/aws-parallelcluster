@@ -31,7 +31,7 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os")
-def test_hit_efa(
+def test_efa(
     region,
     scheduler,
     instance,
@@ -60,7 +60,6 @@ def test_hit_efa(
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
-    _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=False, partition="efa-disabled")
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
 
@@ -102,6 +101,9 @@ def test_hit_efa(
             remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
         )
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
+
+    if instance == "p4d.24xlarge" and "centos" not in os:
+        _test_nccl_benchmarks(remote_command_executor, test_datadir, "openmpi", scheduler_commands)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
@@ -319,3 +321,27 @@ def _render_jinja_template(template_file_path, **kwargs):
     with open(template_file_path, "w") as f:
         f.write(rendered_template)
     return template_file_path
+
+
+def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, scheduler_commands):
+    logging.info("Running NCCL benchmarks")
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "nccl_benchmarks" / "init_nccl_benchmarks.sh"),
+        args=[mpi_module],
+        hide=True,
+    )
+
+    result = scheduler_commands.submit_script(
+        str(test_datadir / "nccl_benchmarks" / "nccl_tests_submit_{0}.sh".format(mpi_module)), nodes=2
+    )
+
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+    max_bandwidth = remote_command_executor.run_remote_command(
+        "cat /shared/nccl_tests.out | tail -4 | head -1 | awk '{print $11}'"
+    ).stdout
+
+    # Expected bandwidth with 2 nodes, 8 tasks per node is about 27GB/s
+    assert_that(float(max_bandwidth)).is_greater_than(26.0)
