@@ -1230,7 +1230,7 @@ def deserialize_file(response_data, configuration, content_disposition=None):
                              content_disposition).group(1)
         path = os.path.join(os.path.dirname(path), filename)
 
-    with open(path, "wb", encoding="utf-8") as f:
+    with open(path, "wb") as f:
         if isinstance(response_data, str):
             # change str to bytes so we can write it
             response_data = response_data.encode('utf-8')

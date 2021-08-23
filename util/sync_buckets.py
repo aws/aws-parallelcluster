@@ -137,7 +137,7 @@ def _get_s3_object_metadata(s3_url):
 def _checksum(filename, base64_encoded=True, algorithm=HashingAlgorithm.SHA256):
     init_function = {HashingAlgorithm.SHA256: hashlib.sha256, HashingAlgorithm.MD5: hashlib.md5}
     checksum = init_function[algorithm]()
-    with open(filename, "rb", encoding="utf-8") as f:
+    with open(filename, "rb") as f:
         for data in iter(lambda: f.read(1024 * 1024), b""):
             checksum.update(data)
     return base64.b64encode(checksum.digest()).decode("utf-8") if base64_encoded else checksum.hexdigest()
@@ -161,7 +161,7 @@ def _upload_files(args, files, sts_credentials, dir):
 
             md5 = _checksum(file_path, base64_encoded=True, algorithm=HashingAlgorithm.MD5)
             logging.info("Computed md5 checksum for S3 upload: %s", md5)
-            with open(file_path, "rb", encoding="utf-8") as data:
+            with open(file_path, "rb") as data:
                 doc_manager.upload(dest_bucket, file, data, dryrun=not args.deploy, md5=md5)
 
 

@@ -180,5 +180,5 @@ def _write_results_to_outdir(request, image_bytes):
     graph_dst = "{out_dir}/benchmarks/{test_name}.png".format(
         out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
     )
-    with open(graph_dst, "wb", encoding="utf-8") as image:
+    with open(graph_dst, "wb") as image:
         image.write(image_bytes)
