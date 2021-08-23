@@ -688,9 +688,7 @@ class S3AccessSchema(BaseSchema):
     """Represent the schema of S3 access."""
 
     bucket_name = fields.Str(
-        required=True,
-        metadata={"update_policy": UpdatePolicy.SUPPORTED},
-        validate=validate.Regexp(r"^[a-z0-9\-\.]+$"),
+        required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(r"^[a-z0-9\-\.]+$")
     )
     key_name = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     enable_write_access = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
@@ -728,9 +726,7 @@ class IamSchema(BaseSchema):
         S3AccessSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "BucketName"}
     )
     additional_iam_policies = fields.Nested(
-        AdditionalIamPolicySchema,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Policy"},
+        AdditionalIamPolicySchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Policy"}
     )
 
     @validates_schema
@@ -962,9 +958,7 @@ class AwsBatchComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Batch ComputeResource."""
 
     instance_types = fields.List(
-        fields.Str(),
-        required=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        fields.Str(), required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
     max_vcpus = fields.Int(
         data_key="MaxvCpus",
@@ -1022,8 +1016,7 @@ class SlurmQueueSchema(BaseQueueSchema):
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     custom_actions = fields.Nested(
-        QueueCustomActionsSchema,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        QueueCustomActionsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})

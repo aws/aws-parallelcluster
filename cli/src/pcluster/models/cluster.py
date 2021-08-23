@@ -405,11 +405,8 @@ class Cluster:
             Cluster._load_additional_instance_type_data(cluster_config_dict)
             config = self._load_config(cluster_config_dict)
             validation_failures = config.validate(validator_suppressors)
-            for failure in validation_failures:
-                if failure.level.value >= FailureLevel(validation_failure_level).value:
-                    raise ConfigValidationError(
-                        "Invalid cluster configuration.", validation_failures=validation_failures
-                    )
+            if any(f.level.value >= FailureLevel(validation_failure_level).value for f in validation_failures):
+                raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)
             LOGGER.info("Validation succeeded.")
         except ConfigValidationError as e:
             raise e

@@ -167,7 +167,41 @@ class Resource(ABC):
         """Create a resource attribute backed by a Configuration Parameter."""
         return Resource.Param(value, default=default, update_policy=update_policy)
 
-    def validate(self, validator_suppressor_list: List[ValidatorSuppressor] = None) -> List[ValidationResult]:
+    def _validator_execute(self, validator_class, validator_args, suppressors):
+        validator = validator_class()
+        if any(suppressor.suppress_validator(validator) for suppressor in (suppressors or [])):
+            LOGGER.debug("Suppressing validator %s", validator_class.__name__)
+            return []
+        LOGGER.debug("Executing validator %s", validator_class.__name__)
+        try:
+            return validator.execute(**validator_args)
+        except Exception as e:
+            return [ValidationResult(str(e), FailureLevel.ERROR, validator.type)]
+
+    def _nested_resources(self):
+        nested_resources = []
+        for attr, value in self.__dict__.items():
+            if isinstance(value, Resource):
+                nested_resources.append(value)
+            if isinstance(value, list) and value:
+                nested_resources.extend(item for item in self.__getattribute__(attr) if isinstance(item, Resource))
+        return nested_resources
+
+    def validate(self, suppressors: List[ValidatorSuppressor] = None) -> List[ValidationResult]:
+        # Cleanup failures and validators
+        self._validation_failures.clear()
+
+        # Call validators for nested resources
+        for nested_resource in self._nested_resources():
+            self._validation_failures.extend(nested_resource.validate(suppressors))
+
+        # Update validators to be executed according to current status of the model and order by priority
+        self._validators.clear()
+        self._register_validators()
+        for validator in self._validators:
+            self._validation_failures.extend(self._validator_execute(*validator, suppressors))
+
+        return self._validation_failures
         """Execute registered validators."""
         # Cleanup failures and validators
         self._validation_failures.clear()
@@ -236,10 +270,7 @@ class BaseTag(Resource):
 class AdditionalIamPolicy(Resource):
     """Represent the Additional IAM Policy configuration."""
 
-    def __init__(
-        self,
-        policy: str,
-    ):
+    def __init__(self, policy: str):
         super().__init__()
         self.policy = Resource.init_param(policy)
 

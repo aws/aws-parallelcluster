@@ -12,6 +12,7 @@
 import functools
 import logging
 import os
+import threading
 import time
 from abc import ABC
 from enum import Enum
@@ -184,31 +185,42 @@ class Cache:
             cache.clear()
 
     @staticmethod
-    def _make_key(args, kwargs):
-        key = args
-        if kwargs:
-            for item in kwargs.items():
-                key += item
-        return hash(key)
+    def _make_key(val):
+        if isinstance(val, list):
+            key = hash(tuple(Cache._make_key(x) for x in val))
+        elif isinstance(val, tuple):
+            key = hash(val)
+        elif isinstance(val, dict):
+            key = hash(tuple((key, Cache._make_key(val[key])) for key in sorted(val.keys())))
+        else:
+            key = hash(val)
+        return key
 
     @staticmethod
     def cached(function):
         """
         Decorate a function to make it use a results cache based on passed arguments.
 
-        Note: all arguments must be hashable for this function to work properly.
+        Note: for threaded invocations, only a single instance for a given set of arguments
+        will execute at a given time.
         """
         cache = {}
+        mutexes = {}
+        lock = threading.Lock()
         Cache._caches.append(cache)
 
         @functools.wraps(function)
         def wrapper(*args, **kwargs):
-            cache_key = Cache._make_key(args, kwargs)
+            cache_key = Cache._make_key(args) + Cache._make_key(kwargs)
+            with lock:
+                if cache_key not in mutexes:
+                    mutexes[cache_key] = threading.Lock()
 
-            if Cache.is_enabled() and cache_key in cache:
-                return cache[cache_key]
-            else:
-                return_value = function(*args, **kwargs)
+            with mutexes[cache_key]:
+                if Cache.is_enabled() and cache_key in cache:
+                    return_value = cache[cache_key]
+                else:
+                    return_value = function(*args, **kwargs)
                 if Cache.is_enabled():
                     cache[cache_key] = return_value
                 return return_value
