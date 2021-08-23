@@ -117,7 +117,7 @@ class Cluster:
                 dict_add_nested_key(self.config, "Delete", ("Monitoring", "Logs", "CloudWatch", "DeletionPolicy"))
                 with open(self.config_file, "w", encoding="utf-8") as conf_file:
                     yaml.dump(self.config, conf_file)
-                self.update(self.config_file, force=True)
+                self.update(self.config_file, force_update="true")
             except subprocess.CalledProcessError as e:
                 logging.error(
                     "Failed updating cluster to delete log with error:\n%s\nand output:\n%s", e.stderr, e.stdout
