@@ -55,7 +55,7 @@ def _upload_documents(regions, bucket, s3_path, script, sts_credentials, deploy,
         if exists and not override:
             logging.warning(f"Version s3://{bucket}/{s3_path} exists, skipping upload.")
         else:
-            with open(script, "rb", encoding="utf-8") as data:
+            with open(script, "rb") as data:
                 doc_manager.upload(bucket.format(region=region), s3_path, data, dryrun=not deploy)
 
 

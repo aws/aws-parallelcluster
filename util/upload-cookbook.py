@@ -135,7 +135,7 @@ def _get_bucket_name(args, region):
 def _md5sum(cookbook_archive_file, md5sum_file):
     blocksize = 65536
     hasher = hashlib.md5()  # nosec nosemgrep
-    with open(cookbook_archive_file, "rb", encoding="utf-8") as arch:
+    with open(cookbook_archive_file, "rb") as arch:
         buf = arch.read(blocksize)
         while len(buf) > 0:
             hasher.update(buf)

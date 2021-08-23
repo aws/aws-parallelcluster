@@ -69,7 +69,7 @@ def _add_file_to_zip(zip_file, path, arcname):
     :param path: string; path to file being added
     :param arcname: string; filename to put bytes from path under in created archive
     """
-    with open(path, "rb", encoding="utf-8") as input_file:
+    with open(path, "rb") as input_file:
         zinfo = zipfile.ZipInfo(filename=arcname)
         zinfo.external_attr = 0o644 << 16
         zip_file.writestr(zinfo, input_file.read())

@@ -260,7 +260,7 @@ def create_logs_archive(directory: str, output_file: str = None):
 
 def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
     archive_filename = os.path.basename(archive_path)
-    with open(archive_path, "rb", encoding="utf-8") as archive_file:
+    with open(archive_path, "rb") as archive_file:
         archive_data = archive_file.read()
     AWSApi.instance().s3.put_object(bucket, archive_data, f"{bucket_prefix}/{archive_filename}")
     return f"s3://{bucket}/{bucket_prefix}/{archive_filename}"
