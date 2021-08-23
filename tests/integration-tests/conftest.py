@@ -64,7 +64,11 @@ from utils import (
     set_logger_formatter,
 )
 
-from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import (
+    get_installed_parallelcluster_version,
+    get_sts_endpoint,
+    retrieve_pcluster_ami_without_standard_naming,
+)
 
 
 def pytest_addoption(parser):
@@ -366,7 +370,8 @@ def api_server_factory(
 
         template = (
             api_infrastructure_s3_uri
-            or f"s3://{server_region}-aws-parallelcluster/parallelcluster/3.0.0/api/parallelcluster-api.yaml"
+            or f"s3://{server_region}-aws-parallelcluster/parallelcluster/{get_installed_parallelcluster_version()}"
+            "/api/parallelcluster-api.yaml"
         )
         if server_region not in api_servers:
             logging.info(f"Creating API Server stack: {api_stack_name} in {server_region} with template {template}")
