@@ -8,7 +8,7 @@ test-suites:
   api:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
       dimensions:
-        - regions: ["ap-south-1", "cn-northwest-1", "us-gov-west-1"]
+        - regions: ["ap-south-1", "cn-north-1", "us-gov-west-1"]
     test_api.py::test_cluster_slurm:
       dimensions:
         - regions: ["sa-east-1"]
