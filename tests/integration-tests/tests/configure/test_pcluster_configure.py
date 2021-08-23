@@ -219,7 +219,7 @@ def assert_config_contains_expected_values(
         param_validators += [
             {
                 "parameter_path": ["Scheduling", "AwsBatchQueues", 0, "ComputeResources", 0, "MinvCpus"],
-                "expected_value": 1,
+                "expected_value": 0,
             },
         ]
 
