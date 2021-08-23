@@ -112,7 +112,7 @@ def test_hit_efa(
     # 2 instances are enough for other EFA tests.
     max_queue_size = 4 if instance in osu_benchmarks_instances else 2
     slots_per_instance = fetch_instance_slots(region, instance)
-    head_node_instance = "c5.xlarge" if architecture == "x86_64" else "m6g.xlarge"
+    head_node_instance = "c5n.18xlarge" if architecture == "x86_64" else "c6gn.16xlarge"
     cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -384,7 +384,7 @@ def _render_jinja_template(template_file_path, **kwargs):
 def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, scheduler_commands):
     logging.info("Running NCCL benchmarks")
     remote_command_executor.run_remote_script(
-        str(test_datadir / "nccl_benchmarks" / "init_nccl_benchmarks.sh"), args=[mpi_module], hide=True
+        str(test_datadir / "nccl_benchmarks" / "init_nccl_benchmarks.sh"), args=[mpi_module], hide=True, timeout=600
     )
 
     result = scheduler_commands.submit_script(
