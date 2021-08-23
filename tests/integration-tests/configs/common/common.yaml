@@ -200,10 +200,11 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["us-west-2"]
-        instances: ["p4d.24xlarge"]
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm"]
+      # Temporarily disabling p4d tests
+      # - regions: ["us-west-2"]
+      #   instances: ["p4d.24xlarge"]
+      #   oss: {{ common.OSS_COMMERCIAL_X86 }}
+      #   schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
@@ -529,13 +530,14 @@ update:
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
-multiple_nics:
-  test_multiple_nics.py::test_multiple_nics:
-    dimensions:
-      - regions: ["us-west-2"]
-        instances: ["p4d.24xlarge"]
-        oss: {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["slurm"]
+# Temporarily disabling p4d tests
+# multiple_nics:
+#   test_multiple_nics.py::test_multiple_nics:
+#     dimensions:
+#       - regions: ["us-west-2"]
+#         instances: ["p4d.24xlarge"]
+#         oss: {{ common.OSS_COMMERCIAL_X86 }}
+#         schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:
     dimensions:
