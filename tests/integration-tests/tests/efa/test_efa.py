@@ -112,7 +112,8 @@ def test_hit_efa(
     # 2 instances are enough for other EFA tests.
     max_queue_size = 4 if instance in osu_benchmarks_instances else 2
     slots_per_instance = fetch_instance_slots(region, instance)
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size)
+    head_node_instance = "c5.xlarge" if architecture == "x86_64" else "m6g.xlarge"
+    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
