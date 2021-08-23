@@ -56,6 +56,7 @@ from utils import (
     dict_has_nested_key,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
+    get_arn_partition,
     get_instance_info,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
@@ -611,7 +612,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
     if not match or len(match.groups()) < 2:
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
-        additional_iam_policies = {"Policy": f"arn:{_get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
+        additional_iam_policies = {"Policy": f"arn:{get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
         if dict_has_nested_key(node_config, ("Iam", "InstanceRole")) or dict_has_nested_key(
             node_config, ("Iam", "InstanceProfile")
         ):
@@ -629,15 +630,6 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
                     node_config["Iam"]["AdditionalIamPolicies"].append(additional_iam_policies)
             else:
                 dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
-
-
-def _get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
 
 
 def _get_default_template_values(vpc_stack, request):
@@ -917,7 +909,7 @@ def role_factory(region):
         iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
         logging.info(f"Creating iam role {iam_role_name} for {trusted_service}")
 
-        partition = _get_arn_partition(region)
+        partition = get_arn_partition(region)
         domain_suffix = ".cn" if partition == "aws-cn" else ""
 
         trust_relationship_policy_ec2 = {
@@ -991,7 +983,7 @@ def _create_iam_policies(iam_policy_name, region, policy_filename):
     logging.info("Creating iam policy {0}...".format(iam_policy_name))
     file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/resources"))
     env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
-    partition = _get_arn_partition(region)
+    partition = get_arn_partition(region)
     account_id = (
         boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
         .get_caller_identity()

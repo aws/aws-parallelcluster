@@ -442,3 +442,12 @@ def read_json_file(file):
 
 def get_stack_id_tag_filter(stack_arn):
     return {"Name": "tag:aws:cloudformation:stack-id", "Values": [stack_arn]}
+
+
+def get_arn_partition(region):
+    if region.startswith("us-gov-"):
+        return "aws-us-gov"
+    elif region.startswith("cn-"):
+        return "aws-cn"
+    else:
+        return "aws"
