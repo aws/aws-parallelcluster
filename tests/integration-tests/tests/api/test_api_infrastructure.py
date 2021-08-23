@@ -24,6 +24,8 @@ from retrying import retry
 from time_utils import minutes, seconds
 from utils import generate_stack_name
 
+from tests.common.utils import get_installed_parallelcluster_version
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -39,7 +41,8 @@ def api_with_default_settings(api_infrastructure_s3_uri, public_ecr_image_uri, a
 
     template = (
         api_infrastructure_s3_uri
-        or f"s3://{region}-aws-parallelcluster/parallelcluster/3.0.0/api/parallelcluster-api.yaml"
+        or f"s3://{region}-aws-parallelcluster/parallelcluster/{get_installed_parallelcluster_version()}"
+        "/api/parallelcluster-api.yaml"
     )
     logging.info(f"Creating API Server stack in {region} with template {template}")
     stack = CfnStack(
