@@ -40,7 +40,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.update(str(init_config_file), force=True)
+    cluster.update(str(init_config_file), force_update="true")
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
@@ -409,7 +409,7 @@ def test_update_compute_ami(region, os, pcluster_config_reader, clusters_factory
 
     # stop compute fleet before updating queue image
     cluster.stop()
-    cluster.update(str(updated_config_file))
+    cluster.update(str(updated_config_file), force_update="true")
     instances = cluster.get_cluster_instance_ids(node_type="Compute")
     logging.info(instances)
     _check_instance_ami_id(ec2, instances, pcluster_dlami_id)
