@@ -22,6 +22,7 @@ from pcluster.constants import (
 )
 from pcluster.models.imagebuilder import ImageBuilderStack
 from pcluster.utils import get_installed_version
+
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
@@ -84,7 +85,7 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
                     },
                     {"Key": "parallelcluster:bootstrap_file", "Value": "aws-parallelcluster-cookbook-2.10.1"},
                     {"Key": "parallelcluster:nvidia", "Value": "nvidia-450.80.02"},
-                    {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                    {"Key": "parallelcluster:version", "Value": get_installed_version()},
                     {"Key": "parallelcluster:pmix", "Value": "pmix-3.1.5"},
                     {"Key": "parallelcluster:efa_openmpi40_aws", "Value": "openmpi40-aws-4.0.5-1.amzn2.x86_64"},
                     {"Key": "parallelcluster:kernel", "Value": "4.14.203-156.332.amzn2.x86_64"},
@@ -120,17 +121,14 @@ FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
 )
 def test_image(mocker, stack_resources_response, describe_image_response, expected_image_property_value):
     mock_aws_api(mocker)
-    mocker.patch(
-        "pcluster.aws.cfn.CfnClient.describe_stack_resource",
-        return_value=stack_resources_response,
-    )
+    mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=stack_resources_response)
     mocker.patch("pcluster.aws.imagebuilder.ImageBuilderClient.get_image_id", return_value="ami-06b66530ba9f43a96")
     mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image", return_value=ImageInfo(describe_image_response))
     imagebuilder_stack = ImageBuilderStack({"StackName": FAKE_IMAGEBUILDER_STACK_NAME})
     image = imagebuilder_stack.image
-    for p in image.__dir__():
-        if not p.startswith("_"):
-            if p not in expected_image_property_value.keys():
-                assert_that(getattr(image, p) in describe_image_response.values()).is_equal_to(True)
-            else:
-                assert_that(getattr(image, p)).is_equal_to(expected_image_property_value.get(p))
+    for prop in filter(lambda p: not p.startswith("_"), image.__dir__()):
+        attr = getattr(image, prop)
+        if prop not in expected_image_property_value:
+            assert_that(attr in describe_image_response.values()).is_true()
+        else:
+            assert_that(attr).is_equal_to(expected_image_property_value.get(prop))
