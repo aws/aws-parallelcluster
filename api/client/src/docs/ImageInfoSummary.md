@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 **version** | **str** | ParallelCluster version used to build the image. | 
 **cloudformation_stack_status** | [**CloudFormationStackStatus**](CloudFormationStackStatus.md) |  | [optional] 
 **cloudformation_stack_arn** | **str** | ARN of the main CloudFormation stack. | [optional] 
-**ec2_image_id** | **str** | Ec2 Id of the image. | [optional] 
+**ec2_ami_info** | [**Ec2AmiInfo**](Ec2AmiInfo.md) |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

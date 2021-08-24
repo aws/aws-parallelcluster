@@ -110,14 +110,14 @@ class TestListImages:
             "images": [
                 {
                     "imageId": "image1",
-                    "ec2ImageId": "image1",
+                    "ec2AmiInfo": {"amiId": "image1"},
                     "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
                     "region": "us-east-1",
                     "version": "3.0.0",
                 },
                 {
                     "imageId": "image2",
-                    "ec2ImageId": "image2",
+                    "ec2AmiInfo": {"amiId": "image2"},
                     "imageBuildStatus": ImageBuildStatus.BUILD_COMPLETE,
                     "region": "us-east-1",
                     "version": "3.0.0",
