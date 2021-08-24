@@ -14,6 +14,7 @@ import re
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
 from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
+from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.image_build_status import ImageBuildStatus
 
 
@@ -27,7 +28,7 @@ class ImageInfoSummary(Model):
         self,
         image_id=None,
         image_build_status=None,
-        ec2_image_id=None,
+        ec2_ami_info=None,
         cloudformation_stack_status=None,
         cloudformation_stack_arn=None,
         region=None,
@@ -43,8 +44,8 @@ class ImageInfoSummary(Model):
         :type cloudformation_stack_status: CloudFormationStackStatus
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
         :type cloudformation_stack_arn: str
-        :param ec2_image_id: The ec2_image_id of this ImageInfoSummary.
-        :type ec2_image_id: str
+        :param ec2_ami_info: The ec2_ami_info of this ImageInfoSummary.  # noqa: E501
+        :type ec2_ami_info: Ec2AmiInfo
         :param region: The region of this ImageInfoSummary.
         :type region: str
         :param version: The version of this ImageInfoSummary.
@@ -55,7 +56,7 @@ class ImageInfoSummary(Model):
             "image_build_status": ImageBuildStatus,
             "cloudformation_stack_status": CloudFormationStackStatus,
             "cloudformation_stack_arn": str,
-            "ec2_image_id": str,
+            "ec2_ami_info": Ec2AmiInfo,
             "region": str,
             "version": str,
         }
@@ -65,7 +66,7 @@ class ImageInfoSummary(Model):
             "image_build_status": "imageBuildStatus",
             "cloudformation_stack_status": "cloudformationStackStatus",
             "cloudformation_stack_arn": "cloudformationStackArn",
-            "ec2_image_id": "ec2ImageId",
+            "ec2_ami_info": "ec2AmiInfo",
             "region": "region",
             "version": "version",
         }
@@ -74,7 +75,7 @@ class ImageInfoSummary(Model):
         self._image_build_status = image_build_status
         self._cloudformation_stack_status = cloudformation_stack_status
         self._cloudformation_stack_arn = cloudformation_stack_arn
-        self._ec2_image_id = ec2_image_id
+        self._ec2_ami_info = ec2_ami_info
         self._region = region
         self._version = version
 
@@ -184,29 +185,25 @@ class ImageInfoSummary(Model):
         self._cloudformation_stack_arn = cloudformation_stack_arn
 
     @property
-    def ec2_image_id(self):
-        """Gets the ec2_image_id of this ImageInfoSummary.
+    def ec2_ami_info(self):
+        """Gets the ec2_ami_info of this ImageInfoSummary.
 
-        Ec2 Id of the imag.
 
-        :return: The ec2_image_id of this ImageInfoSummary.
-        :rtype: str
+        :return: The ec2_ami_info of this ImageInfoSummary.
+        :rtype: Ec2AmiInfo
         """
-        return self._ec2_image_id
+        return self._ec2_ami_info
 
-    @ec2_image_id.setter
-    def ec2_image_id(self, ec2_image_id):
-        """Sets the ec2_image_id of this ImageInfoSummary.
+    @ec2_ami_info.setter
+    def ec2_ami_info(self, ec2_ami_info):
+        """Sets the ec2_ami_info of this ImageInfoSummary.
 
-        Ec2 Id of the image.
 
-        :param ec2_image_id: The ec2_image_id of this ImageInfoSummary.
-        :type ec2_image_id: str
+        :param ec2_ami_info: The ec2_ami_info of this ImageInfoSummary.
+        :type ec2_ami_info: Ec2AmiInfo
         """
-        if ec2_image_id is None:
-            raise ValueError("Invalid value for `ec2_image_id`, must not be `None`")
 
-        self._ec2_image_id = ec2_image_id
+        self._ec2_ami_info = ec2_ami_info
 
     @property
     def region(self):
