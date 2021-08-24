@@ -8,9 +8,9 @@ if [ -z "$1" ]; then
 fi
 
 NEW_VERSION=$1
-NEW_VERSION_SHORT=$(echo ${NEW_VERSION} | grep -Eo "\d+\.\d+\.\d+")
+NEW_VERSION_SHORT=$(echo ${NEW_VERSION} | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+")
 CURRENT_VERSION=$(sed -ne "s/^VERSION = \"\(.*\)\"/\1/p" cli/setup.py)
-CURRENT_VERSION_SHORT=$(echo ${CURRENT_VERSION} | grep -Eo "\d+\.\d+\.\d+")
+CURRENT_VERSION_SHORT=$(echo ${CURRENT_VERSION} | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+")
 sed -i "s/VERSION = \"$CURRENT_VERSION\"/VERSION = \"$NEW_VERSION\"/g" cli/setup.py
 
 sed -i "s/\"parallelcluster\": \"$CURRENT_VERSION\"/\"parallelcluster\": \"$NEW_VERSION\"/g" cli/src/pcluster/constants.py
