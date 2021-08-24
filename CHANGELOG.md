@@ -3,6 +3,7 @@ CHANGELOG
 
 3.0.0
 ------
+
 **ENHANCEMENTS**
 - Add possibility to use an existing Instance Profile for cluster creation and Imagebuilder.
 - Support restart/reboot for instance type with instance store (ephemeral drives).  
@@ -61,10 +62,33 @@ CHANGELOG
 - Upgrade Cinc Client to version 17.2.29.
 - CLI commands do not default to `~/.parallelcluster/config` file anymore. The cluster configuration is now a required parameter.
 
+2.11.2
+-----
+
+**CHANGES**
+- When using a custom AMI with a preinstalled EFA package, no actions are taken at node bootstrap time in case GPUDirect RDMA is enabled. The original EFA package deployment is preserved as during the createami process.
+
+**BUG FIXES**
+- Lock the version of ``nvidia-fabricmanager`` package to the installed NVIDIA drivers to prevent updates and misalignments.
+- Slurm: fix issue that prevented powering-up nodes to be correctly reset after a stop and start of the cluster.
+
+2.11.1
+-----
+
+**CHANGES**
+- Restore ``noatime`` option, which has positive impact on the performances of NFS filesystem.
+- Upgrade EFA installer to version 1.12.3
+  - EFA configuration: ``efa-config-1.9`` (from ``efa-config-1.8-1``)
+  - EFA kernel module: ``efa-1.13.0`` (from ``efa-1.12.3``)
+
+**BUG FIXES**
+- Pin to version 1.247347 of the CloudWatch agent due to performance impact of latest CW agent version 1.247348.
+- Avoid failures when building SGE using instance type with vCPU >=32.
+
 2.11.0
 ------
-**ENHANCEMENTS**
 
+**ENHANCEMENTS**
 - Add support for Ubuntu 20.04.
 - Add support for using FSx Lustre in subnet with no internet access.
 - Add support for building Centos 7 AMIs on ARM.
@@ -76,7 +100,6 @@ CHANGELOG
 - Transition from IMDSv1 to IMDSv2.
 
 **CHANGES**
-
 - Ubuntu 16.04 is no longer supported.
 - Amazon Linux is no longer supported.
 - Make `key_name` parameter optional to support cluster configurations without a key pair.
@@ -118,26 +141,24 @@ CHANGELOG
 - Drop ``lightdm`` package install from Ubuntu 18.04 DCV installation process.
 
 **BUG FIXES**
-
 - Use ICP-compliant AL2 repo URLs when building Docker images in China
 - Fix a bug that caused `clustermgtd` to not immediately replace instances with failed status check that are in replacement process.
 
 2.10.4
 ------
-**CHANGES**
 
+**CHANGES**
 - Upgrade Slurm to version 20.02.7.
 
 2.10.3
 ------
-**ENHANCEMENTS**
 
+**ENHANCEMENTS**
 - Enable support for ARM instances in China and GovCloud regions when using Ubuntu 18.04 or Amazon Linux 2.
 - Add validation for `cluster_type` configuration parameter in `cluster` section.
 - Add validation for `compute_type` configuration parameter in `queue` section.
 
 **CHANGES**
-
 - Upgrade EFA installer to version 1.11.2
   - EFA configuration: efa-config-1.7 (no change)
   - EFA profile: efa-profile-1.4 (from efa-profile-1.3)
@@ -147,22 +168,19 @@ CHANGELOG
   - Open MPI: openmpi40-aws-4.1.0 (no change)
 
 **BUG FIXES**
-
 - Fix issue with ``awsbsub`` command when setting environment variables for the job submission
 
 2.10.2
 ------
-**ENHANCEMENTS**
 
+**ENHANCEMENTS**
 - Improve cluster config validation by using cluster target AMI when invoking RunInstances in dryrun mode
 - Improve configuration procedure for the Munge service.
 
 **CHANGES**
-
 - Update Python version used in ParallelCluster virtualenvs from version 3.6.9 to version 3.6.13.
 
 **BUG FIXES**
-
 - Fix sanity checks with ARM instance types by using cluster AMI when performing validation
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
 - Use non interactive `apt update` command when building custom Ubuntu AMIs.
@@ -172,7 +190,6 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-
 - Add support for me-south-1 region (Bahrein), af-south-1 region (Cape Town) and eu-south-1 region (Milan)
   - At the time of this version launch:
     - Amazon FSx for Lustre and ARM instance types are not supported in me-south-1, af-south-1 and eu-south-1
@@ -190,7 +207,6 @@ CHANGELOG
 - Optimize calls to DescribeInstanceTypes EC2 API when validating cluster configuration.
 
 **CHANGES**
-
 - Upgrade EFA installer to version 1.11.1.
   - EFA configuration: ``efa-config-1.7`` (from efa-config-1.5)
   - EFA profile: ``efa-profile-1.3`` (from efa-profile-1.1)
@@ -211,7 +227,6 @@ CHANGELOG
 - Increase max retry attempts when registering Slurm nodes in Route53.
 
 **BUG FIXES**
-
 - Fix pcluster createami for Ubuntu 1804 by downloading SGE sources from Debian repository and not from the EOL
   Ubuntu 19.10.
 - Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the risk of job
@@ -225,7 +240,6 @@ CHANGELOG
 ------
 
 **ENHANCEMENTS**
-
 - Add support for CentOS 8 in all Commercial regions.
 - Add support for P4d instance type as compute node.
 - Add the possibility to enable NVIDIA GPUDirect RDMA support on EFA by using the new `enable_efa_gdr` configuration
@@ -255,9 +269,7 @@ CHANGELOG
 - Add validators for `shared_dir` parameter when used in both `cluster` and `ebs` sections.
 - Add validator `cfn_scheduler_slots` key in the `extra_json` parameter.
 
-
 **CHANGES**
-
 - CentOS 6 is no longer supported.
 - Upgrade EFA installer to version 1.10.1
   - EFA configuration: `efa-config-1.5` (from efa-config-1.4)
@@ -287,7 +299,6 @@ CHANGELOG
   `aws/codebuild/amazonlinux2-x86_64-standard:1.0` to `aws/codebuild/amazonlinux2-x86_64-standard:3.0`.
 
 **BUG FIXES**
-
 - Retrieve the right number of compute instance slots when instance type is updated.
 - Include user tags in compute nodes and EBS volumes.
 - Fix `pcluster status` output when head node is stopped.
@@ -308,14 +319,12 @@ CHANGELOG
 -----
 
 **BUG FIXES**
-
 - Fix cluster creation with the head node in a private subnet when it doesn't get a public IP.
 
 2.9.0
 -----
 
 **ENHANCEMENTS**
-
 - Add support for multiple queues and multiple instance types feature with the Slurm scheduler.
 - Extend NICE DCV support to ARM instances.
 - Extend support to disable hyperthreading on instances (like \*.metal) that don't support CpuOptions in
@@ -327,7 +336,6 @@ CHANGELOG
 - Remove dependency on cfn-init in compute nodes bootstrap in order to avoid throttling and delays caused by CloudFormation when a large number of compute nodes join the cluster.
 
 **CHANGES**
-
 - Introduce new configuration sections and parameters to support multiple queues and multiple instance types.
 - Optimize scaling logic with Slurm scheduler, no longer based on Auto Scaling groups.
 - A Route53 private hosted zone is now created together with the cluster and used in DNS resolution inside cluster nodes
@@ -354,7 +362,6 @@ CHANGELOG
 - Add limit of section names length to 30 characters in the configuration file.
 
 **BUG FIXES**
-
 - Solve dpkg lock issue with Ubuntu that prevented custom AMI creation in some cases.
 - Add/improve sanity checks for some configuration parameters.
 - Prevent ignored changes from being reported in ``pcluster update`` output.

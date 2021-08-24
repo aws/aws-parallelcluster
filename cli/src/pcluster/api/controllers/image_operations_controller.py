@@ -242,7 +242,7 @@ def _image_to_describe_image_response(imagebuilder):
 
 
 def _stack_to_describe_image_response(imagebuilder):
-    imagebuilder_image_state = imagebuilder.stack.image_state or dict()
+    imagebuilder_image_state = imagebuilder.stack.image_state or {}
     return DescribeImageResponseContent(
         image_configuration=ImageConfigurationStructure(url=_presigned_config_url(imagebuilder)),
         image_id=imagebuilder.image_id,
@@ -384,6 +384,7 @@ def _image_info_to_image_info_summary(image):
     return ImageInfoSummary(
         image_id=image.pcluster_image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
+        ec2_image_id=image.id,
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=image.version,
     )

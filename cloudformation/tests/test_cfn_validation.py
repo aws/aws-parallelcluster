@@ -8,7 +8,7 @@ def test_valid_json():
     for filename in os.listdir("../networking"):
         if filename.endswith(".cfn.json"):
             print("Validating json file: %s" % filename)
-            with open(f"../networking/{filename}") as f:
+            with open(f"../networking/{filename}", encoding="utf-8") as f:
                 try:
                     json.load(f)
                     print("SUCCESS: Valid json.")

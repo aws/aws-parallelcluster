@@ -1002,7 +1002,7 @@ def _wait_for_partition_state_changed(scheduler_commands, partition, desired_sta
 def _update_and_start_cluster(cluster, config_file):
     cluster.stop()
     _wait_for_computefleet_changed(cluster, "STOPPED")
-    cluster.update(str(config_file))
+    cluster.update(str(config_file), force_update="true")
     cluster.start()
     _wait_for_computefleet_changed(cluster, "RUNNING")
 

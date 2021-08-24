@@ -245,7 +245,7 @@ def get_aws_regions_from_file(region_file):
        ]
     }
     """
-    with open(region_file) as r_file:
+    with open(region_file, encoding="utf-8") as r_file:
         region_data = json.load(r_file)
     return sorted(r for r in region_data.get("regions"))
 
@@ -258,14 +258,14 @@ def get_all_aws_regions_from_ec2(region):
 
 def read_json_file(json_file_path):
     """Read the existing json file from the given path."""
-    with open(json_file_path) as json_file:
+    with open(json_file_path, encoding="utf-8") as json_file:
         # object_pairs_hook=OrderedDict allows to preserve input order
         return json.load(json_file, object_pairs_hook=OrderedDict)
 
 
 def write_json_file(json_file_path, json_data):
     """Write the json represented by json_data to the given path."""
-    with open(json_file_path, "w") as json_file:
+    with open(json_file_path, "w", encoding="utf-8") as json_file:
         # setting separators to (',', ': ') to avoid trailing spaces after commas
         json.dump(json_data, json_file, indent=2, separators=(",", ": "))
         # add new line at the end of the file
@@ -307,7 +307,7 @@ def write_amis_txt(amis_txt_file, json_file):
     """Write amis_txt_file using the updated information contained in json_file."""
     json_data = read_json_file(json_file)
     amis_txt = convert_json_to_txt(json_data)
-    with open(amis_txt_file, "w") as f:
+    with open(amis_txt_file, "w", encoding="utf-8") as f:
         f.write("%s" % amis_txt)
 
 

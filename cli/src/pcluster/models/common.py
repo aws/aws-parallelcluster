@@ -244,7 +244,7 @@ def export_stack_events(stack_name: str, output_file: str):
         chunk = AWSApi.instance().cfn.get_stack_events(stack_name, next_token=chunk["nextToken"])
         stack_events.append(chunk["StackEvents"])
 
-    with open(output_file, "w") as cfn_events_file:
+    with open(output_file, "w", encoding="utf-8") as cfn_events_file:
         cfn_events_file.write(json.dumps(stack_events, cls=JSONEncoder, indent=2))
 
 

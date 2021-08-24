@@ -40,7 +40,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
-    cluster.update(str(init_config_file), force=True)
+    cluster.update(str(init_config_file), force_update="true")
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
@@ -98,7 +98,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
         resource_bucket=bucket_name,
         additional_policy_arn=additional_policy_arn,
     )
-    cluster.update(str(updated_config_file))
+    cluster.update(str(updated_config_file), force_update="true")
 
     # Here is the expected list of nodes.
     # the cluster:
@@ -172,7 +172,7 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     _assert_launch_templates_config(queues_config=updated_queues_config, cluster_name=cluster.name, region=region)
 
     # Read updated configuration
-    with open(updated_config_file) as conf_file:
+    with open(updated_config_file, encoding="utf-8") as conf_file:
         updated_config = yaml.safe_load(conf_file)
 
     # Check new S3 resources
@@ -369,14 +369,14 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
     _verify_initialization(region, cluster, cluster.config)
 
     # Update cluster with the same configuration
-    cluster.update(str(init_config_file), force=True)
+    cluster.update(str(init_config_file), force_update="true")
 
     # Update cluster with new configuration
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml")
     cluster.update(str(updated_config_file))
 
     # Read updated configuration
-    with open(updated_config_file) as conf_file:
+    with open(updated_config_file, encoding="utf-8") as conf_file:
         updated_config = yaml.safe_load(conf_file)
 
     # verify updated parameters
@@ -409,7 +409,7 @@ def test_update_compute_ami(region, os, pcluster_config_reader, clusters_factory
 
     # stop compute fleet before updating queue image
     cluster.stop()
-    cluster.update(str(updated_config_file))
+    cluster.update(str(updated_config_file), force_update="true")
     instances = cluster.get_cluster_instance_ids(node_type="Compute")
     logging.info(instances)
     _check_instance_ami_id(ec2, instances, pcluster_dlami_id)
