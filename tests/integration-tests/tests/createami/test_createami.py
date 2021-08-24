@@ -23,7 +23,7 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from dateutil.parser import parse as date_parse
 from troposphere import Template, iam
-from utils import generate_stack_name
+from utils import generate_stack_name, get_arn_partition
 
 from tests.common.utils import generate_random_string, get_installed_parallelcluster_version, retrieve_latest_ami
 
@@ -117,7 +117,7 @@ def test_build_image(
     _test_list_image_log_streams(image)
     _test_get_image_log_events(image)
     _test_list_images(image)
-    _test_export_logs(s3_bucket_factory, image)
+    _test_export_logs(s3_bucket_factory, image, region)
 
 
 def _test_list_images(image):
@@ -195,24 +195,25 @@ def _test_get_image_log_events(image):
             assert_that(events[0]["message"]).does_not_match(cloud_init_debug_msg)
 
 
-def _test_export_logs(s3_bucket_factory, image):
+def _test_export_logs(s3_bucket_factory, image, region):
     bucket_name = s3_bucket_factory()
     logging.info("bucket is %s", bucket_name)
 
     # set bucket permissions
+    partition = get_arn_partition(region)
     bucket_policy = {
         "Version": "2012-10-17",
         "Statement": [
             {
                 "Action": "s3:GetBucketAcl",
                 "Effect": "Allow",
-                "Resource": f"arn:aws:s3:::{bucket_name}",
+                "Resource": f"arn:{partition}:s3:::{bucket_name}",
                 "Principal": {"Service": f"logs.{image.region}.amazonaws.com"},
             },
             {
                 "Action": "s3:PutObject",
                 "Effect": "Allow",
-                "Resource": f"arn:aws:s3:::{bucket_name}/*",
+                "Resource": f"arn:{partition}:s3:::{bucket_name}/*",
                 "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}},
                 "Principal": {"Service": f"logs.{image.region}.amazonaws.com"},
             },

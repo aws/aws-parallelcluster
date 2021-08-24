@@ -21,12 +21,12 @@ def _generate_rollback_data(bucket, regions, s3_path, sts_credentials):
         except Exception:  # nosec
             pass
     logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
-    with open("rollback-data.json", "w") as outfile:
+    with open("rollback-data.json", "w", encoding="utf-8") as outfile:
         json.dump(rollback_data, outfile, indent=2)
 
 
 def _execute_rollback(rollback_file_path, sts_credentials, bucket, deploy):
-    with open(rollback_file_path) as rollback_file:
+    with open(rollback_file_path, encoding="utf-8") as rollback_file:
         rollback_data = json.load(rollback_file)
         logging.info("Loaded rollback data:\n%s", json.dumps(rollback_data, indent=2))
 

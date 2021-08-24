@@ -100,7 +100,7 @@ def _test_create_with_warnings(cluster_config, clusters_factory):
 
 def _test_update_with_warnings(cluster_config, cluster):
     def run_fn(extra_args):
-        response = cluster.update(cluster_config, force_update=True, **extra_args)
+        response = cluster.update(cluster_config, force_update="true", **extra_args)
         if response["message"].startswith("Request would have succeeded"):
             assert_that(response).contains("changeSet")
         else:

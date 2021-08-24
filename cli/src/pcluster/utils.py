@@ -295,7 +295,7 @@ def get_url_scheme(url):
 
 def load_yaml_dict(file_path):
     """Read the content of a yaml file."""
-    with open(file_path) as conf_file:
+    with open(file_path, encoding="utf-8") as conf_file:
         yaml_content = yaml.safe_load(conf_file)
 
     # TODO use from cfn_flip import load_yaml
@@ -304,7 +304,7 @@ def load_yaml_dict(file_path):
 
 def load_json_dict(file_path):
     """Read the content of a json file."""
-    with open(file_path) as file:
+    with open(file_path, encoding="utf-8") as file:
         json_content = json.load(file)
 
     return json_content

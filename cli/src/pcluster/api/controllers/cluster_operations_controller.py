@@ -341,10 +341,7 @@ def update_cluster(
             )
             change_set, _ = _analyze_changes(changes)
             validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)
-            raise DryrunOperationException(
-                change_set=change_set,
-                validation_messages=validation_messages or None,
-            )
+            raise DryrunOperationException(change_set=change_set, validation_messages=validation_messages or None)
 
         changes, ignored_validation_failures = cluster.update(
             target_source_config=cluster_config,

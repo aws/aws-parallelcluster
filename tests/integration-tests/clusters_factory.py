@@ -49,7 +49,7 @@ class Cluster:
         self.config_file = config_file
         self.ssh_key = ssh_key
         self.region = region
-        with open(config_file) as conf_file:
+        with open(config_file, encoding="utf-8") as conf_file:
             self.config = yaml.safe_load(conf_file)
         self.has_been_deleted = False
         self.create_complete = False
@@ -98,7 +98,7 @@ class Cluster:
         logging.info("Cluster %s updated successfully", self.name)
         # Only update config file attribute if update is successful
         self.config_file = config_file
-        with open(self.config_file) as conf_file:
+        with open(self.config_file, encoding="utf-8") as conf_file:
             self.config = yaml.safe_load(conf_file)
 
         # reset cached properties
@@ -115,9 +115,9 @@ class Cluster:
             logging.warning("Updating stack %s to delete CloudWatch logs on stack deletion.", self.name)
             try:
                 dict_add_nested_key(self.config, "Delete", ("Monitoring", "Logs", "CloudWatch", "DeletionPolicy"))
-                with open(self.config_file, "w") as conf_file:
+                with open(self.config_file, "w", encoding="utf-8") as conf_file:
                     yaml.dump(self.config, conf_file)
-                self.update(self.config_file, force=True)
+                self.update(self.config_file, force_update="true")
             except subprocess.CalledProcessError as e:
                 logging.error(
                     "Failed updating cluster to delete log with error:\n%s\nand output:\n%s", e.stderr, e.stdout

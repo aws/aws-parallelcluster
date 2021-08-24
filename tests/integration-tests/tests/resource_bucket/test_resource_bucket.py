@@ -29,7 +29,7 @@ def test_resource_bucket(region, scheduler, pcluster_config_reader, s3_bucket_fa
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config_{0}.yaml".format(scheduler), resource_bucket=update_bucket_name
     )
-    cluster.update(str(updated_config_file))
+    cluster.update(str(updated_config_file), force_update="true")
     assert_that(cluster.cfn_parameters.get("ResourcesS3Bucket")).is_equal_to(bucket_name)
     assert_that(cluster.cfn_parameters.get("ArtifactS3RootDirectory")).is_equal_to(artifact_directory)
 

@@ -167,7 +167,7 @@ def _upload_files(args, files, sts_credentials, dir):
 
 def _check_file_integrity(file, checksum_file, algorithm):
     logging.info("Validating checksum for file %s", file)
-    with open(checksum_file, "r") as f:
+    with open(checksum_file, "r", encoding="utf-8") as f:
         expected_checksum = f.read().split(" ")[0]
     file_checksum = _checksum(file, False, algorithm)
     if expected_checksum != file_checksum:

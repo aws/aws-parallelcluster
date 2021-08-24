@@ -433,7 +433,7 @@ def dict_add_nested_key(d, value, keys):
 def read_json_file(file):
     """Read a Json file into a String and raise an exception if the file is invalid."""
     try:
-        with open(file) as f:
+        with open(file, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         logging.exception("Failed when reading json file %s", file)
@@ -442,3 +442,12 @@ def read_json_file(file):
 
 def get_stack_id_tag_filter(stack_arn):
     return {"Name": "tag:aws:cloudformation:stack-id", "Values": [stack_arn]}
+
+
+def get_arn_partition(region):
+    if region.startswith("us-gov-"):
+        return "aws-us-gov"
+    elif region.startswith("cn-"):
+        return "aws-cn"
+    else:
+        return "aws"

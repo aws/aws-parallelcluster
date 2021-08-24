@@ -56,6 +56,7 @@ from utils import (
     dict_has_nested_key,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
+    get_arn_partition,
     get_instance_info,
     get_network_interfaces_count,
     get_vpc_snakecase_value,
@@ -63,7 +64,11 @@ from utils import (
     set_logger_formatter,
 )
 
-from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import (
+    get_installed_parallelcluster_version,
+    get_sts_endpoint,
+    retrieve_pcluster_ami_without_standard_naming,
+)
 
 
 def pytest_addoption(parser):
@@ -239,7 +244,7 @@ def _log_collected_tests(session):
             json.dumps(collected_tests, indent=2),
         )
         out_dir = session.config.getoption("output_dir")
-        with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
+        with open(f"{out_dir}/collected_tests.txt", "a", encoding="utf-8") as out_f:
             out_f.write("\n".join(collected_tests))
             out_f.write("\n")
 
@@ -365,7 +370,8 @@ def api_server_factory(
 
         template = (
             api_infrastructure_s3_uri
-            or f"s3://{server_region}-aws-parallelcluster/parallelcluster/3.0.0/api/parallelcluster-api.yaml"
+            or f"s3://{server_region}-aws-parallelcluster/parallelcluster/{get_installed_parallelcluster_version()}"
+            "/api/parallelcluster-api.yaml"
         )
         if server_region not in api_servers:
             logging.info(f"Creating API Server stack: {api_stack_name} in {server_region} with template {template}")
@@ -506,7 +512,7 @@ def pcluster_config_reader(test_datadir, vpc_stack, request, region):
 
 
 def inject_additional_image_configs_settings(image_config, request):
-    with open(image_config) as conf_file:
+    with open(image_config, encoding="utf-8") as conf_file:
         config_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     if request.config.getoption("createami_custom_chef_cookbook") and not dict_has_nested_key(
@@ -525,12 +531,12 @@ def inject_additional_image_configs_settings(image_config, request):
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
             dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
-    with open(image_config, "w") as conf_file:
+    with open(image_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
 
 
 def inject_additional_config_settings(cluster_config, request, region):  # noqa C901
-    with open(cluster_config) as conf_file:
+    with open(cluster_config, encoding="utf-8") as conf_file:
         config_content = yaml.safe_load(conf_file)
 
     if request.config.getoption("custom_chef_cookbook") and not dict_has_nested_key(
@@ -602,7 +608,7 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
         if request.config.getoption(option) and not dict_has_nested_key(config_content, ("DevSettings", config_param)):
             dict_add_nested_key(config_content, request.config.getoption(option), ("DevSettings", config_param))
 
-    with open(cluster_config, "w") as conf_file:
+    with open(cluster_config, "w", encoding="utf-8") as conf_file:
         yaml.dump(config_content, conf_file)
 
 
@@ -611,7 +617,7 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
     if not match or len(match.groups()) < 2:
         logging.info("{0} script is not an S3 URL".format(custom_option))
     else:
-        additional_iam_policies = {"Policy": f"arn:{_get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
+        additional_iam_policies = {"Policy": f"arn:{get_arn_partition(region)}:iam::aws:policy/AmazonS3ReadOnlyAccess"}
         if dict_has_nested_key(node_config, ("Iam", "InstanceRole")) or dict_has_nested_key(
             node_config, ("Iam", "InstanceProfile")
         ):
@@ -629,15 +635,6 @@ def _add_policy_for_pre_post_install(node_config, custom_option, request, region
                     node_config["Iam"]["AdditionalIamPolicies"].append(additional_iam_policies)
             else:
                 dict_add_nested_key(node_config, [additional_iam_policies], ("Iam", "AdditionalIamPolicies"))
-
-
-def _get_arn_partition(region):
-    if region.startswith("us-gov-"):
-        return "aws-us-gov"
-    elif region.startswith("cn-"):
-        return "aws-cn"
-    else:
-        return "aws"
 
 
 def _get_default_template_values(vpc_stack, request):
@@ -682,7 +679,7 @@ def parameterized_cfn_stacks_factory(request):
         return stack
 
     def extract_template(template_path):
-        with open(template_path) as cfn_file:
+        with open(template_path, encoding="utf-8") as cfn_file:
             file_content = cfn_file.read()
         return file_content
 
@@ -805,7 +802,7 @@ def initialize_cli_creds(cfn_stacks_factory, request):
         logging.info("Creating IAM roles for pcluster CLI")
         stack_name = generate_stack_name("integ-tests-iam", request.config.getoption("stackname_suffix"))
         stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
-        with open(stack_template_path) as stack_template_file:
+        with open(stack_template_path, encoding="utf-8") as stack_template_file:
             stack_template_data = stack_template_file.read()
         stack = CfnStack(name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data)
         cfn_stacks_factory.create_stack(stack)
@@ -917,7 +914,7 @@ def role_factory(region):
         iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
         logging.info(f"Creating iam role {iam_role_name} for {trusted_service}")
 
-        partition = _get_arn_partition(region)
+        partition = get_arn_partition(region)
         domain_suffix = ".cn" if partition == "aws-cn" else ""
 
         trust_relationship_policy_ec2 = {
@@ -991,7 +988,7 @@ def _create_iam_policies(iam_policy_name, region, policy_filename):
     logging.info("Creating iam policy {0}...".format(iam_policy_name))
     file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/resources"))
     env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
-    partition = _get_arn_partition(region)
+    partition = get_arn_partition(region)
     account_id = (
         boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
         .get_caller_identity()
@@ -1106,7 +1103,7 @@ def update_failed_tests_config(item):
     with FileLock(str(out_file) + ".lock"):
         failed_tests = {"test-suites": {}}
         if out_file.is_file():
-            with open(str(out_file)) as f:
+            with open(str(out_file), encoding="utf-8") as f:
                 failed_tests = yaml.safe_load(f)
 
         # item.node.nodeid example:
@@ -1123,7 +1120,7 @@ def update_failed_tests_config(item):
             dict_add_nested_key(failed_tests, [], ("test-suites", feature, test_id, "dimensions"))
         if dimensions not in failed_tests["test-suites"][feature][test_id]["dimensions"]:
             failed_tests["test-suites"][feature][test_id]["dimensions"].append(dimensions)
-            with open(out_file, "w") as f:
+            with open(out_file, "w", encoding="utf-8") as f:
                 yaml.dump(failed_tests, f)
 
 

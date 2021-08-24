@@ -52,7 +52,7 @@ def re_validator(rexp_str, param, in_str):
 def read_file(_param, path):
     """Take file path, read the file and return the data as a string."""
     try:
-        with open(path) as file:
+        with open(path, encoding="utf-8") as file:
             file_data = file.read()
     except FileNotFoundError:
         exit_msg(f"Bad Request: File not found: '{path}'")

@@ -556,8 +556,9 @@ class FeatureSpecificCloudWatchLoggingTestRunner(CloudWatchLoggingTestRunner):
     def _verify_log_stream_data(self, logs_state, expected_stream_index, stream):
         """Check if the stream is in the expected log stream index before validating."""
         if stream.get("logStreamName") not in expected_stream_index:
-            LOGGER.info("Skipping validation of {0}'s log stream data.".format(stream.get("logStreamName")))
+            LOGGER.info("Skipping validation of %s's log stream data.", stream.get("logStreamName"))
         else:
+            LOGGER.info("Validating %s log stream data.", stream.get("logStreamName"))
             super()._verify_log_stream_data(logs_state, expected_stream_index, stream)
 
     def verify_log_streams_exist(self, logs_state, expected_stream_index, observed_streams):

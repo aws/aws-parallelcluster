@@ -141,7 +141,7 @@ def _md5sum(cookbook_archive_file, md5sum_file):
             hasher.update(buf)
             buf = arch.read(blocksize)
 
-    with open(md5sum_file, "w+") as md5:
+    with open(md5sum_file, "w+", encoding="utf-8") as md5:
         md5.write("{0}  {1}".format(hasher.hexdigest(), os.path.basename(cookbook_archive_file)))
 
 
