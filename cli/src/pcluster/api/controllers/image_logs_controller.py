@@ -146,4 +146,4 @@ def list_image_log_streams(image_id, region=None, next_token=None):
     logs = imagebuilder.list_log_streams(next_token=next_token)
     log_streams = [convert_log(log) for log in logs.log_streams]
     next_token = logs.next_token
-    return ListImageLogStreamsResponseContent(items=log_streams, next_token=next_token)
+    return ListImageLogStreamsResponseContent(log_streams=log_streams, next_token=next_token)

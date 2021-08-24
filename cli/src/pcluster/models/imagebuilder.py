@@ -337,7 +337,7 @@ class ImageBuilder:
             custom_bucket_name = self.image.s3_bucket_name
         except ImageError as e:
             if not isinstance(e, NonExistingImageError):
-                raise _imagebuilder_error_mapper(e, f"Unable to get S3 bucket name from image {self.image_id} . {e}")
+                raise _imagebuilder_error_mapper(e, f"Unable to get S3 bucket name from image {self.image_id}. {e}")
 
         if custom_bucket_name is None:
             try:
@@ -494,8 +494,7 @@ class ImageBuilder:
 
         except Exception as e:
             raise _imagebuilder_error_mapper(
-                e,
-                f"Unable to upload imagebuilder config to the S3 bucket {self.bucket.name} due to exception: {e}",
+                e, f"Unable to upload imagebuilder config to the S3 bucket {self.bucket.name} due to exception: {e}"
             )
 
     def _upload_artifacts(self):
@@ -528,7 +527,7 @@ class ImageBuilder:
             try:
                 if AWSApi.instance().cfn.stack_exists(self.image_id):
                     if self.stack.imagebuilder_image_is_building:
-                        raise ImageBuilderActionError(
+                        raise BadRequestImageBuilderActionError(
                             "Image cannot be deleted because EC2 ImageBuilder Image has a running workflow."
                         )
                     # Delete stack
@@ -646,8 +645,8 @@ class ImageBuilder:
         bucket: str,
         bucket_prefix: str = None,
         keep_s3_objects: bool = False,
-        start_time: str = None,
-        end_time: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
         output_file: str = None,
     ):
         """
@@ -687,9 +686,8 @@ class ImageBuilder:
                         start_time=export_logs_filters.start_time, end_time=export_logs_filters.end_time
                     )
                 else:
-                    LOGGER.debug(
-                        "Log streams not yet available for %s, only CFN Stack events will be exported.",
-                        {self.image_id},
+                    LOGGER.info(
+                        "Log streams not yet available for %s, only CFN Stack events will be exported.", {self.image_id}
                     )
 
                 if stack_exists:

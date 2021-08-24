@@ -83,7 +83,7 @@ def generate_rollback_data(regions, dest_bucket, files, sts_credentials):
 
     logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
     rollback_file_name = "rollback-data.json"
-    with open(rollback_file_name, "w") as outfile:
+    with open(rollback_file_name, "w", encoding="utf-8") as outfile:
         json.dump(rollback_data, outfile, indent=2)
     logging.info("Rollback data file created to: %s", f"{os.getcwd()}/{rollback_file_name}")
 

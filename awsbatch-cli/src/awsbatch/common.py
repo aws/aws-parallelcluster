@@ -212,7 +212,7 @@ class AWSBatchCliConfig:
         :param cluster: cluster name
         :param log: log
         """
-        with open(cli_config_file) as config_file:
+        with open(cli_config_file, encoding="utf-8") as config_file:
             log.info("Searching for configuration file %s" % cli_config_file)
             config = ConfigParser()
             config.read_file(config_file)

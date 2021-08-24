@@ -22,17 +22,17 @@ class DescribeOfficialImagesResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, items=None):
+    def __init__(self, images=None):
         """DescribeOfficialImagesResponseContent - a model defined in OpenAPI
 
-        :param items: The items of this DescribeOfficialImagesResponseContent.
-        :type items: List[AmiInfo]
+        :param images: The images of this DescribeOfficialImagesResponseContent.
+        :type images: List[AmiInfo]
         """
-        self.openapi_types = {"items": List[AmiInfo]}
+        self.openapi_types = {"images": List[AmiInfo]}
 
-        self.attribute_map = {"items": "items"}
+        self.attribute_map = {"images": "images"}
 
-        self._items = items
+        self._images = images
 
     @classmethod
     def from_dict(cls, dikt) -> "DescribeOfficialImagesResponseContent":
@@ -46,24 +46,24 @@ class DescribeOfficialImagesResponseContent(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def items(self):
-        """Gets the items of this DescribeOfficialImagesResponseContent.
+    def images(self):
+        """Gets the images of this DescribeOfficialImagesResponseContent.
 
 
-        :return: The items of this DescribeOfficialImagesResponseContent.
+        :return: The images of this DescribeOfficialImagesResponseContent.
         :rtype: List[AmiInfo]
         """
-        return self._items
+        return self._images
 
-    @items.setter
-    def items(self, items):
-        """Sets the items of this DescribeOfficialImagesResponseContent.
+    @images.setter
+    def images(self, images):
+        """Sets the images of this DescribeOfficialImagesResponseContent.
 
 
-        :param items: The items of this DescribeOfficialImagesResponseContent.
-        :type items: List[AmiInfo]
+        :param images: The images of this DescribeOfficialImagesResponseContent.
+        :type images: List[AmiInfo]
         """
-        if items is None:
-            raise ValueError("Invalid value for `items`, must not be `None`")
+        if images is None:
+            raise ValueError("Invalid value for `images`, must not be `None`")
 
-        self._items = items
+        self._images = images

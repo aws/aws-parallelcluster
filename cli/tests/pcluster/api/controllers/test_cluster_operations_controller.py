@@ -79,10 +79,7 @@ class TestCreateCluster:
             query_string.append(("rollbackOnFailure", rollback_on_failure))
         if region:
             query_string.append(("region", region))
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
         return client.open(
             self.url,
             method=self.method,
@@ -96,10 +93,7 @@ class TestCreateCluster:
         "rollback_on_failure",
         [
             pytest.param(
-                {
-                    "clusterName": "cluster",
-                    "clusterConfiguration": CONFIG,
-                },
+                {"clusterName": "cluster", "clusterConfiguration": CONFIG},
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 None,
                 None,
@@ -108,10 +102,7 @@ class TestCreateCluster:
                 id="test with all errors",
             ),
             pytest.param(
-                {
-                    "clusterName": "cluster",
-                    "clusterConfiguration": CONFIG,
-                },
+                {"clusterName": "cluster", "clusterConfiguration": CONFIG},
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
@@ -120,10 +111,7 @@ class TestCreateCluster:
                 id="test with filtered errors",
             ),
             pytest.param(
-                {
-                    "clusterName": "cluster",
-                    "clusterConfiguration": CONFIG,
-                },
+                {"clusterName": "cluster", "clusterConfiguration": CONFIG},
                 None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
@@ -145,9 +133,7 @@ class TestCreateCluster:
         rollback_on_failure,
     ):
         cluster_create_mock = mocker.patch(
-            "pcluster.models.cluster.Cluster.create",
-            auto_spec=True,
-            return_value=("id", errors),
+            "pcluster.models.cluster.Cluster.create", auto_spec=True, return_value=("id", errors)
         )
 
         response = self._send_test_request(
@@ -168,7 +154,7 @@ class TestCreateCluster:
                 "clusterStatus": "CREATE_IN_PROGRESS",
                 "region": region,
                 "version": "3.0.0",
-            },
+            }
         }
 
         if errors:
@@ -187,23 +173,19 @@ class TestCreateCluster:
             _, kwargs = cluster_create_mock.call_args
             assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
 
-    def test_dryrun(self, client, mocker):
-        mocker.patch(
-            "pcluster.models.cluster.Cluster.validate_create_request",
-            auto_spec=True,
-            return_value=([]),
-        )
+    @pytest.mark.parametrize("errors", [([]), ([ValidationResult("message", FailureLevel.WARNING, "type")])])
+    def test_dryrun(self, client, mocker, errors):
+        mocker.patch("pcluster.models.cluster.Cluster.validate_create_request", auto_spec=True, return_value=(errors))
 
-        create_cluster_request_content = {
-            "clusterName": "cluster",
-            "clusterConfiguration": self.CONFIG,
-        }
+        create_cluster_request_content = {"clusterName": "cluster", "clusterConfiguration": self.CONFIG}
 
         response = self._send_test_request(
             client, create_cluster_request_content=create_cluster_request_content, dryrun=True, region="us-east-1"
         )
 
         expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(412)
             assert_that(response.get_json()).is_equal_to(expected_response)
@@ -379,18 +361,11 @@ class TestCreateCluster:
         ],
     )
     def test_cluster_action_error(self, client, mocker, error_type, error_code):
-        mocker.patch(
-            "pcluster.models.cluster.Cluster.create",
-            auto_spec=True,
-            side_effect=error_type("error message"),
-        )
+        mocker.patch("pcluster.models.cluster.Cluster.create", auto_spec=True, side_effect=error_type("error message"))
 
         response = self._send_test_request(
             client,
-            create_cluster_request_content={
-                "clusterName": "clustername",
-                "clusterConfiguration": self.CONFIG,
-            },
+            create_cluster_request_content={"clusterName": "clustername", "clusterConfiguration": self.CONFIG},
             region="us-east-1",
         )
 
@@ -407,10 +382,7 @@ class TestCreateCluster:
         mocker.patch("marshmallow.Schema.load", side_effect=ValidationError(message={"Error": "error"}))
         response = self._send_test_request(
             client,
-            create_cluster_request_content={
-                "clusterName": "clustername",
-                "clusterConfiguration": self.CONFIG,
-            },
+            create_cluster_request_content={"clusterName": "clustername", "clusterConfiguration": self.CONFIG},
             region="us-east-1",
         )
         assert_that(response.status_code).is_equal_to(400)
@@ -422,12 +394,8 @@ class TestDeleteCluster:
     method = "DELETE"
 
     def _send_test_request(self, client, cluster_name="clustername", region="us-east-1"):
-        query_string = [
-            ("region", region),
-        ]
-        headers = {
-            "Accept": "application/json",
-        }
+        query_string = [("region", region)]
+        headers = {"Accept": "application/json"}
         return client.open(
             self.url.format(cluster_name=cluster_name), method=self.method, headers=headers, query_string=query_string
         )
@@ -466,10 +434,7 @@ class TestDeleteCluster:
     )
     def test_successful_request(self, mocker, client, cfn_stack_data, expected_response):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
-        cluster_delete_mock = mocker.patch(
-            "pcluster.models.cluster.Cluster.delete",
-            auto_spec=True,
-        )
+        cluster_delete_mock = mocker.patch("pcluster.models.cluster.Cluster.delete", auto_spec=True)
         response = self._send_test_request(client)
 
         with soft_assertions():
@@ -484,11 +449,7 @@ class TestDeleteCluster:
     @pytest.mark.parametrize(
         "region, cluster_name, expected_response",
         [
-            (
-                "us-east-",
-                "clustername",
-                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
-            ),
+            ("us-east-", "clustername", {"message": "Bad Request: invalid or unsupported region 'us-east-'"}),
             (
                 "us-east-1",
                 "aaaaa.aaa",
@@ -540,22 +501,11 @@ class TestDeleteCluster:
 
     @pytest.mark.parametrize(
         "error_type, error_code",
-        [
-            (LimitExceededClusterActionError, 429),
-            (BadRequestClusterActionError, 400),
-            (ClusterActionError, 500),
-        ],
+        [(LimitExceededClusterActionError, 429), (BadRequestClusterActionError, 400), (ClusterActionError, 500)],
     )
     def test_cluster_action_error(self, client, mocker, error_type, error_code):
-        mocker.patch(
-            "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=cfn_describe_stack_mock_response(),
-        )
-        mocker.patch(
-            "pcluster.models.cluster.Cluster.delete",
-            auto_spec=True,
-            side_effect=error_type("error message"),
-        )
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response())
+        mocker.patch("pcluster.models.cluster.Cluster.delete", auto_spec=True, side_effect=error_type("error message"))
 
         response = self._send_test_request(client)
 
@@ -573,12 +523,8 @@ class TestDescribeCluster:
     method = "GET"
 
     def _send_test_request(self, client, cluster_name="clustername", region="us-east-1"):
-        query_string = [
-            ("region", region),
-        ]
-        headers = {
-            "Accept": "application/json",
-        }
+        query_string = [("region", region)]
+        headers = {"Accept": "application/json"}
         return client.open(
             self.url.format(cluster_name=cluster_name), method=self.method, headers=headers, query_string=query_string
         )
@@ -773,11 +719,7 @@ class TestDescribeCluster:
     @pytest.mark.parametrize(
         "region, cluster_name, expected_response",
         [
-            (
-                "us-east-",
-                "clustername",
-                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
-            ),
+            ("us-east-", "clustername", {"message": "Bad Request: invalid or unsupported region 'us-east-'"}),
             (
                 "us-east-1",
                 "aaaaa.aaa",
@@ -861,9 +803,7 @@ class TestListClusters:
             query_string.append(("nextToken", next_token))
         if cluster_status_list:
             query_string.extend([("clusterStatus", status) for status in cluster_status_list])
-        headers = {
-            "Accept": "application/json",
-        }
+        headers = {"Accept": "application/json"}
         return client.open(self.url, method=self.method, headers=headers, query_string=query_string)
 
     @pytest.mark.parametrize(
@@ -890,7 +830,7 @@ class TestListClusters:
                     },
                 ],
                 {
-                    "items": [
+                    "clusters": [
                         {
                             "cloudformationStackArn": "arn:id",
                             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
@@ -938,7 +878,7 @@ class TestListClusters:
                     },
                 ],
                 {
-                    "items": [
+                    "clusters": [
                         {
                             "cloudformationStackArn": "arn:id",
                             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
@@ -979,7 +919,7 @@ class TestListClusters:
                     },
                 ],
                 {
-                    "items": [
+                    "clusters": [
                         {
                             "cloudformationStackArn": "arn:id",
                             "cloudformationStackStatus": CloudFormationStackStatus.CREATE_IN_PROGRESS,
@@ -987,7 +927,7 @@ class TestListClusters:
                             "clusterStatus": ClusterStatus.CREATE_IN_PROGRESS,
                             "region": "eu-west-1",
                             "version": "3.0.0",
-                        },
+                        }
                     ],
                     "nextToken": "token",
                 },
@@ -1009,18 +949,8 @@ class TestListClusters:
     @pytest.mark.parametrize(
         "region, next_token, cluster_status, expected_response",
         [
-            (
-                "us-east-",
-                None,
-                None,
-                {"message": "Bad Request: invalid or unsupported region 'us-east-'"},
-            ),
-            (
-                None,
-                None,
-                None,
-                {"message": "Bad Request: region needs to be set"},
-            ),
+            ("us-east-", None, None, {"message": "Bad Request: invalid or unsupported region 'us-east-'"}),
+            (None, None, None, {"message": "Bad Request: region needs to be set"}),
             (
                 "us-east-1",
                 None,
@@ -1093,10 +1023,7 @@ class TestUpdateCluster:
         if force_update is not None:
             query_string.append(("forceUpdate", force_update))
 
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
         return client.open(
             self.url.format(cluster_name=cluster_name),
             method=self.method,
@@ -1109,9 +1036,7 @@ class TestUpdateCluster:
         "update_cluster_request_content, errors, suppress_validators, validation_failure_level, force_update",
         [
             pytest.param(
-                {
-                    "clusterConfiguration": CONFIG,
-                },
+                {"clusterConfiguration": CONFIG},
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 None,
                 None,
@@ -1119,9 +1044,7 @@ class TestUpdateCluster:
                 id="test with all errors",
             ),
             pytest.param(
-                {
-                    "clusterConfiguration": CONFIG,
-                },
+                {"clusterConfiguration": CONFIG},
                 [ValidationResult("message", FailureLevel.WARNING, "type")],
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
@@ -1129,9 +1052,7 @@ class TestUpdateCluster:
                 id="test with filtered errors",
             ),
             pytest.param(
-                {
-                    "clusterConfiguration": CONFIG,
-                },
+                {"clusterConfiguration": CONFIG},
                 None,
                 ["type:type1", "type:type2"],
                 ValidationLevel.WARNING,
@@ -1157,9 +1078,7 @@ class TestUpdateCluster:
         stack_data = cfn_describe_stack_mock_response()
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
         cluster_update_mock = mocker.patch(
-            "pcluster.models.cluster.Cluster.update",
-            auto_spec=True,
-            return_value=(change_set, errors),
+            "pcluster.models.cluster.Cluster.update", auto_spec=True, return_value=(change_set, errors)
         )
 
         response = self._send_test_request(
@@ -1204,13 +1123,26 @@ class TestUpdateCluster:
             _, kwargs = cluster_update_mock.call_args
             assert_that(kwargs["validator_suppressors"].pop()._validators_to_suppress).is_equal_to({"type1", "type2"})
 
-    def test_dryrun(self, mocker, client):
+    @pytest.mark.parametrize("errors", [([]), ([ValidationResult("message", FailureLevel.WARNING, "type")])])
+    def test_dryrun(self, mocker, client, errors):
         stack_data = cfn_describe_stack_mock_response()
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=stack_data)
+        changes = [
+            ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+            [
+                ["Scheduling", "SlurmQueues[queue0]", "ComputeResources[queue0-i0]"],
+                "MaxCount",
+                10,
+                11,
+                "SUCCEEDED",
+                "-",
+                None,
+            ],
+        ]
         mocker.patch(
             "pcluster.models.cluster.Cluster.validate_update_request",
             auto_spec=True,
-            return_value=([]),
+            return_value=(None, changes, errors),
         )
 
         update_cluster_request_content = {
@@ -1226,7 +1158,18 @@ class TestUpdateCluster:
             dryrun=True,
         )
 
-        expected_response = {"message": "Request would have succeeded, but DryRun flag is set."}
+        expected_response = {
+            "message": "Request would have succeeded, but DryRun flag is set.",
+            "changeSet": [
+                {
+                    "currentValue": 10,
+                    "parameter": "Scheduling.SlurmQueues[queue0].ComputeResources[queue0-i0].MaxCount",
+                    "requestedValue": 11,
+                }
+            ],
+        }
+        if errors:
+            expected_response["validationMessages"] = [{"level": "WARNING", "message": "message", "type": "type"}]
         with soft_assertions():
             assert_that(response.status_code).is_equal_to(412)
             assert_that(response.get_json()).is_equal_to(expected_response)
@@ -1254,15 +1197,7 @@ class TestUpdateCluster:
             pytest.param(
                 [
                     ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
-                    [
-                        None,
-                        "param",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.SUCCEEDED,
-                        None,
-                        None,
-                    ],
+                    [None, "param", "oldval", "newval", UpdatePolicy.CheckResult.SUCCEEDED, None, None],
                 ],
                 [{"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"}],
                 None,
@@ -1271,24 +1206,8 @@ class TestUpdateCluster:
             pytest.param(
                 [
                     ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
-                    [
-                        None,
-                        "param",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.FAILED,
-                        "Failure reason",
-                        None,
-                    ],
-                    [
-                        None,
-                        "param2",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.SUCCEEDED,
-                        None,
-                        None,
-                    ],
+                    [None, "param", "oldval", "newval", UpdatePolicy.CheckResult.FAILED, "Failure reason", None],
+                    [None, "param2", "oldval", "newval", UpdatePolicy.CheckResult.SUCCEEDED, None, None],
                 ],
                 [
                     {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
@@ -1307,24 +1226,8 @@ class TestUpdateCluster:
             pytest.param(
                 [
                     ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
-                    [
-                        None,
-                        "param",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.ACTION_NEEDED,
-                        None,
-                        "Action needed",
-                    ],
-                    [
-                        None,
-                        "param2",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.SUCCEEDED,
-                        None,
-                        None,
-                    ],
+                    [None, "param", "oldval", "newval", UpdatePolicy.CheckResult.ACTION_NEEDED, None, "Action needed"],
+                    [None, "param2", "oldval", "newval", UpdatePolicy.CheckResult.SUCCEEDED, None, None],
                 ],
                 [
                     {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
@@ -1352,15 +1255,7 @@ class TestUpdateCluster:
                         "Failure reason",
                         "Action needed",
                     ],
-                    [
-                        None,
-                        "param2",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.SUCCEEDED,
-                        None,
-                        None,
-                    ],
+                    [None, "param2", "oldval", "newval", UpdatePolicy.CheckResult.SUCCEEDED, None, None],
                 ],
                 [
                     {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
@@ -1379,24 +1274,8 @@ class TestUpdateCluster:
             pytest.param(
                 [
                     ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
-                    [
-                        None,
-                        "param",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.FAILED,
-                        None,
-                        None,
-                    ],
-                    [
-                        None,
-                        "param2",
-                        "oldval",
-                        "newval",
-                        UpdatePolicy.CheckResult.SUCCEEDED,
-                        None,
-                        None,
-                    ],
+                    [None, "param", "oldval", "newval", UpdatePolicy.CheckResult.FAILED, None, None],
+                    [None, "param2", "oldval", "newval", UpdatePolicy.CheckResult.SUCCEEDED, None, None],
                 ],
                 [
                     {"parameter": "param", "requestedValue": "newval", "currentValue": "oldval"},
@@ -1413,9 +1292,7 @@ class TestUpdateCluster:
                 id="test with failure without reason or action needed",
             ),
             pytest.param(
-                [
-                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
-                ],
+                [["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]],
                 [],
                 [],
                 id="test with empty changeset",
@@ -1431,10 +1308,7 @@ class TestUpdateCluster:
                 side_effect=ClusterUpdateError(message="Update failure", update_changes=changes),
             )
         else:
-            mocker.patch(
-                "pcluster.models.cluster.Cluster.update",
-                return_value=(changes, []),
-            )
+            mocker.patch("pcluster.models.cluster.Cluster.update", return_value=(changes, []))
 
         response = self._send_test_request(client, "clusterName", "us-east-1", {"clusterConfiguration": self.CONFIG})
 
@@ -1616,9 +1490,7 @@ class TestUpdateCluster:
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", side_effect=StackNotFoundError("func", "stack"))
 
         response = self._send_test_request(
-            client,
-            update_cluster_request_content={"clusterConfiguration": self.CONFIG},
-            cluster_name="clusterName",
+            client, update_cluster_request_content={"clusterConfiguration": self.CONFIG}, cluster_name="clusterName"
         )
 
         with soft_assertions():
@@ -1641,10 +1513,7 @@ class TestUpdateCluster:
         ],
     )
     def test_error_conversion(self, client, mocker, error_type, error_code):
-        mocker.patch(
-            "pcluster.aws.cfn.CfnClient.describe_stack",
-            return_value=cfn_describe_stack_mock_response(),
-        )
+        mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_describe_stack_mock_response())
 
         if error_type == ClusterUpdateError:
             change_set = [
@@ -1673,16 +1542,10 @@ class TestUpdateCluster:
         else:
             error = error_type("error message")
 
-        mocker.patch(
-            "pcluster.models.cluster.Cluster.update",
-            auto_spec=True,
-            side_effect=error,
-        )
+        mocker.patch("pcluster.models.cluster.Cluster.update", auto_spec=True, side_effect=error)
 
         response = self._send_test_request(
-            client,
-            update_cluster_request_content={"clusterConfiguration": self.CONFIG},
-            cluster_name="clusterName",
+            client, update_cluster_request_content={"clusterConfiguration": self.CONFIG}, cluster_name="clusterName"
         )
 
         expected_response = {"message": "error message"}

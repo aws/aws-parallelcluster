@@ -22,20 +22,20 @@ class ListImagesResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, next_token=None, items=None):
+    def __init__(self, images=None, next_token=None):
         """ListImagesResponseContent - a model defined in OpenAPI
 
+        :param images: The images of this ListImagesResponseContent.
+        :type images: List[ImageInfoSummary]
         :param next_token: The next_token of this ListImagesResponseContent.
         :type next_token: str
-        :param items: The items of this ListImagesResponseContent.
-        :type items: List[ImageInfoSummary]
         """
-        self.openapi_types = {"next_token": str, "items": List[ImageInfoSummary]}
+        self.openapi_types = {"images": List[ImageInfoSummary], "next_token": str}
 
-        self.attribute_map = {"next_token": "nextToken", "items": "items"}
+        self.attribute_map = {"images": "images", "next_token": "nextToken"}
 
+        self._images = images
         self._next_token = next_token
-        self._items = items
 
     @classmethod
     def from_dict(cls, dikt) -> "ListImagesResponseContent":
@@ -47,6 +47,29 @@ class ListImagesResponseContent(Model):
         :rtype: ListImagesResponseContent
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def images(self):
+        """Gets the images of this ListImagesResponseContent.
+
+
+        :return: The images of this ListImagesResponseContent.
+        :rtype: List[ImageInfoSummary]
+        """
+        return self._images
+
+    @images.setter
+    def images(self, images):
+        """Sets the images of this ListImagesResponseContent.
+
+
+        :param images: The images of this ListImagesResponseContent.
+        :type images: List[ImageInfoSummary]
+        """
+        if images is None:
+            raise ValueError("Invalid value for `images`, must not be `None`")
+
+        self._images = images
 
     @property
     def next_token(self):
@@ -70,26 +93,3 @@ class ListImagesResponseContent(Model):
         """
 
         self._next_token = next_token
-
-    @property
-    def items(self):
-        """Gets the items of this ListImagesResponseContent.
-
-
-        :return: The items of this ListImagesResponseContent.
-        :rtype: List[ImageInfoSummary]
-        """
-        return self._items
-
-    @items.setter
-    def items(self, items):
-        """Sets the items of this ListImagesResponseContent.
-
-
-        :param items: The items of this ListImagesResponseContent.
-        :type items: List[ImageInfoSummary]
-        """
-        if items is None:
-            raise ValueError("Invalid value for `items`, must not be `None`")
-
-        self._items = items

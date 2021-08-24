@@ -984,6 +984,7 @@ class BaseClusterConfig(Resource):
             os=self.image.os,
             architecture=self.head_node.architecture,
             custom_ami=self.image.custom_ami,
+            ami_search_filters=self.dev_settings.ami_search_filters if self.dev_settings else None,
         )
         if self.headnode_ami:
             self._register_validator(
@@ -1338,8 +1339,7 @@ class SlurmComputeResource(BaseComputeResource):
             disable_simultaneous_multithreading, default=False
         )
         self.__instance_type_info = None
-        efa_supported = self.instance_type_info.is_efa_supported()
-        self.efa = efa or Efa(enabled=efa_supported, implied=True)
+        self.efa = efa or Efa(enabled=False, implied=True)
 
     @property
     def instance_type_info(self) -> InstanceTypeInfo:
@@ -1451,13 +1451,13 @@ class SlurmQueue(BaseQueue):
                 security_groups=self.networking.security_groups,
                 additional_security_groups=self.networking.additional_security_groups,
             )
-            if self.networking.placement_group:
-                self._register_validator(
-                    EfaPlacementGroupValidator,
-                    efa_enabled=compute_resource.efa.enabled,
-                    placement_group_id=self.networking.placement_group.id,
-                    placement_group_enabled=self.networking.placement_group.enabled,
-                )
+            self._register_validator(
+                EfaPlacementGroupValidator,
+                efa_enabled=compute_resource.efa.enabled,
+                placement_group_enabled=self.networking.placement_group and self.networking.placement_group.enabled,
+                placement_group_config_implicit=self.networking.placement_group is None
+                or self.networking.placement_group.is_implied("enabled"),
+            )
 
     @property
     def instance_type_list(self):
@@ -1513,11 +1513,6 @@ class SlurmScheduling(Resource):
     def _register_validators(self):
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
-        )
-        self._register_validator(
-            DuplicateNameValidator,
-            name_list=[compute_resource.name for queue in self.queues for compute_resource in queue.compute_resources],
-            resource_name="Compute Resource",
         )
 
 

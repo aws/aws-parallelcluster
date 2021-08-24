@@ -1992,18 +1992,28 @@ components:
     DescribeOfficialImagesResponseContent:
       type: object
       properties:
-        items:
+        images:
           type: array
           items:
             $ref: '#/components/schemas/AmiInfo'
       required:
-        - items
+        - images
     DryrunOperationExceptionResponseContent:
       type: object
       description: Communicates that the operation would have succeeded without the dryrun flag.
       properties:
+        validationMessages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigValidationMessage'
+          description: List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.
         message:
           type: string
+        changeSet:
+          type: array
+          items:
+            $ref: '#/components/schemas/Change'
+          description: List of configuration changes requested by the operation.
     EC2Instance:
       type: object
       properties:
@@ -2154,6 +2164,9 @@ components:
         cloudformationStackArn:
           type: string
           description: ARN of the main CloudFormation stack.
+        ec2ImageId:
+          type: string
+          description: Ec2 Id of the image.
         region:
           type: string
           description: AWS region where the image is built.
@@ -2195,51 +2208,51 @@ components:
     ListClusterLogStreamsResponseContent:
       type: object
       properties:
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
-        items:
+        logStreams:
           type: array
           items:
             $ref: '#/components/schemas/LogStream'
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
       required:
-        - items
+        - logStreams
     ListClustersResponseContent:
       type: object
       properties:
         nextToken:
           type: string
           description: Token to use for paginated requests.
-        items:
+        clusters:
           type: array
           items:
             $ref: '#/components/schemas/ClusterInfoSummary'
       required:
-        - items
+        - clusters
     ListImageLogStreamsResponseContent:
       type: object
       properties:
-        nextToken:
-          type: string
-          description: Token to use for paginated requests.
-        items:
+        logStreams:
           type: array
           items:
             $ref: '#/components/schemas/LogStream'
-      required:
-        - items
-    ListImagesResponseContent:
-      type: object
-      properties:
         nextToken:
           type: string
           description: Token to use for paginated requests.
-        items:
+      required:
+        - logStreams
+    ListImagesResponseContent:
+      type: object
+      properties:
+        images:
           type: array
           items:
             $ref: '#/components/schemas/ImageInfoSummary'
+        nextToken:
+          type: string
+          description: Token to use for paginated requests.
       required:
-        - items
+        - images
     LogEvent:
       type: object
       properties:

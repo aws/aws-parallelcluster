@@ -22,20 +22,20 @@ class ListClustersResponseContent(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, next_token=None, items=None):
+    def __init__(self, next_token=None, clusters=None):
         """ListClustersResponseContent - a model defined in OpenAPI
 
         :param next_token: The next_token of this ListClustersResponseContent.
         :type next_token: str
-        :param items: The items of this ListClustersResponseContent.
-        :type items: List[ClusterInfoSummary]
+        :param clusters: The clusters of this ListClustersResponseContent.
+        :type clusters: List[ClusterInfoSummary]
         """
-        self.openapi_types = {"next_token": str, "items": List[ClusterInfoSummary]}
+        self.openapi_types = {"next_token": str, "clusters": List[ClusterInfoSummary]}
 
-        self.attribute_map = {"next_token": "nextToken", "items": "items"}
+        self.attribute_map = {"next_token": "nextToken", "clusters": "clusters"}
 
         self._next_token = next_token
-        self._items = items
+        self._clusters = clusters
 
     @classmethod
     def from_dict(cls, dikt) -> "ListClustersResponseContent":
@@ -72,24 +72,24 @@ class ListClustersResponseContent(Model):
         self._next_token = next_token
 
     @property
-    def items(self):
-        """Gets the items of this ListClustersResponseContent.
+    def clusters(self):
+        """Gets the clusters of this ListClustersResponseContent.
 
 
-        :return: The items of this ListClustersResponseContent.
+        :return: The clusters of this ListClustersResponseContent.
         :rtype: List[ClusterInfoSummary]
         """
-        return self._items
+        return self._clusters
 
-    @items.setter
-    def items(self, items):
-        """Sets the items of this ListClustersResponseContent.
+    @clusters.setter
+    def clusters(self, clusters):
+        """Sets the clusters of this ListClustersResponseContent.
 
 
-        :param items: The items of this ListClustersResponseContent.
-        :type items: List[ClusterInfoSummary]
+        :param clusters: The clusters of this ListClustersResponseContent.
+        :type clusters: List[ClusterInfoSummary]
         """
-        if items is None:
-            raise ValueError("Invalid value for `items`, must not be `None`")
+        if clusters is None:
+            raise ValueError("Invalid value for `clusters`, must not be `None`")
 
-        self._items = items
+        self._clusters = clusters

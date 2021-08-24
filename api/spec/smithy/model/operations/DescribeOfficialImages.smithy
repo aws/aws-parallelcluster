@@ -28,7 +28,7 @@ structure DescribeOfficialImagesRequest {
 
 structure DescribeOfficialImagesResponse {
     @required
-    items: AmisInfo,
+    images: AmisInfo,
 }
 
 list AmisInfo {

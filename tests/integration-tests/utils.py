@@ -80,7 +80,7 @@ def run_command(command, capture_output=True, log_error=True, env=None, timeout=
     """Execute shell command."""
     if isinstance(command, str) and not shell:
         command = shlex.split(command)
-    log_command = command if isinstance(command, str) else " ".join(command)
+    log_command = command if isinstance(command, str) else " ".join(str(arg) for arg in command)
     logging.info("Executing command: {}".format(log_command))
     try:
         result = subprocess.run(
@@ -113,11 +113,7 @@ def run_command(command, capture_output=True, log_error=True, env=None, timeout=
 
 def generate_stack_name(prefix, suffix):
     """Generate a stack name with prefix, suffix, and a random string in the middle"""
-    return prefix + "-{0}{1}{2}".format(
-        random_alphanumeric(),
-        "-" if suffix else "",
-        suffix,
-    )
+    return prefix + "-{0}{1}{2}".format(random_alphanumeric(), "-" if suffix else "", suffix)
 
 
 def kebab_case(instr):
@@ -208,12 +204,9 @@ def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node
             filter_by_instance_types=instance_types,
             filter_by_queue_name=queue_name,
         )
-        instance_ids = []
-        for instance in instances:
-            instance_ids.append(instance.get("InstanceId"))
-        return instance_ids
+        return [instance["InstanceId"] for instance in instances]
     except Exception as e:
-        logging.error("Failed retrieving instance ids with exception: {}".format(e))
+        logging.error("Failed retrieving instance ids with exception: %s", e)
         raise
 
 
@@ -335,12 +328,7 @@ def get_vpc_snakecase_value(vpc_stack):
 
 def get_username_for_os(os):
     """Return username for a given os."""
-    usernames = {
-        "alinux2": "ec2-user",
-        "centos7": "centos",
-        "ubuntu1804": "ubuntu",
-        "ubuntu2004": "ubuntu",
-    }
+    usernames = {"alinux2": "ec2-user", "centos7": "centos", "ubuntu1804": "ubuntu", "ubuntu2004": "ubuntu"}
     return usernames.get(os)
 
 
@@ -445,7 +433,7 @@ def dict_add_nested_key(d, value, keys):
 def read_json_file(file):
     """Read a Json file into a String and raise an exception if the file is invalid."""
     try:
-        with open(file) as f:
+        with open(file, encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         logging.exception("Failed when reading json file %s", file)
@@ -454,3 +442,12 @@ def read_json_file(file):
 
 def get_stack_id_tag_filter(stack_arn):
     return {"Name": "tag:aws:cloudformation:stack-id", "Values": [stack_arn]}
+
+
+def get_arn_partition(region):
+    if region.startswith("us-gov-"):
+        return "aws-us-gov"
+    elif region.startswith("cn-"):
+        return "aws-cn"
+    else:
+        return "aws"

@@ -81,7 +81,7 @@ def create_hash_suffix(string_to_hash: str):
 def get_user_data_content(user_data_path: str):
     """Retrieve user data content."""
     user_data_file_path = pkg_resources.resource_filename(__name__, user_data_path)
-    with open(user_data_file_path, "r") as user_data_file:
+    with open(user_data_file_path, "r", encoding="utf-8") as user_data_file:
         user_data_content = user_data_file.read()
     return user_data_content
 

@@ -111,10 +111,11 @@ def create_cluster(
         cluster = Cluster(create_cluster_request_content.cluster_name, cluster_config)
 
         if dryrun:
-            cluster.validate_create_request(
+            ignored_validation_failures = cluster.validate_create_request(
                 get_validator_suppressors(suppress_validators), FailureLevel[validation_failure_level]
             )
-            raise DryrunOperationException()
+            validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)
+            raise DryrunOperationException(validation_messages=validation_messages or None)
 
         stack_id, ignored_validation_failures = cluster.create(
             disable_rollback=not rollback_on_failure,
@@ -260,7 +261,7 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
     stacks, next_token = AWSApi.instance().cfn.list_pcluster_stacks(next_token=next_token)
     stacks = [ClusterStack(stack) for stack in stacks]
 
-    cluster_info_list = []
+    clusters = []
     for stack in stacks:
         current_cluster_status = cloud_formation_status_to_cluster_status(stack.status)
         if not cluster_status or current_cluster_status in cluster_status:
@@ -272,9 +273,9 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
                 version=stack.version,
                 cluster_status=current_cluster_status,
             )
-            cluster_info_list.append(cluster_info)
+            clusters.append(cluster_info)
 
-    return ListClustersResponseContent(items=cluster_info_list, next_token=next_token)
+    return ListClustersResponseContent(clusters=clusters, next_token=next_token)
 
 
 @configure_aws_region()
@@ -332,13 +333,15 @@ def update_cluster(
             )
 
         if dryrun:
-            cluster.validate_update_request(
+            _, changes, ignored_validation_failures = cluster.validate_update_request(
                 target_source_config=cluster_config,
                 force=force_update,
                 validator_suppressors=get_validator_suppressors(suppress_validators),
                 validation_failure_level=FailureLevel[validation_failure_level],
             )
-            raise DryrunOperationException()
+            change_set, _ = _analyze_changes(changes)
+            validation_messages = validation_results_to_config_validation_errors(ignored_validation_failures)
+            raise DryrunOperationException(change_set=change_set, validation_messages=validation_messages or None)
 
         changes, ignored_validation_failures = cluster.update(
             target_source_config=cluster_config,

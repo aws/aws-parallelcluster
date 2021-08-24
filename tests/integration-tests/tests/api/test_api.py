@@ -79,7 +79,7 @@ def create_cluster(region, request):
 
     def _create_cluster(client, cluster_name, config):
         # Create cluster with initial configuration
-        with open(config) as config_file:
+        with open(config, encoding="utf-8") as config_file:
             config_contents = config_file.read()
         body = CreateClusterRequestContent(cluster_name=cluster_name, cluster_configuration=config_contents)
         response = client.create_cluster(body, region=region)
@@ -164,7 +164,7 @@ def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster
         wait_for_num_instances_in_cluster(region=region, cluster_name=cluster_name, desired=NUM_OF_COMPUTE_INSTANCES)
 
     # Update cluster with new configuration
-    with open(updated_config_file) as config_file:
+    with open(updated_config_file, encoding="utf-8") as config_file:
         updated_cluster_config = config_file.read()
     _test_update_cluster_dryrun(region, cluster_operations_client, cluster_name, updated_cluster_config)
 
@@ -281,11 +281,11 @@ def _get_instances_to_terminate(compute_node_map):
 
 def _test_list_clusters(region, client, cluster_name, status):
     response = client.list_clusters(region=region)
-    target_cluster = _get_cluster(cluster_name, response.items)
+    target_cluster = _get_cluster(cluster_name, response.clusters)
 
     while "next_token" in response and not target_cluster:
         response = client.list_clusters(region=region, next_token=response.next_token)
-        target_cluster = _get_cluster(cluster_name, response.items)
+        target_cluster = _get_cluster(cluster_name, response.clusters)
 
     assert_that(target_cluster).is_not_none()
     assert_that(target_cluster.cluster_name).is_equal_to(cluster_name)
@@ -337,7 +337,7 @@ def _test_delete_cluster(region, client, cluster_name):
 def test_official_images(region, api_client):
     client = image_operations_api.ImageOperationsApi(api_client)
     response = client.describe_official_images(region=region)
-    assert_that(response.items).is_not_empty()
+    assert_that(response.images).is_not_empty()
 
 
 @pytest.mark.usefixtures("instance")
@@ -345,7 +345,7 @@ def test_custom_image(region, api_client, build_image, os, request, pcluster_con
     base_ami = retrieve_latest_ami(region, os)
 
     config_file = pcluster_config_reader(config_file="image.config.yaml", parent_image=base_ami)
-    with open(config_file) as config_file:
+    with open(config_file, encoding="utf-8") as config_file:
         config = config_file.read()
 
     image_id = generate_stack_name("integ-tests-build-image", request.config.getoption("stackname_suffix"))
@@ -380,13 +380,13 @@ def _test_describe_image(region, client, image_id, status):
 
 def _test_list_images(region, client, image_id, status):
     response = client.list_images(image_status=ImageStatusFilteringOption(status), region=region)
-    target_image = _get_image(image_id, response.items)
+    target_image = _get_image(image_id, response.images)
 
     while "next_token" in response and not target_image:
         response = client.list_images(
             image_status=ImageStatusFilteringOption(status), region=region, next_token=response.next_token
         )
-        target_image = _get_image(image_id, response.items)
+        target_image = _get_image(image_id, response.images)
 
     LOGGER.info("Target image in ListImages response is: %s", target_image)
 
