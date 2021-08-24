@@ -20,16 +20,32 @@ Quick Start
 **IMPORTANT**: you will need an **Amazon EC2 Key Pair** to be able to complete the following steps.
 Please see the [Official AWS Guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html).
 
-First, make sure you have installed the [AWS Command Line Interface](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html):
+First, prepare a Python Virtual Environment for ParallelCluster, note ParallelCluster >= 3.0.0 requires Python >= 3.6.
+```
+python3 -m pip install --upgrade pip
+python3 -m pip install --user --upgrade virtualenv
+python3 -m virtualenv ~/hpc-ve
+source ~/hpc-ve/bin/activate
+```
+
+Make sure you have installed the [AWS Command Line Interface](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html):
 
 ```
-$ pip install awscli
+$ pip3 install awscli
+```
+
+Install Node Version Manager and Node.js
+```
+wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+. ~/.nvm/nvm.sh
+nvm install node
+node --version
 ```
 
 Then you can install AWS ParallelCluster:
 
 ```
-$ pip install aws-parallelcluster
+$ pip3 install aws-parallelcluster
 ```
 
 Next, configure your aws credentials and default region:
@@ -47,8 +63,8 @@ configuration parameter. Type an option number and press ``Enter`` to select a s
 or just press ``Enter`` to accept the default option.
 
 ```
-$ pcluster configure
-INFO: Configuration file /dir/conf_file will be written.
+$ pcluster configure --config /dir/cluster-config.yaml
+INFO: Configuration file /dir/cluster-config.yaml will be written.
 Press CTRL-C to interrupt the procedure.
 
 
@@ -89,27 +105,27 @@ At the end of the process a message like this one will be shown:
 
 ```
 Configuration file written to /dir/conf_file
-You can edit your configuration file or simply run 'pcluster create -c /dir/conf_file cluster-name' to create your cluster
+You can edit your configuration file or simply run 'pcluster create-cluster --cluster-name cluster-name --cluster-configuration /dir/cluster-config.yaml' to create your cluster
 ```
 
 
 Now you can create your first cluster:
 
 ```
-$ pcluster create myfirstcluster
+$ pcluster create-cluster --cluster-name myfirstcluster --cluster-configuration /dir/cluster-config.yaml
 ```
 
 
 After the cluster finishes creating, log in:
 
 ```
-$ pcluster ssh myfirstcluster
+$ pcluster ssh --cluster-name myfirstcluster
 ```
 
 You can view the running compute hosts:
 
 ```
-$ qhost
+$ sinfo
 ```
 
 For more information on any of these steps see the [Getting Started Guide](https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html).
