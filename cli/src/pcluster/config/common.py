@@ -188,6 +188,7 @@ class Resource(ABC):
         return nested_resources
 
     def validate(self, suppressors: List[ValidatorSuppressor] = None) -> List[ValidationResult]:
+        """Execute registered validators."""
         # Cleanup failures and validators
         self._validation_failures.clear()
 
@@ -202,38 +203,8 @@ class Resource(ABC):
             self._validation_failures.extend(self._validator_execute(*validator, suppressors))
 
         return self._validation_failures
-        """Execute registered validators."""
         # Cleanup failures and validators
         self._validation_failures.clear()
-
-        # Call validators for nested resources
-        for attr, value in self.__dict__.items():
-            if isinstance(value, Resource):
-                # Validate nested Resources
-                self._validation_failures.extend(value.validate(validator_suppressor_list))
-            if isinstance(value, list) and value:
-                # Validate nested lists of Resources
-                for item in self.__getattribute__(attr):
-                    if isinstance(item, Resource):
-                        self._validation_failures.extend(item.validate(validator_suppressor_list))
-
-        # Update validators to be executed according to current status of the model and order by priority
-        self._validators.clear()
-        self._register_validators()
-        for validator_class, validator_args in self._validators:
-            validator = validator_class()
-            if validator_suppressor_list and any(
-                suppressor.suppress_validator(validator) for suppressor in validator_suppressor_list
-            ):
-                LOGGER.debug("Suppressing validator %s", validator_class.__name__)
-                continue
-            LOGGER.debug("Executing validator %s", validator_class.__name__)
-            try:
-                validation_failures = validator.execute(**validator_args)
-                self._validation_failures.extend(validation_failures)
-            except Exception as e:
-                self._validation_failures.append(ValidationResult(str(e), FailureLevel.ERROR, validator.type))
-        return self._validation_failures
 
     def _register_validators(self):
         """
