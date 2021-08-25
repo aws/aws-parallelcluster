@@ -279,6 +279,19 @@ class TestCreateCluster:
                 {"message": "Bad Request: Configuration must be a valid YAML document"},
             ),
             (
+                {"clusterConfiguration": "[cluster]\nkey_name=mykey", "clusterName": "cluster"},
+                None,
+                None,
+                None,
+                "us-east-1",
+                None,
+                {
+                    "message": "Bad Request: ParallelCluster 3 requires configuration files to be "
+                    "valid YAML documents. To create a basic cluster configuration, "
+                    "you can run the `pcluster configure` command."
+                },
+            ),
+            (
                 {"clusterConfiguration": "Image:\n  InvalidKey: test", "clusterName": "cluster"},
                 None,
                 None,
@@ -320,6 +333,7 @@ class TestCreateCluster:
             "invalid_dryrun",
             "invalid_rollback",
             "invalid_config_format",
+            "invalid_toml_config_format",
             "invalid_config_schema",
             "empty_config",
         ],
@@ -1420,6 +1434,21 @@ class TestUpdateCluster:
                 None,
                 {"message": "Bad Request: Cluster update failed.\nConfiguration must be a valid YAML document"},
                 id="request with single string configuration",
+            ),
+            pytest.param(
+                {"clusterConfiguration": "[cluster]\nkey_name=mykey"},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {
+                    "message": "Bad Request: Cluster update failed.\nParallelCluster 3 requires configuration files to "
+                    "be valid YAML documents. To create a basic cluster configuration, "
+                    "you can run the `pcluster configure` command."
+                },
+                id="invalid configuration with toml format",
             ),
             pytest.param(
                 {"clusterConfiguration": "Image:\n  InvalidKey: test"},

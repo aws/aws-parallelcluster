@@ -18,6 +18,7 @@ import tarfile
 import time
 from typing import List
 
+import configparser
 import yaml
 
 from pcluster.api.encoder import JSONEncoder
@@ -61,8 +62,16 @@ def parse_config(config):
             raise Exception("parsed config is not a dict")
         return config_dict
     except Exception as e:
-        LOGGER.error("Failed when parsing the configuration due to invalid YAML document: %s", e)
-        raise BadRequest("Configuration must be a valid YAML document")
+        try:
+            configparser.ConfigParser().read_string(config)
+        except Exception:
+            LOGGER.error("Failed when parsing the configuration due to invalid YAML document: %s", e)
+            raise BadRequest("Configuration must be a valid YAML document")
+        LOGGER.error("Please use pcluster3 configuration file format: %s", e)
+        raise BadRequest(
+            "ParallelCluster 3 requires configuration files to be valid YAML documents. "
+            "To create a basic cluster configuration, you can run the `pcluster configure` command."
+        )
 
 
 class FiltersParserError(Exception):
