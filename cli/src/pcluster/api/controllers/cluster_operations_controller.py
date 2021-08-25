@@ -394,6 +394,11 @@ def _handle_cluster_update_error(e):
     )
 
 
+def _cluster_update_change_succeded(check_result):
+    """Describe if check_result represents successful individual change within a larger cluster update."""
+    return check_result == UpdatePolicy.CheckResult.SUCCEEDED
+
+
 def _analyze_changes(changes):
     if changes is None or len(changes) <= 1:
         return [], []
@@ -408,7 +413,7 @@ def _analyze_changes(changes):
         old_value = row[key_indexes["old value"]]
         check_result = row[key_indexes["check"]]
         message = _create_message(row[key_indexes["reason"]], row[key_indexes["action_needed"]])
-        if check_result != UpdatePolicy.CheckResult.SUCCEEDED:
+        if not _cluster_update_change_succeded(check_result):
             errors.append(
                 UpdateError(parameter=parameter, requested_value=new_value, message=message, current_value=old_value)
             )
