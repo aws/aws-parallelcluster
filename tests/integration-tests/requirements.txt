@@ -1,6 +1,5 @@
 argparse
 assertpy
-aws-parallelcluster
 boto3
 cfn_flip
 fabric
