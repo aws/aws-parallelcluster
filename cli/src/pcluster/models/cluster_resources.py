@@ -62,7 +62,7 @@ class ClusterStack(StackInfo):
 
     @property
     def original_config_version(self):
-        """Return the log group name used in the cluster."""
+        """Return the version of the original config used to generate the stack in the cluster."""
         return self._get_param("ConfigVersion")
 
     def delete(self):

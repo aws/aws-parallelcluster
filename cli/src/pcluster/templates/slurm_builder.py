@@ -138,8 +138,6 @@ class SlurmConstruct(Construct):
         if self.cleanup_lambda_role:
             self._add_policies_to_cleanup_resources_lambda_role()
 
-        self._add_update_waiter_lambda()
-
         self._add_slurm_compute_fleet()
 
     def _add_policies_to_role(self, node_name, role):
@@ -462,53 +460,6 @@ class SlurmConstruct(Construct):
         )
 
         return cluster_hosted_zone
-
-    def _add_update_waiter_lambda(self):
-        update_waiter_lambda_execution_role = None
-        if self.cleanup_lambda_role:
-            update_waiter_lambda_execution_role = add_lambda_cfn_role(
-                scope=self.stack_scope,
-                function_id="UpdateWaiter",
-                statements=[
-                    iam.PolicyStatement(
-                        actions=["dynamodb:GetItem", "dynamodb:PutItem"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="dynamodb",
-                                account=self._stack_account,
-                                resource=f"table/{self.dynamodb_table.ref}",
-                            ),
-                        ],
-                        sid="DynamoDBTable",
-                    ),
-                    get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
-                    ),
-                ],
-            )
-
-        update_waiter_lambda = PclusterLambdaConstruct(
-            scope=self.stack_scope,
-            id="UpdateWaiterFunctionConstruct",
-            function_id="UpdateWaiter",
-            bucket=self.bucket,
-            config=self.config,
-            execution_role=update_waiter_lambda_execution_role.attr_arn
-            if update_waiter_lambda_execution_role
-            else self.config.iam.roles.custom_lambda_resources,
-            handler_func="wait_for_update",
-        ).lambda_func
-
-        self.update_waiter_custom_resource = CfnCustomResource(
-            self.stack_scope,
-            "UpdateWaiterCustomResource",
-            service_token=update_waiter_lambda.attr_arn,
-        )
-        self.update_waiter_custom_resource.add_property_override("ConfigVersion", self.config.config_version)
-        self.update_waiter_custom_resource.add_property_override("DynamoDBTable", self.dynamodb_table.ref)
-
-        CfnOutput(self.stack_scope, "UpdateWaiterFunctionArn", value=update_waiter_lambda.attr_arn)
 
     def _add_compute_resource_launch_template(
         self,
