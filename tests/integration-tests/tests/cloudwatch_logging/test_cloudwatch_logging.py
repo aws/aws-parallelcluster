@@ -335,9 +335,37 @@ class CloudWatchLoggingClusterState:
         self._run_command_on_head_node("rm -rf {0}".format(out_dir))
         return outputs
 
+    def _write_dummy_message_to_log(self, log_path, node_type):
+        """Write a dummy log message to a critical log in order to ensure it is non-empty."""
+        # Write the dummy entry to shared storage
+        dummy_log_message_path = "/shared/dummy_log_message"
+        dummy_log_entry = "CloudWatch logs integ test - ensuring critical log file is not empty"
+        self._run_command_on_head_node(f"echo '{dummy_log_entry}' > {dummy_log_message_path}")
+        # Append the dummy entry to the log
+        cmd = f"sudo tee -a {log_path} < {dummy_log_message_path}"
+        if node_type == HEAD_NODE_ROLE_NAME:
+            self._run_command_on_head_node(cmd)
+        elif node_type == COMPUTE_NODE_ROLE_NAME:
+            self._run_command_on_computes(cmd)
+        else:
+            raise Exception(f"Unknown node type: {node_type}")
+
     def _populate_head_node_log_existence(self):
         """Figure out which of the relevant logs for the head node don't exist."""
+        critical_head_node_logs = (
+            [
+                "/var/log/parallelcluster/clustermgtd",
+                "/var/log/parallelcluster/slurm_resume.log",
+                "/var/log/parallelcluster/slurm_suspend.log",
+            ]
+            if self.scheduler == "slurm"
+            else []
+        )
         for log_path, log_dict in self._cluster_log_state.get(HEAD_NODE_ROLE_NAME).get("logs").items():
+            # If a log is of critical importance for debugging operational issues, make sure
+            # it's not empty so that we can later assert that the data is making it to CloudWatch.
+            if log_path in critical_head_node_logs:
+                self._write_dummy_message_to_log(log_path, HEAD_NODE_ROLE_NAME)
             cmd = "[ -f {path} ] && echo exists || echo does not exist".format(path=log_path)
             output = self._run_command_on_head_node(cmd)
             log_dict["exists"] = output == "exists"
@@ -346,9 +374,13 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for the ComputeFleet nodes don't exist."""
         if self.compute_nodes_count == 0:
             return
+        critical_compute_node_logs = ["/var/log/parallelcluster/computemgtd"] if self.scheduler == "slurm" else []
         for log_dict in self._relevant_logs.get(COMPUTE_NODE_ROLE_NAME):
+            log_path = log_dict.get("file_path")
+            if log_path in critical_compute_node_logs:
+                self._write_dummy_message_to_log(log_path, COMPUTE_NODE_ROLE_NAME)
             cmd = "[ -f {path} ] && echo {{redirect}} exists || " "echo {{redirect}} does not exist".format(
-                path=log_dict.get("file_path")
+                path=log_path
             )
             hostname_to_output = self._run_command_on_computes(cmd)
             for hostname, output in hostname_to_output.items():
