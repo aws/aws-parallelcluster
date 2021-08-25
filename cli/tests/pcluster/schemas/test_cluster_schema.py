@@ -162,6 +162,10 @@ def dummy_slurm_queue(name="queue1", number_of_compute_resource=1):
     return slurm_queue
 
 
+def dummpy_slurm_queue_list(queue_num):
+    return [dummy_slurm_queue(f"queue{index}") for index in range(queue_num)]
+
+
 def dummy_slurm_compute_resource(name, instance_type):
     return {"Name": name, "InstanceType": instance_type}
 
@@ -227,43 +231,30 @@ def dummy_slurm_compute_resource(name, instance_type):
         (  # maximum slurm queue length
             {
                 "Scheduler": "slurm",
-                "SlurmQueues": [
-                    dummy_slurm_queue("queue1"),
-                    dummy_slurm_queue("queue2"),
-                    dummy_slurm_queue("queue3"),
-                    dummy_slurm_queue("queue4"),
-                    dummy_slurm_queue("queue5"),
-                ],
+                "SlurmQueues": dummpy_slurm_queue_list(10),
             },
             None,
         ),
         (  # beyond maximum slurm queue length
             {
                 "Scheduler": "slurm",
-                "SlurmQueues": [
-                    dummy_slurm_queue("queue1"),
-                    dummy_slurm_queue("queue2"),
-                    dummy_slurm_queue("queue3"),
-                    dummy_slurm_queue("queue4"),
-                    dummy_slurm_queue("queue5"),
-                    dummy_slurm_queue("queue6"),
-                ],
+                "SlurmQueues": dummpy_slurm_queue_list(11),
             },
-            "Queue.*Longer than maximum length 5",
+            "Queue.*Longer than maximum length 10",
         ),
         (  # maximum slurm queue length
             {
                 "Scheduler": "slurm",
-                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=3)],
+                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=5)],
             },
             None,
         ),
         (  # beyond maximum slurm queue length
             {
                 "Scheduler": "slurm",
-                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=4)],
+                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=6)],
             },
-            "ComputeResources.*Longer than maximum length 3",
+            "ComputeResources.*Longer than maximum length 5",
         ),
     ],
 )

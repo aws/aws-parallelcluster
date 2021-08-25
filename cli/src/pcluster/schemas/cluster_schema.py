@@ -1018,7 +1018,7 @@ class SlurmQueueSchema(BaseQueueSchema):
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
-        validate=validate.Length(max=3),
+        validate=validate.Length(max=5),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     custom_actions = fields.Nested(
@@ -1096,7 +1096,7 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
-        validate=validate.Length(max=5),
+        validate=validate.Length(max=10),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     # Awsbatch schema:
