@@ -384,7 +384,7 @@ def _image_info_to_image_info_summary(image):
     return ImageInfoSummary(
         image_id=image.pcluster_image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
-        ec2_image_id=image.id,
+        ec2_ami_info=Ec2AmiInfo(ami_id=image.id),
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=image.version,
     )
