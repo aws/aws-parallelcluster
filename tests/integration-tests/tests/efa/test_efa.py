@@ -276,9 +276,11 @@ def _test_osu_benchmarks_multiple_bandwidth(
     ).stdout
 
     # Expected bandwidth with 4 NICS:
-    # OMPI 4.1.0: ~330Gbps = 41250MB/s
-    # OMPI 4.0.5: ~95Gbps = 11875MB/s
-    assert_that(float(max_bandwidth)).is_greater_than(41000)
+    # OMPI 4.1.0: ~330Gbps = 41250MB/s with Placement Group
+    # OMPI 4.1.0: ~252Gbps = 31550MB/s without Placement Group
+    # OMPI 4.0.5: ~95Gbps = 11875MB/s with Placement Group
+    expected_bandwidth = 30000
+    assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 
 def run_osu_benchmarks(
