@@ -16,7 +16,7 @@ from pcluster.constants import DEFAULT_MAX_COUNT
 class UpdatePolicy:
     """Describes the policy that rules the update of a configuration parameter."""
 
-    class CheckResult(Enum):
+    class CheckResult(str, Enum):
         """Valid results for change checks."""
 
         SUCCEEDED = "SUCCEEDED"
