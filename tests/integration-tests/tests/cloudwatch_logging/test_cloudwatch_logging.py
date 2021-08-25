@@ -487,7 +487,13 @@ class CloudWatchLoggingTestRunner:
         observed_stream_names = [stream.get("logStreamName") for stream in observed_streams]
         assert_that(observed_stream_names).contains_only(*expected_stream_index)
 
-    @retry(stop_max_attempt_number=3, wait_fixed=10 * 1000)  # Allow time for log events to reach the log stream
+    # Allow up to six minutes for log events to reach the log stream.
+    # This value was chosen based on the fact that the CloudWatch agent appears to
+    # publish log data every minute for all of the logs it monitors. The extra
+    # time is to account for any delay between the agent pushing the event
+    # and the event being observable via a call to GetLogEvents. That said,
+    # there should be very little delay for most cases.
+    @retry(stop_max_attempt_number=36, wait_fixed=10 * 1000)
     def _verify_log_stream_data(self, logs_state, expected_stream_index, stream):
         """Verify that stream contains an event for the last line read from its corresponding log."""
         events = cw_logs_utils.get_log_events(self.log_group_name, stream.get("logStreamName"))
