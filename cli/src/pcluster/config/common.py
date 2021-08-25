@@ -203,8 +203,6 @@ class Resource(ABC):
             self._validation_failures.extend(self._validator_execute(*validator, suppressors))
 
         return self._validation_failures
-        # Cleanup failures and validators
-        self._validation_failures.clear()
 
     def _register_validators(self):
         """
