@@ -61,6 +61,7 @@ CHANGELOG
 - Upgrade Slurm to version 20.11.8.
 - Upgrade Cinc Client to version 17.2.29.
 - CLI commands do not default to `~/.parallelcluster/config` file anymore. The cluster configuration is now a required parameter.
+- Slurm: Extend limits for supported number of queues to 10 and number of compute resources per queue to 5.
 
 2.11.2
 -----
