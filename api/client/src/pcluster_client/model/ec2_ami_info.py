@@ -79,8 +79,8 @@ class Ec2AmiInfo(ModelNormal):
         """
         lazy_import()
         return {
-            'ami_name': (str,),  # noqa: E501
             'ami_id': (str,),  # noqa: E501
+            'ami_name': (str,),  # noqa: E501
             'description': (str,),  # noqa: E501
             'state': (Ec2AmiState,),  # noqa: E501
             'tags': ([Tag],),  # noqa: E501
@@ -93,8 +93,8 @@ class Ec2AmiInfo(ModelNormal):
 
 
     attribute_map = {
-        'ami_name': 'amiName',  # noqa: E501
         'ami_id': 'amiId',  # noqa: E501
+        'ami_name': 'amiName',  # noqa: E501
         'description': 'description',  # noqa: E501
         'state': 'state',  # noqa: E501
         'tags': 'tags',  # noqa: E501
@@ -113,16 +113,11 @@ class Ec2AmiInfo(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, ami_name, ami_id, description, state, tags, architecture, *args, **kwargs):  # noqa: E501
+    def __init__(self, ami_id, *args, **kwargs):  # noqa: E501
         """Ec2AmiInfo - a model defined in OpenAPI
 
         Args:
-            ami_name (str): EC2 AMI name
             ami_id (str): EC2 AMI id
-            description (str): EC2 AMI description
-            state (Ec2AmiState):
-            tags ([Tag]): EC2 AMI Tags
-            architecture (str): EC2 AMI architecture
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -155,6 +150,11 @@ class Ec2AmiInfo(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            ami_name (str): EC2 AMI name. [optional]  # noqa: E501
+            description (str): EC2 AMI description. [optional]  # noqa: E501
+            state (Ec2AmiState): [optional]  # noqa: E501
+            tags ([Tag]): EC2 AMI Tags. [optional]  # noqa: E501
+            architecture (str): EC2 AMI architecture. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -180,12 +180,7 @@ class Ec2AmiInfo(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.ami_name = ami_name
         self.ami_id = ami_id
-        self.description = description
-        self.state = state
-        self.tags = tags
-        self.architecture = architecture
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \
