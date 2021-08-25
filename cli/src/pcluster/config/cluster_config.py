@@ -81,8 +81,8 @@ from pcluster.validators.ebs_validators import (
     SharedEbsVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
+    AmiOsCompatibleValidator,
     CapacityTypeValidator,
-    ComputeAmiOsCompatibleValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
@@ -742,6 +742,7 @@ class Image(Resource):
     def _register_validators(self):
         if self.custom_ami:
             self._register_validator(CustomAmiTagValidator, custom_ami=self.custom_ami)
+            self._register_validator(AmiOsCompatibleValidator, os=self.os, image_id=self.custom_ami)
 
 
 class HeadNodeImage(Resource):
@@ -991,6 +992,10 @@ class BaseClusterConfig(Resource):
                 InstanceTypeBaseAMICompatibleValidator,
                 instance_type=self.head_node.instance_type,
                 image=self.headnode_ami,
+            )
+        if self.head_node.image and self.head_node.image.custom_ami:
+            self._register_validator(
+                AmiOsCompatibleValidator, os=self.image.os, image_id=self.head_node.image.custom_ami
             )
         self._register_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
@@ -1556,10 +1561,10 @@ class SlurmClusterConfig(BaseClusterConfig):
                 ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name]
             )
             queue_image = self.image_dict[queue.name]
-            if queue_image not in checked_images:
+            if queue_image not in checked_images and queue.queue_ami:
                 checked_images.append(queue_image)
                 self._register_validator(
-                    ComputeAmiOsCompatibleValidator,
+                    AmiOsCompatibleValidator,
                     os=self.image.os,
                     image_id=queue_image,
                 )
