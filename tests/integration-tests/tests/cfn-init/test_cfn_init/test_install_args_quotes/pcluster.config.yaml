@@ -6,10 +6,14 @@ HeadNode:
       Script: s3://{{ bucket_name }}/scripts/pre_install.sh
       Args:
         - "R curl wget"
+        - "arg2"
+        - "arg3"
     OnNodeConfigured:
       Script: s3://{{ bucket_name }}/scripts/post_install.sh
       Args:
         - "R curl wget"
+        - "arg2"
+        - "arg3"
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
@@ -29,18 +33,24 @@ Scheduling:
         OnNodeStart:
           Script: s3://{{ bucket_name }}/scripts/pre_install.sh
           Args:
-            - 'R curl wget'
+            - "R curl wget"
+            - "arg2"
+            - "arg3"
         OnNodeConfigured:
           Script: s3://{{ bucket_name }}/scripts/post_install.sh
           Args:
-            - 'R curl wget'
+            - "R curl wget"
+            - "arg2"
+            - "arg3"
       ComputeResources:
         - Name: compute-resource-0
           {% if scheduler == "awsbatch" %}
           InstanceTypes:
             - {{ instance }}
+          MinvCpus: 1
           {% else %}
           InstanceType: {{ instance }}
+          MinCount: 1
           {% endif %}
       Networking:
         SubnetIds:
