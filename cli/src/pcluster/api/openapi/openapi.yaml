@@ -2994,14 +2994,16 @@ components:
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
-          ec2ImageId: ec2ImageId
+          ec2AmiInfo:
+            amiId: amiId
           region: region
           version: version
         - imageId: imageId
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
-          ec2ImageId: ec2ImageId
+          ec2AmiInfo:
+            amiId: amiId
           region: region
           version: version
       properties:

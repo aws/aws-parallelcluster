@@ -2060,11 +2060,6 @@ components:
           description: EC2 AMI architecture
       required:
         - amiId
-        - amiName
-        - architecture
-        - description
-        - state
-        - tags
     Ec2AmiState:
       type: string
       enum:
@@ -2164,9 +2159,8 @@ components:
         cloudformationStackArn:
           type: string
           description: ARN of the main CloudFormation stack.
-        ec2ImageId:
-          type: string
-          description: Ec2 Id of the image.
+        ec2AmiInfo:
+          $ref: '#/components/schemas/Ec2AmiInfo'
         region:
           type: string
           description: AWS region where the image is built.

@@ -113,9 +113,9 @@ class CapacityTypeValidator(Validator):
             )
 
 
-class ComputeAmiOsCompatibleValidator(Validator):
+class AmiOsCompatibleValidator(Validator):
     """
-    Compute node AMI and OS compatibility validator.
+    node AMI and OS compatibility validator.
 
     If image has tag of OS, compare AMI OS with cluster OS, else print out a warning message.
     """
@@ -126,12 +126,12 @@ class ComputeAmiOsCompatibleValidator(Validator):
         if image_os:
             if image_os != os:
                 self._add_failure(
-                    f"The OS of compute node AMI {image_id} is {image_os}, it is not compatible with cluster OS {os}.",
+                    f"The OS of node AMI {image_id} is {image_os}, it is not compatible with cluster OS {os}.",
                     FailureLevel.ERROR,
                 )
         else:
             self._add_failure(
-                f"Could not check compute node AMI {image_id} OS and cluster OS {os} compatibility, please make sure "
+                f"Could not check node AMI {image_id} OS and cluster OS {os} compatibility, please make sure "
                 f"they are compatible before cluster creation and update operations.",
                 FailureLevel.WARNING,
             )

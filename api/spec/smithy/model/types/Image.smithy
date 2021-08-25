@@ -8,19 +8,14 @@ structure Ec2AmiInfo {
     @required
     @documentation("EC2 AMI id")
     amiId: String,
-    @required
     @documentation("EC2 AMI Tags")
     tags: Tags,
-    @required
     @documentation("EC2 AMI name")
     amiName: String,
-    @required
     @documentation("EC2 AMI architecture")
     architecture: String,
-    @required
     @documentation("EC2 AMI state")
     state: Ec2AmiState,
-    @required
     @documentation("EC2 AMI description")
     description: String,
 }
@@ -29,8 +24,8 @@ structure ImageInfoSummary {
     @required
     @documentation("Id of the image.")
     imageId: ImageId,
-    @documentation("Ec2 Id of the image.")
-    ec2ImageId: String,
+    @documentation("Ec2 image information.")
+    ec2AmiInfo: Ec2AmiInfo,
     @required
     @documentation("AWS region where the image is built.")
     region: Region,
