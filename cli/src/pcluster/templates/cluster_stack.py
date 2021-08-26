@@ -1185,7 +1185,7 @@ class ClusterCdkStack(Stack):
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster::update_head_node || "
                             "cfn-signal --exit-code=1 --reason='Chef client failed' "
-                            f"'{self.wait_condition_handle}"
+                            f"'{self.wait_condition_handle}'"
                         ),
                         "cwd": "/etc/chef",
                     }
