@@ -6,6 +6,9 @@ CHANGELOG
 
 **CHANGES**
 - When using a custom AMI with a preinstalled EFA package, no actions are taken at node bootstrap time in case GPUDirect RDMA is enabled. The original EFA package deployment is preserved as during the createami process.
+- Upgrade EFA installer to version 1.13.0
+  - Update ``rdma-core`` to v35.0.
+  - Update ``libfabric`` to v1.13.0amzn1.0.
 
 **BUG FIXES**
 - Lock the version of ``nvidia-fabricmanager`` package to the installed NVIDIA drivers to prevent updates and misalignments.
