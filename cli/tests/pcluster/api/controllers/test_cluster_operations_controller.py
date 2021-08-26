@@ -12,6 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 from marshmallow.exceptions import ValidationError
 
+from pcluster.api.controllers.cluster_operations_controller import _cluster_update_change_succeded
 from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
@@ -1619,3 +1620,10 @@ class TestUpdateCluster:
 def test_get_validator_suppressors(suppress_validators_list, expected_suppressors):
     result = get_validator_suppressors(suppress_validators_list)
     assert_that(result).is_equal_to(expected_suppressors)
+
+
+@pytest.mark.parametrize("check_result", ["SUCCEEDED", "ACTION NEEDED", "FAILED"])
+def test_cluster_update_change_succeded(check_result):
+    """Verify we can compare string literals against update status enum, rather than its value attribute."""
+    successful_result = "SUCCEEDED"
+    assert_that(_cluster_update_change_succeded(check_result)).is_equal_to(check_result == successful_result)

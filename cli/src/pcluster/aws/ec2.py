@@ -85,6 +85,7 @@ class Ec2Client(Boto3Client):
         raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_image(self, ami_id):
         """Describe image by image id, return an object of ImageInfo."""
         result = self._client.describe_images(ImageIds=[ami_id])
@@ -93,6 +94,7 @@ class Ec2Client(Boto3Client):
         raise AWSClientError(function_name="describe_images", message=f"Image {ami_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
     def describe_images(self, ami_ids, filters, owners):
         """Return a list of objects of ImageInfo."""
         result = self._client.describe_images(ImageIds=ami_ids, Filters=filters, Owners=owners)
@@ -214,10 +216,7 @@ class Ec2Client(Boto3Client):
 
         filters = [{"Name": "name", "Values": ["{0}*".format(self._get_official_image_name_prefix(os, architecture))]}]
         filters.extend([{"Name": f"tag:{tag.key}", "Values": [tag.value]} for tag in tags])
-        images = self._client.describe_images(
-            Owners=[owner],
-            Filters=filters,
-        ).get("Images")
+        images = self._client.describe_images(Owners=[owner], Filters=filters).get("Images")
         if not images:
             raise AWSClientError(function_name="describe_images", message="Cannot find official ParallelCluster AMI")
         return max(images, key=lambda image: image["CreationDate"]).get("ImageId")
