@@ -96,9 +96,9 @@ def check_cluster_version(cluster: Cluster, exact_match: bool = False) -> bool:
         return packaging.version.parse(cluster.stack.version) == packaging.version.parse(get_installed_version())
     else:
         return (
-            packaging.version.parse(get_installed_version())
+            packaging.version.parse(packaging.version.parse(get_installed_version()).base_version)
             >= packaging.version.parse(cluster.stack.version)
-            >= packaging.version.parse("3.0.0")
+            >= packaging.version.parse("3.0.0a0")
         )
 
 

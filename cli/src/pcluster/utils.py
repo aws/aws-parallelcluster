@@ -228,9 +228,10 @@ def get_templates_bucket_path():
     )
 
 
-def get_installed_version():
+def get_installed_version(base_version_only: bool = False):
     """Get the version of the installed aws-parallelcluster package."""
-    return pkg_resources.get_distribution("aws-parallelcluster").version
+    pkg_distribution = pkg_resources.get_distribution("aws-parallelcluster")
+    return pkg_distribution.version if not base_version_only else pkg_distribution.parsed_version.base_version
 
 
 def check_if_latest_version():
