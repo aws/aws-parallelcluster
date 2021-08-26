@@ -143,8 +143,8 @@ def _validation_test_cases():
     key_pair_warning = {"level": "WARNING", "type": "KeyPairValidator", "message": ".*you do not specify a key pair.*"}
     ami_os_compatibility = {
         "level": "WARNING",
-        "type": "ComputeAmiOsCompatibleValidator",
-        "message": "Could not check compute node AMI*OS and cluster OS*compatibility,",
+        "type": "AmiOsCompatibleValidator",
+        "message": "Could not check node AMI*OS and cluster OS*compatibility,",
     }
 
     all_invalid = [custom_ami_warning, key_pair_warning, name_error, ami_os_compatibility]
