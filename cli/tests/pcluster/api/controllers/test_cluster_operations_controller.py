@@ -12,6 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 from marshmallow.exceptions import ValidationError
 
+from pcluster.api.controllers.cluster_operations_controller import _cluster_update_change_succeded
 from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
@@ -27,7 +28,7 @@ from pcluster.models.cluster import (
     LimitExceededClusterActionError,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
-from pcluster.utils import to_iso_timestr
+from pcluster.utils import get_installed_version, to_iso_timestr
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 
@@ -39,7 +40,7 @@ def cfn_describe_stack_mock_response(edits=None):
         "StackStatus": "CREATE_COMPLETE",
         "Outputs": [],
         "Tags": [
-            {"Key": "parallelcluster:version", "Value": "3.0.0"},
+            {"Key": "parallelcluster:version", "Value": get_installed_version()},
             {"Key": "parallelcluster:s3_bucket", "Value": "bucket_name"},
             {
                 "Key": "parallelcluster:cluster_dir",
@@ -153,7 +154,7 @@ class TestCreateCluster:
                 "clusterName": create_cluster_request_content["clusterName"],
                 "clusterStatus": "CREATE_IN_PROGRESS",
                 "region": region,
-                "version": "3.0.0",
+                "version": get_installed_version(),
             }
         }
 
@@ -278,6 +279,19 @@ class TestCreateCluster:
                 {"message": "Bad Request: Configuration must be a valid YAML document"},
             ),
             (
+                {"clusterConfiguration": "[cluster]\nkey_name=mykey", "clusterName": "cluster"},
+                None,
+                None,
+                None,
+                "us-east-1",
+                None,
+                {
+                    "message": "Bad Request: ParallelCluster 3 requires configuration files to be "
+                    "valid YAML documents. To create a basic cluster configuration, "
+                    "you can run the `pcluster configure` command."
+                },
+            ),
+            (
                 {"clusterConfiguration": "Image:\n  InvalidKey: test", "clusterName": "cluster"},
                 None,
                 None,
@@ -319,6 +333,7 @@ class TestCreateCluster:
             "invalid_dryrun",
             "invalid_rollback",
             "invalid_config_format",
+            "invalid_toml_config_format",
             "invalid_config_schema",
             "empty_config",
         ],
@@ -412,7 +427,7 @@ class TestDeleteCluster:
                         "clusterName": "clustername",
                         "clusterStatus": "DELETE_IN_PROGRESS",
                         "region": "us-east-1",
-                        "version": "3.0.0",
+                        "version": get_installed_version(),
                     }
                 },
             ),
@@ -425,7 +440,7 @@ class TestDeleteCluster:
                         "clusterName": "clustername",
                         "clusterStatus": "DELETE_IN_PROGRESS",
                         "region": "us-east-1",
-                        "version": "3.0.0",
+                        "version": get_installed_version(),
                     }
                 },
             ),
@@ -554,14 +569,14 @@ class TestDescribeCluster:
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "parallelcluster:version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
                             "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
                         },
                     ],
-                    "version": "3.0.0",
+                    "version": get_installed_version(),
                     "headnode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
@@ -587,14 +602,14 @@ class TestDescribeCluster:
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "parallelcluster:version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
                             "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
                         },
                     ],
-                    "version": "3.0.0",
+                    "version": get_installed_version(),
                 },
             ),
             (
@@ -612,14 +627,14 @@ class TestDescribeCluster:
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "parallelcluster:version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
                             "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
                         },
                     ],
-                    "version": "3.0.0",
+                    "version": get_installed_version(),
                 },
             ),
             (
@@ -639,14 +654,14 @@ class TestDescribeCluster:
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 5, 30)),
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "parallelcluster:version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
                             "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
                         },
                     ],
-                    "version": "3.0.0",
+                    "version": get_installed_version(),
                 },
             ),
             (
@@ -670,14 +685,14 @@ class TestDescribeCluster:
                     "lastUpdatedTime": to_iso_timestr(datetime(2021, 4, 30)),
                     "region": "us-east-1",
                     "tags": [
-                        {"key": "parallelcluster:version", "value": "3.0.0"},
+                        {"key": "parallelcluster:version", "value": get_installed_version()},
                         {"key": "parallelcluster:s3_bucket", "value": "bucket_name"},
                         {
                             "key": "parallelcluster:cluster_dir",
                             "value": "parallelcluster/3.0.0/clusters/pcluster3-2-smkloc964uzpm12m",
                         },
                     ],
-                    "version": "3.0.0",
+                    "version": get_installed_version(),
                     "headnode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
@@ -1099,7 +1114,7 @@ class TestUpdateCluster:
                 "clusterName": "clusterName",
                 "clusterStatus": "UPDATE_IN_PROGRESS",
                 "region": "us-east-1",
-                "version": "3.0.0",
+                "version": get_installed_version(),
             },
             "changeSet": [
                 {"parameter": "toplevel.subpath.param", "requestedValue": "newval", "currentValue": "oldval"}
@@ -1421,6 +1436,21 @@ class TestUpdateCluster:
                 id="request with single string configuration",
             ),
             pytest.param(
+                {"clusterConfiguration": "[cluster]\nkey_name=mykey"},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {
+                    "message": "Bad Request: Cluster update failed.\nParallelCluster 3 requires configuration files to "
+                    "be valid YAML documents. To create a basic cluster configuration, "
+                    "you can run the `pcluster configure` command."
+                },
+                id="invalid configuration with toml format",
+            ),
+            pytest.param(
                 {"clusterConfiguration": "Image:\n  InvalidKey: test"},
                 "us-east-1",
                 "clusterName",
@@ -1590,3 +1620,10 @@ class TestUpdateCluster:
 def test_get_validator_suppressors(suppress_validators_list, expected_suppressors):
     result = get_validator_suppressors(suppress_validators_list)
     assert_that(result).is_equal_to(expected_suppressors)
+
+
+@pytest.mark.parametrize("check_result", ["SUCCEEDED", "ACTION NEEDED", "FAILED"])
+def test_cluster_update_change_succeded(check_result):
+    """Verify we can compare string literals against update status enum, rather than its value attribute."""
+    successful_result = "SUCCEEDED"
+    assert_that(_cluster_update_change_succeded(check_result)).is_equal_to(check_result == successful_result)

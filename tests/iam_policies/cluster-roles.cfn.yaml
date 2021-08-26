@@ -27,11 +27,6 @@ Resources:
                   - logs:PutLogEvents
                 Effect: Allow
                 Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
-              - Action:
-                  - dynamodb:DescribeTable
-                  - dynamodb:Query
-                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
-                Effect: Allow
               - Action: ec2:DescribeInstances
                 Effect: Allow
                 Resource: '*'
