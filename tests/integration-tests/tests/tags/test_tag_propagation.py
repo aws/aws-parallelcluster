@@ -132,7 +132,7 @@ def get_main_stack_tags(cluster):
 
 def get_head_node_instance_id(cluster):
     """Return the given cluster's head node's instance ID."""
-    return cluster.cfn_resources.get("HeadNode")
+    return cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
 
 
 def get_ec2_instance_tags(instance_id, region):

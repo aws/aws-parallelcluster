@@ -282,7 +282,7 @@ def _assert_root_volume_configuration(cluster, os, region, scheduler):
     logging.info("Testing root volume type, iops, throughput.")
 
     # Test root volume of head node
-    head_node = cluster.cfn_resources["HeadNode"]
+    head_node = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
     if utils.dict_has_nested_key(cluster.config, ("HeadNode", "LocalStorage", "RootVolume")):
         logging.info("Checking head node root volume settings")
         root_volume_id = utils.get_root_volume_id(head_node, region, os)
