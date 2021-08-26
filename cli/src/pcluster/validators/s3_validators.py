@@ -1,4 +1,5 @@
 import re
+import time
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -16,31 +17,21 @@ class UrlValidator(Validator):
     Validate given url with s3 or https prefix.
     """
 
-    def _validate(self, url):
+    def _validate(self, url, retries=3):
         scheme = get_url_scheme(url)
         if scheme in ["https", "s3"]:
-            if scheme == "s3":
-                self._validate_s3_uri(url)
-            else:
-                try:
-                    with urlopen(url):  # nosec nosemgrep
-                        pass
-                except HTTPError as e:
-                    self._add_failure(
-                        f"The url '{url}' causes HTTPError, the error code is '{e.code}',"
-                        f" the error reason is '{e.reason}'.",
-                        FailureLevel.WARNING,
-                    )
-                except URLError as e:
-                    self._add_failure(
-                        f"The url '{url}' causes URLError, the error reason is '{e.reason}'.",
-                        FailureLevel.WARNING,
-                    )
-                except ValueError:
-                    self._add_failure(
-                        f"The value '{url}' is not a valid URL.",
-                        FailureLevel.ERROR,
-                    )
+            try:
+                if scheme == "s3":
+                    self._validate_s3_uri(url)
+                else:
+                    self._validate_https_uri(url)
+            except ConnectionError as e:
+                if retries > 0:
+                    time.sleep(5)
+                    self._validate(url, retries=retries - 1)
+                else:
+                    self._add_failure(f"The url '{url}' causes ConnectionError: {e}.", FailureLevel.WARNING)
+
         else:
             self._add_failure(
                 f"The value '{url}' is not a valid URL, choose URL with 'https' or 's3' prefix.",
@@ -59,6 +50,27 @@ class UrlValidator(Validator):
         except AWSClientError:
             # Todo: Check that bucket is in s3_read_resource or s3_read_write_resource.
             self._add_failure(("The S3 object does not exist or you do not have access to it."), FailureLevel.ERROR)
+
+    def _validate_https_uri(self, url: str):
+        try:
+            with urlopen(url):  # nosec nosemgrep
+                pass
+        except HTTPError as e:
+            self._add_failure(
+                f"The url '{url}' causes HTTPError, the error code is '{e.code}',"
+                f" the error reason is '{e.reason}'.",
+                FailureLevel.WARNING,
+            )
+        except URLError as e:
+            self._add_failure(
+                f"The url '{url}' causes URLError, the error reason is '{e.reason}'.",
+                FailureLevel.WARNING,
+            )
+        except ValueError:
+            self._add_failure(
+                f"The value '{url}' is not a valid URL.",
+                FailureLevel.ERROR,
+            )
 
 
 class S3BucketUriValidator(Validator):
