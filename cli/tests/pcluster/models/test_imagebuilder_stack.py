@@ -22,7 +22,6 @@ from pcluster.constants import (
 )
 from pcluster.models.imagebuilder import ImageBuilderStack
 from pcluster.utils import get_installed_version
-
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 FAKE_IMAGEBUILDER_STACK_NAME = "pcluster1"
