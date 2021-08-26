@@ -5,25 +5,33 @@ from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "url, response, expected_message",
+    "url, response, expected_message, error",
     [
-        ("s3://test/post_install.sh", True, None),
-        ("https://test/cookbook.tgz", True, None),
+        ("s3://test/post_install.sh", True, None, None),
+        ("https://test/cookbook.tgz", True, None, None),
         (
             "file:///test/node.tgz",
             False,
             "The value 'file:///test/node.tgz' is not a valid URL, " "choose URL with 'https' or 's3' prefix.",
+            None,
         ),
         (
             "fake://test/cookbook.tgz",
             False,
             "The value 'fake://test/cookbook.tgz' is not a valid URL, " "choose URL with 'https' or 's3' prefix.",
+            None,
+        ),
+        (
+            "https://test/cookbook.tgz",
+            True,
+            "The url 'https://test/cookbook.tgz' causes ConnectionError",
+            ConnectionError(),
         ),
     ],
 )
-def test_url_validator(mocker, url, response, expected_message, aws_api_mock):
+def test_url_validator(mocker, url, response, expected_message, aws_api_mock, error):
     aws_api_mock.s3.head_object.return_value = response
-    mocker.patch("pcluster.validators.s3_validators.urlopen")
+    mocker.patch("pcluster.validators.s3_validators.urlopen", side_effect=error)
 
     actual_failures = UrlValidator().execute(url=url)
     assert_failure_messages(actual_failures, expected_message)
