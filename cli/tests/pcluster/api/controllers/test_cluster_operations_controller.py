@@ -12,6 +12,7 @@ import pytest
 from assertpy import assert_that, soft_assertions
 from marshmallow.exceptions import ValidationError
 
+from pcluster.api.controllers.cluster_operations_controller import _cluster_update_change_succeded
 from pcluster.api.controllers.common import get_validator_suppressors
 from pcluster.api.models import CloudFormationStackStatus
 from pcluster.api.models.cluster_status import ClusterStatus
@@ -278,6 +279,19 @@ class TestCreateCluster:
                 {"message": "Bad Request: Configuration must be a valid YAML document"},
             ),
             (
+                {"clusterConfiguration": "[cluster]\nkey_name=mykey", "clusterName": "cluster"},
+                None,
+                None,
+                None,
+                "us-east-1",
+                None,
+                {
+                    "message": "Bad Request: ParallelCluster 3 requires configuration files to be "
+                    "valid YAML documents. To create a basic cluster configuration, "
+                    "you can run the `pcluster configure` command."
+                },
+            ),
+            (
                 {"clusterConfiguration": "Image:\n  InvalidKey: test", "clusterName": "cluster"},
                 None,
                 None,
@@ -319,6 +333,7 @@ class TestCreateCluster:
             "invalid_dryrun",
             "invalid_rollback",
             "invalid_config_format",
+            "invalid_toml_config_format",
             "invalid_config_schema",
             "empty_config",
         ],
@@ -1421,6 +1436,21 @@ class TestUpdateCluster:
                 id="request with single string configuration",
             ),
             pytest.param(
+                {"clusterConfiguration": "[cluster]\nkey_name=mykey"},
+                "us-east-1",
+                "clusterName",
+                None,
+                None,
+                None,
+                None,
+                {
+                    "message": "Bad Request: Cluster update failed.\nParallelCluster 3 requires configuration files to "
+                    "be valid YAML documents. To create a basic cluster configuration, "
+                    "you can run the `pcluster configure` command."
+                },
+                id="invalid configuration with toml format",
+            ),
+            pytest.param(
                 {"clusterConfiguration": "Image:\n  InvalidKey: test"},
                 "us-east-1",
                 "clusterName",
@@ -1590,3 +1620,10 @@ class TestUpdateCluster:
 def test_get_validator_suppressors(suppress_validators_list, expected_suppressors):
     result = get_validator_suppressors(suppress_validators_list)
     assert_that(result).is_equal_to(expected_suppressors)
+
+
+@pytest.mark.parametrize("check_result", ["SUCCEEDED", "ACTION NEEDED", "FAILED"])
+def test_cluster_update_change_succeded(check_result):
+    """Verify we can compare string literals against update status enum, rather than its value attribute."""
+    successful_result = "SUCCEEDED"
+    assert_that(_cluster_update_change_succeded(check_result)).is_equal_to(check_result == successful_result)
