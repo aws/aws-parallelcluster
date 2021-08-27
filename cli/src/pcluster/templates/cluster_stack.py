@@ -19,21 +19,18 @@ from collections import namedtuple
 from datetime import datetime
 from typing import Union
 
-from aws_cdk import aws_autoscaling as asg
-from aws_cdk import aws_cloudformation as cfn
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
 from aws_cdk.core import (
-    CfnAutoScalingReplacingUpdate,
-    CfnAutoScalingRollingUpdate,
+    CfnCreationPolicy,
     CfnOutput,
     CfnParameter,
+    CfnResourceSignal,
     CfnStack,
     CfnTag,
-    CfnUpdatePolicy,
     Construct,
     CustomResource,
     Fn,
@@ -103,7 +100,6 @@ class ClusterCdkStack(Stack):
         self._stack_name = stack_name
         self.config = cluster_config
         self.bucket = bucket
-        self.timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         if self.config.is_cw_logging_enabled:
             if log_group_name:
                 # pcluster update keep the log group,
@@ -219,7 +215,7 @@ class ClusterCdkStack(Stack):
         self._head_security_group, self._compute_security_group = self._add_security_groups()
 
         # Head Node ENI
-        self.head_eni = self._add_head_eni()
+        self._head_eni = self._add_head_eni()
 
         # Additional Cfn Stack
         if self.config.additional_resources:
@@ -251,11 +247,9 @@ class ClusterCdkStack(Stack):
                 shared_storage_options=self.shared_storage_options,
                 shared_storage_attributes=self.shared_storage_attributes,
             )
-        # Wait condition
-        self.wait_condition, self.wait_condition_handle = self._add_wait_condition()
 
         # Head Node
-        self.head_node_asg = self._add_head_node()
+        self.head_node_instance = self._add_head_node()
 
         # AWS Batch related resources
         if self._condition_is_batch():
@@ -269,7 +263,7 @@ class ClusterCdkStack(Stack):
                 compute_security_groups=self.compute_security_groups,  # Empty dict if provided by the user
                 shared_storage_mappings=self.shared_storage_mappings,
                 shared_storage_options=self.shared_storage_options,
-                head_node_eni=self.head_eni,
+                head_node_instance=self.head_node_instance,
                 instance_roles=self.instance_roles,  # Empty dict if provided by the user
             )
 
@@ -280,8 +274,7 @@ class ClusterCdkStack(Stack):
                 id="PclusterDashboard",
                 stack_name=self.stack_name,
                 cluster_config=self.config,
-                head_node_eni=self.head_eni,
-                head_node_asg=self.head_node_asg,
+                head_node_instance=self.head_node_instance,
                 shared_storage_mappings=self.shared_storage_mappings,
                 cw_log_group_name=self.log_group.log_group_name if self.config.is_cw_logging_enabled else None,
             )
@@ -887,13 +880,6 @@ class ClusterCdkStack(Stack):
         volume.cfn_options.deletion_policy = convert_deletion_policy(shared_ebs.deletion_policy)
         return volume.ref
 
-    def _add_wait_condition(self):
-        wait_condition_handle = cfn.CfnWaitConditionHandle(self, id="HeadNodeWaitConditionHandle" + self.timestamp)
-        wait_condition = cfn.CfnWaitCondition(
-            self, id="HeadNodeWaitCondition" + self.timestamp, count=1, handle=wait_condition_handle.ref, timeout="2400"
-        )
-        return wait_condition.ref, wait_condition_handle.ref
-
     def _add_head_node(self):
         head_node = self.config.head_node
         head_lt_security_groups = self._get_head_node_security_groups_full()
@@ -902,7 +888,7 @@ class ClusterCdkStack(Stack):
         head_lt_nw_interfaces = [
             ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
                 device_index=0,
-                network_interface_id=self.head_eni.ref,
+                network_interface_id=self._head_eni.ref,
             )
         ]
         for device_index in range(1, head_node.max_network_interface_count):
@@ -1039,8 +1025,8 @@ class ClusterCdkStack(Stack):
 
         cfn_init = {
             "configSets": {
-                "deployFiles": ["deployConfigFiles"],
                 "default": [
+                    "deployConfigFiles",
                     "cfnHupConfig",
                     "chefPrepEnv",
                     "shellRunPreInstall",
@@ -1048,7 +1034,7 @@ class ClusterCdkStack(Stack):
                     "shellRunPostInstall",
                     "chefFinalize",
                 ],
-                "update": ["deployConfigFiles", "chefUpdate", "sendSignal"],
+                "update": ["deployConfigFiles", "chefUpdate"],
             },
             "deployConfigFiles": {
                 "files": {
@@ -1070,12 +1056,6 @@ class ClusterCdkStack(Stack):
                         "owner": "root",
                         "group": "root",
                         "content": self.config.extra_chef_attributes,
-                    },
-                    "/tmp/wait_condition_handle.txt": {  # nosec
-                        "mode": "000644",
-                        "owner": "root",
-                        "group": "root",
-                        "content": self.wait_condition_handle,
                     },
                 },
                 "commands": {
@@ -1183,49 +1163,30 @@ class ClusterCdkStack(Stack):
                             "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::update_head_node || "
-                            "cfn-signal --exit-code=1 --reason='Chef client failed' "
-                            f"'{self.wait_condition_handle}'"
+                            "--override-runlist aws-parallelcluster::update_head_node"
                         ),
                         "cwd": "/etc/chef",
-                    }
-                }
-            },
-            "sendSignal": {
-                "commands": {
-                    "sendSignal": {
-                        "command": f"cfn-signal --exit-code=0 --reason='HeadNode setup complete' "
-                        f"'{self.wait_condition_handle}'"
                     }
                 }
             },
         }
 
         head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
-        head_node_asg = asg.CfnAutoScalingGroup(
+        head_node_instance = ec2.CfnInstance(
             self,
             "HeadNode",
-            max_size="1",
-            auto_scaling_group_name="parallelcluster-headnode-asg-" + self._stack_unique_id(),
-            availability_zones=[self.config.head_node.networking.availability_zone],
-            launch_template=asg.CfnAutoScalingGroup.LaunchTemplateSpecificationProperty(
-                version=head_node_launch_template.attr_latest_version_number,
+            launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
                 launch_template_id=head_node_launch_template.ref,
+                version=head_node_launch_template.attr_latest_version_number,
             ),
-            min_size="0",
-            desired_capacity="1",
         )
         if isinstance(self.scheduler_resources, SlurmConstruct):
-            head_node_asg.add_depends_on(self.scheduler_resources.terminate_compute_fleet_custom_resource)
-
-        head_node_asg.cfn_options.update_policy = CfnUpdatePolicy(
-            auto_scaling_replacing_update=CfnAutoScalingReplacingUpdate(will_replace=False),
-            auto_scaling_rolling_update=CfnAutoScalingRollingUpdate(
-                suspend_processes=["ReplaceUnhealthy"],
-            ),
+            head_node_instance.add_depends_on(self.scheduler_resources.terminate_compute_fleet_custom_resource)
+        head_node_instance.cfn_options.creation_policy = CfnCreationPolicy(
+            resource_signal=CfnResourceSignal(count=1, timeout="PT30M")
         )
 
-        return head_node_asg
+        return head_node_instance
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
@@ -1268,14 +1229,21 @@ class ClusterCdkStack(Stack):
 
         CfnOutput(
             self,
-            "HeadNodeAutoScalingGroupID",
-            description="ID of the head node autoscaling group",
-            value=self.head_node_asg.ref,
+            "HeadNodeInstanceID",
+            description="ID of the head node instance",
+            value=self.head_node_instance.ref,
         )
 
         CfnOutput(
             self,
             "HeadNodePrivateIP",
             description="Private IP Address of the head node",
-            value=self.head_eni.attr_primary_private_ip_address,
+            value=self.head_node_instance.attr_private_ip,
+        )
+
+        CfnOutput(
+            self,
+            "HeadNodePrivateDnsName",
+            description="Private DNS name of the head node",
+            value=self.head_node_instance.attr_private_dns_name,
         )

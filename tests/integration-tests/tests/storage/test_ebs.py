@@ -274,7 +274,7 @@ def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
             _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
     else:
         # If the scheduler is awsbatch, only the headnode root volume can be encrypted.
-        root_volume_id = utils.get_root_volume_id(cluster.get_cluster_instance_ids(node_type="HeadNode")[0], region, os)
+        root_volume_id = utils.get_root_volume_id(cluster.cfn_resources["HeadNode"], region, os)
         _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
 
 
@@ -282,7 +282,7 @@ def _assert_root_volume_configuration(cluster, os, region, scheduler):
     logging.info("Testing root volume type, iops, throughput.")
 
     # Test root volume of head node
-    head_node = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
+    head_node = cluster.cfn_resources["HeadNode"]
     if utils.dict_has_nested_key(cluster.config, ("HeadNode", "LocalStorage", "RootVolume")):
         logging.info("Checking head node root volume settings")
         root_volume_id = utils.get_root_volume_id(head_node, region, os)
