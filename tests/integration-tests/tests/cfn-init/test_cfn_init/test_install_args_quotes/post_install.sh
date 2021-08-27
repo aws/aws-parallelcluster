@@ -7,7 +7,7 @@ do
 done
 
 case $# in
-    4)
+    3)
         exit 0
     ;;
     *)
