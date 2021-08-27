@@ -47,7 +47,7 @@ from pcluster.config.cluster_config import (
     Iam,
     Image,
     Imds,
-    IntelSelectSolutions,
+    IntelSoftware,
     LocalStorage,
     Logs,
     Monitoring,
@@ -762,23 +762,21 @@ class ImdsSchema(BaseSchema):
         return Imds(**data)
 
 
-class IntelSelectSolutionsSchema(BaseSchema):
+class IntelSoftwareSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
-    install_intel_software = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    intel_hpc_platform = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return IntelSelectSolutions(**data)
+        return IntelSoftware(**data)
 
 
 class AdditionalPackagesSchema(BaseSchema):
     """Represent the schema of additional packages."""
 
-    intel_select_solutions = fields.Nested(
-        IntelSelectSolutionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
+    intel_software = fields.Nested(IntelSoftwareSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1203,18 +1201,18 @@ class ClusterSchema(BaseSchema):
         validate_no_reserved_tag(tags)
 
     @validates_schema
-    def no_intel_select_solutions_for_batch(self, data, **kwargs):
-        """Ensure IntelSelectSolutions section is not included when AWS Batch is the scheduler."""
+    def no_intel_software_for_batch(self, data, **kwargs):
+        """Ensure IntelSoftware section is not included when AWS Batch is the scheduler."""
         scheduling = data.get("scheduling")
         additional_packages = data.get("additional_packages")
         if (
             scheduling
             and scheduling.scheduler == "awsbatch"
             and additional_packages
-            and additional_packages.intel_select_solutions.install_intel_software
+            and additional_packages.intel_software.intel_hpc_platform
         ):
             raise ValidationError(
-                "The use of the IntelSelectSolutions package is not supported when using awsbatch as the scheduler."
+                "The use of the IntelSoftware configuration is not supported when using awsbatch as the scheduler."
             )
 
     @post_load(pass_original=True)

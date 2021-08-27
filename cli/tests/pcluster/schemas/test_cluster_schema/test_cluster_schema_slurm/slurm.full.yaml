@@ -172,8 +172,8 @@ Monitoring:
     CloudWatch:
       Enabled: true  # true
 AdditionalPackages:
-  IntelSelectSolutions:
-    InstallIntelSoftware: false
+  IntelSoftware:
+    IntelHpcPlatform: false
 Tags:
   - Key: String
     Value: String

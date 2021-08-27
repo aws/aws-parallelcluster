@@ -38,5 +38,5 @@ SharedStorage:
     EbsSettings:
       Size: 200
 AdditionalPackages:
-  IntelSelectSolutions:
-    InstallIntelSoftware: true
+  IntelSoftware:
+    IntelHpcPlatform: true
