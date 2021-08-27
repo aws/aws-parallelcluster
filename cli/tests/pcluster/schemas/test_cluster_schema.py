@@ -332,7 +332,7 @@ def test_shared_storage_schema(mocker, config_dict, failure_message):
     [
         ("slurm", True, None),
         ("slurm", False, None),
-        ("awsbatch", True, "use of the IntelSelectSolutions package is not supported when using awsbatch"),
+        ("awsbatch", True, "use of the IntelSoftware configuration is not supported when using awsbatch"),
         ("awsbatch", False, None),
     ],
 )
@@ -350,6 +350,6 @@ def test_scheduler_constraints_for_intel_packages(
     else:
         _, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
         assert_that(cluster.scheduling.scheduler).is_equal_to(scheduler)
-        assert_that(cluster.additional_packages.intel_select_solutions.install_intel_software).is_equal_to(
+        assert_that(cluster.additional_packages.intel_software.intel_hpc_platform).is_equal_to(
             install_intel_packages_enabled
         )

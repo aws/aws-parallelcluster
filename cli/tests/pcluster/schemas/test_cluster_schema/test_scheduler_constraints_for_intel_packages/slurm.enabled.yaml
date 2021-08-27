@@ -17,5 +17,5 @@ Scheduling:
         - Name: compute-resource1
           InstanceType: c5.2xlarge
 AdditionalPackages:
-  IntelSelectSolutions:
-    InstallIntelSoftware: true
+  IntelSoftware:
+    IntelHpcPlatform: true
