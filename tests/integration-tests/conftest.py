@@ -1189,3 +1189,51 @@ def pcluster_ami_without_standard_naming(region, os, architecture):
     if ami_id:
         client = boto3.client("ec2", region_name=region)
         client.deregister_image(ImageId=ami_id)
+
+
+@pytest.fixture(scope="class")
+def ami_copy(region):
+    """
+    Define a fixture to manage the copy and deletion of AMI.
+    This AMI is used to test head node and compute node AMI update
+    """
+    copy_ami_id = None
+    client = boto3.client("ec2", region_name=region)
+
+    def _copy_image(image_id, test_name):
+        nonlocal copy_ami_id
+        copy_ami_id = client.copy_image(
+            Name=f"aws-parallelcluster-copied-image-{test_name}", SourceImageId=image_id, SourceRegion=region
+        ).get("ImageId")
+
+        # Created tag for copied image to be filtered by cleanup ami pipeline
+        client.create_tags(
+            Resources=[
+                f"{copy_ami_id}",
+            ],
+            Tags=[
+                {
+                    "Key": "parallelcluster:image_id",
+                    "Value": f"aws-parallelcluster-copied-image-{test_name}",
+                },
+                {
+                    "Key": "parallelcluster:build_status",
+                    "Value": "available",
+                },
+            ],
+        )
+        return copy_ami_id
+
+    yield _copy_image
+
+    if copy_ami_id:
+        client = boto3.client("ec2", region_name=region)
+        copied_image_info = client.describe_images(ImageIds=[copy_ami_id])
+        logging.info("Deregister copied AMI.")
+        client.deregister_image(ImageId=copy_ami_id)
+        try:
+            for block_device_mapping in copied_image_info.get("Images")[0].get("BlockDeviceMappings"):
+                if block_device_mapping.get("Ebs"):
+                    client.delete_snapshot(SnapshotId=block_device_mapping.get("Ebs").get("SnapshotId"))
+        except IndexError as e:
+            logging.error("Delete copied AMI snapshot failed due to %s", e)
