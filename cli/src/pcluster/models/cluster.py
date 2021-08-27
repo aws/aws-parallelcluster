@@ -433,6 +433,7 @@ class Cluster:
                     config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("config_name"),
                 )
 
+                # config version will be stored in DB by the cookbook
                 self.config.config_version = result.get("VersionId")
 
                 # Upload original config

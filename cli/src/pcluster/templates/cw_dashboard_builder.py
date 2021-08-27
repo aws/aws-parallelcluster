@@ -10,7 +10,6 @@
 # limitations under the License.
 from collections import namedtuple
 
-from aws_cdk import aws_autoscaling as asg
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk.core import Construct, Stack
@@ -49,8 +48,7 @@ class CWDashboardConstruct(Construct):
         stack_name: str,
         id: str,
         cluster_config: BaseClusterConfig,
-        head_node_eni: ec2.CfnNetworkInterface,
-        head_node_asg: asg.CfnAutoScalingGroup,
+        head_node_instance: ec2.CfnInstance,
         shared_storage_mappings: dict,
         cw_log_group_name: str,
     ):
@@ -58,8 +56,7 @@ class CWDashboardConstruct(Construct):
         self.stack_scope = scope
         self.stack_name = stack_name
         self.config = cluster_config
-        self.head_node_eni = head_node_eni
-        self.head_node_asg = head_node_asg
+        self.head_node_instance = head_node_instance
         self.shared_storage_mappings = shared_storage_mappings
         self.cw_log_group_name = cw_log_group_name
 
@@ -187,7 +184,7 @@ class CWDashboardConstruct(Construct):
         metric_list = []
         for metric in metrics:
             cloudwatch_metric = cloudwatch.Metric(
-                namespace="AWS/EC2", metric_name=metric, dimensions={"AutoScalingGroupName": self.head_node_asg.ref}
+                namespace="AWS/EC2", metric_name=metric, dimensions={"InstanceId": self.head_node_instance.ref}
             )
             metric_list.append(cloudwatch_metric)
         return metric_list
@@ -342,7 +339,7 @@ class CWDashboardConstruct(Construct):
         dcv_enabled = self.config.is_dcv_enabled
         scheduler = self.config.scheduling.scheduler
         base_os = self.config.image.os
-        head_private_ip = self.head_node_eni.attr_primary_private_ip_address
+        head_private_ip = self.head_node_instance.attr_private_ip
 
         Condition = namedtuple("Condition", ["allowed_values", "param"])
         SectionWidgets = namedtuple("SectionWidgets", ["section_title", "widgets"])
