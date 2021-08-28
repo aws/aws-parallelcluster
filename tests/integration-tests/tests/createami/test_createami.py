@@ -100,7 +100,7 @@ def test_build_image(
 
     # Get base AMI
     # remarkable AMIs are not available for ARM and ubuntu2004, centos7 yet
-    if os not in ["ubuntu2004", "centos7"]:
+    if os not in ["centos7"]:
         base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
     else:
         base_ami = retrieve_latest_ami(region, os, architecture=architecture)
