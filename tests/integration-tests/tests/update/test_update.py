@@ -407,7 +407,7 @@ def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, cluste
     cluster.update(str(updated_config_file), force_update="true")
     instances = cluster.get_cluster_instance_ids(node_type="Compute")
     logging.info(instances)
-    _check_instance_ami_id(ec2, instances, pcluster_dlami_id)
+    _check_instance_ami_id(ec2, instances, pcluster_copy_ami_id)
 
 
 def _check_instance_ami_id(ec2, instances, expected_queue_ami):
