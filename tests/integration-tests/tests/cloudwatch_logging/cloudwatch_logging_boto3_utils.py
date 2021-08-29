@@ -48,6 +48,7 @@ def get_log_events(log_group_name, log_stream_name):
     Raises ClientError if the given log group or stream doesn't exist.
     """
     logs_client = boto3.client("logs")
+    LOGGER.info(f"Checking log events for {log_stream_name}")
     events = logs_client.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name).get("events")
     LOGGER.debug(
         "Log events for {group}/{stream}:\n{events}".format(
