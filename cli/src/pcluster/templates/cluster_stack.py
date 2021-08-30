@@ -25,18 +25,7 @@ from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
-from aws_cdk.core import (
-    CfnCreationPolicy,
-    CfnOutput,
-    CfnParameter,
-    CfnResourceSignal,
-    CfnStack,
-    CfnTag,
-    Construct,
-    CustomResource,
-    Fn,
-    Stack,
-)
+from aws_cdk.core import CfnOutput, CfnParameter, CfnStack, CfnTag, Construct, CustomResource, Fn, Stack
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
@@ -888,9 +877,9 @@ class ClusterCdkStack(Stack):
     def _add_wait_condition(self):
         wait_condition_handle = cfn.CfnWaitConditionHandle(self, id="HeadNodeWaitConditionHandle" + self.timestamp)
         wait_condition = cfn.CfnWaitCondition(
-            self, id="HeadNodeWaitCondition" + self.timestamp, count=1, handle=wait_condition_handle.ref, timeout="2400"
+            self, id="HeadNodeWaitCondition" + self.timestamp, count=1, handle=wait_condition_handle.ref, timeout="1800"
         )
-        return wait_condition.ref, wait_condition_handle.ref
+        return wait_condition, wait_condition_handle
 
     def _add_head_node(self):
         head_node = self.config.head_node
@@ -1073,7 +1062,7 @@ class ClusterCdkStack(Stack):
                         "mode": "000644",
                         "owner": "root",
                         "group": "root",
-                        "content": self.wait_condition_handle,
+                        "content": self.wait_condition_handle.ref,
                     },
                 },
                 "commands": {
@@ -1183,7 +1172,7 @@ class ClusterCdkStack(Stack):
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster::update_head_node || "
                             "cfn-signal --exit-code=1 --reason='Chef client failed' "
-                            f"'{self.wait_condition_handle}'"
+                            f"'{self.wait_condition_handle.ref}'"
                         ),
                         "cwd": "/etc/chef",
                     }
@@ -1193,7 +1182,7 @@ class ClusterCdkStack(Stack):
                 "commands": {
                     "sendSignal": {
                         "command": f"cfn-signal --exit-code=0 --reason='HeadNode setup complete' "
-                        f"'{self.wait_condition_handle}'"
+                        f"'{self.wait_condition_handle.ref}'"
                     }
                 }
             },
@@ -1210,10 +1199,6 @@ class ClusterCdkStack(Stack):
         )
         if isinstance(self.scheduler_resources, SlurmConstruct):
             head_node_instance.add_depends_on(self.scheduler_resources.terminate_compute_fleet_custom_resource)
-        head_node_instance.cfn_options.creation_policy = CfnCreationPolicy(
-            resource_signal=CfnResourceSignal(count=1, timeout="PT30M")
-        )
-
         return head_node_instance
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
