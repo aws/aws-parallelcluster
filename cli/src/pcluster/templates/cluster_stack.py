@@ -412,7 +412,7 @@ class ClusterCdkStack(Stack):
                     # Create a new security group
                     compute_security_group = self._add_compute_security_group()
                 # Associate created security group to the queue
-                self.compute_security_groups[queue.name] = compute_security_group.ref
+                self.compute_security_groups[queue.name] = compute_security_group
 
         if head_security_group and compute_security_group:
             # Access to head node from compute nodes
