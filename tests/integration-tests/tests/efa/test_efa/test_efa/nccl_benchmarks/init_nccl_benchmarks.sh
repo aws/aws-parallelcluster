@@ -4,7 +4,7 @@ set -e
 rm -rf /shared/${1}
 
 module load ${1}
-NCCL_BENCHMARKS_VERSION='2.0.0'
+NCCL_BENCHMARKS_VERSION='2.10.0'
 NCCL_VERSION='2.7.8-1'
 ML_REPO_PKG='nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb'
 CUDA_VERSION='11.4'
