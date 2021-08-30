@@ -301,6 +301,22 @@ class SlurmConstruct(Construct):
         if not self._condition_disable_cluster_dns():
             self.cluster_hosted_zone = self._add_private_hosted_zone()
 
+        self.terminate_compute_fleet_custom_resource = CfnCustomResource(
+            self.stack_scope,
+            "TerminateComputeFleetCustomResource",
+            service_token=self.cleanup_lambda.attr_arn,
+        )
+        self.terminate_compute_fleet_custom_resource.add_property_override("StackName", self.stack_name)
+        self.terminate_compute_fleet_custom_resource.add_property_override("Action", "TERMINATE_EC2_INSTANCES")
+        if not self._condition_disable_cluster_dns():
+            self.terminate_compute_fleet_custom_resource.add_depends_on(self.cleanup_route53_custom_resource)
+        for security_group in self.compute_security_groups.values():
+            # Control the order of resource deletion.
+            # Security groups can be deleted only after the compute nodes are terminated.
+            self.terminate_compute_fleet_custom_resource.add_depends_on(security_group)
+        # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
+        # terminate_compute_fleet_custom_resource.add_depends_on()
+
         for queue in self.config.scheduling.queues:
             queue_lt_security_groups = get_queue_security_groups_full(self.compute_security_groups, queue)
 
@@ -312,7 +328,11 @@ class SlurmConstruct(Construct):
                     # Create Placement Group
                     queue_placement_group = ec2.CfnPlacementGroup(
                         self.stack_scope, f"PlacementGroup{create_hash_suffix(queue.name)}", strategy="cluster"
-                    ).ref
+                    )
+                    # Control the order of resource deletion.
+                    # Placement group can be deleted only after the compute nodes are terminated.
+                    self.terminate_compute_fleet_custom_resource.add_depends_on(queue_placement_group)
+                    queue_placement_group = queue_placement_group.ref
 
             queue_pre_install_action, queue_post_install_action = (None, None)
             if queue.custom_actions:
@@ -331,18 +351,6 @@ class SlurmConstruct(Construct):
                     queue_lt_security_groups,
                     queue_placement_group,
                 )
-
-        self.terminate_compute_fleet_custom_resource = CfnCustomResource(
-            self.stack_scope,
-            "TerminateComputeFleetCustomResource",
-            service_token=self.cleanup_lambda.attr_arn,
-        )
-        self.terminate_compute_fleet_custom_resource.add_property_override("StackName", self.stack_name)
-        self.terminate_compute_fleet_custom_resource.add_property_override("Action", "TERMINATE_EC2_INSTANCES")
-        if not self._condition_disable_cluster_dns():
-            self.terminate_compute_fleet_custom_resource.add_depends_on(self.cleanup_route53_custom_resource)
-        # TODO: add depends_on resources from CloudWatchLogsSubstack and ComputeFleetHitSubstack?
-        # terminate_compute_fleet_custom_resource.add_depends_on()
 
     def _add_dynamodb_table(self):
         table = dynamodb.CfnTable(

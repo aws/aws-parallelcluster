@@ -241,7 +241,7 @@ def get_queue_security_groups_full(compute_security_groups: dict, queue: BaseQue
 
     # Default security groups, created by us or provided by the user
     if compute_security_groups and compute_security_groups.get(queue.name, None):
-        queue_security_groups.append(compute_security_groups[queue.name])
+        queue_security_groups.append(compute_security_groups[queue.name].ref)
     elif queue.networking.security_groups:
         queue_security_groups.extend(queue.networking.security_groups)
 
