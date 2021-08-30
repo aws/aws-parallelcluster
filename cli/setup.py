@@ -45,6 +45,7 @@ REQUIRES = [
     "aws-cdk.aws-route53~=" + CDK_VERSION,
     "aws-cdk.aws-ssm~=" + CDK_VERSION,
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
+    "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
     "werkzeug~=2.0",
     "connexion~=2.7",
     "flask~=2.0",

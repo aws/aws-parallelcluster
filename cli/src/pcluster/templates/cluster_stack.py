@@ -19,6 +19,7 @@ from collections import namedtuple
 from datetime import datetime
 from typing import Union
 
+from aws_cdk import aws_cloudformation as cfn
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
@@ -100,6 +101,7 @@ class ClusterCdkStack(Stack):
         self._stack_name = stack_name
         self.config = cluster_config
         self.bucket = bucket
+        self.timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         if self.config.is_cw_logging_enabled:
             if log_group_name:
                 # pcluster update keep the log group,
@@ -247,6 +249,9 @@ class ClusterCdkStack(Stack):
                 shared_storage_options=self.shared_storage_options,
                 shared_storage_attributes=self.shared_storage_attributes,
             )
+
+        # Wait condition
+        self.wait_condition, self.wait_condition_handle = self._add_wait_condition()
 
         # Head Node
         self.head_node_instance = self._add_head_node()
@@ -880,6 +885,13 @@ class ClusterCdkStack(Stack):
         volume.cfn_options.deletion_policy = convert_deletion_policy(shared_ebs.deletion_policy)
         return volume.ref
 
+    def _add_wait_condition(self):
+        wait_condition_handle = cfn.CfnWaitConditionHandle(self, id="HeadNodeWaitConditionHandle" + self.timestamp)
+        wait_condition = cfn.CfnWaitCondition(
+            self, id="HeadNodeWaitCondition" + self.timestamp, count=1, handle=wait_condition_handle.ref, timeout="2400"
+        )
+        return wait_condition.ref, wait_condition_handle.ref
+
     def _add_head_node(self):
         head_node = self.config.head_node
         head_lt_security_groups = self._get_head_node_security_groups_full()
@@ -1025,8 +1037,8 @@ class ClusterCdkStack(Stack):
 
         cfn_init = {
             "configSets": {
+                "deployFiles": ["deployConfigFiles"],
                 "default": [
-                    "deployConfigFiles",
                     "cfnHupConfig",
                     "chefPrepEnv",
                     "shellRunPreInstall",
@@ -1034,7 +1046,7 @@ class ClusterCdkStack(Stack):
                     "shellRunPostInstall",
                     "chefFinalize",
                 ],
-                "update": ["deployConfigFiles", "chefUpdate"],
+                "update": ["deployConfigFiles", "chefUpdate", "sendSignal"],
             },
             "deployConfigFiles": {
                 "files": {
@@ -1056,6 +1068,12 @@ class ClusterCdkStack(Stack):
                         "owner": "root",
                         "group": "root",
                         "content": self.config.extra_chef_attributes,
+                    },
+                    "/tmp/wait_condition_handle.txt": {  # nosec
+                        "mode": "000644",
+                        "owner": "root",
+                        "group": "root",
+                        "content": self.wait_condition_handle,
                     },
                 },
                 "commands": {
@@ -1163,9 +1181,19 @@ class ClusterCdkStack(Stack):
                             "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::update_head_node"
+                            "--override-runlist aws-parallelcluster::update_head_node || "
+                            "cfn-signal --exit-code=1 --reason='Chef client failed' "
+                            f"'{self.wait_condition_handle}'"
                         ),
                         "cwd": "/etc/chef",
+                    }
+                }
+            },
+            "sendSignal": {
+                "commands": {
+                    "sendSignal": {
+                        "command": f"cfn-signal --exit-code=0 --reason='HeadNode setup complete' "
+                        f"'{self.wait_condition_handle}'"
                     }
                 }
             },

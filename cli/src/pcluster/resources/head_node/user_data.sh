@@ -44,7 +44,7 @@ function error_exit
 {
   # wait logs flush before signaling the failure
   sleep 10
-  cfn-signal --exit-code=1 --reason="$1" --stack=${AWS::StackName} --resource=HeadNode --region=${AWS::Region}
+  cfn-signal --exit-code=1 --reason="$1" "${!wait_condition_handle_presigned_url}"
   exit 1
 }
 function vendor_cookbook
@@ -61,6 +61,13 @@ function vendor_cookbook
   export HOME="${!HOME_BAK}"
 }
 [ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh
+
+# deploy config files
+export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
+cd /tmp
+cfn-init -s ${AWS::StackName} -v -c deployFiles -r HeadNodeLaunchTemplate --region ${AWS::Region}
+wait_condition_handle_presigned_url=$(cat /tmp/wait_condition_handle.txt)
+
 custom_cookbook=${CustomChefCookbook}
 export _region=${AWS::Region}
 s3_url=${AWS::URLSuffix}
@@ -75,7 +82,6 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
     cookbook_url=${!custom_cookbook}
   fi
 fi
-export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 export parallelcluster_version=aws-parallelcluster-${ParallelClusterVersion}
 export cookbook_version=${CookbookVersion}
 export chef_version=${ChefVersion}
@@ -92,9 +98,9 @@ if [ "${!custom_cookbook}" != "NONE" ]; then
   curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
   vendor_cookbook
 fi
-cd /tmp
+
 # Call CloudFormation
 cfn-init -s ${AWS::StackName} -v -c default -r HeadNodeLaunchTemplate --region ${AWS::Region} || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
-cfn-signal --exit-code=0 --reason="HeadNode setup complete" --stack=${AWS::StackName} --resource=HeadNode --region=${AWS::Region}
+cfn-signal --exit-code=0 --reason="HeadNode setup complete" "${!wait_condition_handle_presigned_url}"
 # End of file
 --==BOUNDARY==
