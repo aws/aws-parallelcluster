@@ -1,7 +1,7 @@
 #!/bin/bash
 . "/etc/parallelcluster/cfnconfig"
 
-case "${node_type}" in
+case "${cfn_node_type}" in
     HeadNode)
         exit 0
     ;;
