@@ -13,7 +13,6 @@ from assertpy import assert_that
 from pcluster.api.models import CreateClusterResponseContent, DescribeClusterResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
-
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import wire_translate
 

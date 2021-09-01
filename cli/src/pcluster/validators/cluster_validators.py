@@ -778,8 +778,10 @@ class _LaunchTemplateValidator(Validator, ABC):
                         "to allow private IPs reaching the Internet (e.g. a NAT Gateway and a valid route table).",
                         FailureLevel.WARNING,
                     )
-            elif code == "Unsupported" and availability_zone not in AWSApi.instance().ec2.get_supported_az_for_instance_type(
-                kwargs["InstanceType"]
+            elif (
+                code == "Unsupported"
+                and availability_zone
+                not in AWSApi.instance().ec2.get_supported_az_for_instance_type(kwargs["InstanceType"])
             ):
                 # If an availability zone without desired instance type is selected, error code is "Unsupported"
                 # Therefore, we need to write our own code to tell the specific problem

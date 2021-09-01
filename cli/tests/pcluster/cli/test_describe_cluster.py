@@ -11,7 +11,6 @@ from assertpy import assert_that
 from pcluster.api.models import DescribeClusterResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
-
 from tests.utils import wire_translate
 
 

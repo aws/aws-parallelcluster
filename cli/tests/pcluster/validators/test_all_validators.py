@@ -25,7 +25,6 @@ from pcluster.validators import (
     s3_validators,
 )
 from pcluster.validators.common import Validator
-
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
 
