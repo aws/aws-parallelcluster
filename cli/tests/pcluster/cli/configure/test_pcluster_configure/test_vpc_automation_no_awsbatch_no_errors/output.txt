@@ -43,4 +43,4 @@ Allowed values for Network Configuration:
 2. Head node and compute fleet in the same public subnet
 Beginning VPC creation. Please do not leave the terminal until the creation is finalized
 Configuration file written to {{ CONFIG_FILE }}
-You can edit your configuration file or simply run 'pcluster create-cluster --cluster-configuration {{ CONFIG_FILE }} --cluster-name cluster-name' to create your cluster
+You can edit your configuration file or simply run 'pcluster create-cluster --cluster-configuration {{ CONFIG_FILE }} --cluster-name cluster-name --region eu-west-1' to create your cluster.

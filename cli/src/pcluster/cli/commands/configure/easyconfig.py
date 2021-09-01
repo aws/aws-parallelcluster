@@ -255,7 +255,7 @@ def configure(args):  # noqa: C901
     _write_configuration_file(config_file_path, result)
     print(
         "You can edit your configuration file or simply run 'pcluster create-cluster --cluster-configuration "
-        f"{config_file_path} --cluster-name cluster-name' to create your cluster"
+        f"{config_file_path} --cluster-name cluster-name --region {get_region()}' to create your cluster."
     )
 
 
