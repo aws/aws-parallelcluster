@@ -206,6 +206,7 @@ class ImageBuilderConfig(Resource):
         build: Build,
         image: Image = None,
         dev_settings: ImagebuilderDevSettings = None,
+        config_region: str = None,
         custom_s3_bucket: str = None,
         source_config: str = None,
     ):
@@ -213,6 +214,12 @@ class ImageBuilderConfig(Resource):
         self.image = image
         self.build = build
         self.dev_settings = dev_settings
+        # config_region represents the region parameter in the configuration file
+        # and is only used by configure_aws_region_from_config in controllers.
+        # Since the region is already set by configure_aws_region_from_config to the environment variable,
+        # the self.config_region is never used. It has to be here to make sure imagebuilder_config stores
+        # all information from a configuration file, so it is able to recreate the same file.
+        self.config_region = config_region
         self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
         self.source_config = source_config
 

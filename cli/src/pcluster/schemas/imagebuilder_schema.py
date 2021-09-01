@@ -216,6 +216,7 @@ class ImageBuilderSchema(BaseSchema):
     image = fields.Nested(ImageSchema)
     build = fields.Nested(BuildSchema, required=True)
     dev_settings = fields.Nested(ImagebuilderDevSettingsSchema)
+    config_region = fields.Str(data_key="Region")
     custom_s3_bucket = fields.Str()
 
     @post_load(pass_original=True)
