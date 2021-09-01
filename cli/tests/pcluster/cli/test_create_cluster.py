@@ -13,6 +13,7 @@ from assertpy import assert_that
 from pcluster.api.models import CreateClusterResponseContent, DescribeClusterResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
+
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import wire_translate
 
@@ -22,40 +23,20 @@ class TestCreateClusterCommand:
         command = ["pcluster", "create-cluster", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
+            ({}, "error: the following arguments are required: --cluster-name, --cluster-configuration"),
+            ({"--cluster-configuration": None}, "error: argument --cluster-configuration: expected one argument"),
+            ({"--cluster-name": None}, "error: argument --cluster-name: expected one argument"),
             (
-                {},
-                "error: the following arguments are required: --cluster-name, --cluster-configuration",
-            ),
-            (
-                {"--cluster-configuration": None},
-                "error: argument --cluster-configuration: expected one argument",
-            ),
-            (
-                {"--cluster-name": None},
-                "error: argument --cluster-name: expected one argument",
-            ),
-            (
-                {
-                    "--cluster-configuration": "file",
-                    "--cluster-name": "cluster",
-                    "--invalid": None,
-                },
+                {"--cluster-configuration": "file", "--cluster-name": "cluster", "--invalid": None},
                 "Invalid arguments ['--invalid']",
             ),
             (
-                {
-                    "--cluster-configuration": "file",
-                    "--cluster-name": "cluster",
-                    "--region": "eu-west-",
-                },
+                {"--cluster-configuration": "file", "--cluster-name": "cluster", "--region": "eu-west-"},
                 "Bad Request: invalid or unsupported region 'eu-west-'",
             ),
         ],
@@ -84,7 +65,7 @@ class TestCreateClusterCommand:
 
         status_response_dict = {
             "creationTime": "2021-01-01 00:00:00.000000+00:00",
-            "headnode": {
+            "head_node": {
                 "launchTime": "2021-01-01T00:00:00+00:00",
                 "instanceId": "i-099aaaaa7000ccccc",
                 "publicIpAddress": "18.118.18.18",

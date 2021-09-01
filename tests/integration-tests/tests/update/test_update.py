@@ -452,7 +452,7 @@ def get_batch_spot_bid_percentage(stack_name, region):
 
 
 @pytest.mark.usefixtures("instance")
-def test_update_headnode(
+def test_update_head_node(
     region, os, pcluster_config_reader, s3_bucket_factory, ami_copy, clusters_factory, test_datadir
 ):
     # Create S3 bucket for pre/post install scripts
@@ -463,7 +463,7 @@ def test_update_headnode(
 
     # Create cluster with initial configuration
     pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster")
-    headnode_ami_id = ami_copy(pcluster_ami_id, "-".join(["test", "update", "headnode", generate_random_string()]))
+    head_node_ami_id = ami_copy(pcluster_ami_id, "-".join(["test", "update", "head", "node", generate_random_string()]))
     init_config_file = pcluster_config_reader(resource_bucket=bucket_name, global_custom_ami=pcluster_ami_id)
     cluster = clusters_factory(init_config_file)
 
@@ -474,12 +474,7 @@ def test_update_headnode(
     # Submit a job to verify that job submission works in cluster creation
     _test_job_submission(slurm_commands, "sleep 30", 1, "static&c5.xlarge")
 
-    update_parameters = {
-        "instance": "t2.xlarge",
-        "root_volume_size": 50,
-        "encrypted": "true",
-        "volume_type": "gp2",
-    }
+    update_parameters = {"instance": "t2.xlarge", "root_volume_size": 50, "encrypted": "true", "volume_type": "gp2"}
     # stop compute fleet and update cluster
     cluster.stop()
     logging.info("Sleep 120 seconds to wait cluster stop.")
@@ -493,17 +488,17 @@ def test_update_headnode(
         volume_type=update_parameters.get("volume_type"),
         root_volume_size=update_parameters.get("root_volume_size"),
         global_custom_ami=pcluster_ami_id,
-        headnode_custom_ami=headnode_ami_id,
+        head_node_custom_ami=head_node_ami_id,
     )
 
     cluster.update(str(updated_config_file), force_update="true")
 
-    headnode_id = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
+    head_node_id = cluster.get_cluster_instance_ids(node_type="HeadNode")[0]
     ec2 = boto3.client("ec2", region)
-    instance_info = ec2.describe_instances(Filters=[], InstanceIds=[headnode_id])["Reservations"][0]["Instances"][0]
-    _test_headnode_root_volume(instance_info, cluster.config, ec2)
-    _test_headnode_instance_type(instance_info, update_parameters.get("instance"))
-    _test_headnode_base_ami(instance_info, headnode_ami_id)
+    instance_info = ec2.describe_instances(Filters=[], InstanceIds=[head_node_id])["Reservations"][0]["Instances"][0]
+    _test_head_node_root_volume(instance_info, cluster.config, ec2)
+    _test_head_node_instance_type(instance_info, update_parameters.get("instance"))
+    _test_head_node_base_ami(instance_info, head_node_ami_id)
     # Submit a job to verify that job submission works in cluster update
     # get updated slurm commands
     command_executor = RemoteCommandExecutor(cluster)
@@ -512,12 +507,12 @@ def test_update_headnode(
 
     # Create shared dir for script results
     command_executor.run_remote_command("sudo mkdir -p /shared/script_results")
-    _check_headnode_script(command_executor, "preinstall", "ABC")
-    _check_headnode_script(command_executor, "postinstall", "DEF")
+    _check_head_node_script(command_executor, "preinstall", "ABC")
+    _check_head_node_script(command_executor, "postinstall", "DEF")
 
 
-def _test_headnode_root_volume(instance_info, config, ec2):
-    logging.info("checking updated headnode root volume.")
+def _test_head_node_root_volume(instance_info, config, ec2):
+    logging.info("checking updated head_node root volume.")
     volume_id = instance_info["BlockDeviceMappings"][0]["Ebs"]["VolumeId"]
     volume_info = ec2.describe_volumes(Filters=[], VolumeIds=[volume_id])["Volumes"][0]
     volume_size = config["HeadNode"]["LocalStorage"]["RootVolume"]["Size"]
@@ -531,14 +526,14 @@ def _test_headnode_root_volume(instance_info, config, ec2):
     assert_that(actual_volume_type).is_equal_to(volume_type)
 
 
-def _test_headnode_instance_type(instance_info, instance_type):
+def _test_head_node_instance_type(instance_info, instance_type):
     logging.info("checking updated head node instance type.")
     assert_that(instance_info.get("InstanceType")).is_equal_to(instance_type)
 
 
-def _test_headnode_base_ami(instance_info, headnode_ami_id):
+def _test_head_node_base_ami(instance_info, head_node_ami_id):
     logging.info("checking updated head node base ami.")
-    assert_that(instance_info.get("ImageId")).is_equal_to(headnode_ami_id)
+    assert_that(instance_info.get("ImageId")).is_equal_to(head_node_ami_id)
 
 
 def _test_job_submission(slurm_commands, job, nodes, constraint):
@@ -549,7 +544,7 @@ def _test_job_submission(slurm_commands, job, nodes, constraint):
     slurm_commands.assert_job_succeeded(job_id)
 
 
-def _check_headnode_script(command_executor, script_name, script_arg):
+def _check_head_node_script(command_executor, script_name, script_arg):
     command_executor.run_remote_command(
         "sudo cp /tmp/{0}_out.txt /shared/script_results/{0}_out.txt".format(script_name)
     )

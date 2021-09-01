@@ -32,10 +32,7 @@ NAME_MAX_LENGTH = 25
 SHARED_STORAGE_NAME_MAX_LENGTH = 30
 NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
-EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": [],
-    "arm64": ["centos7"],
-}
+EFA_UNSUPPORTED_ARCHITECTURES_OSES = {"x86_64": [], "arm64": ["centos7"]}
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": SUPPORTED_OSES,
@@ -82,8 +79,7 @@ class RegionValidator(Validator):
     def _validate(self, region):
         if region not in SUPPORTED_REGIONS:
             self._add_failure(
-                f"Region '{region}' is not yet officially supported by ParallelCluster",
-                FailureLevel.ERROR,
+                f"Region '{region}' is not yet officially supported by ParallelCluster", FailureLevel.ERROR
             )
 
 
@@ -98,8 +94,7 @@ class SchedulerOsValidator(Validator):
         supported_os = get_supported_os_for_scheduler(scheduler)
         if os not in supported_os:
             self._add_failure(
-                f"{scheduler} scheduler supports the following operating systems: {supported_os}.",
-                FailureLevel.ERROR,
+                f"{scheduler} scheduler supports the following operating systems: {supported_os}.", FailureLevel.ERROR
             )
 
 
@@ -154,10 +149,7 @@ class ComputeResourceSizeValidator(Validator):
 
     def _validate(self, min_count, max_count):
         if max_count < min_count:
-            self._add_failure(
-                "Max count must be greater than or equal to min count.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure("Max count must be greater than or equal to min count.", FailureLevel.ERROR)
 
 
 class DisableSimultaneousMultithreadingArchitectureValidator(Validator):
@@ -183,8 +175,7 @@ class EfaOsArchitectureValidator(Validator):
     def _validate(self, efa_enabled: bool, os: str, architecture: str):
         if efa_enabled and os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
-                f"EFA is currently not supported on {os} for {architecture} architecture.",
-                FailureLevel.ERROR,
+                f"EFA is currently not supported on {os} for {architecture} architecture.", FailureLevel.ERROR
             )
 
 
@@ -248,15 +239,11 @@ class NameValidator(Validator):
 
         if len(name) > NAME_MAX_LENGTH:
             self._add_failure(
-                f"Invalid name '{name}'. Name can be at most {NAME_MAX_LENGTH} chars long.",
-                FailureLevel.ERROR,
+                f"Invalid name '{name}'. Name can be at most {NAME_MAX_LENGTH} chars long.", FailureLevel.ERROR
             )
 
         if re.match("^default$", name):
-            self._add_failure(
-                f"It is forbidden to use '{name}' as a name.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure(f"It is forbidden to use '{name}' as a name.", FailureLevel.ERROR)
 
 
 class DuplicateInstanceTypeValidator(Validator):
@@ -288,20 +275,13 @@ class EfaValidator(Validator):
 
         instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
         if efa_enabled and not instance_type_supports_efa:
-            self._add_failure(
-                f"Instance type '{instance_type}' does not support EFA.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure(f"Instance type '{instance_type}' does not support EFA.", FailureLevel.ERROR)
         if instance_type_supports_efa and not efa_enabled:
             self._add_failure(
-                f"Instance type '{instance_type}' supports EFA, but it is not enabled.",
-                FailureLevel.WARNING,
+                f"Instance type '{instance_type}' supports EFA, but it is not enabled.", FailureLevel.WARNING
             )
         if gdr_support and not efa_enabled:
-            self._add_failure(
-                "The EFA GDR Support can be used only if EFA is enabled.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure("The EFA GDR Support can be used only if EFA is enabled.", FailureLevel.ERROR)
 
 
 class EfaPlacementGroupValidator(Validator):
@@ -644,10 +624,7 @@ class SharedStorageNameValidator(Validator):
             )
 
         if re.match("^default$", name):
-            self._add_failure(
-                f"It is forbidden to use '{name}' as a name.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure(f"It is forbidden to use '{name}' as a name.", FailureLevel.ERROR)
 
 
 # --------------- Third party software validators --------------- #
@@ -660,15 +637,7 @@ class DcvValidator(Validator):
     Validate instance type, architecture and os when DCV is enabled.
     """
 
-    def _validate(
-        self,
-        instance_type,
-        dcv_enabled,
-        allowed_ips,
-        port,
-        os,
-        architecture: str,
-    ):
+    def _validate(self, instance_type, dcv_enabled, allowed_ips, port, os, architecture: str):
         if dcv_enabled:
             allowed_oses = get_supported_dcv_os(architecture)
             if os not in allowed_oses:
@@ -809,10 +778,8 @@ class _LaunchTemplateValidator(Validator, ABC):
                         "to allow private IPs reaching the Internet (e.g. a NAT Gateway and a valid route table).",
                         FailureLevel.WARNING,
                     )
-            elif (
-                code == "Unsupported"
-                and availability_zone
-                not in AWSApi.instance().ec2.get_supported_az_for_instance_type(kwargs["InstanceType"])
+            elif code == "Unsupported" and availability_zone not in AWSApi.instance().ec2.get_supported_az_for_instance_type(
+                kwargs["InstanceType"]
             ):
                 # If an availability zone without desired instance type is selected, error code is "Unsupported"
                 # Therefore, we need to write our own code to tell the specific problem
@@ -882,15 +849,9 @@ class HeadNodeImdsValidator(Validator):
 
     def _validate(self, imds_secured: bool, scheduler: str):
         if scheduler is None:
-            self._add_failure(
-                "Cannot validate IMDS configuration if scheduler is not set.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure("Cannot validate IMDS configuration if scheduler is not set.", FailureLevel.ERROR)
         elif imds_secured is None:
-            self._add_failure(
-                "Cannot validate IMDS configuration if IMDS Secured is not set.",
-                FailureLevel.ERROR,
-            )
+            self._add_failure("Cannot validate IMDS configuration if IMDS Secured is not set.", FailureLevel.ERROR)
         elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
             self._add_failure(
                 f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
@@ -965,7 +926,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
 
 
 class HostedZoneValidator(Validator):
-    """Validate custom private domain in the same VPC as headnode."""
+    """Validate custom private domain in the same VPC as head node."""
 
     def _validate(self, hosted_zone_id, cluster_vpc, cluster_name):
         if AWSApi.instance().route53.is_hosted_zone_private(hosted_zone_id):

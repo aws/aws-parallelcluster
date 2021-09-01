@@ -18,6 +18,7 @@ from pcluster.config.cluster_config import SharedStorageType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_yaml_dict
+
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 
@@ -28,7 +29,7 @@ from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_buc
         "centos7.slurm.full.yaml",
         "alinux2.slurm.conditional_vol.yaml",
         "ubuntu18.slurm.simple.yaml",
-        "alinux2.batch.no_headnode_log.yaml",
+        "alinux2.batch.no_head_node_log.yaml",
         "ubuntu18.slurm.no_dashboard.yaml",
     ],
 )

@@ -73,7 +73,7 @@ def test_pcluster_configure_avoid_bad_subnets(
 ):
     """
     When config file contains a subnet that does not have the desired instance type, verify that `pcluster configure`
-    can correct the headnode/compute_subnet_id fields using qualified subnets and show a message for the omitted subnets
+    can correct the head_node/compute_subnet_id fields using qualified subnets and show a message for the omitted subnets
     """
     config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
@@ -83,7 +83,7 @@ def test_pcluster_configure_avoid_bad_subnets(
         os,
         instance,
         vpc_stack.cfn_outputs["VpcId"],
-        # This test does not provide headnode/compute_subnet_ids input.
+        # This test does not provide head_node/compute_subnet_ids input.
         # Therefore, pcluster configure should use the subnet specified in the config file by default.
         # However, in this test, the availability zone of the subnet in the config file does not contain c5.xlarge.
         # Eventually, pcluster configure should omit the subnet in the config file
@@ -94,26 +94,11 @@ def test_pcluster_configure_avoid_bad_subnets(
     )
     assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
-        key_name,
-        scheduler,
-        os,
-        instance,
-        vpc_stack.cfn_outputs["VpcId"],
-        None,
-        None,
-        config_path,
+        key_name, scheduler, os, instance, vpc_stack.cfn_outputs["VpcId"], None, None, config_path
     )
 
 
-def test_region_without_t2micro(
-    vpc_stack,
-    pcluster_config_reader,
-    key_name,
-    region,
-    os,
-    scheduler,
-    test_datadir,
-):
+def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir):
     """
     Verify the default instance type (free tier) is retrieved dynamically according to region.
     In other words, t3.micro is retrieved when the region does not contain t2.micro
@@ -176,7 +161,7 @@ def assert_configure_workflow(region, stages, config_path):
 
 
 def assert_config_contains_expected_values(
-    key_name, scheduler, os, instance, vpc_id, headnode_subnet_id, compute_subnet_id, config_path
+    key_name, scheduler, os, instance, vpc_id, head_node_subnet_id, compute_subnet_id, config_path
 ):
     with open(config_path, encoding="utf-8") as conf_file:
         config = yaml.safe_load(conf_file)
@@ -185,12 +170,9 @@ def assert_config_contains_expected_values(
     param_validators = [
         {"parameter_path": ["HeadNode", "Ssh", "KeyName"], "expected_value": key_name},
         {"parameter_path": ["Scheduling", "Scheduler"], "expected_value": scheduler},
-        {
-            "parameter_path": ["Image", "Os"],
-            "expected_value": os if scheduler != "awsbatch" else "alinux2",
-        },
+        {"parameter_path": ["Image", "Os"], "expected_value": os if scheduler != "awsbatch" else "alinux2"},
         {"parameter_path": ["HeadNode", "InstanceType"], "expected_value": instance},
-        {"parameter_path": ["HeadNode", "Networking", "SubnetId"], "expected_value": headnode_subnet_id},
+        {"parameter_path": ["HeadNode", "Networking", "SubnetId"], "expected_value": head_node_subnet_id},
         {
             "parameter_path": [
                 "Scheduling",
@@ -220,7 +202,7 @@ def assert_config_contains_expected_values(
             {
                 "parameter_path": ["Scheduling", "AwsBatchQueues", 0, "ComputeResources", 0, "MinvCpus"],
                 "expected_value": 0,
-            },
+            }
         ]
 
     for validator in param_validators:
@@ -242,19 +224,11 @@ def _get_value_by_nested_key(d, keys):
 
 
 def orchestrate_pcluster_configure_stages(
-    region,
-    key_name,
-    scheduler,
-    os,
-    instance,
-    vpc_id,
-    headnode_subnet_id,
-    compute_subnet_id,
-    omitted_subnets_num=0,
+    region, key_name, scheduler, os, instance, vpc_id, head_node_subnet_id, compute_subnet_id, omitted_subnets_num=0
 ):
     size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
-    # Default compute subnet follows the selection of headnode subnet
-    default_compute_subnet = headnode_subnet_id if headnode_subnet_id else "subnet-.+"
+    # Default compute subnet follows the selection of head node subnet
+    default_compute_subnet = head_node_subnet_id or "subnet-.+"
     # When there are omitted subnets, a note should be printed
     omitted_note = "Note:  {0} subnet.+not listed.+".format(omitted_subnets_num) if omitted_subnets_num else ""
     stage_list = [
@@ -275,14 +249,8 @@ def orchestrate_pcluster_configure_stages(
         {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
         {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
-        {
-            "prompt": fr"{omitted_note}head node subnet ID \[subnet-.+\]: ",
-            "response": headnode_subnet_id,
-        },
-        {
-            "prompt": fr"{omitted_note}compute subnet ID \[{default_compute_subnet}\]: ",
-            "response": compute_subnet_id,
-        },
+        {"prompt": fr"{omitted_note}head node subnet ID \[subnet-.+\]: ", "response": head_node_subnet_id},
+        {"prompt": fr"{omitted_note}compute subnet ID \[{default_compute_subnet}\]: ", "response": compute_subnet_id},
     ]
     # When a user selects Batch as the scheduler, pcluster configure does not prompt for OS or compute instance type.
     return [stage for stage in stage_list if scheduler != "awsbatch" or not stage.get("skip_for_batch")]
@@ -300,10 +268,7 @@ def subnet_in_use1_az3(vpc_stack):
     paginator = ec2_client.get_paginator("describe_instance_type_offerings")
     page_iterator = paginator.paginate(
         LocationType="availability-zone-id",
-        Filters=[
-            {"Name": "instance-type", "Values": ["c5.xlarge"]},
-            {"Name": "location", "Values": ["use1-az3"]},
-        ],
+        Filters=[{"Name": "instance-type", "Values": ["c5.xlarge"]}, {"Name": "location", "Values": ["use1-az3"]}],
     )
     offerings = []
     for page in page_iterator:

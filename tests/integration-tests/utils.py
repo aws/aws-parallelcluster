@@ -21,8 +21,9 @@ import subprocess
 
 import boto3
 from assertpy import assert_that
-from constants import OS_TO_ROOT_VOLUME_DEVICE
 from retrying import retry
+
+from constants import OS_TO_ROOT_VOLUME_DEVICE
 
 
 class InstanceTypesData:
@@ -365,7 +366,7 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
     return instance_architectures[0]
 
 
-def check_headnode_security_group(region, cluster, port, expected_cidr):
+def check_head_node_security_group(region, cluster, port, expected_cidr):
     """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
     security_group_id = cluster.cfn_resources.get("HeadNodeSecurityGroup")
     response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
@@ -381,7 +382,7 @@ def check_status(cluster, cluster_status=None, head_node_status=None, compute_fl
     if cluster_status:
         assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
     if head_node_status:
-        assert_that(cluster_info["headnode"]["state"]).is_equal_to(head_node_status)
+        assert_that(cluster_info["head_node"]["state"]).is_equal_to(head_node_status)
     if compute_fleet_status:
         assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
 

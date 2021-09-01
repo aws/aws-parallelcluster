@@ -153,10 +153,7 @@ def test_ebs_existing(
     )
 
     logging.info("Existing Volume id: %s" % volume_id)
-    cluster_config = pcluster_config_reader(
-        volume_id=volume_id,
-        existing_mount_dir=existing_mount_dir,
-    )
+    cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
 
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -273,7 +270,7 @@ def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
             root_volume_id = utils.get_root_volume_id(instance, region, os)
             _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
     else:
-        # If the scheduler is awsbatch, only the headnode root volume can be encrypted.
+        # If the scheduler is awsbatch, only the head_node root volume can be encrypted.
         root_volume_id = utils.get_root_volume_id(cluster.cfn_resources["HeadNode"], region, os)
         _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
 
