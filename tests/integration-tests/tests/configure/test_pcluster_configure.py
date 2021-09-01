@@ -73,7 +73,8 @@ def test_pcluster_configure_avoid_bad_subnets(
 ):
     """
     When config file contains a subnet that does not have the desired instance type, verify that `pcluster configure`
-    can correct the head_node/compute_subnet_id fields using qualified subnets and show a message for the omitted subnets
+    can correct the head_node/compute_subnet_id fields using qualified subnets and show a message for the omitted
+    subnets
     """
     config_path = test_datadir / "config.yaml"
     stages = orchestrate_pcluster_configure_stages(
