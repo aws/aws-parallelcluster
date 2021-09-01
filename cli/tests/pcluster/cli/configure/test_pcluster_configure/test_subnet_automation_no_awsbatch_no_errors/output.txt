@@ -49,4 +49,4 @@ Allowed values for Network Configuration:
 1. Head node in a public subnet and compute fleet in a private subnet
 2. Head node and compute fleet in the same public subnet
 Configuration file written to {{ CONFIG_FILE }}
-You can edit your configuration file or simply run 'pcluster create-cluster --cluster-configuration {{ CONFIG_FILE }} --cluster-name cluster-name' to create your cluster
+You can edit your configuration file or simply run 'pcluster create-cluster --cluster-configuration {{ CONFIG_FILE }} --cluster-name cluster-name --region eu-west-1' to create your cluster.

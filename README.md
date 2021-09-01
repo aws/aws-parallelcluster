@@ -105,7 +105,7 @@ At the end of the process a message like this one will be shown:
 
 ```
 Configuration file written to /dir/conf_file
-You can edit your configuration file or simply run 'pcluster create-cluster --cluster-name cluster-name --cluster-configuration /dir/cluster-config.yaml' to create your cluster
+You can edit your configuration file or simply run 'pcluster create-cluster --cluster-name cluster-name --cluster-configuration /dir/cluster-config.yaml' to create your cluster.
 ```
 
 
