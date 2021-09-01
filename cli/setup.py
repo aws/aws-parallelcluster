@@ -47,7 +47,10 @@ REQUIRES = [
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
     "aws-cdk.aws-cloudformation~=" + CDK_VERSION,
     "werkzeug~=2.0",
-    "connexion~=2.7",
+    # pin connexion to 2.7.0 since 2.8.0,2.9.0 have introduced stricter requirements for werkzeug and flask.
+    # This does not impact any functionality. Also next connexion release will lift this limitation
+    # and we will be able to upgrade.
+    "connexion==2.7.0",
     "flask~=2.0",
     "jmespath~=0.10",
 ]
