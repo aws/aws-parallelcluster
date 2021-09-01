@@ -53,7 +53,7 @@ class AwsBatchConstruct(Construct):
         compute_security_groups: dict,
         shared_storage_mappings: dict,
         shared_storage_options: dict,
-        head_node_eni: ec2.CfnNetworkInterface,
+        head_node_instance: ec2.CfnInstance,
         instance_roles: dict,
         **kwargs,
     ):
@@ -66,7 +66,7 @@ class AwsBatchConstruct(Construct):
         self.compute_security_groups = compute_security_groups
         self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
-        self.head_node_eni = head_node_eni
+        self.head_node_instance = head_node_instance
         self.instance_roles = instance_roles
 
         # Currently AWS batch integration supports a single queue and a single compute resource
@@ -468,7 +468,7 @@ class AwsBatchConstruct(Construct):
                     value=get_mount_dirs_by_type(self.shared_storage_options, SharedStorageType.RAID),
                 ),
                 batch.CfnJobDefinition.EnvironmentProperty(
-                    name="PCLUSTER_HEAD_NODE_IP", value=self.head_node_eni.attr_primary_private_ip_address
+                    name="PCLUSTER_HEAD_NODE_IP", value=self.head_node_instance.attr_private_ip
                 ),
             ],
         )

@@ -1195,7 +1195,6 @@ def pcluster_ami_without_standard_naming(region, os, architecture):
 def ami_copy(region):
     """
     Define a fixture to manage the copy and deletion of AMI.
-
     This AMI is used to test head node and compute node AMI update
     """
     copy_ami_id = None

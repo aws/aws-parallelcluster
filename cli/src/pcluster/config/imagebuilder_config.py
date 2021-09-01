@@ -192,7 +192,7 @@ class ImagebuilderDevSettings(BaseDevSettings):
         self.disable_pcluster_component = Resource.init_param(disable_pcluster_component, default=False)
         self.distribution_configuration = distribution_configuration
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
-        self.disable_validate_and_test = Resource.init_param(disable_validate_and_test, default=False)
+        self.disable_validate_and_test = Resource.init_param(disable_validate_and_test, default=True)
 
 
 # ---------------------- ImageBuilder ---------------------- #

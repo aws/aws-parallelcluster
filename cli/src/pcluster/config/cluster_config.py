@@ -648,20 +648,20 @@ class ClusterIam(Resource):
             self._register_validator(IamPolicyValidator, policy=self.permissions_boundary)
 
 
-class IntelSelectSolutions(Resource):
+class IntelSoftware(Resource):
     """Represent the Intel select solution configuration."""
 
-    def __init__(self, install_intel_software: bool = None):
+    def __init__(self, intel_hpc_platform: bool = None):
         super().__init__()
-        self.install_intel_software = Resource.init_param(install_intel_software, default=False)
+        self.intel_hpc_platform = Resource.init_param(intel_hpc_platform, default=False)
 
 
 class AdditionalPackages(Resource):
     """Represent the additional packages configuration."""
 
-    def __init__(self, intel_select_solutions: IntelSelectSolutions = None):
+    def __init__(self, intel_software: IntelSoftware = None):
         super().__init__()
-        self.intel_select_solutions = intel_select_solutions
+        self.intel_software = intel_software
 
 
 class AmiSearchFilters(Resource):
@@ -969,8 +969,8 @@ class BaseClusterConfig(Resource):
             )
         if (
             self.additional_packages
-            and self.additional_packages.intel_select_solutions
-            and self.additional_packages.intel_select_solutions.install_intel_software
+            and self.additional_packages.intel_software
+            and self.additional_packages.intel_software.intel_hpc_platform
         ):
             self._register_validator(IntelHpcOsValidator, os=self.image.os)
             self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
@@ -1102,8 +1102,8 @@ class BaseClusterConfig(Resource):
     def is_intel_hpc_platform_enabled(self):
         """Return True if intel hpc platform is enabled."""
         return (
-            self.additional_packages.intel_select_solutions.install_intel_software
-            if self.additional_packages and self.additional_packages.intel_select_solutions
+            self.additional_packages.intel_software.intel_hpc_platform
+            if self.additional_packages and self.additional_packages.intel_software
             else False
         )
 

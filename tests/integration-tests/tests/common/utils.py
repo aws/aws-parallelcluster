@@ -42,6 +42,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
     "centos7": {"name": "FPGA Developer AMI*", "owners": ["679593333241"]},
     "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
+    "ubuntu2004": {"name": "Deep Learning AMI GPU CUDA * (Ubuntu 20.04)*", "owners": ["amazon"]},
 }
 
 # Get official pcluster AMIs or get from dev account
