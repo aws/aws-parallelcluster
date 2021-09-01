@@ -100,7 +100,7 @@ class AwsBatchConstruct(Construct):
         return Stack.of(self).stack_id
 
     def _get_compute_env_prefix(self):
-        Fn.select(1, Fn.split("compute-environment/", self._compute_env.ref))
+        return Fn.select(1, Fn.split("compute-environment/", self._compute_env.ref))
 
     def _cluster_scoped_iam_path(self):
         """Return a path to be associated IAM roles and instance profiles."""
