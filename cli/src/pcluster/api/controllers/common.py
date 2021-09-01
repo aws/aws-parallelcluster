@@ -47,9 +47,7 @@ def _set_region(region):
 
 
 def configure_aws_region_from_config(region: Union[None, str], config_str: str):
-    """Takes a configuration specficiation (as a string) and sets the region based on either the configuration or the
-    region parameter."""
-
+    """Set the region based on either the configuration or theregion parameter."""
     # Allow parsing errors to pass through as they will be caught by later functions
     # which can provide more specific error text based on the operation.
     try:
