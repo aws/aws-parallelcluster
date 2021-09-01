@@ -351,9 +351,9 @@ def _choose_network_configuration(scheduler, head_node_instance_type, compute_in
         # But user can bypass it by using manual subnets creation during configure or modify the config file directly.
         print(
             "Error: There is no single availability zone offering head node and compute in current region.\n"
-            "To create your cluster, make sure you have a subnet for head node in {0}"
-            ", and a subnet for compute nodes in {1}. Then run pcluster configure again"
-            "and avoid using Automate VPC/Subnet creation.".format(azs_for_head_node_type, azs_for_compute_types)
+            f"To create your cluster, make sure you have a subnet for head node in {azs_for_head_node_type}, "
+            f"and a subnet for compute nodes in {azs_for_compute_types}. "
+            "Then run pcluster configure again and avoid using Automate VPC/Subnet creation."
         )
         print("Exiting...")
         sys.exit(1)
@@ -376,8 +376,8 @@ def _prompt_for_subnet(all_subnets, qualified_subnets, message, default_subnet=N
     total_omitted_subnets = len(all_subnets) - len(qualified_subnets)
     if total_omitted_subnets > 0:
         print(
-            "Note:  {0} subnet(s) is/are not listed, "
-            "because the instance type is not in their availability zone(s)".format(total_omitted_subnets)
+            f"Note: {total_omitted_subnets} subnet(s) is/are not listed, "
+            "because the instance type is not in their availability zone(s)"
         )
     return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
 

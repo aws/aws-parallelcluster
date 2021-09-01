@@ -73,7 +73,7 @@ def prompt(
     :return: the value inserted by the user validated
     """
     if options_to_print:
-        print("Allowed values for {0}:".format(message))
+        print(f"Allowed values for {message}:")
         if table_header:
             print(tabulate(options_to_print, table_header))
         else:
@@ -92,7 +92,7 @@ def prompt(
         if validator(result):
             valid_user_input = True
         else:
-            print("ERROR: {0} is not an acceptable value for {1}".format(user_input, message))
+            print(f"ERROR: {user_input} is not an acceptable value for {message}")
     return result
 
 
