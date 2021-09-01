@@ -130,8 +130,8 @@ class CustomAmiTagValidator(Validator):
                 (
                     f"The custom AMI was created with pcluster {tags_dict[PCLUSTER_VERSION_TAG]}, "
                     f"but is trying to be used with pcluster {current_version}. "
-                    f"Please either use an AMI created with ${current_version} or"
-                    f" change your ParallelCluster to ${tags_dict[PCLUSTER_VERSION_TAG]}"
+                    f"Please either use an AMI created with {current_version} or"
+                    f" change your ParallelCluster to {tags_dict[PCLUSTER_VERSION_TAG]}"
                 ),
                 FailureLevel.ERROR,
             )
