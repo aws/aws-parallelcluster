@@ -7,7 +7,6 @@
 # limitations under the License.
 import functools
 import logging
-import shutil
 
 import connexion
 from connexion import ProblemException
@@ -23,6 +22,7 @@ from pcluster.api.errors import (
     ParallelClusterApiException,
     exception_message,
 )
+from pcluster.api.util import assert_node_executable
 from pcluster.aws.common import AWSClientError, Cache
 
 LOGGER = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class ParallelClusterFlaskApp:
     """Flask app that implements the ParallelCluster API."""
 
     def __init__(self, swagger_ui: bool = False, validate_responses=False):
-        self._assert_node_executable()
+        assert_node_executable()
         options = {"swagger_ui": swagger_ui}
 
         self.app = connexion.FlaskApp(__name__, specification_dir="openapi/", skip_error_handlers=True)
@@ -124,15 +124,6 @@ class ParallelClusterFlaskApp:
                 data,
             )
             return response
-
-    @staticmethod
-    def _assert_node_executable():
-        node_exe = shutil.which("node")
-        LOGGER.debug("Found nodejs executable in %s", node_exe)
-        if not node_exe:
-            message = "You must install nodejs in order to use ParallelCluster"
-            LOGGER.critical(message)
-            raise Exception(message)
 
     @staticmethod
     @log_response_error
