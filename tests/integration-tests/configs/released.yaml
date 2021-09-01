@@ -5,7 +5,7 @@ test-suites:
 {% include 'common/common.yaml' %}
 {% endfilter %}
   # need to duplicate api section because test_official_images works only after release
-  api:
+  pcluster_api:
     test_api_infrastructure.py::test_api_infrastructure_with_default_parameters:
       dimensions:
         - regions: ["ap-south-1", "cn-north-1", "us-gov-west-1"]
