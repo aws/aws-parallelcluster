@@ -12,6 +12,7 @@ import os as os_lib
 
 from pcluster.api.controllers.common import (
     configure_aws_region,
+    configure_aws_region_from_config,
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
@@ -61,7 +62,6 @@ from pcluster.validators.common import FailureLevel
 LOGGER = logging.getLogger(__name__)
 
 
-@configure_aws_region()
 @http_success_status_code(202)
 @convert_errors()
 def build_image(
@@ -94,6 +94,7 @@ def build_image(
 
     :rtype: BuildImageResponseContent
     """
+    configure_aws_region_from_config(region, build_image_request_content["imageConfiguration"])
     rollback_on_failure = rollback_on_failure if rollback_on_failure is not None else False
     disable_rollback = not rollback_on_failure
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
