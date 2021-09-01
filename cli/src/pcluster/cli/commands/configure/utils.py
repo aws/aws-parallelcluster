@@ -28,7 +28,7 @@ def handle_client_exception(func):
         try:
             return func(*args, **kwargs)
         except (BotoCoreError, ClientError) as e:
-            print("Failed with error: %s", e)
+            print(f"Failed with error: {e}")
             if isinstance(e, ClientError) and "credentials" in str(e):
                 print("To set the credentials, run 'aws configure' or set them as environment variables")
 
@@ -107,7 +107,7 @@ def prompt_iterable(message, options, default_value=None):
     :return: the validated value
     """
     if not options:
-        print("ERROR: No options found for %s", message)
+        print(f"ERROR: No options found for {message}")
         sys.exit(1)
     is_dict = isinstance(options[0], dict)
     valid_options = [option["id"] for option in options] if is_dict else options

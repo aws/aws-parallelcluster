@@ -150,42 +150,35 @@ class NetworkConfiguration(Enum):
 
 
 def _create_network_stack(configuration, parameters):
-    print("Creating CloudFormation stack...")
-    print("Do not leave the terminal until the process has finished")
+    print("Creating CloudFormation stack...\nDo not leave the terminal until the process has finished.")
     stack_name = "parallelclusternetworking-{0}{1}".format(configuration.stack_name_prefix, TIMESTAMP)
     try:
         cfn_client = boto3.client("cloudformation")
-        stack = cfn_client.create_stack(
-            StackName=stack_name,
-            TemplateURL=get_templates_bucket_path()
-            + "networking/%s-%s.cfn.json" % (configuration.template_name, get_installed_version()),
-            Parameters=parameters,
-            Capabilities=["CAPABILITY_IAM"],
+        template_url = "{0}networking/{1}-{2}.cfn.json".format(
+            get_templates_bucket_path(), configuration.template_name, get_installed_version()
         )
-        print("Stack Name: %s (id: %s)", stack_name, stack.get("StackId"))
+        LOGGER.info("Template URL: %s", template_url)
+        stack = cfn_client.create_stack(
+            StackName=stack_name, TemplateURL=template_url, Parameters=parameters, Capabilities=["CAPABILITY_IAM"]
+        )
+        print(f"Stack Name: {stack_name} (id: {stack.get('StackId')})")
         if not verify_stack_status(
             stack_name, waiting_states=["CREATE_IN_PROGRESS"], successful_states=["CREATE_COMPLETE"]
         ):
-            print("Could not create the network configuration")
+            print("Could not create the network configuration.")
             sys.exit(0)
-        print()
-        print("The stack has been created")
+        print("\nThe stack has been created.")
         return AWSApi.instance().cfn.describe_stack(stack_name).get("Outputs")
     except KeyboardInterrupt:
-        print()
         print(
-            "Unable to update the configuration file with the selected network configuration. "
-            "Please manually check the status of the CloudFormation stack: %s",
-            stack_name,
+            "\nUnable to update the configuration file with the selected network configuration. "
+            f"Please manually check the status of the CloudFormation stack: {stack_name}"
         )
         sys.exit(0)
     except Exception as e:  # Any exception is a problem
-        print()
         print(
-            "An exception occured while creating the CloudFormation stack: %s. "
-            "For details please check log file: %s",
-            stack_name,
-            get_cli_log_file(),
+            f"\nAn exception occurred while creating the CloudFormation stack: {stack_name}. "
+            f"For details please check log file: {get_cli_log_file()}"
         )
         LOGGER.critical(e)
         sys.exit(1)

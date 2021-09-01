@@ -72,7 +72,7 @@ def _dcv_connect(args):
                 if not webbrowser.open_new(url):
                     raise webbrowser.Error("Unable to open the Web browser.")
             except webbrowser.Error as e:
-                print("%s\n%s", e, url_message)
+                print(f"{e}\n{url_message}")
 
         except DCVConnectionError as e:
             error(
