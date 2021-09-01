@@ -51,6 +51,7 @@ from pcluster.api.models import (
     UpdateError,
     ValidationLevel,
 )
+from pcluster.api.util import assert_node_executable
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import StackNotFoundError
 from pcluster.config.update_policy import UpdatePolicy
@@ -96,6 +97,7 @@ def create_cluster(
     (Defaults to &#39;true&#39;.)
     :type rollback_on_failure: bool
     """
+    assert_node_executable()
     # Set defaults
     configure_aws_region_from_config(region, create_cluster_request_content["clusterConfiguration"])
     rollback_on_failure = rollback_on_failure in {True, None}
@@ -314,6 +316,7 @@ def update_cluster(
 
     :rtype: UpdateClusterResponseContent
     """
+    assert_node_executable()
     # Set defaults
     configure_aws_region_from_config(region, update_cluster_request_content["clusterConfiguration"])
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
