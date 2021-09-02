@@ -622,7 +622,7 @@ class AwsBatchConstruct(Construct):
             config=self.config,
             execution_role=manage_docker_images_lambda_execution_role.attr_arn
             if manage_docker_images_lambda_execution_role
-            else self.config.iam.roles.custom_lambda_resources,
+            else self.config.iam.roles.lambda_functions_role,
             handler_func="manage_docker_images",
             timeout=60,
         ).lambda_func
@@ -680,7 +680,7 @@ class AwsBatchConstruct(Construct):
             config=self.config,
             execution_role=build_notification_lambda_execution_role.attr_arn
             if build_notification_lambda_execution_role
-            else self.config.iam.roles.custom_lambda_resources,
+            else self.config.iam.roles.lambda_functions_role,
             handler_func="send_build_notification",
             timeout=60,
         ).lambda_func

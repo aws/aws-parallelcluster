@@ -89,10 +89,10 @@ def get_user_data_content(user_data_path: str):
 def get_common_user_data_env(node: Union[HeadNode, BaseQueue], config: BaseClusterConfig) -> dict:
     """Return a dict containing the common env variables to be replaced in user data."""
     return {
-        "YumProxy": node.networking.proxy if node.networking.proxy else "_none_",
-        "DnfProxy": node.networking.proxy if node.networking.proxy else "",
-        "AptProxy": node.networking.proxy if node.networking.proxy else "false",
-        "ProxyServer": node.networking.proxy if node.networking.proxy else "NONE",
+        "YumProxy": node.networking.proxy.http_proxy_address if node.networking.proxy else "_none_",
+        "DnfProxy": node.networking.proxy.http_proxy_address if node.networking.proxy else "",
+        "AptProxy": node.networking.proxy.http_proxy_address if node.networking.proxy else "false",
+        "ProxyServer": node.networking.proxy.http_proxy_address if node.networking.proxy else "NONE",
         "CustomChefCookbook": config.custom_chef_cookbook or "NONE",
         "ParallelClusterVersion": COOKBOOK_PACKAGES_VERSIONS["parallelcluster"],
         "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
