@@ -42,7 +42,7 @@ phases:
           commands:
             - |
               set -v
-              COOKBOOK_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz"
+              COOKBOOK_URL="https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${AWS::URLSuffix}/parallelcluster/${CfnParamCookbookVersion}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz"
               [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL="${CfnParamChefCookbook}"
               echo "${!COOKBOOK_URL}"
 

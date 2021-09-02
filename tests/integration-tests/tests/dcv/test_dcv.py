@@ -18,7 +18,7 @@ from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
 from utils import (
     add_keys_to_known_hosts,
-    check_headnode_security_group,
+    check_head_node_security_group,
     get_username_for_os,
     remove_keys_from_known_hosts,
 )
@@ -37,64 +37,24 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "centos7", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "ubuntu1804", "slurm")
-def test_dcv_configuration(
-    region,
-    instance,
-    os,
-    scheduler,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
-):
+def test_dcv_configuration(region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir):
     _test_dcv_configuration(
-        8443,
-        "0.0.0.0/0",
-        region,
-        instance,
-        os,
-        scheduler,
-        pcluster_config_reader,
-        clusters_factory,
-        test_datadir,
+        8443, "0.0.0.0/0", region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
     )
 
 
 @pytest.mark.parametrize("dcv_port, access_from", [(8443, "0.0.0.0/0"), (5678, "192.168.1.1/32")])
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
 def test_dcv_with_remote_access(
-    dcv_port,
-    access_from,
-    region,
-    instance,
-    os,
-    scheduler,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
+    dcv_port, access_from, region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
 ):
     _test_dcv_configuration(
-        dcv_port,
-        access_from,
-        region,
-        instance,
-        os,
-        scheduler,
-        pcluster_config_reader,
-        clusters_factory,
-        test_datadir,
+        dcv_port, access_from, region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
     )
 
 
 def _test_dcv_configuration(
-    dcv_port,
-    access_from,
-    region,
-    instance,
-    os,
-    scheduler,
-    pcluster_config_reader,
-    clusters_factory,
-    test_datadir,
+    dcv_port, access_from, region, instance, os, scheduler, pcluster_config_reader, clusters_factory, test_datadir
 ):
     dcv_authenticator_port = dcv_port + 1
     cluster_config = pcluster_config_reader(dcv_port=str(dcv_port), access_from=access_from)
@@ -102,7 +62,7 @@ def _test_dcv_configuration(
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     # check configuration parameters
-    check_headnode_security_group(region, cluster, dcv_port, expected_cidr=access_from)
+    check_head_node_security_group(region, cluster, dcv_port, expected_cidr=access_from)
 
     # dcv connect show url
     env = operating_system.environ.copy()
