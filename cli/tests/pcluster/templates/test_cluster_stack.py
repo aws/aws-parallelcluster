@@ -22,6 +22,7 @@ from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
+from tests.pcluster.utils import load_cluster_model_from_yaml
 
 
 def test_slurm_cluster_builder(mocker):
@@ -34,6 +35,20 @@ def test_slurm_cluster_builder(mocker):
     )
     print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template
+
+
+@pytest.mark.parametrize(
+    "config_file_name", ["slurm.required.yaml", "slurm.full.yaml", "awsbatch.simple.yaml", "awsbatch.full.yaml"]
+)
+def test_cluster_builder_from_configuration_file(mocker, config_file_name):
+    mock_aws_api(mocker)
+    # mock bucket initialization parameters
+    mock_bucket(mocker)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    generated_template = CDKTemplateBuilder().build_cluster_template(
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
+    )
+    print(yaml.dump(generated_template))
 
 
 def test_awsbatch_cluster_builder(mocker):
