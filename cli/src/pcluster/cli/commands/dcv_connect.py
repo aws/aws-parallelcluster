@@ -62,7 +62,7 @@ def _dcv_connect(args):
 
         try:
             url = _retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, head_node_ip], attempts=4)
-            url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
+            url_message = f"Please use the following one-time URL in your browser within 30 seconds:\n{url}"
 
             if args.show_url:
                 print(url_message)
@@ -72,7 +72,7 @@ def _dcv_connect(args):
                 if not webbrowser.open_new(url):
                     raise webbrowser.Error("Unable to open the Web browser.")
             except webbrowser.Error as e:
-                print("%s\n%s", e, url_message)
+                print(f"{e}\n{url_message}")
 
         except DCVConnectionError as e:
             error(

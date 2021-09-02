@@ -370,8 +370,9 @@ def api_server_factory(
 
         template = (
             api_infrastructure_s3_uri
-            or f"s3://{server_region}-aws-parallelcluster/parallelcluster/{get_installed_parallelcluster_version()}"
-            "/api/parallelcluster-api.yaml"
+            or f"https://{server_region}-aws-parallelcluster.s3.{server_region}.amazonaws.com"
+            f"{'.cn' if server_region.startswith('cn') else ''}"
+            f"/parallelcluster/{get_installed_parallelcluster_version()}/api/parallelcluster-api.yaml"
         )
         if server_region not in api_servers:
             logging.info(f"Creating API Server stack: {api_stack_name} in {server_region} with template {template}")

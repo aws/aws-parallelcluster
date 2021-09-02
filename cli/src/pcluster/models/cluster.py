@@ -370,7 +370,7 @@ class Cluster:
                 self.bucket.delete_s3_artifacts()
             raise _cluster_error_mapper(e, str(e))
 
-    def _load_config(self, cluster_config: dict):
+    def _load_config(self, cluster_config: dict) -> ClusterSchema:
         """Load the config and catch / translate any errors that occur during loading."""
         try:
             return ClusterSchema(cluster_name=self.name).load(cluster_config)
@@ -628,7 +628,7 @@ class Cluster:
                 self.__running_capacity = len(self.compute_instances)
             elif self.stack.scheduler == "awsbatch":
                 self.__running_capacity = AWSApi.instance().batch.get_compute_environment_capacity(
-                    ce_name=self.stack.batch_compute_environment,
+                    ce_name=self.stack.batch_compute_environment
                 )
         return self.__running_capacity
 

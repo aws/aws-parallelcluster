@@ -28,8 +28,8 @@ def handler(event, context):  # pylint: disable=unused-argument
             "Data": "Build has completed.",
         }
     )
-    print("Notification URL: %s" % notification_url)
-    print("Notification data: %s" % data)
+    print(f"Notification URL: {notification_url}")
+    print(f"Notification data: {data}")
 
     # This function returns a 5-tuple: (addressing scheme, network location, path, query, fragment identifier)
     split_url = urlsplit(notification_url)
@@ -43,8 +43,8 @@ def handler(event, context):  # pylint: disable=unused-argument
                 method="PUT", url=url, body=data, headers={"Content-Type": "", "content-length": str(len(data))}
             )
             response = connection.getresponse()
-            print("CloudFormation returned status code: {}".format(response.reason))
+            print(f"CloudFormation returned status code: {response.reason}")
             break
         except Exception as e:
-            print("Unexpected failure sending response to CloudFormation {}".format(e), exc_info=True)
+            print(f"Unexpected failure sending response to CloudFormation {e}")
             time.sleep(5)

@@ -14,6 +14,7 @@ from typing import Dict, List
 from pcluster.api.controllers.common import (
     check_cluster_version,
     configure_aws_region,
+    configure_aws_region_from_config,
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
@@ -67,7 +68,6 @@ from pcluster.validators.common import FailureLevel
 LOGGER = logging.getLogger(__name__)
 
 
-@configure_aws_region()
 @convert_errors()
 @http_success_status_code(202)
 def create_cluster(
@@ -97,9 +97,11 @@ def create_cluster(
     :type rollback_on_failure: bool
     """
     # Set defaults
+    configure_aws_region_from_config(region, create_cluster_request_content["clusterConfiguration"])
     rollback_on_failure = rollback_on_failure in {True, None}
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun is True
+
     create_cluster_request_content = CreateClusterRequestContent.from_dict(create_cluster_request_content)
     cluster_config = create_cluster_request_content.cluster_configuration
 
@@ -278,7 +280,6 @@ def list_clusters(region=None, next_token=None, cluster_status=None):
     return ListClustersResponseContent(clusters=clusters, next_token=next_token)
 
 
-@configure_aws_region()
 @convert_errors()
 @http_success_status_code(202)
 def update_cluster(
@@ -314,6 +315,7 @@ def update_cluster(
     :rtype: UpdateClusterResponseContent
     """
     # Set defaults
+    configure_aws_region_from_config(region, update_cluster_request_content["clusterConfiguration"])
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
     dryrun = dryrun is True
     force_update = force_update is True
