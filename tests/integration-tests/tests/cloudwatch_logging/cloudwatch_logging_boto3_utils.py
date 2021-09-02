@@ -23,10 +23,10 @@ def get_cluster_log_groups_from_boto3(cluster_log_group_prefix):
         log_groups = (
             boto3.client("logs").describe_log_groups(logGroupNamePrefix=cluster_log_group_prefix).get("logGroups")
         )
-        LOGGER.debug("Log groups: {0}\n".format(_dumps_json(log_groups)))
+        LOGGER.info("Log groups: {0}\n".format(_dumps_json(log_groups)))
         return log_groups
     except ClientError as e:
-        LOGGER.debug("Unable to retrieve any log group with prefix {0}\nError: {1}".format(cluster_log_group_prefix, e))
+        LOGGER.error("Unable to retrieve any log group with prefix {0}\nError: {1}".format(cluster_log_group_prefix, e))
         raise ClientError
 
 
@@ -37,7 +37,7 @@ def get_log_streams(log_group_name):
     Raises ClientError if the log group doesn't exist.
     """
     streams = boto3.client("logs").describe_log_streams(logGroupName=log_group_name).get("logStreams")
-    LOGGER.debug("Log streams for {group}:\n{streams}".format(group=log_group_name, streams=_dumps_json(streams)))
+    LOGGER.info("Log streams for {group}:\n{streams}".format(group=log_group_name, streams=_dumps_json(streams)))
     return streams
 
 
@@ -49,7 +49,7 @@ def get_log_events(log_group_name, log_stream_name):
     """
     logs_client = boto3.client("logs")
     events = logs_client.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name).get("events")
-    LOGGER.debug(
+    LOGGER.info(
         "Log events for {group}/{stream}:\n{events}".format(
             group=log_group_name, stream=log_stream_name, events=_dumps_json(events)
         )
