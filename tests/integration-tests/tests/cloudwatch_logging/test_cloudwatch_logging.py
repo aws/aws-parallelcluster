@@ -635,7 +635,7 @@ def get_config_param_vals():
 @pytest.mark.dimensions("ap-east-1", "c5.xlarge", "*", "slurm")
 # 3) run the test for a single scheduler-OS combination on an ARM instance
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
-def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
+def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_reader, test_datadir, clusters_factory):
     """
     Test all CloudWatch logging features.
 
@@ -645,6 +645,10 @@ def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_rea
     config_params = get_config_param_vals()
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
+
+    # change CW agent to debug mode
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor.run_remote_script(str(test_datadir / "cw_agent_debug.sh"), run_as_root=True)
     test_runner = CloudWatchLoggingTestRunner(
         log_group_name=_get_log_group_name_for_cluster(cluster.name),
         enabled=True,
@@ -652,7 +656,7 @@ def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_rea
         logs_persist_after_delete=True,
     )
     cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster).get_logs_state()
-    _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner)
+    _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner, remote_command_executor)
 
 
 def _check_log_groups_after_test(test_func):  # noqa: D202
@@ -678,8 +682,15 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
 
 
 @_check_log_groups_after_test
-def _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner):
+def _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner, remote_command_executor):
     """Verify CloudWatch logs integration behaves as expected while a cluster is running and after it's deleted."""
-    test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
+    try:
+        test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
+    finally:
+        cw_agent_log = remote_command_executor.run_remote_command(
+            "sudo cat /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log", hide=True, timeout=600
+        )
+        logging.info(f"Cloudwatch agent log:\n{cw_agent_log.stdout}")
+
     cluster.delete(delete_logs=False)
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)
