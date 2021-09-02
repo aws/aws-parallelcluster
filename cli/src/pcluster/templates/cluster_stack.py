@@ -350,7 +350,7 @@ class ClusterCdkStack(Stack):
             config=self.config,
             execution_role=cleanup_resources_lambda_role.attr_arn
             if cleanup_resources_lambda_role
-            else self.config.iam.roles.custom_lambda_resources,
+            else self.config.iam.roles.lambda_functions_role,
             handler_func="cleanup_resources",
         ).lambda_func
 
@@ -992,7 +992,7 @@ class ClusterCdkStack(Stack):
                     "ebs_shared_dirs": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EBS
                     ),
-                    "proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
+                    "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "dns_domain": self.scheduler_resources.cluster_hosted_zone.name
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
@@ -1207,8 +1207,8 @@ class ClusterCdkStack(Stack):
         return (
             not self.config.iam
             or not self.config.iam.roles
-            or not self.config.iam.roles.custom_lambda_resources
-            or self.config.iam.roles.get_param("custom_lambda_resources").implied
+            or not self.config.iam.roles.lambda_functions_role
+            or self.config.iam.roles.get_param("lambda_functions_role").implied
         )
 
     def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue]):
