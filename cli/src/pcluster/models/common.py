@@ -53,7 +53,7 @@ class NotFound(Exception):
     pass
 
 
-def parse_config(config):
+def parse_config(config: str) -> dict:
     """Parse a YAML configuration into a dictionary."""
     try:
         config_dict = yaml.safe_load(config)
