@@ -256,7 +256,7 @@ def orchestrate_pcluster_configure_stages(
     # Default compute subnet follows the selection of headnode subnet
     default_compute_subnet = headnode_subnet_id if headnode_subnet_id else "subnet-.+"
     # When there are omitted subnets, a note should be printed
-    omitted_note = "Note:  {0} subnet.+not listed.+".format(omitted_subnets_num) if omitted_subnets_num else ""
+    omitted_note = "Note: {0} subnet.+not listed.+".format(omitted_subnets_num) if omitted_subnets_num else ""
     stage_list = [
         {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
         {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
