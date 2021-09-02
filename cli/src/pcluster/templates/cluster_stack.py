@@ -992,7 +992,7 @@ class ClusterCdkStack(Stack):
                     "ebs_shared_dirs": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EBS
                     ),
-                    "proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
+                    "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "dns_domain": self.scheduler_resources.cluster_hosted_zone.name
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
