@@ -82,11 +82,11 @@ class VpcFactory:
         dns_hostnames = vpc.describe_attribute(Attribute="enableDnsHostnames")["EnableDnsHostnames"]["Value"]
 
         if not dns_hostnames:
-            print("DNS Hostnames of the VPC {0} must be set to True".format(vpc_id))
+            print(f"DNS Hostnames of the VPC {vpc_id} must be set to True")
         if not dns_resolution:
-            print("DNS Resolution of the VPC {0} must be set to True".format(vpc_id))
+            print(f"DNS Resolution of the VPC {vpc_id} must be set to True")
         if vpc.dhcp_options_id == "default":
-            print("DHCP options of the VPC {0} must be set.".format(vpc_id))
+            print(f"DHCP options of the VPC {vpc_id} must be set.")
 
         # default is equal to NO dhcp options set
         return dns_resolution and dns_hostnames and vpc.dhcp_options_id != "default"

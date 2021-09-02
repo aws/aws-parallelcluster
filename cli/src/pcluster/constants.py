@@ -99,6 +99,7 @@ PCLUSTER_CLUSTER_NAME_TAG = f"{PCLUSTER_PREFIX}cluster-name"
 # PCLUSTER_NODE_TYPE_TAG needs to be the same as the hard coded strings in node package
 PCLUSTER_NODE_TYPE_TAG = f"{PCLUSTER_PREFIX}node-type"
 PCLUSTER_QUEUE_NAME_TAG = f"{PCLUSTER_PREFIX}queue-name"
+IMAGEBUILDER_ARN_TAG = "Ec2ImageBuilderArn"
 PCLUSTER_S3_ARTIFACTS_DICT = {
     "root_directory": "parallelcluster",
     "root_cluster_directory": "clusters",

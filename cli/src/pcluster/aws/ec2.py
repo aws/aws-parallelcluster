@@ -15,14 +15,17 @@ from botocore.exceptions import ClientError
 
 from pcluster import utils
 from pcluster.aws.aws_resources import ImageInfo, InstanceTypeInfo
-from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError
+from pcluster.aws.common import AWSClientError, AWSExceptionHandler, Boto3Client, Cache, ImageNotFoundError, get_region
 from pcluster.constants import (
     IMAGE_NAME_PART_TO_OS_MAP,
+    IMAGEBUILDER_ARN_TAG,
+    IMAGEBUILDER_RESOURCE_NAME_PREFIX,
     OS_TO_IMAGE_NAME_PART_MAP,
     PCLUSTER_IMAGE_BUILD_STATUS_TAG,
     PCLUSTER_IMAGE_ID_TAG,
     SUPPORTED_ARCHITECTURES,
 )
+from pcluster.utils import get_partition
 
 
 class Ec2Client(Boto3Client):
@@ -102,20 +105,44 @@ class Ec2Client(Boto3Client):
             return [ImageInfo(image) for image in result.get("Images")]
         raise ImageNotFoundError(function_name="describe_images")
 
-    def image_exists(self, image_id: str, build_status_avaliable: bool = True):
+    def image_exists(self, image_id: str):
         """Return a boolean describing whether or not an image with the given search criteria exists."""
         try:
-            self.describe_image_by_id_tag(image_id, build_status_avaliable)
+            self.describe_image_by_id_tag(image_id)
+            return True
+        except ImageNotFoundError:
+            return False
+
+    def failed_image_exists(self, image_id: str):
+        """Return a boolean describing whether or not a failed image with the given search criteria exists."""
+        try:
+            self.describe_image_by_imagebuilder_arn_tag(image_id)
             return True
         except ImageNotFoundError:
             return False
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_image_by_id_tag(self, image_id: str, build_status_avaliable: bool = True):
+    def describe_image_by_id_tag(self, image_id: str):
         """Return a dict of image info by searching image id tag as filter."""
-        filters = [{"Name": "tag:" + PCLUSTER_IMAGE_ID_TAG, "Values": [image_id]}]
-        if build_status_avaliable:
-            filters.append({"Name": "tag:" + PCLUSTER_IMAGE_BUILD_STATUS_TAG, "Values": ["available"]})
+        filters = [
+            {"Name": "tag:" + PCLUSTER_IMAGE_ID_TAG, "Values": [image_id]},
+            {"Name": "tag:" + PCLUSTER_IMAGE_BUILD_STATUS_TAG, "Values": ["available"]},
+        ]
+        owners = ["self"]
+        return self.describe_images(ami_ids=[], filters=filters, owners=owners)[0]
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_image_by_imagebuilder_arn_tag(self, image_id: str):
+        """Return a dict of image info by searching imagebuilder arn tag."""
+        partition = get_partition()
+        region = get_region()
+        name = "{0}-{1}".format(IMAGEBUILDER_RESOURCE_NAME_PREFIX, image_id)[0:1024].lower()
+        filters = [
+            {
+                "Name": "tag:" + IMAGEBUILDER_ARN_TAG,
+                "Values": [f"arn:{partition}:imagebuilder:{region}:*:image/{name}*"],
+            }
+        ]
         owners = ["self"]
         return self.describe_images(ami_ids=[], filters=filters, owners=owners)[0]
 

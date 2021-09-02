@@ -223,8 +223,9 @@ def get_templates_bucket_path():
     """Return a string containing the path of bucket."""
     region = get_region()
     s3_suffix = ".cn" if region.startswith("cn") else ""
-    return "https://{REGION}-aws-parallelcluster.s3.{REGION}.amazonaws.com{S3_SUFFIX}/templates/".format(
-        REGION=region, S3_SUFFIX=s3_suffix
+    return (
+        f"https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{s3_suffix}/"
+        f"parallelcluster/{get_installed_version()}/templates/"
     )
 
 
@@ -241,19 +242,19 @@ def check_if_latest_version():
         with urllib.request.urlopen(pypi_url) as url:  # nosec nosemgrep
             latest = json.loads(url.read())["info"]["version"]
         if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
-            print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
+            print(f"Info: There is a newer version {latest} of AWS ParallelCluster available.")
     except Exception:  # nosec
         pass
 
 
 def warn(message):
     """Print a warning message."""
-    print("WARNING: {0}".format(message))
+    print(f"WARNING: {message}")
 
 
 def error(message) -> NoReturn:
     """Raise SystemExit exception to the stderr."""
-    sys.exit("ERROR: {0}".format(message))
+    sys.exit(f"ERROR: {message}")
 
 
 def get_cli_log_file():
