@@ -135,15 +135,10 @@ class Ebs(Resource):
     def _register_validators(self):
         self._register_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
         self._register_validator(
-            EbsVolumeIopsValidator,
-            volume_type=self.volume_type,
-            volume_size=self.size,
-            volume_iops=self.iops,
+            EbsVolumeIopsValidator, volume_type=self.volume_type, volume_size=self.size, volume_iops=self.iops
         )
         self._register_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_throughput=self.throughput,
+            EbsVolumeThroughputValidator, volume_type=self.volume_type, volume_throughput=self.throughput
         )
         self._register_validator(
             EbsVolumeThroughputIopsValidator,
@@ -401,10 +396,7 @@ class _BaseNetworking(Resource):
     """Represent the networking configuration shared by head node and compute node."""
 
     def __init__(
-        self,
-        security_groups: List[str] = None,
-        additional_security_groups: List[str] = None,
-        proxy: Proxy = None,
+        self, security_groups: List[str] = None, additional_security_groups: List[str] = None, proxy: Proxy = None
     ):
         super().__init__()
         self.security_groups = Resource.init_param(security_groups)
@@ -542,21 +534,14 @@ class Monitoring(Resource):
 class Tag(BaseTag):
     """Represent the Tag configuration."""
 
-    def __init__(
-        self,
-        key: str = None,
-        value: str = None,
-    ):
+    def __init__(self, key: str = None, value: str = None):
         super().__init__(key, value)
 
 
 class Roles(Resource):
     """Represent the Roles configuration."""
 
-    def __init__(
-        self,
-        lambda_functions_role: str = None,
-    ):
+    def __init__(self, lambda_functions_role: str = None):
         super().__init__()
         self.lambda_functions_role = Resource.init_param(lambda_functions_role)
 
@@ -568,12 +553,7 @@ class Roles(Resource):
 class S3Access(Resource):
     """Represent the S3 Access configuration."""
 
-    def __init__(
-        self,
-        bucket_name: str,
-        key_name: str = None,
-        enable_write_access: bool = None,
-    ):
+    def __init__(self, bucket_name: str, key_name: str = None, enable_write_access: bool = None):
         super().__init__()
         self.bucket_name = Resource.init_param(bucket_name)
         self.key_name = Resource.init_param(key_name)
@@ -650,11 +630,7 @@ class Iam(Resource):
 class Imds(Resource):
     """Represent the IMDS configuration."""
 
-    def __init__(
-        self,
-        secured: bool = None,
-        **kwargs,
-    ):
+    def __init__(self, secured: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.secured = Resource.init_param(secured, default=True)
 
@@ -662,11 +638,7 @@ class Imds(Resource):
 class ClusterIam(Resource):
     """Represent the IAM configuration for Cluster."""
 
-    def __init__(
-        self,
-        roles: Roles = None,
-        permissions_boundary: str = None,
-    ):
+    def __init__(self, roles: Roles = None, permissions_boundary: str = None):
         super().__init__()
         self.roles = roles
         self.permissions_boundary = Resource.init_param(permissions_boundary)
@@ -679,10 +651,7 @@ class ClusterIam(Resource):
 class IntelSoftware(Resource):
     """Represent the Intel select solution configuration."""
 
-    def __init__(
-        self,
-        intel_hpc_platform: bool = None,
-    ):
+    def __init__(self, intel_hpc_platform: bool = None):
         super().__init__()
         self.intel_hpc_platform = Resource.init_param(intel_hpc_platform, default=False)
 
@@ -690,10 +659,7 @@ class IntelSoftware(Resource):
 class AdditionalPackages(Resource):
     """Represent the additional packages configuration."""
 
-    def __init__(
-        self,
-        intel_software: IntelSoftware = None,
-    ):
+    def __init__(self, intel_software: IntelSoftware = None):
         super().__init__()
         self.intel_software = intel_software
 
@@ -891,10 +857,7 @@ class HeadNode(Resource):
 class BaseComputeResource(Resource):
     """Represent the base Compute Resource, with the fields in common between all the schedulers."""
 
-    def __init__(
-        self,
-        name: str,
-    ):
+    def __init__(self, name: str):
         super().__init__()
         self.name = Resource.init_param(name)
 
@@ -912,11 +875,7 @@ class CapacityType(Enum):
 class ComputeSettings(Resource):
     """Represent the ComputeSettings resource."""
 
-    def __init__(
-        self,
-        local_storage: LocalStorage = None,
-        **kwargs,
-    ):
+    def __init__(self, local_storage: LocalStorage = None, **kwargs):
         super().__init__(**kwargs)
         self.local_storage = local_storage or LocalStorage(implied=True)
 
@@ -924,12 +883,7 @@ class ComputeSettings(Resource):
 class BaseQueue(Resource):
     """Represent the generic Queue resource."""
 
-    def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        capacity_type: str = None,
-    ):
+    def __init__(self, name: str, networking: QueueNetworking, capacity_type: str = None):
         super().__init__()
         self.name = Resource.init_param(name)
         self.networking = networking
@@ -987,11 +941,11 @@ class BaseClusterConfig(Resource):
             custom_ami=self.image.custom_ami,
             ami_search_filters=self.dev_settings.ami_search_filters if self.dev_settings else None,
         )
-        if self.headnode_ami:
+        if self.head_node_ami:
             self._register_validator(
                 InstanceTypeBaseAMICompatibleValidator,
                 instance_type=self.head_node.instance_type,
-                image=self.headnode_ami,
+                image=self.head_node_ami,
             )
         if self.head_node.image and self.head_node.image.custom_ami:
             self._register_validator(
@@ -1001,7 +955,7 @@ class BaseClusterConfig(Resource):
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         self._register_storage_validators()
-        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.headnode_ami)
+        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami)
 
         if self.head_node.dcv:
             self._register_validator(
@@ -1019,10 +973,7 @@ class BaseClusterConfig(Resource):
             and self.additional_packages.intel_software.intel_hpc_platform
         ):
             self._register_validator(IntelHpcOsValidator, os=self.image.os)
-            self._register_validator(
-                IntelHpcArchitectureValidator,
-                architecture=self.head_node.architecture,
-            )
+            self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
@@ -1036,10 +987,7 @@ class BaseClusterConfig(Resource):
                 resource_name="Shared Storage",
             )
             for storage in self.shared_storage:
-                self._register_validator(
-                    SharedStorageNameValidator,
-                    name=storage.name,
-                )
+                self._register_validator(SharedStorageNameValidator, name=storage.name)
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
                     if storage.file_system_id:
@@ -1049,9 +997,7 @@ class BaseClusterConfig(Resource):
                             head_node_subnet_id=self.head_node.networking.subnet_id,
                         )
                     self._register_validator(
-                        FsxArchitectureOsValidator,
-                        architecture=self.head_node.architecture,
-                        os=self.image.os,
+                        FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
                 if isinstance(storage, SharedEbs):
                     if storage.raid:
@@ -1138,7 +1084,7 @@ class BaseClusterConfig(Resource):
         return AWSApi.instance().ec2.get_subnet_vpc(self.head_node.networking.subnet_id)
 
     @property
-    def headnode_ami(self):
+    def head_node_ami(self):
         """Get the image id of the HeadNode."""
         if self.head_node.image and self.head_node.image.custom_ami:
             return self.head_node.image.custom_ami
@@ -1353,11 +1299,7 @@ class SlurmComputeResource(BaseComputeResource):
 
     def _register_validators(self):
         super()._register_validators()
-        self._register_validator(
-            ComputeResourceSizeValidator,
-            min_count=self.min_count,
-            max_count=self.max_count,
-        )
+        self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
             DisableSimultaneousMultithreadingArchitectureValidator,
             disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
@@ -1563,11 +1505,7 @@ class SlurmClusterConfig(BaseClusterConfig):
             queue_image = self.image_dict[queue.name]
             if queue_image not in checked_images and queue.queue_ami:
                 checked_images.append(queue_image)
-                self._register_validator(
-                    AmiOsCompatibleValidator,
-                    os=self.image.os,
-                    image_id=queue_image,
-                )
+                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
                 if self.image_dict[queue.name]:
                     self._register_validator(

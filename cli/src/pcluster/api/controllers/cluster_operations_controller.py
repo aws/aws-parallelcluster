@@ -230,7 +230,7 @@ def describe_cluster(cluster_name, region=None):
 
     try:
         head_node = cluster.head_node_instance
-        response.headnode = EC2Instance(
+        response.head_node = EC2Instance(
             instance_id=head_node.id,
             launch_time=to_utc_datetime(head_node.launch_time),
             public_ip_address=head_node.public_ip,
