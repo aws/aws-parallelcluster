@@ -885,7 +885,7 @@ class HeadNodeCustomActionsSchema(BaseSchema):
 class QueueCustomActionSchema(BaseSchema):
     """Represent the schema of the custom action."""
 
-    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    script = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     args = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load

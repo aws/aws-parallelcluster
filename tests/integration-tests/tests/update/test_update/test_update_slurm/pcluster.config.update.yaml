@@ -30,11 +30,11 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       CapacityType: SPOT
@@ -70,11 +70,11 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       ComputeResources:
@@ -102,11 +102,11 @@ Scheduling:
             Size: 40
       CustomActions:
         OnNodeStart:
-          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Script: s3://{{ bucket }}/scripts/updated_preinstall.sh
           Args:
             - ABC
         OnNodeConfigured:
-          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Script: s3://{{ bucket }}/scripts/updated_postinstall.sh
           Args:
             - DEF
       ComputeResources:
