@@ -32,11 +32,11 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
-    bucket.upload_file(str(test_datadir / "postinstall.sh"), "scripts/postinstall.sh")
+    for script in ["preinstall.sh", "postinstall.sh", "updated_preinstall.sh", "updated_postinstall.sh"]:
+        bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
+    init_config_file = pcluster_config_reader(resource_bucket=bucket_name, bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
@@ -85,6 +85,11 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     _assert_scheduler_nodes(queues_config=initial_queues_config, slurm_commands=slurm_commands)
     _assert_launch_templates_config(queues_config=initial_queues_config, cluster_name=cluster.name, region=region)
+
+    # submit job in queue1 to verify original pre/post-install script execution
+    initial_compute_nodes = slurm_commands.get_compute_nodes(filter_by_partition="queue1")
+    _check_script(command_executor, slurm_commands, initial_compute_nodes[0], "preinstall", "QWE")
+    _check_script(command_executor, slurm_commands, initial_compute_nodes[0], "postinstall", "RTY")
 
     # Submit a job in order to verify that jobs are not affected by an update of the queue size
     result = slurm_commands.submit_command("sleep infinity", constraint="static&c5.xlarge")
@@ -187,14 +192,13 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     _check_volume(cluster, updated_config, region)
 
-    # launch a new instance for queue1 and test pre/post install script and extra json update
-    # Get new compute nodes
+    # Launch a new instance for queue1 and test updated pre/post install script execution and extra json update
     # Add a new dynamic node t2.micro to queue1-i3
     new_compute_node = _add_compute_nodes(slurm_commands, "queue1", "t2.micro")
 
     assert_that(len(new_compute_node)).is_equal_to(1)
-    _check_pre_install_script(command_executor, slurm_commands, new_compute_node[0], "ABC")
-    _check_post_install_script(command_executor, slurm_commands, new_compute_node[0], "DEF")
+    _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_preinstall", "ABC")
+    _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_postinstall", "DEF")
 
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
@@ -291,32 +295,22 @@ def _check_volume(cluster, config, region):
             assert_that(actual_volume_throughput).is_equal_to(int(volume_throughput))
 
 
-def _check_pre_install_script(command_executor, slurm_commands, new_compute_node, pre_install_args):
-    logging.info("checking pre install script")
-    _check_script(command_executor, slurm_commands, new_compute_node, "preinstall", pre_install_args)
-
-
-def _check_post_install_script(command_executor, slurm_commands, new_compute_node, post_install_args):
-    logging.info("checking post install script")
-    _check_script(command_executor, slurm_commands, new_compute_node, "postinstall", post_install_args)
-
-
 def _check_script(command_executor, slurm_commands, host, script_name, script_arg):
-    _retrieve_script_output(slurm_commands, script_name, host)
-    result = command_executor.run_remote_command("cat /shared/script_results/{1}_{0}_out.txt".format(script_name, host))
-    assert_that(result.stdout).matches(r"{0}-{1}".format(script_name, script_arg))
+    logging.info(f"Checking {script_name} script")
 
-
-def _retrieve_script_output(slurm_commands, script_name, host):
     # submit a job to retrieve pre and post install outputs
-    command = "cp /tmp/{0}_out.txt /shared/script_results/{1}_{0}_out.txt".format(script_name, host)
+    output_file_path = f"/shared/script_results/{host}_{script_name}_out.txt"
+    command = f"cp /tmp/{script_name}_out.txt {output_file_path}"
     result = slurm_commands.submit_command(command, host=host)
 
     job_id = slurm_commands.assert_job_submitted(result.stdout)
     slurm_commands.wait_job_completed(job_id)
     slurm_commands.assert_job_succeeded(job_id)
 
-    time.sleep(5)  # wait a bit to be sure to have the files
+    time.sleep(5)  # wait a bit to be sure to have the file
+
+    result = command_executor.run_remote_command(f"cat {output_file_path}")
+    assert_that(result.stdout).matches(fr"{script_name}-{script_arg}")
 
 
 def _add_compute_nodes(slurm_commands, partition, constraint, number_of_nodes=1):
