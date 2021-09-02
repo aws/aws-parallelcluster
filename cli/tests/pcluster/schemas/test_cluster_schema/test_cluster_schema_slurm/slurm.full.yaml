@@ -160,7 +160,7 @@ SharedStorage:
       StorageType: HDD  # HDD | SSD
 Iam:
   Roles:
-    CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+    LambdaFunctionsRole: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
 Monitoring:
   DetailedMonitoring: true  # false
   Logs:

@@ -555,14 +555,14 @@ class Roles(Resource):
 
     def __init__(
         self,
-        custom_lambda_resources: str = None,
+        lambda_functions_role: str = None,
     ):
         super().__init__()
-        self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
+        self.lambda_functions_role = Resource.init_param(lambda_functions_role)
 
     def _register_validators(self):
-        if self.custom_lambda_resources:
-            self._register_validator(RoleValidator, role_arn=self.custom_lambda_resources)
+        if self.lambda_functions_role:
+            self._register_validator(RoleValidator, role_arn=self.lambda_functions_role)
 
 
 class S3Access(Resource):

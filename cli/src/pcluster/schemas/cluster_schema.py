@@ -676,7 +676,7 @@ class MonitoringSchema(BaseSchema):
 class RolesSchema(BaseSchema):
     """Represent the schema of roles."""
 
-    custom_lambda_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    lambda_functions_role = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

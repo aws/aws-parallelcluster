@@ -2,7 +2,7 @@ Image:
   Os: {{ os }}
 Iam:
   Roles:
-    CustomLambdaResources: {{ iam_lambda_role }}
+    LambdaFunctionsRole: {{ iam_lambda_role }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
