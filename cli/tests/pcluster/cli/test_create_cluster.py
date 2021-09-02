@@ -13,6 +13,7 @@ from assertpy import assert_that
 from pcluster.api.models import CreateClusterResponseContent, DescribeClusterResponseContent
 from pcluster.cli.entrypoint import run
 from pcluster.cli.exceptions import APIOperationException
+
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.utils import wire_translate
 
@@ -64,7 +65,7 @@ class TestCreateClusterCommand:
 
         status_response_dict = {
             "creationTime": "2021-01-01 00:00:00.000000+00:00",
-            "head_node": {
+            "headNode": {
                 "launchTime": "2021-01-01T00:00:00+00:00",
                 "instanceId": "i-099aaaaa7000ccccc",
                 "publicIpAddress": "18.118.18.18",

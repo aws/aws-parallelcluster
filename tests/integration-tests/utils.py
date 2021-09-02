@@ -21,8 +21,9 @@ import subprocess
 
 import boto3
 from assertpy import assert_that
-from constants import OS_TO_ROOT_VOLUME_DEVICE
 from retrying import retry
+
+from constants import OS_TO_ROOT_VOLUME_DEVICE
 
 
 class InstanceTypesData:
@@ -381,7 +382,7 @@ def check_status(cluster, cluster_status=None, head_node_status=None, compute_fl
     if cluster_status:
         assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
     if head_node_status:
-        assert_that(cluster_info["head_node"]["state"]).is_equal_to(head_node_status)
+        assert_that(cluster_info["headNode"]["state"]).is_equal_to(head_node_status)
     if compute_fleet_status:
         assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
 
