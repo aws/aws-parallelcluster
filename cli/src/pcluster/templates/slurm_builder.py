@@ -116,7 +116,7 @@ class SlurmConstruct(Construct):
             )
         else:
             domain_name = "pcluster."
-        cluster_dns_domain = f"{self.stack_name}.{domain_name}"
+        cluster_dns_domain = f"{self.stack_name.lower()}.{domain_name}"
 
         self.cluster_dns_domain = CfnParameter(
             self.stack_scope,
