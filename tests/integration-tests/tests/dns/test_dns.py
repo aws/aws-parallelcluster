@@ -77,7 +77,7 @@ def test_existing_hosted_zone(
     num_computes = 2
     hosted_zone_id, domain_name = hosted_zone_factory()
     cluster_config = pcluster_config_reader(existing_hosted_zone=hosted_zone_id, queue_size=num_computes)
-    cluster = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
@@ -98,7 +98,7 @@ def test_existing_hosted_zone(
 
     # Test domain name matches expected domain name
     resolv_conf = remote_command_executor.run_remote_command("cat /etc/resolv.conf").stdout
-    assert_that(resolv_conf).contains(cluster.cfn_name + "." + domain_name)
+    assert_that(resolv_conf).contains(cluster.cfn_name.lower() + "." + domain_name)
 
 
 @pytest.fixture(scope="class")
