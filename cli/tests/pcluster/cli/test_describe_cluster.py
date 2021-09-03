@@ -19,23 +19,14 @@ class TestDescribeClusterCommand:
         command = ["pcluster", "describe-cluster", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
             ([""], "error: the following arguments are required: --cluster-name"),
-            (
-                ["--cluster-name"],
-                "error: argument --cluster-name: expected one argument",
-            ),
-            (
-                ["--cluster-name", "cluster", "--invalid"],
-                "Invalid arguments ['--invalid']",
-            ),
+            (["--cluster-name"], "error: argument --cluster-name: expected one argument"),
+            (["--cluster-name", "cluster", "--invalid"], "Invalid arguments ['--invalid']"),
             (
                 ["--cluster-name", "cluster", "--region", "eu-west-"],
                 "Bad Request: invalid or unsupported region 'eu-west-'",
@@ -52,7 +43,7 @@ class TestDescribeClusterCommand:
     def test_execute(self, mocker):
         response_dict = {
             "creationTime": "2021-01-01 00:00:00.000000+00:00",
-            "headnode": {
+            "head_node": {
                 "launchTime": "2021-01-01T00:00:00+00:00",
                 "instanceId": "i-099aaaaa7000ccccc",
                 "publicIpAddress": "18.118.18.18",
@@ -100,12 +91,6 @@ class TestDescribeClusterCommand:
         )
 
         with pytest.raises(APIOperationException) as exc_info:
-            command = [
-                "describe-cluster",
-                "--region",
-                "eu-west-1",
-                "--cluster-name",
-                "name",
-            ]
+            command = ["describe-cluster", "--region", "eu-west-1", "--cluster-name", "name"]
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])

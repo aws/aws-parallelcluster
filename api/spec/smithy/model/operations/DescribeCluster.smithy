@@ -58,7 +58,7 @@ structure DescribeClusterResponse {
     @required
     @documentation("Tags associated with the cluster.")
     tags: Tags,
-    headnode: EC2Instance,
+    headNode: EC2Instance,
     @documentation("Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.")
     failureReason: String
 }

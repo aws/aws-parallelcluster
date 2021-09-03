@@ -32,7 +32,7 @@ class DescribeClusterResponseContent(Model):
     def __init__(
         self,
         creation_time=None,
-        headnode=None,
+        head_node=None,
         version=None,
         cluster_configuration=None,
         tags=None,
@@ -49,8 +49,8 @@ class DescribeClusterResponseContent(Model):
 
         :param creation_time: The creation_time of this DescribeClusterResponseContent.
         :type creation_time: datetime
-        :param headnode: The headnode of this DescribeClusterResponseContent.
-        :type headnode: EC2Instance
+        :param head_node: The head_node of this DescribeClusterResponseContent.
+        :type head_node: EC2Instance
         :param version: The version of this DescribeClusterResponseContent.
         :type version: str
         :param cluster_configuration: The cluster_configuration of this DescribeClusterResponseContent.
@@ -76,7 +76,7 @@ class DescribeClusterResponseContent(Model):
         """
         self.openapi_types = {
             "creation_time": datetime,
-            "headnode": EC2Instance,
+            "head_node": EC2Instance,
             "version": str,
             "cluster_configuration": ClusterConfigurationStructure,
             "tags": List[Tag],
@@ -92,7 +92,7 @@ class DescribeClusterResponseContent(Model):
 
         self.attribute_map = {
             "creation_time": "creationTime",
-            "headnode": "headnode",
+            "head_node": "headNode",
             "version": "version",
             "cluster_configuration": "clusterConfiguration",
             "tags": "tags",
@@ -107,7 +107,6 @@ class DescribeClusterResponseContent(Model):
         }
 
         self._creation_time = creation_time
-        self._headnode = headnode
         self._version = version
         self._cluster_configuration = cluster_configuration
         self._tags = tags
@@ -119,6 +118,7 @@ class DescribeClusterResponseContent(Model):
         self._last_updated_time = last_updated_time
         self._region = region
         self._cluster_status = cluster_status
+        self._head_node = head_node
 
     @classmethod
     def from_dict(cls, dikt) -> "DescribeClusterResponseContent":
@@ -157,25 +157,25 @@ class DescribeClusterResponseContent(Model):
         self._creation_time = creation_time
 
     @property
-    def headnode(self):
-        """Gets the headnode of this DescribeClusterResponseContent.
+    def head_node(self):
+        """Gets the head_node of this DescribeClusterResponseContent.
 
 
-        :return: The headnode of this DescribeClusterResponseContent.
+        :return: The head_node of this DescribeClusterResponseContent.
         :rtype: EC2Instance
         """
-        return self._headnode
+        return self._head_node
 
-    @headnode.setter
-    def headnode(self, headnode):
-        """Sets the headnode of this DescribeClusterResponseContent.
+    @head_node.setter
+    def head_node(self, head_node):
+        """Sets the head_node of this DescribeClusterResponseContent.
 
 
-        :param headnode: The headnode of this DescribeClusterResponseContent.
-        :type headnode: EC2Instance
+        :param head_node: The head_node of this DescribeClusterResponseContent.
+        :type head_node: EC2Instance
         """
 
-        self._headnode = headnode
+        self._head_node = head_node
 
     @property
     def version(self):

@@ -1878,8 +1878,6 @@ components:
           type: string
           description: Timestamp representing the cluster creation time.
           format: date-time
-        headnode:
-          $ref: '#/components/schemas/EC2Instance'
         version:
           type: string
           description: ParallelCluster version used to create the cluster.
@@ -1913,6 +1911,8 @@ components:
           description: AWS region where the cluster is created.
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
+        headNode:
+          $ref: '#/components/schemas/EC2Instance'
       required:
         - cloudFormationStackStatus
         - cloudformationStackArn
