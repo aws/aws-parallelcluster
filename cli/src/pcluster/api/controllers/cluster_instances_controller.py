@@ -68,9 +68,9 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
     :type region: str
     :param next_token: Token to use for paginated requests.
     :type next_token: str
-    :param node_type:
+    :param node_type: Filter the instances by node type.
     :type node_type: dict | bytes
-    :param queue_name:
+    :param queue_name: Filter the instances by queue name.
     :type queue_name: str
 
     :rtype: DescribeClusterInstancesResponseContent

@@ -25,7 +25,7 @@ structure ImageInfoSummary {
     @documentation("Id of the image.")
     imageId: ImageId,
     @documentation("Ec2 image information.")
-    ec2AmiInfo: Ec2AmiInfo,
+    ec2AmiInfo: Ec2AmiInfoSummary,
     @required
     @documentation("AWS region where the image is built.")
     region: Region,
@@ -84,3 +84,9 @@ string ImageBuilderImageStatus
     {name: "ERROR", value: "ERROR"},
 ])
 string Ec2AmiState
+
+structure Ec2AmiInfoSummary {
+    @required
+    @documentation("EC2 AMI id")
+    amiId: String,
+}
