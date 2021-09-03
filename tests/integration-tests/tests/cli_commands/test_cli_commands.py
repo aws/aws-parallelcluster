@@ -346,7 +346,7 @@ def _test_pcluster_list_cluster_log_streams(cluster):
 
     # check there are the logs of all the instances
     for instance in cluster.describe_cluster_instances():
-        instance_type = "HeadNode" if instance["instanceId"] == cluster_info["headnode"]["instanceId"] else "Compute"
+        instance_type = "HeadNode" if instance["instanceId"] == cluster_info["headNode"]["instanceId"] else "Compute"
         for stream_name in expected_log_streams[instance_type]:
             assert_that(stream_names).contains(_instance_stream_name(instance, stream_name))
 
@@ -355,7 +355,7 @@ def _test_pcluster_get_cluster_log_events(cluster):
     """Test pcluster get-cluster-log-events functionality."""
     logging.info("Testing that pcluster get-cluster-log-events is working as expected")
     cluster_info = cluster.describe_cluster()
-    cfn_init_log_stream = _instance_stream_name(cluster_info["headnode"], "cfn-init")
+    cfn_init_log_stream = _instance_stream_name(cluster_info["headNode"], "cfn-init")
     cloud_init_debug_msg = "[DEBUG] CloudFormation client initialized with endpoint"
 
     # Get the first event to establish time boundary for testing

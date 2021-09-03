@@ -15,8 +15,8 @@ Name | Type | Description | Notes
 **last_updated_time** | **datetime** | Timestamp representing the last cluster update time. | 
 **region** | **str** | AWS region where the cluster is created. | 
 **cluster_status** | [**ClusterStatus**](ClusterStatus.md) |  | 
-**headnode** | [**EC2Instance**](EC2Instance.md) |  | [optional] 
 **failure_reason** | **str** | Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status. | [optional] 
+**head_node** | [**EC2Instance**](EC2Instance.md) |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
