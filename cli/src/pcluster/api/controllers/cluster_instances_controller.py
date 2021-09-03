@@ -90,7 +90,9 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
                 instance_type=instance.instance_type,
                 state=instance.state,
                 private_ip_address=instance.private_ip,
-                node_type=ApiNodeType.HEAD if instance.node_type == NodeType.HEAD_NODE.value else ApiNodeType.COMPUTE,
+                node_type=ApiNodeType.HEADNODE
+                if instance.node_type == NodeType.HEAD_NODE.value
+                else ApiNodeType.COMPUTENODE,
                 queue_name=instance.queue_name,
             )
         )

@@ -1,7 +1,7 @@
 usage: pcluster describe-cluster-instances [-h] --cluster-name CLUSTER_NAME
                                            [--region REGION]
                                            [--next-token NEXT_TOKEN]
-                                           [--node-type {HEAD,COMPUTE}]
+                                           [--node-type {HeadNode,ComputeNode}]
                                            [--queue-name QUEUE_NAME] [--debug]
                                            [--query QUERY]
 
@@ -14,7 +14,7 @@ optional arguments:
   --region REGION       AWS Region that the operation corresponds to.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
-  --node-type {HEAD,COMPUTE}
+  --node-type {HeadNode,ComputeNode}
                         Filter the instances by node type.
   --queue-name QUEUE_NAME
                         Filter the instances by queue name.
