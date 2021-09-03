@@ -24,35 +24,25 @@ class TestImageOperationsApi(unittest.TestCase):
         pass
 
     def test_build_image(self):
-        """Test case for build_image
-
-        """
+        """Test case for build_image"""
         pass
 
     def test_delete_image(self):
-        """Test case for delete_image
-
-        """
+        """Test case for delete_image"""
         pass
 
     def test_describe_image(self):
-        """Test case for describe_image
-
-        """
+        """Test case for describe_image"""
         pass
 
-    def test_describe_official_images(self):
-        """Test case for describe_official_images
-
-        """
+    def test_list_official_images(self):
+        """Test case for list_official_images"""
         pass
 
     def test_list_images(self):
-        """Test case for list_images
-
-        """
+        """Test case for list_images"""
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
