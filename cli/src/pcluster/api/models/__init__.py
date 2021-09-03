@@ -42,6 +42,7 @@ from pcluster.api.models.describe_compute_fleet_response_content import Describe
 from pcluster.api.models.describe_image_response_content import DescribeImageResponseContent
 from pcluster.api.models.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
 from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
+from pcluster.api.models.ec2_ami_info_summary import Ec2AmiInfoSummary
 from pcluster.api.models.ec2_ami_state import Ec2AmiState
 from pcluster.api.models.ec2_instance import EC2Instance
 from pcluster.api.models.get_cluster_log_events_response_content import GetClusterLogEventsResponseContent

@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import json
-from copy import deepcopy
 
 import pytest
 import yaml
@@ -18,24 +17,13 @@ from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
 from pcluster.schemas.cluster_schema import ClusterSchema, IamSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
-from pcluster.utils import load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
+from tests.pcluster.utils import load_cluster_model_from_yaml
 
 
-def _load_cluster_model_from_yaml(test_datadir, config_file_name):
-    # https://github.com/marshmallow-code/marshmallow/issues/1126
-    # TODO use yaml render_module: https://marshmallow.readthedocs.io/en/3.0/api_reference.html#marshmallow.Schema.Meta
-    input_yaml = load_yaml_dict(test_datadir / config_file_name)
-    print(input_yaml)
-    copy_input_yaml = deepcopy(input_yaml)
-    cluster = ClusterSchema(cluster_name="clustername").load(copy_input_yaml)
-    print(cluster)
-    return input_yaml, cluster
-
-
-def _check_cluster_schema(test_datadir, config_file_name):
+def _check_cluster_schema(config_file_name):
     # Load cluster model from Yaml file
-    input_yaml, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
 
     # Re-create Yaml file from model and compare content
     cluster_schema = ClusterSchema(cluster_name="clustername")
@@ -51,12 +39,12 @@ def _check_cluster_schema(test_datadir, config_file_name):
 @pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.full.yaml"])
 def test_cluster_schema_slurm(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
-    _check_cluster_schema(test_datadir, config_file_name)
+    _check_cluster_schema(config_file_name)
 
 
 @pytest.mark.parametrize("config_file_name", ["awsbatch.simple.yaml", "awsbatch.full.yaml"])
 def test_cluster_schema_awsbatch(test_datadir, config_file_name):
-    _check_cluster_schema(test_datadir, config_file_name)
+    _check_cluster_schema(config_file_name)
 
 
 @pytest.mark.parametrize(
@@ -346,9 +334,9 @@ def test_scheduler_constraints_for_intel_packages(
             ValidationError,
             match=failure_message,
         ):
-            _load_cluster_model_from_yaml(test_datadir, config_file_name)
+            load_cluster_model_from_yaml(config_file_name, test_datadir)
     else:
-        _, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
+        _, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
         assert_that(cluster.scheduling.scheduler).is_equal_to(scheduler)
         assert_that(cluster.additional_packages.intel_software.intel_hpc_platform).is_equal_to(
             install_intel_packages_enabled

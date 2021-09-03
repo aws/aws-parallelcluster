@@ -34,6 +34,7 @@ docs/DescribeImageResponseContent.md
 docs/DryrunOperationExceptionResponseContent.md
 docs/EC2Instance.md
 docs/Ec2AmiInfo.md
+docs/Ec2AmiInfoSummary.md
 docs/Ec2AmiState.md
 docs/GetClusterLogEventsResponseContent.md
 docs/GetClusterStackEventsResponseContent.md
@@ -110,6 +111,7 @@ pcluster_client/model/describe_compute_fleet_response_content.py
 pcluster_client/model/describe_image_response_content.py
 pcluster_client/model/dryrun_operation_exception_response_content.py
 pcluster_client/model/ec2_ami_info.py
+pcluster_client/model/ec2_ami_info_summary.py
 pcluster_client/model/ec2_ami_state.py
 pcluster_client/model/ec2_instance.py
 pcluster_client/model/get_cluster_log_events_response_content.py

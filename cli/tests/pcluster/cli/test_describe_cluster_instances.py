@@ -33,7 +33,7 @@ class TestDescribeClusterInstancesCommand:
             ),
             (
                 ["--cluster-name", "cluster", "--node-type", "invalid"],
-                "error: argument --node-type: invalid choice: 'invalid' (choose from 'HEAD', 'COMPUTE')",
+                "error: argument --node-type: invalid choice: 'invalid' (choose from 'HeadNode', 'ComputeNode')",
             ),
             (
                 ["--cluster-name", "cluster", "--region", "eu-west-"],

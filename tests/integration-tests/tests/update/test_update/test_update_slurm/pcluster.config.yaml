@@ -22,6 +22,15 @@ Scheduling:
         LocalStorage:
           RootVolume:
             Size: 40
+      CustomActions:
+        OnNodeStart:
+          Script: s3://{{ bucket }}/scripts/preinstall.sh
+          Args:
+            - QWE
+        OnNodeConfigured:
+          Script: s3://{{ bucket }}/scripts/postinstall.sh
+          Args:
+            - RTY
       CapacityType: ONDEMAND
       ComputeResources:
         - Name: queue1-i1

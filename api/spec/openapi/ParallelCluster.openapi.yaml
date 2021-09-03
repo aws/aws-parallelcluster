@@ -650,12 +650,15 @@ paths:
             description: Token to use for paginated requests.
         - name: nodeType
           in: query
+          description: Filter the instances by node type.
           schema:
             $ref: '#/components/schemas/NodeType'
         - name: queueName
           in: query
+          description: Filter the instances by queue name.
           schema:
             type: string
+            description: Filter the instances by queue name.
       responses:
         "200":
           description: DescribeClusterInstances 200 response
@@ -2051,6 +2054,14 @@ components:
           description: EC2 AMI architecture
       required:
         - amiId
+    Ec2AmiInfoSummary:
+      type: object
+      properties:
+        amiId:
+          type: string
+          description: EC2 AMI id
+      required:
+        - amiId
     Ec2AmiState:
       type: string
       enum:
@@ -2151,7 +2162,7 @@ components:
           type: string
           description: ARN of the main CloudFormation stack.
         ec2AmiInfo:
-          $ref: '#/components/schemas/Ec2AmiInfo'
+          $ref: '#/components/schemas/Ec2AmiInfoSummary'
         region:
           type: string
           description: AWS region where the image is built.
@@ -2297,8 +2308,8 @@ components:
     NodeType:
       type: string
       enum:
-        - HEAD
-        - COMPUTE
+        - HeadNode
+        - ComputeNode
     NotFoundExceptionResponseContent:
       type: object
       description: This exception is thrown when the requested entity is not found.

@@ -148,6 +148,7 @@ Class | Method | HTTP request | Description
  - [DryrunOperationExceptionResponseContent](docs/DryrunOperationExceptionResponseContent.md)
  - [EC2Instance](docs/EC2Instance.md)
  - [Ec2AmiInfo](docs/Ec2AmiInfo.md)
+ - [Ec2AmiInfoSummary](docs/Ec2AmiInfoSummary.md)
  - [Ec2AmiState](docs/Ec2AmiState.md)
  - [GetClusterLogEventsResponseContent](docs/GetClusterLogEventsResponseContent.md)
  - [GetClusterStackEventsResponseContent](docs/GetClusterStackEventsResponseContent.md)

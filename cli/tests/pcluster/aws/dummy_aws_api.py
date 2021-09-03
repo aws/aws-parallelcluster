@@ -118,6 +118,9 @@ class _DummyEc2Client(Ec2Client):
     def get_subnet_vpc(self, subnet_id):
         return "vpc-123"
 
+    def get_eip_allocation_id(self, eip):
+        return "eipalloc-123"
+
 
 class _DummyEfsClient(Ec2Client):
     def __init__(self):
