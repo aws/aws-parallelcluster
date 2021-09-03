@@ -48,13 +48,23 @@ def get_log_events(log_group_name, log_stream_name):
     Raises ClientError if the given log group or stream doesn't exist.
     """
     logs_client = boto3.client("logs")
-    events = logs_client.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name).get("events")
-    LOGGER.info(
-        "Log events for {group}/{stream}:\n{events}".format(
-            group=log_group_name, stream=log_stream_name, events=_dumps_json(events)
-        )
+    # get_log_events is not page-able using utils.paginate_boto3
+    response = logs_client.get_log_events(
+        logGroupName=log_group_name, logStreamName=log_stream_name, startFromHead=True
     )
-    return events
+    prev_token = None
+    next_token = response.get("nextForwardToken")
+    LOGGER.info(f"Starting pagination of GetLogEvents for {log_group_name}/{log_stream_name} with {next_token}")
+    while next_token != prev_token:
+        for event in response.get("events"):
+            LOGGER.info(f"event from stream {log_group_name}/{log_stream_name}:\n{json.dumps(event, indent=2)}")
+            yield event
+        response = logs_client.get_log_events(
+            logGroupName=log_group_name, logStreamName=log_stream_name, nextToken=next_token
+        )
+        prev_token = next_token
+        next_token = response.get("nextForwardToken")
+        LOGGER.info(f"Continuing pagination of GetLogEvents for {log_group_name}/{log_stream_name} with {next_token}")
 
 
 def get_ec2_instances():
