@@ -753,18 +753,21 @@ paths:
           description: Token to use for paginated requests.
           type: string
         style: form
-      - explode: true
+      - description: Filter the instances by node type.
+        explode: true
         in: query
         name: nodeType
         required: false
         schema:
           $ref: '#/components/schemas/NodeType'
         style: form
-      - explode: true
+      - description: Filter the instances by queue name.
+        explode: true
         in: query
         name: queueName
         required: false
         schema:
+          description: Filter the instances by queue name.
           type: string
         style: form
       responses:
@@ -1949,6 +1952,8 @@ components:
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
+          ec2AmiInfo:
+            amiId: amiId
           region: region
           version: version
         validationMessages:
@@ -2279,6 +2284,8 @@ components:
           imageBuildStatus: null
           cloudformationStackStatus: null
           cloudformationStackArn: cloudformationStackArn
+          ec2AmiInfo:
+            amiId: amiId
           region: region
           version: version
       properties:
@@ -2459,7 +2466,6 @@ components:
           - value: value
             key: key
           architecture: architecture
-        version: version
       properties:
         cloudformationStackStatusReason:
           description: Reason for the CloudFormation stack status.
@@ -2493,7 +2499,6 @@ components:
         imageBuildLogsArn:
           description: ARN of the logs for the image build process.
           title: imageBuildLogsArn
-          type: string
           type: string
         cloudformationStackCreationTime:
           description: Timestamp representing the CloudFormation stack creation time.
@@ -2620,12 +2625,19 @@ components:
           type: string
       required:
       - amiId
-      - amiName
-      - architecture
-      - description
-      - state
-      - tags
       title: Ec2AmiInfo
+      type: object
+    Ec2AmiInfoSummary:
+      example:
+        amiId: amiId
+      properties:
+        amiId:
+          description: EC2 AMI id
+          title: amiId
+          type: string
+      required:
+      - amiId
+      title: Ec2AmiInfoSummary
       type: object
     Ec2AmiState:
       enum:
@@ -2805,6 +2817,8 @@ components:
         imageBuildStatus: null
         cloudformationStackStatus: null
         cloudformationStackArn: cloudformationStackArn
+        ec2AmiInfo:
+          amiId: amiId
         region: region
         version: version
       properties:
@@ -2821,6 +2835,8 @@ components:
           description: ARN of the main CloudFormation stack.
           title: cloudformationStackArn
           type: string
+        ec2AmiInfo:
+          $ref: '#/components/schemas/Ec2AmiInfoSummary'
         region:
           description: AWS region where the image is built.
           title: region
@@ -2949,6 +2965,7 @@ components:
           lastEventTimestamp: 2000-01-23T04:56:07.000+00:00
           lastIngestionTime: 2000-01-23T04:56:07.000+00:00
           uploadSequenceToken: uploadSequenceToken
+        nextToken: nextToken
       properties:
         logStreams:
           items:
@@ -3094,8 +3111,8 @@ components:
       type: object
     NodeType:
       enum:
-      - HEAD
-      - COMPUTE
+      - HeadNode
+      - ComputeNode
       title: NodeType
       type: string
     NotFoundExceptionResponseContent:

@@ -59,7 +59,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     # Else do not spin up compute node and start running regular slurm tests
     supports_impi = architecture == "x86_64"
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, gpu_instance_type=gpu_instance_type)
-    cluster = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
     _test_slurm_version(remote_command_executor)

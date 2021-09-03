@@ -23,6 +23,7 @@ from pcluster.config.cluster_config import (
     Iam,
     Image,
     Imds,
+    Proxy,
     QueueNetworking,
     Raid,
     S3Access,
@@ -83,7 +84,9 @@ def dummy_head_node(mocker):
         "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
-    head_node_networking = HeadNodeNetworking(subnet_id="dummy-subnet-1")
+    head_node_networking = HeadNodeNetworking(
+        subnet_id="dummy-subnet-1", proxy=Proxy(http_proxy_address="http://10.0.0.164:3129")
+    )
     head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
     head_node_dcv = Dcv(enabled=True, port=1024)
     head_node_imds = Imds(secured=True)

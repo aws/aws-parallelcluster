@@ -242,6 +242,7 @@ def configure(args):  # noqa: C901
 
     scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
     result = {
+        "Region": os.environ.get("AWS_DEFAULT_REGION"),
         "Image": {"Os": base_os},
         "HeadNode": {
             "InstanceType": head_node_instance_type,

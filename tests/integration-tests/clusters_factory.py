@@ -204,9 +204,9 @@ class Cluster:
         cmd_args = ["pcluster", "describe-cluster-instances", "--cluster-name", self.name]
         if node_type:
             if node_type == "HeadNode":
-                node_type = "HEAD"
+                node_type = "HeadNode"
             elif node_type == "Compute":
-                node_type = "COMPUTE"
+                node_type = "ComputeNode"
             else:
                 raise ValueError
             cmd_args.extend(["--node-type", node_type])

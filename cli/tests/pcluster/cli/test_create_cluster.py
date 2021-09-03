@@ -188,6 +188,23 @@ class TestCreateClusterCommand:
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])
 
+    def test_no_nodejs_error(self, mocker, test_datadir):
+        """Test expected message is printed out if nodejs is not installed."""
+        mocker.patch("pcluster.api.util.shutil.which", return_value=None)
+        with pytest.raises(APIOperationException) as exc_info:
+            run(
+                [
+                    "create-cluster",
+                    "--region",
+                    "eu-west-1",
+                    "--cluster-configuration",
+                    str(test_datadir / "config.yaml"),
+                    "--cluster-name",
+                    "cluster",
+                ]
+            )
+        assert_that(exc_info.value.data.get("message")).matches("Node.js is required")
+
     def _build_args(self, args):
         args = [[k, v] if v is not None else [k] for k, v in args.items()]
         return list(itertools.chain(*args))
