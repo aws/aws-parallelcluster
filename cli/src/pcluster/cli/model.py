@@ -23,7 +23,7 @@ from pcluster.utils import to_kebab_case, to_snake_case
 
 # For importing package resources
 try:
-    import importlib.resources as pkg_resources
+    import importlib.resources as pkg_resources  # pylint: disable=ungrouped-imports
 except ImportError:
     import importlib_resources as pkg_resources
 
