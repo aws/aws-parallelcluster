@@ -48,7 +48,7 @@ def test_pcluster_configure(
         scheduler,
         os,
         instance,
-        vpc_stack.cfn_outputs["VpcId"],
+        region,
         vpc_stack.cfn_outputs["PublicSubnetId"],
         vpc_stack.cfn_outputs["PrivateSubnetId"],
         config_path,
@@ -94,9 +94,7 @@ def test_pcluster_configure_avoid_bad_subnets(
         omitted_subnets_num=1,
     )
     assert_configure_workflow(region, stages, config_path)
-    assert_config_contains_expected_values(
-        key_name, scheduler, os, instance, vpc_stack.cfn_outputs["VpcId"], None, None, config_path
-    )
+    assert_config_contains_expected_values(key_name, scheduler, os, instance, region, None, None, config_path)
 
 
 def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, region, os, scheduler, test_datadir):
@@ -121,7 +119,7 @@ def test_region_without_t2micro(vpc_stack, pcluster_config_reader, key_name, reg
         scheduler,
         os,
         "",
-        vpc_stack.cfn_outputs["VpcId"],
+        region,
         vpc_stack.cfn_outputs["PublicSubnetId"],
         vpc_stack.cfn_outputs["PrivateSubnetId"],
         config_path,
@@ -162,13 +160,14 @@ def assert_configure_workflow(region, stages, config_path):
 
 
 def assert_config_contains_expected_values(
-    key_name, scheduler, os, instance, vpc_id, head_node_subnet_id, compute_subnet_id, config_path
+    key_name, scheduler, os, instance, region, head_node_subnet_id, compute_subnet_id, config_path
 ):
     with open(config_path, encoding="utf-8") as conf_file:
         config = yaml.safe_load(conf_file)
 
     # Assert that the config object contains the expected values
     param_validators = [
+        {"parameter_path": ["Region"], "expected_value": region},
         {"parameter_path": ["HeadNode", "Ssh", "KeyName"], "expected_value": key_name},
         {"parameter_path": ["Scheduling", "Scheduler"], "expected_value": scheduler},
         {"parameter_path": ["Image", "Os"], "expected_value": os if scheduler != "awsbatch" else "alinux2"},

@@ -907,12 +907,19 @@ class BaseClusterConfig(Resource):
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
         iam: ClusterIam = None,
+        config_region: str = None,
         custom_s3_bucket: str = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
     ):
         super().__init__()
         self.__region = None
+        # config_region represents the region parameter in the configuration file
+        # and is only used by configure_aws_region_from_config in controllers.
+        # Since the region is already set by configure_aws_region_from_config to the environment variable,
+        # the self.config_region is never used. It has to be here to make sure cluster_config stores all information
+        # from a configuration file, so it is able to recreate the same file.
+        self.config_region = config_region
         self.cluster_name = cluster_name
         self.image = image
         self.head_node = head_node
