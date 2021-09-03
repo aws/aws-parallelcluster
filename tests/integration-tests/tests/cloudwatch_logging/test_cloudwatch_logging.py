@@ -492,11 +492,14 @@ class CloudWatchLoggingTestRunner:
     @retry(stop_max_attempt_number=36, wait_fixed=10 * 1000)
     def _verify_log_stream_data(self, logs_state, expected_stream_index, stream):
         """Verify that stream contains an event for the last line read from its corresponding log."""
-        events = cw_logs_utils.get_log_events(self.log_group_name, stream.get("logStreamName"))
-        assert_that(events).is_not_empty()
-        expected_tail = expected_stream_index.get(stream.get("logStreamName")).get("tail")
-        event_generator = (event for event in events if event.get("message") == expected_tail)
-        assert_that(next(event_generator, None)).is_not_none()
+        found_events_in_stream = False
+        found_event_with_tail_in_stream = False
+        for event in cw_logs_utils.get_log_events(self.log_group_name, stream.get("logStreamName")):
+            found_events_in_stream = True
+            if event.get("message") == expected_stream_index.get(stream.get("logStreamName")).get("tail"):
+                found_event_with_tail_in_stream = True
+        assert_that(found_events_in_stream).is_true()
+        assert_that(found_event_with_tail_in_stream).is_true()
 
     def verify_log_streams_data(self, logs_state, expected_stream_index, observed_streams):
         """Verify each observed log stream has >= 1 event and that its timestamp format is working."""
