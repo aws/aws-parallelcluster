@@ -161,7 +161,7 @@ def generate_random_string():
 
 
 def restart_head_node(cluster):
-    # stop/start headnode
+    # stop/start head_node
     logging.info(f"Restarting head node for cluster: {cluster.name}")
     head_node_instance = cluster.get_cluster_instance_ids(node_type="HeadNode")
     ec2_client = boto3.client("ec2", region_name=cluster.region)

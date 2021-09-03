@@ -2325,13 +2325,6 @@ components:
     DescribeClusterResponseContent:
       example:
         creationTime: 2000-01-23T04:56:07.000+00:00
-        headnode:
-          launchTime: 2000-01-23T04:56:07.000+00:00
-          instanceId: instanceId
-          publicIpAddress: publicIpAddress
-          instanceType: instanceType
-          state: null
-          privateIpAddress: privateIpAddress
         version: version
         clusterConfiguration:
           url: url
@@ -2348,14 +2341,19 @@ components:
         lastUpdatedTime: 2000-01-23T04:56:07.000+00:00
         region: region
         clusterStatus: null
+        headNode:
+          launchTime: 2000-01-23T04:56:07.000+00:00
+          instanceId: instanceId
+          publicIpAddress: publicIpAddress
+          instanceType: instanceType
+          state: null
+          privateIpAddress: privateIpAddress
       properties:
         creationTime:
           description: Timestamp representing the cluster creation time.
           format: date-time
           title: creationTime
           type: string
-        headnode:
-          $ref: '#/components/schemas/EC2Instance'
         version:
           description: ParallelCluster version used to create the cluster.
           title: version
@@ -2397,6 +2395,8 @@ components:
           type: string
         clusterStatus:
           $ref: '#/components/schemas/ClusterStatus'
+        headNode:
+          $ref: '#/components/schemas/EC2Instance'
       required:
       - cloudFormationStackStatus
       - cloudformationStackArn
