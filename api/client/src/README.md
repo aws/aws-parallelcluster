@@ -114,8 +114,8 @@ Class | Method | HTTP request | Description
 *ImageOperationsApi* | [**build_image**](docs/ImageOperationsApi.md#build_image) | **POST** /v3/images/custom | 
 *ImageOperationsApi* | [**delete_image**](docs/ImageOperationsApi.md#delete_image) | **DELETE** /v3/images/custom/{imageId} | 
 *ImageOperationsApi* | [**describe_image**](docs/ImageOperationsApi.md#describe_image) | **GET** /v3/images/custom/{imageId} | 
-*ImageOperationsApi* | [**describe_official_images**](docs/ImageOperationsApi.md#describe_official_images) | **GET** /v3/images/official | 
 *ImageOperationsApi* | [**list_images**](docs/ImageOperationsApi.md#list_images) | **GET** /v3/images/custom | 
+*ImageOperationsApi* | [**list_official_images**](docs/ImageOperationsApi.md#list_official_images) | **GET** /v3/images/official | 
 
 
 ## Documentation For Models
@@ -145,7 +145,6 @@ Class | Method | HTTP request | Description
  - [DescribeClusterResponseContent](docs/DescribeClusterResponseContent.md)
  - [DescribeComputeFleetResponseContent](docs/DescribeComputeFleetResponseContent.md)
  - [DescribeImageResponseContent](docs/DescribeImageResponseContent.md)
- - [DescribeOfficialImagesResponseContent](docs/DescribeOfficialImagesResponseContent.md)
  - [DryrunOperationExceptionResponseContent](docs/DryrunOperationExceptionResponseContent.md)
  - [EC2Instance](docs/EC2Instance.md)
  - [Ec2AmiInfo](docs/Ec2AmiInfo.md)
@@ -166,6 +165,7 @@ Class | Method | HTTP request | Description
  - [ListClustersResponseContent](docs/ListClustersResponseContent.md)
  - [ListImageLogStreamsResponseContent](docs/ListImageLogStreamsResponseContent.md)
  - [ListImagesResponseContent](docs/ListImagesResponseContent.md)
+ - [ListOfficialImagesResponseContent](docs/ListOfficialImagesResponseContent.md)
  - [LogEvent](docs/LogEvent.md)
  - [LogStream](docs/LogStream.md)
  - [NodeType](docs/NodeType.md)

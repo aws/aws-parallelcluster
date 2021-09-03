@@ -34,7 +34,7 @@ from pcluster.api.models import (
     BuildImageResponseContent,
     CloudFormationStackStatus,
     DescribeImageResponseContent,
-    DescribeOfficialImagesResponseContent,
+    ListOfficialImagesResponseContent,
     Ec2AmiInfo,
     ImageConfigurationStructure,
     ImageInfoSummary,
@@ -263,7 +263,7 @@ def _stack_to_describe_image_response(imagebuilder):
 
 @configure_aws_region()
 @convert_errors()
-def describe_official_images(region=None, os=None, architecture=None):
+def list_official_images(region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
 
@@ -274,7 +274,7 @@ def describe_official_images(region=None, os=None, architecture=None):
     :param architecture: Filter by architecture (Default is to not filter.)
     :type architecture: str
 
-    :rtype: DescribeOfficialImagesResponseContent
+    :rtype: ListOfficialImagesResponseContent
     """
     _validate_optional_filters(os, architecture)
 
@@ -283,7 +283,7 @@ def describe_official_images(region=None, os=None, architecture=None):
         for image in AWSApi.instance().ec2.get_official_images(os=os, architecture=architecture)
     ]
 
-    return DescribeOfficialImagesResponseContent(images=images)
+    return ListOfficialImagesResponseContent(images=images)
 
 
 def _validate_optional_filters(os, architecture):

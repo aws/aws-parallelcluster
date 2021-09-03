@@ -1,12 +1,13 @@
 namespace parallelcluster
 
+@suppress(["MissingPaginatedTrait"])
 @readonly
 @http(method: "GET", uri: "/v3/images/official", code: 200)
 @tags(["Image Operations"])
-@documentation("Describe ParallelCluster AMIs.")
-operation DescribeOfficialImages {
-    input: DescribeOfficialImagesRequest,
-    output: DescribeOfficialImagesResponse,
+@documentation("List Official ParallelCluster AMIs.")
+operation ListOfficialImages {
+    input: ListOfficialImagesRequest,
+    output: ListOfficialImagesResponse,
     errors: [
         InternalServiceException,
         BadRequestException,
@@ -15,7 +16,7 @@ operation DescribeOfficialImages {
     ]
 }
 
-structure DescribeOfficialImagesRequest {
+structure ListOfficialImagesRequest {
     @httpQuery("region")
     region: Region,
     @httpQuery("os")
@@ -26,7 +27,7 @@ structure DescribeOfficialImagesRequest {
     architecture: String,
 }
 
-structure DescribeOfficialImagesResponse {
+structure ListOfficialImagesResponse {
     @required
     images: AmisInfo,
 }

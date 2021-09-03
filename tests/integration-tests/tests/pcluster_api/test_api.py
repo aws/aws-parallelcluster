@@ -336,7 +336,7 @@ def _test_delete_cluster(region, client, cluster_name):
 
 def test_official_images(region, api_client):
     client = image_operations_api.ImageOperationsApi(api_client)
-    response = client.describe_official_images(region=region)
+    response = client.list_official_images(region=region)
     assert_that(response.images).is_not_empty()
 
 

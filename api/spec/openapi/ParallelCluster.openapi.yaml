@@ -1524,8 +1524,8 @@ paths:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
   /v3/images/official:
     get:
-      description: Describe ParallelCluster AMIs.
-      operationId: DescribeOfficialImages
+      description: List Official ParallelCluster AMIs.
+      operationId: ListOfficialImages
       parameters:
         - name: region
           in: query
@@ -1547,11 +1547,11 @@ paths:
             description: Filter by architecture (Default is to not filter.)
       responses:
         "200":
-          description: DescribeOfficialImages 200 response
+          description: ListOfficialImages 200 response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DescribeOfficialImagesResponseContent'
+                $ref: '#/components/schemas/ListOfficialImagesResponseContent'
         "400":
           description: BadRequestException 400 response
           content:
@@ -1989,15 +1989,6 @@ components:
         - imageId
         - region
         - version
-    DescribeOfficialImagesResponseContent:
-      type: object
-      properties:
-        images:
-          type: array
-          items:
-            $ref: '#/components/schemas/AmiInfo'
-      required:
-        - images
     DryrunOperationExceptionResponseContent:
       type: object
       description: Communicates that the operation would have succeeded without the dryrun flag.
@@ -2245,6 +2236,15 @@ components:
         nextToken:
           type: string
           description: Token to use for paginated requests.
+      required:
+        - images
+    ListOfficialImagesResponseContent:
+      type: object
+      properties:
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/AmiInfo'
       required:
         - images
     LogEvent:
