@@ -40,7 +40,6 @@ from pcluster.api.models.describe_cluster_instances_response_content import Desc
 from pcluster.api.models.describe_cluster_response_content import DescribeClusterResponseContent
 from pcluster.api.models.describe_compute_fleet_response_content import DescribeComputeFleetResponseContent
 from pcluster.api.models.describe_image_response_content import DescribeImageResponseContent
-from pcluster.api.models.list_official_images_response_content import ListOfficialImagesResponseContent
 from pcluster.api.models.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
 from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
 from pcluster.api.models.ec2_ami_state import Ec2AmiState
@@ -61,6 +60,7 @@ from pcluster.api.models.list_cluster_log_streams_response_content import ListCl
 from pcluster.api.models.list_clusters_response_content import ListClustersResponseContent
 from pcluster.api.models.list_image_log_streams_response_content import ListImageLogStreamsResponseContent
 from pcluster.api.models.list_images_response_content import ListImagesResponseContent
+from pcluster.api.models.list_official_images_response_content import ListOfficialImagesResponseContent
 from pcluster.api.models.log_event import LogEvent
 from pcluster.api.models.log_stream import LogStream
 from pcluster.api.models.node_type import NodeType

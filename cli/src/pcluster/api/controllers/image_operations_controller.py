@@ -34,12 +34,12 @@ from pcluster.api.models import (
     BuildImageResponseContent,
     CloudFormationStackStatus,
     DescribeImageResponseContent,
-    ListOfficialImagesResponseContent,
     Ec2AmiInfo,
     ImageConfigurationStructure,
     ImageInfoSummary,
     ImageStatusFilteringOption,
     ListImagesResponseContent,
+    ListOfficialImagesResponseContent,
     Tag,
     ValidationLevel,
 )
