@@ -10,12 +10,12 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or
 # implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+import functools
+import importlib
 import json
 
 import jmespath
 import yaml
-from connexion.utils import get_function_from_name
 
 from pcluster.api import encoder, openapi
 from pcluster.cli.exceptions import APIOperationException
@@ -149,6 +149,50 @@ def load_model(spec):
                 pass
 
     return model
+
+
+def get_function_from_name(function_name):
+    """
+    Get function by fully qualified name (e.g. "mymodule.myobj.myfunc").
+
+    :type function_name: str
+    """
+    if function_name is None:
+        raise ValueError("Empty function name")
+
+    if "." in function_name:
+        module_name, attr_path = function_name.rsplit(".", 1)
+    else:
+        module_name = ""
+        attr_path = function_name
+
+    module = None
+    last_import_error = None
+
+    while not module:
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError as import_error:
+            last_import_error = import_error
+            if "." in module_name:
+                module_name, attr_path1 = module_name.rsplit(".", 1)
+                attr_path = "{0}.{1}".format(attr_path1, attr_path)
+            else:
+                raise
+    try:
+        function = deep_getattr(module, attr_path)
+    except AttributeError:
+        if last_import_error:
+            raise last_import_error
+        raise
+    return function
+
+
+def deep_getattr(obj, attr):
+    """Recurse through an attribute chain to get the ultimate value."""
+    attrs = attr.split(".")
+
+    return functools.reduce(getattr, attrs, obj)
 
 
 def call(func_str, *args, **kwargs):
