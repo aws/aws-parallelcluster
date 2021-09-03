@@ -566,7 +566,9 @@ class ImageBuilder:
                     self.bucket.check_bucket_exists()
                     self.bucket.delete_s3_artifacts()
                 except AWSClientError:
-                    logging.warning("S3 bucket %s does not exist, skip image s3 artifacts deletion.", self.bucket.name)
+                    logging.warning(
+                        "S3 bucket associated to the image does not exist, skip image s3 artifacts deletion."
+                    )
 
                 # Delete log group
                 try:
