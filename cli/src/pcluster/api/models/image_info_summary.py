@@ -14,7 +14,7 @@ import re
 from pcluster.api import util
 from pcluster.api.models.base_model_ import Model
 from pcluster.api.models.cloud_formation_stack_status import CloudFormationStackStatus
-from pcluster.api.models.ec2_ami_info import Ec2AmiInfo
+from pcluster.api.models.ec2_ami_info_summary import Ec2AmiInfoSummary
 from pcluster.api.models.image_build_status import ImageBuildStatus
 
 
@@ -45,8 +45,8 @@ class ImageInfoSummary(Model):
         :param cloudformation_stack_arn: The cloudformation_stack_arn of this ImageInfoSummary.
         :type cloudformation_stack_arn: str
         :param ec2_ami_info: The ec2_ami_info of this ImageInfoSummary.  # noqa: E501
-        :type ec2_ami_info: Ec2AmiInfo
-        :param region: The region of this ImageInfoSummary.
+        :type ec2_ami_info: Ec2AmiInfoSummary
+        :param region: The region of this ImageInfoSummary.  # noqa: E501
         :type region: str
         :param version: The version of this ImageInfoSummary.
         :type version: str
@@ -56,7 +56,7 @@ class ImageInfoSummary(Model):
             "image_build_status": ImageBuildStatus,
             "cloudformation_stack_status": CloudFormationStackStatus,
             "cloudformation_stack_arn": str,
-            "ec2_ami_info": Ec2AmiInfo,
+            "ec2_ami_info": Ec2AmiInfoSummary,
             "region": str,
             "version": str,
         }
@@ -190,7 +190,7 @@ class ImageInfoSummary(Model):
 
 
         :return: The ec2_ami_info of this ImageInfoSummary.
-        :rtype: Ec2AmiInfo
+        :rtype: Ec2AmiInfoSummary
         """
         return self._ec2_ami_info
 
@@ -200,7 +200,7 @@ class ImageInfoSummary(Model):
 
 
         :param ec2_ami_info: The ec2_ami_info of this ImageInfoSummary.
-        :type ec2_ami_info: Ec2AmiInfo
+        :type ec2_ami_info: Ec2AmiInfoSummary
         """
 
         self._ec2_ami_info = ec2_ami_info

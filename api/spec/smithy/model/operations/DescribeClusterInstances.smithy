@@ -25,8 +25,10 @@ structure DescribeClusterInstancesRequest {
     @httpQuery("nextToken")
     nextToken: PaginationToken,
     @httpQuery("nodeType")
+    @documentation("Filter the instances by node type.")
     nodeType: NodeType,
     @httpQuery("queueName")
+    @documentation("Filter the instances by queue name.")
     queueName: String,
 }
 
