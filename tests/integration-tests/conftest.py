@@ -322,13 +322,13 @@ def clusters_factory(request, region):
     """
     factory = ClustersFactory(delete_logs_on_success=request.config.getoption("delete_logs_on_success"))
 
-    def _cluster_factory(cluster_config, **kwargs):
+    def _cluster_factory(cluster_config, upper_case_cluster_name=False, **kwargs):
         cluster_config = _write_config_to_outdir(request, cluster_config, "clusters_configs")
         cluster = Cluster(
             name=request.config.getoption("cluster")
             if request.config.getoption("cluster")
             else "integ-tests-{0}{1}{2}".format(
-                random_alphanumeric(),
+                random_alphanumeric().upper() if upper_case_cluster_name else random_alphanumeric(),
                 "-" if request.config.getoption("stackname_suffix") else "",
                 request.config.getoption("stackname_suffix"),
             ),
