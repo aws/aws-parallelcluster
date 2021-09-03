@@ -2308,8 +2308,8 @@ components:
     NodeType:
       type: string
       enum:
-        - HEAD
-        - COMPUTE
+        - HeadNode
+        - ComputeNode
     NotFoundExceptionResponseContent:
       type: object
       description: This exception is thrown when the requested entity is not found.

@@ -11,8 +11,8 @@ namespace parallelcluster
 string InstanceState
 
 @enum([
-    {name: "HEAD", value: "HEAD"},
-    {name: "COMPUTE", value: "COMPUTE"},
+    {name: "HEADNODE", value: "HeadNode"},
+    {name: "COMPUTENODE", value: "ComputeNode"},
 ])
 string NodeType
 
