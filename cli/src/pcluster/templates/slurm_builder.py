@@ -447,7 +447,7 @@ class SlurmConstruct(Construct):
             config=self.config,
             execution_role=cleanup_route53_lambda_execution_role.attr_arn
             if cleanup_route53_lambda_execution_role
-            else self.config.iam.roles.custom_lambda_resources,
+            else self.config.iam.roles.lambda_functions_role,
             handler_func="cleanup_resources",
         ).lambda_func
 

@@ -34,13 +34,8 @@ Make sure you have installed the [AWS Command Line Interface](https://docs.aws.a
 $ pip3 install awscli
 ```
 
-Install Node Version Manager and Node.js
-```
-wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
-. ~/.nvm/nvm.sh
-nvm install node
-node --version
-```
+[Node.js](https://nodejs.org/en/) is required by AWS CDK library used by ParallelCluster.
+Please reference installation instructions [in the AWS CDK documentaton](https://docs.aws.amazon.com/parallelcluster/latest/ug/install-v3.html).
 
 Then you can install AWS ParallelCluster:
 

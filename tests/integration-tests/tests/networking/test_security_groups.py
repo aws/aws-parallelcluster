@@ -17,7 +17,7 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from troposphere import Ref, Template
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress
-from utils import check_headnode_security_group, generate_stack_name
+from utils import check_head_node_security_group, generate_stack_name
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -41,7 +41,7 @@ def test_additional_sg_and_ssh_from(region, custom_security_group, pcluster_conf
             any(security_group["GroupName"].startswith(cluster.name) for security_group in instance["SecurityGroups"])
         ).is_true()
     logging.info("Asserting the security group of pcluster on the head node is aligned with ssh_from")
-    check_headnode_security_group(region, cluster, 22, ssh_from)
+    check_head_node_security_group(region, cluster, 22, ssh_from)
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -124,14 +124,7 @@ def custom_security_group(vpc_stack, region, request, cfn_stacks_factory):
 def _get_instances_by_security_group(ec2_client, security_group_id):
     logging.info("Collecting security groups of the head node and compute node")
     paginator = ec2_client.get_paginator("describe_instances")
-    page_iterator = paginator.paginate(
-        Filters=[
-            {
-                "Name": "network-interface.group-id",
-                "Values": [security_group_id],
-            }
-        ]
-    )
+    page_iterator = paginator.paginate(Filters=[{"Name": "network-interface.group-id", "Values": [security_group_id]}])
     instances = []
     for page in page_iterator:
         for reservation in page["Reservations"]:

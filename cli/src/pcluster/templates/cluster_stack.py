@@ -350,7 +350,7 @@ class ClusterCdkStack(Stack):
             config=self.config,
             execution_role=cleanup_resources_lambda_role.attr_arn
             if cleanup_resources_lambda_role
-            else self.config.iam.roles.custom_lambda_resources,
+            else self.config.iam.roles.lambda_functions_role,
             handler_func="cleanup_resources",
         ).lambda_func
 
@@ -388,12 +388,7 @@ class ClusterCdkStack(Stack):
             # Attach existing EIP
             else:
                 allocation_id = AWSApi.instance().ec2.get_eip_allocation_id(elastic_ip)
-            ec2.CfnEIPAssociation(
-                self,
-                "AssociateEIP",
-                allocation_id=allocation_id,
-                network_interface_id=head_eni.ref,
-            )
+            ec2.CfnEIPAssociation(self, "AssociateEIP", allocation_id=allocation_id, network_interface_id=head_eni.ref)
 
         return head_eni
 
@@ -441,10 +436,7 @@ class ClusterCdkStack(Stack):
 
     def _add_compute_security_group(self):
         compute_security_group = ec2.CfnSecurityGroup(
-            self,
-            "ComputeSecurityGroup",
-            group_description="Allow access to compute nodes",
-            vpc_id=self.config.vpc_id,
+            self, "ComputeSecurityGroup", group_description="Allow access to compute nodes", vpc_id=self.config.vpc_id
         )
 
         # ComputeSecurityGroupEgress
@@ -498,11 +490,7 @@ class ClusterCdkStack(Stack):
                     read_only_s3_resources.append(arn)
 
         s3_access_policy = iam.CfnPolicy(
-            self,
-            name,
-            policy_document=iam.PolicyDocument(statements=[]),
-            roles=[role_ref],
-            policy_name="S3Access",
+            self, name, policy_document=iam.PolicyDocument(statements=[]), roles=[role_ref], policy_name="S3Access"
         )
 
         if read_only_s3_resources:
@@ -551,12 +539,7 @@ class ClusterCdkStack(Stack):
             policy_document=iam.PolicyDocument(
                 statements=[
                     iam.PolicyStatement(
-                        sid="Ec2",
-                        actions=[
-                            "ec2:DescribeInstanceAttribute",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=["*"],
+                        sid="Ec2", actions=["ec2:DescribeInstanceAttribute"], effect=iam.Effect.ALLOW, resources=["*"]
                     ),
                     iam.PolicyStatement(
                         sid="S3GetObj",
@@ -591,25 +574,14 @@ class ClusterCdkStack(Stack):
                         effect=iam.Effect.ALLOW,
                         resources=[
                             self.format_arn(
-                                region="",
-                                service="s3",
-                                account="",
-                                resource=bucket_name,
-                                resource_name=object_key,
+                                region="", service="s3", account="", resource=bucket_name, resource_name=object_key
                             )
                         ],
                     ),
                     iam.PolicyStatement(
                         actions=["s3:GetBucketLocation"],
                         effect=iam.Effect.ALLOW,
-                        resources=[
-                            self.format_arn(
-                                service="s3",
-                                resource=bucket_name,
-                                region="",
-                                account="",
-                            )
-                        ],
+                        resources=[self.format_arn(service="s3", resource=bucket_name, region="", account="")],
                     ),
                 ]
             ),
@@ -620,11 +592,8 @@ class ClusterCdkStack(Stack):
         head_security_group_ingress = [
             # SSH access
             ec2.CfnSecurityGroup.IngressProperty(
-                ip_protocol="tcp",
-                from_port=22,
-                to_port=22,
-                cidr_ip=self.config.head_node.ssh.allowed_ips,
-            ),
+                ip_protocol="tcp", from_port=22, to_port=22, cidr_ip=self.config.head_node.ssh.allowed_ips
+            )
         ]
 
         if self.config.is_dcv_enabled:
@@ -914,7 +883,7 @@ class ClusterCdkStack(Stack):
                 block_device_mappings=get_block_device_mappings(head_node.local_storage, self.config.image.os),
                 key_name=head_node.ssh.key_name,
                 network_interfaces=head_lt_nw_interfaces,
-                image_id=self.config.headnode_ami,
+                image_id=self.config.head_node_ami,
                 ebs_optimized=head_node.is_ebs_optimized,
                 iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(
                     name=self.instance_profiles["HeadNode"]
@@ -922,9 +891,7 @@ class ClusterCdkStack(Stack):
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/head_node/user_data.sh"),
-                        {
-                            **get_common_user_data_env(head_node, self.config),
-                        },
+                        {**get_common_user_data_env(head_node, self.config)},
                     )
                 ),
                 tag_specifications=[
@@ -992,7 +959,7 @@ class ClusterCdkStack(Stack):
                     "ebs_shared_dirs": get_shared_storage_options_by_type(
                         self.shared_storage_options, SharedStorageType.EBS
                     ),
-                    "proxy": head_node.networking.proxy if head_node.networking.proxy else "NONE",
+                    "proxy": head_node.networking.proxy.http_proxy_address if head_node.networking.proxy else "NONE",
                     "dns_domain": self.scheduler_resources.cluster_hosted_zone.name
                     if self._condition_is_slurm() and self.scheduler_resources.cluster_hosted_zone
                     else "",
@@ -1090,10 +1057,7 @@ class ClusterCdkStack(Stack):
                                 "--resource HeadNodeLaunchTemplate --configsets update --region ${Region}\n"
                                 "runas=root\n"
                             ),
-                            {
-                                "StackName": self._stack_name,
-                                "Region": self.region,
-                            },
+                            {"StackName": self._stack_name, "Region": self.region},
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1102,10 +1066,7 @@ class ClusterCdkStack(Stack):
                     "/etc/cfn/cfn-hup.conf": {
                         "content": Fn.sub(
                             "[main]\nstack=${StackId}\nregion=${Region}\ninterval=2",
-                            {
-                                "StackId": self.stack_id,
-                                "Region": self.region,
-                            },
+                            {"StackId": self.stack_id, "Region": self.region},
                         ),
                         "mode": "000400",
                         "owner": "root",
@@ -1207,8 +1168,8 @@ class ClusterCdkStack(Stack):
         return (
             not self.config.iam
             or not self.config.iam.roles
-            or not self.config.iam.roles.custom_lambda_resources
-            or self.config.iam.roles.get_param("custom_lambda_resources").implied
+            or not self.config.iam.roles.lambda_functions_role
+            or self.config.iam.roles.get_param("lambda_functions_role").implied
         )
 
     def _condition_create_s3_access_policies(self, node: Union[HeadNode, BaseQueue]):
