@@ -9,39 +9,24 @@ import pytest
 from assertpy import assert_that
 
 
-class TestDescribeOfficialImagesCommand:
+class TestListOfficialImagesCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
-        command = ["pcluster", "describe-official-images", "--help"]
+        command = ["pcluster", "list-official-images", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            (
-                ["--os"],
-                "error: argument --os: expected one argument",
-            ),
-            (
-                ["--architecture"],
-                "error: argument --architecture: expected one argument",
-            ),
-            (
-                ["--os", "alinux2", "--invalid"],
-                "Invalid arguments ['--invalid']",
-            ),
-            (
-                ["--os", "alinux2", "--region", "eu-west-"],
-                "Bad Request: invalid or unsupported region 'eu-west-'",
-            ),
+            (["--os"], "error: argument --os: expected one argument"),
+            (["--architecture"], "error: argument --architecture: expected one argument"),
+            (["--os", "alinux2", "--invalid"], "Invalid arguments ['--invalid']"),
+            (["--os", "alinux2", "--region", "eu-west-"], "Bad Request: invalid or unsupported region 'eu-west-'"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
-        command = ["pcluster", "describe-official-images"] + args
+        command = ["pcluster", "list-official-images"] + args
         run_cli(command, expect_failure=True)
 
         out, err = capsys.readouterr()

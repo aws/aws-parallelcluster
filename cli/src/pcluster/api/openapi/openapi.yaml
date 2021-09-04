@@ -1801,8 +1801,8 @@ paths:
       x-openapi-router-controller: pcluster.api.controllers.image_logs_controller
   /v3/images/official:
     get:
-      description: Describe ParallelCluster AMIs.
-      operationId: describe_official_images
+      description: List Official ParallelCluster AMIs.
+      operationId: list_official_images
       parameters:
       - description: AWS Region that the operation corresponds to.
         explode: true
@@ -1836,8 +1836,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DescribeOfficialImagesResponseContent'
-          description: DescribeOfficialImages 200 response
+                $ref: '#/components/schemas/ListOfficialImagesResponseContent'
+          description: ListOfficialImages 200 response
         "400":
           content:
             application/json:
@@ -2529,29 +2529,6 @@ components:
       - version
       title: DescribeImageResponseContent
       type: object
-    DescribeOfficialImagesResponseContent:
-      example:
-        images:
-        - amiId: amiId
-          os: os
-          name: name
-          version: version
-          architecture: architecture
-        - amiId: amiId
-          os: os
-          name: name
-          version: version
-          architecture: architecture
-      properties:
-        images:
-          items:
-            $ref: '#/components/schemas/AmiInfo'
-          title: images
-          type: array
-      required:
-      - images
-      title: DescribeOfficialImagesResponseContent
-      type: object
     DryrunOperationExceptionResponseContent:
       description: Communicates that the operation would have succeeded without the
         dryrun flag.
@@ -3036,6 +3013,29 @@ components:
       required:
       - images
       title: ListImagesResponseContent
+      type: object
+    ListOfficialImagesResponseContent:
+      example:
+        images:
+        - amiId: amiId
+          os: os
+          name: name
+          version: version
+          architecture: architecture
+        - amiId: amiId
+          os: os
+          name: name
+          version: version
+          architecture: architecture
+      properties:
+        images:
+          items:
+            $ref: '#/components/schemas/AmiInfo'
+          title: images
+          type: array
+      required:
+      - images
+      title: ListOfficialImagesResponseContent
       type: object
     LogEvent:
       example:

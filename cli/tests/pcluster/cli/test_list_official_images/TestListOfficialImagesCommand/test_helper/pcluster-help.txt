@@ -1,8 +1,8 @@
-usage: pcluster describe-official-images [-h] [--region REGION] [--os OS]
-                                         [--architecture ARCHITECTURE]
-                                         [--debug] [--query QUERY]
+usage: pcluster list-official-images [-h] [--region REGION] [--os OS]
+                                     [--architecture ARCHITECTURE] [--debug]
+                                     [--query QUERY]
 
-Describe ParallelCluster AMIs.
+List Official ParallelCluster AMIs.
 
 optional arguments:
   -h, --help            show this help message and exit
