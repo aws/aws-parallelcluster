@@ -13,11 +13,13 @@
 # pylint: disable=too-many-branches
 # pylint: disable=too-many-statements
 
+import json
 import logging
 import os
 import sys
 import textwrap
 from builtins import str
+from functools import partial
 from typing import List
 
 import argparse
@@ -26,7 +28,7 @@ from argparse import ArgumentParser, Namespace
 from pcluster import utils
 from pcluster.api.pcluster_api import PclusterApi
 from pcluster.aws.common import get_region
-from pcluster.cli.commands.common import CliCommand
+from pcluster.cli.commands.common import CliCommand, to_bool
 from pcluster.models.cluster import NodeType
 
 LOGGER = logging.getLogger(__name__)
@@ -58,9 +60,8 @@ def _ssh(args, extra_args):
             )
 
             # run command
-            log_message = "SSH command: {0}".format(cmd)
             if not args.dryrun:
-                LOGGER.debug(log_message)
+                LOGGER.debug(f"SSH command: {cmd}")
                 # A nosec comment is appended to the following line in order to disable the B605 check.
                 # This check is disabled for the following reasons:
                 # - The args passed to the remote command are sanitized.
@@ -68,7 +69,7 @@ def _ssh(args, extra_args):
                 # - Users have full control over any customization of the command to which args are passed.
                 os.system(cmd)  # nosec nosemgrep
             else:
-                print(log_message)
+                print(json.dumps({"command": cmd}, indent=2))
         else:
             utils.error(f"Unable to connect to the cluster {args.cluster_name}.\n{result.message}")
 
@@ -110,7 +111,12 @@ Returns an ssh command with the cluster username and IP address pre-populated:
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument("--cluster-name", help="Name of the cluster to connect to.", required=True)
-        parser.add_argument("--dryrun", action="store_true", default=False, help="Prints command and exits.")
+        parser.add_argument(
+            "--dryrun",
+            default=False,
+            type=partial(to_bool, "dryrun"),
+            help="Prints command and exits (defaults to 'false').",
+        )
 
     def execute(self, args: Namespace, extra_args: List[str]) -> None:  # noqa: D102
         _ssh(args, extra_args)
