@@ -61,7 +61,7 @@ def _ssh(args, extra_args):
 
             # run command
             if not args.dryrun:
-                LOGGER.debug(f"SSH command: %", cmd)
+                LOGGER.debug("SSH command: %", cmd)
                 # A nosec comment is appended to the following line in order to disable the B605 check.
                 # This check is disabled for the following reasons:
                 # - The args passed to the remote command are sanitized.
