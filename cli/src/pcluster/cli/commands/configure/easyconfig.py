@@ -36,7 +36,7 @@ from pcluster.cli.commands.configure.utils import (
 )
 from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
 from pcluster.utils import error, get_supported_os_for_scheduler
-from pcluster.validators.cluster_validators import NAME_REGEX
+from pcluster.validators.cluster_validators import NameValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ def configure(args):  # noqa: C901
         while True:
             queue_name = prompt(
                 f"Name of queue {queue_index+1}",
-                validator=lambda x: re.match(NAME_REGEX, x),
+                validator=lambda x: len(NameValidator().execute(x)) == 0,
                 default_value=f"queue{queue_index+1}",
             )
             if queue_name not in queue_names:
