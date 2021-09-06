@@ -822,7 +822,8 @@ def test_intel_hpc_os_validator(os, expected_message):
         (
             True,
             "awsbatch",
-            "IMDS Secured cannot be enabled when using scheduler awsbatch. Please, disable IMDS Secured.",
+            "IMDS Secured cannot be enabled when using scheduler awsbatch. "
+            "Please, remove related configuration parameter.",
         ),
         (None, None, "Cannot validate IMDS configuration if scheduler is not set."),
         (True, None, "Cannot validate IMDS configuration if scheduler is not set."),

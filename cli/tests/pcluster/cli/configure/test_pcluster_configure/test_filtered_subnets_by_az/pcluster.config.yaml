@@ -7,8 +7,6 @@ HeadNode:
     SubnetId: subnet-45678912
   Ssh:
     KeyName: key1
-  Imds:
-    Secured: true
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
