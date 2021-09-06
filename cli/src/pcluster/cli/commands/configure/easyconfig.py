@@ -34,9 +34,15 @@ from pcluster.cli.commands.configure.utils import (
     prompt,
     prompt_iterable,
 )
-from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
+from pcluster.constants import (
+    DEFAULT_MAX_COUNT,
+    DEFAULT_MIN_COUNT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
+    SUPPORTED_SCHEDULERS,
+)
 from pcluster.utils import error, get_supported_os_for_scheduler
-from pcluster.validators.cluster_validators import NAME_REGEX
+from pcluster.validators.cluster_validators import NameValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -151,7 +157,13 @@ def configure(args):  # noqa: C901
     if scheduler == "awsbatch":
         number_of_queues = 1
     else:
-        number_of_queues = int(prompt("Number of queues", lambda x: str(x).isdigit() and int(x) >= 1, default_value=1))
+        number_of_queues = int(
+            prompt(
+                "Number of queues",
+                lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_QUEUES,
+                default_value=1,
+            )
+        )
     size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
     queues = []
     queue_names = []
@@ -161,7 +173,7 @@ def configure(args):  # noqa: C901
         while True:
             queue_name = prompt(
                 f"Name of queue {queue_index+1}",
-                validator=lambda x: re.match(NAME_REGEX, x),
+                validator=lambda x: len(NameValidator().execute(x)) == 0,
                 default_value=f"queue{queue_index+1}",
             )
             if queue_name not in queue_names:
@@ -177,7 +189,7 @@ def configure(args):  # noqa: C901
             number_of_compute_resources = int(
                 prompt(
                     f"Number of compute resources for {queue_name}",
-                    validator=lambda x: str(x).isdigit() and int(x) >= 1,
+                    validator=lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_COMPUTE_RESOURCES,
                     default_value=1,
                 )
             )
