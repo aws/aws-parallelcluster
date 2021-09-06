@@ -147,8 +147,8 @@ with pcluster_client.ApiClient(configuration) as api_client:
     cluster_name = "AqWzy" # str | Name of the cluster
     region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
     next_token = "nextToken_example" # str | Token to use for paginated requests. (optional)
-    node_type = NodeType("HEAD") # NodeType |  (optional)
-    queue_name = "queueName_example" # str |  (optional)
+    node_type = NodeType("HeadNode") # NodeType | Filter the instances by node type. (optional)
+    queue_name = "queueName_example" # str | Filter the instances by queue name. (optional)
 
     # example passing only required values which don't have defaults set
     try:
@@ -174,8 +174,8 @@ Name | Type | Description  | Notes
  **cluster_name** | **str**| Name of the cluster |
  **region** | **str**| AWS Region that the operation corresponds to. | [optional]
  **next_token** | **str**| Token to use for paginated requests. | [optional]
- **node_type** | **NodeType**|  | [optional]
- **queue_name** | **str**|  | [optional]
+ **node_type** | **NodeType**| Filter the instances by node type. | [optional]
+ **queue_name** | **str**| Filter the instances by queue name. | [optional]
 
 ### Return type
 

@@ -201,8 +201,8 @@ class ClusterInstancesApi(object):
             Keyword Args:
                 region (str): AWS Region that the operation corresponds to.. [optional]
                 next_token (str): Token to use for paginated requests.. [optional]
-                node_type (NodeType): [optional]
-                queue_name (str): [optional]
+                node_type (NodeType): Filter the instances by node type.. [optional]
+                queue_name (str): Filter the instances by queue name.. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object

@@ -7,8 +7,8 @@ Method | HTTP request | Description
 [**build_image**](ImageOperationsApi.md#build_image) | **POST** /v3/images/custom | 
 [**delete_image**](ImageOperationsApi.md#delete_image) | **DELETE** /v3/images/custom/{imageId} | 
 [**describe_image**](ImageOperationsApi.md#describe_image) | **GET** /v3/images/custom/{imageId} | 
-[**describe_official_images**](ImageOperationsApi.md#describe_official_images) | **GET** /v3/images/official | 
 [**list_images**](ImageOperationsApi.md#list_images) | **GET** /v3/images/custom | 
+[**list_official_images**](ImageOperationsApi.md#list_official_images) | **GET** /v3/images/official | 
 
 
 # **build_image**
@@ -315,94 +315,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **describe_official_images**
-> DescribeOfficialImagesResponseContent describe_official_images()
-
-
-
-Describe ParallelCluster AMIs.
-
-### Example
-
-* Api Key Authentication (aws.auth.sigv4):
-```python
-import time
-import pcluster_client
-from pcluster_client.api import image_operations_api
-from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
-from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
-from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
-from pcluster_client.model.describe_official_images_response_content import DescribeOfficialImagesResponseContent
-from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
-from pprint import pprint
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster_client.Configuration(
-    host = "http://localhost"
-)
-
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: aws.auth.sigv4
-configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
-
-# Enter a context with an instance of the API client
-with pcluster_client.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = image_operations_api.ImageOperationsApi(api_client)
-    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
-    os = "os_example" # str | Filter by OS distribution (Default is to not filter.) (optional)
-    architecture = "architecture_example" # str | Filter by architecture (Default is to not filter.) (optional)
-
-    # example passing only required values which don't have defaults set
-    # and optional values
-    try:
-        api_response = api_instance.describe_official_images(region=region, os=os, architecture=architecture)
-        pprint(api_response)
-    except pcluster_client.ApiException as e:
-        print("Exception when calling ImageOperationsApi->describe_official_images: %s\n" % e)
-```
-
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **region** | **str**| AWS Region that the operation corresponds to. | [optional]
- **os** | **str**| Filter by OS distribution (Default is to not filter.) | [optional]
- **architecture** | **str**| Filter by architecture (Default is to not filter.) | [optional]
-
-### Return type
-
-[**DescribeOfficialImagesResponseContent**](DescribeOfficialImagesResponseContent.md)
-
-### Authorization
-
-[aws.auth.sigv4](../README.md#aws.auth.sigv4)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** | DescribeOfficialImages 200 response |  -  |
-**400** | BadRequestException 400 response |  -  |
-**401** | UnauthorizedClientError 401 response |  -  |
-**429** | LimitExceededException 429 response |  -  |
-**500** | InternalServiceException 500 response |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
 # **list_images**
 > ListImagesResponseContent list_images(image_status)
 
@@ -492,6 +404,94 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | ListImages 200 response |  -  |
+**400** | BadRequestException 400 response |  -  |
+**401** | UnauthorizedClientError 401 response |  -  |
+**429** | LimitExceededException 429 response |  -  |
+**500** | InternalServiceException 500 response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_official_images**
+> ListOfficialImagesResponseContent list_official_images()
+
+
+
+List Official ParallelCluster AMIs.
+
+### Example
+
+* Api Key Authentication (aws.auth.sigv4):
+```python
+import time
+import pcluster_client
+from pcluster_client.api import image_operations_api
+from pcluster_client.model.bad_request_exception_response_content import BadRequestExceptionResponseContent
+from pcluster_client.model.list_official_images_response_content import ListOfficialImagesResponseContent
+from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
+from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
+from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = pcluster_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: aws.auth.sigv4
+configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with pcluster_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = image_operations_api.ImageOperationsApi(api_client)
+    region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
+    os = "os_example" # str | Filter by OS distribution (Default is to not filter.) (optional)
+    architecture = "architecture_example" # str | Filter by architecture (Default is to not filter.) (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.list_official_images(region=region, os=os, architecture=architecture)
+        pprint(api_response)
+    except pcluster_client.ApiException as e:
+        print("Exception when calling ImageOperationsApi->list_official_images: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **region** | **str**| AWS Region that the operation corresponds to. | [optional]
+ **os** | **str**| Filter by OS distribution (Default is to not filter.) | [optional]
+ **architecture** | **str**| Filter by architecture (Default is to not filter.) | [optional]
+
+### Return type
+
+[**ListOfficialImagesResponseContent**](ListOfficialImagesResponseContent.md)
+
+### Authorization
+
+[aws.auth.sigv4](../README.md#aws.auth.sigv4)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | ListOfficialImages 200 response |  -  |
 **400** | BadRequestException 400 response |  -  |
 **401** | UnauthorizedClientError 401 response |  -  |
 **429** | LimitExceededException 429 response |  -  |

@@ -67,5 +67,5 @@ def validation_results_to_config_validation_errors(
 
 
 def api_node_type_to_cluster_node_type(node_type: ApiNodeType):
-    mapping = {ApiNodeType.HEAD: NodeType.HEAD_NODE, ApiNodeType.COMPUTE: NodeType.COMPUTE}
+    mapping = {ApiNodeType.HEADNODE: NodeType.HEAD_NODE, ApiNodeType.COMPUTENODE: NodeType.COMPUTE}
     return mapping.get(node_type)
