@@ -173,7 +173,7 @@ def test_imagebuilder_url_validator(
             {
                 "dev_settings": {
                     "cookbook": {
-                        "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
+                        "chef_cookbook": "https://test/aws-parallelcluster-cookbook-3.0.tgz",
                         "extra_chef_attributes": '{"cluster": {"nvidia": { "enabled" : "yes" }, "dcv" :"no"}}',
                     },
                     "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
@@ -195,7 +195,7 @@ def test_imagebuilder_url_validator(
             {
                 "dev_settings": {
                     "cookbook": {
-                        "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
+                        "chef_cookbook": "https://test/aws-parallelcluster-cookbook-3.0.tgz",
                         "extra_chef_attributes": '{"cluster": {"nvidia": { "enabled" : "yes" }, "dcv" :"no"}, '
                         '"nfs": "true"}',
                     },
@@ -219,7 +219,7 @@ def test_imagebuilder_url_validator(
             {
                 "dev_settings": {
                     "cookbook": {
-                        "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
+                        "chef_cookbook": "https://test/aws-parallelcluster-cookbook-3.0.tgz",
                         "extra_chef_attributes": '{"cluster": {"is_official_ami_build": "true"},"nfs": "true"}',
                     },
                     "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
