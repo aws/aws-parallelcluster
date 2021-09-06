@@ -210,8 +210,7 @@ def configure(args):  # noqa: C901
                         f"Error: Instance type {compute_instance_type} cannot be specified for multiple compute "
                         "resources in the same queue. Please insert a different instance type."
                     )
-                sanitized_instance_type = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
-                compute_resource_name = f"{queue_name}-{sanitized_instance_type}"
+                compute_resource_name = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
             min_cluster_size = DEFAULT_MIN_COUNT
             max_cluster_size = int(
                 prompt(
@@ -223,7 +222,7 @@ def configure(args):  # noqa: C901
             if scheduler == "awsbatch":
                 compute_resources.append(
                     {
-                        "Name": f"{queue_name}-optimal",
+                        "Name": "optimal",
                         "InstanceTypes": ["optimal"],
                         "MinvCpus": min_cluster_size,
                         "DesiredvCpus": min_cluster_size,

@@ -12,7 +12,7 @@ Scheduling:
   AwsBatchQueues:
     - Name: myqueue
       ComputeResources:
-        - Name: myqueue-optimal
+        - Name: optimal
           InstanceTypes:
             - optimal
           MinvCpus: 0
