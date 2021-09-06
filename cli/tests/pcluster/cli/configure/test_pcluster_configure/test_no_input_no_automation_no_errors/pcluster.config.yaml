@@ -14,7 +14,7 @@ Scheduling:
   SlurmQueues:
     - Name: myqueue
       ComputeResources:
-        - Name: myqueue-t2micro
+        - Name: t2micro
           InstanceType: t2.micro
           MinCount: 0
           MaxCount: 10
