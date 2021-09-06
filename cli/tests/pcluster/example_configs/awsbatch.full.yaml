@@ -14,12 +14,12 @@ HeadNode:
   DisableSimultaneousMultithreading: true
   CustomActions:
     OnNodeStart:
-      Script: https://test.tgz  # s3:// | https:// | file://*
+      Script: https://test.tgz  # s3:// | https://
       Args:
         - arg1
         - arg2
     OnNodeConfigured:
-      Script: https://test.tgz  # s3:// | https:// | file://*
+      Script: https://test.tgz  # s3:// | https://
       Args:
         - arg1
         - arg2
