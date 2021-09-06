@@ -28,10 +28,10 @@ from pcluster_client.model_utils import (  # noqa: F401
 
 def lazy_import():
     from pcluster_client.model.cloud_formation_stack_status import CloudFormationStackStatus
-    from pcluster_client.model.ec2_ami_info import Ec2AmiInfo
+    from pcluster_client.model.ec2_ami_info_summary import Ec2AmiInfoSummary
     from pcluster_client.model.image_build_status import ImageBuildStatus
     globals()['CloudFormationStackStatus'] = CloudFormationStackStatus
-    globals()['Ec2AmiInfo'] = Ec2AmiInfo
+    globals()['Ec2AmiInfoSummary'] = Ec2AmiInfoSummary
     globals()['ImageBuildStatus'] = ImageBuildStatus
 
 
@@ -92,7 +92,7 @@ class ImageInfoSummary(ModelNormal):
             'version': (str,),  # noqa: E501
             'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cloudformation_stack_arn': (str,),  # noqa: E501
-            'ec2_ami_info': (Ec2AmiInfo,),  # noqa: E501
+            'ec2_ami_info': (Ec2AmiInfoSummary,),  # noqa: E501
         }
 
     @cached_property
@@ -164,7 +164,7 @@ class ImageInfoSummary(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             cloudformation_stack_status (CloudFormationStackStatus): [optional]  # noqa: E501
             cloudformation_stack_arn (str): ARN of the main CloudFormation stack.. [optional]  # noqa: E501
-            ec2_ami_info (Ec2AmiInfo): [optional]  # noqa: E501
+            ec2_ami_info (Ec2AmiInfoSummary): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

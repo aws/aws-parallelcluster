@@ -221,6 +221,7 @@ class Cluster:
     def _get_cluster_config(self):
         """Retrieve cluster config content."""
         config_version = self.stack.original_config_version
+        self._check_bucket_existence()
         try:
             return self.bucket.get_config(
                 version_id=config_version, config_name=PCLUSTER_S3_ARTIFACTS_DICT.get("source_config_name")
@@ -229,6 +230,12 @@ class Cluster:
             raise _cluster_error_mapper(
                 e, f"Unable to load configuration from bucket '{self.bucket.name}/{self.s3_artifacts_dir}'.\n{e}"
             )
+
+    def _check_bucket_existence(self):
+        try:
+            return self.bucket
+        except Exception as e:
+            raise _cluster_error_mapper(e, f"Unable to access bucket associated to the cluster.\n{e}")
 
     @property
     def config(self) -> BaseClusterConfig:
@@ -425,6 +432,7 @@ class Cluster:
 
     def _upload_config(self):
         """Upload source config and save config version."""
+        self._check_bucket_existence()
         try:
             # Upload config with default values and sections
             if self.config:
@@ -459,6 +467,7 @@ class Cluster:
         All files contained in root dir will be uploaded to
         {bucket_name}/parallelcluster/{version}/clusters/{cluster_name}/{resource_dir}/artifact.
         """
+        self._check_bucket_existence()
         try:
             resources = pkg_resources.resource_filename(__name__, "../resources/custom_resources")
             self.bucket.upload_resources(

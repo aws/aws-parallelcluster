@@ -39,9 +39,7 @@ def cfn_describe_instances_mock_response(
 def describe_cluster_instances_mock_response(instances):
     result = []
     for instance in instances:
-        node_type = instance.get("node_type") or "HEAD"
-        if node_type:
-            node_type = node_type.upper()
+        node_type = instance.get("node_type") or "HeadNode"
         response = {
             "instanceId": "i-0a9342a0000000000",
             "instanceType": "t2.micro",
@@ -51,7 +49,8 @@ def describe_cluster_instances_mock_response(instances):
             "publicIpAddress": "1.2.3.4",
             "state": "running",
         }
-        if node_type == "COMPUTE":
+        if node_type == "Compute":
+            response["nodeType"] = "ComputeNode"
             response["queueName"] = instance.get("queue_name")
         result.append(response)
     return {"instances": result}
@@ -124,8 +123,8 @@ class TestDescribeClusterInstances:
         "cluster_name, node_type, queue_name",
         [
             ("clustername", None, None),
-            ("clustername", NodeType.HEAD, None),
-            ("clustername", NodeType.COMPUTE, None),
+            ("clustername", NodeType.HEADNODE, None),
+            ("clustername", NodeType.COMPUTENODE, None),
             ("clustername", None, "queuename"),
         ],
         ids=["all instances", "head only", "compute only", "queuename only"],
@@ -146,7 +145,7 @@ class TestDescribeClusterInstances:
                 actual_filters_dict[filter["Name"]] = filter["Values"][0]
             assert_that(actual_filters_dict.get("tag:parallelcluster:cluster-name")).is_equal_to(cluster_name)
             if node_type:
-                if node_type == NodeType.HEAD:
+                if node_type == NodeType.HEADNODE:
                     expected_value = "HeadNode"
                 else:
                     expected_value = "Compute"
@@ -160,7 +159,7 @@ class TestDescribeClusterInstances:
         [
             (
                 {"node_type": "wrong_node_type"},
-                {"message": "Bad Request: 'wrong_node_type' is not one of ['HEAD', 'COMPUTE']"},
+                {"message": "Bad Request: 'wrong_node_type' is not one of ['HeadNode', 'ComputeNode']"},
             ),
             (
                 {"region": "eu-west-"},

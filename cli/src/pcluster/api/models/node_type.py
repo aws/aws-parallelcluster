@@ -22,8 +22,8 @@ class NodeType(Model):
     """
     allowed enum values
     """
-    HEAD = "HEAD"
-    COMPUTE = "COMPUTE"
+    HEADNODE = "HeadNode"
+    COMPUTENODE = "ComputeNode"
 
     def __init__(self):
         """NodeType - a model defined in OpenAPI"""

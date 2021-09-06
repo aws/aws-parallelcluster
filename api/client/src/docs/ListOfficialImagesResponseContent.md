@@ -1,4 +1,4 @@
-# DescribeOfficialImagesResponseContent
+# ListOfficialImagesResponseContent
 
 
 ## Properties
