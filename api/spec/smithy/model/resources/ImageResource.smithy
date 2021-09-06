@@ -1,7 +1,7 @@
 namespace parallelcluster
 
 resource OfficialImage {
-    operations: [DescribeOfficialImages]
+    operations: [ListOfficialImages]
 }
 
 resource CustomImage {

@@ -68,9 +68,9 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
     :type region: str
     :param next_token: Token to use for paginated requests.
     :type next_token: str
-    :param node_type:
+    :param node_type: Filter the instances by node type.
     :type node_type: dict | bytes
-    :param queue_name:
+    :param queue_name: Filter the instances by queue name.
     :type queue_name: str
 
     :rtype: DescribeClusterInstancesResponseContent
@@ -90,7 +90,9 @@ def describe_cluster_instances(cluster_name, region=None, next_token=None, node_
                 instance_type=instance.instance_type,
                 state=instance.state,
                 private_ip_address=instance.private_ip,
-                node_type=ApiNodeType.HEAD if instance.node_type == NodeType.HEAD_NODE.value else ApiNodeType.COMPUTE,
+                node_type=ApiNodeType.HEADNODE
+                if instance.node_type == NodeType.HEAD_NODE.value
+                else ApiNodeType.COMPUTENODE,
                 queue_name=instance.queue_name,
             )
         )

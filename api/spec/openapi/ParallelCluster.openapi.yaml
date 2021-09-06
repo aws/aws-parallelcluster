@@ -650,12 +650,15 @@ paths:
             description: Token to use for paginated requests.
         - name: nodeType
           in: query
+          description: Filter the instances by node type.
           schema:
             $ref: '#/components/schemas/NodeType'
         - name: queueName
           in: query
+          description: Filter the instances by queue name.
           schema:
             type: string
+            description: Filter the instances by queue name.
       responses:
         "200":
           description: DescribeClusterInstances 200 response
@@ -1524,8 +1527,8 @@ paths:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ParallelClusterFunction.Arn}/invocations
   /v3/images/official:
     get:
-      description: Describe ParallelCluster AMIs.
-      operationId: DescribeOfficialImages
+      description: List Official ParallelCluster AMIs.
+      operationId: ListOfficialImages
       parameters:
         - name: region
           in: query
@@ -1547,11 +1550,11 @@ paths:
             description: Filter by architecture (Default is to not filter.)
       responses:
         "200":
-          description: DescribeOfficialImages 200 response
+          description: ListOfficialImages 200 response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DescribeOfficialImagesResponseContent'
+                $ref: '#/components/schemas/ListOfficialImagesResponseContent'
         "400":
           description: BadRequestException 400 response
           content:
@@ -1989,15 +1992,6 @@ components:
         - imageId
         - region
         - version
-    DescribeOfficialImagesResponseContent:
-      type: object
-      properties:
-        images:
-          type: array
-          items:
-            $ref: '#/components/schemas/AmiInfo'
-      required:
-        - images
     DryrunOperationExceptionResponseContent:
       type: object
       description: Communicates that the operation would have succeeded without the dryrun flag.
@@ -2058,6 +2052,14 @@ components:
         architecture:
           type: string
           description: EC2 AMI architecture
+      required:
+        - amiId
+    Ec2AmiInfoSummary:
+      type: object
+      properties:
+        amiId:
+          type: string
+          description: EC2 AMI id
       required:
         - amiId
     Ec2AmiState:
@@ -2160,7 +2162,7 @@ components:
           type: string
           description: ARN of the main CloudFormation stack.
         ec2AmiInfo:
-          $ref: '#/components/schemas/Ec2AmiInfo'
+          $ref: '#/components/schemas/Ec2AmiInfoSummary'
         region:
           type: string
           description: AWS region where the image is built.
@@ -2247,6 +2249,15 @@ components:
           description: Token to use for paginated requests.
       required:
         - images
+    ListOfficialImagesResponseContent:
+      type: object
+      properties:
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/AmiInfo'
+      required:
+        - images
     LogEvent:
       type: object
       properties:
@@ -2297,8 +2308,8 @@ components:
     NodeType:
       type: string
       enum:
-        - HEAD
-        - COMPUTE
+        - HeadNode
+        - ComputeNode
     NotFoundExceptionResponseContent:
       type: object
       description: This exception is thrown when the requested entity is not found.

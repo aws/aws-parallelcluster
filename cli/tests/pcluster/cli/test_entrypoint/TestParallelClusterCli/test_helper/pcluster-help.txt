@@ -1,5 +1,5 @@
 usage: pcluster [-h]
-                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-cluster-log-streams,get-cluster-log-events,get-cluster-stack-events,list-images,build-image,delete-image,describe-image,list-image-log-streams,get-image-log-events,get-image-stack-events,describe-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,ssh,version}
+                {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-cluster-log-streams,get-cluster-log-events,get-cluster-stack-events,list-images,build-image,delete-image,describe-image,list-image-log-streams,get-image-log-events,get-image-stack-events,list-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,ssh,version}
                 ...
 
 pcluster is the AWS ParallelCluster CLI and permits launching and management
@@ -9,7 +9,7 @@ optional arguments:
   -h, --help            show this help message and exit
 
 COMMANDS:
-  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-cluster-log-streams,get-cluster-log-events,get-cluster-stack-events,list-images,build-image,delete-image,describe-image,list-image-log-streams,get-image-log-events,get-image-stack-events,describe-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,ssh,version}
+  {list-clusters,create-cluster,delete-cluster,describe-cluster,update-cluster,describe-compute-fleet,update-compute-fleet,delete-cluster-instances,describe-cluster-instances,list-cluster-log-streams,get-cluster-log-events,get-cluster-stack-events,list-images,build-image,delete-image,describe-image,list-image-log-streams,get-image-log-events,get-image-stack-events,list-official-images,configure,dcv-connect,export-cluster-logs,export-image-logs,ssh,version}
     list-clusters       Retrieve the list of existing clusters.
     create-cluster      Create a managed cluster in a given region.
     delete-cluster      Initiate the deletion of a cluster.
@@ -46,8 +46,8 @@ COMMANDS:
     get-image-stack-events
                         Retrieve the events associated with the stack for a
                         given image build.
-    describe-official-images
-                        Describe ParallelCluster AMIs.
+    list-official-images
+                        List Official ParallelCluster AMIs.
     configure           Start the AWS ParallelCluster configuration.
     dcv-connect         Permits to connect to the head node through an
                         interactive session by using NICE DCV.

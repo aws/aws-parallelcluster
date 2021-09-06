@@ -95,17 +95,12 @@ class TestListImages:
         if next_token:
             query_string.append(("nextToken", next_token))
 
-        headers = {
-            "Accept": "application/json",
-        }
+        headers = {"Accept": "application/json"}
 
         return client.open(self.url, method=self.method, headers=headers, query_string=query_string)
 
     def test_list_available_images_successful(self, client, mocker):
-        describe_result = [
-            _create_image_info("image1"),
-            _create_image_info("image2"),
-        ]
+        describe_result = [_create_image_info("image1"), _create_image_info("image2")]
         expected_response = {
             "images": [
                 {
@@ -159,7 +154,7 @@ class TestListImages:
                     "cloudformationStackArn": "arn:image3",
                     "region": "us-east-1",
                     "version": "3.0.0",
-                },
+                }
             ],
             "nextToken": "nextPage",
         }
@@ -291,13 +286,8 @@ class TestDeleteImage:
     method = "DELETE"
 
     def _send_test_request(self, client, image_name, region="us-east-1", force=True):
-        query_string = [
-            ("force", force),
-            ("region", region),
-        ]
-        headers = {
-            "Accept": "application/json",
-        }
+        query_string = [("force", force), ("region", region)]
+        headers = {"Accept": "application/json"}
         return client.open(
             self.url.format(image_name=image_name), method=self.method, headers=headers, query_string=query_string
         )
@@ -416,10 +406,7 @@ class TestDeleteImage:
     def test_that_imagebuilder_bad_request_error_is_converted(self, client, mocker, error):
         image = _create_image_info("image1")
         mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=image)
-        mocker.patch(
-            "pcluster.models.imagebuilder.ImageBuilder.delete",
-            side_effect=error("test error"),
-        )
+        mocker.patch("pcluster.models.imagebuilder.ImageBuilder.delete", side_effect=error("test error"))
         expected_error = {"message": "Bad Request: test error"}
         response = self._send_test_request(client, "image1")
 
@@ -486,10 +473,7 @@ class TestBuildImage:
 
     def _send_test_request(self, client, dryrun=None, suppress_validators=None, rollback_on_failure=None):
         build_image_request_content = {"imageConfiguration": self.config, "imageId": "imageid"}
-        query_string = [
-            ("validationFailureLevel", ValidationLevel.INFO),
-            ("region", "eu-west-1"),
-        ]
+        query_string = [("validationFailureLevel", ValidationLevel.INFO), ("region", "eu-west-1")]
 
         if dryrun is not None:
             query_string.append(("dryrun", dryrun))
@@ -500,10 +484,7 @@ class TestBuildImage:
         if suppress_validators:
             query_string.extend([("suppressValidators", validator) for validator in suppress_validators])
 
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
         return client.open(
             self.url,
             method=self.method,
@@ -544,7 +525,7 @@ class TestBuildImage:
                 "imageId": "image1",
                 "region": "eu-west-1",
                 "version": "3.0.0",
-            },
+            }
         }
 
         if suppressed_validation_errors:
@@ -665,7 +646,7 @@ def _create_official_image_info(version, os, architecture):
     )
 
 
-def _describe_official_images_expected_response(version, os, architecture):
+def _list_official_images_expected_response(version, os, architecture):
     return {
         "amiId": "ami-test",
         "os": os,
@@ -675,16 +656,10 @@ def _describe_official_images_expected_response(version, os, architecture):
     }
 
 
-class TestDescribeOfficialImages:
+class TestListOfficialImages:
     def _send_test_request(self, client, os=None, architecture=None, region="us-east-1"):
-        query_string = [
-            ("region", region),
-            ("os", os),
-            ("architecture", architecture),
-        ]
-        headers = {
-            "Accept": "application/json",
-        }
+        query_string = [("region", region), ("os", os), ("architecture", architecture)]
+        headers = {"Accept": "application/json"}
         return client.open("/v3/images/official", method="GET", headers=headers, query_string=query_string)
 
     @pytest.mark.parametrize(
@@ -694,28 +669,28 @@ class TestDescribeOfficialImages:
                 None,
                 None,
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
                 id="test with no arguments",
             ),
             pytest.param(
                 "alinux2",
                 None,
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
                 id="test with os",
             ),
             pytest.param(
                 None,
                 "x86_64",
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
                 id="test with architecture",
             ),
             pytest.param(
                 "alinux2",
                 "x86_64",
                 [_create_official_image_info("3.0.0", "alinux2", "x86_64")],
-                {"images": [_describe_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
+                {"images": [_list_official_images_expected_response("3.0.0", "alinux2", "x86_64")]},
                 id="test with os and architecture",
             ),
         ],
@@ -800,18 +775,13 @@ class TestDescribeImage:
         query_string = []
         if region:
             query_string.append(("region", region))
-        headers = {
-            "Accept": "application/json",
-        }
+        headers = {"Accept": "application/json"}
         return client.open(
             self.url.format(image_name=image_name), method=self.method, headers=headers, query_string=query_string
         )
 
     def test_describe_of_image_already_available(self, client, mocker):
-        mocker.patch(
-            "pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag",
-            return_value=_create_image_info("image1"),
-        )
+        mocker.patch("pcluster.aws.ec2.Ec2Client.describe_image_by_id_tag", return_value=_create_image_info("image1"))
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack_resource", return_value=None)
         mocker.patch(
             "pcluster.api.controllers.image_operations_controller._presigned_config_url",

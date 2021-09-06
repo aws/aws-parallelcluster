@@ -181,7 +181,9 @@ def _test_cluster_workflow(region, api_client, create_cluster, request, pcluster
 
 
 def _test_describe_cluster_head_node(region, client, cluster_name):
-    response = client.describe_cluster_instances(cluster_name=cluster_name, node_type=NodeType("HEAD"), region=region)
+    response = client.describe_cluster_instances(
+        cluster_name=cluster_name, node_type=NodeType("HeadNode"), region=region
+    )
     assert_that(response.instances).is_length(1)
     return response.instances[0].instance_id
 
@@ -190,13 +192,13 @@ def _test_describe_cluster_compute_nodes(region, client, cluster_name, all_termi
     compute_nodes_map = dict()
 
     response = client.describe_cluster_instances(
-        cluster_name=cluster_name, node_type=NodeType("COMPUTE"), region=region
+        cluster_name=cluster_name, node_type=NodeType("ComputeNode"), region=region
     )
     _add_compute_nodes(response.instances, compute_nodes_map)
 
     while "next_token" in response:
         response = client.describe_cluster_instances(
-            cluster_name=cluster_name, node_type=NodeType("COMPUTE"), region=region, next_token=response.next_token
+            cluster_name=cluster_name, node_type=NodeType("ComputeNode"), region=region, next_token=response.next_token
         )
         _add_compute_nodes(response.instances, compute_nodes_map)
 
@@ -336,7 +338,7 @@ def _test_delete_cluster(region, client, cluster_name):
 
 def test_official_images(region, api_client):
     client = image_operations_api.ImageOperationsApi(api_client)
-    response = client.describe_official_images(region=region)
+    response = client.list_official_images(region=region)
     assert_that(response.images).is_not_empty()
 
 
