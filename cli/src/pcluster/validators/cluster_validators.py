@@ -857,8 +857,7 @@ class HeadNodeImdsValidator(Validator):
         elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
             # TODO move validation for Imds parameter in the schema
             self._add_failure(
-                f"IMDS Secured cannot be enabled when using scheduler {scheduler}. "
-                "Please, remove related configuration parameter.",
+                f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
                 FailureLevel.ERROR,
             )
 

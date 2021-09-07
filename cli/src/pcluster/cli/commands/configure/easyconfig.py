@@ -156,6 +156,7 @@ def configure(args):  # noqa: C901
     )
     if scheduler == "awsbatch":
         number_of_queues = 1
+        size_name = "vCPU"
     else:
         number_of_queues = int(
             prompt(
@@ -164,7 +165,8 @@ def configure(args):  # noqa: C901
                 default_value=1,
             )
         )
-    size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
+        size_name = "instance count"
+
     queues = []
     queue_names = []
     compute_instance_types = []
@@ -238,26 +240,33 @@ def configure(args):  # noqa: C901
                         "MaxCount": max_cluster_size,
                     }
                 )
-            if scheduler != "awsbatch":
                 compute_instance_types.append(compute_instance_type)
+
             queue_names.append(queue_name)
             cluster_size += max_cluster_size  # Fixme: is it the right calculation for awsbatch?
         queues.append({"Name": queue_name, "ComputeResources": compute_resources})
+
     vpc_parameters = _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_types, cluster_size)
 
     # Here is the end of prompt. Code below assembles config and write to file
     for queue in queues:
         queue["Networking"] = {"SubnetIds": [vpc_parameters["compute_subnet_id"]]}
 
-    scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
+    head_node_config = {
+        "InstanceType": head_node_instance_type,
+        "Networking": {"SubnetId": vpc_parameters["head_node_subnet_id"]},
+        "Ssh": {"KeyName": key_name},
+    }
+    if scheduler == "awsbatch":
+        scheduler_prefix = "AwsBatch"
+        head_node_config["Imds"] = {"Secured": False}
+    else:
+        scheduler_prefix = scheduler.capitalize()
+
     result = {
         "Region": os.environ.get("AWS_DEFAULT_REGION"),
         "Image": {"Os": base_os},
-        "HeadNode": {
-            "InstanceType": head_node_instance_type,
-            "Networking": {"SubnetId": vpc_parameters["head_node_subnet_id"]},
-            "Ssh": {"KeyName": key_name},
-        },
+        "HeadNode": head_node_config,
         "Scheduling": {"Scheduler": scheduler, f"{scheduler_prefix}Queues": queues},
     }
 
