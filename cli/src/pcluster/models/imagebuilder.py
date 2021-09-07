@@ -578,10 +578,10 @@ class ImageBuilder:
                     )
 
                 # Delete log group
-                try:
-                    AWSApi.instance().logs.delete_log_group(self._log_group_name)
-                except AWSClientError:
-                    logging.warning("Unable to delete log group %s.", self._log_group_name)
+                # try:
+                #     AWSApi.instance().logs.delete_log_group(self._log_group_name)
+                # except AWSClientError:
+                #     logging.warning("Unable to delete log group %s.", self._log_group_name)
 
             except (AWSClientError, ImageError) as e:
                 raise _imagebuilder_error_mapper(e, f"Unable to delete image and stack, due to {str(e)}")
