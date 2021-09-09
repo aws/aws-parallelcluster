@@ -411,7 +411,7 @@ def test_build_image_wrong_pcluster_version(
 
     _test_build_image_failed(image)
     log_stream_name = "3.0.0/1"
-    log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name)["events"])
+    log_data = " ".join(log["message"] for log in image.get_log_events(log_stream_name, limit=100)["events"])
     assert_that(log_data).matches(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
 
 
