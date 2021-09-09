@@ -198,9 +198,10 @@ phases:
                   grub2-mkconfig -o /boot/grub2/grub.cfg
                 fi
               elif [[ ${!PLATFORM} == DEBIAN ]]; then
-                [ ${CfnParamUpdateOsAndReboot} == false ] && flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl stop apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
-                sed -i "s/Update-Package-Lists \"1\"/Update-Package-Lists \"0\"/g" /etc/apt/apt.conf.d/20auto-upgrades
-                sed -i "s/Unattended-Upgrade \"1\"/Unattended-Upgrade \"0\"/g" /etc/apt/apt.conf.d/20auto-upgrades
+                if [[ "${CfnParamUpdateOsAndReboot}" == "false" ]]; then
+                  flock $(apt-config shell StateDir Dir::State/d | sed -r "s/.*'(.*)\/?'$/\1/")/daily_lock systemctl disable --now apt-daily.timer apt-daily.service apt-daily-upgrade.timer apt-daily-upgrade.service
+                  sed "/Update-Package-Lists/s/\"1\"/\"0\"/; /Unattended-Upgrade/s/\"1\"/\"0\"/;" /etc/apt/apt.conf.d/20auto-upgrades > "/etc/apt/apt.conf.d/51pcluster-unattended-upgrades"
+                fi
                 apt-cache search build-essential
                 apt-get clean
                 apt-get -y update
