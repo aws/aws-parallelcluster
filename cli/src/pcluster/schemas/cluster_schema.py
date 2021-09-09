@@ -833,17 +833,13 @@ class ImageSchema(BaseSchema):
         return Image(**data)
 
 
-class BaseImageSchema(BaseSchema):
-    """Represent the common attributes in HeadNode Image and Queue Image."""
+class HeadNodeImageSchema(BaseSchema):
+    """Represent the schema of the HeadNode Image."""
 
     custom_ami = fields.Str(
         validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
-
-
-class HeadNodeImageSchema(BaseImageSchema):
-    """Represent the schema of the HeadNode Image."""
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -851,8 +847,13 @@ class HeadNodeImageSchema(BaseImageSchema):
         return HeadNodeImage(**data)
 
 
-class QueueImageSchema(BaseImageSchema):
+class QueueImageSchema(BaseSchema):
     """Represent the schema of the Queue Image."""
+
+    custom_ami = fields.Str(
+        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
