@@ -191,7 +191,6 @@ def pytest_sessionstart(session):
 
 def pytest_runtest_call(item):
     """Called to execute the test item."""
-    _add_properties_to_report(item)
     set_logger_formatter(
         logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - %(process)d - {item.name} - %(module)s - %(message)s")
     )
@@ -1078,6 +1077,9 @@ def s3_bucket_factory(region):
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """Making test result information available in fixtures"""
+    # add dimension properties to report
+    _add_properties_to_report(item)
+
     # execute all other hooks to obtain the report object
     outcome = yield
     rep = outcome.get_result()
