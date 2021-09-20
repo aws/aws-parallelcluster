@@ -15,6 +15,7 @@ from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     AwsBatchComputeResource,
     AwsBatchQueue,
+    AwsBatchQueueNetworking,
     AwsBatchScheduling,
     ClusterIam,
     Dcv,
@@ -24,7 +25,6 @@ from pcluster.config.cluster_config import (
     Image,
     Imds,
     Proxy,
-    QueueNetworking,
     Raid,
     S3Access,
     SharedEbs,
@@ -33,6 +33,7 @@ from pcluster.config.cluster_config import (
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
+    SlurmQueueNetworking,
     SlurmScheduling,
     Ssh,
     Tag,
@@ -115,9 +116,9 @@ def dummy_slurm_cluster_config(mocker):
         ]
     )
     compute_resources = [SlurmComputeResource(name="dummy_compute_resource1", instance_type="dummyc5.xlarge")]
-    queue_networking1 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
-    queue_networking2 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
-    queue_networking3 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
+    queue_networking1 = SlurmQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
+    queue_networking2 = SlurmQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
+    queue_networking3 = SlurmQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
     queues = [
         SlurmQueue(name="queue1", networking=queue_networking1, compute_resources=compute_resources, iam=queue_iam),
         SlurmQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
@@ -152,7 +153,7 @@ def dummy_awsbatch_cluster_config(mocker):
     compute_resources = [
         AwsBatchComputeResource(name="dummy_compute_resource1", instance_types=["dummyc5.xlarge", "optimal"])
     ]
-    queue_networking = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
+    queue_networking = AwsBatchQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
     queues = [AwsBatchQueue(name="queue1", networking=queue_networking, compute_resources=compute_resources)]
     scheduling = AwsBatchScheduling(queues=queues)
     # shared storage
