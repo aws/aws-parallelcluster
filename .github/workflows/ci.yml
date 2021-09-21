@@ -13,6 +13,7 @@ jobs:
           with:
             path: './cli'
             format: 'HTML'
+            project: 'aws-parallelcluster'
         - name: Upload Test results
           uses: actions/upload-artifact@master
           with:
@@ -23,6 +24,7 @@ jobs:
           with:
             path: './awsbatch-cli'
             format: 'HTML'
+            project: 'aws-parallelcluster'
         - name: Upload AWS Batch CLI Test results
           uses: actions/upload-artifact@master
           with:
