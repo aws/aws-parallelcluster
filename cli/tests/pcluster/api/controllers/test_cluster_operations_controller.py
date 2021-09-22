@@ -288,7 +288,9 @@ class TestCreateCluster:
                 {
                     "message": "Bad Request: ParallelCluster 3 requires configuration files to be "
                     "valid YAML documents. To create a basic cluster configuration, "
-                    "you can run the `pcluster configure` command."
+                    "you can run the `pcluster configure` command. To convert from ParallelCluster 2 configuration "
+                    "files, please run "
+                    "`pcluster3-config-converter --config-file <input_file> --output-file <output_file>`."
                 },
             ),
             (
@@ -1446,7 +1448,9 @@ class TestUpdateCluster:
                 {
                     "message": "Bad Request: Cluster update failed.\nParallelCluster 3 requires configuration files to "
                     "be valid YAML documents. To create a basic cluster configuration, "
-                    "you can run the `pcluster configure` command."
+                    "you can run the `pcluster configure` command. To convert from ParallelCluster 2 configuration "
+                    "files, please run "
+                    "`pcluster3-config-converter --config-file <input_file> --output-file <output_file>`."
                 },
                 id="invalid configuration with toml format",
             ),
