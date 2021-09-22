@@ -705,7 +705,9 @@ class S3AccessSchema(BaseSchema):
     """Represent the schema of S3 access."""
 
     bucket_name = fields.Str(
-        required=True, metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp(r"^[a-z0-9\-\.]+$")
+        required=True,
+        metadata={"update_policy": UpdatePolicy.SUPPORTED},
+        validate=validate.Regexp(r"^[\*a-z0-9\-\.]+$"),
     )
     key_name = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     enable_write_access = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
