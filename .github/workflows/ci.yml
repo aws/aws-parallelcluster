@@ -155,7 +155,15 @@ jobs:
           sudo npm install -g redoc-cli
           sudo snap install yq
       - working-directory: api
-        run: ./gradlew buildSmithyModel openApiValidate
+        run: ./gradlew buildSmithyModel openApiValidate redoc
+      - name: Verify Generation of OpenAPI Specs
+        run: |
+          git diff --exit-code --quiet api/spec/openapi
+      - working-directory: api
+        run: ./gradlew generatePythonClient
+      - name: Verify Generation of API client
+        run: |
+          git diff --exit-code --quiet -- api/client/src/ ':!api/client/src/.openapi-generator/FILES'
   api-docker-test:
     name: API Docker Tests
     runs-on: ubuntu-latest
