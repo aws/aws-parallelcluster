@@ -12,6 +12,7 @@ CHANGELOG
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
   in the `~/.aws/config` file.
 - export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` so they can be used by cross-stack references.
+- Add configuration converter to convert pcluster2 config to pcluster3 config.
 
 **CHANGES**
 - Drop support for SysVinit. Only Systemd is supported.

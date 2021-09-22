@@ -1,0 +1,79 @@
+# Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False in AWS ParallelCluster version 2.
+# Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to False in AWS ParallelCluster version 2.
+# vpc_id = vpc-12345678 is ignored
+# update_check = false is ignored
+# ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
+# initial_queue_size = 2 is ignored
+HeadNode:
+  CustomActions:
+    OnNodeConfigured:
+      Args:
+        - s3://testbucket/post_install.sh
+        - R
+        - curl
+        - wget
+      Script: s3://testbucket/post_install.sh
+    OnNodeStart:
+      Args:
+        - s3://testbucket/pre_install.sh
+        - R
+        - curl
+        - wget
+      Script: s3://testbucket/pre_install.sh
+  DisableSimultaneousMultithreading: false
+  Iam:
+    S3Access:
+      - BucketName: testbucket
+      - BucketName: test
+        EnableWriteAccess: true
+        KeyName: hello/*
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-0bfad12f6b586686c
+  Ssh:
+    KeyName: lab-3-your-key
+Image:
+  Os: alinux2
+Region: eu-west-1
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - CapacityType: SPOT
+      ComputeResources:
+        - DisableSimultaneousMultithreading: false
+          Efa:
+            Enabled: true
+            GdrSupport: true
+          InstanceType: c5.xlarge
+          MaxCount: 5
+          Name: default-resource
+          SpotPrice: 2.0
+      CustomActions:
+        OnNodeConfigured:
+          Args:
+            - s3://testbucket/post_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucket/post_install.sh
+        OnNodeStart:
+          Args:
+            - s3://testbucket/pre_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucket/pre_install.sh
+      Iam:
+        S3Access:
+          - BucketName: testbucket
+          - BucketName: test
+            EnableWriteAccess: true
+            KeyName: hello/*
+      Name: default-queue
+      Networking:
+        SubnetIds:
+          - subnet-0bfad12f6b586686c
+SharedStorage:
+  - MountDir: /shared
+    Name: default-ebs
+    StorageType: Ebs
