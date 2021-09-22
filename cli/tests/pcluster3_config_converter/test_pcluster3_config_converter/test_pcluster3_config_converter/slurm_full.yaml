@@ -1,0 +1,263 @@
+# Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False in AWS ParallelCluster version 2.
+# Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to False in AWS ParallelCluster version 2.
+# vpc_id = vpc-0e0f223cc35256b9a is ignored
+# update_check = true is ignored
+# ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
+# encrypted_ephemeral = true is ignored
+# The configuration parameters under DevSettings are not officially supported and their name or structure may change
+# over time without any commitment to be backward compatible.
+# Duplicate names 'custom1' are not allowed in the SharedStorage section. Please change them before cluster creation.
+# '_' is not allowed in the name of 'compute_resource ondemand_i1'. Please rename it before cluster creation.
+# '_' is not allowed in the name of 'compute_resource ondemand_i3'. Please rename it before cluster creation.
+# initial_count = 2 is ignored
+# '_' is not allowed in the name of 'compute_resource ondemand_i2'. Please rename it before cluster creation.
+AdditionalPackages:
+  IntelSoftware:
+    IntelHpcPlatform: true
+DevSettings:
+  ClusterTemplate: s3://template_url
+  Cookbook:
+    ChefCookbook: s3://custom_cookbook
+    ExtraChefAttributes: '{"cluster": {"scheduler_slots": "cores"}}'
+  InstanceTypesData: '{"hpc": {"InstanceType": "hpc", "CurrentGeneration": true, "FreeTierEligible":
+    false, "SupportedUsageClasses": ["on-demand", "spot"], "SupportedRootDeviceTypes":
+    ["ebs"], "SupportedVirtualizationTypes": ["hvm"], "BareMetal": true, "ProcessorInfo":
+    {"SupportedArchitectures": ["x86_64"], "SustainedClockSpeedInGhz": 3.6}, "VCpuInfo":
+    {"DefaultVCpus": 96}, "MemoryInfo": {"SizeInMiB": 196608}, "InstanceStorageSupported":
+    false, "EbsInfo": {"EbsOptimizedSupport": "default", "EncryptionSupport": "supported",
+    "EbsOptimizedInfo": {"BaselineBandwidthInMbps": 19000, "BaselineThroughputInMBps":
+    2375, "BaselineIops": 80000, "MaximumBandwidthInMbps": 19000, "MaximumThroughputInMBps":
+    2375, "MaximumIops": 80000}, "NvmeSupport": "unsupported"}, "NetworkInfo": {"NetworkPerformance":
+    "25 Gigabit", "MaximumNetworkInterfaces": 15, "MaximumNetworkCards": 1, "DefaultNetworkCardIndex":
+    0, "NetworkCards": [{"NetworkCardIndex": 0, "NetworkPerformance": "25 Gigabit",
+    "MaximumNetworkInterfaces": 15}], "Ipv4AddressesPerInterface": 50, "Ipv6AddressesPerInterface":
+    50, "Ipv6Supported": true, "EnaSupport": "required", "EfaSupported": true}, "PlacementGroupInfo":
+    {"SupportedStrategies": ["cluster", "partition", "spread"]}, "HibernationSupported":
+    false, "BurstablePerformanceSupported": false, "DedicatedHostsSupported": false,
+    "AutoRecoverySupported": true}}'
+HeadNode:
+  CustomActions:
+    OnNodeConfigured:
+      Args:
+        - s3://testbucket/post_install.sh
+        - R
+        - curl
+        - wget
+      Script: s3://testbucket/post_install.sh
+    OnNodeStart:
+      Args:
+        - s3://testbucket/pre_install.sh
+        - R
+        - curl
+        - wget
+      Script: s3://testbucket/pre_install.sh
+  Dcv:
+    AllowedIps: 0.0.0.0/0
+    Enabled: true
+    Port: 8443
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+    InstanceRole: arn:aws:iam::1234567:role/role_name
+    S3Access:
+      - BucketName: testbucket
+      - BucketName: test
+        EnableWriteAccess: true
+        KeyName: hello/*
+  InstanceType: c5.xlarge
+  LocalStorage:
+    EphemeralVolume:
+      MountDir: /test
+    RootVolume:
+      Size: 35
+  Networking:
+    AdditionalSecurityGroups:
+      - sg-xxxxxx
+    Proxy:
+      HttpProxyAddress: https://x.x.x.x:8080
+    SecurityGroups:
+      - sg-xxxxxx
+    SubnetId: subnet-0bfad12f6b586686c
+  Ssh:
+    AllowedIps: string
+    KeyName: key01
+Image:
+  CustomAmi: ami-12345
+  Os: alinux2
+Monitoring:
+  Dashboards:
+    CloudWatch:
+      Enabled: true
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14
+Region: us-west-1
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - ComputeResources:
+        - DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+            GdrSupport: false
+          InstanceType: c5.large
+          MinCount: 1
+          Name: ondemand_i1
+        - DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+            GdrSupport: false
+          InstanceType: c5.xlarge
+          MinCount: 1
+          Name: ondemand_i3
+          SpotPrice: 5.88
+      ComputeSettings:
+        LocalStorage:
+          EphemeralVolume:
+            MountDir: /test
+          RootVolume:
+            Size: 25
+      CustomActions:
+        OnNodeConfigured:
+          Args:
+            - s3://testbucket/post_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucket/post_install.sh
+        OnNodeStart:
+          Args:
+            - s3://testbucket/pre_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucket/pre_install.sh
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        InstanceRole: arn:aws:iam::1234567:role/role_name
+        S3Access:
+          - BucketName: testbucket
+          - BucketName: test
+            EnableWriteAccess: true
+            KeyName: hello/*
+      Name: queue1
+      Networking:
+        AdditionalSecurityGroups:
+          - sg-xxxxxx
+        PlacementGroup:
+          Enabled: true
+        Proxy:
+          HttpProxyAddress: https://x.x.x.x:8080
+        SecurityGroups:
+          - sg-xxxxxx
+        SubnetIds:
+          - subnet-0bfad12f6b586686c
+    - CapacityType: SPOT
+      ComputeResources:
+        - InstanceType: c4.large
+          MaxCount: 5
+          MinCount: 2
+          Name: ondemand_i2
+      ComputeSettings:
+        LocalStorage:
+          EphemeralVolume:
+            MountDir: /test
+          RootVolume:
+            Size: 25
+      CustomActions:
+        OnNodeConfigured:
+          Args:
+            - s3://testbucket/post_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucket/post_install.sh
+        OnNodeStart:
+          Args:
+            - s3://testbucket/pre_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucket/pre_install.sh
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        InstanceRole: arn:aws:iam::1234567:role/role_name
+        S3Access:
+          - BucketName: testbucket
+          - BucketName: test
+            EnableWriteAccess: true
+            KeyName: hello/*
+      Name: queue2
+      Networking:
+        AdditionalSecurityGroups:
+          - sg-xxxxxx
+        PlacementGroup:
+          Id: placement_group_id
+        Proxy:
+          HttpProxyAddress: https://x.x.x.x:8080
+        SecurityGroups:
+          - sg-xxxxxx
+        SubnetIds:
+          - subnet-0bfad12f6b586686c
+  SlurmSettings:
+    Dns:
+      DisableManagedDns: true
+    ScaledownIdletime: 10
+SharedStorage:
+  - EbsSettings:
+      Encrypted: false
+      VolumeType: gp2
+    MountDir: /shared_dir1
+    Name: custom1
+    StorageType: Ebs
+  - EbsSettings:
+      VolumeType: gp2
+    MountDir: /shared_dir1
+    Name: custom2
+    StorageType: Ebs
+  - EbsSettings:
+      Raid:
+        NumberOfVolumes: 2
+        Type: 1
+      VolumeType: gp2
+    MountDir: /shared_dir1
+    Name: custom1
+    StorageType: Ebs
+  - EfsSettings:
+      Encrypted: false
+      FileSystemId: fs-12345
+      KmsKeyId: 1234abcd-12ab-34cd-56ef-1234567890ab
+      PerformanceMode: generalPurpose
+      ProvisionedThroughput: 1024
+      ThroughputMode: provisioned
+    MountDir: efs
+    Name: customfs
+    StorageType: Efs
+  - FsxLustreSettings:
+      AutoImportPolicy: NEW_CHANGED
+      AutomaticBackupRetentionDays: 35
+      BackupId: backup-fedcba98
+      CopyTagsToBackups: true
+      DailyAutomaticBackupStartTime: 01:03
+      DeploymentType: SCRATCH_2
+      DriveCacheType: READ
+      ExportPath: s3://bucket/folder
+      FileSystemId: fs-073c3803dca3e28a6
+      ImportPath: s3://bucket
+      ImportedFileChunkSize: 1024
+      KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      PerUnitStorageThroughput: 200
+      StorageCapacity: 3600
+      StorageType: SSD
+      WeeklyMaintenanceStartTime: '1:00:00'
+    MountDir: /fsx
+    Name: fs
+    StorageType: FsxLustre
+Tags:
+  - Key: key
+    Value: value
+  - Key: key2
+    Value: value2
