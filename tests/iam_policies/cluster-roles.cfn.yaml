@@ -152,6 +152,13 @@ Resources:
             Version: '2012-10-17'
     Type: AWS::IAM::Role
 
+  ComputeNodeInstanceProfileSlurm:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /parallelcluster/
+      Roles:
+        - !Ref ComputeNodeRoleSlurm
+
   CustomLambdaResourcesRoleBatch:
     Properties:
       Description: Role to be used in 'Iam:Roles:CustomLambdaResources' when the scheduler is AwsBatch
@@ -257,3 +264,16 @@ Resources:
             Version: '2012-10-17'
     Type: AWS::IAM::Role
 
+Outputs:
+  HeadNodeRoleSlurm:
+    Value: !GetAtt HeadNodeRoleSlurm.Arn
+  ComputeNodeRoleSlurm:
+    Value: !GetAtt ComputeNodeRoleSlurm.Arn
+  ComputeNodeInstanceProfileSlurm:
+    Value: !GetAtt ComputeNodeInstanceProfileSlurm.Arn
+  CustomLambdaResourcesRoleSlurm:
+    Value: !GetAtt CustomLambdaResourcesRoleSlurm.Arn
+  HeadNodeRoleBatch:
+    Value: !GetAtt HeadNodeRoleBatch.Arn
+  CustomLambdaResourcesRoleBatch:
+    Value: !GetAtt CustomLambdaResourcesRoleBatch.Arn
