@@ -1,0 +1,16 @@
+Image:
+    Tags:
+        - Key: dummyImageTag
+          Value: dummyImageTag
+    RootVolume:
+        Size: 35
+
+Build:
+    Iam:
+        InstanceProfile: {{ instance_profile }}
+        CleanupLambdaRole: {{ lambda_cleanup_role }}
+    InstanceType: {{ instance }}
+    ParentImage: {{ parent_image }}
+    Tags:
+        - Key: dummyBuildTag
+          Value: dummyBuildTag

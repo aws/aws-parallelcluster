@@ -409,6 +409,7 @@ def api_client(region, api_server_factory, api_uri):
 
 
 @pytest.fixture(scope="class")
+@pytest.mark.usefixtures("setup_credentials")
 def images_factory(request):
     """
     Define a fixture to manage the creation and destruction of images.
@@ -874,7 +875,7 @@ def vpc_stacks(cfn_stacks_factory, request):
 
 
 @pytest.fixture(scope="class")
-@pytest.mark.usefixtures("setup_credentials", "clusters_factory", "images_factory")
+@pytest.mark.usefixtures("clusters_factory", "images_factory")
 def create_roles_stack(request, region):
     """Define a fixture that returns a stack factory for IAM roles."""
     logging.info("Creating IAM roles stack")
