@@ -226,6 +226,11 @@ iam:
         schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
+  test_iam_image.py::test_iam_roles:
+    dimensions:
+      - regions: ["eu-south-1"]
+        oss: ["alinux2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
   test_iam.py::test_s3_read_write_resource:
     dimensions:
       - regions: ["eu-central-1"]
