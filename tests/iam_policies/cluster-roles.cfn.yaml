@@ -33,7 +33,7 @@ Resources:
               - Action: ec2:TerminateInstances
                 Condition:
                   StringEquals:
-                    ec2:ResourceTag/parallelcluster:node-type: ComputeNode
+                    ec2:ResourceTag/parallelcluster:node-type: Compute
                 Effect: Allow
                 Resource: '*'
               - Action:
@@ -76,13 +76,14 @@ Resources:
                   - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
               - Action:
                   - dynamodb:PutItem
+                  - dynamodb:GetItem
                   - dynamodb:BatchWriteItem
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
                 Effect: Allow
               - Action: ec2:TerminateInstances
                 Condition:
                   StringEquals:
-                    ec2:ResourceTag/parallelcluster:node-type: ComputeNode
+                    ec2:ResourceTag/parallelcluster:node-type: Compute
                 Effect: Allow
                 Resource: '*'
               - Action: ec2:RunInstances
