@@ -151,8 +151,6 @@ class SlurmConstruct(Construct):
                         "dynamodb:PutItem",
                         "dynamodb:BatchWriteItem",
                         "dynamodb:GetItem",
-                        "dynamodb:DeleteItem",
-                        "dynamodb:DescribeTable",
                     ],
                     "effect": iam.Effect.ALLOW,
                     "resources": [
