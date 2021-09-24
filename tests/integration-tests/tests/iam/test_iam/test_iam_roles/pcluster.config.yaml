@@ -10,7 +10,7 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
   Iam:
-    InstanceRole: {{ ec2_iam_role }}
+    InstanceRole: {{ head_instance_role }}
   Imds:
     Secured: {{ imds_secured }}
 Scheduling:
@@ -19,7 +19,7 @@ Scheduling:
     - Name: queue-0
       {% if scheduler != "awsbatch" %}
       Iam:
-        InstanceProfile: {{ instance_profile }}
+        InstanceProfile: {{ compute_instance_profile }}
       {% endif %}
       ComputeResources:
         - Name: compute-resource-0
@@ -28,6 +28,7 @@ Scheduling:
             - {{ instance }}
           {% else %}
           InstanceType: {{ instance }}
+          MinCount: {{ min_count }}
           Efa:
             Enabled: false
             GdrSupport: false
@@ -35,3 +36,18 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+    {% if scheduler == "slurm" %}
+    - Name: queue-1
+      Iam:
+        InstanceRole: {{ compute_instance_role }}
+      ComputeResources:
+        - Name: compute-resource-0
+          InstanceType: {{ instance }}
+          MinCount: {{ min_count }}
+          Efa:
+            Enabled: false
+            GdrSupport: false
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    {% endif %}
