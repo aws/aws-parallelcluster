@@ -14,7 +14,7 @@
 #
 import logging
 from enum import Enum
-from typing import List, Union
+from typing import Dict, List, Union
 
 import pkg_resources
 
@@ -1463,7 +1463,7 @@ class SlurmSettings(Resource):
     """Represent the Slurm settings."""
 
     def __init__(self, scaledown_idletime: int = None, dns: Dns = None, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__()
         self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
         self.dns = dns
 
@@ -1481,6 +1481,56 @@ class SlurmScheduling(Resource):
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
+
+
+class ByosQueue(SlurmQueue):
+    """Represent the Byos queue."""
+
+    pass
+
+
+class ByosSettings(Resource):
+    """Represent the Byos settings."""
+
+    def __init__(self, scheduler_definition: Dict):
+        super().__init__()
+        self.scheduler_definition = scheduler_definition
+
+
+class ByosScheduling(Resource):
+    """Represent a byos Scheduling resource."""
+
+    def __init__(self, queues: List[ByosQueue], settings: ByosSettings):
+        super().__init__()
+        self.scheduler = "byos"
+        self.queues = queues
+        self.settings = settings
+
+    def _register_validators(self):
+        self._register_validator(
+            DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
+        )
+
+
+class ByosClusterConfig(BaseClusterConfig):
+    """Represent the full Byos Cluster configuration."""
+
+    def __init__(self, cluster_name: str, scheduling: ByosScheduling, **kwargs):
+        super().__init__(cluster_name, **kwargs)
+        self.scheduling = scheduling
+        self.__image_dict = None
+
+    @property
+    def image_dict(self):
+        """Return image dict of queues, key is queue name, value is image id."""
+        if self.__image_dict:
+            return self.__image_dict
+        self.__image_dict = {}
+
+        for queue in self.scheduling.queues:
+            self.__image_dict[queue.name] = queue.queue_ami or self.image.custom_ami or self.official_ami
+
+        return self.__image_dict
 
 
 class SlurmClusterConfig(BaseClusterConfig):

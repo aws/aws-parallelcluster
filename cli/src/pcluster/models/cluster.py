@@ -271,14 +271,14 @@ class Cluster:
     def compute_fleet_status_with_last_updated_time(self):
         """Status of the cluster compute fleet and the last compute fleet status updated time."""
         if self.stack.is_working_status or self.stack.status == "UPDATE_IN_PROGRESS":
-            if self.stack.scheduler == "slurm":
-                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-                status, last_updated_time = compute_fleet_status_manager.get_status_with_last_updated_time()
-            else:  # scheduler is AWS Batch:
+            if self.stack.scheduler == "awsbatch":
                 status = ComputeFleetStatus(
                     AWSApi.instance().batch.get_compute_environment_state(self.stack.batch_compute_environment)
                 )
                 last_updated_time = None
+            else:
+                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
+                status, last_updated_time = compute_fleet_status_manager.get_status_with_last_updated_time()
             return status, last_updated_time
         else:
             LOGGER.info(
@@ -377,7 +377,7 @@ class Cluster:
                 self.bucket.delete_s3_artifacts()
             raise _cluster_error_mapper(e, str(e))
 
-    def _load_config(self, cluster_config: dict) -> ClusterSchema:
+    def _load_config(self, cluster_config: dict) -> BaseClusterConfig:
         """Load the config and catch / translate any errors that occur during loading."""
         try:
             return ClusterSchema(cluster_name=self.name).load(cluster_config)

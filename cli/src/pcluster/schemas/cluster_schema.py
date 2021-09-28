@@ -28,7 +28,10 @@ from pcluster.config.cluster_config import (
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
     AwsBatchSettings,
-    BaseClusterConfig,
+    ByosClusterConfig,
+    ByosQueue,
+    ByosScheduling,
+    ByosSettings,
     CapacityType,
     CloudWatchDashboards,
     CloudWatchLogs,
@@ -1062,6 +1065,15 @@ class AwsBatchQueueSchema(BaseQueueSchema):
         return AwsBatchQueue(**data)
 
 
+class ByosQueueSchema(SlurmQueueSchema):
+    """Represent the schema of a BYOS Queue."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosQueue(**data)
+
+
 class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
@@ -1095,12 +1107,23 @@ class AwsBatchSettingsSchema(BaseSchema):
         return AwsBatchSettings(**data)
 
 
+class ByosSettingsSchema(BaseSchema):
+    """Represent the schema of the Scheduling Settings."""
+
+    scheduler_definition = fields.Dict(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosSettings(**data)
+
+
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch", "custom"]),
+        validate=validate.OneOf(["slurm", "awsbatch", "byos"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     # Slurm schema
@@ -1121,14 +1144,22 @@ class SchedulingSchema(BaseSchema):
     aws_batch_settings = fields.Nested(
         AwsBatchSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
+    # Byos
+    byos_settings = fields.Nested(ByosSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    byos_queues = fields.Nested(
+        ByosQueueSchema,
+        many=True,
+        validate=validate.Length(max=MAX_NUMBER_OF_QUEUES),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+    )
 
     @validates_schema
     def no_coexist_schedulers(self, data, **kwargs):
         """Validate that *_settings and *_queues for different schedulers do not co-exist."""
         scheduler = data.get("scheduler")
-        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings"], **kwargs):
+        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings", "byos_settings"], **kwargs):
             raise ValidationError("Multiple *Settings sections cannot be specified in the Scheduling section.")
-        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues"], one_required=True, **kwargs):
+        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues", "byos_queues"], one_required=True, **kwargs):
             scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
             raise ValidationError(f"{scheduler_prefix}Queues section must be specified in the Scheduling section.")
 
@@ -1138,6 +1169,7 @@ class SchedulingSchema(BaseSchema):
         for scheduler, settings, queues in [
             ("awsbatch", "aws_batch_settings", "aws_batch_queues"),
             ("slurm", "slurm_settings", "slurm_queues"),
+            ("byos", "byos_settings", "byos_queues"),
         ]:
             # Verify the settings section is associated to the right scheduler type
             configured_scheduler = data.get("scheduler")
@@ -1169,12 +1201,12 @@ class SchedulingSchema(BaseSchema):
         scheduler = data.get("scheduler")
         if scheduler == "slurm":
             return SlurmScheduling(queues=data.get("slurm_queues"), settings=data.get("slurm_settings", None))
+        if scheduler == "byos":
+            return ByosScheduling(queues=data.get("byos_queues"), settings=data.get("byos_settings", None))
         if scheduler == "awsbatch":
             return AwsBatchScheduling(
                 queues=data.get("aws_batch_queues"), settings=data.get("aws_batch_settings", None)
             )
-        # if data.get("custom_queues"):
-        #    return CustomScheduling(**data)
         return None
 
     @pre_dump
@@ -1245,8 +1277,10 @@ class ClusterSchema(BaseSchema):
             cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         elif scheduler == "awsbatch":
             cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
-        else:  # scheduler == "custom":
-            cluster = BaseClusterConfig(cluster_name=self.cluster_name, **data)  # FIXME Must be ByosCluster
+        elif scheduler == "byos":
+            cluster = ByosClusterConfig(cluster_name=self.cluster_name, **data)
+        else:
+            raise ValidationError(f"Unsupported scheduler {scheduler}.")
 
         cluster.source_config = original_data
         return cluster
