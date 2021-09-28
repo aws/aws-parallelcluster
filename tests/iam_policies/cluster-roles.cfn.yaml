@@ -264,6 +264,26 @@ Resources:
             Version: '2012-10-17'
     Type: AWS::IAM::Role
 
+  ### INTEG-TESTS POLICIES
+
+  IntegTestsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Roles:
+        - !Ref HeadNodeRoleSlurm
+        - !Ref ComputeNodeRoleSlurm
+        - !Ref HeadNodeRoleBatch
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Required to use test bucket (e.g. to test pre/post_install scripts)
+          - Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*
+            Effect: Allow
+
 Outputs:
   HeadNodeRoleSlurm:
     Value: !GetAtt HeadNodeRoleSlurm.Arn
