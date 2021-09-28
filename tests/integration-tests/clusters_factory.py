@@ -249,9 +249,11 @@ class Cluster:
             logging.error("Failed exporting cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
 
-    def list_log_streams(self):
+    def list_log_streams(self, next_token=None):
         """Run pcluster list-cluster-logs and return the result."""
         cmd_args = ["pcluster", "list-cluster-log-streams", "--cluster-name", self.name]
+        if next_token:
+            cmd_args.extend(["--next-token", next_token])
         try:
             result = run_pcluster_command(cmd_args, log_error=False)
             response = json.loads(result.stdout)
@@ -260,6 +262,18 @@ class Cluster:
         except subprocess.CalledProcessError as e:
             logging.error("Failed listing cluster's logs with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
             raise
+
+    def get_all_log_stream_names(self):
+        """This is a method on top of list_log_streams to get log stream names by going through all paginations."""
+        log_streams = []
+        next_token = None
+        while True:
+            response = self.list_log_streams(next_token=next_token)
+            log_streams.extend(response["logStreams"])
+            next_token = response.get("nextToken")
+            if next_token is None:
+                break
+        return {stream["logStreamName"] for stream in log_streams}
 
     def get_log_events(self, log_stream, **args):
         """Run pcluster get-cluster-log-events and return the result."""
