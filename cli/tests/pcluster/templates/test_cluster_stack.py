@@ -38,7 +38,15 @@ def test_slurm_cluster_builder(mocker):
 
 
 @pytest.mark.parametrize(
-    "config_file_name", ["slurm.required.yaml", "slurm.full.yaml", "awsbatch.simple.yaml", "awsbatch.full.yaml"]
+    "config_file_name",
+    [
+        "slurm.required.yaml",
+        "slurm.full.yaml",
+        "awsbatch.simple.yaml",
+        "awsbatch.full.yaml",
+        "byos.required.yaml",
+        "byos.full.yaml",
+    ],
 )
 def test_cluster_builder_from_configuration_file(mocker, config_file_name):
     mock_aws_api(mocker)

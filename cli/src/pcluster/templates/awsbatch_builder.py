@@ -19,6 +19,7 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as awslambda
 from aws_cdk import aws_logs as logs
+from aws_cdk.aws_ec2 import CfnSecurityGroup
 from aws_cdk.core import CfnOutput, CfnResource, Construct, Fn, Stack
 
 from pcluster.config.cluster_config import AwsBatchClusterConfig, CapacityType, SharedStorageType
@@ -50,12 +51,11 @@ class AwsBatchConstruct(Construct):
         stack_name: str,
         bucket: S3Bucket,
         create_lambda_roles: bool,
-        compute_security_groups: dict,
+        compute_security_group: CfnSecurityGroup,
         shared_storage_mappings: dict,
         shared_storage_options: dict,
         head_node_instance: ec2.CfnInstance,
-        instance_roles: dict,
-        **kwargs,
+        managed_head_node_instance_role: iam.CfnRole,
     ):
         super().__init__(scope, id)
         self.stack_name = stack_name
@@ -63,11 +63,11 @@ class AwsBatchConstruct(Construct):
         self.config = cluster_config
         self.bucket = bucket
         self.create_lambda_roles = create_lambda_roles
-        self.compute_security_groups = compute_security_groups
+        self.compute_security_group = compute_security_group
         self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
         self.head_node_instance = head_node_instance
-        self.instance_roles = instance_roles
+        self.head_node_instance_role = managed_head_node_instance_role
 
         # Currently AWS batch integration supports a single queue and a single compute resource
         self.queue = self.config.scheduling.queues[0]
@@ -112,7 +112,7 @@ class AwsBatchConstruct(Construct):
 
         # Augment head node instance profile with Batch-specific policies, only add policies to Role craeted by
         # ParallelCluster
-        if self.instance_roles.get("HeadNode"):
+        if self.head_node_instance_role:
             self._add_batch_head_node_policies_to_role()
 
         # Iam Roles
@@ -164,7 +164,7 @@ class AwsBatchConstruct(Construct):
                 maxv_cpus=self.compute_resource.max_vcpus,
                 instance_types=self.compute_resource.instance_types,
                 subnets=self.queue.networking.subnet_ids,
-                security_group_ids=get_queue_security_groups_full(self.compute_security_groups, self.queue),
+                security_group_ids=get_queue_security_groups_full(self.compute_security_group, self.queue),
                 instance_role=self._iam_instance_profile.ref,
                 bid_percentage=self.compute_resource.spot_bid_percentage,
                 spot_iam_fleet_role=self._spot_iam_fleet_role.attr_arn if self._spot_iam_fleet_role else None,
@@ -716,44 +716,6 @@ class AwsBatchConstruct(Construct):
             policy_document=iam.PolicyDocument(
                 statements=[
                     iam.PolicyStatement(
-                        sid="Cloudformation",
-                        actions=[
-                            "cloudformation:DescribeStacks",
-                            "cloudformation:DescribeStackResource",
-                            "cloudformation:SignalResource",
-                        ],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
-                            # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                            self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}-*/*"),
-                        ],
-                    ),
-                    iam.PolicyStatement(
-                        sid="EC2",
-                        effect=iam.Effect.ALLOW,
-                        actions=[
-                            "ec2:DescribeInstances",
-                            "ec2:DescribeInstanceStatus",
-                            "ec2:DescribeVolumes",
-                            "ec2:AttachVolume",
-                        ],
-                        resources=["*"],
-                    ),
-                    iam.PolicyStatement(
-                        sid="S3PutObj",
-                        actions=["s3:PutObject"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="s3",
-                                resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
-                                region="",
-                                account="",
-                            )
-                        ],
-                    ),
-                    iam.PolicyStatement(
                         sid="BatchJobPassRole",
                         actions=["iam:PassRole"],
                         effect=iam.Effect.ALLOW,
@@ -765,22 +727,9 @@ class AwsBatchConstruct(Construct):
                             )
                         ],
                     ),
-                    iam.PolicyStatement(
-                        sid="DcvLicense",
-                        actions=["s3:GetObject"],
-                        effect=iam.Effect.ALLOW,
-                        resources=[
-                            self._format_arn(
-                                service="s3",
-                                resource="dcv-license.{0}/*".format(self._stack_region),
-                                region="",
-                                account="",
-                            )
-                        ],
-                    ),
                 ]
             ),
-            roles=[self.instance_roles.get("HeadNode").get("RoleRef")],
+            roles=[self.head_node_instance_role.ref],
         )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
