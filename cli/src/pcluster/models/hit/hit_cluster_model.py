@@ -75,6 +75,17 @@ class HITClusterModel(ClusterModel):
 
             cluster_ami_id = self._get_cluster_ami_id(pcluster_config)
 
+            tags = cluster_section.get_param_value("tags")
+            if tags:
+                tag_specifications = [
+                    {
+                        "ResourceType": "instance",
+                        "Tags": [{"Key": key, "Value": value} for key, value in tags.items()],
+                    }
+                ]
+            else:
+                tag_specifications = []
+
             head_node_network_interfaces = self.build_launch_network_interfaces(
                 network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
                 use_efa=False,  # EFA is not supported on head node
@@ -93,6 +104,7 @@ class HITClusterModel(ClusterModel):
                 CpuOptions=head_node_cpu_options,
                 NetworkInterfaces=head_node_network_interfaces,
                 DryRun=True,
+                TagSpecifications=tag_specifications,
             )
 
             for _, queue_section in pcluster_config.get_sections("queue").items():
@@ -116,6 +128,7 @@ class HITClusterModel(ClusterModel):
                     subnet=compute_subnet,
                     security_groups_ids=security_groups_ids,
                     placement_group=queue_placement_group,
+                    tag_specifications=tag_specifications,
                 )
 
         except ClientError:
@@ -147,6 +160,7 @@ class HITClusterModel(ClusterModel):
         subnet=None,
         security_groups_ids=None,
         placement_group=None,
+        tag_specifications=None,
     ):
         """Test Compute Resource Instance Configuration."""
         vcpus = compute_resource_section.get_param_value("vcpus")
@@ -172,4 +186,5 @@ class HITClusterModel(ClusterModel):
             Placement=placement_group,
             NetworkInterfaces=network_interfaces,
             DryRun=True,
+            TagSpecifications=tag_specifications,
         )

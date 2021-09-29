@@ -121,6 +121,17 @@ class SITClusterModel(ClusterModel):
                 use_public_ips=vpc_section.get_param_value("use_public_ips"),
             )
 
+            tags = cluster_section.get_param_value("tags")
+            if tags:
+                tag_specifications = [
+                    {
+                        "ResourceType": "instance",
+                        "Tags": [{"Key": key, "Value": value} for key, value in tags.items()],
+                    }
+                ]
+            else:
+                tag_specifications = []
+
             # Test head node configuration
             self._ec2_run_instance(
                 pcluster_config,
@@ -132,6 +143,7 @@ class SITClusterModel(ClusterModel):
                 NetworkInterfaces=head_node_network_interfaces,
                 Placement=head_node_placement_group,
                 DryRun=True,
+                TagSpecifications=tag_specifications,
             )
 
             compute_network_interfaces_count = int(cluster_section.get_param_value("network_interfaces_count")[1])
@@ -158,6 +170,7 @@ class SITClusterModel(ClusterModel):
                 Placement=compute_placement_group,
                 NetworkInterfaces=network_interfaces,
                 DryRun=True,
+                TagSpecifications=tag_specifications,
             )
         except ClientError:
             pcluster_config.error("Unable to validate configuration parameters.")
