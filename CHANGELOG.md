@@ -4,6 +4,13 @@ CHANGELOG
 3.0.0
 ------
 
+**BUG FIXES**
+- Pin to the transitive dependencies resulting from the dependency on connexion.
+
+
+3.0.0
+------
+
 **ENHANCEMENTS**
 - Add support for pcluster actions (e.g., create-cluster, update-cluster, delete-cluster) through HTTP endpoints
   with Amazon API Gateway.
