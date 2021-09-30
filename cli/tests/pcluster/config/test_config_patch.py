@@ -22,6 +22,9 @@ from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.test_utils import dummy_cluster
 
 default_cluster_params = {
+    "custom_ami": "ami-12345678",
+    "head_node_custom_ami": "ami-12345678",
+    "queue_custom_ami": "ami-12345678",
     "head_node_subnet_id": "subnet-12345678",
     "compute_subnet_id": "subnet-12345678",
     "additional_sg": "sg-12345678",
@@ -103,6 +106,36 @@ def _compare_changes(changes, expected_changes):
             UpdatePolicy.SUPPORTED,
             True,
             id="change additional security group",
+        ),
+        pytest.param(
+            ["Image"],
+            "custom_ami",
+            "CustomAmi",
+            "ami-12345678",
+            "ami-1234567a",
+            UpdatePolicy.UNSUPPORTED,
+            False,
+            id="change top level custom ami",
+        ),
+        pytest.param(
+            ["HeadNode", "Image"],
+            "head_node_custom_ami",
+            "CustomAmi",
+            "ami-12345678",
+            "ami-1234567a",
+            UpdatePolicy.UNSUPPORTED,
+            False,
+            id="change head node custom ami",
+        ),
+        pytest.param(
+            ["Scheduling", "SlurmQueues[queue1]", "Image"],
+            "queue_custom_ami",
+            "CustomAmi",
+            "ami-12345678",
+            "ami-1234567a",
+            UpdatePolicy.COMPUTE_FLEET_STOP,
+            False,
+            id="change queue custom ami",
         ),
         pytest.param(
             ["SharedStorage[ebs1]", "EbsSettings"],

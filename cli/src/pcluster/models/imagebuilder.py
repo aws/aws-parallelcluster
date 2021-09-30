@@ -496,6 +496,7 @@ class ImageBuilder:
 
     def _upload_config(self):
         """Upload source config to S3 bucket."""
+        self._check_bucket_existence()
         try:
             if self.config:
                 # Upload original config
@@ -504,11 +505,16 @@ class ImageBuilder:
                     config_name=self._s3_artifacts_dict.get("config_name"),
                     format=S3FileFormat.TEXT,
                 )
-
         except Exception as e:
             raise _imagebuilder_error_mapper(
                 e, f"Unable to upload imagebuilder config to the S3 bucket {self.bucket.name} due to exception: {e}"
             )
+
+    def _check_bucket_existence(self):
+        try:
+            return self.bucket
+        except Exception as e:
+            raise _imagebuilder_error_mapper(e, f"Unable to access bucket associated to the cluster.\n{e}")
 
     def _upload_artifacts(self):
         """
@@ -519,6 +525,7 @@ class ImageBuilder:
         All files contained in root dir will be uploaded to
         /{version}/parallelcluster/{version}/images/{image_id}-jfr4odbeonwb1w5k/{resource_dir}/artifact.
         """
+        self._check_bucket_existence()
         try:
             if self.template_body:
                 # upload cfn template

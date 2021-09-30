@@ -39,7 +39,7 @@ Build:
 DevSettings:
   DisablePclusterComponent: False
   Cookbook:
-    ChefCookbook: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
+    ChefCookbook: https://tests/aws-parallelcluster-cookbook-3.0.tgz
     ExtraChefAttributes: |
       {"cluster": {"scheduler_slots": "cores"}}
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz

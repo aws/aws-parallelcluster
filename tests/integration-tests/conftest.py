@@ -18,7 +18,6 @@ import logging
 import os
 import random
 import re
-import time
 from pathlib import Path
 from shutil import copyfile
 from traceback import format_tb
@@ -27,7 +26,6 @@ import boto3
 import pkg_resources
 import pytest
 import yaml
-from botocore.config import Config
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -191,7 +189,6 @@ def pytest_sessionstart(session):
 
 def pytest_runtest_call(item):
     """Called to execute the test item."""
-    _add_properties_to_report(item)
     set_logger_formatter(
         logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - %(process)d - {item.name} - %(module)s - %(message)s")
     )
@@ -412,6 +409,7 @@ def api_client(region, api_server_factory, api_uri):
 
 
 @pytest.fixture(scope="class")
+@pytest.mark.usefixtures("setup_credentials")
 def images_factory(request):
     """
     Define a fixture to manage the creation and destruction of images.
@@ -801,7 +799,7 @@ def initialize_cli_creds(cfn_stacks_factory, request):
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     for region in regions:
         logging.info("Creating IAM roles for pcluster CLI")
-        stack_name = generate_stack_name("integ-tests-iam", request.config.getoption("stackname_suffix"))
+        stack_name = generate_stack_name("integ-tests-iam-user-role", request.config.getoption("stackname_suffix"))
         stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
         with open(stack_template_path, encoding="utf-8") as stack_template_file:
             stack_template_data = stack_template_file.read()
@@ -877,112 +875,34 @@ def vpc_stacks(cfn_stacks_factory, request):
 
 
 @pytest.fixture(scope="class")
-def common_pcluster_policies(region):
-    """Create four policies to be attached to ec2_iam_role, iam_lamda_role for awsbatch or traditional schedulers."""
-    policies = {}
-    policies["awsbatch_instance_policy"] = _create_iam_policies(
-        "integ-tests-ParallelClusterInstancePolicy-batch-" + random_alphanumeric(), region, "batch_instance_policy.json"
-    )
-    policies["traditional_instance_policy"] = _create_iam_policies(
-        "integ-tests-ParallelClusterInstancePolicy-traditional-" + random_alphanumeric(),
-        region,
-        "traditional_instance_policy.json",
-    )
-    policies["awsbatch_lambda_policy"] = _create_iam_policies(
-        "integ-tests-ParallelClusterLambdaPolicy-batch-" + random_alphanumeric(),
-        region,
-        "batch_lambda_function_policy.json",
-    )
-    policies["traditional_lambda_policy"] = _create_iam_policies(
-        "integ-tests-ParallelClusterLambdaPolicy-traditional-" + random_alphanumeric(),
-        region,
-        "traditional_lambda_function_policy.json",
-    )
+@pytest.mark.usefixtures("clusters_factory", "images_factory")
+def create_roles_stack(request, region):
+    """Define a fixture that returns a stack factory for IAM roles."""
+    logging.info("Creating IAM roles stack")
+    factory = CfnStacksFactory(request.config.getoption("credential"))
 
-    yield policies
+    def _create_stack(stack_prefix, roles_file):
+        stack_template_path = os.path.join("..", "iam_policies", roles_file)
+        template_data = read_template(stack_template_path)
+        stack = CfnStack(
+            name=generate_stack_name(stack_prefix, request.config.getoption("stackname_suffix")),
+            region=region,
+            template=template_data,
+            capabilities=["CAPABILITY_IAM"],
+        )
+        factory.create_stack(stack)
+        return stack
 
-    iam_client = boto3.client("iam", region_name=region)
-    for policy in policies.values():
-        iam_client.delete_policy(PolicyArn=policy)
+    def read_template(template_path):
+        with open(template_path, encoding="utf-8") as cfn_file:
+            file_content = cfn_file.read()
+        return file_content
 
-
-@pytest.fixture(scope="class")
-def role_factory(region):
-    roles = []
-    iam_client = boto3.client("iam", region_name=region, config=Config(retries={"max_attempts": 10}))
-
-    def create_role(trusted_service, policies=()):
-        iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
-        logging.info(f"Creating iam role {iam_role_name} for {trusted_service}")
-
-        partition = get_arn_partition(region)
-        domain_suffix = ".cn" if partition == "aws-cn" else ""
-
-        trust_relationship_policy_ec2 = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {"Service": f"{trusted_service}.amazonaws.com{domain_suffix}"},
-                    "Action": "sts:AssumeRole",
-                }
-            ],
-        }
-        role_arn = iam_client.create_role(
-            RoleName=iam_role_name,
-            AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
-            Description="Role for create custom KMS key",
-            Path="/parallelcluster/",
-        )["Role"]["Arn"]
-
-        logging.info(f"Attaching iam policy to the role {iam_role_name}...")
-        for policy in policies:
-            iam_client.attach_role_policy(RoleName=iam_role_name, PolicyArn=policy)
-
-        # Having time.sleep here because because it take a while for the the IAM role to become valid for use in the
-        # put_key_policy step for creating KMS key, read the following link for reference :
-        # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
-        time.sleep(60)
-        logging.info(f"Iam role is ready: {role_arn}")
-        roles.append({"role_name": iam_role_name, "policies": policies})
-        return iam_role_name, role_arn
-
-    yield create_role
-
-    for role in roles:
-        role_name = role["role_name"]
-        policies = role["policies"]
-        for policy in policies:
-            iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy)
-        logging.info(f"Deleting iam role {role_name}")
-        iam_client.delete_role(RoleName=role_name)
-
-
-@pytest.fixture(scope="class")
-def instance_profile_factory(region, role_factory):
-    instance_profiles = []
-    iam_client = boto3.client("iam", region_name=region, config=Config(retries={"max_attempts": 10}))
-
-    def create_instance_profile(policies=()):
-        instance_profile_name = f"integ-tests_{region}_{random_alphanumeric()}"
-        logging.info(f"Creating instance profile {instance_profile_name}")
-        instance_profile_arn = iam_client.create_instance_profile(InstanceProfileName=instance_profile_name)[
-            "InstanceProfile"
-        ]["Arn"]
-        role_name, _ = role_factory("ec2", policies)
-        iam_client.add_role_to_instance_profile(InstanceProfileName=instance_profile_name, RoleName=role_name)
-        logging.info(f"Iam profile is ready: {instance_profile_arn}")
-        instance_profiles.append({"profile_name": instance_profile_name, "role_name": role_name})
-        return instance_profile_arn
-
-    yield create_instance_profile
-
-    for instance_profile in instance_profiles:
-        profile_name = instance_profile["profile_name"]
-        role_name = instance_profile["role_name"]
-        iam_client.remove_role_from_instance_profile(InstanceProfileName=profile_name, RoleName=role_name)
-        logging.info(f"Deleting instance profile {profile_name}")
-        iam_client.delete_instance_profile(InstanceProfileName=profile_name)
+    yield _create_stack
+    if not request.config.getoption("no_delete"):
+        factory.delete_all_stacks()
+    else:
+        logging.warning("Skipping deletion of IAM roles stack because --no-delete option is set")
 
 
 def _create_iam_policies(iam_policy_name, region, policy_filename):
@@ -1078,6 +998,9 @@ def s3_bucket_factory(region):
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """Making test result information available in fixtures"""
+    # add dimension properties to report
+    _add_properties_to_report(item)
+
     # execute all other hooks to obtain the report object
     outcome = yield
     rep = outcome.get_result()

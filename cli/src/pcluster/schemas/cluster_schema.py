@@ -25,6 +25,7 @@ from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     AwsBatchComputeResource,
     AwsBatchQueue,
+    AwsBatchQueueNetworking,
     AwsBatchScheduling,
     AwsBatchSettings,
     BaseClusterConfig,
@@ -54,7 +55,6 @@ from pcluster.config.cluster_config import (
     PlacementGroup,
     Proxy,
     QueueImage,
-    QueueNetworking,
     Raid,
     Roles,
     RootVolume,
@@ -65,6 +65,7 @@ from pcluster.config.cluster_config import (
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
+    SlurmQueueNetworking,
     SlurmScheduling,
     SlurmSettings,
     Ssh,
@@ -76,6 +77,8 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     FSX_HDD_THROUGHPUT,
     FSX_SSD_THROUGHPUT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
     SUPPORTED_OSES,
 )
 from pcluster.schemas.common_schema import (
@@ -556,14 +559,28 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
         validate=validate.Length(equal=1),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
     )
-    placement_group = fields.Nested(PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     assign_public_ip = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+
+class SlurmQueueNetworkingSchema(QueueNetworkingSchema):
+    """Represent the schema of the Networking, child of slurm Queue."""
+
+    placement_group = fields.Nested(PlacementGroupSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     proxy = fields.Nested(QueueProxySchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return QueueNetworking(**data)
+        return SlurmQueueNetworking(**data)
+
+
+class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
+    """Represent the schema of the Networking, child of aws batch Queue."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AwsBatchQueueNetworking(**data)
 
 
 class SshSchema(BaseSchema):
@@ -831,17 +848,13 @@ class ImageSchema(BaseSchema):
         return Image(**data)
 
 
-class BaseImageSchema(BaseSchema):
-    """Represent the common attributes in HeadNode Image and Queue Image."""
+class HeadNodeImageSchema(BaseSchema):
+    """Represent the schema of the HeadNode Image."""
 
     custom_ami = fields.Str(
         validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
-
-
-class HeadNodeImageSchema(BaseImageSchema):
-    """Represent the schema of the HeadNode Image."""
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -849,8 +862,13 @@ class HeadNodeImageSchema(BaseImageSchema):
         return HeadNodeImage(**data)
 
 
-class QueueImageSchema(BaseImageSchema):
+class QueueImageSchema(BaseSchema):
     """Represent the schema of the Queue Image."""
+
+    custom_ami = fields.Str(
+        validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -994,9 +1012,6 @@ class BaseQueueSchema(BaseSchema):
     """Represent the schema of the attributes in common between all the schedulers queues."""
 
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    networking = fields.Nested(
-        QueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
-    )
     capacity_type = fields.Str(
         validate=validate.OneOf([event.value for event in CapacityType]),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
@@ -1010,7 +1025,7 @@ class SlurmQueueSchema(BaseQueueSchema):
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
-        validate=validate.Length(max=5),
+        validate=validate.Length(max=MAX_NUMBER_OF_COMPUTE_RESOURCES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     custom_actions = fields.Nested(
@@ -1018,6 +1033,9 @@ class SlurmQueueSchema(BaseQueueSchema):
     )
     iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    networking = fields.Nested(
+        SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1033,6 +1051,9 @@ class AwsBatchQueueSchema(BaseQueueSchema):
         many=True,
         validate=validate.Length(equal=1),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+    )
+    networking = fields.Nested(
+        AwsBatchQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
 
     @post_load
@@ -1087,7 +1108,7 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
-        validate=validate.Length(max=10),
+        validate=validate.Length(max=MAX_NUMBER_OF_QUEUES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     # Awsbatch schema:

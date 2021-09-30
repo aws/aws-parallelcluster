@@ -15,12 +15,12 @@ HeadNode:
   DisableSimultaneousMultithreading: true
   CustomActions:
     OnNodeStart:
-      Script: https://test.tgz  # s3:// | https:// | file://*
+      Script: https://test.tgz  # s3:// | https://
       Args:
         - arg1
         - arg2
     OnNodeConfigured:
-      Script: https://test.tgz  # s3:// | https:// | file://*
+      Script: https://test.tgz  # s3:// | https://
       Args:
         - arg1
         - arg2
@@ -51,11 +51,6 @@ Scheduling:
         AssignPublicIp: true  # true|false
         SecurityGroups:
           - sg-12345678  # sg-xxxx
-        PlacementGroup:
-          Enabled: true  # true
-          Id: String
-        Proxy:
-          HttpProxyAddress: https://proxy-address:port
       ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
         - Name: compute_resource
           InstanceTypes:

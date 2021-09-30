@@ -855,6 +855,7 @@ class HeadNodeImdsValidator(Validator):
         elif imds_secured is None:
             self._add_failure("Cannot validate IMDS configuration if IMDS Secured is not set.", FailureLevel.ERROR)
         elif imds_secured and scheduler not in SCHEDULERS_SUPPORTING_IMDS_SECURED:
+            # TODO move validation for Imds parameter in the schema
             self._add_failure(
                 f"IMDS Secured cannot be enabled when using scheduler {scheduler}. Please, disable IMDS Secured.",
                 FailureLevel.ERROR,
