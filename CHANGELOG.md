@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.1.0
+------
+**ENHANCEMENTS**
+- The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
+in the `~/.aws/config` file.
+
 3.0.0
 ------
 
