@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.x.x
+------
+
+**BUG FIXES**
+- Pin to the transitive dependencies resulting from the dependency on connexion.
+
+
 3.0.0
 ------
 
