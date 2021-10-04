@@ -1,6 +1,5 @@
 Image:
   Os: {{ os }}
-  CustomAmi: {{ custom_ami }}
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
