@@ -1,9 +1,13 @@
 CHANGELOG
 =========
 
+3.X.X
+------
+**ENHANCEMENTS**
+- export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` so they can be used by cross-stack references.
+
 3.0.0
 ------
-
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
 
