@@ -7,9 +7,8 @@ CHANGELOG
 - export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` so they can be used by cross-stack references.
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
 in the `~/.aws/config` file.
+- Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
 
-3.0.0
-------
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
 

@@ -37,7 +37,8 @@
     "region": "{'Ref': 'AWS::Region'}",
     "scheduler": "awsbatch",
     "stack_name": "clustername",
-    "volume": "NONE"
+    "volume": "NONE",
+    "use_private_hostname": "false"
   },
   "run_list": "recipe[aws-parallelcluster::awsbatch_config]"
 }
