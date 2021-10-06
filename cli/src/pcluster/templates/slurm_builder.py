@@ -604,6 +604,9 @@ class SlurmConstruct(Construct):
                                 "CustomNodePackage": self.config.custom_node_package or "",
                                 "CustomAwsBatchCliPackage": self.config.custom_aws_batch_cli_package or "",
                                 "ExtraJson": self.config.extra_chef_attributes,
+                                "UsePrivateHostname": str(
+                                    self.config.scheduling.settings.dns.use_ec2_hostnames
+                                ).lower(),
                             },
                             **get_common_user_data_env(queue, self.config),
                         },

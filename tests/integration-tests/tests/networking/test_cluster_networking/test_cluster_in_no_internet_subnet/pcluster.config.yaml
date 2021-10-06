@@ -27,6 +27,7 @@ Scheduling:
     ScaledownIdletime: 3 # Use shorter scaledown time because the test waits and checks the compute node is scaled down before finishing
     Dns:
       DisableManagedDns: true
+      UseEc2Hostnames: true
   SlurmQueues:
   - Name: queue-0
     ComputeResources:
