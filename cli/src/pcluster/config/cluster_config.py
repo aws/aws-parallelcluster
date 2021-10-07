@@ -1489,19 +1489,51 @@ class ByosQueue(SlurmQueue):
     pass
 
 
+class ByosClusterInfrastructure(Resource):
+    """Represent the ClusterInfastructure config for a BYOS plugin."""
+
+    def __init__(self, cloud_formation: Dict, **kwargs):
+        super().__init__(**kwargs)
+        self.cloud_formation_template = cloud_formation.get("template")
+
+
+class ByosSchedulerDefinition(Resource):
+    """Represent the Byos scheduler definition."""
+
+    def __init__(
+        self,
+        byos_version: str,
+        metadata: Dict = None,
+        requirements: Dict = None,
+        cluster_infrastructure: ByosClusterInfrastructure = None,
+        plugin_resources: Dict = None,
+        events: Dict = None,
+        monitoring: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.byos_version = byos_version
+        self.metadata = metadata
+        self.requirements = requirements
+        self.cluster_infrastructure = cluster_infrastructure
+        self.plugin_resources = plugin_resources
+        self.events = events
+        self.monitoring = monitoring
+
+
 class ByosSettings(Resource):
     """Represent the Byos settings."""
 
-    def __init__(self, scheduler_definition: Dict):
-        super().__init__()
+    def __init__(self, scheduler_definition: ByosSchedulerDefinition, **kwargs):
+        super().__init__(**kwargs)
         self.scheduler_definition = scheduler_definition
 
 
 class ByosScheduling(Resource):
     """Represent a byos Scheduling resource."""
 
-    def __init__(self, queues: List[ByosQueue], settings: ByosSettings):
-        super().__init__()
+    def __init__(self, queues: List[ByosQueue], settings: ByosSettings, **kwargs):
+        super().__init__(**kwargs)
         self.scheduler = "byos"
         self.queues = queues
         self.settings = settings

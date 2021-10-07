@@ -10,7 +10,11 @@ Scheduling:
   Scheduler: byos
   ByosSettings:
     SchedulerDefinition:
-      Key: value
+      ByosVersion: "1.0"
+      Events:
+        HeadInitEnvironment:
+          ExecuteCommand:
+            Command: env
   ByosQueues:
     - Name: compute
       ComputeResources:
