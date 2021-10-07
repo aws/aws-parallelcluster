@@ -10,9 +10,9 @@
     "cw_logging_enabled": "true",
     "dcv_enabled": "false",
     "dcv_port": "NONE",
-    "ddb_table": "{'Ref': 'DynamoDBTable'}",
+    "ddb_table": "NONE",
     "disable_hyperthreading_manually": "false",
-    "dns_domain": "{'Ref': 'ClusterDNSDomain'}",
+    "dns_domain": "",
     "ebs_shared_dirs": "NONE,NONE,NONE,NONE,NONE",
     "efs_fs_id": "NONE",
     "efs_shared_dir": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
@@ -23,7 +23,7 @@
     "fsx_mount_name": "",
     "fsx_options": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     "head_node_imds_secured": "true",
-    "hosted_zone": "{'Ref': 'Route53HostedZone'}",
+    "hosted_zone": "",
     "instance_types_data_s3_key": "parallelcluster/clusters/dummy-cluster-randomstring123/configs/instance-types-data.json",
     "log_group_name": "/aws/parallelcluster/clustername-202101010101",
     "node_type": "HeadNode",
@@ -35,11 +35,11 @@
     "raid_parameters": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     "raid_vol_ids": "NONE",
     "region": "{'Ref': 'AWS::Region'}",
-    "scheduler": "slurm",
+    "scheduler": "byos",
     "stack_name": "clustername",
     "volume": "NONE",
-    "byos_substack_arn": "",
+    "byos_substack_arn": "{'Ref': 'ByosStack'}",
     "stack_arn": "{'Ref': 'AWS::StackId'}"
   },
-  "run_list": "recipe[aws-parallelcluster::slurm_config]"
+  "run_list": "recipe[aws-parallelcluster::byos_config]"
 }

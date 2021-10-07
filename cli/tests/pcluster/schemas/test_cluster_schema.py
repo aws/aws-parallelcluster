@@ -48,6 +48,12 @@ def test_cluster_schema_awsbatch(test_datadir, config_file_name):
     _check_cluster_schema(config_file_name)
 
 
+@pytest.mark.parametrize("config_file_name", ["byos.required.yaml", "byos.full.yaml"])
+def test_cluster_schema_byos(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    _check_cluster_schema(config_file_name)
+
+
 @pytest.mark.parametrize(
     "os, custom_ami, failure_message",
     [
