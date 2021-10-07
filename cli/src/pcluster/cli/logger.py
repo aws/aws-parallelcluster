@@ -14,6 +14,7 @@
 
 import logging.config
 import os
+import sys
 
 from pcluster.utils import get_cli_log_file
 
@@ -40,11 +41,20 @@ def config_logger():
                 "maxBytes": 5 * 1024 * 1024,
                 "backupCount": 3,
             },
+            "console": {
+                "level": "DEBUG",
+                "formatter": "standard",
+                "class": "logging.StreamHandler",
+                "stream": sys.stdout,
+            },
         },
         "loggers": {
             "": {"handlers": ["default"], "level": "WARNING", "propagate": False},  # root logger
             "pcluster": {"handlers": ["default"], "level": "INFO", "propagate": False},
         },
     }
+    if os.environ.get("PCLUSTER_LOG_TO_STDOUT"):
+        for logger in logging_config["loggers"].values():
+            logger["handlers"] = ["console"]
     os.makedirs(os.path.dirname(logfile), exist_ok=True)
     logging.config.dictConfig(logging_config)
