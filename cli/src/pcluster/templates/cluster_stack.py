@@ -1349,6 +1349,7 @@ class ComputeFleetConstruct(Construct):
                                 "IntelHPCPlatform": "true" if self._config.is_intel_hpc_platform_enabled else "false",
                                 "CWLoggingEnabled": "true" if self._config.is_cw_logging_enabled else "false",
                                 "QueueName": queue.name,
+                                "ComputeResourceName": compute_resource.name,
                                 "EnableEfaGdr": "compute"
                                 if compute_resource.efa and compute_resource.efa.gdr_support
                                 else "NONE",
