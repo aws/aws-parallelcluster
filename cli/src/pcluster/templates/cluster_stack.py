@@ -1034,6 +1034,14 @@ class ClusterCdkStack(Stack):
             },
         }
 
+        if not self._condition_is_batch():
+            cfn_init["deployConfigFiles"]["files"]["/opt/parallelcluster/shared/launch_templates_config.json"] = {
+                "mode": "000644",
+                "owner": "root",
+                "group": "root",
+                "content": self._get_launch_templates_config(),
+            }
+
         head_node_launch_template.add_metadata("AWS::CloudFormation::Init", cfn_init)
         head_node_instance = ec2.CfnInstance(
             self,
@@ -1046,6 +1054,20 @@ class ClusterCdkStack(Stack):
         if isinstance(self.scheduler_resources, SlurmConstruct):
             head_node_instance.node.add_dependency(self.compute_fleet_resources)
         return head_node_instance
+
+    def _get_launch_templates_config(self):
+        if not self.compute_fleet_resources:
+            return None
+
+        lt_config = {"Queues": {}}
+        for queue, compute_resouces in self.compute_fleet_resources.compute_launch_templates.items():
+            lt_config["Queues"][queue] = {"ComputeResources": {}}
+            for compute_resource, launch_template in compute_resouces.items():
+                lt_config["Queues"][queue]["ComputeResources"][compute_resource] = {
+                    "LaunchTemplate": {"Id": launch_template.ref, "Version": launch_template.attr_latest_version_number}
+                }
+
+        return lt_config
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
@@ -1142,7 +1164,9 @@ class ComputeFleetConstruct(Construct):
 
     def _add_resources(self):
         managed_placement_groups = self._add_placement_groups()
-        self._add_launch_templates(managed_placement_groups, self._compute_node_instance_profiles)
+        self.compute_launch_templates = self._add_launch_templates(
+            managed_placement_groups, self._compute_node_instance_profiles
+        )
         self._add_cleanup_custom_resource(
             dependencies=[self._compute_security_group] + list(managed_placement_groups.values())
         )
@@ -1192,7 +1216,9 @@ class ComputeFleetConstruct(Construct):
         return managed_placement_groups
 
     def _add_launch_templates(self, managed_placement_groups, instance_profiles):
+        compute_launch_templates = {}
         for queue in self._config.scheduling.queues:
+            compute_launch_templates[queue.name] = {}
             queue_lt_security_groups = get_queue_security_groups_full(self._compute_security_group, queue)
 
             queue_placement_group = None
@@ -1208,7 +1234,7 @@ class ComputeFleetConstruct(Construct):
                 queue_post_install_action = queue.custom_actions.on_node_configured
 
             for compute_resource in queue.compute_resources:
-                self._add_compute_resource_launch_template(
+                lt = self._add_compute_resource_launch_template(
                     queue,
                     compute_resource,
                     queue_pre_install_action,
@@ -1217,6 +1243,8 @@ class ComputeFleetConstruct(Construct):
                     queue_placement_group,
                     instance_profiles,
                 )
+                compute_launch_templates[queue.name][compute_resource.name] = lt
+        return compute_launch_templates
 
     def _add_compute_resource_launch_template(
         self,
@@ -1262,9 +1290,10 @@ class ComputeFleetConstruct(Construct):
                 ),
             )
 
-        ec2.CfnLaunchTemplate(
+        return ec2.CfnLaunchTemplate(
             self,
-            f"ComputeServerLaunchTemplate{create_hash_suffix(queue.name + compute_resource.instance_type)}",
+            # FIXME change to compute_resourece.name
+            f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.instance_type)}",
             launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.instance_type}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=compute_resource.instance_type,
@@ -1315,7 +1344,7 @@ class ComputeFleetConstruct(Construct):
                                 ),
                                 "EFSOptions": get_shared_storage_options_by_type(
                                     self._shared_storage_options, SharedStorageType.EFS
-                                ),  # FIXME
+                                ),
                                 "FSXId": get_shared_storage_ids_by_type(
                                     self._shared_storage_mappings, SharedStorageType.FSX
                                 ),
