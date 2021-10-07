@@ -29,7 +29,9 @@ from pcluster.config.cluster_config import (
     AwsBatchScheduling,
     AwsBatchSettings,
     ByosClusterConfig,
+    ByosClusterInfrastructure,
     ByosQueue,
+    ByosSchedulerDefinition,
     ByosScheduling,
     ByosSettings,
     CapacityType,
@@ -1107,10 +1109,51 @@ class AwsBatchSettingsSchema(BaseSchema):
         return AwsBatchSettings(**data)
 
 
+class ByosClusterInfrastructureSchema(BaseSchema):
+    """Represent the schema for ClusterInfrastructure schema in a BYOS plugin."""
+
+    class CloudFormationClusterInfrastructureSchema(BaseSchema):
+        """Represent the CloudFormation section of the BYOS ClusterInfrastructure schema."""
+
+        template = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    cloud_formation = fields.Nested(
+        "CloudFormationClusterInfrastructureSchema", metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosClusterInfrastructure(**data)
+
+
+class ByosSchedulerDefinitionSchema(BaseSchema):
+    """Represent the schema of the BYOS plugin SchedulerDefinition."""
+
+    byos_version = fields.Str(
+        required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["1.0"])
+    )
+    metadata = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    requirements = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    cluster_infrastructure = fields.Nested(
+        ByosClusterInfrastructureSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+    plugin_resources = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    events = fields.Dict(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    monitoring = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosSchedulerDefinition(**data)
+
+
 class ByosSettingsSchema(BaseSchema):
     """Represent the schema of the Scheduling Settings."""
 
-    scheduler_definition = fields.Dict(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    scheduler_definition = fields.Nested(
+        ByosSchedulerDefinitionSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

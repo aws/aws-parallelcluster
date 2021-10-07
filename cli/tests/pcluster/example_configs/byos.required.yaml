@@ -10,8 +10,14 @@ Scheduling:
   Scheduler: byos
   ByosSettings:
     SchedulerDefinition:
-      Key1: Value1
-      Key2: Value2
+      ByosVersion: "1.0"
+      ClusterInfrastructure:
+        CloudFormation:
+          Template: https://bucket/byos/additional_cluster_infrastructure_no_jinja.cfn.yaml
+      Events:
+        HeadInitEnvironment:
+          ExecuteCommand:
+            Command: env
   ByosQueues:
     - Name: queue1
       Networking:
