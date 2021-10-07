@@ -77,6 +77,7 @@ def test_awsbatch_cluster_builder(mocker):
         ("slurm-imds-secured-true.yaml", "slurm-imds-secured-true.head-node.dna.json"),
         ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
         ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
+        ("byos-imds-secured-true.yaml", "byos-imds-secured-true.head-node.dna.json"),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value

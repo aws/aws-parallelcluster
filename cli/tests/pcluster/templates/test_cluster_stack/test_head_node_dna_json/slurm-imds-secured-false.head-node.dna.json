@@ -37,7 +37,9 @@
     "region": "{'Ref': 'AWS::Region'}",
     "scheduler": "slurm",
     "stack_name": "clustername",
-    "volume": "NONE"
+    "volume": "NONE",
+    "byos_substack_arn": "",
+    "stack_arn": "{'Ref': 'AWS::StackId'}"
   },
   "run_list": "recipe[aws-parallelcluster::slurm_config]"
 }

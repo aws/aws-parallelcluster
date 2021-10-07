@@ -310,3 +310,12 @@ def load_json_dict(file_path):
         json_content = json.load(file)
 
     return json_content
+
+
+def get_attr(obj, attributes):
+    """Get nested object attribute and return None if attr does not exist."""
+    for attribute in attributes.split("."):
+        obj = getattr(obj, attribute, None)
+        if obj is None:
+            break
+    return obj

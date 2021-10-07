@@ -1489,12 +1489,20 @@ class ByosQueue(SlurmQueue):
     pass
 
 
+class ByosCloudFormationInfrastructure(Resource):
+    """Represent the CloudFormation infrastructure for a BYOS plugin."""
+
+    def __init__(self, template: str, **kwargs):
+        super().__init__(**kwargs)
+        self.template = template
+
+
 class ByosClusterInfrastructure(Resource):
     """Represent the ClusterInfastructure config for a BYOS plugin."""
 
-    def __init__(self, cloud_formation: Dict, **kwargs):
+    def __init__(self, cloud_formation: ByosCloudFormationInfrastructure = None, **kwargs):
         super().__init__(**kwargs)
-        self.cloud_formation_template = cloud_formation.get("template")
+        self.cloud_formation = cloud_formation
 
 
 class ByosSchedulerDefinition(Resource):

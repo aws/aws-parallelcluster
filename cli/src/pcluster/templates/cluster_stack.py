@@ -82,7 +82,7 @@ from pcluster.templates.cdk_builder_utils import (
 )
 from pcluster.templates.cw_dashboard_builder import CWDashboardConstruct
 from pcluster.templates.slurm_builder import SlurmConstruct
-from pcluster.utils import join_shell_args
+from pcluster.utils import get_attr, join_shell_args
 
 StorageInfo = namedtuple("StorageInfo", ["id", "config"])
 
@@ -251,6 +251,8 @@ class ClusterCdkStack(Stack):
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
             )
+
+        self._add_byos_substack()
 
         # Wait condition
         self.wait_condition, self.wait_condition_handle = self._add_wait_condition()
@@ -807,6 +809,8 @@ class ClusterCdkStack(Stack):
             {
                 "cluster": {
                     "stack_name": self._stack_name,
+                    "stack_arn": self.stack_id,
+                    "byos_substack_arn": self.byos_stack.ref if self.byos_stack else "",
                     "raid_vol_ids": get_shared_storage_ids_by_type(
                         self.shared_storage_mappings, SharedStorageType.RAID
                     ),
@@ -1051,8 +1055,12 @@ class ClusterCdkStack(Stack):
                 version=head_node_launch_template.attr_latest_version_number,
             ),
         )
-        if isinstance(self.scheduler_resources, SlurmConstruct):
+        if not self._condition_is_batch():
             head_node_instance.node.add_dependency(self.compute_fleet_resources)
+
+        if self._condition_is_byos() and self.byos_stack:
+            head_node_instance.add_depends_on(self.byos_stack)
+
         return head_node_instance
 
     def _get_launch_templates_config(self):
@@ -1069,6 +1077,19 @@ class ClusterCdkStack(Stack):
 
         return lt_config
 
+    def _add_byos_substack(self):
+        self.byos_stack = None
+        if not self._condition_is_byos():
+            return
+
+        byos_template = get_attr(
+            self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
+        )
+        if not byos_template:
+            return
+
+        self.byos_stack = CfnStack(self, "ByosStack", template_url=byos_template)
+
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
     def _condition_create_lambda_iam_role(self):
@@ -1081,6 +1102,9 @@ class ClusterCdkStack(Stack):
 
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"
+
+    def _condition_is_byos(self):
+        return self.config.scheduling.scheduler == "byos"
 
     def _condition_is_batch(self):
         return self.config.scheduling.scheduler == "awsbatch"
@@ -1234,7 +1258,7 @@ class ComputeFleetConstruct(Construct):
                 queue_post_install_action = queue.custom_actions.on_node_configured
 
             for compute_resource in queue.compute_resources:
-                lt = self._add_compute_resource_launch_template(
+                launch_template = self._add_compute_resource_launch_template(
                     queue,
                     compute_resource,
                     queue_pre_install_action,
@@ -1243,7 +1267,7 @@ class ComputeFleetConstruct(Construct):
                     queue_placement_group,
                     instance_profiles,
                 )
-                compute_launch_templates[queue.name][compute_resource.name] = lt
+                compute_launch_templates[queue.name][compute_resource.name] = launch_template
         return compute_launch_templates
 
     def _add_compute_resource_launch_template(

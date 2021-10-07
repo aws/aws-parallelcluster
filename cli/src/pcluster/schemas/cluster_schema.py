@@ -28,6 +28,7 @@ from pcluster.config.cluster_config import (
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
     AwsBatchSettings,
+    ByosCloudFormationInfrastructure,
     ByosClusterConfig,
     ByosClusterInfrastructure,
     ByosQueue,
@@ -1109,16 +1110,22 @@ class AwsBatchSettingsSchema(BaseSchema):
         return AwsBatchSettings(**data)
 
 
+class CloudFormationClusterInfrastructureSchema(BaseSchema):
+    """Represent the CloudFormation section of the BYOS ClusterInfrastructure schema."""
+
+    template = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosCloudFormationInfrastructure(**data)
+
+
 class ByosClusterInfrastructureSchema(BaseSchema):
     """Represent the schema for ClusterInfrastructure schema in a BYOS plugin."""
 
-    class CloudFormationClusterInfrastructureSchema(BaseSchema):
-        """Represent the CloudFormation section of the BYOS ClusterInfrastructure schema."""
-
-        template = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-
     cloud_formation = fields.Nested(
-        "CloudFormationClusterInfrastructureSchema", metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+        CloudFormationClusterInfrastructureSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
 
     @post_load
