@@ -315,7 +315,7 @@ class NodeIamResourcesBase(Construct):
             self.instance_profile = self._add_instance_profile(self.instance_role.ref, f"InstanceProfile{suffix}")
 
     def _add_instance_profile(self, role_ref: str, name: str):
-        return iam.CfnInstanceProfile(self, name, roles=[role_ref], path=self._cluster_scoped_iam_path()).ref
+        return iam.CfnInstanceProfile(Stack.of(self), name, roles=[role_ref], path=self._cluster_scoped_iam_path()).ref
 
     def _add_node_role(self, node: Union[HeadNode, BaseQueue], name: str):
         additional_iam_policies = set(node.iam.additional_iam_policy_arns)
@@ -324,7 +324,7 @@ class NodeIamResourcesBase(Construct):
         if self._config.scheduling.scheduler == "awsbatch":
             additional_iam_policies.add(policy_name_to_arn("AWSBatchFullAccess"))
         return iam.CfnRole(
-            self,
+            Stack.of(self),
             name,
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=list(additional_iam_policies),
@@ -333,7 +333,7 @@ class NodeIamResourcesBase(Construct):
 
     def _add_pcluster_policies_to_role(self, role_ref: str, name: str):
         iam.CfnPolicy(
-            self,
+            Stack.of(self),
             name,
             policy_name="parallelcluster",
             policy_document=iam.PolicyDocument(statements=self._build_policy()),
@@ -354,7 +354,7 @@ class NodeIamResourcesBase(Construct):
         bucket_name = bucket_info.get("bucket_name")
         object_key = bucket_info.get("object_key")
         iam.CfnPolicy(
-            self,
+            Stack.of(self),
             name,
             policy_name="CustomCookbookS3Url",
             policy_document=iam.PolicyDocument(
@@ -391,7 +391,11 @@ class NodeIamResourcesBase(Construct):
                     read_only_s3_resources.append(arn)
 
         s3_access_policy = iam.CfnPolicy(
-            self, name, policy_document=iam.PolicyDocument(statements=[]), roles=[role_ref], policy_name="S3Access"
+            Stack.of(self),
+            name,
+            policy_document=iam.PolicyDocument(statements=[]),
+            roles=[role_ref],
+            policy_name="S3Access",
         )
 
         if read_only_s3_resources:
