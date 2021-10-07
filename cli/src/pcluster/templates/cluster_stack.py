@@ -1191,9 +1191,10 @@ class ComputeFleetConstruct(Construct):
         self.compute_launch_templates = self._add_launch_templates(
             managed_placement_groups, self._compute_node_instance_profiles
         )
-        self._add_cleanup_custom_resource(
-            dependencies=[self._compute_security_group] + list(managed_placement_groups.values())
-        )
+        custom_resource_deps = list(managed_placement_groups.values())
+        if self._compute_security_group:
+            custom_resource_deps.append(self._compute_security_group)
+        self._add_cleanup_custom_resource(dependencies=custom_resource_deps)
 
     def _add_cleanup_custom_resource(self, dependencies: List[CfnResource]):
         terminate_compute_fleet_custom_resource = CfnCustomResource(
