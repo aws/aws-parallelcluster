@@ -167,6 +167,26 @@ def _compare_changes(changes, expected_changes):
             False,
             id="change compute resources instance type",
         ),
+        pytest.param(
+            ["HeadNode", "Iam"],
+            "head_node_instance_profile",
+            "InstanceProfile",
+            "arn:aws:iam::aws:instance-profile/InstanceProfileone",
+            "arn:aws:iam::aws:instance-profile/InstanceProfiletwo",
+            UpdatePolicy.UNSUPPORTED,
+            False,
+            id="change head node instance profile",
+        ),
+        pytest.param(
+            ["Scheduling", "SlurmQueues[queue1]", "Iam"],
+            "queue_instance_profile",
+            "InstanceProfile",
+            "arn:aws:iam::aws:instance-profile/InstanceProfileone",
+            "arn:aws:iam::aws:instance-profile/InstanceProfiletwo",
+            UpdatePolicy.SUPPORTED,
+            False,
+            id="change queue insatnce profile",
+        ),
     ],
 )
 def test_single_param_change(
