@@ -1,0 +1,7 @@
+[computemgtd]
+cluster_name = <%= node['pcluster']['cluster_name'] %>
+region = <%= node['pcluster']['region'] %>
+proxy = <%= node['pcluster']['proxy'] %>
+clustermgtd_heartbeat_file_path = <%= node['slurm']['install_dir'] %>/etc/pcluster/.slurm_plugin/clustermgtd_heartbeat
+dynamodb_table = <%= node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable'] %>
+slurm_nodename_file = <%= node['pcluster']['local_dir'] %>/slurm_nodename
