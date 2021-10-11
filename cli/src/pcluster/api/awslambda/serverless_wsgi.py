@@ -13,9 +13,10 @@
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 import base64
+import io
+import json
 import os
 import sys
-from io import BytesIO
 
 from werkzeug.datastructures import Headers, MultiDict, iter_multi_items
 from werkzeug.http import HTTP_STATUS_CODES
@@ -86,9 +87,11 @@ def is_alb_event(event):
 
 
 def encode_query_string(event):
-    params = event.get(u"multiValueQueryStringParameters")
+    params = event.get("multiValueQueryStringParameters")
     if not params:
-        params = event.get(u"queryStringParameters")
+        params = event.get("queryStringParameters")
+    if not params:
+        params = event.get("query")
     if not params:
         params = ""
     if is_alb_event(event):
@@ -97,10 +100,16 @@ def encode_query_string(event):
 
 
 def get_script_name(headers, request_context):
-    strip_stage_path = os.environ.get("STRIP_STAGE_PATH", "").lower().strip() in ["yes", "y", "true", "t", "1"]
+    strip_stage_path = os.environ.get("STRIP_STAGE_PATH", "").lower().strip() in [
+        "yes",
+        "y",
+        "true",
+        "t",
+        "1",
+    ]
 
-    if u"amazonaws.com" in headers.get(u"Host", u"") and not strip_stage_path:
-        script_name = "/{}".format(request_context.get(u"stage", ""))
+    if "amazonaws.com" in headers.get("Host", "") and not strip_stage_path:
+        script_name = "/{}".format(request_context.get("stage", ""))
     else:
         script_name = ""
     return script_name
@@ -110,7 +119,7 @@ def get_body_bytes(event, body):
     if event.get("isBase64Encoded", False):
         body = base64.b64decode(body)
     if isinstance(body, str):
-        body = body.encode(encoding="utf-8", errors="strict")
+        body = body.encode("utf-8")
     return body
 
 
@@ -127,16 +136,19 @@ def setup_environ_items(environ, headers):
 
 
 def generate_response(response, event):
-    returndict = {u"statusCode": response.status_code}
+    returndict = {"statusCode": response.status_code}
 
-    if u"multiValueHeaders" in event:
-        returndict[u"multiValueHeaders"] = group_headers(response.headers)
+    if "multiValueHeaders" in event:
+        returndict["multiValueHeaders"] = group_headers(response.headers)
     else:
-        returndict[u"headers"] = split_headers(response.headers)
+        returndict["headers"] = split_headers(response.headers)
 
     if is_alb_event(event):
         # If the request comes from ALB we need to add a status description
-        returndict["statusDescription"] = u"%d %s" % (response.status_code, HTTP_STATUS_CODES[response.status_code])
+        returndict["statusDescription"] = "%d %s" % (
+            response.status_code,
+            HTTP_STATUS_CODES[response.status_code],
+        )
 
     if response.data:
         mimetype = response.mimetype or "text/plain"
@@ -157,6 +169,9 @@ def handle_request(app, event, context):
         print("Lambda warming event received, skipping handler")
         return {}
 
+    if event.get("version") is None and event.get("isBase64Encoded") is None and not is_alb_event(event):
+        return handle_lambda_integration(app, event, context)
+
     if event.get("version") == "2.0":
         return handle_payload_v2(app, event, context)
 
@@ -164,17 +179,17 @@ def handle_request(app, event, context):
 
 
 def handle_payload_v1(app, event, context):
-    if u"multiValueHeaders" in event:
-        headers = Headers(event[u"multiValueHeaders"])
+    if "multiValueHeaders" in event:
+        headers = Headers(event["multiValueHeaders"])
     else:
-        headers = Headers(event[u"headers"])
+        headers = Headers(event["headers"])
 
     script_name = get_script_name(headers, event.get("requestContext", {}))
 
     # If a user is using a custom domain on API Gateway, they may have a base
     # path in their URL. This allows us to strip it out via an optional
     # environment variable.
-    path_info = event[u"path"]
+    path_info = event["path"]
     base_path = os.environ.get("API_GATEWAY_BASE_PATH")
     if base_path:
         script_name = "/" + base_path
@@ -182,41 +197,31 @@ def handle_payload_v1(app, event, context):
         if path_info.startswith(script_name):
             path_info = path_info[len(script_name) :]  # noqa: E203
 
-    body = event[u"body"] or ""
+    body = event["body"] or ""
     body = get_body_bytes(event, body)
 
     environ = {
         "CONTENT_LENGTH": str(len(body)),
-        "CONTENT_TYPE": headers.get(u"Content-Type", ""),
+        "CONTENT_TYPE": headers.get("Content-Type", ""),
         "PATH_INFO": url_unquote(path_info),
         "QUERY_STRING": encode_query_string(event),
-        "REMOTE_ADDR": event.get(u"requestContext", {}).get(u"identity", {}).get(u"sourceIp", ""),
-        "REMOTE_USER": event.get(u"requestContext", {}).get(u"authorizer", {}).get(u"principalId", ""),
-        "REQUEST_METHOD": event.get(u"httpMethod", {}),
+        "REMOTE_ADDR": event.get("requestContext", {}).get("identity", {}).get("sourceIp", ""),
+        "REMOTE_USER": event.get("requestContext", {}).get("authorizer", {}).get("principalId", ""),
+        "REQUEST_METHOD": event.get("httpMethod", {}),
         "SCRIPT_NAME": script_name,
-        "SERVER_NAME": headers.get(u"Host", "lambda"),
-        "SERVER_PORT": headers.get(u"X-Forwarded-Port", "80"),
+        "SERVER_NAME": headers.get("Host", "lambda"),
+        "SERVER_PORT": headers.get("X-Forwarded-Port", "80"),
         "SERVER_PROTOCOL": "HTTP/1.1",
         "wsgi.errors": sys.stderr,
-        "wsgi.input": BytesIO(body),
+        "wsgi.input": io.BytesIO(body),
         "wsgi.multiprocess": False,
         "wsgi.multithread": False,
         "wsgi.run_once": False,
-        "wsgi.url_scheme": headers.get(u"X-Forwarded-Proto", "http"),
+        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "http"),
         "wsgi.version": (1, 0),
-        "serverless.authorizer": event.get(u"requestContext", {}).get(u"authorizer"),
+        "serverless.authorizer": event.get("requestContext", {}).get("authorizer"),
         "serverless.event": event,
         "serverless.context": context,
-        # TODO: Deprecate the following entries, as they do not comply with the WSGI
-        # spec. For custom variables, the spec says:
-        #
-        #  Finally, the environ dictionary may also contain server-defined variables.
-        #  These variables should be named using only lower-case letters, numbers, dots,
-        #  and underscores, and should be prefixed with a name that is unique to the
-        #  defining server or gateway.
-        "API_GATEWAY_AUTHORIZER": event.get(u"requestContext", {}).get(u"authorizer"),
-        "event": event,
-        "context": context,
     }
 
     environ = setup_environ_items(environ, headers)
@@ -228,11 +233,11 @@ def handle_payload_v1(app, event, context):
 
 
 def handle_payload_v2(app, event, context):
-    headers = Headers(event[u"headers"])
+    headers = Headers(event["headers"])
 
     script_name = get_script_name(headers, event.get("requestContext", {}))
 
-    path_info = event[u"rawPath"]
+    path_info = event["rawPath"]
 
     body = event.get("body", "")
     body = get_body_bytes(event, body)
@@ -241,36 +246,26 @@ def handle_payload_v2(app, event, context):
 
     environ = {
         "CONTENT_LENGTH": str(len(body)),
-        "CONTENT_TYPE": headers.get(u"Content-Type", ""),
+        "CONTENT_TYPE": headers.get("Content-Type", ""),
         "PATH_INFO": url_unquote(path_info),
-        "QUERY_STRING": url_encode(event.get(u"queryStringParameters", {})),
-        "REMOTE_ADDR": event.get("requestContext", {}).get(u"http", {}).get(u"sourceIp", ""),
-        "REMOTE_USER": event.get("requestContext", {}).get(u"authorizer", {}).get(u"principalId", ""),
+        "QUERY_STRING": event.get("rawQueryString", ""),
+        "REMOTE_ADDR": event.get("requestContext", {}).get("http", {}).get("sourceIp", ""),
+        "REMOTE_USER": event.get("requestContext", {}).get("authorizer", {}).get("principalId", ""),
         "REQUEST_METHOD": event.get("requestContext", {}).get("http", {}).get("method", ""),
         "SCRIPT_NAME": script_name,
-        "SERVER_NAME": headers.get(u"Host", "lambda"),
-        "SERVER_PORT": headers.get(u"X-Forwarded-Port", "80"),
+        "SERVER_NAME": headers.get("Host", "lambda"),
+        "SERVER_PORT": headers.get("X-Forwarded-Port", "80"),
         "SERVER_PROTOCOL": "HTTP/1.1",
         "wsgi.errors": sys.stderr,
-        "wsgi.input": BytesIO(body),
+        "wsgi.input": io.BytesIO(body),
         "wsgi.multiprocess": False,
         "wsgi.multithread": False,
         "wsgi.run_once": False,
-        "wsgi.url_scheme": headers.get(u"X-Forwarded-Proto", "http"),
+        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "http"),
         "wsgi.version": (1, 0),
-        "serverless.authorizer": event.get("requestContext", {}).get(u"authorizer"),
+        "serverless.authorizer": event.get("requestContext", {}).get("authorizer"),
         "serverless.event": event,
         "serverless.context": context,
-        # TODO: Deprecate the following entries, as they do not comply with the WSGI
-        # spec. For custom variables, the spec says:
-        #
-        #  Finally, the environ dictionary may also contain server-defined variables.
-        #  These variables should be named using only lower-case letters, numbers, dots,
-        #  and underscores, and should be prefixed with a name that is unique to the
-        #  defining server or gateway.
-        "API_GATEWAY_AUTHORIZER": event.get("requestContext", {}).get(u"authorizer"),
-        "event": event,
-        "context": context,
     }
 
     environ = setup_environ_items(environ, headers)
@@ -278,5 +273,56 @@ def handle_payload_v2(app, event, context):
     response = Response.from_app(app, environ)
 
     returndict = generate_response(response, event)
+
+    return returndict
+
+
+def handle_lambda_integration(app, event, context):
+    headers = Headers(event["headers"])
+
+    script_name = get_script_name(headers, event)
+
+    path_info = event["requestPath"]
+
+    for key, value in event.get("path", {}).items():
+        path_info = path_info.replace("{%s}" % key, value)
+        path_info = path_info.replace("{%s+}" % key, value)
+
+    body = event.get("body", {})
+    body = json.dumps(body) if body else ""
+    body = get_body_bytes(event, body)
+
+    environ = {
+        "CONTENT_LENGTH": str(len(body)),
+        "CONTENT_TYPE": headers.get("Content-Type", ""),
+        "PATH_INFO": url_unquote(path_info),
+        "QUERY_STRING": url_encode(event.get("query", {})),
+        "REMOTE_ADDR": event.get("identity", {}).get("sourceIp", ""),
+        "REMOTE_USER": event.get("principalId", ""),
+        "REQUEST_METHOD": event.get("method", ""),
+        "SCRIPT_NAME": script_name,
+        "SERVER_NAME": headers.get("Host", "lambda"),
+        "SERVER_PORT": headers.get("X-Forwarded-Port", "80"),
+        "SERVER_PROTOCOL": "HTTP/1.1",
+        "wsgi.errors": sys.stderr,
+        "wsgi.input": io.BytesIO(body),
+        "wsgi.multiprocess": False,
+        "wsgi.multithread": False,
+        "wsgi.run_once": False,
+        "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "http"),
+        "wsgi.version": (1, 0),
+        "serverless.authorizer": event.get("enhancedAuthContext"),
+        "serverless.event": event,
+        "serverless.context": context,
+    }
+
+    environ = setup_environ_items(environ, headers)
+
+    response = Response.from_app(app, environ)
+
+    returndict = generate_response(response, event)
+
+    if response.status_code >= 300:
+        raise RuntimeError(json.dumps(returndict))
 
     return returndict
