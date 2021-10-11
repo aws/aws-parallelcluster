@@ -1,0 +1,25 @@
+
+[libdefaults]
+ default_realm = DOMAIN.NET
+ forwardable = true
+ default_keytab_name = /etc/opt/quest/vas/host.keytab
+ default_etypes = arcfour-hmac-md5
+ default_etypes_des = des-cbc-crc
+
+[domain_realm]
+ server.domain.net = DOMAIN.NET
+
+[libvas]
+ smb-dialect-range = 2.0.2-3
+ enable-smb3-encryption = false
+ use-dns-srv = true
+
+ mscldap-timeout = 3
+ vascache-ipc-timeout = 7
+[vasd]
+ workstation-mode = false
+
+ ldap-timeout = 45
+ username-attr-name = sAMAccountName
+[nss_vas]
+ lowercase-names = true
