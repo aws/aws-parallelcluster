@@ -185,7 +185,7 @@ class SlurmCommands(SchedulerCommands):
             value in result
             for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]
         ),
-        wait_fixed=seconds(3),
+        wait_fixed=seconds(10),
         stop_max_delay=minutes(12),
     )
     def wait_job_completed(self, job_id):  # noqa: D102

@@ -194,15 +194,3 @@ class ListClusterLogsFiltersParser(ClusterLogsFiltersParser):
     def __init__(self, head_node: ClusterInstance, log_group_name: str, filters: str = None):
         super().__init__(head_node, filters)
         self._log_group_name = log_group_name
-
-    def validate(self):
-        """Check filters consistency."""
-        super().validate()
-        event_in_window = AWSApi.instance().logs.filter_log_events(
-            log_group_name=self._log_group_name, log_stream_name_prefix=self.log_stream_prefix
-        )
-        if not event_in_window:
-            raise FiltersParserError(
-                f"No log events in the log group {self._log_group_name} "
-                f"with log stream name prefix '{self.log_stream_prefix}'"
-            )
