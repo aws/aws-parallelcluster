@@ -5,12 +5,13 @@ CHANGELOG
 ------
 **ENHANCEMENTS**
 - export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` so they can be used by cross-stack references.
+- The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
+in the `~/.aws/config` file.
 
 3.0.0
 ------
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
-
 
 3.0.0
 ------
