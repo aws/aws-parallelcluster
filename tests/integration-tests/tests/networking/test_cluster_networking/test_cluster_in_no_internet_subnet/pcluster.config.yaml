@@ -65,12 +65,11 @@ SharedStorage:
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 3600
-#Intel Hpc Platform does not work in isolated subnet for now
-#{% if os == "centos7" %}
-#AdditionalPackages:
-#  IntelSoftware:
-#    IntelHpcPlatform: true
-#{% endif %}
+{% if os == "centos7" %}
+AdditionalPackages:
+  IntelSoftware:
+    IntelHpcPlatform: true
+{% endif %}
 Tags:
   - Key: String
     Value: String
