@@ -866,7 +866,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         no_internet_subnet = SubnetConfig(
             name="NoInternet",
-            cidr="192.168.0.0/19",  # 8190 IPs
+            cidr="192.168.16.0/20",  # 4094 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
