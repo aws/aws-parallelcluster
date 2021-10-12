@@ -115,8 +115,7 @@ def test_cluster_in_no_internet_subnet(
 ):
     """This test creates a cluster in a subnet with no internet, run osu latency and checks that no failures occur."""
     bucket_name = s3_bucket_factory()
-    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "pre_install.sh"), "scripts/pre_install.sh")
+    _upload_pre_install_script(bucket_name, test_datadir)
 
     vpc_default_security_group_id = get_default_vpc_security_group(vpc_stack.cfn_outputs["VpcId"], region)
     cluster_config = pcluster_config_reader(
@@ -124,15 +123,39 @@ def test_cluster_in_no_internet_subnet(
     )
     cluster = clusters_factory(cluster_config)
 
+    logging.info("Checking cluster has one static node")
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(1)
 
     remote_command_executor = RemoteCommandExecutor(cluster, bastion=bastion_instance)
     slurm_commands = SlurmCommands(remote_command_executor)
 
+    _check_no_internet_access(remote_command_executor)
+    _check_hostname(remote_command_executor)
+    _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region)
+    utils.check_pcluster_list_cluster_log_streams(cluster, os)
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
+    logging.info("Checking compute node is scaled down after scaledown idle time")
+    wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)
+
+
+def _upload_pre_install_script(bucket_name, test_datadir):
+    bucket = boto3.resource("s3").Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "pre_install.sh"), "scripts/pre_install.sh")
+
+
+def _check_no_internet_access(remote_command_executor):
     logging.info("Checking cluster has no Internet access by trying to access google.com")
     internet_result = remote_command_executor.run_remote_command("curl -I https://google.com", raise_on_error=False)
     assert_that(internet_result.failed).is_true()
 
+
+def _check_hostname(remote_command_executor):
+    logging.info("Checking compute node's hostname is ip-x-x-x-x")
+    hostname = remote_command_executor.run_remote_command("srun hostname").stdout
+    assert_that(hostname).matches(r"^ip-\d+-\d+-\d+-\d+$")
+
+
+def _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region):
     for mpi_variant in mpi_variants:
         logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION} for {mpi_variant}")
         compile_osu(mpi_variant, remote_command_executor)
@@ -144,11 +167,8 @@ def test_cluster_in_no_internet_subnet(
         job_id = slurm_commands.assert_job_submitted(result.stdout)
         slurm_commands.wait_job_completed(job_id)
         slurm_commands.assert_job_succeeded(job_id)
-
-    utils.check_pcluster_list_cluster_log_streams(cluster, os)
-    assert_no_errors_in_logs(remote_command_executor, scheduler)
-    # Check compute node is scaled down after scaledown idle time
-    wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)
+    logging.info("Checking cluster has two nodes after running MPI jobs")  # 1 static node + 1 dynamic node
+    assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(2)
 
 
 class VPCEndpointConfig(NamedTuple):

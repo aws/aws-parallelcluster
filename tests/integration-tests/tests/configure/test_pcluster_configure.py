@@ -280,7 +280,7 @@ def subnet_in_use1_az3(vpc_stack):
     )
     assert_that(offerings).is_empty()
     subnet_id = ec2_client.create_subnet(
-        AvailabilityZoneId="use1-az3", CidrBlock="192.168.16.0/20", VpcId=vpc_stack.cfn_outputs["VpcId"]
+        AvailabilityZoneId="use1-az3", CidrBlock="192.168.0.0/21", VpcId=vpc_stack.cfn_outputs["VpcId"]
     )["Subnet"]["SubnetId"]
     yield subnet_id
     ec2_client.delete_subnet(SubnetId=subnet_id)
