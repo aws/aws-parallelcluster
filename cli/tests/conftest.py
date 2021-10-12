@@ -259,11 +259,11 @@ def cfn_describe_stack_mock_response():
             "Outputs": [],
             "Parameters": [{"ParameterKey": CW_LOGS_CFN_PARAM_NAME, "ParameterValue": "log_group"}],
             "Tags": [
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:version", "Value": "3.0.1"},
                 {"Key": "parallelcluster:s3_bucket", "Value": "bucket_name"},
                 {
                     "Key": "parallelcluster:cluster_dir",
-                    "Value": "parallelcluster/3.0.0/clusters/cluster-smkloc964uzpm12m",
+                    "Value": "parallelcluster/3.0.1/clusters/cluster-smkloc964uzpm12m",
                 },
             ],
         }
@@ -306,13 +306,13 @@ def mock_image_stack(mocker):
             "StackName": image_id,
             "StackStatus": "CREATE_COMPLETE",
             "Tags": [
-                {"Key": "parallelcluster:version", "Value": "3.0.0"},
+                {"Key": "parallelcluster:version", "Value": "3.0.1"},
                 {"Key": "parallelcluster:image_name", "Value": image_id},
                 {"Key": "parallelcluster:image_id", "Value": image_id},
                 {"Key": "parallelcluster:s3_bucket", "Value": "parallelcluster-0000000000000000-v1-do-not-delete"},
                 {
                     "Key": "parallelcluster:s3_image_dir",
-                    "Value": f"parallelcluster/3.0.0/images/{image_id}-aaaaaaaaaaaaaaaa",
+                    "Value": f"parallelcluster/3.0.1/images/{image_id}-aaaaaaaaaaaaaaaa",
                 },
                 {
                     "Key": "parallelcluster:build_log",
@@ -325,7 +325,7 @@ def mock_image_stack(mocker):
                     "Key": "parallelcluster:build_config",
                     "Value": (
                         "s3://parallelcluster-0cd54f8004a2e0af-v1-do-not-delete/parallelcluster/"
-                        "3.0.0/images/custom-image-0-pgdlow92odu5dbvv/configs/image-config.yaml"
+                        "3.0.1/images/custom-image-0-pgdlow92odu5dbvv/configs/image-config.yaml"
                     ),
                 },
             ],

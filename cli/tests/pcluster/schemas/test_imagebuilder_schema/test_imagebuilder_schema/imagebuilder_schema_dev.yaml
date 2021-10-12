@@ -1,11 +1,11 @@
 Region: us-east-1
 Image:
-  Name: pcluster-3.0.0_ami
+  Name: pcluster-3.0.1_ami
   Tags:
     - Key: Name
       Value: ParallelCluster-3.0-AMI
     - Key: Version
-      Value: 3.0.0
+      Value: 3.0.1
   RootVolume:
     Size: 25
     Encrypted: True

@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-3.X.X
+3.0.1
 ------
 **ENHANCEMENTS**
 - export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` so they can be used by cross-stack references.
