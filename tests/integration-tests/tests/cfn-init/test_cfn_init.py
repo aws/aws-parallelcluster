@@ -51,7 +51,7 @@ def test_replace_compute_on_failure(
     _assert_compute_logs(remote_command_executor, instance_id)
 
     # check that instance got already replaced or is marked as Unhealthy
-    time.sleep(15)  # Instance waits for 10 seconds before terminating to allow logs to propagate to CloudWatch
+    time.sleep(25)  # Instance waits for 10 seconds before terminating to allow logs to propagate to CloudWatch
     assert_instance_replaced_or_terminating(instance_id, region)
 
 

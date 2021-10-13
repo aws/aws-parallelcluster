@@ -366,7 +366,7 @@ class CWDashboardConstruct(Construct):
                 ],
             ),
             SectionWidgets(
-                "Scheduler''s logs",
+                "Scheduler's logs",
                 [
                     self._new_cw_log_widget(
                         title="slurmctld",
@@ -416,7 +416,7 @@ class CWDashboardConstruct(Construct):
                 ],
             ),
             SectionWidgets(
-                "System''s logs",
+                "System's logs",
                 [
                     self._new_cw_log_widget(
                         title="system-messages",

@@ -79,7 +79,8 @@ write_files:
           "scheduler_queue_name": "${QueueName}",
           "enable_efa_gdr": "${EnableEfaGdr}",
           "custom_node_package": "${CustomNodePackage}",
-          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}"
+          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
+          "use_private_hostname": "${UsePrivateHostname}"
         },
         "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
       }
