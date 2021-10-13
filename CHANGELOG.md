@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-3.x.x
+3.0.1
 ------
 
 **BUG FIXES**
