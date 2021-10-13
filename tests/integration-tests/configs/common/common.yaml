@@ -462,11 +462,11 @@ storage:
         schedulers: ["awsbatch"]
   test_ebs.py::test_ebs_multiple:
     dimensions:
-      - regions: ["ca-central-1"]
+      - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      - regions: ["ca-central-1"]
+      - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
