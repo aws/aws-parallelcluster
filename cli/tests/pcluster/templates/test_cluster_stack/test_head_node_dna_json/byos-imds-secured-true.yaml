@@ -15,7 +15,7 @@ Scheduling:
         CloudFormation:
           Template: https://bucket/byos/additional_cluster_infrastructure_no_jinja.cfn.yaml
       Events:
-        HeadInitEnvironment:
+        HeadInit:
           ExecuteCommand:
             Command: env
   ByosQueues:
