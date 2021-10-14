@@ -22,7 +22,7 @@ from troposphere.efs import FileSystem, MountTarget
 from utils import generate_stack_name, get_vpc_snakecase_value, random_alphanumeric
 
 from tests.common.schedulers_common import get_scheduler_commands
-from tests.common.utils import retrieve_latest_ami
+from tests.common.utils import get_default_vpc_security_group, retrieve_latest_ami
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
@@ -137,17 +137,7 @@ def _write_file_into_efs(region, vpc_stack, efs_stack, request, key_name, cfn_st
     write_file_template = Template()
     write_file_template.set_version("2010-09-09")
     write_file_template.set_description("Stack to write a file to the existing EFS")
-    default_security_group_id = (
-        boto3.client("ec2", region_name=region)
-        .describe_security_groups(
-            Filters=[
-                {"Name": "vpc-id", "Values": [vpc_stack.cfn_outputs["VpcId"]]},
-                {"Name": "group-name", "Values": ["default"]},
-            ]
-        )
-        .get("SecurityGroups")[0]
-        .get("GroupId")
-    )
+    default_security_group_id = get_default_vpc_security_group(vpc_stack.cfn_outputs["VpcId"], region)
     write_file_template.add_resource(
         MountTarget(
             "MountTargetResource",

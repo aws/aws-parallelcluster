@@ -33,7 +33,7 @@ Resources:
               - Action: ec2:TerminateInstances
                 Condition:
                   StringEquals:
-                    ec2:ResourceTag/parallelcluster:node-type: ComputeNode
+                    ec2:ResourceTag/parallelcluster:node-type: Compute
                 Effect: Allow
                 Resource: '*'
               - Action:
@@ -76,13 +76,14 @@ Resources:
                   - !Sub arn:${AWS::Partition}:s3:::parallelcluster-*-v1-do-not-delete/*
               - Action:
                   - dynamodb:PutItem
+                  - dynamodb:GetItem
                   - dynamodb:BatchWriteItem
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
                 Effect: Allow
               - Action: ec2:TerminateInstances
                 Condition:
                   StringEquals:
-                    ec2:ResourceTag/parallelcluster:node-type: ComputeNode
+                    ec2:ResourceTag/parallelcluster:node-type: Compute
                 Effect: Allow
                 Resource: '*'
               - Action: ec2:RunInstances
@@ -150,6 +151,13 @@ Resources:
                 Resource: '*'
             Version: '2012-10-17'
     Type: AWS::IAM::Role
+
+  ComputeNodeInstanceProfileSlurm:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /parallelcluster/
+      Roles:
+        - !Ref ComputeNodeRoleSlurm
 
   CustomLambdaResourcesRoleBatch:
     Properties:
@@ -256,3 +264,36 @@ Resources:
             Version: '2012-10-17'
     Type: AWS::IAM::Role
 
+  ### INTEG-TESTS POLICIES
+
+  IntegTestsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Roles:
+        - !Ref HeadNodeRoleSlurm
+        - !Ref ComputeNodeRoleSlurm
+        - !Ref HeadNodeRoleBatch
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Required to use test bucket (e.g. to test pre/post_install scripts)
+          - Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::aws-parallelcluster-*
+            Effect: Allow
+
+Outputs:
+  HeadNodeRoleSlurm:
+    Value: !GetAtt HeadNodeRoleSlurm.Arn
+  ComputeNodeRoleSlurm:
+    Value: !GetAtt ComputeNodeRoleSlurm.Arn
+  ComputeNodeInstanceProfileSlurm:
+    Value: !GetAtt ComputeNodeInstanceProfileSlurm.Arn
+  CustomLambdaResourcesRoleSlurm:
+    Value: !GetAtt CustomLambdaResourcesRoleSlurm.Arn
+  HeadNodeRoleBatch:
+    Value: !GetAtt HeadNodeRoleBatch.Arn
+  CustomLambdaResourcesRoleBatch:
+    Value: !GetAtt CustomLambdaResourcesRoleBatch.Arn

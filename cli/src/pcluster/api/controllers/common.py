@@ -16,6 +16,7 @@ import logging
 import os
 from typing import List, Optional, Set, Union
 
+import boto3
 from pkg_resources import packaging
 
 from pcluster.api.errors import (
@@ -57,7 +58,7 @@ def configure_aws_region_from_config(region: Union[None, str], config_str: str):
     if region and config_region and region != config_region:
         raise BadRequestException("region is set in both parameter and configuration and conflicts.")
 
-    _set_region(region or config_region or os.environ.get("AWS_DEFAULT_REGION"))
+    _set_region(region or config_region or boto3.Session().region_name)
 
 
 def configure_aws_region():
@@ -72,7 +73,7 @@ def configure_aws_region():
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            _set_region(kwargs.get("region") or os.environ.get("AWS_DEFAULT_REGION"))
+            _set_region(kwargs.get("region") or boto3.Session().region_name)
             return func(*args, **kwargs)
 
         return _wrapper_validate_region

@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Resources:
-  PClusterBuildImageLambdaCleanupRole:
+  BuildImageLambdaCleanupRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -74,14 +74,14 @@ Resources:
                 Resource: !Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:ParallelClusterImage-*'
                 Effect: Allow
 
-  PClusterBuildImageInstanceProfile:
+  BuildImageInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /parallelcluster/
       Roles:
-        - !Ref PClusterBuildImageInstanceRole
+        - !Ref BuildImageInstanceRole
 
-  PClusterBuildImageInstanceRole:
+  BuildImageInstanceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -108,3 +108,11 @@ Resources:
                   - ec2:ModifyImageAttribute
                 Resource: !Sub 'arn:${AWS::Partition}:ec2:${AWS::Region}::image/*'
                 Effect: Allow
+
+Outputs:
+  BuildImageLambdaCleanupRole:
+    Value: !GetAtt BuildImageLambdaCleanupRole.Arn
+  BuildImageInstanceProfile:
+    Value: !GetAtt BuildImageInstanceProfile.Arn
+  BuildImageInstanceRole:
+    Value: !GetAtt BuildImageInstanceRole.Arn

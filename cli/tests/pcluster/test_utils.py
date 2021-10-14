@@ -171,7 +171,13 @@ def test_init_from_instance_type(mocker, caplog):
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "c4.xlarge",
-                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
+                "VCpuInfo": {
+                    "DefaultVCpus": 4,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [1, 2],
+                    "ValidThreadsPerCore": [1, 2],
+                },
                 "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
@@ -182,6 +188,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(caplog.text).is_empty()
     assert_that(c4_instance_info.max_network_interface_count()).is_equal_to(1)
     assert_that(c4_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(c4_instance_info.valid_threads_per_core()).is_equal_to([1, 2])
     assert_that(c4_instance_info.vcpus_count()).is_equal_to(4)
     assert_that(c4_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(c4_instance_info.is_efa_supported()).is_equal_to(False)
@@ -191,7 +198,7 @@ def test_init_from_instance_type(mocker, caplog):
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "g4dn.metal",
-                "VCpuInfo": {"DefaultVCpus": 96},
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
                 "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
@@ -203,6 +210,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(caplog.text).is_empty()
     assert_that(g4dn_instance_info.max_network_interface_count()).is_equal_to(4)
     assert_that(g4dn_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(g4dn_instance_info.valid_threads_per_core()).is_equal_to([])
     assert_that(g4dn_instance_info.vcpus_count()).is_equal_to(96)
     assert_that(g4dn_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(g4dn_instance_info.is_efa_supported()).is_equal_to(True)
@@ -212,7 +220,13 @@ def test_init_from_instance_type(mocker, caplog):
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "g4ad.16xlarge",
-                "VCpuInfo": {"DefaultVCpus": 64},
+                "VCpuInfo": {
+                    "DefaultVCpus": 64,
+                    "DefaultCores": 32,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [2, 4, 8, 16, 32],
+                    "ValidThreadsPerCore": [1, 2],
+                },
                 "GpuInfo": {"Gpus": [{"Name": "*", "Manufacturer": "AMD", "Count": 4}]},
                 "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
@@ -224,6 +238,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(caplog.text).matches("not offer native support for 'AMD' GPUs.")
     assert_that(g4ad_instance_info.max_network_interface_count()).is_equal_to(1)
     assert_that(g4ad_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(g4ad_instance_info.valid_threads_per_core()).is_equal_to([1, 2])
     assert_that(g4ad_instance_info.vcpus_count()).is_equal_to(64)
     assert_that(g4ad_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(g4ad_instance_info.is_efa_supported()).is_equal_to(False)

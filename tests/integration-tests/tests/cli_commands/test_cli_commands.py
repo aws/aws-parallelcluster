@@ -23,7 +23,12 @@ from assertpy import assert_that
 from dateutil.parser import parse as date_parse
 from framework.credential_providers import run_pcluster_command
 from remote_command_executor import RemoteCommandExecutor
-from utils import check_status, get_cluster_nodes_instance_ids
+from utils import (
+    check_pcluster_list_cluster_log_streams,
+    check_status,
+    get_cluster_nodes_instance_ids,
+    instance_stream_name,
+)
 
 from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_instances_in_cluster
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
@@ -60,7 +65,7 @@ def test_slurm_cli_commands(
     for filter_ in filters:
         _test_describe_instances(cluster, **filter_)
     _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster)
-    _test_pcluster_list_cluster_log_streams(cluster)
+    check_pcluster_list_cluster_log_streams(cluster, os)
     _test_pcluster_get_cluster_log_events(cluster)
     _test_pcluster_get_cluster_stack_events(cluster)
     _test_pcluster_compute_fleet(cluster, expected_num_nodes=2)
@@ -325,37 +330,11 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
     assert_that(bucket_cleaned_up).is_true()
 
 
-def _instance_stream_name(instance, stream_name):
-    """Return a stream name given an instance."""
-    ip_str = instance["privateIpAddress"].replace(".", "-")
-    return "ip-{}.{}.{}".format(ip_str, instance["instanceId"], stream_name)
-
-
-def _test_pcluster_list_cluster_log_streams(cluster):
-    """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
-    logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
-    list_streams_result = cluster.list_log_streams()
-    cluster_info = cluster.describe_cluster()
-    streams = list_streams_result["logStreams"]
-
-    stream_names = {stream["logStreamName"] for stream in streams}
-    expected_log_streams = {
-        "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
-        "Compute": {"syslog", "computemgtd", "supervisord"},
-    }
-
-    # check there are the logs of all the instances
-    for instance in cluster.describe_cluster_instances():
-        instance_type = "HeadNode" if instance["instanceId"] == cluster_info["headNode"]["instanceId"] else "Compute"
-        for stream_name in expected_log_streams[instance_type]:
-            assert_that(stream_names).contains(_instance_stream_name(instance, stream_name))
-
-
 def _test_pcluster_get_cluster_log_events(cluster):
     """Test pcluster get-cluster-log-events functionality."""
     logging.info("Testing that pcluster get-cluster-log-events is working as expected")
     cluster_info = cluster.describe_cluster()
-    cfn_init_log_stream = _instance_stream_name(cluster_info["headNode"], "cfn-init")
+    cfn_init_log_stream = instance_stream_name(cluster_info["headNode"], "cfn-init")
     cloud_init_debug_msg = "[DEBUG] CloudFormation client initialized with endpoint"
 
     # Get the first event to establish time boundary for testing

@@ -731,13 +731,10 @@ class ClusterIamSchema(BaseSchema):
 
 
 class IamSchema(BaseSchema):
-    """Represent the schema of IAM for HeadNode and Queue."""
+    """Common schema of IAM for HeadNode and Queue."""
 
     instance_role = fields.Str(
         metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:role/")
-    )
-    instance_profile = fields.Str(
-        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
     )
     s3_access = fields.Nested(
         S3AccessSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "BucketName"}
@@ -766,6 +763,22 @@ class IamSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Iam(**data)
+
+
+class HeadNodeIamSchema(IamSchema):
+    """Represent the schema of IAM for HeadNode."""
+
+    instance_profile = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+    )
+
+
+class QueueIamSchema(IamSchema):
+    """Represent the schema of IAM for Queue."""
+
+    instance_profile = fields.Str(
+        metadata={"update_policy": UpdatePolicy.SUPPORTED}, validate=validate.Regexp("^arn:.*:instance-profile/")
+    )
 
 
 class ImdsSchema(BaseSchema):
@@ -938,7 +951,7 @@ class HeadNodeSchema(BaseSchema):
     local_storage = fields.Nested(HeadNodeStorageSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     dcv = fields.Nested(DcvSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_actions = fields.Nested(HeadNodeCustomActionsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    iam = fields.Nested(HeadNodeIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     imds = fields.Nested(ImdsSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(HeadNodeImageSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
@@ -1031,7 +1044,7 @@ class SlurmQueueSchema(BaseQueueSchema):
     custom_actions = fields.Nested(
         QueueCustomActionsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
-    iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    iam = fields.Nested(QueueIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     networking = fields.Nested(
         SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
@@ -1067,6 +1080,7 @@ class DnsSchema(BaseSchema):
 
     disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     hosted_zone_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    use_ec2_hostnames = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

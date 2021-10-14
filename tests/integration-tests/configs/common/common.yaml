@@ -226,6 +226,11 @@ iam:
         schedulers: ["awsbatch", "slurm"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
+  test_iam_image.py::test_iam_roles:
+    dimensions:
+      - regions: ["eu-south-1"]
+        oss: ["alinux2"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
   test_iam.py::test_s3_read_write_resource:
     dimensions:
       - regions: ["eu-central-1"]
@@ -258,6 +263,26 @@ networking:
   test_networking.py::test_public_private_network_topology:
     dimensions:
       - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
+  test_cluster_networking.py::test_cluster_in_no_internet_subnet:
+    dimensions:
+        # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
+        # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: {{ common.OSS_COMMERCIAL_X86 }}
+        schedulers: ["slurm"]
+      - regions: ["us-east-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: {{ common.OSS_COMMERCIAL_ARM }}
+        schedulers: ["slurm"]
+      - regions: ["cn-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
+      - regions: ["us-gov-west-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["ubuntu2004"]
+        schedulers: ["slurm"]
   test_multi_cidr.py::test_multi_cidr:
     dimensions:
       - regions: ["ap-northeast-2"]
@@ -462,11 +487,11 @@ storage:
         schedulers: ["awsbatch"]
   test_ebs.py::test_ebs_multiple:
     dimensions:
-      - regions: ["ca-central-1"]
+      - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      - regions: ["ca-central-1"]
+      - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
