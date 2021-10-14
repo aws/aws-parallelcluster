@@ -20,8 +20,9 @@ from pcluster.api.errors import BadRequestException
 )
 class TestConfigureAwsRegion:
     @pytest.fixture(autouse=True)
-    def unset_aws_default_region(self, unset_env):
+    def unset_aws_default_region(self, unset_env, mocker):
         unset_env("AWS_DEFAULT_REGION")
+        mocker.patch("botocore.session.Session.get_scoped_config", return_value={})
 
     def test_validate_region_query(self, region, error):
         @configure_aws_region()
@@ -65,8 +66,9 @@ class TestConfigureAwsRegion:
 )
 class TestConfigureAwsRegionFromConfig:
     @pytest.fixture(autouse=True)
-    def unset_aws_default_region(self, unset_env):
+    def unset_aws_default_region(self, unset_env, mocker):
         unset_env("AWS_DEFAULT_REGION")
+        mocker.patch("botocore.session.Session.get_scoped_config", return_value={})
 
     def test_validate_region(self, region, yaml, error, set_env, unset_env):
         expected = "eu-west-1"
