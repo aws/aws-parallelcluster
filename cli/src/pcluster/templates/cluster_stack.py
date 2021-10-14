@@ -1079,16 +1079,16 @@ class ClusterCdkStack(Stack):
 
     def _add_byos_substack(self):
         self.byos_stack = None
-        if not self._condition_is_byos():
-            return
-
-        byos_template = get_attr(
+        if not self._condition_is_byos() or not get_attr(
             self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
-        )
-        if not byos_template:
+        ):
             return
 
-        self.byos_stack = CfnStack(self, "ByosStack", template_url=byos_template)
+        template_url = self.bucket.get_cfn_template_url(
+            template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("byos_template_name")
+        )
+
+        self.byos_stack = CfnStack(self, "ByosStack", template_url=template_url, parameters={})
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 

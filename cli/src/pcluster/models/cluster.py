@@ -21,6 +21,7 @@ from copy import deepcopy
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Set, Tuple
+from urllib.request import urlopen
 
 import pkg_resources
 import yaml
@@ -28,7 +29,7 @@ from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError, get_region
-from pcluster.config.cluster_config import BaseClusterConfig, SlurmScheduling, Tag
+from pcluster.config.cluster_config import BaseClusterConfig, ByosScheduling, SlurmScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
@@ -59,10 +60,10 @@ from pcluster.models.common import (
     upload_archive,
 )
 from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
-from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url
+from pcluster.models.s3_bucket import S3Bucket, S3BucketFactory, S3FileFormat, create_s3_presigned_url, parse_bucket_url
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.utils import datetime_to_epoch, generate_random_name_with_prefix, get_installed_version, grouper
+from pcluster.utils import datetime_to_epoch, generate_random_name_with_prefix, get_attr, get_installed_version, grouper
 from pcluster.validators.common import FailureLevel, ValidationResult
 
 # pylint: disable=C0302
@@ -490,10 +491,43 @@ class Cluster:
                     PCLUSTER_S3_ARTIFACTS_DICT.get("instance_types_data_name"),
                     format=S3FileFormat.JSON,
                 )
+
+            if isinstance(self.config.scheduling, ByosScheduling):
+                self._render_and_upload_byos_template()
+        except BadRequestClusterActionError:
+            raise
         except Exception as e:
             message = f"Unable to upload cluster resources to the S3 bucket {self.bucket.name} due to exception: {e}"
             LOGGER.error(message)
             raise _cluster_error_mapper(e, message)
+
+    def _render_and_upload_byos_template(self):
+        byos_template = get_attr(
+            self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
+        )
+        if not byos_template:
+            return
+
+        try:
+            if byos_template.startswith("s3"):
+                bucket_parsing_result = parse_bucket_url(byos_template)
+                result = AWSApi.instance().s3.get_object(
+                    bucket_name=bucket_parsing_result["bucket_name"], key=bucket_parsing_result["object_key"]
+                )
+                file_content = result["Body"].read().decode("utf-8")
+            else:
+                with urlopen(byos_template) as f:  # nosec - byos_template url is properly validated
+                    file_content = f.read().decode("utf-8")
+        except Exception as e:
+            raise BadRequestClusterActionError(
+                f"Error while downloading scheduler plugin artifacts from '{byos_template}': {str(e)}"
+            ) from e
+
+        # TODO: apply jinja rendering before upload
+
+        self.bucket.upload_cfn_template(
+            file_content, PCLUSTER_S3_ARTIFACTS_DICT["byos_template_name"], S3FileFormat.TEXT
+        )
 
     def delete(self, keep_logs: bool = True):
         """Delete cluster preserving log groups."""
