@@ -11,6 +11,7 @@ in the `~/.aws/config` file.
 
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
+- Fix deletion of API infrastructure when CloudFormation used to deploy API stack is deleted.
 
 3.0.0
 ------
