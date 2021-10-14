@@ -1115,12 +1115,12 @@ Resources:
           imagebuilder = boto3.client('imagebuilder')
 
           def get_image_ids(repository_name, version):
-              image_ids = []
+              image_digests = set()
               paginator = ecr.get_paginator('list_images')
               response_iterator = paginator.paginate(repositoryName=repository_name, filter={'tagStatus': 'TAGGED'})
               for response in response_iterator:
-                  image_ids.extend([{'imageTag': image_id['imageTag']} for image_id in response['imageIds'] if image_id['imageTag'].startswith(version + "-")])
-              return image_ids
+                  image_digests.update([image_id['imageDigest'] for image_id in response['imageIds'] if f"{version}-" in image_id['imageTag']])
+              return list({'imageDigest': image_digest} for image_digest in image_digests)
 
           def get_imagebuilder_images(ecr_image_pipeline_arn):
               response = imagebuilder.list_image_pipeline_images(imagePipelineArn=ecr_image_pipeline_arn)
