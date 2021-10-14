@@ -109,6 +109,7 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "image_config_name": "image-config.yaml",
     "config_name": "cluster-config-with-implied-values.yaml",
     "template_name": "aws-parallelcluster.cfn.yaml",
+    "byos_template_name": "byos-substack.cfn",
     "instance_types_data_name": "instance-types-data.json",
     "custom_artifacts_name": "artifacts.zip",
     "scheduler_resources_name": "scheduler_resources.zip",

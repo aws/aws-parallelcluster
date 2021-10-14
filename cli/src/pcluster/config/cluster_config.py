@@ -1496,6 +1496,9 @@ class ByosCloudFormationInfrastructure(Resource):
         super().__init__(**kwargs)
         self.template = template
 
+    def _register_validators(self):
+        self._register_validator(UrlValidator, url=self.template, fail_on_https_error=True)
+
 
 class ByosClusterInfrastructure(Resource):
     """Represent the ClusterInfastructure config for a BYOS plugin."""
