@@ -6,6 +6,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
+- Fix deletion of API infrastructure when CloudFormation used to deploy API stack is deleted.
 
 **ENHANCEMENTS**
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
