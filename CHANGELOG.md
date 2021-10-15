@@ -3,7 +3,6 @@ CHANGELOG
 
 3.0.1
 ------
-
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
 - Fix deletion of API infrastructure when CloudFormation used to deploy API stack is deleted.
@@ -11,6 +10,10 @@ CHANGELOG
 **ENHANCEMENTS**
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
   in the `~/.aws/config` file.
+- export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` so they can be used by cross-stack references.
+
+**CHANGES**
+- Drop support for SysVinit. Only Systemd is supported.
 
 3.0.0
 ------
