@@ -1,11 +1,12 @@
 CHANGELOG
 =========
 
-3.X.X
+X.X.X
 ------
 
 **ENHANCEMENTS**
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
+- Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 
 **CHANGES**
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
