@@ -20,7 +20,6 @@ from pcluster.models.cluster_resources import (
     ClusterLogsFiltersParser,
     ExportClusterLogsFiltersParser,
     FiltersParserError,
-    ListClusterLogsFiltersParser,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 
@@ -204,28 +203,3 @@ class TestExportClusterLogsFiltersParser:
             if "start_time" not in attrs:
                 describe_log_group_mock.assert_called_with(log_group_name)
                 assert_that(export_logs_filters.start_time).is_equal_to(creation_time_mock)
-
-
-class TestListClusterLogsFiltersParser:
-    @pytest.mark.parametrize(
-        "event_in_window, expected_error",
-        [(True, None), (False, "No log events in the log group")],
-    )
-    def test_validate(self, mocker, mock_head_node, event_in_window, expected_error):
-        log_group_name = "log_group_name"
-        mock_aws_api(mocker)
-        mocker.patch("pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window)
-        filter_log_events_mock = mocker.patch(
-            "pcluster.aws.logs.LogsClient.filter_log_events", return_value=event_in_window
-        )
-
-        list_logs_filters = ListClusterLogsFiltersParser(mock_head_node, log_group_name)
-
-        if expected_error:
-            with pytest.raises(FiltersParserError, match=expected_error):
-                list_logs_filters.validate()
-        else:
-            list_logs_filters.validate()
-            filter_log_events_mock.assert_called_with(
-                log_group_name=log_group_name, log_stream_name_prefix=list_logs_filters.log_stream_prefix
-            )
