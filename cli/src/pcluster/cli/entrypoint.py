@@ -226,19 +226,17 @@ def main():
         sys.exit(0)
     except NoCredentialsError:  # TODO: remove from here
         LOGGER.error("AWS Credentials not found.")
-        sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("Received KeyboardInterrupt. Exiting.")
-        sys.exit(1)
     except ParameterException as e:
         print(json.dumps(e.data, indent=2))
-        sys.exit(1)
     except APIOperationException as e:
         LOGGER.error(json.dumps(e.data), exc_info=True)
         print(json.dumps(e.data, indent=2))
-        sys.exit(1)
     except Exception as e:
         LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
+    finally:
+        sys.stderr.close()
         sys.exit(1)
 
 
