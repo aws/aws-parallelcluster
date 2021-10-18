@@ -115,12 +115,7 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", title="COMMANDS", dest="operation")
     subparsers.required = True
-    type_map = {
-        "number": to_number,
-        "boolean": to_bool,
-        "integer": to_int,
-        "file": read_file,
-    }
+    type_map = {"number": to_number, "boolean": to_bool, "integer": to_int, "file": read_file}
     parser_map = {"subparser": subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments
@@ -227,6 +222,7 @@ def main():
             output_str = json.dumps(ret, indent=2)
             print(output_str)
             LOGGER.info(output_str)
+        sys.stderr.close()
         sys.exit(0)
     except NoCredentialsError:  # TODO: remove from here
         LOGGER.error("AWS Credentials not found.")
