@@ -16,6 +16,7 @@ CHANGELOG
 **ENHANCEMENTS**
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
 in the `~/.aws/config` file.
+- Add configuration converter to convert pcluster2 config to pcluster3 config.
 
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.

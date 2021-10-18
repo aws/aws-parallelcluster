@@ -84,6 +84,7 @@ setup(
     entry_points={
         "console_scripts": [
             "pcluster = pcluster.cli.entrypoint:main",
+            "pcluster3-config-converter = pcluster3_config_converter.pcluster3_config_converter:main",
         ]
     },
     include_package_data=True,
