@@ -69,19 +69,19 @@ jobs:
             toxdir: cli
             toxenv: py38-cov
           - name: Code Checks
-            python: 3.6
+            python: 3.8
             toxdir: cli
             toxenv: code-linters
           - name: CLI CloudFormation Templates Checks
-            python: 3.6
+            python: 3.8
             toxdir: cli
             toxenv: cfn-format-check,cfn-lint,cfn-tests
           - name: API CloudFormation Templates Checks
-            python: 3.6
+            python: 3.8
             toxdir: api
             toxenv: cfn-lint
           - name: Integration Tests Config Checks
-            python: 3.6
+            python: 3.8
             toxdir: tests/integration-tests
             toxenv: validate-test-configs
     steps:

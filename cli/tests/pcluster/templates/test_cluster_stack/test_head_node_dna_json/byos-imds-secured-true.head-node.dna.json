@@ -38,6 +38,7 @@
     "scheduler": "byos",
     "stack_name": "clustername",
     "volume": "NONE",
+    "use_private_hostname": "false",
     "byos_substack_arn": "{'Ref': 'ByosStack'}",
     "stack_arn": "{'Ref': 'AWS::StackId'}"
   },

@@ -1453,10 +1453,13 @@ class SlurmQueue(BaseQueue):
 class Dns(Resource):
     """Represent the DNS settings."""
 
-    def __init__(self, disable_managed_dns: bool = None, hosted_zone_id: str = None):
-        super().__init__()
+    def __init__(
+        self, disable_managed_dns: bool = None, hosted_zone_id: str = None, use_ec2_hostnames: bool = None, **kwargs
+    ):
+        super().__init__(**kwargs)
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
         self.hosted_zone_id = Resource.init_param(hosted_zone_id)
+        self.use_ec2_hostnames = Resource.init_param(use_ec2_hostnames, default=False)
 
 
 class SlurmSettings(Resource):
@@ -1465,7 +1468,7 @@ class SlurmSettings(Resource):
     def __init__(self, scaledown_idletime: int = None, dns: Dns = None, **kwargs):
         super().__init__()
         self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
-        self.dns = dns
+        self.dns = dns or Dns(implied=True)
 
 
 class SlurmScheduling(Resource):

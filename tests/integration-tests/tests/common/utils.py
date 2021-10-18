@@ -191,3 +191,24 @@ def wait_head_node_running(cluster):
     boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
         InstanceIds=cluster.get_cluster_instance_ids(node_type="HeadNode"), WaiterConfig={"Delay": 60, "MaxAttempts": 5}
     )
+
+
+def get_default_vpc_security_group(vpc_id, region):
+    return (
+        boto3.client("ec2", region_name=region)
+        .describe_security_groups(
+            Filters=[
+                {"Name": "vpc-id", "Values": [vpc_id]},
+                {"Name": "group-name", "Values": ["default"]},
+            ]
+        )
+        .get("SecurityGroups")[0]
+        .get("GroupId")
+    )
+
+
+def get_route_tables(subnet_id, region):
+    response = boto3.client("ec2", region_name=region).describe_route_tables(
+        Filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}]
+    )
+    return [table["RouteTableId"] for table in response["RouteTables"]]

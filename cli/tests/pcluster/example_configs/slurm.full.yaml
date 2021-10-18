@@ -52,6 +52,7 @@ Scheduling:
     ScaledownIdletime: 10
     Dns:
       DisableManagedDns: true
+      UseEc2Hostnames: true
   SlurmQueues:
     - Name: queue1
       CapacityType: ONDEMAND

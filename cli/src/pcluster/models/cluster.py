@@ -516,7 +516,7 @@ class Cluster:
                 )
                 file_content = result["Body"].read().decode("utf-8")
             else:
-                with urlopen(byos_template) as f:  # nosec - byos_template url is properly validated
+                with urlopen(byos_template) as f:  # nosec nosemgrep - byos_template url is properly validated
                     file_content = f.read().decode("utf-8")
         except Exception as e:
             raise BadRequestClusterActionError(

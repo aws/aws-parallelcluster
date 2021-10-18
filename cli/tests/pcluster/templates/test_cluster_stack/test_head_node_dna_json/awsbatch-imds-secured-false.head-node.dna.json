@@ -38,6 +38,7 @@
     "scheduler": "awsbatch",
     "stack_name": "clustername",
     "volume": "NONE",
+    "use_private_hostname": "false",
     "byos_substack_arn": "",
     "stack_arn": "{'Ref': 'AWS::StackId'}"
   },

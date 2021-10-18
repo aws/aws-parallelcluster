@@ -10,18 +10,18 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import os as os_lib
 import re
 from shutil import copyfile
 
 import pytest
 from assertpy import assert_that
-from jinja2 import Environment, FileSystemLoader
+from constants import OSU_BENCHMARK_VERSION
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
+from tests.common.osu_common import compile_osu, render_jinja_template
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
@@ -40,6 +40,7 @@ def test_efa(
     test_datadir,
     architecture,
     network_interfaces_count,
+    mpi_variants,
 ):
     """
     Test all EFA Features.
@@ -65,12 +66,9 @@ def test_efa(
 
     if instance in osu_benchmarks_instances:
         benchmark_failures = []
-        mpi_versions = ["openmpi"]
-        if architecture == "x86_64":
-            mpi_versions.append("intelmpi")
 
         # Run OSU benchmarks in efa-enabled queue.
-        for mpi_version in mpi_versions:
+        for mpi_version in mpi_variants:
             benchmark_failures.extend(
                 _test_osu_benchmarks_pt2pt(
                     mpi_version,
@@ -236,23 +234,9 @@ def run_osu_benchmarks(
     slots_per_instance,
     test_datadir,
 ):
-    osu_benchmark_version = "5.7.1"
-    logging.info(f"Running OSU benchmark {osu_benchmark_version}: {benchmark_name} for {mpi_version}")
+    logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
 
-    # Init OSU benchmarks
-    init_script = _render_jinja_template(
-        template_file_path=test_datadir / "init_osu_benchmarks.sh", osu_benchmark_version=osu_benchmark_version
-    )
-    remote_command_executor.run_remote_script(
-        str(init_script),
-        args=[mpi_version],
-        hide=True,
-        additional_files=[
-            str(test_datadir / "osu_benchmarks" / f"osu-micro-benchmarks-{osu_benchmark_version}.tgz"),
-            str(test_datadir / "osu_benchmarks" / "config.guess"),
-            str(test_datadir / "osu_benchmarks" / "config.sub"),
-        ],
-    )
+    compile_osu(mpi_version, remote_command_executor)
 
     # Prepare submission script and pass to the scheduler for the job submission
     copyfile(
@@ -260,10 +244,10 @@ def run_osu_benchmarks(
         test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
     )
     slots = num_of_instances * slots_per_instance
-    submission_script = _render_jinja_template(
+    submission_script = render_jinja_template(
         template_file_path=test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
         benchmark_name=benchmark_name,
-        osu_benchmark_version=osu_benchmark_version,
+        osu_benchmark_version=OSU_BENCHMARK_VERSION,
         num_of_processes=slots,
     )
     if partition:
@@ -316,15 +300,6 @@ def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, p
     scheduler_commands.assert_job_succeeded(job_id)
     result = remote_command_executor.run_remote_command("cat /shared/fi_info.out")
     assert_that(result.stdout).does_not_contain("SHM transfer will be disabled because of ptrace protection")
-
-
-def _render_jinja_template(template_file_path, **kwargs):
-    file_loader = FileSystemLoader(str(os_lib.path.dirname(template_file_path)))
-    env = Environment(loader=file_loader)
-    rendered_template = env.get_template(os_lib.path.basename(template_file_path)).render(**kwargs)
-    with open(template_file_path, "w", encoding="utf-8") as f:
-        f.write(rendered_template)
-    return template_file_path
 
 
 def _test_nccl_benchmarks(remote_command_executor, test_datadir, mpi_module, scheduler_commands):

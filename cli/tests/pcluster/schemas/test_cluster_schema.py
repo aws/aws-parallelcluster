@@ -17,7 +17,14 @@ from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
 from pcluster.constants import MAX_NUMBER_OF_COMPUTE_RESOURCES, MAX_NUMBER_OF_QUEUES
-from pcluster.schemas.cluster_schema import ClusterSchema, IamSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
+from pcluster.schemas.cluster_schema import (
+    ClusterSchema,
+    HeadNodeIamSchema,
+    ImageSchema,
+    QueueIamSchema,
+    SchedulingSchema,
+    SharedStorageSchema,
+)
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.utils import load_cluster_model_from_yaml
 
@@ -130,9 +137,17 @@ def test_iam_schema(instance_role, instance_profile, additional_iam_policies, s3
             ValidationError,
             match=failure_message,
         ):
-            IamSchema().load(iam_dict)
+            HeadNodeIamSchema().load(iam_dict)
+        with pytest.raises(
+            ValidationError,
+            match=failure_message,
+        ):
+            QueueIamSchema().load(iam_dict)
     else:
-        iam = IamSchema().load(iam_dict)
+        iam = HeadNodeIamSchema().load(iam_dict)
+        assert_that(iam.instance_role).is_equal_to(instance_role)
+        assert_that(iam.instance_profile).is_equal_to(instance_profile)
+        iam = QueueIamSchema().load(iam_dict)
         assert_that(iam.instance_role).is_equal_to(instance_role)
         assert_that(iam.instance_profile).is_equal_to(instance_profile)
 

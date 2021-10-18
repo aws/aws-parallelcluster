@@ -874,6 +874,9 @@ class ClusterCdkStack(Stack):
                     "custom_node_package": self.config.custom_node_package or "",
                     "custom_awsbatchcli_package": self.config.custom_aws_batch_cli_package or "",
                     "head_node_imds_secured": str(self.config.head_node.imds.secured).lower(),
+                    "use_private_hostname": str(self.config.scheduling.settings.dns.use_ec2_hostnames).lower()
+                    if self._condition_is_slurm()
+                    else "false",
                 },
                 "run_list": f"recipe[aws-parallelcluster::{self.config.scheduling.scheduler}_config]",
             },
@@ -1410,6 +1413,9 @@ class ComputeFleetConstruct(Construct):
                                 "CustomNodePackage": self._config.custom_node_package or "",
                                 "CustomAwsBatchCliPackage": self._config.custom_aws_batch_cli_package or "",
                                 "ExtraJson": self._config.extra_chef_attributes,
+                                "UsePrivateHostname": str(
+                                    get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
+                                ).lower(),
                             },
                             **get_common_user_data_env(queue, self._config),
                         },

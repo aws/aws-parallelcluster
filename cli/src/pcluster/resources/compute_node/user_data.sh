@@ -80,7 +80,8 @@ write_files:
           "scheduler_compute_resource_name": "${ComputeResourceName}",
           "enable_efa_gdr": "${EnableEfaGdr}",
           "custom_node_package": "${CustomNodePackage}",
-          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}"
+          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
+          "use_private_hostname": "${UsePrivateHostname}"
         },
         "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
       }
