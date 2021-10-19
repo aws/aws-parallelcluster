@@ -1061,12 +1061,12 @@ def _parse_args(argv=None):
     """Parse command line args."""
     convert_parser = argparse.ArgumentParser(
         description="Convert AWS ParallelCluster configuration file.",
-        epilog='For command specific flags, please run: "pcluster3-config-converter --help"',
     )
     convert_parser.add_argument(
         "-c",
         "--config-file",
         help="Configuration file to be used as input.",
+        required=True,
     )
     convert_parser.add_argument(
         "-t",
