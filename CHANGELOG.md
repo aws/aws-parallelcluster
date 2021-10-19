@@ -7,6 +7,8 @@ CHANGELOG
 **ENHANCEMENTS**
 - export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` so they can be used by cross-stack references.
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
+**BUG FIXES**
+- Close stderr to avoid BrokenPipeError for processes that close the other end of the stdout pipe.
 
 3.0.1
 ------
