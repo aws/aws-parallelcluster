@@ -1,0 +1,112 @@
+# Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False in AWS ParallelCluster version 2.
+# Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to False in AWS ParallelCluster version 2.
+# vpc_id = vpc-12345678 is ignored
+# update_check = true is ignored
+# ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
+# encrypted_ephemeral = true is ignored
+HeadNode:
+  CustomActions:
+    OnNodeConfigured:
+      Args:
+        - s3://testbucekt/scripts/post_install.sh
+        - R
+        - curl
+        - wget
+      Script: s3://testbucekt/scripts/post_install.sh
+    OnNodeStart:
+      Args:
+        - s3://testbucket/scripts/pre_install.sh
+        - R
+        - curl
+        - wget
+      Script: s3://testbucket/scripts/pre_install.sh
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+  InstanceType: t2.micro
+  LocalStorage:
+    EphemeralVolume:
+      MountDir: /test
+    RootVolume:
+      Size: 35
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: testkey
+Image:
+  Os: centos7
+Region: '{{ region }}'
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - ComputeResources:
+        - DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: false
+            GdrSupport: false
+          InstanceType: c5.large
+          MaxCount: 5
+          MinCount: 1
+          Name: ondemand-i1
+      ComputeSettings:
+        LocalStorage:
+          EphemeralVolume:
+            MountDir: /test
+          RootVolume:
+            Size: 35
+      CustomActions:
+        OnNodeConfigured:
+          Args:
+            - s3://testbucekt/scripts/post_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucekt/scripts/post_install.sh
+        OnNodeStart:
+          Args:
+            - s3://testbucket/scripts/pre_install.sh
+            - R
+            - curl
+            - wget
+          Script: s3://testbucket/scripts/pre_install.sh
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Name: queue1
+      Networking:
+        PlacementGroup:
+          Enabled: true
+        SubnetIds:
+          - subnet-01234567
+  SlurmSettings:
+    ScaledownIdletime: 10
+SharedStorage:
+  - EbsSettings:
+      Encrypted: false
+      VolumeType: gp2
+    MountDir: /shared_dir1
+    Name: customebs
+    StorageType: Ebs
+  - EbsSettings:
+      Raid:
+        NumberOfVolumes: 2
+        Type: 1
+      VolumeType: gp2
+    MountDir: /shared_dir2
+    Name: customraid
+    StorageType: Ebs
+  - EfsSettings:
+      Encrypted: false
+    MountDir: efs
+    Name: customfs
+    StorageType: Efs
+  - FsxLustreSettings:
+      StorageCapacity: 1200
+    MountDir: /fsx
+    Name: fs
+    StorageType: FsxLustre
+Tags:
+  - Key: key
+    Value: value
+  - Key: key2
+    Value: value2
