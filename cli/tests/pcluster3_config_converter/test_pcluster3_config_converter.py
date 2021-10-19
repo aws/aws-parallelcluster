@@ -6,6 +6,7 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
+import subprocess
 
 import pytest
 import yaml
@@ -13,6 +14,53 @@ from assertpy import assert_that
 
 from pcluster3_config_converter.pcluster3_config_converter import Pcluster3ConfigConverter
 from tests.pcluster3_config_converter import test_data
+
+
+@pytest.mark.parametrize(
+    "expected_input, expected_output, warn",
+    [
+        (
+            "pcluster.config.ini",
+            "pcluster.config.yaml",
+            [
+                "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to "
+                "False in AWS ParallelCluster version 2.",
+                "Note: Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults "
+                "to False in AWS ParallelCluster version 2.",
+                "Warning: Parameter vpc_id = vpc-12345678 is deprecated. Ignoring it during conversion.",
+                "Warning: Parameter update_check = true is deprecated. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
+                "conversion.",
+                "Warning: Parameter encrypted_ephemeral = true is deprecated. Ignoring it during conversion.",
+                "Warning: additional_iam_policies = arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess is added to "
+                "both headnode and scheduling sections. Please review the configuration file after conversion "
+                "and decide whether to further trim down the permissions and specialize.",
+                "Warning: pre_install = s3://testbucket/scripts/pre_install.sh is added to both headnode and "
+                "scheduling sections. Please review the configuration file after conversion and decide whether to "
+                "further trim down the permissions and specialize.",
+                "Warning: post_install = s3://testbucekt/scripts/post_install.sh is added to both headnode and "
+                "scheduling sections. Please review the configuration file after conversion and decide whether "
+                "to further trim down the permissions and specialize.",
+            ],
+        ),
+    ],
+)
+def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input, expected_output, warn):
+    config_file_path = os.path.join(str(test_datadir), expected_input)
+    args = [
+        "pcluster3-config-converter",
+        "--config-file",
+        config_file_path,
+        "--output-file",
+        tmpdir / "pcluster.config.yaml",
+    ]
+    result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
+    _assert_files_are_equal(
+        tmpdir / "pcluster.config.yaml",
+        test_datadir / expected_output,
+    )
+    for message in warn:
+        assert_that(result.stdout).contains(message)
 
 
 @pytest.mark.parametrize(
