@@ -250,6 +250,7 @@ class ClusterCdkStack(Stack):
                 compute_node_instance_profiles=self._compute_instance_profiles,
                 cluster_hosted_zone=self.scheduler_resources.cluster_hosted_zone if self.scheduler_resources else None,
                 dynamodb_table=self.scheduler_resources.dynamodb_table if self.scheduler_resources else None,
+                head_eni=self._head_eni,
             )
 
         self._add_byos_substack()
@@ -1164,6 +1165,7 @@ class ComputeFleetConstruct(Construct):
         compute_node_instance_profiles: Dict[str, str],
         cluster_hosted_zone,
         dynamodb_table,
+        head_eni,
     ):
         super().__init__(scope, id)
         self._cleanup_lambda = cleanup_lambda
@@ -1177,7 +1179,7 @@ class ComputeFleetConstruct(Construct):
         self._cluster_hosted_zone = cluster_hosted_zone
         self._dynamodb_table = dynamodb_table
         self._compute_node_instance_profiles = compute_node_instance_profiles
-
+        self._head_eni = head_eni
         self._add_resources()
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
@@ -1416,6 +1418,7 @@ class ComputeFleetConstruct(Construct):
                                 "UsePrivateHostname": str(
                                     get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
                                 ).lower(),
+                                "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
                             },
                             **get_common_user_data_env(queue, self._config),
                         },
