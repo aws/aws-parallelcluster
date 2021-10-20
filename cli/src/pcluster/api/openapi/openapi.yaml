@@ -2158,6 +2158,7 @@ components:
       - START_REQUESTED
       - STARTING
       - RUNNING
+      - PROTECTED
       - STOP_REQUESTED
       - STOPPING
       - STOPPED

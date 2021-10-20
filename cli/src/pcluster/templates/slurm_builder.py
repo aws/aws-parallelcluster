@@ -67,6 +67,7 @@ class SlurmConstruct(Construct):
         shared_storage_mappings: dict,
         shared_storage_options: dict,
         shared_storage_attributes: dict,
+        head_eni,
         **kwargs,
     ):
         super().__init__(scope, id)
@@ -83,6 +84,7 @@ class SlurmConstruct(Construct):
         self.shared_storage_mappings = shared_storage_mappings
         self.shared_storage_options = shared_storage_options
         self.shared_storage_attributes = shared_storage_attributes
+        self._head_eni = head_eni
 
         self._add_parameters()
         self._add_resources()
@@ -607,6 +609,7 @@ class SlurmConstruct(Construct):
                                 "UsePrivateHostname": str(
                                     self.config.scheduling.settings.dns.use_ec2_hostnames
                                 ).lower(),
+                                "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
                             },
                             **get_common_user_data_env(queue, self.config),
                         },
