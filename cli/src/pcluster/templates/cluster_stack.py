@@ -237,6 +237,7 @@ class ClusterCdkStack(Stack):
                 shared_storage_mappings=self.shared_storage_mappings,
                 shared_storage_options=self.shared_storage_options,
                 shared_storage_attributes=self.shared_storage_attributes,
+                head_eni=self._head_eni,
             )
 
         # Wait condition
