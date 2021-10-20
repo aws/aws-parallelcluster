@@ -276,6 +276,7 @@ class TestDescribeComputeFleet:
             ("slurm", "STARTING", datetime.now()),
             ("slurm", "STOP_REQUESTED", datetime.now()),
             ("slurm", "START_REQUESTED", datetime.now()),
+            ("slurm", "PROTECTED", datetime.now()),
             ("slurm", "UNKNOWN", None),
             ("awsbatch", "ENABLED", None),
             ("awsbatch", "DISABLED", None),
