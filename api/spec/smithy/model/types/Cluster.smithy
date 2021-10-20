@@ -49,6 +49,7 @@ string ClusterStatus
     {name: "START_REQUESTED", value: "START_REQUESTED"},  // works only with Slurm
     {name: "STARTING", value: "STARTING"},  // works only with Slurm
     {name: "RUNNING", value: "RUNNING"},  // works only with Slurm
+    {name: "PROTECTED", value: "PROTECTED"},  // works only with Slurm
     {name: "STOP_REQUESTED", value: "STOP_REQUESTED"},  // works only with Slurm
     {name: "STOPPING", value: "STOPPING"},  // works only with Slurm
     {name: "STOPPED", value: "STOPPED"},  // works only with Slurm
