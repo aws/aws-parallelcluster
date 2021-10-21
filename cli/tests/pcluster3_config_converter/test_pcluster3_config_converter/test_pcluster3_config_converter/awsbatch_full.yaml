@@ -7,140 +7,140 @@
 # The configuration parameters under DevSettings are not officially supported and their name or structure may change
 # over time without any commitment to be backward compatible.
 # Duplicate names 'custom1' are not allowed in the SharedStorage section. Please change them before cluster creation.
+Region: us-west-1
+Image:
+  CustomAmi: ami-12345
+  Os: alinux2
 AdditionalPackages:
   IntelSoftware:
     IntelHpcPlatform: true
-DevSettings:
-  Cookbook:
-    ExtraChefAttributes: '{"cluster": {"scheduler_slots": "cores"}}'
+Tags:
+  - Key: key
+    Value: value
+  - Key: key2
+    Value: value2
+SharedStorage:
+  - Name: custom1
+    StorageType: Ebs
+    MountDir: /shared_dir1
+    EbsSettings:
+      Encrypted: false
+      VolumeType: gp2
+  - Name: custom2
+    StorageType: Ebs
+    MountDir: /shared_dir1
+    EbsSettings:
+      VolumeType: gp2
+  - Name: custom1
+    StorageType: Ebs
+    MountDir: /shared_dir1
+    EbsSettings:
+      VolumeType: gp2
+      Raid:
+        NumberOfVolumes: 2
+  - Name: customfs
+    StorageType: Efs
+    MountDir: efs
+    EfsSettings:
+      Encrypted: false
+      PerformanceMode: generalPurpose
+      FileSystemId: fs-12345
+      KmsKeyId: 1234abcd-12ab-34cd-56ef-1234567890ab
+      ProvisionedThroughput: 1024
+      ThroughputMode: provisioned
+  - Name: fs
+    StorageType: FsxLustre
+    MountDir: /fsx
+    FsxLustreSettings:
+      AutoImportPolicy: NEW_CHANGED
+      FileSystemId: fs-073c3803dca3e28a6
+      KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      StorageCapacity: 3600
+      DeploymentType: SCRATCH_2
+      StorageType: SSD
+      ImportedFileChunkSize: 1024
+      ExportPath: s3://bucket/folder
+      ImportPath: s3://bucket
+      WeeklyMaintenanceStartTime: '1:00:00'
+      AutomaticBackupRetentionDays: 35
+      CopyTagsToBackups: true
+      DailyAutomaticBackupStartTime: 01:03
+      PerUnitStorageThroughput: 200
+      BackupId: backup-fedcba98
+      DriveCacheType: READ
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14
+  Dashboards:
+    CloudWatch:
+      Enabled: true
 HeadNode:
+  InstanceType: c5.xlarge
+  Networking:
+    SubnetId: subnet-0bfad12f6b586686c
+    Proxy:
+      HttpProxyAddress: https://x.x.x.x:8080
+    SecurityGroups:
+      - sg-xxxxxx
+    AdditionalSecurityGroups:
+      - sg-xxxxxx
+  DisableSimultaneousMultithreading: true
+  Ssh:
+    KeyName: key01
+    AllowedIps: string
+  LocalStorage:
+    RootVolume:
+      Size: 35
+    EphemeralVolume:
+      MountDir: /test
+  Dcv:
+    Enabled: true
+    Port: 8443
+    AllowedIps: 0.0.0.0/0
   CustomActions:
-    OnNodeConfigured:
-      Args:
-        - s3://testbucket/post_install.sh
-        - R
-        - curl
-        - wget
-      Script: s3://testbucket/post_install.sh
     OnNodeStart:
+      Script: s3://testbucket/pre_install.sh
       Args:
         - s3://testbucket/pre_install.sh
         - R
         - curl
         - wget
-      Script: s3://testbucket/pre_install.sh
-  Dcv:
-    AllowedIps: 0.0.0.0/0
-    Enabled: true
-    Port: 8443
-  DisableSimultaneousMultithreading: true
+    OnNodeConfigured:
+      Script: s3://testbucket/post_install.sh
+      Args:
+        - s3://testbucket/post_install.sh
+        - R
+        - curl
+        - wget
   Iam:
     InstanceRole: arn:aws:iam::1234567:role/role_name
     S3Access:
       - BucketName: testbucket
   Imds:
     Secured: false
-  InstanceType: c5.xlarge
-  LocalStorage:
-    EphemeralVolume:
-      MountDir: /test
-    RootVolume:
-      Size: 35
-  Networking:
-    AdditionalSecurityGroups:
-      - sg-xxxxxx
-    Proxy:
-      HttpProxyAddress: https://x.x.x.x:8080
-    SecurityGroups:
-      - sg-xxxxxx
-    SubnetId: subnet-0bfad12f6b586686c
-  Ssh:
-    AllowedIps: string
-    KeyName: key01
-Image:
-  CustomAmi: ami-12345
-  Os: alinux2
-Monitoring:
-  Dashboards:
-    CloudWatch:
-      Enabled: true
-  Logs:
-    CloudWatch:
-      Enabled: true
-      RetentionInDays: 14
-Region: us-west-1
 Scheduling:
+  Scheduler: awsbatch
   AwsBatchQueues:
-    - CapacityType: ONDEMAND
+    - Name: batch-queue
+      CapacityType: ONDEMAND
+      Networking:
+        SubnetIds:
+          - subnet-0bfad12f6b586686c
+        SecurityGroups:
+          - sg-xxxxxx
+        AdditionalSecurityGroups:
+          - sg-xxxxxx
       ComputeResources:
-        - DesiredvCpus: 4
+        - Name: batch-compute
+          MinvCpus: 0
+          MaxvCpus: 20
+          DesiredvCpus: 4
+          SpotBidPercentage: 85.0
           InstanceTypes:
             - t2.micro
             - optimal
-          MaxvCpus: 20
-          MinvCpus: 0
-          Name: batch-compute
-          SpotBidPercentage: 85.0
-      Name: batch-queue
-      Networking:
-        AdditionalSecurityGroups:
-          - sg-xxxxxx
-        SecurityGroups:
-          - sg-xxxxxx
-        SubnetIds:
-          - subnet-0bfad12f6b586686c
-  Scheduler: awsbatch
-SharedStorage:
-  - EbsSettings:
-      Encrypted: false
-      VolumeType: gp2
-    MountDir: /shared_dir1
-    Name: custom1
-    StorageType: Ebs
-  - EbsSettings:
-      VolumeType: gp2
-    MountDir: /shared_dir1
-    Name: custom2
-    StorageType: Ebs
-  - EbsSettings:
-      Raid:
-        NumberOfVolumes: 2
-      VolumeType: gp2
-    MountDir: /shared_dir1
-    Name: custom1
-    StorageType: Ebs
-  - EfsSettings:
-      Encrypted: false
-      FileSystemId: fs-12345
-      KmsKeyId: 1234abcd-12ab-34cd-56ef-1234567890ab
-      PerformanceMode: generalPurpose
-      ProvisionedThroughput: 1024
-      ThroughputMode: provisioned
-    MountDir: efs
-    Name: customfs
-    StorageType: Efs
-  - FsxLustreSettings:
-      AutoImportPolicy: NEW_CHANGED
-      AutomaticBackupRetentionDays: 35
-      BackupId: backup-fedcba98
-      CopyTagsToBackups: true
-      DailyAutomaticBackupStartTime: 01:03
-      DeploymentType: SCRATCH_2
-      DriveCacheType: READ
-      ExportPath: s3://bucket/folder
-      FileSystemId: fs-073c3803dca3e28a6
-      ImportPath: s3://bucket
-      ImportedFileChunkSize: 1024
-      KmsKeyId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      PerUnitStorageThroughput: 200
-      StorageCapacity: 3600
-      StorageType: SSD
-      WeeklyMaintenanceStartTime: '1:00:00'
-    MountDir: /fsx
-    Name: fs
-    StorageType: FsxLustre
-Tags:
-  - Key: key
-    Value: value
-  - Key: key2
-    Value: value2
+DevSettings:
+  Cookbook:
+    ExtraChefAttributes: '{"cluster": {"scheduler_slots": "cores"}}'
