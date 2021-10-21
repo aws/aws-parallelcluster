@@ -18,6 +18,9 @@ CHANGELOG
 **BUG FIXES**
 - Fix issue that is preventing cluster names to start with `parallelcluster-` prefix.
 
+**CHANGES**
+- Use compute resource name rather than instance type in compute fleet Launch Template name.
+
 3.0.1
 ------
 
