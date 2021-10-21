@@ -13,6 +13,9 @@ CHANGELOG
 3.0.1
 ------
 
+**CHANGES**
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+
 **ENHANCEMENTS**
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
 in the `~/.aws/config` file.
