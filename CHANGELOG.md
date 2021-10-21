@@ -3,15 +3,9 @@ CHANGELOG
 
 3.0.1
 ------
-**BUG FIXES**
-- Pin to the transitive dependencies resulting from the dependency on connexion.
-- Fix deletion of API infrastructure when CloudFormation used to deploy API stack is deleted.
-- Fix supervisord service not enabled on Ubuntu.
-- Update ca-certificates package during AMI build time and prevent Chef from using outdated/distrusted CA certificates.
-- Close stderr to avoid BrokenPipeError for processes that close the other end of the stdout pipe.
 
 **ENHANCEMENTS**
-- Add configuration converter to convert pcluster2 config to pcluster3 config.
+- Add `pcluster3-config-converter` CLI command to convert cluster configuration from ParallelCluster 2 to ParallelCluster 3 version.
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults
   specified in the `~/.aws/config` file.
 - export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` in CloudFormation API Stack so they can be
@@ -19,6 +13,14 @@ CHANGELOG
 
 **CHANGES**
 - Drop support for SysVinit. Only Systemd is supported.
+- 
+**BUG FIXES**
+- Pin to the transitive dependencies resulting from the dependency on connexion.
+- Fix cleanup of ECR resources when API infrastructure template is deleted.
+- Fix supervisord service not enabled on Ubuntu. This was causing supervisord not to be started on instance reboot.
+- Update ca-certificates package during AMI build time and have Cinc use the updated CA certificates bundle.
+- Close stderr before exiting from pcluster CLI commands to avoid BrokenPipeError for processes that close the
+  other end of the stdout pipe.
 
 3.0.0
 ------
