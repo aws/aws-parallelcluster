@@ -3,32 +3,33 @@
 # update_check = true is ignored
 # ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
 # sanity_check = false is ignored
-HeadNode:
-  Imds:
-    Secured: false
-  InstanceType: c5.xlarge
-  LocalStorage:
-    RootVolume:
-      Size: 35
-  Networking:
-    SubnetId: subnet-0bfad12f6b586686c
-  Ssh:
-    KeyName: key01
+# The default setup of AWS ParallelCluster version 2 uses an EBS volume to share the /shared directory over NFS. This configuration utility preserves this behavior by default. If you do not need the /shared directory, you can remove the default-ebs from the SharedStorage section of your configuration.
 Image:
   Os: alinux2
-Scheduling:
-  AwsBatchQueues:
-    - ComputeResources:
-        - InstanceTypes:
-            - t2.micro
-            - optimal
-          Name: batch-compute
-      Name: batch-queue
-      Networking:
-        SubnetIds:
-          - subnet-0bfad12f6b586686c
-  Scheduler: awsbatch
 SharedStorage:
   - MountDir: /shared
     Name: default-ebs
     StorageType: Ebs
+HeadNode:
+  InstanceType: c5.xlarge
+  Networking:
+    SubnetId: subnet-0bfad12f6b586686c
+  Ssh:
+    KeyName: key01
+  LocalStorage:
+    RootVolume:
+      Size: 35
+  Imds:
+    Secured: false
+Scheduling:
+  Scheduler: awsbatch
+  AwsBatchQueues:
+    - Name: batch-queue
+      Networking:
+        SubnetIds:
+          - subnet-0bfad12f6b586686c
+      ComputeResources:
+        - Name: batch-compute
+          InstanceTypes:
+            - t2.micro
+            - optimal
