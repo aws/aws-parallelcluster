@@ -239,12 +239,13 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
         slurm_nodes_str += f"{node} {state}\n"
     for queue, queue_config in queues_config.items():
         for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
-            sanitized_name = re.sub(r"[^A-Za-z0-9]", "", compute_resource_name)
             running_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{compute_resource_name}-\d+ (idle|mixed|alloc)\n").findall(
+                    slurm_nodes_str
+                )
             )
             power_saved_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ idle~\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{compute_resource_name}-\d+ idle~\n").findall(slurm_nodes_str)
             )
             assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
