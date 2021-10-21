@@ -10,6 +10,9 @@ CHANGELOG
 **BUG FIXES**
 - Close stderr to avoid BrokenPipeError for processes that close the other end of the stdout pipe.
 
+**CHANGES**
+- Use compute resource name rather than instance type in compute fleet Launch Template name.
+
 3.0.1
 ------
 
