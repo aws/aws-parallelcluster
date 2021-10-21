@@ -9,8 +9,10 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
+from assertpy import assert_that
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.config.cluster_config import Tag
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -39,6 +41,7 @@ from pcluster.validators.cluster_validators import (
     RegionValidator,
     SchedulerOsValidator,
     SharedStorageNameValidator,
+    _LaunchTemplateValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -885,3 +888,22 @@ def test_hosted_zone_validator(mocker, vpcs, is_private_zone, domain_name, expec
         cluster_name="ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12",
     )
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "input_tags",
+    [
+        [],
+        [{"key": "SomeKey", "value": "SomeValue"}],
+    ],
+)
+def test_generate_tag_specifications(input_tags):
+    """Verify function to generate tag specifications for dry runs of RunInstances works as expected."""
+    input_tags = [Tag(tag.get("key"), tag.get("value")) for tag in input_tags]
+    if input_tags:
+        expected_output_tags = [
+            {"ResourceType": "instance", "Tags": [{"Key": tag.key, "Value": tag.value} for tag in input_tags]}
+        ]
+    else:
+        expected_output_tags = []
+    assert_that(_LaunchTemplateValidator._generate_tag_specifications(input_tags)).is_equal_to(expected_output_tags)
