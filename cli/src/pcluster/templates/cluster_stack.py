@@ -736,6 +736,8 @@ class ClusterCdkStack(Stack):
         wait_condition = cfn.CfnWaitCondition(
             self, id="HeadNodeWaitCondition" + self.timestamp, count=1, handle=wait_condition_handle.ref, timeout="1800"
         )
+        if self.byos_stack:
+            wait_condition.add_depends_on(self.byos_stack)
         return wait_condition, wait_condition_handle
 
     def _add_head_node(self):
