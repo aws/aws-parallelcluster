@@ -25,13 +25,14 @@ from tests.pcluster3_config_converter import test_data
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to "
                 "False in AWS ParallelCluster version 2.",
-                "Note: Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults "
-                "to False in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-12345678 is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = true is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
-                "conversion.",
-                "Warning: Parameter encrypted_ephemeral = true is deprecated. Ignoring it during conversion.",
+                "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
+                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                "can set HeadNode/Imds/Secured to False.",
+                "Warning: Parameter vpc_id = vpc-12345678 is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
                 "Warning: additional_iam_policies = arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess is added to "
                 "both headnode and scheduling sections. Please review the configuration file after conversion "
                 "and decide whether to further trim down the permissions and specialize.",
@@ -72,13 +73,15 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
                 "in AWS ParallelCluster version 2.",
-                "Note: Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to "
-                "False in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = true is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
-                "conversion.",
-                "Warning: Parameter encrypted_ephemeral = true is deprecated. Ignoring it during conversion.",
+                "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
+                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                "can set HeadNode/Imds/Secured to False.",
+                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
                 "Warning: additional_iam_policies = arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess is added to both "
                 "headnode and scheduling sections. Please review the configuration file after conversion and decide "
                 "whether to further trim down the permissions and specialize.",
@@ -111,7 +114,7 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
                 "cluster creation.",
                 "Warning: '_' is not allowed in the name of 'compute_resource ondemand_i3'. Please rename it before "
                 "cluster creation.",
-                "Warning: Parameter initial_count = 2 is deprecated. Ignoring it during conversion.",
+                "Warning: Parameter initial_count = 2 is no longer supported. Ignoring it during conversion.",
                 "Warning: '_' is not allowed in the name of 'compute_resource ondemand_i2'. Please rename it before "
                 "cluster creation.",
             ],
@@ -125,12 +128,13 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
                 "in AWS ParallelCluster version 2.",
-                "Note: Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to "
-                "False in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-123 is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = true is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
-                "conversion.",
+                "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
+                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                "can set HeadNode/Imds/Secured to False.",
+                "Warning: Parameter vpc_id = vpc-123 is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                "during conversion.",
             ],
             None,
             False,
@@ -142,12 +146,13 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
                 "in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = true is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
-                "conversion.",
-                "Warning: Parameter sanity_check = false is deprecated, please specify `--suppress-validators All` "
-                "during cluster creation.",
+                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter sanity_check = false is no longer supported, please specify "
+                "`--suppress-validators ALL` during cluster creation.",
             ],
             None,
             False,
@@ -159,13 +164,14 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
                 "in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = true is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
-                "conversion.",
-                "Warning: Parameter encrypted_ephemeral = true is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter sanity_check = false is deprecated, please specify `--suppress-validators All` "
-                "during cluster creation.",
+                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter sanity_check = false is no longer supported, please specify "
+                "`--suppress-validators ALL` during cluster creation.",
                 "Warning: s3_read_resource = arn:aws:s3:::testbucket/* is added to both headnode and scheduling "
                 "sections. Please review the configuration file after conversion and decide whether to further trim "
                 "down the permissions and specialize.",
@@ -201,13 +207,15 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
                 "in AWS ParallelCluster version 2.",
-                "Note: Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to "
-                "False in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = true is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
+                "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
+                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                "can set HeadNode/Imds/Secured to False.",
+                "Warning: Parameter vpc_id = vpc-0e0f223cc35256b9a is no longer supported. Ignoring it "
+                "during conversion.",
+                "Warning: Parameter update_check = true is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it during "
                 "conversion.",
-                "Warning: Parameter encrypted_ephemeral = true is deprecated. Ignoring it during conversion.",
+                "Warning: Parameter encrypted_ephemeral = true is no longer supported. Ignoring it during conversion.",
                 "Warning: additional_iam_policies = arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess is added to both "
                 "headnode and scheduling sections. Please review the configuration file after conversion and decide "
                 "whether to further trim down the permissions and specialize.",
@@ -243,8 +251,8 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             "compute_subnet_cidr.ini",
             None,
             None,
-            "ERROR: Parameter compute_subnet_cidr = 0.0.0.0/16 is deprecated. Please remove it and run the converter "
-            "again.",
+            "ERROR: Parameter compute_subnet_cidr = 0.0.0.0/16 is no longer supported. Please remove it and run the "
+            "converter again.",
             False,
             None,
         ),
@@ -278,11 +286,12 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
                 "in AWS ParallelCluster version 2.",
-                "Note: Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to "
-                "False in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-12345678 is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = false is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
+                "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
+                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                "can set HeadNode/Imds/Secured to False.",
+                "Warning: Parameter vpc_id = vpc-12345678 is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter update_check = false is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it during "
                 "conversion.",
             ],
             None,
@@ -295,11 +304,12 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
             [
                 "Note: Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False "
                 "in AWS ParallelCluster version 2.",
-                "Note: Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to "
-                "False in AWS ParallelCluster version 2.",
-                "Warning: Parameter vpc_id = vpc-12345678 is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter update_check = false is deprecated. Ignoring it during conversion.",
-                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is deprecated. Ignoring it during "
+                "Note: In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head "
+                "node is restricted to the cluster administrator. If additional users required access to IMDS, you "
+                "can set HeadNode/Imds/Secured to False.",
+                "Warning: Parameter vpc_id = vpc-12345678 is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter update_check = false is no longer supported. Ignoring it during conversion.",
+                "Warning: Parameter ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is no longer supported. Ignoring it during "
                 "conversion.",
                 "Warning: s3_read_write_resource = arn:aws:s3:::test/hello/* is added to both headnode and scheduling "
                 "sections. Please review the configuration file after conversion and decide whether to further trim "
@@ -316,7 +326,7 @@ def test_pcluster3_config_converter_command(test_datadir, tmpdir, expected_input
                 "Warning: post_install = s3://testbucket/post_install.sh is added to both headnode and scheduling "
                 "sections. Please review the configuration file after conversion and decide whether to further trim "
                 "down the permissions and specialize.",
-                "Warning: Parameter initial_queue_size = 2 is deprecated. Ignoring it during conversion.",
+                "Warning: Parameter initial_queue_size = 2 is no longer supported. Ignoring it during conversion.",
             ],
             None,
             False,

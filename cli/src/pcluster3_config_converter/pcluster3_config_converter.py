@@ -128,6 +128,7 @@ class Pcluster3ConfigConverter(object):
         self.validate_dev_settings()
         self.validate_shared_storages_name()
         self.validate_slurm_queues()
+        self.validate_default_ebs()
 
     def convert_to_pcluster3_config(self):
         """Convert config_parser object to AWS ParallelCluster version 3 configuration file."""
@@ -418,7 +419,7 @@ class Pcluster3ConfigConverter(object):
                 yaml.dump(
                     self.pcluster3_configuration,
                     config_file,
-                    sort_keys=True,
+                    sort_keys=False,
                     Dumper=ConfigDumper,
                     default_flow_style=False,
                 )
@@ -428,7 +429,7 @@ class Pcluster3ConfigConverter(object):
             yaml.dump(
                 self.pcluster3_configuration,
                 sys.stdout,
-                sort_keys=True,
+                sort_keys=False,
                 Dumper=ConfigDumper,
                 default_flow_style=False,
             )
@@ -465,14 +466,14 @@ class Pcluster3ConfigConverter(object):
             "ParallelCluster version 2."
         )
         if self.cluster_config_get("scheduler") == "slurm":
-            self.comments += (
-                "# Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to "
-                "False in AWS ParallelCluster version 2.\n"
+            message = (
+                "In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head node is "
+                "restricted to the cluster administrator. If additional users required access to IMDS, you can set "
+                "HeadNode/Imds/Secured to False."
             )
-            _note(
-                "Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to "
-                "False in AWS ParallelCluster version 2."
-            )
+            _note(message)
+            self.comments += f"# {message}\n"
+
         self.validate_scheduler()
 
     def validate_deprecated_fields(self):
@@ -487,8 +488,8 @@ class Pcluster3ConfigConverter(object):
             self.validate_single_field(*item)
         if self.config_parser.getboolean("global", "sanity_check", fallback=None) is False:
             _warn(
-                "Parameter sanity_check = false is deprecated, please specify `--suppress-validators All` during "
-                "cluster creation."
+                "Parameter sanity_check = false is no longer supported, please specify `--suppress-validators ALL` "
+                "during cluster creation."
             )
             self.comments += "# sanity_check = false is ignored\n"
 
@@ -789,7 +790,7 @@ class Pcluster3ConfigConverter(object):
             _error("scheduler must be provided in the config.")
         elif scheduler in ["sge", "torque"]:
             _error(
-                "The provided scheduler is deprecated in AWS ParallelCluster version 3, please check "
+                "The provided scheduler is no longer supported in AWS ParallelCluster version 3, please check "
                 "https://docs.aws.amazon.com/parallelcluster/latest/ug/schedulers-v3.html for supported schedulers."
             )
         elif scheduler not in ["slurm", "awsbatch"]:
@@ -802,9 +803,9 @@ class Pcluster3ConfigConverter(object):
             return
         if message == "ignored":
             self.comments += f"# {field} = {value} is ignored\n"
-            _warn(f"Parameter {field} = {value} is deprecated. Ignoring it during conversion.")
+            _warn(f"Parameter {field} = {value} is no longer supported. Ignoring it during conversion.")
         elif message == "need_remove":
-            _error(f"Parameter {field} = {value} is deprecated. Please remove it and run the converter again.")
+            _error(f"Parameter {field} = {value} is no longer supported. Please remove it and run the converter again.")
         elif message == "ambiguous":
             _warn(
                 f"{field} = {value} is added to both headnode and scheduling sections. Please review the "
@@ -814,7 +815,7 @@ class Pcluster3ConfigConverter(object):
         elif message == "dev_settings":
             if self.force_convert:
                 self.comments += f"# {field} = {value} is not officially supported and not recommended\n"
-                _warn(f"Parameter {field} = {value} is deprecated. Ignoring it during conversion.")
+                _warn(f"Parameter {field} = {value} is no longer supported. Ignoring it during conversion.")
             else:
                 _error(
                     f"{field} is not officially supported and not recommended. If you want to proceed with "
@@ -1055,6 +1056,18 @@ class Pcluster3ConfigConverter(object):
                     self.validate_default_name(compute_resource_name, compute_resource_section)
                     self.validate_underscore_in_name(compute_resource_name, compute_resource_section)
                     self.validate_single_field(compute_resource_section, "initial_count", "ignored")
+
+    def validate_default_ebs(self):
+        """Validate the existence of ebs_settings in pcluster2 config."""
+        if not self.cluster_config_get("ebs_settings"):
+            message = (
+                "The default setup of AWS ParallelCluster version 2 uses an EBS volume to share the /shared directory "
+                "over NFS. This configuration utility preserves this behavior by default. If you do not need the "
+                "/shared directory, you can remove the default-ebs from the SharedStorage section of your "
+                "configuration."
+            )
+            _note(message)
+            self.comments += f"# {message}\n"
 
 
 def _parse_args(argv=None):

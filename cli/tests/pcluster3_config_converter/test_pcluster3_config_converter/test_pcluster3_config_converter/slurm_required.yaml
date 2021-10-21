@@ -1,27 +1,28 @@
 # Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False in AWS ParallelCluster version 2.
-# Imds.Secured defaults to True in AWS ParallelCluster version 3 for Slurm while it defaults to False in AWS ParallelCluster version 2.
+# In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head node is restricted to the cluster administrator. If additional users required access to IMDS, you can set HeadNode/Imds/Secured to False.
 # vpc_id = vpc-123 is ignored
 # update_check = true is ignored
 # ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
+# The default setup of AWS ParallelCluster version 2 uses an EBS volume to share the /shared directory over NFS. This configuration utility preserves this behavior by default. If you do not need the /shared directory, you can remove the default-ebs from the SharedStorage section of your configuration.
+Image:
+  Os: alinux2
+SharedStorage:
+  - MountDir: /shared
+    Name: default-ebs
+    StorageType: Ebs
 HeadNode:
   InstanceType: c5.xlarge
   Networking:
     SubnetId: subnet-0bfad12f6b586686c
   Ssh:
     KeyName: key01
-Image:
-  Os: alinux2
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
-    - ComputeResources:
-        - InstanceType: c5.large
-          Name: ondemand-i1
-      Name: queue1
+    - Name: queue1
+      ComputeResources:
+        - Name: ondemand-i1
+          InstanceType: c5.large
       Networking:
         SubnetIds:
           - subnet-0bfad12f6b586686c
-SharedStorage:
-  - MountDir: /shared
-    Name: default-ebs
-    StorageType: Ebs
