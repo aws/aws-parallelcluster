@@ -443,7 +443,7 @@ class HeadNodeIamResources(NodeIamResourcesBase):
         super().__init__(scope, id, config, node, name)
 
     def _build_policy(self) -> List[iam.PolicyStatement]:
-        return [
+        policy = [
             iam.PolicyStatement(
                 sid="Ec2",
                 actions=[
@@ -513,6 +513,78 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                 ],
             ),
         ]
+
+        if self._config.scheduling.scheduler != "awsbatch":
+            policy.extend(
+                [
+                    iam.PolicyStatement(
+                        sid="EC2Terminate",
+                        actions=["ec2:TerminateInstances"],
+                        effect=iam.Effect.ALLOW,
+                        resources=["*"],
+                        conditions={
+                            "StringEquals": {f"ec2:ResourceTag/{PCLUSTER_CLUSTER_NAME_TAG}": Stack.of(self).stack_name}
+                        },
+                    ),
+                    iam.PolicyStatement(
+                        sid="EC2RunInstances",
+                        actions=["ec2:RunInstances"],
+                        effect=iam.Effect.ALLOW,
+                        resources=[
+                            self._format_arn(service="ec2", resource=f"subnet/{subnet_id}")
+                            for subnet_id in self._config.compute_subnet_ids
+                        ]
+                        + [
+                            self._format_arn(service="ec2", resource="network-interface/*"),
+                            self._format_arn(service="ec2", resource="instance/*"),
+                            self._format_arn(service="ec2", resource="volume/*"),
+                            self._format_arn(service="ec2", resource=f"key-pair/{self._config.head_node.ssh.key_name}"),
+                            self._format_arn(service="ec2", resource="security-group/*"),
+                            self._format_arn(service="ec2", resource="launch-template/*"),
+                            self._format_arn(service="ec2", resource="placement-group/*"),
+                        ]
+                        + [
+                            self._format_arn(service="ec2", resource=f"image/{queue_ami}", account="")
+                            for _, queue_ami in self._config.image_dict.items()
+                        ],
+                    ),
+                    iam.PolicyStatement(
+                        sid="PassRole",
+                        actions=["iam:PassRole"],
+                        effect=iam.Effect.ALLOW,
+                        resources=self._generate_head_node_pass_role_resources(),
+                    ),
+                ]
+            )
+
+        return policy
+
+    def _generate_head_node_pass_role_resources(self):
+        """Return a unique list of ARNs that the head node should be able to use when calling PassRole."""
+        default_pass_role_resource = self._format_arn(
+            service="iam",
+            region="",
+            resource=f"role{self._cluster_scoped_iam_path()}*",
+        )
+
+        # If there are any queues where a custom instance role was specified,
+        # enable the head node to pass permissions to those roles.
+        custom_queue_role_arns = {
+            arn for queue in self._config.scheduling.queues for arn in queue.iam.instance_role_arns
+        }
+        if custom_queue_role_arns:
+            pass_role_resources = custom_queue_role_arns
+
+            # Include the default IAM role path for the queues that
+            # aren't using a custom instance role.
+            queues_without_custom_roles = [
+                queue for queue in self._config.scheduling.queues if not queue.iam.instance_role_arns
+            ]
+            if any(queues_without_custom_roles):
+                pass_role_resources.add(default_pass_role_resource)
+        else:
+            pass_role_resources = {default_pass_role_resource}
+        return list(pass_role_resources)
 
 
 class ComputeNodeIamResources(NodeIamResourcesBase):
