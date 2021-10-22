@@ -4,9 +4,6 @@ CHANGELOG
 3.0.1
 ------
 
-**CHANGES**
-- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
-
 **ENHANCEMENTS**
 - Add `pcluster3-config-converter` CLI command to convert cluster configuration from ParallelCluster 2 to ParallelCluster 3 version.
 - The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults
@@ -16,7 +13,8 @@ CHANGELOG
 
 **CHANGES**
 - Drop support for SysVinit. Only Systemd is supported.
-- 
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
 - Fix cleanup of ECR resources when API infrastructure template is deleted.
