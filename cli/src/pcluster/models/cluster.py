@@ -484,7 +484,7 @@ class Cluster:
             if self.template_body:
                 self.bucket.upload_cfn_template(self.template_body, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
 
-            if isinstance(self.config.scheduling, SlurmScheduling):
+            if isinstance(self.config.scheduling, (SlurmScheduling, ByosScheduling)):
                 # upload instance types data
                 self.bucket.upload_config(
                     self.config.get_instance_types_data(),
