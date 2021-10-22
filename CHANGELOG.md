@@ -117,6 +117,12 @@ CHANGELOG
 - Remove installation of MPICH and FFTW packages.
 - Remove Ganglia support.
 
+2.11.3
+-----
+
+**CHANGES**
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+
 2.11.2
 -----
 
