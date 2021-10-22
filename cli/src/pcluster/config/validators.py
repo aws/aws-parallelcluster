@@ -1144,6 +1144,11 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
             "(M6g, C6g, etc.). To proceed please provide a custom_ami, "
             "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes"
         )
+    elif param_value == "centos8":
+        warnings.append(
+            f"Warning: The operating system you are using ({param_value}) will reach support end-of-life by the end "
+            "of 2021. It will not be included as part of future releases of ParallelCluster."
+        )
 
     return errors, warnings
 
