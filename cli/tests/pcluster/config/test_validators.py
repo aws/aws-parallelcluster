@@ -2319,7 +2319,15 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         # All OSes supported for x86_64
         ("alinux2", "x86_64", [], []),
         ("centos7", "x86_64", [], []),
-        ("centos8", "x86_64", [], []),
+        (
+            "centos8",
+            "x86_64",
+            [
+                "Warning: The operating system you are using (centos8) will reach support end-of-life by the end "
+                "of 2021. It will not be included as part of future releases of ParallelCluster."
+            ],
+            [],
+        ),
         ("ubuntu1804", "x86_64", [], []),
         # Only a subset of OSes supported for arm64
         ("alinux2", "arm64", [], []),
@@ -2333,7 +2341,15 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
             ],
             [],
         ),
-        ("centos8", "arm64", [], []),
+        (
+            "centos8",
+            "arm64",
+            [
+                "Warning: The operating system you are using (centos8) will reach support end-of-life by the end "
+                "of 2021. It will not be included as part of future releases of ParallelCluster."
+            ],
+            [],
+        ),
         ("ubuntu1804", "arm64", [], []),
     ],
 )

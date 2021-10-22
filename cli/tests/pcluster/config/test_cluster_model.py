@@ -75,3 +75,21 @@ def test_cluster_model(config_parser_cluster_dict, cfn_stack, expected_cluster_m
 
     cluster_model = infer_cluster_model(config_parser, "default", cfn_stack)
     assert_that(cluster_model).is_equal_to(expected_cluster_model)
+
+
+@pytest.mark.parametrize(
+    "input_tags",
+    [
+        [],
+        [{"Key": "SomeKey", "Value": "SomeValue"}, {"Key": "AnotherKey", "Value": "AnotherValue"}],
+    ],
+)
+def test_generate_tag_specifications_for_dry_run(mocker, input_tags):
+    """Verify method to generate tags to pass to dry run during config validation works as expected."""
+    pcluster_config = mocker.MagicMock()
+    cluster_section_mock = mocker.MagicMock()
+    cluster_config = {"tags": {entry.get("Key"): entry.get("Value") for entry in input_tags}}
+    cluster_section_mock.get_param_value = mocker.MagicMock(side_effect=lambda param: cluster_config[param])
+    pcluster_config.get_section = mocker.MagicMock(return_value=cluster_section_mock)
+    expected_return = [{"ResourceType": "instance", "Tags": input_tags}] if input_tags else []
+    assert_that(ClusterModel._generate_tag_specifications_for_dry_run(pcluster_config)).is_equal_to(expected_return)

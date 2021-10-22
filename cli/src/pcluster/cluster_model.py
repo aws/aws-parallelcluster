@@ -216,6 +216,21 @@ class ClusterModel(ABC):
             network_interfaces[0]["AssociatePublicIpAddress"] = True
         return network_interfaces
 
+    @staticmethod
+    def _generate_tag_specifications_for_dry_run(pcluster_config):
+        """Generate list of tags to pass to dry run of RunInstances performed during configuration validation."""
+        tags = pcluster_config.get_section("cluster").get_param_value("tags")
+        if tags:
+            tag_specifications = [
+                {
+                    "ResourceType": "instance",
+                    "Tags": [{"Key": key, "Value": value} for key, value in tags.items()],
+                }
+            ]
+        else:
+            tag_specifications = []
+        return tag_specifications
+
 
 def infer_cluster_model(config_parser=None, cluster_label=None, cfn_stack=None):
     """
