@@ -74,17 +74,7 @@ class HITClusterModel(ClusterModel):
         try:
 
             cluster_ami_id = self._get_cluster_ami_id(pcluster_config)
-
-            tags = cluster_section.get_param_value("tags")
-            if tags:
-                tag_specifications = [
-                    {
-                        "ResourceType": "instance",
-                        "Tags": [{"Key": key, "Value": value} for key, value in tags.items()],
-                    }
-                ]
-            else:
-                tag_specifications = []
+            tag_specifications = self._generate_tag_specifications_for_dry_run(pcluster_config)
 
             head_node_network_interfaces = self.build_launch_network_interfaces(
                 network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
