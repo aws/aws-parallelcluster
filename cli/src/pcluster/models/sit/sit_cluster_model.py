@@ -121,16 +121,7 @@ class SITClusterModel(ClusterModel):
                 use_public_ips=vpc_section.get_param_value("use_public_ips"),
             )
 
-            tags = cluster_section.get_param_value("tags")
-            if tags:
-                tag_specifications = [
-                    {
-                        "ResourceType": "instance",
-                        "Tags": [{"Key": key, "Value": value} for key, value in tags.items()],
-                    }
-                ]
-            else:
-                tag_specifications = []
+            tag_specifications = self._generate_tag_specifications_for_dry_run(pcluster_config)
 
             # Test head node configuration
             self._ec2_run_instance(
