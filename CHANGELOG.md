@@ -7,6 +7,12 @@ CHANGELOG
 **CHANGES**
 - Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
 
+**BUG FIXES**
+- Fix the create custom AMI functionality issues:
+  - SGE download URL no more reachable. Use Debian repository to download SGE source archive.
+  - Outdated CA certificates used by Cinc. Update ca-certificates package during AMI build time.
+- Fix cluster update when using proxy setup.
+
 2.11.2
 -----
 
