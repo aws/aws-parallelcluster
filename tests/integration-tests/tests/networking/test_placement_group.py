@@ -33,23 +33,23 @@ def test_placement_group(region, pcluster_config_reader, placement_group_stack, 
     cluster = clusters_factory(cluster_config)
 
     dynamic_placement_group = _get_slurm_placement_group_from_stack(cluster, region)
-    _assert_placement_group(cluster, region, dynamic_placement_group, "dynamic", instance)
-    _assert_placement_group(cluster, region, existing_placement_group, "existing", instance)
+    _assert_placement_group(cluster, region, dynamic_placement_group, "dynamic", "compute-resource-0")
+    _assert_placement_group(cluster, region, existing_placement_group, "existing", "compute-resource-1")
 
     # need to delete the cluster before deleting placement group
     cluster.delete()
 
 
-def _assert_placement_group(cluster, region, placement_group, queue_name, instance):
+def _assert_placement_group(cluster, region, placement_group, queue_name, compute_resource):
     logging.info("Checking placement group")
-    actual_placement_group = _get_placement_group(region, cluster, queue_name, instance)
+    actual_placement_group = _get_placement_group(region, cluster, queue_name, compute_resource)
     assert_that(actual_placement_group).is_equal_to(placement_group)
 
 
-def _get_placement_group(region, cluster, queue_name, instance):
+def _get_placement_group(region, cluster, queue_name, compute_resource):
     """For slurm, the information of placement group can be retrieved from launch template."""
     ec2_client = boto3.client("ec2", region_name=region)
-    launch_template_name = _get_launch_template_name(cluster, queue_name, instance)
+    launch_template_name = _get_launch_template_name(cluster, queue_name, compute_resource)
     launch_template_data = ec2_client.describe_launch_template_versions(
         LaunchTemplateName=launch_template_name, Versions=["$Latest"]
     )["LaunchTemplateVersions"][0]["LaunchTemplateData"]
@@ -57,13 +57,13 @@ def _get_placement_group(region, cluster, queue_name, instance):
     return placement_group_name
 
 
-def _get_launch_template_name(cluster, queue_name, instance):
+def _get_launch_template_name(cluster, queue_name, compute_resource):
     if not queue_name:
         # get launch template name for cluster section
-        launch_template_name = f"{cluster.name}-compute-{instance}"
+        launch_template_name = f"{cluster.name}-compute-{compute_resource}"
     else:
         # get launch template name for queue section
-        launch_template_name = f"{cluster.name}-{queue_name}-{instance}"
+        launch_template_name = f"{cluster.name}-{queue_name}-{compute_resource}"
     return launch_template_name
 
 

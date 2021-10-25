@@ -972,7 +972,9 @@ class BaseClusterConfig(Resource):
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         self._register_storage_validators()
-        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami)
+        self._register_validator(
+            HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami, tags=self.tags
+        )
 
         if self.head_node.dcv:
             self._register_validator(
@@ -1616,7 +1618,7 @@ class SlurmClusterConfig(BaseClusterConfig):
 
         for queue in self.scheduling.queues:
             self._register_validator(
-                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name]
+                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name], tags=self.tags
             )
             queue_image = self.image_dict[queue.name]
             if queue_image not in checked_images and queue.queue_ami:

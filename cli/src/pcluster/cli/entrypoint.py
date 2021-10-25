@@ -115,12 +115,7 @@ def gen_parser(model):
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     subparsers = parser.add_subparsers(help="", title="COMMANDS", dest="operation")
     subparsers.required = True
-    type_map = {
-        "number": to_number,
-        "boolean": to_bool,
-        "integer": to_int,
-        "file": read_file,
-    }
+    type_map = {"number": to_number, "boolean": to_bool, "integer": to_int, "file": read_file}
     parser_map = {"subparser": subparsers}
 
     # Add each operation as it's onn parser with params / body as arguments
@@ -241,9 +236,24 @@ def main():
         LOGGER.error(json.dumps(e.data), exc_info=True)
         print(json.dumps(e.data, indent=2))
         sys.exit(1)
+    except BrokenPipeError:
+        pass
     except Exception as e:
         LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
         sys.exit(1)
+    finally:
+        # If an external process has closed the other end of this pipe, flush
+        # now to see if we'd get a BrokenPipeError on exit and if so, dup2 a
+        # devnull over that output.
+        try:
+            sys.stdout.flush()
+        except BrokenPipeError:
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+
+        try:
+            sys.stderr.flush()
+        except BrokenPipeError:
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stderr.fileno())
 
 
 if __name__ == "__main__":
