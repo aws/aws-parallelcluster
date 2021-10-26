@@ -638,6 +638,9 @@ class TestCluster:
             file_mock = mocker.MagicMock()
             file_mock.read.return_value.decode.return_value = byos_template
             mocker.patch("pcluster.models.cluster.urlopen").return_value.__enter__.return_value = file_mock
+        mocker.patch("pcluster.models.cluster.parse_config", return_value={"Test"})
+        mocker.patch("pcluster.models.cluster.Cluster.source_config_text", new_callable=PropertyMock)
+        mocker.patch("pcluster.models.cluster.Template.render", return_value="Test")
         cluster_config_mock = mocker.patch("pcluster.models.cluster.Cluster.config", new_callable=PropertyMock)
         cluster_config_mock.return_value.scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template = (  # noqa
             template_url
