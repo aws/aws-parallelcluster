@@ -67,6 +67,7 @@ from pcluster.templates.cdk_builder_utils import (
     apply_permissions_boundary,
     convert_deletion_policy,
     create_hash_suffix,
+    generate_launch_template_version_cfn_parameter_hash,
     get_block_device_mappings,
     get_cloud_watch_logs_policy_statement,
     get_cloud_watch_logs_retention_days,
@@ -156,6 +157,15 @@ class ClusterCdkStack(Stack):
             compute_group_set.append(self._compute_security_group.ref)
 
         return compute_group_set
+
+    def _generate_compute_fleet_role_names_cfn_parameter(self):
+        """Return a comma separate string for compute fleet role names cfn parameter in Byos cfn substack template."""
+        role_list = []
+        for _, instance_role in self._managed_compute_instance_roles.items():
+            if instance_role is None:
+                continue
+            role_list.append(instance_role)
+        return ",".join([instance_role.ref for instance_role in role_list])
 
     # -- Parameters -------------------------------------------------------------------------------------------------- #
 
@@ -1094,7 +1104,26 @@ class ClusterCdkStack(Stack):
             template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("byos_template_name")
         )
 
-        self.byos_stack = CfnStack(self, "ByosStack", template_url=template_url, parameters={})
+        parameters = {
+            "ClusterName": self._stack_name,
+            "ParallelClusterStackId": self.stack_id,
+            "VpcId": self.config.vpc_id,
+            # Empty if passed in config and not created by pclsuter
+            "HeadNodeRoleName": self._managed_head_node_instance_role.ref
+            if self._managed_head_node_instance_role
+            else "",
+            # Comma separated list of compute_fleet roles that are created by pcluster not the ones passed in config
+            "ComputeFleetRoleNames": self._generate_compute_fleet_role_names_cfn_parameter(),
+        }
+
+        for queue_name, queue in self._get_launch_templates_config()["Queues"].items():
+            for compute_resource_name, compute_resource in queue["ComputeResources"].items():
+                parameters[
+                    f"LaunchTemplate"
+                    f"{generate_launch_template_version_cfn_parameter_hash(queue_name, compute_resource_name)}Version"
+                ] = compute_resource["LaunchTemplate"]["Version"]
+
+        self.byos_stack = CfnStack(self, "ByosStack", template_url=template_url, parameters=parameters)
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 

@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import abc
+import hashlib
 from hashlib import sha1
 from typing import List, Union
 
@@ -274,6 +275,17 @@ def apply_permissions_boundary(boundary, scope):
     if boundary:
         boundary = ManagedPolicy.from_managed_policy_arn(scope, "Boundary", boundary)
         PermissionsBoundary.of(scope).apply(boundary)
+
+
+def generate_launch_template_version_cfn_parameter_hash(queue, compute_resource):
+    """
+    Generate 16 characters hash for compute fleet launch template version cfn parameter.
+
+    :param queue
+    :param compute_resource
+    :return: 16 chars string e.g. 2238a84ac8a74529
+    """
+    return hashlib.sha1((queue + compute_resource).encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
 
 
 class NodeIamResourcesBase(Construct):
