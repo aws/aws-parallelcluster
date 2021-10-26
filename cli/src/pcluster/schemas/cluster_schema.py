@@ -1080,7 +1080,7 @@ class _CommonQueueSchema(BaseQueueSchema):
     custom_actions = fields.Nested(
         QueueCustomActionsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
-    iam = fields.Nested(IamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    iam = fields.Nested(QueueIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
 

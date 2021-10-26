@@ -66,18 +66,18 @@ def test_byos_substack(mocker):
                     "ParallelClusterStackId": {"Ref": "AWS::StackId"},
                     "VpcId": "vpc-123",
                     "HeadNodeRoleName": "",
-                    "ComputeFleetRoleNames": {"Fn::Join": ["", [{"Ref": "Role15b342af42246b70"}, ","]]},
-                    "queue1-compute-resource-1-LTVersion": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate396a2157454c4981E9D46761", "LatestVersionNumber"]
+                    "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                    "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
                     },
-                    "queue1-compute-resource-2-LTVersion": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate5275f50b77308d66FBA4CCEB", "LatestVersionNumber"]
+                    "LaunchTemplateA6f65dee6703df4aVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
                     },
-                    "queue2-compute-resource-1-LTVersion": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate73e56110dc1f92a468DDBA65", "LatestVersionNumber"]
+                    "LaunchTemplate7916067054f91933Version": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
                     },
-                    "queue2-compute-resource-2-LTVersion": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate4e6f582fd35bda115FD3E5B9", "LatestVersionNumber"]
+                    "LaunchTemplateA46d18b906a50d3aVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA46d18b906a50d3a347605B0", "LatestVersionNumber"]
                     },
                 },
             },
