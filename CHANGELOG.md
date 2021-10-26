@@ -23,6 +23,7 @@ CHANGELOG
 **CHANGES**
 - Drop support for SysVinit. Only Systemd is supported.
 - Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+- Allow '*' character in the configuration of S3Access/BucketName.
 
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
