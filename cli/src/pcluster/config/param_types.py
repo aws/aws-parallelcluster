@@ -164,11 +164,18 @@ class Param(ABC):
                         )
                     )
                 elif warnings:
-                    self.pcluster_config.warn(
-                        "The configuration parameter '{0}' generated the following warnings:\n{1}".format(
-                            self.key, "\n".join(warnings)
+                    if warnings[0].startswith("INFO"):
+                        print(
+                            "The configuration parameter '{0}' generated the following infos:\n{1}".format(
+                                self.key, "\n".join(warnings)
+                            )
                         )
-                    )
+                    else:
+                        self.pcluster_config.warn(
+                            "The configuration parameter '{0}' generated the following warnings:\n{1}".format(
+                                self.key, "\n".join(warnings)
+                            )
+                        )
                 else:
                     LOGGER.debug("Configuration parameter '%s' is valid", self.key)
 

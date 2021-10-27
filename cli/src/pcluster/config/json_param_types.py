@@ -266,13 +266,6 @@ class QueueJsonSection(JsonSection):
             # None value at cluster level is converted to False at queue level
             self.get_param("enable_efa").value = cluster_enable_efa == "compute"
 
-        if self.get_param_value("enable_efa_gdr") is None:
-            cluster_enable_efa_gdr = self.pcluster_config.get_section("cluster").get_param_value("enable_efa_gdr")
-
-            # enable_efa_gdr is of string type in cluster section and of bool type in queue section.
-            # None value at cluster level is converted to False at queue level
-            self.get_param("enable_efa_gdr").value = cluster_enable_efa_gdr == "compute"
-
         compute_resource_labels = self.get_param("compute_resource_settings").referred_section_labels
         if compute_resource_labels:
             for compute_resource_label in compute_resource_labels:
@@ -310,13 +303,6 @@ class QueueJsonSection(JsonSection):
             enable_efa = self.get_param_value("enable_efa")
             compute_resource_section.get_param("enable_efa").value = (
                 enable_efa and instance_type_info.is_efa_supported()
-            )
-
-            # Set enable_efa_gdr according to queues' enable_efa_gdr and instance features
-            # Instance type must support EFA and have GPUs
-            enable_efa_gdr = self.get_param_value("enable_efa_gdr")
-            compute_resource_section.get_param("enable_efa_gdr").value = (
-                enable_efa_gdr and instance_type_info.is_efa_supported() and (gpus > 0)
             )
 
             # Set disable_hyperthreading according to queues' disable_hyperthreading and instance features
