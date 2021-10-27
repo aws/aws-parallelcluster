@@ -15,7 +15,6 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 
-@pytest.mark.dimensions("us-east-2", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("instance", "os", "scheduler")
 @pytest.mark.parametrize("dashboard_enabled, cw_log_enabled", [(True, True), (True, False), (False, False)])
 def test_dashboard(

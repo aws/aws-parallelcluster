@@ -24,9 +24,6 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.regions(["eu-west-2"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os")
 def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
     logging.info("Testing HIT cluster with cluster DNS disabled.")
@@ -61,7 +58,6 @@ def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_rea
 
 
 @pytest.mark.usefixtures("os", "instance")
-@pytest.mark.schedulers(["slurm"])
 def test_existing_hosted_zone(
     hosted_zone_factory,
     pcluster_config_reader,

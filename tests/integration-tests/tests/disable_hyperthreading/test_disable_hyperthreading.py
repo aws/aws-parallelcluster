@@ -12,7 +12,6 @@
 import logging
 import re
 
-import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
@@ -21,11 +20,6 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-# Manually disabled HT
-@pytest.mark.dimensions("us-west-1", "m4.xlarge", "alinux2", "slurm")
-@pytest.mark.dimensions("us-west-1", "m4.xlarge", "centos7", "slurm")
-# HT disabled via CpuOptions
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "ubuntu1804", "slurm")
 def test_hit_disable_hyperthreading(
     region, scheduler, instance, os, pcluster_config_reader, clusters_factory, default_threads_per_core
 ):

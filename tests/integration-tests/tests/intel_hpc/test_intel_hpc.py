@@ -12,7 +12,6 @@
 import logging
 
 import boto3
-import pytest
 from assertpy import assert_that
 from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
@@ -21,10 +20,6 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.schedulers_common import get_scheduler_commands
 
 
-@pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5n.18xlarge"])
-@pytest.mark.oss(["centos7"])
-@pytest.mark.schedulers(["slurm"])
 def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Intel Cluster Checker"""
     cluster_config = pcluster_config_reader()
