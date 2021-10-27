@@ -20,12 +20,6 @@ from assertpy import assert_that
 from conftest import inject_additional_config_settings
 
 
-@pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["awsbatch", "slurm"])
-# Do not run on ARM + Batch
-# pcluster configure always picks optimal and Batch does not support ARM for optimal for now
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "*", "awsbatch")
 def test_pcluster_configure(
     request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir
 ):
@@ -58,7 +52,6 @@ def test_pcluster_configure(
     clusters_factory(config_path)
 
 
-@pytest.mark.dimensions("us-east-1", "c5.xlarge", "alinux2", "slurm")
 def test_pcluster_configure_avoid_bad_subnets(
     vpc_stack,
     subnet_in_use1_az3,
