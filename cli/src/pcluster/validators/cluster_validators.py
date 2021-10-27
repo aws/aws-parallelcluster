@@ -799,11 +799,21 @@ class _LaunchTemplateValidator(Validator, ABC):
                     FailureLevel.ERROR,
                 )
 
+    @staticmethod
+    def _generate_tag_specifications(tags):
+        """Turn list of Tag objects into tag specifications required by RunInstances."""
+        tag_specifications = []
+        if tags:
+            tag_specifications.append(
+                {"ResourceType": "instance", "Tags": [{"Key": tag.key, "Value": tag.value} for tag in tags]}
+            )
+        return tag_specifications
+
 
 class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instance (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, head_node, ami_id):
+    def _validate(self, head_node, ami_id, tags):
         try:
             head_node_security_groups = []
             if head_node.networking.security_groups:
@@ -835,6 +845,7 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
                 CpuOptions=head_node_cpu_options,
                 NetworkInterfaces=head_node_network_interfaces,
                 DryRun=True,
+                TagSpecifications=self._generate_tag_specifications(tags),
             )
         except Exception as e:
             self._add_failure(
@@ -865,7 +876,7 @@ class HeadNodeImdsValidator(Validator):
 class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
     """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
 
-    def _validate(self, queue, ami_id):
+    def _validate(self, queue, ami_id, tags):
         try:
             # Retrieve network parameters
             queue_subnet_id = queue.networking.subnet_ids[0]
@@ -893,6 +904,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
                 subnet_id=queue_subnet_id,
                 security_groups_ids=queue_security_groups,
                 placement_group=queue_placement_group,
+                tags=tags,
             )
         except Exception as e:
             self._add_failure(
@@ -900,7 +912,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
 
     def _test_compute_resource(
-        self, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group
+        self, compute_resource, use_public_ips, ami_id, subnet_id, security_groups_ids, placement_group, tags
     ):
         """Test Compute Resource Instance Configuration."""
         compute_cpu_options = (
@@ -925,6 +937,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             Placement=placement_group,
             NetworkInterfaces=network_interfaces,
             DryRun=True,
+            TagSpecifications=self._generate_tag_specifications(tags),
         )
 
 

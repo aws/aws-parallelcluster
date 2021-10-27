@@ -1,0 +1,35 @@
+# Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False in AWS ParallelCluster version 2.
+# vpc_id = vpc-0e0f223cc35256b9a is ignored
+# update_check = true is ignored
+# ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
+# sanity_check = false is ignored
+# The default setup of AWS ParallelCluster version 2 uses an EBS volume to share the /shared directory over NFS. This configuration utility preserves this behavior by default. If you do not need the /shared directory, you can remove the default-ebs from the SharedStorage section of your configuration.
+Image:
+  Os: alinux2
+SharedStorage:
+  - MountDir: /shared
+    Name: default-ebs
+    StorageType: Ebs
+HeadNode:
+  InstanceType: c5.xlarge
+  Networking:
+    SubnetId: subnet-0bfad12f6b586686c
+  Ssh:
+    KeyName: key01
+  LocalStorage:
+    RootVolume:
+      Size: 35
+  Imds:
+    Secured: false
+Scheduling:
+  Scheduler: awsbatch
+  AwsBatchQueues:
+    - Name: batch-queue
+      Networking:
+        SubnetIds:
+          - subnet-0bfad12f6b586686c
+      ComputeResources:
+        - Name: batch-compute
+          InstanceTypes:
+            - t2.micro
+            - optimal

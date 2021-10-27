@@ -1242,6 +1242,8 @@ Outputs:
 
   ParallelClusterApiInvokeUrl:
     Description: 'Url to reach the API endpoint'
+    Export:
+      Name: !Sub ${AWS::StackName}-ParallelClusterApiInvokeUrl
     Value: !If
       - UseCustomDomain
       - !Sub
@@ -1269,6 +1271,8 @@ Outputs:
 
   ParallelClusterApiUserRole:
     Condition: CreateApiUserRoleCondition
+    Export:
+      Name: !Sub ${AWS::StackName}-ParallelClusterApiUserRole
     Description: 'IAM Role with permissions to invoke the ParallelCluster API'
     Value: !GetAtt ParallelClusterApiUserRole.Arn
 

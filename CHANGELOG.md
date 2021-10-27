@@ -4,13 +4,24 @@ CHANGELOG
 3.0.1
 ------
 
+**ENHANCEMENTS**
+- Add `pcluster3-config-converter` CLI command to convert cluster configuration from ParallelCluster 2 to ParallelCluster 3 version.
+- The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults
+  specified in the `~/.aws/config` file.
+- export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` in CloudFormation API Stack so they can be
+  used by cross-stack references.
+
+**CHANGES**
+- Drop support for SysVinit. Only Systemd is supported.
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+
 **BUG FIXES**
 - Pin to the transitive dependencies resulting from the dependency on connexion.
-- Fix deletion of API infrastructure when CloudFormation used to deploy API stack is deleted.
-
-**ENHANCEMENTS**
-- The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults specified
-  in the `~/.aws/config` file.
+- Fix cleanup of ECR resources when API infrastructure template is deleted.
+- Fix supervisord service not enabled on Ubuntu. This was causing supervisord not to be started on instance reboot.
+- Update ca-certificates package during AMI build time and have Cinc use the updated CA certificates bundle.
+- Close stderr before exiting from pcluster CLI commands to avoid BrokenPipeError for processes that close the
+  other end of the stdout pipe.
 
 3.0.0
 ------

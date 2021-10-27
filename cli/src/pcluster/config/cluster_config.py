@@ -395,13 +395,10 @@ class Proxy(Resource):
 class _BaseNetworking(Resource):
     """Represent the networking configuration shared by head node and compute node."""
 
-    def __init__(
-        self, security_groups: List[str] = None, additional_security_groups: List[str] = None, proxy: Proxy = None
-    ):
+    def __init__(self, security_groups: List[str] = None, additional_security_groups: List[str] = None):
         super().__init__()
         self.security_groups = Resource.init_param(security_groups)
         self.additional_security_groups = Resource.init_param(additional_security_groups)
-        self.proxy = proxy
 
     def _register_validators(self):
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
@@ -411,10 +408,11 @@ class _BaseNetworking(Resource):
 class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
-    def __init__(self, subnet_id: str, elastic_ip: Union[str, bool] = None, **kwargs):
+    def __init__(self, subnet_id: str, elastic_ip: Union[str, bool] = None, proxy: Proxy = None, **kwargs):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
         self.elastic_ip = Resource.init_param(elastic_ip)
+        self.proxy = proxy
 
     def _register_validators(self):
         super()._register_validators()
@@ -438,16 +436,29 @@ class PlacementGroup(Resource):
         self._register_validator(PlacementGroupIdValidator, placement_group_id=self.id)
 
 
-class QueueNetworking(_BaseNetworking):
+class _QueueNetworking(_BaseNetworking):
     """Represent the networking configuration for the Queue."""
 
-    def __init__(
-        self, subnet_ids: List[str], placement_group: PlacementGroup = None, assign_public_ip: str = None, **kwargs
-    ):
+    def __init__(self, subnet_ids: List[str], assign_public_ip: str = None, **kwargs):
         super().__init__(**kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
+
+
+class SlurmQueueNetworking(_QueueNetworking):
+    """Represent the networking configuration for the slurm Queue."""
+
+    def __init__(self, placement_group: PlacementGroup = None, proxy: Proxy = None, **kwargs):
+        super().__init__(**kwargs)
         self.placement_group = placement_group
+        self.proxy = proxy
+
+
+class AwsBatchQueueNetworking(_QueueNetworking):
+    """Represent the networking configuration for the aws batch Queue."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class Ssh(Resource):
@@ -883,10 +894,9 @@ class ComputeSettings(Resource):
 class BaseQueue(Resource):
     """Represent the generic Queue resource."""
 
-    def __init__(self, name: str, networking: QueueNetworking, capacity_type: str = None):
+    def __init__(self, name: str, capacity_type: str = None):
         super().__init__()
         self.name = Resource.init_param(name)
-        self.networking = networking
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
@@ -962,7 +972,9 @@ class BaseClusterConfig(Resource):
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         self._register_storage_validators()
-        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami)
+        self._register_validator(
+            HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami, tags=self.tags
+        )
 
         if self.head_node.dcv:
             self._register_validator(
@@ -1211,9 +1223,10 @@ class AwsBatchComputeResource(BaseComputeResource):
 class AwsBatchQueue(BaseQueue):
     """Represent the AwsBatch Queue resource."""
 
-    def __init__(self, compute_resources: List[AwsBatchComputeResource], **kwargs):
+    def __init__(self, compute_resources: List[AwsBatchComputeResource], networking: AwsBatchQueueNetworking, **kwargs):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
+        self.networking = networking
 
     def _register_validators(self):
         super()._register_validators()
@@ -1374,6 +1387,7 @@ class SlurmQueue(BaseQueue):
     def __init__(
         self,
         compute_resources: List[SlurmComputeResource],
+        networking: SlurmQueueNetworking,
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -1382,6 +1396,7 @@ class SlurmQueue(BaseQueue):
     ):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
+        self.networking = networking
         self.compute_settings = compute_settings or ComputeSettings(implied=True)
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
@@ -1507,7 +1522,7 @@ class SlurmClusterConfig(BaseClusterConfig):
 
         for queue in self.scheduling.queues:
             self._register_validator(
-                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name]
+                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name], tags=self.tags
             )
             queue_image = self.image_dict[queue.name]
             if queue_image not in checked_images and queue.queue_ami:

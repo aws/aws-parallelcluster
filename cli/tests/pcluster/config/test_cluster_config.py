@@ -11,10 +11,10 @@ from pcluster.config.cluster_config import (
     HeadNodeNetworking,
     Image,
     QueueImage,
-    QueueNetworking,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
+    SlurmQueueNetworking,
     SlurmScheduling,
     Tag,
 )
@@ -53,7 +53,7 @@ class TestBaseClusterConfig:
                 [
                     SlurmQueue(
                         name="queue0",
-                        networking=QueueNetworking(["subnet"]),
+                        networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
                         compute_resources=[SlurmComputeResource(name="compute_resource_1", instance_type="c5.xlarge")],
                     )
                 ]

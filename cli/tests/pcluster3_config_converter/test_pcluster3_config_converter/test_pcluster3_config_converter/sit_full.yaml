@@ -1,0 +1,80 @@
+# Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False in AWS ParallelCluster version 2.
+# In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head node is restricted to the cluster administrator. If additional users required access to IMDS, you can set HeadNode/Imds/Secured to False.
+# vpc_id = vpc-12345678 is ignored
+# update_check = false is ignored
+# ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
+# The default setup of AWS ParallelCluster version 2 uses an EBS volume to share the /shared directory over NFS. This configuration utility preserves this behavior by default. If you do not need the /shared directory, you can remove the default-ebs from the SharedStorage section of your configuration.
+# initial_queue_size = 2 is ignored
+Region: eu-west-1
+Image:
+  Os: alinux2
+SharedStorage:
+  - MountDir: /shared
+    Name: default-ebs
+    StorageType: Ebs
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-0bfad12f6b586686c
+  DisableSimultaneousMultithreading: false
+  Ssh:
+    KeyName: lab-3-your-key
+  CustomActions:
+    OnNodeStart:
+      Script: s3://testbucket/pre_install.sh
+      Args:
+        - s3://testbucket/pre_install.sh
+        - R
+        - curl
+        - wget
+    OnNodeConfigured:
+      Script: s3://testbucket/post_install.sh
+      Args:
+        - s3://testbucket/post_install.sh
+        - R
+        - curl
+        - wget
+  Iam:
+    S3Access:
+      - BucketName: testbucket
+      - EnableWriteAccess: true
+        BucketName: test
+        KeyName: hello/*
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: default-queue
+      CapacityType: SPOT
+      CustomActions:
+        OnNodeStart:
+          Script: s3://testbucket/pre_install.sh
+          Args:
+            - s3://testbucket/pre_install.sh
+            - R
+            - curl
+            - wget
+        OnNodeConfigured:
+          Script: s3://testbucket/post_install.sh
+          Args:
+            - s3://testbucket/post_install.sh
+            - R
+            - curl
+            - wget
+      Iam:
+        S3Access:
+          - BucketName: testbucket
+          - EnableWriteAccess: true
+            BucketName: test
+            KeyName: hello/*
+      Networking:
+        SubnetIds:
+          - subnet-0bfad12f6b586686c
+      ComputeResources:
+        - Name: default-resource
+          SpotPrice: 2.0
+          MaxCount: 5
+          DisableSimultaneousMultithreading: false
+          InstanceType: c5.xlarge
+          Efa:
+            Enabled: true
+            GdrSupport: true
