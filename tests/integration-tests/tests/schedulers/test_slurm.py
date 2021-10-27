@@ -65,7 +65,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     _test_slurm_version(remote_command_executor)
 
     if supports_impi:
-        _test_mpi_job_termination(remote_command_executor, test_datadir, instance_type="c5.xlarge")
+        _test_mpi_job_termination(remote_command_executor, test_datadir)
 
     _assert_no_node_in_cluster(region, cluster.cfn_name, slurm_commands)
     _test_job_dependencies(slurm_commands, region, cluster.cfn_name, scaledown_idletime)
@@ -655,7 +655,7 @@ def _terminate_nodes_manually(instance_ids, region):
     logging.info("Terminated nodes: {}".format(instance_ids))
 
 
-def _test_mpi_job_termination(remote_command_executor, test_datadir, instance_type):
+def _test_mpi_job_termination(remote_command_executor, test_datadir):
     """
     Test canceling mpirun job will not leave stray processes.
 
@@ -669,7 +669,7 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir, instance_ty
 
     # Submit mpi_job, which runs Intel MPI benchmarks with intelmpi
     # Leaving 1 vcpu on each node idle so that the process check job can run while mpi_job is running
-    result = slurm_commands.submit_script(str(test_datadir / "mpi_job.sh"), constraint=instance_type)
+    result = slurm_commands.submit_script(str(test_datadir / "mpi_job.sh"))
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Wait for compute node to start and check that mpi processes are started
