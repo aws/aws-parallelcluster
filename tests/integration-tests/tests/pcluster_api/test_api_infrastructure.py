@@ -201,7 +201,7 @@ def _test_docker_image_refresh(image_builder_pipeline, lambda_name):
 @retry(
     retry_on_result=lambda result: result["state"]["status"] not in {"AVAILABLE", "CANCELLED", "FAILED", "DELETED"},
     wait_fixed=seconds(10),
-    stop_max_delay=minutes(10),
+    stop_max_delay=minutes(15),
 )
 def _wait_for_image_build(image_builder_pipeline):
     image_builder = boto3.client("imagebuilder")
