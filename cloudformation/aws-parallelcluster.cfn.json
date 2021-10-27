@@ -355,11 +355,6 @@
       "Type": "String",
       "Default": "NONE"
     },
-    "EFAGDR": {
-      "Description": "Enable EFA GPUDirect Support on the compute nodes, enable_efa_gdr = compute",
-      "Type": "String",
-      "Default": "NONE"
-    },
     "DCVOptions": {
       "Description": "Comma separated list of NICE DCV related options, 3 parameters in total, [enabled,port,access_from]",
       "Type": "String",
@@ -3347,9 +3342,6 @@
           },
           "EFA": {
             "Ref": "EFA"
-          },
-          "EFAGDR": {
-            "Ref": "EFAGDR"
           },
           "BaseOS": {
             "Ref": "BaseOS"

@@ -358,8 +358,7 @@ Resources:
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
                         "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
-                        "scheduler_queue_name": "{{ queue }}",
-                        "enable_efa_gdr": "{{ 'compute' if compute_resource.enable_efa_gdr else 'NONE' }}"
+                        "scheduler_queue_name": "{{ queue }}"
                       },
                       "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
                     }

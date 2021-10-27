@@ -1631,20 +1631,23 @@ def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_err
 
 
 @pytest.mark.parametrize(
-    "cluster_dict, expected_error",
+    "cluster_dict, expected_warning",
     [
         # EFAGDR without EFA
         (
             {"enable_efa_gdr": "compute"},
-            "The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'",
+            "'enable_efa_gdr' is ignored because EFA enables GDR support by default.",
         ),
         # EFAGDR with EFA
-        ({"enable_efa": "compute", "enable_efa_gdr": "compute"}, None),
+        (
+            {"enable_efa": "compute", "enable_efa_gdr": "compute"},
+            "'enable_efa_gdr' is ignored because EFA enables GDR support by default.",
+        ),
         # EFA withoud EFAGDR
         ({"enable_efa": "compute"}, None),
     ],
 )
-def test_efa_gdr_validator(cluster_dict, expected_error):
+def test_efa_gdr_validator(cluster_dict, expected_warning):
     config_parser_dict = {
         "cluster default": cluster_dict,
     }
@@ -1656,10 +1659,10 @@ def test_efa_gdr_validator(cluster_dict, expected_error):
     enable_efa_gdr_value = pcluster_config.get_section("cluster").get_param_value("enable_efa_gdr")
 
     errors, warnings = efa_gdr_validator("enable_efa_gdr", enable_efa_gdr_value, pcluster_config)
-    if expected_error:
-        assert_that(errors[0]).matches(expected_error)
+    if expected_warning:
+        assert_that(warnings[0]).matches(expected_warning)
     else:
-        assert_that(errors).is_empty()
+        assert_that(warnings).is_empty()
 
 
 @pytest.mark.parametrize(
@@ -2017,12 +2020,8 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
             [
                 "EFA was enabled on queue 'default', but instance type 't2.micro' "
                 "defined in compute resource settings cr2 does not support EFA.",
-                "EFA GDR was enabled on queue 'default', but instance type 't2.micro' "
-                "defined in compute resource settings cr2 does not support EFA GDR.",
                 "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
                 "defined in compute resource settings cr4 does not support EFA.",
-                "EFA GDR was enabled on queue 'default', but instance type 'c4.xlarge' "
-                "defined in compute resource settings cr4 does not support EFA GDR.",
             ],
         ),
         (

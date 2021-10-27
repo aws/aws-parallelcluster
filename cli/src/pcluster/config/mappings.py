@@ -732,10 +732,8 @@ COMPUTE_RESOURCE = {
         }),
         ("enable_efa_gdr", {
             "type": BooleanJsonParam,
-            # This param is managed automatically
-            "update_policy": UpdatePolicy.IGNORED,
-            "visibility": Visibility.PRIVATE,
-            "default": False
+            "validators": [efa_gdr_validator],
+            "update_policy": UpdatePolicy.IGNORED
         }),
         ("disable_hyperthreading", {
             "type": BooleanJsonParam,
@@ -774,7 +772,8 @@ QUEUE = {
         }),
         ("enable_efa_gdr", {
             "type": BooleanJsonParam,
-            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+            "validators": [efa_gdr_validator],
+            "update_policy": UpdatePolicy.IGNORED,
         }),
         ("disable_hyperthreading", {
             "type": BooleanJsonParam,
@@ -889,7 +888,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("enable_efa_gdr", {
         "allowed_values": ["compute"],
-        "cfn_param_mapping": "EFAGDR",
         "validators": [efa_gdr_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
