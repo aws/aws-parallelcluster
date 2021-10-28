@@ -82,8 +82,7 @@ write_files:
           "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
           "use_private_hostname": "${UsePrivateHostname}",
           "head_node_private_ip": "${HeadNodePrivateIp}"
-        },
-        "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
+        }
       }
   - path: /etc/chef/client.rb
     permissions: '0644'
@@ -168,7 +167,7 @@ jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .clus
   pushd /etc/chef &&
   chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::init &&
   /opt/parallelcluster/scripts/fetch_and_run -preinstall &&
-  chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json &&
+  chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::config &&
   /opt/parallelcluster/scripts/fetch_and_run -postinstall &&
   chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize &&
   popd

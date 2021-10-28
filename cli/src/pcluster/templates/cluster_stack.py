@@ -990,7 +990,6 @@ class ClusterCdkStack(Stack):
                     if self._condition_is_slurm()
                     else "false",
                 },
-                "run_list": f"recipe[aws-parallelcluster::{self.config.scheduling.scheduler}_config]",
             },
             indent=4,
         )
@@ -1100,7 +1099,8 @@ class ClusterCdkStack(Stack):
                         "command": (
                             "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
-                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
+                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
+                            "--override-runlist aws-parallelcluster::config"
                         ),
                         "cwd": "/etc/chef",
                     }
