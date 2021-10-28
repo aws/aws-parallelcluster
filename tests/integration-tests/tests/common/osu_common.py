@@ -90,9 +90,11 @@ def run_osu_benchmarks(
         num_of_processes=slots,
     )
     if partition:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots, partition=partition)
+        result = scheduler_commands.submit_script(
+            str(submission_script), slots=slots, partition=partition, nodes=num_of_instances
+        )
     else:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots)
+        result = scheduler_commands.submit_script(str(submission_script), slots=slots, nodes=num_of_instances)
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id, timeout=timeout)
     scheduler_commands.assert_job_succeeded(job_id)
