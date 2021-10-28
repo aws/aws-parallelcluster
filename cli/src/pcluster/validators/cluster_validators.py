@@ -246,20 +246,16 @@ class NameValidator(Validator):
             self._add_failure(f"It is forbidden to use '{name}' as a name.", FailureLevel.ERROR)
 
 
-class DuplicateInstanceTypeValidator(Validator):
-    """
-    Instance type validator.
+class MaxCountValidator(Validator):
+    """Validate whether the number of resource exceeds the limits."""
 
-    Verify if there are duplicated instance types between compute resources in the same queue.
-    """
+    def _validate(self, resources_length, max_length, resource_name):
 
-    def _validate(self, instance_type_list):
-        duplicated_instance_types = _find_duplicate_params(instance_type_list)
-        if duplicated_instance_types:
+        if resources_length > max_length:
             self._add_failure(
-                "Instance {0} {1} cannot be specified for multiple compute resources in the same queue.".format(
-                    "types" if len(duplicated_instance_types) > 1 else "type",
-                    ", ".join(instance_type for instance_type in duplicated_instance_types),
+                "Invalid number of {resource_name} ({resources_length}) specified. Currently only supports "
+                "up to {max_length} {resource_name}.".format(
+                    resource_name=resource_name, resources_length=resources_length, max_length=max_length
                 ),
                 FailureLevel.ERROR,
             )
