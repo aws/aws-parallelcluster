@@ -980,7 +980,7 @@ def _create_vpc_stack(request, template, region, cfn_stacks_factory):
 
 
 @pytest.fixture(scope="class")
-def s3_bucket_factory(region):
+def s3_bucket_factory(request, region):
     """
     Define a fixture to create S3 buckets.
     :param region: region where the test is running
@@ -998,11 +998,14 @@ def s3_bucket_factory(region):
     yield _create_bucket
 
     for bucket in created_buckets:
-        logging.info("Deleting S3 bucket {0}".format(bucket[0]))
-        try:
-            delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
-        except Exception as e:
-            logging.error("Failed deleting bucket {0} with exception: {1}".format(bucket[0], e))
+        if request.config.getoption("no_delete"):
+            logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        else:
+            logging.info(f"Deleting S3 bucket {bucket[0]}")
+            try:
+                delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
+            except Exception as e:
+                logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
