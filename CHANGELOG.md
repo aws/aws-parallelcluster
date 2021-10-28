@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+X.X.X
+------
+**ENHANCEMENTS**
+- Add support for multiple compute resources with same instance type per queue.
+
+**CHANGES**
+- Use compute resource name rather than instance type in compute fleet Launch Template name.
+- Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
+
 3.0.2
 -----
 
@@ -17,9 +26,6 @@ CHANGELOG
 
 **BUG FIXES**
 - Fix issue that is preventing cluster names to start with `parallelcluster-` prefix.
-
-**CHANGES**
-- Use compute resource name rather than instance type in compute fleet Launch Template name.
 
 3.0.1
 ------

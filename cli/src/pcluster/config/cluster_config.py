@@ -32,6 +32,8 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
 )
 from pcluster.utils import get_partition, get_resource_name_from_resource_arn
@@ -49,7 +51,6 @@ from pcluster.validators.cluster_validators import (
     CustomAmiTagValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
-    DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
     EfaGdrValidator,
@@ -66,6 +67,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    MaxCountValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
@@ -1407,11 +1409,16 @@ class SlurmQueue(BaseQueue):
 
     def _register_validators(self):
         super()._register_validators()
-        self._register_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
         self._register_validator(
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
             resource_name="Compute resource",
+        )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.compute_resources),
+            max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES,
+            resource_name="ComputeResources",
         )
         for compute_resource in self.compute_resources:
             self._register_validator(
@@ -1485,6 +1492,12 @@ class SlurmScheduling(Resource):
     def _register_validators(self):
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
+        )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.queues),
+            max_length=MAX_NUMBER_OF_QUEUES,
+            resource_name="SlurmQueues",
         )
 
 

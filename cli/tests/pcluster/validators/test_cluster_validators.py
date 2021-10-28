@@ -22,7 +22,6 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
-    DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
@@ -35,6 +34,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    MaxCountValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
@@ -121,21 +121,28 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
 
 
 @pytest.mark.parametrize(
-    "instance_type_list, expected_message",
+    "resource_name, resources_length, max_length, expected_message",
     [
-        (["i1"], None),
-        (["i1", "i2"], None),
-        (["i1", "i2", "i3"], None),
-        (["i1", "i1", "i2"], "Instance type i1 cannot be specified for multiple compute resources"),
+        ("SlurmQueues", 5, 10, None),
+        ("ComputeResources", 4, 5, None),
         (
-            ["i1", "i2", "i3", "i2", "i1"],
-            "Instance types i2, i1 cannot be specified for multiple compute resources",
+            "SlurmQueues",
+            11,
+            10,
+            "Invalid number of SlurmQueues (11) specified. Currently only supports up to 10 SlurmQueues.",
+        ),
+        (
+            "ComputeResources",
+            6,
+            5,
+            "Invalid number of ComputeResources (6) specified. Currently only supports up to 5 ComputeResources.",
         ),
     ],
 )
-def test_duplicate_instance_type_validator(instance_type_list, expected_message):
-    instance_type_param_list = [instance_type for instance_type in instance_type_list]
-    actual_failures = DuplicateInstanceTypeValidator().execute(instance_type_param_list)
+def test_max_count_validator(resource_name, resources_length, max_length, expected_message):
+    actual_failures = MaxCountValidator().execute(
+        resource_name=resource_name, resources_length=resources_length, max_length=max_length
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 

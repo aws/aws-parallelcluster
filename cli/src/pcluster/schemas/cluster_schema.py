@@ -77,8 +77,6 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     FSX_HDD_THROUGHPUT,
     FSX_SSD_THROUGHPUT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
-    MAX_NUMBER_OF_QUEUES,
     SUPPORTED_OSES,
 )
 from pcluster.schemas.common_schema import (
@@ -1040,7 +1038,6 @@ class SlurmQueueSchema(BaseQueueSchema):
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
-        validate=validate.Length(max=MAX_NUMBER_OF_COMPUTE_RESOURCES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     custom_actions = fields.Nested(
@@ -1123,7 +1120,6 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
-        validate=validate.Length(max=MAX_NUMBER_OF_QUEUES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     # Awsbatch schema:

@@ -16,7 +16,6 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from pcluster.constants import MAX_NUMBER_OF_COMPUTE_RESOURCES, MAX_NUMBER_OF_QUEUES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
     HeadNodeIamSchema,
@@ -239,26 +238,12 @@ def dummy_slurm_compute_resource(name, instance_type):
             },
             None,
         ),
-        (  # beyond maximum slurm queue length
-            {
-                "Scheduler": "slurm",
-                "SlurmQueues": dummpy_slurm_queue_list(11),
-            },
-            f"Queue.*Longer than maximum length {MAX_NUMBER_OF_QUEUES}",
-        ),
         (  # maximum slurm queue length
             {
                 "Scheduler": "slurm",
                 "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=5)],
             },
             None,
-        ),
-        (  # beyond maximum slurm queue length
-            {
-                "Scheduler": "slurm",
-                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=6)],
-            },
-            f"ComputeResources.*Longer than maximum length {MAX_NUMBER_OF_COMPUTE_RESOURCES}",
         ),
     ],
 )
