@@ -41,6 +41,5 @@
     "use_private_hostname": "false",
     "byos_substack_arn": "",
     "stack_arn": "{'Ref': 'AWS::StackId'}"
-  },
-  "run_list": "recipe[aws-parallelcluster::awsbatch_config]"
+  }
 }
