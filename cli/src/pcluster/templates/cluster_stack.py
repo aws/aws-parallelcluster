@@ -990,7 +990,7 @@ class ClusterCdkStack(Stack):
                     if self._condition_is_slurm()
                     else "false",
                 },
-                "run_list": f"recipe[aws-parallelcluster::{self.config.scheduling.scheduler}_config]",
+                "run_list": f"recipe[aws-parallelcluster-{self.config.scheduling.scheduler}::config]",
             },
             indent=4,
         )
