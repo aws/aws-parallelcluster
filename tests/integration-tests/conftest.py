@@ -128,6 +128,10 @@ def pytest_addoption(parser):
         help="use default IAM creds when running pcluster commands",
         action="store_true",
     )
+    parser.addoption(
+        "--directory-stack-name",
+        help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
+    )
 
 
 def pytest_generate_tests(metafunc):
