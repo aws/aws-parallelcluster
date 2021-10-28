@@ -401,8 +401,11 @@ def test_byos_supported_distros_schema(x86, arm64, failure_message):
         (None, "Missing data for required field."),
     ],
 )
-def test_cloudformation_cluster_infrastructure_schema(template, failure_message):
+def test_cloudformation_cluster_infrastructure_schema(mocker, template, failure_message):
     byos_cloudformation_cluster_infrastructure_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
     if template:
         byos_cloudformation_cluster_infrastructure_schema["Template"] = template
 
@@ -423,8 +426,11 @@ def test_cloudformation_cluster_infrastructure_schema(template, failure_message)
         (None, "Missing data for required field."),
     ],
 )
-def test_byos_cluster_shared_artifact_schema(source, failure_message):
+def test_byos_cluster_shared_artifact_schema(mocker, source, failure_message):
     byos_cluster_shared_artifact_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
     if source:
         byos_cluster_shared_artifact_schema["Source"] = source
 
@@ -444,8 +450,11 @@ def test_byos_cluster_shared_artifact_schema(source, failure_message):
         (None, "Missing data for required field."),
     ],
 )
-def test_byos_plugin_resources_schema(artifacts, failure_message):
+def test_byos_plugin_resources_schema(mocker, artifacts, failure_message):
     byos_plugin_resources_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
     if artifacts:
         byos_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
     if failure_message:

@@ -109,6 +109,7 @@ from pcluster.schemas.common_schema import (
     get_field_validator,
     validate_no_reserved_tag,
 )
+from pcluster.utils import replace_url_parameters, restore_url_placeholders
 from pcluster.validators.cluster_validators import FSX_MESSAGES
 
 # pylint: disable=C0302
@@ -1239,7 +1240,13 @@ class ByosCloudFormationClusterInfrastructureSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return ByosCloudFormationInfrastructure(**data)
+        return ByosCloudFormationInfrastructure(template=replace_url_parameters(data.get("template")))
+
+    @pre_dump
+    def restore_placeholders(self, data, **kwargs):
+        """Restore back the placeholders, see post_load action."""
+        data.template = restore_url_placeholders(data.template)
+        return data
 
 
 class ByosClusterInfrastructureSchema(BaseSchema):
@@ -1265,7 +1272,13 @@ class ByosClusterSharedArtifactSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return ByosClusterSharedArtifact(**data)
+        return ByosClusterSharedArtifact(source=replace_url_parameters(data.get("source")))
+
+    @pre_dump
+    def restore_placeholders(self, data, **kwargs):
+        """Restore back the placeholders, see post_load action."""
+        data.source = restore_url_placeholders(data.source)
+        return data
 
 
 class ByosPluginResourcesSchema(BaseSchema):
