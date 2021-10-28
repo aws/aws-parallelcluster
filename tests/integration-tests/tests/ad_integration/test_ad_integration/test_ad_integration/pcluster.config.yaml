@@ -1,0 +1,62 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ directory_subnet }}
+  Ssh:
+    KeyName: {{ key_name }}
+  Imds:
+    Secured: {{ imds_secured }}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+  {% if post_install_script_uri %}
+  CustomActions:
+    OnNodeConfigured:
+      Script: {{ post_install_script_uri }}
+      Args:
+        - {{ ldap_uri }}
+        - {{ ldap_search_base }}
+        - {{ ldap_default_bind_dn }}
+        - {{ ldap_client_password }}
+  {% endif %}
+Scheduling:
+  Scheduler: {{ scheduler }}
+  SlurmQueues:
+    - Name: compute
+      ComputeResources:
+        - Name: cit
+          InstanceType: {{ compute_instance_type }}
+          MinCount: 2
+          MaxCount: 3000
+      Networking:
+        SubnetIds:
+          - {{ directory_subnet }}
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AdministratorAccess
+      {% if post_install_script_uri %}
+      CustomActions:
+        OnNodeConfigured:
+          Script: {{ post_install_script_uri }}
+          Args:
+            - {{ ldap_uri }}
+            - {{ ldap_search_base }}
+            - {{ ldap_default_bind_dn }}
+            - {{ ldap_client_password }}
+      {% endif %}
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 14
+SharedStorage:
+  - MountDir: /shared
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 2400
+  - MountDir: /ebs
+    Name: ebs
+    StorageType: Ebs
