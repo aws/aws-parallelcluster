@@ -39,6 +39,5 @@
     "stack_name": "clustername",
     "volume": "NONE",
     "use_private_hostname": "false"
-  },
-  "run_list": "recipe[aws-parallelcluster::slurm_config]"
+  }
 }
