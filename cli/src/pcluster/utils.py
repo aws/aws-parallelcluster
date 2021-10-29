@@ -54,11 +54,6 @@ def replace_url_parameters(url):
     return url.replace("${Region}", get_region()).replace("${URLSuffix}", get_url_domain_suffix())
 
 
-def restore_url_placeholders(url):
-    """Restore ${Region} and ${URLSuffix} in url."""
-    return url.replace(get_region(), "${Region}").replace(get_url_domain_suffix(), "${URLSuffix}")
-
-
 def generate_random_name_with_prefix(name_prefix):
     """
     Generate a random name that is no more than 63 characters long, with the given prefix.

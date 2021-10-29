@@ -39,7 +39,7 @@ from pcluster.constants import (
     MAX_STORAGE_COUNT,
     SUPPORTED_OSES,
 )
-from pcluster.utils import get_partition, get_resource_name_from_resource_arn
+from pcluster.utils import get_partition, get_resource_name_from_resource_arn, replace_url_parameters
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -1627,7 +1627,7 @@ class ByosCloudFormationInfrastructure(Resource):
 
     def __init__(self, template: str, **kwargs):
         super().__init__(**kwargs)
-        self.template = template
+        self.template = replace_url_parameters(template)
 
     def _register_validators(self):
         self._register_validator(UrlValidator, url=self.template, fail_on_https_error=True)
@@ -1646,7 +1646,7 @@ class ByosClusterSharedArtifact(Resource):
 
     def __init__(self, source: str, **kwargs):
         super().__init__(**kwargs)
-        self.source = source
+        self.source = replace_url_parameters(source)
 
     def _register_validators(self):
         self._register_validator(UrlValidator, url=self.source)
