@@ -12,6 +12,15 @@ CHANGELOG
   - SGE download URL no more reachable. Use Debian repository to download SGE source archive.
   - Outdated CA certificates used by Cinc. Update ca-certificates package during AMI build time.
 - Fix cluster update when using proxy setup.
+- Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
+  ParallelCluster does not reinstall EFA during node start. Previously, EFA was reinstalled if `enable_efa_gdr` had been
+  turned on in the configuration file.
+  - EFA configuration: ``efa-config-1.9-1``
+  - EFA profile: ``efa-profile-1.5-1``
+  - EFA kernel module: ``efa-1.14.2``
+  - RDMA core: ``rdma-core-37.0``
+  - Libfabric: ``libfabric-1.13.2``
+  - Open MPI: ``openmpi40-aws-4.1.1-2``
 
 2.11.2
 -----
