@@ -25,7 +25,6 @@ Scheduling:
           MinCount: {{ max_queue_size }}
           Efa:
             Enabled: true
-            {% if instance == "p4d.24xlarge" %}GdrSupport: true{% endif %}
 SharedStorage:
   - MountDir: /shared
     Name: name1

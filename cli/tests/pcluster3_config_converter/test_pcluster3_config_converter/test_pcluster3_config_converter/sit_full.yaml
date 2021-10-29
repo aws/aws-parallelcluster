@@ -77,4 +77,3 @@ Scheduling:
           InstanceType: c5.xlarge
           Efa:
             Enabled: true
-            GdrSupport: true

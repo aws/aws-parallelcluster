@@ -612,7 +612,7 @@ class EfaSchema(BaseSchema):
     """Represent the schema of EFA for a Compute Resource."""
 
     enabled = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    gdr_support = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    gdr_support = fields.Bool(metadata={"update_policy": UpdatePolicy.IGNORED})
 
     @post_load
     def make_resource(self, data, **kwargs):
