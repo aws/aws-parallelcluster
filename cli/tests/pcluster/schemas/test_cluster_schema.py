@@ -16,8 +16,12 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from pcluster.constants import MAX_NUMBER_OF_COMPUTE_RESOURCES, MAX_NUMBER_OF_QUEUES
+from pcluster.constants import MAX_NUMBER_OF_COMPUTE_RESOURCES, MAX_NUMBER_OF_QUEUES, SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
+    ByosCloudFormationClusterInfrastructureSchema,
+    ByosClusterSharedArtifactSchema,
+    ByosPluginResourcesSchema,
+    ByosSupportedDistrosSchema,
     ClusterSchema,
     HeadNodeIamSchema,
     ImageSchema,
@@ -363,3 +367,100 @@ def test_scheduler_constraints_for_intel_packages(
         assert_that(cluster.additional_packages.intel_software.intel_hpc_platform).is_equal_to(
             install_intel_packages_enabled
         )
+
+
+@pytest.mark.parametrize(
+    "x86, arm64, failure_message",
+    [
+        (None, ["centos7"], None),
+        (["centos7"], None, None),
+        ("ubuntu1804", ["centos7"], "Not a valid list"),
+        (["ubuntu1804"], ["centos7"], None),
+    ],
+)
+def test_byos_supported_distros_schema(x86, arm64, failure_message):
+    byos_supported_distros_schema = {}
+    if x86:
+        byos_supported_distros_schema["X86"] = x86
+    if arm64:
+        byos_supported_distros_schema["Arm64"] = arm64
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosSupportedDistrosSchema().load(byos_supported_distros_schema)
+    else:
+        byos_supported_distros = ByosSupportedDistrosSchema().load(byos_supported_distros_schema)
+        assert_that(byos_supported_distros.x86).is_equal_to(x86 or SUPPORTED_OSES)
+        assert_that(byos_supported_distros.arm64).is_equal_to(arm64 or SUPPORTED_OSES)
+
+
+@pytest.mark.parametrize(
+    "template, failure_message",
+    [
+        ("https://template.yaml", None),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_cloudformation_cluster_infrastructure_schema(mocker, template, failure_message):
+    byos_cloudformation_cluster_infrastructure_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
+    if template:
+        byos_cloudformation_cluster_infrastructure_schema["Template"] = template
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosCloudFormationClusterInfrastructureSchema().load(byos_cloudformation_cluster_infrastructure_schema)
+    else:
+        byos_cloudformation_cluster_infrastructure = ByosCloudFormationClusterInfrastructureSchema().load(
+            byos_cloudformation_cluster_infrastructure_schema
+        )
+        assert_that(byos_cloudformation_cluster_infrastructure.template).is_equal_to(template)
+
+
+@pytest.mark.parametrize(
+    "source, failure_message",
+    [
+        ("https://artifacts.gz", None),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_byos_cluster_shared_artifact_schema(mocker, source, failure_message):
+    byos_cluster_shared_artifact_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
+    if source:
+        byos_cluster_shared_artifact_schema["Source"] = source
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosClusterSharedArtifactSchema().load(byos_cluster_shared_artifact_schema)
+    else:
+        byos_cluster_shared_artifact = ByosClusterSharedArtifactSchema().load(byos_cluster_shared_artifact_schema)
+        assert_that(byos_cluster_shared_artifact.source).is_equal_to(source)
+
+
+@pytest.mark.parametrize(
+    "artifacts, failure_message",
+    [
+        (["https://artifacts.gz"], None),
+        (["https://artifacts1.gz", "https://artifacts2.gz"], None),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_byos_plugin_resources_schema(mocker, artifacts, failure_message):
+    byos_plugin_resources_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
+    if artifacts:
+        byos_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosPluginResourcesSchema().load(byos_plugin_resources_schema)
+    else:
+        byos_plugin_resources = ByosPluginResourcesSchema().load(byos_plugin_resources_schema)
+        for artifact, source in zip(byos_plugin_resources.cluster_shared_artifacts, artifacts):
+            assert_that(artifact.source).is_equal_to(source)

@@ -61,7 +61,25 @@ def test_byos_substack(mocker):
             "Properties": {
                 "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws.com"
                 "/parallelcluster/clusters/dummy-cluster-randomstring123/templates/byos-substack.cfn",
-                "Parameters": {},
+                "Parameters": {
+                    "ClusterName": "clustername",
+                    "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                    "VpcId": "vpc-123",
+                    "HeadNodeRoleName": "",
+                    "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                    "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                    },
+                    "LaunchTemplateA6f65dee6703df4aVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                    },
+                    "LaunchTemplate7916067054f91933Version": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                    },
+                    "LaunchTemplateA46d18b906a50d3aVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA46d18b906a50d3a347605B0", "LatestVersionNumber"]
+                    },
+                },
             },
         }
     )

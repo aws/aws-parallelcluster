@@ -23,6 +23,8 @@ from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import get_region
 from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, Resource
 from pcluster.constants import (
+    BYOS_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT,
+    BYOS_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT,
     CIDR_ALL_IPS,
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
@@ -32,7 +34,10 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
+    SUPPORTED_OSES,
 )
 from pcluster.utils import get_partition, get_resource_name_from_resource_arn
 from pcluster.validators.awsbatch_validators import (
@@ -459,6 +464,12 @@ class AwsBatchQueueNetworking(_QueueNetworking):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class ByosQueueNetworking(SlurmQueueNetworking):
+    """Represent the networking configuration for the Byos Queue."""
+
+    pass
 
 
 class Ssh(Resource):
@@ -1381,13 +1392,11 @@ class SlurmComputeResource(BaseComputeResource):
         return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
 
 
-class SlurmQueue(BaseQueue):
-    """Represent the Slurm Queue resource."""
+class _CommonQueue(BaseQueue):
+    """Represent the Common Queue resource between Slurm and Byos."""
 
     def __init__(
         self,
-        compute_resources: List[SlurmComputeResource],
-        networking: SlurmQueueNetworking,
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -1395,12 +1404,42 @@ class SlurmQueue(BaseQueue):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.compute_resources = compute_resources
-        self.networking = networking
         self.compute_settings = compute_settings or ComputeSettings(implied=True)
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
         self.image = image
+
+    @property
+    def instance_role(self):
+        """Return the IAM role for compute nodes, if set."""
+        return self.iam.instance_role if self.iam else None
+
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for compute nodes, if set."""
+        return self.iam.instance_profile if self.iam else None
+
+    @property
+    def queue_ami(self):
+        """Return queue image id."""
+        if self.image and self.image.custom_ami:
+            return self.image.custom_ami
+        else:
+            return None
+
+
+class SlurmQueue(_CommonQueue):
+    """Represent the Slurm Queue resource."""
+
+    def __init__(
+        self,
+        compute_resources: List[SlurmComputeResource],
+        networking: SlurmQueueNetworking,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.compute_resources = compute_resources
+        self.networking = networking
 
     def _register_validators(self):
         super()._register_validators()
@@ -1432,24 +1471,6 @@ class SlurmQueue(BaseQueue):
     def instance_type_list(self):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
-
-    @property
-    def instance_role(self):
-        """Return the IAM role for compute nodes, if set."""
-        return self.iam.instance_role if self.iam else None
-
-    @property
-    def instance_profile(self):
-        """Return the IAM instance profile for compute nodes, if set."""
-        return self.iam.instance_profile if self.iam else None
-
-    @property
-    def queue_ami(self):
-        """Return queue image id."""
-        if self.image and self.image.custom_ami:
-            return self.image.custom_ami
-        else:
-            return None
 
 
 class Dns(Resource):
@@ -1488,10 +1509,117 @@ class SlurmScheduling(Resource):
         )
 
 
-class ByosQueue(SlurmQueue):
+class ByosComputeResource(SlurmComputeResource):
+    """Represent the Byos Compute Resource."""
+
+    def __init__(
+        self,
+        custom_settings: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.custom_settings = custom_settings
+
+
+class ByosQueue(_CommonQueue):
     """Represent the Byos queue."""
 
-    pass
+    def __init__(
+        self,
+        compute_resources: List[ByosComputeResource],
+        networking: ByosQueueNetworking,
+        custom_settings: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.compute_resources = compute_resources
+        self.networking = networking
+        self.custom_settings = custom_settings
+
+    def _register_validators(self):
+        super()._register_validators()
+        self._register_validator(
+            DuplicateNameValidator,
+            name_list=[compute_resource.name for compute_resource in self.compute_resources],
+            resource_name="Compute resource",
+        )
+        for compute_resource in self.compute_resources:
+            self._register_validator(
+                CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
+            )
+            self._register_validator(
+                EfaSecurityGroupValidator,
+                efa_enabled=compute_resource.efa.enabled,
+                security_groups=self.networking.security_groups,
+                additional_security_groups=self.networking.additional_security_groups,
+            )
+            self._register_validator(
+                EfaPlacementGroupValidator,
+                efa_enabled=compute_resource.efa.enabled,
+                placement_group_enabled=self.networking.placement_group and self.networking.placement_group.enabled,
+                placement_group_config_implicit=self.networking.placement_group is None
+                or self.networking.placement_group.is_implied("enabled"),
+            )
+
+    @property
+    def instance_type_list(self):
+        """Return the list of instance types associated to the Queue."""
+        return [compute_resource.instance_type for compute_resource in self.compute_resources]
+
+
+class ByosSupportedDistros(Resource):
+    """Represent the Supported Distros for a BYOS plugin."""
+
+    def __init__(self, x86: List[str] = None, arm64: List[str] = None, **kwargs):
+        super().__init__(**kwargs)
+        self.x86 = Resource.init_param(x86, default=SUPPORTED_OSES)
+        self.arm64 = Resource.init_param(arm64, default=SUPPORTED_OSES)
+
+
+class ByosQueueConstraints(Resource):
+    """Represent the Queue Constraints for a BYOS plugin."""
+
+    def __init__(self, max_count: int = None, max_subnets_count: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_QUEUES)
+        self.max_subnets_count = Resource.init_param(
+            max_subnets_count, default=BYOS_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT
+        )
+
+
+class ByosComputeResourceConstraints(Resource):
+    """Represent the Compute Resource Constraints for a BYOS plugin."""
+
+    def __init__(self, max_count: int = None, max_instance_types_count: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_COMPUTE_RESOURCES)
+        self.max_instance_types_count = Resource.init_param(
+            max_instance_types_count, default=BYOS_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT
+        )
+
+
+class ByosRequirements(Resource):
+    """Represent the Requirements for a BYOS plugin."""
+
+    def __init__(
+        self,
+        supported_distros: ByosSupportedDistros = None,
+        supported_regions: List[str] = None,
+        queue_constraints: ByosQueueConstraints = None,
+        compute_resource_constraints: ByosComputeResourceConstraints = None,
+        requires_sudo_priviledges: bool = None,
+        supports_cluster_update: bool = None,
+        supported_parallel_cluster_versions: str = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.supported_distros = supported_distros
+        self.supported_regions = supported_regions
+        self.queue_constraints = queue_constraints
+        self.compute_resource_constraints = compute_resource_constraints
+        self.requires_sudo_priviledges = Resource.init_param(requires_sudo_priviledges, default=False)
+        self.supports_cluster_update = Resource.init_param(supports_cluster_update, default=True)
+        self.supported_parallel_cluster_versions = supported_parallel_cluster_versions
 
 
 class ByosCloudFormationInfrastructure(Resource):
@@ -1513,18 +1641,106 @@ class ByosClusterInfrastructure(Resource):
         self.cloud_formation = cloud_formation
 
 
+class ByosClusterSharedArtifact(Resource):
+    """Represent the ClusterSharedArtifact config for a BYOS plugin."""
+
+    def __init__(self, source: str, **kwargs):
+        super().__init__(**kwargs)
+        self.source = source
+
+    def _register_validators(self):
+        self._register_validator(UrlValidator, url=self.source)
+
+
+class ByosPluginResources(Resource):
+    """Represent the PluginResources config for a BYOS plugin."""
+
+    def __init__(self, cluster_shared_artifacts: [ByosClusterSharedArtifact], **kwargs):
+        super().__init__(**kwargs)
+        self.cluster_shared_artifacts = cluster_shared_artifacts
+
+
+class ByosExecuteCommand(Resource):
+    """Represent the ExecuteCommand for a BYOS plugin."""
+
+    def __init__(self, command: str, **kwargs):
+        super().__init__(**kwargs)
+        self.command = command
+
+
+class ByosEvent(Resource):
+    """Represent the Event config for a BYOS plugin."""
+
+    def __init__(self, execute_command: ByosExecuteCommand, **kwargs):
+        super().__init__(**kwargs)
+        self.execute_command = execute_command
+
+
+class ByosEvents(Resource):
+    """Represent the Events config for a BYOS plugin."""
+
+    def __init__(
+        self,
+        head_init: ByosEvent = None,
+        head_configure: ByosEvent = None,
+        head_finalize: ByosEvent = None,
+        compute_init: ByosEvent = None,
+        compute_configure: ByosEvent = None,
+        compute_finalize: ByosEvent = None,
+        head_cluster_update: ByosEvent = None,
+        head_compute_fleet_start: ByosEvent = None,
+        head_compute_fleet_stop: ByosEvent = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.head_init = head_init
+        self.head_configure = head_configure
+        self.head_finalize = head_finalize
+        self.compute_init = compute_init
+        self.compute_configure = compute_configure
+        self.compute_finalize = compute_finalize
+        self.head_cluster_update = head_cluster_update
+        self.head_compute_fleet_start = head_compute_fleet_start
+        self.head_compute_fleet_stop = head_compute_fleet_stop
+
+
+class ByosFile(Resource):
+    """Represent the Byos file resource."""
+
+    def __init__(self, file_path: str, timestamp_format: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.file_path = file_path
+        self.timestamp_format = Resource.init_param(timestamp_format, default="%Y-%m-%dT%H:%M:%S%z")
+
+
+class ByosLogs(Resource):
+    """Represent the Byos logs resource."""
+
+    def __init__(self, files: [ByosFile], **kwargs):
+        super().__init__(**kwargs)
+        self.files = files
+
+
+class ByosMonitoring(Resource):
+    """Represent the Byos monitoring resource."""
+
+    def __init__(self, logs: ByosLogs, **kwargs):
+        super().__init__(**kwargs)
+        self.logs = logs
+
+
 class ByosSchedulerDefinition(Resource):
     """Represent the Byos scheduler definition."""
 
     def __init__(
         self,
         byos_version: str,
+        events: ByosEvents,
         metadata: Dict = None,
-        requirements: Dict = None,
+        requirements: ByosRequirements = None,
         cluster_infrastructure: ByosClusterInfrastructure = None,
-        plugin_resources: Dict = None,
-        events: Dict = None,
-        monitoring: Dict = None,
+        plugin_resources: ByosPluginResources = None,
+        monitoring: ByosMonitoring = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1540,9 +1756,17 @@ class ByosSchedulerDefinition(Resource):
 class ByosSettings(Resource):
     """Represent the Byos settings."""
 
-    def __init__(self, scheduler_definition: ByosSchedulerDefinition, **kwargs):
+    def __init__(
+        self,
+        scheduler_definition: ByosSchedulerDefinition,
+        grant_sudo_priviledges: bool = None,
+        custom_settings: Dict = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.scheduler_definition = scheduler_definition
+        self.grant_sudo_priviledges = Resource.init_param(grant_sudo_priviledges, default=False)
+        self.custom_settings = custom_settings
 
 
 class ByosScheduling(Resource):
@@ -1567,6 +1791,17 @@ class ByosClusterConfig(BaseClusterConfig):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None
+
+    def get_instance_types_data(self):
+        """Get instance type infos for all instance types used in the configuration file."""
+        result = {}
+        instance_type_info = self.head_node.instance_type_info
+        result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                instance_type_info = compute_resource.instance_type_info
+                result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+        return result
 
     @property
     def image_dict(self):

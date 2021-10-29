@@ -12,7 +12,7 @@ Scheduling:
     SchedulerDefinition:
       ByosVersion: "1.0"
       Events:
-        HeadInitEnvironment:
+        HeadInit:
           ExecuteCommand:
             Command: env
   ByosQueues:

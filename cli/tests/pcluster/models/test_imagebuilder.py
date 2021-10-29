@@ -119,7 +119,7 @@ def test_imagebuilder_kms_key_id_encrypted_validator_and_ami_volume_size_validat
                 "The value 'ftp://test/aws-parallelcluster-batch-3.0.tgz' is not a valid URL, choose URL with "
                 "'https' or 's3' prefix.",
             ],
-            [FailureLevel.WARNING, FailureLevel.ERROR, FailureLevel.ERROR],
+            [FailureLevel.WARNING, FailureLevel.WARNING, FailureLevel.ERROR],
         ),
     ],
 )

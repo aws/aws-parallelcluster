@@ -51,23 +51,83 @@ Scheduling:
   ByosSettings:
     SchedulerDefinition:
       ByosVersion: "1.0"
+      Requirements:
+        SupportedDistros:
+          X86: ["ubuntu1804", "centos7"]
+          Arm64: ["ubuntu1804"]
+        SupportedRegions: ["cn-north-1", "us-east-1"]
+        QueueConstraints:
+          MaxCount: 5
+          MaxSubnetsCount: 1
+        ComputeResourceConstraints:
+          MaxCount: 3
+          MaxInstanceTypesCount: 1
+        RequiresSudoPriviledges: False
+        SupportsClusterUpdate: True
+        SupportedParallelClusterVersions: 3.1.0,3.4.2
       ClusterInfrastructure:
         CloudFormation:
           Template: https://bucket/byos/additional_cluster_infrastructure_no_jinja.cfn.yaml
+      PluginResources:
+        ClusterSharedArtifacts:
+          - Source: s3://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/plugins/slurm/v1.0.0/artifacts.tar.gz
+          - Source: s3://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/plugins/slurm/v1.0.0/artifacts2.tar.gz
       Events:
-        HeadInitEnvironment:
+        HeadInit:
           ExecuteCommand:
             Command: env
+        HeadConfigure:
+          ExecuteCommand:
+            Command: artifacts/handlers/head_configure_plugin.sh
+        HeadFinalize:
+          ExecuteCommand:
+            Command: artifacts/handlers/head_finalize.sh
+        ComputeInit:
+          ExecuteCommand:
+            Command: env
+        ComputeConfigure:
+          ExecuteCommand:
+            Command: artifacts/handlers/compute_configure_plugin.sh
+        ComputeFinalize:
+          ExecuteCommand:
+            Command: artifacts/handlers/compute_finalize.sh
+        HeadClusterUpdate:
+          ExecuteCommand:
+            Command: artifacts/handlers/head_cluster_update.sh
+        HeadComputeFleetStart:
+          ExecuteCommand:
+            Command: artifacts/handlers/head_computefleet_start.sh
+        HeadComputeFleetStop:
+          ExecuteCommand:
+            Command: artifacts/handlers/head_computefleet_stop.sh
+      Monitoring:
+        Logs:
+          Files:
+            - FilePath: /var/log/slurmctld.log
+              TimestampFormat: "%Y-%m-%dT%H:%M:%S.%f"
+            - FilePath: /var/log/slurmd.log
+              TimestampFormat: "%Y-%m-%dT%H:%M:%S.%f"
+            - FilePath: "/var/log/aws-autoscaler/logfile.log"
+              TimestampFormat: "%Y-%m-%d %H:%M:%S,%f"
+    GrantSudoPriviledges: true
+    CustomSettings:  # here you can add any custom setting
+      ScaledownIdletime: 10
+      SchedulerType: "sched/backfill"
+      SuspendTimeout: 60
   ByosQueues:
     - Name: queue1
       CapacityType: ONDEMAND
       Networking:
         SubnetIds:
           - subnet-12345678
+      CustomSettings:  # here you can add any custom setting
+        Key1: String
       ComputeResources:
-        - Name: compute-resource-1
+        - Name: computeresource1
           InstanceType: c5.xlarge
-        - Name: compute-resource-2
+          CustomSettings:  # here you can add any custom setting
+            RealMemory: 185000
+        - Name: computeresource2
           InstanceType: c4.xlarge
       CustomActions:
         OnNodeStart:
@@ -110,9 +170,9 @@ Scheduling:
         Proxy:
           HttpProxyAddress: https://proxy-address:port
       ComputeResources:
-        - Name: compute-resource-1
+        - Name: computeresource1
           InstanceType: c4.2xlarge
-        - Name: compute-resource-2
+        - Name: computeresource2
           InstanceType: c5.2xlarge
           MinCount: 1
           MaxCount: 15
