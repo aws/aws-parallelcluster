@@ -34,6 +34,13 @@ export HTTPS_PROXY="${!proxy}"
 export NO_PROXY="localhost,127.0.0.1,169.254.169.254"
 PROXY
 fi
+
+--==BOUNDARY==
+Content-Type: text/cloud-config; charset=us-ascii
+MIME-Version: 1.0
+
+datasource_list: [ Ec2, None ]
+
 --==BOUNDARY==
 Content-Type: text/x-shellscript; charset="us-ascii"
 MIME-Version: 1.0
