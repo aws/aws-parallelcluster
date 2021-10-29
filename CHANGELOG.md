@@ -13,6 +13,9 @@ X.X.X
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
 - Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
 
+**BUG FIXES**
+- Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
+
 3.0.1
 ------
 
