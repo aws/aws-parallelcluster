@@ -515,8 +515,8 @@ class SlurmConstruct(Construct):
 
         ec2.CfnLaunchTemplate(
             self.stack_scope,
-            f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name)}",
-            launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.name}",
+            f"LaunchTemplate{create_hash_suffix(queue.name + compute_resource.name.replace('-', ''))}",
+            launch_template_name=f"{self.stack_name}-{queue.name}-{compute_resource.name.replace('-', '')}",
             launch_template_data=ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
                 instance_type=instance_type,
                 cpu_options=ec2.CfnLaunchTemplate.CpuOptionsProperty(
