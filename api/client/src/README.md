@@ -64,7 +64,7 @@ configuration = pcluster_client.Configuration(host = "http://localhost") # Set t
 
 # The client needs to authenticate with the ParallelCluster API server using SigV4.
 # Please ensure that your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` 
-# are set appropriately for the client to appropriately authenticate using SigV4.
+# are set appropriately for the client to authenticate using SigV4.
 
 
 # Enter a context with an instance of the API client
