@@ -62,7 +62,7 @@ AMI_TYPE_DICT = {
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None):
+def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None, request=None):
     if additional_filters is None:
         additional_filters = []
     try:
@@ -71,6 +71,14 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", 
                 version=get_installed_parallelcluster_version(),
                 ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name"),
             )
+            if (
+                request
+                and not request.config.getoption("pcluster_git_ref")
+                and not request.config.getoption("cookbook_git_ref")
+                and not request.config.getoption("node_git_ref")
+            ):  # If none of Git refs is provided, the test is running against released version.
+                # Then retrieve public pcluster AMIs
+                additional_filters.append({"Name": "is-public", "Values": ["true"]})
         else:
             ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
         logging.info("Parent image name %s" % ami_name)
