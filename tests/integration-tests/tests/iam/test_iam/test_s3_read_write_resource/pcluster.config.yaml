@@ -29,7 +29,6 @@ Scheduling:
           InstanceType: {{ instance }}
           Efa:
             Enabled: false
-            GdrSupport: false
           {% endif %}
       {% if scheduler == "slurm" %}
       Iam:

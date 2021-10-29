@@ -52,6 +52,7 @@ from pcluster.validators.cluster_validators import (
     DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
+    EfaGdrValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
@@ -489,7 +490,10 @@ class Efa(Resource):
     def __init__(self, enabled: bool = None, gdr_support: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.enabled = enabled
-        self.gdr_support = Resource.init_param(gdr_support, default=False)
+        self.gdr_support = gdr_support
+
+    def _register_validators(self):
+        self._register_validator(EfaGdrValidator, gdr_support=self.gdr_support)
 
 
 # ---------------------- Monitoring ---------------------- #
@@ -1329,7 +1333,6 @@ class SlurmComputeResource(BaseComputeResource):
             EfaValidator,
             instance_type=self.instance_type,
             efa_enabled=self.efa.enabled,
-            gdr_support=self.efa.gdr_support,
         )
 
     @property

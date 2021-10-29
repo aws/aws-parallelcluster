@@ -269,9 +269,9 @@ class DuplicateInstanceTypeValidator(Validator):
 
 
 class EfaValidator(Validator):
-    """Check if EFA and EFA GDR are supported features in the given instance type."""
+    """Check if EFA is supported feature in the given instance type."""
 
-    def _validate(self, instance_type, efa_enabled, gdr_support):
+    def _validate(self, instance_type, efa_enabled):
 
         instance_type_supports_efa = AWSApi.instance().ec2.get_instance_type_info(instance_type).is_efa_supported()
         if efa_enabled and not instance_type_supports_efa:
@@ -280,8 +280,6 @@ class EfaValidator(Validator):
             self._add_failure(
                 f"Instance type '{instance_type}' supports EFA, but it is not enabled.", FailureLevel.WARNING
             )
-        if gdr_support and not efa_enabled:
-            self._add_failure("The EFA GDR Support can be used only if EFA is enabled.", FailureLevel.ERROR)
 
 
 class EfaPlacementGroupValidator(Validator):
@@ -354,6 +352,18 @@ class EfaSecurityGroupValidator(Validator):
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.WARNING)
         return efa_sg_found
+
+
+class EfaGdrValidator(Validator):
+    """Hint that the GdrSupport has no effect."""
+
+    def _validate(self, gdr_support):
+        if gdr_support:
+            self._add_failure(
+                "The GDR Support setting is ignored because EFA enables GDR support by default "
+                "on supported instance type(s).",
+                FailureLevel.INFO,
+            )
 
 
 # --------------- Storage validators --------------- #

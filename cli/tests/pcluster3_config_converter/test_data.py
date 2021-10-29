@@ -1278,7 +1278,6 @@ Scheduling:
         - DisableSimultaneousMultithreading: false
           Efa:
             Enabled: true
-            GdrSupport: true
           InstanceType: c5.xlarge
           MaxCount: 5
           Name: default-resource

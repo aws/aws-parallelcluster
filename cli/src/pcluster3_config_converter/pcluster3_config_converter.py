@@ -934,8 +934,6 @@ class Pcluster3ConfigConverter(object):
         compute_resource["Name"] = compute_resource_name
         if self.cluster_config_get("enable_efa") == "compute":
             efa["Enabled"] = True
-        if self.cluster_config_get("enable_efa_gdr") == "compute":
-            efa["GdrSupport"] = True
 
         for item in [
             (compute_resource_section, "instance_type", compute_resource, "InstanceType"),
@@ -1005,8 +1003,6 @@ class Pcluster3ConfigConverter(object):
 
         if self.cluster_config_get("enable_efa") == "compute":
             efa["Enabled"] = True
-        if self.cluster_config_get("enable_efa_gdr") == "compute":
-            efa["GdrSupport"] = True
         _add_if(compute_resource, "Efa", efa)
         _append_if(compute_resources, compute_resource)
         _add_if(queue, "ComputeResources", compute_resources)

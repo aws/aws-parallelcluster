@@ -114,7 +114,6 @@ Scheduling:
           DisableSimultaneousMultithreading: true
           Efa:
             Enabled: true
-            GdrSupport: false
       Iam:
         InstanceProfile: arn:aws:iam::aws:instance-profile/CustomNodeInstanceProfile
       Image:

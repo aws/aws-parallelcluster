@@ -30,7 +30,6 @@ Scheduling:
           InstanceType: {{ instance }}
           Efa:
             Enabled: false
-            GdrSupport: false
           {% endif %}
       Networking:
         SubnetIds:
