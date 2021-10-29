@@ -15,6 +15,7 @@
 import logging.config
 import os
 import sys
+from contextlib import contextmanager
 
 from pcluster.utils import get_cli_log_file
 
@@ -45,7 +46,7 @@ def config_logger():
                 "level": "DEBUG",
                 "formatter": "standard",
                 "class": "logging.StreamHandler",
-                "stream": sys.stdout,
+                "stream": sys.__stdout__,
             },
         },
         "loggers": {
@@ -58,3 +59,34 @@ def config_logger():
             logger["handlers"] = ["console"]
     os.makedirs(os.path.dirname(logfile), exist_ok=True)
     logging.config.dictConfig(logging_config)
+
+
+class LogWriter:
+    """Write message to log file. It can be used to replace the default stdout/stderr to have it write to the logger."""
+
+    def __init__(self, log_level, logger):
+        self._log_level = log_level
+        self._logger = logger
+
+    def write(self, message):
+        """Write message to log."""
+        if message and message.strip():
+            self._logger.log(self._log_level, message.strip())
+
+    def flush(self):
+        """No-op."""
+        pass
+
+
+@contextmanager
+def redirect_stdouterr_to_logger():
+    """Redirect default stdout and stderr to logger."""
+    stdout_backup = sys.stdout
+    stderr_backup = sys.stderr
+    try:
+        sys.stdout = LogWriter(logging.INFO, LOGGER)
+        sys.stderr = LogWriter(logging.ERROR, LOGGER)
+        yield
+    finally:
+        sys.stdout = stdout_backup
+        sys.stderr = stderr_backup
