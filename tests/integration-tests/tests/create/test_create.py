@@ -24,7 +24,6 @@ from tests.common.assertions import (
 from tests.common.utils import get_installed_parallelcluster_version, reboot_head_node, retrieve_latest_ami
 
 
-@pytest.mark.dimensions("eu-central-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, architecture):
     """Test error message when os provide is different from the os of custom AMI"""
@@ -48,7 +47,6 @@ def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, a
     )
 
 
-@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.usefixtures("instance", "os", "scheduler")
 def test_create_wrong_pcluster_version(
     region, pcluster_config_reader, pcluster_ami_without_standard_naming, clusters_factory
@@ -75,7 +73,6 @@ def test_create_wrong_pcluster_version(
     )
 
 
-@pytest.mark.dimensions("eu-central-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("instance", "scheduler")
 @pytest.mark.parametrize(
     "imds_secured, users_allow_list",

@@ -55,9 +55,6 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024, "LZ4"),
     ],
 )
-@pytest.mark.regions(["eu-west-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
 def test_fsx_lustre_configuration_options(
     deployment_type,
@@ -141,12 +138,7 @@ def _test_fsx_lustre_configuration_options(
     _test_data_compression_type(data_compression_type, fsx)
 
 
-@pytest.mark.regions(["eu-west-1"])
-@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
-# FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
@@ -200,12 +192,7 @@ def _test_fsx_lustre(
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
-@pytest.mark.regions(["us-west-2"])
-@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
-# FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os, scheduler):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
@@ -274,7 +261,6 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
     _test_delete_manual_backup(remote_command_executor, manual_backup, region)
 
 
-@pytest.mark.dimensions("us-west-2", "c5.xlarge", "alinux2", "slurm")
 @pytest.mark.usefixtures("instance")
 def test_existing_fsx(
     region,

@@ -42,9 +42,6 @@ from tests.common.mpi_common import compile_mpi_ring
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands, get_scheduler_commands
 
 
-@pytest.mark.regions(["us-east-2"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance", "scheduler", "os")
 def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
@@ -97,9 +94,6 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     assert_no_errors_in_logs(remote_command_executor, "slurm")
 
 
-@pytest.mark.regions(["eu-west-1"])
-@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_slurm_pmix(pcluster_config_reader, clusters_factory):
     """Test interactive job submission using PMIx."""
