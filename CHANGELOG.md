@@ -6,7 +6,7 @@ CHANGELOG
 
 **BUG FIXES**
 - Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
-  ParallelCluster does not reinstall EFA during node start. Previously, EFA was reinstalled if `enable_efa_gdr` had been
+  ParallelCluster does not reinstall EFA during node start. Previously, EFA was reinstalled if `GdrSupport` had been
   turned on in the configuration file. The `GdrSupport` parameter has no effect and should no longer be used.
   - EFA configuration: ``efa-config-1.9-1``
   - EFA profile: ``efa-profile-1.5-1``
