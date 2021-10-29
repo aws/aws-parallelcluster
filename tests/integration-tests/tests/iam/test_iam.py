@@ -283,9 +283,6 @@ def _get_resource_name_from_resource_arn(resource_arn):
     return resource_arn.rsplit("/", 1)[-1] if resource_arn else ""
 
 
-@pytest.mark.regions(["ap-northeast-2"])
-@pytest.mark.schedulers(["slurm", "awsbatch"])
-@pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os", "instance")
 def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factory):
     """Test IAM Policies"""
@@ -319,9 +316,6 @@ def _test_batch_access(remote_command_executor, region):
     assert_that(result).does_not_contain("AccessDeniedException")
 
 
-@pytest.mark.regions(["eu-central-1"])
-@pytest.mark.schedulers(["slurm", "awsbatch"])
-@pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_s3_read_write_resource(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for testing s3_read_resource and s3_read_write_resource

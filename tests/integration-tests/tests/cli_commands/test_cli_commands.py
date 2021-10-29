@@ -34,10 +34,6 @@ from tests.common.assertions import assert_no_errors_in_logs, wait_for_num_insta
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
-@pytest.mark.regions(["us-east-2"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["ubuntu1804"])
 @pytest.mark.usefixtures("region", "instance")
 def test_slurm_cli_commands(
     request, scheduler, region, os, pcluster_config_reader, clusters_factory, s3_bucket_factory
