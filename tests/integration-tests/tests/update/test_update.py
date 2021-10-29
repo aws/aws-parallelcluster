@@ -382,13 +382,7 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir, request):
     # Create cluster with initial configuration
     ec2 = boto3.client("ec2", region)
-    # release branch tests has stackname_suffix started with r
-    additional_filters = (
-        [{"Name": "is-public", "Values": ["true"]}]
-        if request.config.getoption("stackname_suffix").startswith("r")
-        else []
-    )
-    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster", additional_filters=additional_filters)
+    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster", request=request)
     init_config_file = pcluster_config_reader(global_custom_ami=pcluster_ami_id)
     cluster = clusters_factory(init_config_file)
     instances = cluster.get_cluster_instance_ids(node_type="Compute")

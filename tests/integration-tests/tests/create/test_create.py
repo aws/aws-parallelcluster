@@ -26,13 +26,13 @@ from tests.common.utils import get_installed_parallelcluster_version, reboot_hea
 
 @pytest.mark.dimensions("eu-central-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.usefixtures("instance", "scheduler")
-def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, architecture):
+def test_create_wrong_os(region, os, pcluster_config_reader, clusters_factory, architecture, request):
     """Test error message when os provide is different from the os of custom AMI"""
     # ubuntu1804 is specified in the config file but an AMI of ubuntu2004 is provided
     wrong_os = "ubuntu2004"
     logging.info("Asserting os fixture is different from wrong_os variable")
     assert_that(os != wrong_os).is_true()
-    custom_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture)
+    custom_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture, request=request)
     cluster_config = pcluster_config_reader(custom_ami=custom_ami)
     cluster = clusters_factory(cluster_config, raise_on_error=False)
 
