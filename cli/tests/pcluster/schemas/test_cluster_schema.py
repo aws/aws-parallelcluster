@@ -29,6 +29,7 @@ from pcluster.schemas.cluster_schema import (
     SchedulingSchema,
     SharedStorageSchema,
 )
+from pcluster.utils import replace_url_parameters
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.utils import load_cluster_model_from_yaml
 
@@ -41,7 +42,9 @@ def _check_cluster_schema(config_file_name):
     cluster_schema = ClusterSchema(cluster_name="clustername")
     cluster_schema.context = {"delete_defaults_when_dump": True}
     output_json = cluster_schema.dump(cluster)
-    assert_that(json.dumps(input_yaml, sort_keys=True)).is_equal_to(json.dumps(output_json, sort_keys=True))
+    assert_that(replace_url_parameters(json.dumps(input_yaml, sort_keys=True))).is_equal_to(
+        json.dumps(output_json, sort_keys=True)
+    )
 
     # Print output yaml
     output_yaml = yaml.dump(output_json)
@@ -51,17 +54,21 @@ def _check_cluster_schema(config_file_name):
 @pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.full.yaml"])
 def test_cluster_schema_slurm(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     _check_cluster_schema(config_file_name)
 
 
 @pytest.mark.parametrize("config_file_name", ["awsbatch.simple.yaml", "awsbatch.full.yaml"])
-def test_cluster_schema_awsbatch(test_datadir, config_file_name):
+def test_cluster_schema_awsbatch(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     _check_cluster_schema(config_file_name)
 
 
 @pytest.mark.parametrize("config_file_name", ["byos.required.yaml", "byos.full.yaml"])
 def test_cluster_schema_byos(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     _check_cluster_schema(config_file_name)
 
 
@@ -405,7 +412,6 @@ def test_cloudformation_cluster_infrastructure_schema(mocker, template, failure_
     byos_cloudformation_cluster_infrastructure_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
-    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
     if template:
         byos_cloudformation_cluster_infrastructure_schema["Template"] = template
 
@@ -430,7 +436,6 @@ def test_byos_cluster_shared_artifact_schema(mocker, source, failure_message):
     byos_cluster_shared_artifact_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
-    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
     if source:
         byos_cluster_shared_artifact_schema["Source"] = source
 
@@ -454,7 +459,6 @@ def test_byos_plugin_resources_schema(mocker, artifacts, failure_message):
     byos_plugin_resources_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
-    mocker.patch("pcluster.utils.restore_url_placeholders", return_value="fake_url")
     if artifacts:
         byos_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
     if failure_message:
