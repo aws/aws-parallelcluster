@@ -5,9 +5,6 @@ import pytest
 from assertpy import assert_that
 
 
-@pytest.mark.regions(["us-east-2"])
-@pytest.mark.schedulers(["slurm", "awsbatch"])
-@pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os", "instance")
 def test_resource_bucket(region, scheduler, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Bucket used to host cluster artifacts must have versioning enabled

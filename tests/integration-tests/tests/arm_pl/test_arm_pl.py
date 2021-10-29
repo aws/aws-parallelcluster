@@ -12,15 +12,10 @@
 import logging
 import re
 
-import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 
-@pytest.mark.regions(["ap-northeast-1"])
-@pytest.mark.instances(["m6g.xlarge"])
-@pytest.mark.oss(["ubuntu1804", "alinux2", "centos7"])
-@pytest.mark.schedulers(["slurm"])
 def test_arm_pl(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Arm Performance Library"""
     cluster_config = pcluster_config_reader()
