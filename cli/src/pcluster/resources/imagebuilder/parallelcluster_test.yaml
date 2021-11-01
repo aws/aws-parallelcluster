@@ -2,6 +2,11 @@ name: ParallelClusterTest
 description: Test ParallelCluster AMI
 schemaVersion: 1.0
 
+constants:
+  - CookbookDefaultFile:
+      type: string
+      value: /etc/chef/cookbooks/aws-parallelcluster/attributes/default.rb
+
 phases:
   - name: test
     steps:
@@ -38,3 +43,32 @@ phases:
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status | grep status | grep stopped
               [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
               echo "CloudWatch test passed"
+
+      - name: ByosUser
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              SYSTEM_USER_ID_START=$(grep -F "default['cluster']['byos']['system_user_id_start']" {{ CookbookDefaultFile }})
+              for i in $(seq 0 9);
+              do
+                  UID=$(($i + $SYSTEM_USER_ID_START))
+                  getent passwd ${UID}
+                  [[ $? -eq 0 ]] && echo "uid ${UID} exists, it should be reserved for ParallelCluster system users. Reserved uid range is ${SYSTEM_USER_ID_START} - $(($SYSTEM_USER_ID_START + 9))" && exit 1
+              done
+
+      - name: ByosGroup
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              SYSTEM_GROUP_ID_START=$(grep -F "default['cluster']['byos']['system_group_id_start']" {{ CookbookDefaultFile }})
+
+              for i in $(seq 0 9);
+              do
+                  GID=$(($i + $SYSTEM_GROUP_ID_START))
+                  getent group ${GID}
+                  [[ $? -eq 0 ]] && echo "gid ${GID} exists, it should be reserved for ParallelCluster system group. Reserved gid range is ${SYSTEM_GROUP_ID_START} - $(($SYSTEM_GROUP_ID_START + 9))" && exit 1
+              done
