@@ -5,6 +5,7 @@ CHANGELOG
 -----
 
 **BUG FIXES**
+- Fix issue that is preventing cluster names to start with `parallelcluster-` prefix.
 - Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
   ParallelCluster does not reinstall EFA during node start. Previously, EFA was reinstalled if `GdrSupport` had been
   turned on in the configuration file. The `GdrSupport` parameter has no effect and should no longer be used.
