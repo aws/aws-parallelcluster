@@ -20,7 +20,10 @@ from pcluster.constants import SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ByosCloudFormationClusterInfrastructureSchema,
     ByosClusterSharedArtifactSchema,
+    ByosFileSchema,
+    ByosLogsSchema,
     ByosPluginResourcesSchema,
+    ByosSchedulerDefinitionSchema,
     ByosSupportedDistrosSchema,
     ByosUserSchema,
     ClusterSchema,
@@ -481,3 +484,86 @@ def test_byos_user_schema(name, enable_imds, failure_message):
             assert_that(byos_user.enable_imds).is_equal_to(enable_imds)
         else:
             assert_that(byos_user.enable_imds).is_equal_to(False)
+
+
+@pytest.mark.parametrize(
+    "file_path, timestamp_format, failure_message",
+    [
+        ("/var/log/slurmctld.log", None, None),
+        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", None),
+        (
+            None,
+            "%Y-%m-%d %H:%M:%S,%f",
+            "Missing data for required field.",
+        ),
+    ],
+)
+def test_byos_file_schema(file_path, timestamp_format, failure_message):
+    byos_file_schema = {}
+    if file_path:
+        byos_file_schema["FilePath"] = file_path
+    if timestamp_format:
+        byos_file_schema["TimestampFormat"] = timestamp_format
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosFileSchema().load(byos_file_schema)
+    else:
+        byos_file = ByosFileSchema().load(byos_file_schema)
+        assert_that(byos_file.file_path).is_equal_to(file_path)
+        if timestamp_format:
+            assert_that(byos_file.timestamp_format).is_equal_to(timestamp_format)
+        else:
+            assert_that(byos_file.timestamp_format).is_equal_to("%Y-%m-%dT%H:%M:%S%z")
+
+
+@pytest.mark.parametrize(
+    "files, failure_message",
+    [
+        ([{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"}], None),
+        (
+            [
+                {"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"},
+                {"FilePath": "/var/log/scaling.log", "TimestampFormat": ""},
+            ],
+            None,
+        ),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_byos_logs_schema(files, failure_message):
+    byos_logs_schema = {}
+    if files:
+        byos_logs_schema["Files"] = files
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosLogsSchema().load(byos_logs_schema)
+    else:
+        byos_logs = ByosLogsSchema().load(byos_logs_schema)
+        for file, expected_file in zip(byos_logs.files, files):
+            assert_that(file.file_path).is_equal_to(expected_file["FilePath"])
+            assert_that(file.timestamp_format).is_equal_to(expected_file["TimestampFormat"])
+
+
+@pytest.mark.parametrize(
+    "byos_version, events, failure_message",
+    [
+        ("1.0", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, None),
+        (None, {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "Missing data for required field."),
+        ("1.0", None, "Missing data for required field."),
+    ],
+)
+def test_byos_scheduler_definition_schema(byos_version, events, failure_message):
+    byos_scheduler_definition_schema = {}
+    if byos_version:
+        byos_scheduler_definition_schema["ByosVersion"] = byos_version
+    if events:
+        byos_scheduler_definition_schema["Events"] = events
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosSchedulerDefinitionSchema().load(byos_scheduler_definition_schema)
+    else:
+        byos_scheduler_definition = ByosSchedulerDefinitionSchema().load(byos_scheduler_definition_schema)
+        assert_that(byos_scheduler_definition.byos_version).is_equal_to(byos_version)
+        assert_that(byos_scheduler_definition.events.head_init.execute_command.command).is_equal_to(
+            events["HeadInit"]["ExecuteCommand"]["Command"]
+        )
