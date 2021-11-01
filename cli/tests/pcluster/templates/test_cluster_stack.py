@@ -46,43 +46,130 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
     print(yaml.dump(generated_template))
 
 
-def test_byos_substack(mocker):
+@pytest.mark.parametrize(
+    "config_file_name, expected_byos_stack",
+    [
+        ("byos-without-template.yaml", {}),
+        (
+            "byos-with-template.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
+                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "byos-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": {"Ref": "RoleHeadNode"},
+                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+        (
+            "byos-with-head-node-instance-role.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region."
+                    "amazonaws.com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "byos-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": "",
+                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+        (
+            "byos-with-compute-fleet-instance-role.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
+                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "byos-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": "",
+                        "ComputeFleetRoleNames": "",
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplate7916067054f91933Version": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+        (
+            "byos.full.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
+                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "byos-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": "",
+                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplate7916067054f91933Version": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA46d18b906a50d3aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA46d18b906a50d3a347605B0", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+    ],
+)
+def test_byos_substack(mocker, config_file_name, expected_byos_stack, test_datadir):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
-    input_yaml, cluster = load_cluster_model_from_yaml("byos.full.yaml")
+    if config_file_name == "byos.full.yaml":
+        input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    else:
+        input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
-    assert_that(generated_template["Resources"]["ByosStack"]).is_equal_to(
-        {
-            "Type": "AWS::CloudFormation::Stack",
-            "Properties": {
-                "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws.com"
-                "/parallelcluster/clusters/dummy-cluster-randomstring123/templates/byos-substack.cfn",
-                "Parameters": {
-                    "ClusterName": "clustername",
-                    "ParallelClusterStackId": {"Ref": "AWS::StackId"},
-                    "VpcId": "vpc-123",
-                    "HeadNodeRoleName": "",
-                    "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
-                    "LaunchTemplate1f8c19f38f8d4f7fVersion": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
-                    },
-                    "LaunchTemplateA6f65dee6703df4aVersion": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
-                    },
-                    "LaunchTemplate7916067054f91933Version": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
-                    },
-                    "LaunchTemplateA46d18b906a50d3aVersion": {
-                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA46d18b906a50d3a347605B0", "LatestVersionNumber"]
-                    },
-                },
-            },
-        }
-    )
+    assert_that(generated_template["Resources"].get("ByosStack", {})).is_equal_to(expected_byos_stack)
 
 
 @pytest.mark.parametrize(
