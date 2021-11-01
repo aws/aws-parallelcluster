@@ -49,6 +49,7 @@ from pcluster.config.cluster_config import (
     ByosScheduling,
     ByosSettings,
     ByosSupportedDistros,
+    ByosUser,
     CapacityType,
     CloudWatchDashboards,
     CloudWatchLogs,
@@ -92,6 +93,7 @@ from pcluster.config.cluster_config import (
 )
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
+    BYOS_MAX_NUMBER_OF_USERS,
     DELETION_POLICIES,
     DELETION_POLICIES_WITH_SNAPSHOT,
     EBS_VOLUME_SIZE_DEFAULT,
@@ -1366,6 +1368,18 @@ class ByosMonitoringSchema(BaseSchema):
         return ByosMonitoring(**data)
 
 
+class ByosUserSchema(BaseSchema):
+    """Represent the schema of the BYOS plugin user."""
+
+    name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    enable_imds = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosUser(**data)
+
+
 class ByosSchedulerDefinitionSchema(BaseSchema):
     """Represent the schema of the BYOS plugin SchedulerDefinition."""
 
@@ -1380,6 +1394,12 @@ class ByosSchedulerDefinitionSchema(BaseSchema):
     plugin_resources = fields.Nested(ByosPluginResourcesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     events = fields.Nested(ByosEventsSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     monitoring = fields.Nested(ByosMonitoringSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    system_users = fields.Nested(
+        ByosUserSchema,
+        many=True,
+        validate=validate.Length(max=BYOS_MAX_NUMBER_OF_USERS),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"},
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

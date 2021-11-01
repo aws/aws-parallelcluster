@@ -1729,6 +1729,15 @@ class ByosMonitoring(Resource):
         self.logs = logs
 
 
+class ByosUser(Resource):
+    """Represent the Byos user resource."""
+
+    def __init__(self, name: str, enable_imds: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.name = name
+        self.enable_imds = Resource.init_param(enable_imds, default=False)
+
+
 class ByosSchedulerDefinition(Resource):
     """Represent the Byos scheduler definition."""
 
@@ -1741,6 +1750,7 @@ class ByosSchedulerDefinition(Resource):
         cluster_infrastructure: ByosClusterInfrastructure = None,
         plugin_resources: ByosPluginResources = None,
         monitoring: ByosMonitoring = None,
+        system_users: [ByosUser] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1751,6 +1761,7 @@ class ByosSchedulerDefinition(Resource):
         self.plugin_resources = plugin_resources
         self.events = events
         self.monitoring = monitoring
+        self.system_users = system_users
 
 
 class ByosSettings(Resource):

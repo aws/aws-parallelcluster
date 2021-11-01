@@ -109,6 +109,10 @@ Scheduling:
               TimestampFormat: "%Y-%m-%dT%H:%M:%S.%f"
             - FilePath: "/var/log/aws-autoscaler/logfile.log"
               TimestampFormat: "%Y-%m-%d %H:%M:%S,%f"
+      SystemUsers:
+        - Name: user1
+          EnableImds: true # optional, defaults to 'false'
+        - Name: user2
     GrantSudoPriviledges: true
     CustomSettings:  # here you can add any custom setting
       ScaledownIdletime: 10

@@ -22,6 +22,7 @@ from pcluster.schemas.cluster_schema import (
     ByosClusterSharedArtifactSchema,
     ByosPluginResourcesSchema,
     ByosSupportedDistrosSchema,
+    ByosUserSchema,
     ClusterSchema,
     HeadNodeIamSchema,
     ImageSchema,
@@ -468,3 +469,29 @@ def test_byos_plugin_resources_schema(mocker, artifacts, failure_message):
         byos_plugin_resources = ByosPluginResourcesSchema().load(byos_plugin_resources_schema)
         for artifact, source in zip(byos_plugin_resources.cluster_shared_artifacts, artifacts):
             assert_that(artifact.source).is_equal_to(source)
+
+
+@pytest.mark.parametrize(
+    "name, enable_imds, failure_message",
+    [
+        ("user1", True, None),
+        ("user1", None, None),
+        (None, True, "Missing data for required field."),
+    ],
+)
+def test_byos_user_schema(name, enable_imds, failure_message):
+    byos_user_schema = {}
+    if name:
+        byos_user_schema["Name"] = name
+    if enable_imds:
+        byos_user_schema["EnableImds"] = enable_imds
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            ByosPluginResourcesSchema().load(byos_user_schema)
+    else:
+        byos_user = ByosUserSchema().load(byos_user_schema)
+        assert_that(byos_user.name).is_equal_to(name)
+        if enable_imds:
+            assert_that(byos_user.enable_imds).is_equal_to(enable_imds)
+        else:
+            assert_that(byos_user.enable_imds).is_equal_to(False)
