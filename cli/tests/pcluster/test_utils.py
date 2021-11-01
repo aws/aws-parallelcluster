@@ -274,3 +274,32 @@ def test_datetime_to_epoch(set_tz, time_isoformat, time_zone, expect_output):
     time.tzset()
     datetime_ = utils.to_utc_datetime(time_isoformat)
     assert_that(utils.datetime_to_epoch(datetime_)).is_equal_to(expect_output)
+
+
+@pytest.mark.parametrize(
+    "partition, domain_suffix",
+    [("aws-cn", "amazonaws.com.cn"), ("aws", "amazonaws.com"), ("aws-us-gov", "amazonaws.com")],
+)
+def test_get_url_domain_suffix(mocker, partition, domain_suffix):
+    mocker.patch("pcluster.utils.get_partition", return_value=partition)
+    assert_that(pcluster.utils.get_url_domain_suffix()).is_equal_to(domain_suffix)
+
+
+@pytest.mark.parametrize(
+    "url, expected_url",
+    (
+        [
+            "https://bucket.s3.${Region}.${URLSuffix}/parallelcluster/script.sh",
+            "https://bucket.s3.us-east-1.amazonaws.com/parallelcluster/script.sh",
+        ],
+        ["s3://bucket/parallelcluster/script.sh", "s3://bucket/parallelcluster/script.sh"],
+        [
+            "https://bucket.s3.us-east-1.amazonaws.com/parallelcluster/script.sh",
+            "https://bucket.s3.us-east-1.amazonaws.com/parallelcluster/script.sh",
+        ],
+    ),
+)
+def test_replace_url_parameters(mocker, url, expected_url):
+    mocker.patch("pcluster.utils.get_region", return_value="us-east-1")
+    mocker.patch("pcluster.utils.get_url_domain_suffix", return_value="amazonaws.com")
+    assert_that(pcluster.utils.replace_url_parameters(url)).is_equal_to(expected_url)
