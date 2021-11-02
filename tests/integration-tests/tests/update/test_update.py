@@ -26,7 +26,6 @@ from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import generate_random_string, retrieve_latest_ami
 
 
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for pre/post install scripts
@@ -208,8 +207,8 @@ def _assert_launch_templates_config(queues_config, cluster_name, region):
     logging.info("Checking launch templates")
     ec2_client = boto3.client("ec2", region_name=region)
     for queue, queue_config in queues_config.items():
-        for compute_resource_config in queue_config["compute_resources"].values():
-            launch_template_name = f"{cluster_name}-{queue}-{compute_resource_config.get('instance_type')}"
+        for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
+            launch_template_name = f"{cluster_name}-{queue}-{compute_resource_name}"
             logging.info("Validating LaunchTemplate: %s", launch_template_name)
             launch_template_data = ec2_client.describe_launch_template_versions(
                 LaunchTemplateName=launch_template_name, Versions=["$Latest"]
@@ -353,7 +352,6 @@ def _check_extra_json(command_executor, slurm_commands, host, expected_value):
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
 
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("os", "instance")
 def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
     # Create cluster with initial configuration
@@ -382,13 +380,7 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir, request):
     # Create cluster with initial configuration
     ec2 = boto3.client("ec2", region)
-    # release branch tests has stackname_suffix started with r
-    additional_filters = (
-        [{"Name": "is-public", "Values": ["true"]}]
-        if request.config.getoption("stackname_suffix").startswith("r")
-        else []
-    )
-    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster", additional_filters=additional_filters)
+    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster", request=request)
     init_config_file = pcluster_config_reader(global_custom_ami=pcluster_ami_id)
     cluster = clusters_factory(init_config_file)
     instances = cluster.get_cluster_instance_ids(node_type="Compute")

@@ -21,10 +21,6 @@ from troposphere.ec2 import PlacementGroup
 from utils import generate_stack_name
 
 
-@pytest.mark.regions(["eu-central-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os", "instance", "scheduler", "region")
 def test_placement_group(region, pcluster_config_reader, placement_group_stack, clusters_factory, instance):
     """Test the case when placement_group is in queue section. This test is only for slurm."""
