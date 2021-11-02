@@ -13,7 +13,6 @@ import logging
 import re
 from shutil import copyfile
 
-import pytest
 from assertpy import assert_that
 from constants import OSU_BENCHMARK_VERSION
 from remote_command_executor import RemoteCommandExecutor
@@ -26,10 +25,6 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5n.18xlarge"])
-@pytest.mark.oss(["alinux2"])
-@pytest.mark.schedulers(["slurm"])
 def test_efa(
     os,
     region,

@@ -1092,7 +1092,6 @@ class SlurmQueueSchema(_CommonQueueSchema):
     compute_resources = fields.Nested(
         SlurmComputeResourceSchema,
         many=True,
-        validate=validate.Length(max=MAX_NUMBER_OF_COMPUTE_RESOURCES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     networking = fields.Nested(
@@ -1435,7 +1434,6 @@ class SchedulingSchema(BaseSchema):
     slurm_queues = fields.Nested(
         SlurmQueueSchema,
         many=True,
-        validate=validate.Length(max=MAX_NUMBER_OF_QUEUES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     # Awsbatch schema:

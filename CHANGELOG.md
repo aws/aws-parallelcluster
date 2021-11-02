@@ -1,14 +1,17 @@
 CHANGELOG
 =========
 
-3.X.X
+X.X.X
 ------
 
 **ENHANCEMENTS**
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
+- Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
+- Add support for multiple compute resources with same instance type per queue.
 
 **CHANGES**
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
+- Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
 
 3.0.1
 ------
@@ -117,12 +120,6 @@ CHANGELOG
 - Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
 - Remove installation of MPICH and FFTW packages.
 - Remove Ganglia support.
-
-2.11.3
------
-
-**CHANGES**
-- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
 
 2.11.2
 -----
