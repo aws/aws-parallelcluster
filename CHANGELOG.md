@@ -4,7 +4,7 @@ CHANGELOG
 3.0.2
 -----
 
-**BUG FIXES**
+**CHANGES**
 - Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
   ParallelCluster does not reinstall EFA during node start. Previously, EFA was reinstalled if `GdrSupport` had been
   turned on in the configuration file. The `GdrSupport` parameter has no effect and should no longer be used.
@@ -14,6 +14,9 @@ CHANGELOG
   - RDMA core: ``rdma-core-37.0``
   - Libfabric: ``libfabric-1.13.2``
   - Open MPI: ``openmpi40-aws-4.1.1-2``
+
+**BUG FIXES**
+- Fix issue that is preventing cluster names to start with `parallelcluster-` prefix.
 
 3.0.1
 ------
