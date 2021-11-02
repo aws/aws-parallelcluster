@@ -207,8 +207,8 @@ def _assert_launch_templates_config(queues_config, cluster_name, region):
     logging.info("Checking launch templates")
     ec2_client = boto3.client("ec2", region_name=region)
     for queue, queue_config in queues_config.items():
-        for compute_resource_config in queue_config["compute_resources"].values():
-            launch_template_name = f"{cluster_name}-{queue}-{compute_resource_config.get('instance_type')}"
+        for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
+            launch_template_name = f"{cluster_name}-{queue}-{compute_resource_name}"
             logging.info("Validating LaunchTemplate: %s", launch_template_name)
             launch_template_data = ec2_client.describe_launch_template_versions(
                 LaunchTemplateName=launch_template_name, Versions=["$Latest"]
