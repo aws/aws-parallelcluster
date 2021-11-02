@@ -35,6 +35,7 @@ import pcluster.cli.model
 from pcluster.api import encoder
 from pcluster.cli.commands.common import CliCommand, exit_msg, to_bool, to_int, to_number
 from pcluster.cli.exceptions import APIOperationException, ParameterException
+from pcluster.cli.logger import redirect_stdouterr_to_logger
 from pcluster.cli.middleware import add_additional_args, middleware_hooks
 from pcluster.utils import to_camel_case, to_snake_case
 
@@ -167,7 +168,8 @@ def add_cli_commands(parser_map):
 def _run_operation(model, args, extra_args):
     if args.operation in model:
         try:
-            return args.func(args)
+            with redirect_stdouterr_to_logger():
+                return args.func(args)
         except KeyboardInterrupt as e:
             raise e
         except APIOperationException as e:

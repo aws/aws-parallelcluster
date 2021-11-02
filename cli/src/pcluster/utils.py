@@ -271,7 +271,8 @@ def error(message) -> NoReturn:
 
 
 def get_cli_log_file():
-    return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+    default_log_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+    return os.environ.get("PCLUSTER_LOG_FILE", default=default_log_file)
 
 
 def ellipsize(text, max_length):
