@@ -11,16 +11,14 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
-from shutil import copyfile
 
 from assertpy import assert_that
-from constants import OSU_BENCHMARK_VERSION
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
-from tests.common.osu_common import compile_osu, render_jinja_template
+from tests.common.osu_common import run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
@@ -216,45 +214,6 @@ def _test_osu_benchmarks_multiple_bandwidth(
     # OMPI 4.0.5: ~95Gbps = 11875MB/s with Placement Group
     expected_bandwidth = 30000
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
-
-
-def run_osu_benchmarks(
-    mpi_version,
-    benchmark_group,
-    benchmark_name,
-    partition,
-    remote_command_executor,
-    scheduler_commands,
-    num_of_instances,
-    slots_per_instance,
-    test_datadir,
-):
-    logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
-
-    compile_osu(mpi_version, remote_command_executor)
-
-    # Prepare submission script and pass to the scheduler for the job submission
-    copyfile(
-        test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}.sh",
-        test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
-    )
-    slots = num_of_instances * slots_per_instance
-    submission_script = render_jinja_template(
-        template_file_path=test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
-        benchmark_name=benchmark_name,
-        osu_benchmark_version=OSU_BENCHMARK_VERSION,
-        num_of_processes=slots,
-    )
-    if partition:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots, partition=partition)
-    else:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    output = remote_command_executor.run_remote_command(f"cat /shared/{benchmark_name}.out").stdout
-    return output
 
 
 def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output):
