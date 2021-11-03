@@ -49,6 +49,7 @@ def run_osu_benchmarks(
     test_datadir,
     submission_script_template_path=None,
     rendered_template_path=None,
+    timeout=None,
 ):
     """
     Run the given OSU benchmark.
@@ -65,6 +66,7 @@ def run_osu_benchmarks(
     :param test_datadir: Path, used to construct default output path when rendering submission script template
     :param submission_script_template_path: string, override default path for source submission script template
     :param rendered_template_path: string, override destination path when rendering submission script template
+    :param timeout: int, maximum number of minutes to wait for job to complete
     :return: string, stdout of the benchmark job
     """
     logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
@@ -92,7 +94,7 @@ def run_osu_benchmarks(
     else:
         result = scheduler_commands.submit_script(str(submission_script), slots=slots)
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.wait_job_completed(job_id, timeout=timeout)
     scheduler_commands.assert_job_succeeded(job_id)
 
     output = remote_command_executor.run_remote_command(f"cat /shared/{benchmark_name}.out").stdout
