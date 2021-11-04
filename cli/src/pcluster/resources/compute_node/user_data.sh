@@ -78,6 +78,7 @@ write_files:
           "enable_intel_hpc_platform": "${IntelHPCPlatform}",
           "cw_logging_enabled": "${CWLoggingEnabled}",
           "scheduler_queue_name": "${QueueName}",
+          "scheduler_compute_resource_name": "${ComputeResourceName}",
           "enable_efa_gdr": "${EnableEfaGdr}",
           "custom_node_package": "${CustomNodePackage}",
           "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",

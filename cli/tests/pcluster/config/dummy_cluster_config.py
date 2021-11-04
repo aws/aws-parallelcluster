@@ -17,6 +17,16 @@ from pcluster.config.cluster_config import (
     AwsBatchQueue,
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
+    ByosClusterConfig,
+    ByosComputeResource,
+    ByosEvent,
+    ByosEvents,
+    ByosExecuteCommand,
+    ByosQueue,
+    ByosQueueNetworking,
+    ByosSchedulerDefinition,
+    ByosScheduling,
+    ByosSettings,
     ClusterIam,
     Dcv,
     HeadNode,
@@ -64,6 +74,25 @@ class _DummyAwsBatchClusterConfig(AwsBatchClusterConfig):
     """Generate dummy Slurm cluster config."""
 
     def __init__(self, scheduling: AwsBatchScheduling, **kwargs):
+        super().__init__("clustername", scheduling, **kwargs)
+
+    @property
+    def region(self):
+        return "us-east-1"
+
+    @property
+    def partition(self):
+        return "aws"
+
+    @property
+    def vpc_id(self):
+        return "dummy_vpc_id"
+
+
+class _DummyByosClusterConfig(ByosClusterConfig):
+    """Generate dummy Byos cluster config."""
+
+    def __init__(self, scheduling: ByosScheduling, **kwargs):
         super().__init__("clustername", scheduling, **kwargs)
 
     @property
@@ -166,6 +195,55 @@ def dummy_awsbatch_cluster_config(mocker):
     shared_storage.append(dummy_raid("/raid1"))
 
     cluster = _DummyAwsBatchClusterConfig(
+        image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
+    )
+    cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
+    cluster.additional_resources = "https://additional.template.url"
+    cluster.config_version = "1.0"
+    cluster.iam = ClusterIam()
+
+    cluster.tags = [Tag(key="test", value="testvalue")]
+    return cluster
+
+
+def dummy_byos_cluster_config(mocker):
+    """Generate dummy cluster."""
+    image = Image(os="alinux2")
+    head_node = dummy_head_node(mocker)
+    queue_iam = Iam(
+        s3_access=[
+            S3Access("dummy-readonly-bucket", enable_write_access=True),
+            S3Access("dummy-readwrite-bucket"),
+        ]
+    )
+    compute_resources = [
+        ByosComputeResource(
+            name="dummy_compute_resource1", instance_type="dummyc5.xlarge", custom_settings={"key1": "value1"}
+        )
+    ]
+    queue_networking1 = ByosQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
+    queue_networking2 = ByosQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
+    queue_networking3 = ByosQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
+    queues = [
+        ByosQueue(name="queue1", networking=queue_networking1, compute_resources=compute_resources, iam=queue_iam),
+        ByosQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
+        ByosQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
+    ]
+
+    byos_settings = ByosSettings(
+        ByosSchedulerDefinition(byos_version="1.0", events=ByosEvents(head_init=ByosEvent(ByosExecuteCommand("test"))))
+    )
+    scheduling = ByosScheduling(queues=queues, settings=byos_settings)
+    # shared storage
+    shared_storage: List[Resource] = []
+    shared_storage.append(dummy_fsx())
+    shared_storage.append(dummy_ebs("/ebs1"))
+    shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))
+    shared_storage.append(dummy_ebs("/ebs3", raid=Raid(raid_type=1, number_of_volumes=5)))
+    shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
+    shared_storage.append(dummy_raid("/raid1"))
+
+    cluster = _DummyByosClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"

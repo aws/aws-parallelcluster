@@ -20,25 +20,20 @@ from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.config.dummy_cluster_config import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
 from tests.pcluster.utils import load_cluster_model_from_yaml
 
 
-def test_slurm_cluster_builder(mocker):
-    mock_aws_api(mocker)
-    # mock bucket initialization parameters
-    mock_bucket(mocker)
-
-    generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_slurm_cluster_config(mocker), bucket=dummy_cluster_bucket(), stack_name="clustername"
-    )
-    print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template
-
-
 @pytest.mark.parametrize(
-    "config_file_name", ["slurm.required.yaml", "slurm.full.yaml", "awsbatch.simple.yaml", "awsbatch.full.yaml"]
+    "config_file_name",
+    [
+        "slurm.required.yaml",
+        "slurm.full.yaml",
+        "awsbatch.simple.yaml",
+        "awsbatch.full.yaml",
+        "byos.required.yaml",
+        "byos.full.yaml",
+    ],
 )
 def test_cluster_builder_from_configuration_file(mocker, config_file_name):
     mock_aws_api(mocker)
@@ -51,16 +46,43 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
     print(yaml.dump(generated_template))
 
 
-def test_awsbatch_cluster_builder(mocker):
+def test_byos_substack(mocker):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
-
+    input_yaml, cluster = load_cluster_model_from_yaml("byos.full.yaml")
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_awsbatch_cluster_config(mocker), bucket=dummy_cluster_bucket(), stack_name="clustername"
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template
+    assert_that(generated_template["Resources"]["ByosStack"]).is_equal_to(
+        {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws.com"
+                "/parallelcluster/clusters/dummy-cluster-randomstring123/templates/byos-substack.cfn",
+                "Parameters": {
+                    "ClusterName": "clustername",
+                    "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                    "VpcId": "vpc-123",
+                    "HeadNodeRoleName": "",
+                    "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                    "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                    },
+                    "LaunchTemplateA6f65dee6703df4aVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                    },
+                    "LaunchTemplate7916067054f91933Version": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                    },
+                    "LaunchTemplateA46d18b906a50d3aVersion": {
+                        "Fn::GetAtt": ["ComputeFleetLaunchTemplateA46d18b906a50d3a347605B0", "LatestVersionNumber"]
+                    },
+                },
+            },
+        }
+    )
 
 
 @pytest.mark.parametrize(
@@ -69,6 +91,7 @@ def test_awsbatch_cluster_builder(mocker):
         ("slurm-imds-secured-true.yaml", "slurm-imds-secured-true.head-node.dna.json"),
         ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
         ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
+        ("byos-imds-secured-true.yaml", "byos-imds-secured-true.head-node.dna.json"),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value
