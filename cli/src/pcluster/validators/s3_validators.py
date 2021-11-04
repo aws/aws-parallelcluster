@@ -17,14 +17,14 @@ class UrlValidator(Validator):
     Validate given url with s3 or https prefix.
     """
 
-    def _validate(self, url, retries=3):
+    def _validate(self, url, retries=3, fail_on_https_error: bool = False, fail_on_s3_error: bool = False):
         scheme = get_url_scheme(url)
         if scheme in ["https", "s3"]:
             try:
                 if scheme == "s3":
-                    self._validate_s3_uri(url)
+                    self._validate_s3_uri(url, fail_on_error=fail_on_s3_error)
                 else:
-                    self._validate_https_uri(url)
+                    self._validate_https_uri(url, fail_on_error=fail_on_https_error)
             except ConnectionError as e:
                 if retries > 0:
                     time.sleep(5)
@@ -38,7 +38,7 @@ class UrlValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-    def _validate_s3_uri(self, url: str):
+    def _validate_s3_uri(self, url: str, fail_on_error: bool):
         try:
             match = re.match(r"s3://(.*?)/(.*)", url)
             if not match or len(match.groups()) < 2:
@@ -49,9 +49,12 @@ class UrlValidator(Validator):
 
         except AWSClientError:
             # Todo: Check that bucket is in s3_read_resource or s3_read_write_resource.
-            self._add_failure(("The S3 object does not exist or you do not have access to it."), FailureLevel.ERROR)
+            self._add_failure(
+                f"The S3 object '{url}' does not exist or you do not have access to it.",
+                FailureLevel.ERROR if fail_on_error else FailureLevel.WARNING,
+            )
 
-    def _validate_https_uri(self, url: str):
+    def _validate_https_uri(self, url: str, fail_on_error: bool):
         try:
             with urlopen(url):  # nosec nosemgrep
                 pass
@@ -59,12 +62,12 @@ class UrlValidator(Validator):
             self._add_failure(
                 f"The url '{url}' causes HTTPError, the error code is '{e.code}',"
                 f" the error reason is '{e.reason}'.",
-                FailureLevel.WARNING,
+                FailureLevel.ERROR if fail_on_error else FailureLevel.WARNING,
             )
         except URLError as e:
             self._add_failure(
                 f"The url '{url}' causes URLError, the error reason is '{e.reason}'.",
-                FailureLevel.WARNING,
+                FailureLevel.ERROR if fail_on_error else FailureLevel.WARNING,
             )
         except ValueError:
             self._add_failure(

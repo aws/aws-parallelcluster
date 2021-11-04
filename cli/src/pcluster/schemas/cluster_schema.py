@@ -28,7 +28,28 @@ from pcluster.config.cluster_config import (
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
     AwsBatchSettings,
-    BaseClusterConfig,
+    ByosCloudFormationInfrastructure,
+    ByosClusterConfig,
+    ByosClusterInfrastructure,
+    ByosClusterSharedArtifact,
+    ByosComputeResource,
+    ByosComputeResourceConstraints,
+    ByosEvent,
+    ByosEvents,
+    ByosExecuteCommand,
+    ByosFile,
+    ByosLogs,
+    ByosMonitoring,
+    ByosPluginResources,
+    ByosQueue,
+    ByosQueueConstraints,
+    ByosQueueNetworking,
+    ByosRequirements,
+    ByosSchedulerDefinition,
+    ByosScheduling,
+    ByosSettings,
+    ByosSupportedDistros,
+    ByosUser,
     CapacityType,
     CloudWatchDashboards,
     CloudWatchLogs,
@@ -72,11 +93,14 @@ from pcluster.config.cluster_config import (
 )
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
+    BYOS_MAX_NUMBER_OF_USERS,
     DELETION_POLICIES,
     DELETION_POLICIES_WITH_SNAPSHOT,
     EBS_VOLUME_SIZE_DEFAULT,
     FSX_HDD_THROUGHPUT,
     FSX_SSD_THROUGHPUT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
     SUPPORTED_OSES,
 )
 from pcluster.schemas.common_schema import (
@@ -581,6 +605,15 @@ class AwsBatchQueueNetworkingSchema(QueueNetworkingSchema):
         return AwsBatchQueueNetworking(**data)
 
 
+class ByosQueueNetworkingSchema(SlurmQueueNetworkingSchema):
+    """Represent the schema of the Networking, child of byos Queue."""
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosQueueNetworking(**data)
+
+
 class SshSchema(BaseSchema):
     """Represent the schema of the SSH."""
 
@@ -1010,6 +1043,17 @@ class AwsBatchComputeResourceSchema(_ComputeResourceSchema):
         return AwsBatchComputeResource(**data)
 
 
+class ByosComputeResourceSchema(SlurmComputeResourceSchema):
+    """Represent the schema of the Byos ComputeResource."""
+
+    custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosComputeResource(**data)
+
+
 class ComputeSettingsSchema(BaseSchema):
     """Represent the schema of the compute_settings schedulers queues."""
 
@@ -1031,20 +1075,25 @@ class BaseQueueSchema(BaseSchema):
     )
 
 
-class SlurmQueueSchema(BaseQueueSchema):
-    """Represent the schema of a Slurm Queue."""
+class _CommonQueueSchema(BaseQueueSchema):
+    """Represent the schema of common part between Slurm and Byos Queue."""
 
     compute_settings = fields.Nested(ComputeSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    compute_resources = fields.Nested(
-        SlurmComputeResourceSchema,
-        many=True,
-        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
-    )
     custom_actions = fields.Nested(
         QueueCustomActionsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
     iam = fields.Nested(QueueIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
     image = fields.Nested(QueueImageSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+
+
+class SlurmQueueSchema(_CommonQueueSchema):
+    """Represent the schema of a Slurm Queue."""
+
+    compute_resources = fields.Nested(
+        SlurmComputeResourceSchema,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+    )
     networking = fields.Nested(
         SlurmQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
@@ -1072,6 +1121,26 @@ class AwsBatchQueueSchema(BaseQueueSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return AwsBatchQueue(**data)
+
+
+class ByosQueueSchema(_CommonQueueSchema):
+    """Represent the schema of a BYOS Queue."""
+
+    compute_resources = fields.Nested(
+        ByosComputeResourceSchema,
+        many=True,
+        validate=validate.Length(max=MAX_NUMBER_OF_COMPUTE_RESOURCES),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+    )
+    networking = fields.Nested(
+        ByosQueueNetworkingSchema, required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+    )
+    custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosQueue(**data)
 
 
 class DnsSchema(BaseSchema):
@@ -1108,12 +1177,256 @@ class AwsBatchSettingsSchema(BaseSchema):
         return AwsBatchSettings(**data)
 
 
+class ByosSupportedDistrosSchema(BaseSchema):
+    """Represent the schema for SupportedDistros in a BYOS plugin."""
+
+    x86 = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    arm64 = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosSupportedDistros(**data)
+
+
+class ByosQueueConstraintsSchema(BaseSchema):
+    """Represent the schema for QueueConstraints in a BYOS plugin."""
+
+    max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    max_subnets_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosQueueConstraints(**data)
+
+
+class ByosComputeResourceConstraintsSchema(BaseSchema):
+    """Represent the schema for ComputeResourceConstraints in a BYOS plugin."""
+
+    max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    max_instance_types_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosComputeResourceConstraints(**data)
+
+
+class ByosRequirementsSchema(BaseSchema):
+    """Represent the schema for Requirements in a BYOS plugin."""
+
+    supported_distros = fields.Nested(ByosSupportedDistrosSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    supported_regions = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    queue_constraints = fields.Nested(ByosQueueConstraintsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    compute_resource_constraints = fields.Nested(
+        ByosComputeResourceConstraintsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+    requires_sudo_priviledges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    supports_cluster_update = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    supported_parallel_cluster_versions = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosRequirements(**data)
+
+
+class ByosCloudFormationClusterInfrastructureSchema(BaseSchema):
+    """Represent the CloudFormation section of the BYOS ClusterInfrastructure schema."""
+
+    template = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosCloudFormationInfrastructure(**data)
+
+
+class ByosClusterInfrastructureSchema(BaseSchema):
+    """Represent the schema for ClusterInfrastructure schema in a BYOS plugin."""
+
+    cloud_formation = fields.Nested(
+        ByosCloudFormationClusterInfrastructureSchema,
+        required=True,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosClusterInfrastructure(**data)
+
+
+class ByosClusterSharedArtifactSchema(BaseSchema):
+    """Represent the schema for Cluster Shared Artifact in a BYOS plugin."""
+
+    source = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosClusterSharedArtifact(**data)
+
+
+class ByosPluginResourcesSchema(BaseSchema):
+    """Represent the schema for Plugin Resouces in a BYOS plugin."""
+
+    cluster_shared_artifacts = fields.Nested(
+        ByosClusterSharedArtifactSchema,
+        many=True,
+        required=True,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Source"},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosPluginResources(**data)
+
+
+class ByosExecuteCommandSchema(BaseSchema):
+    """Represent the schema for ExecuteCommand in a BYOS plugin."""
+
+    command = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosExecuteCommand(**data)
+
+
+class ByosEventSchema(BaseSchema):
+    """Represent the schema for Event in a BYOS plugin."""
+
+    execute_command = fields.Nested(
+        ByosExecuteCommandSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosEvent(**data)
+
+
+class ByosEventsSchema(BaseSchema):
+    """Represent the schema for Events in a BYOS plugin."""
+
+    head_init = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    head_configure = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    head_finalize = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    compute_init = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    compute_configure = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    compute_finalize = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    head_cluster_update = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    head_compute_fleet_start = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    head_compute_fleet_stop = fields.Nested(ByosEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosEvents(**data)
+
+
+class ByosFileSchema(BaseSchema):
+    """Represent the schema of the BYOS plugin file."""
+
+    file_path = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    timestamp_format = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosFile(**data)
+
+
+class ByosLogsSchema(BaseSchema):
+    """Represent the schema of the BYOS plugin Logs."""
+
+    files = fields.Nested(
+        ByosFileSchema,
+        required=True,
+        many=True,
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "FilePath"},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosLogs(**data)
+
+
+class ByosMonitoringSchema(BaseSchema):
+    """Represent the schema of the BYOS plugin Monitoring."""
+
+    logs = fields.Nested(ByosLogsSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosMonitoring(**data)
+
+
+class ByosUserSchema(BaseSchema):
+    """Represent the schema of the BYOS plugin user."""
+
+    name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    enable_imds = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosUser(**data)
+
+
+class ByosSchedulerDefinitionSchema(BaseSchema):
+    """Represent the schema of the BYOS plugin SchedulerDefinition."""
+
+    byos_version = fields.Str(
+        required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["1.0"])
+    )
+    metadata = fields.Dict(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    requirements = fields.Nested(ByosRequirementsSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    cluster_infrastructure = fields.Nested(
+        ByosClusterInfrastructureSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+    plugin_resources = fields.Nested(ByosPluginResourcesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    events = fields.Nested(ByosEventsSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    monitoring = fields.Nested(ByosMonitoringSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    system_users = fields.Nested(
+        ByosUserSchema,
+        many=True,
+        validate=validate.Length(max=BYOS_MAX_NUMBER_OF_USERS),
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"},
+    )
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosSchedulerDefinition(**data)
+
+
+class ByosSettingsSchema(BaseSchema):
+    """Represent the schema of the Scheduling Settings."""
+
+    scheduler_definition = fields.Nested(
+        ByosSchedulerDefinitionSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
+    grant_sudo_priviledges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    custom_settings = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ByosSettings(**data)
+
+
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
     scheduler = fields.Str(
         required=True,
-        validate=validate.OneOf(["slurm", "awsbatch", "custom"]),
+        validate=validate.OneOf(["slurm", "awsbatch", "byos"]),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
     )
     # Slurm schema
@@ -1133,14 +1446,22 @@ class SchedulingSchema(BaseSchema):
     aws_batch_settings = fields.Nested(
         AwsBatchSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
     )
+    # Byos
+    byos_settings = fields.Nested(ByosSettingsSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    byos_queues = fields.Nested(
+        ByosQueueSchema,
+        many=True,
+        validate=validate.Length(max=MAX_NUMBER_OF_QUEUES),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
+    )
 
     @validates_schema
     def no_coexist_schedulers(self, data, **kwargs):
         """Validate that *_settings and *_queues for different schedulers do not co-exist."""
         scheduler = data.get("scheduler")
-        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings"], **kwargs):
+        if self.fields_coexist(data, ["aws_batch_settings", "slurm_settings", "byos_settings"], **kwargs):
             raise ValidationError("Multiple *Settings sections cannot be specified in the Scheduling section.")
-        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues"], one_required=True, **kwargs):
+        if self.fields_coexist(data, ["aws_batch_queues", "slurm_queues", "byos_queues"], one_required=True, **kwargs):
             scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
             raise ValidationError(f"{scheduler_prefix}Queues section must be specified in the Scheduling section.")
 
@@ -1150,6 +1471,7 @@ class SchedulingSchema(BaseSchema):
         for scheduler, settings, queues in [
             ("awsbatch", "aws_batch_settings", "aws_batch_queues"),
             ("slurm", "slurm_settings", "slurm_queues"),
+            ("byos", "byos_settings", "byos_queues"),
         ]:
             # Verify the settings section is associated to the right scheduler type
             configured_scheduler = data.get("scheduler")
@@ -1181,12 +1503,12 @@ class SchedulingSchema(BaseSchema):
         scheduler = data.get("scheduler")
         if scheduler == "slurm":
             return SlurmScheduling(queues=data.get("slurm_queues"), settings=data.get("slurm_settings", None))
+        if scheduler == "byos":
+            return ByosScheduling(queues=data.get("byos_queues"), settings=data.get("byos_settings", None))
         if scheduler == "awsbatch":
             return AwsBatchScheduling(
                 queues=data.get("aws_batch_queues"), settings=data.get("aws_batch_settings", None)
             )
-        # if data.get("custom_queues"):
-        #    return CustomScheduling(**data)
         return None
 
     @pre_dump
@@ -1257,8 +1579,10 @@ class ClusterSchema(BaseSchema):
             cluster = SlurmClusterConfig(cluster_name=self.cluster_name, **data)
         elif scheduler == "awsbatch":
             cluster = AwsBatchClusterConfig(cluster_name=self.cluster_name, **data)
-        else:  # scheduler == "custom":
-            cluster = BaseClusterConfig(cluster_name=self.cluster_name, **data)  # FIXME Must be ByosCluster
+        elif scheduler == "byos":
+            cluster = ByosClusterConfig(cluster_name=self.cluster_name, **data)
+        else:
+            raise ValidationError(f"Unsupported scheduler {scheduler}.")
 
         cluster.source_config = original_data
         return cluster
