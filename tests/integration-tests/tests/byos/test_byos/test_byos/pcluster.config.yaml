@@ -14,11 +14,58 @@ Scheduling:
       Events:
         HeadInit:
           ExecuteCommand:
-            Command: env
+            Command: env && echo "HeadInit executed"
+        HeadConfigure:
+          ExecuteCommand:
+            Command: env && echo "HeadConfigure executed"
+        HeadFinalize:
+          ExecuteCommand:
+            Command: env && echo "HeadFinalize executed"
+        ComputeInit:
+          ExecuteCommand:
+            Command: env && echo "ComputeInit executed"
+        ComputeConfigure:
+          ExecuteCommand:
+            Command: env && echo "ComputeConfigure executed"
+        ComputeFinalize:
+          ExecuteCommand:
+            Command: env && echo "ComputeFinalize executed"
+        HeadClusterUpdate:
+          ExecuteCommand:
+            Command: env && echo "HeadClusterUpdate executed"
+        HeadComputeFleetStart:
+          ExecuteCommand:
+            Command: env && echo "HeadComputeFleetStart executed"
+        HeadComputeFleetStop:
+          ExecuteCommand:
+            Command: env && echo "HeadComputeFleetStop executed"
+      PluginResources:
+        ClusterSharedArtifacts:
+          - Source: https://github.com/aws/aws-parallelcluster/archive/refs/heads/develop.zip
+          - Source: s3://{{ bucket }}/byos/artifact
+      ClusterInfrastructure:
+        CloudFormation:
+          Template: s3://{{ bucket }}/byos/byos_infra.cfn.yaml
+      SystemUsers:
+        - Name: {{ user1 }}
+          EnableImds: false
+        - Name: {{ user2 }}
+          EnableImds: true
   ByosQueues:
-    - Name: compute
+    - Name: q1
+      CapacityType: ONDEMAND
       ComputeResources:
-        - Name: compute-i1
+        - Name: c1
+          InstanceType: {{ instance }}
+        - Name: c2
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: q2
+      CapacityType: ONDEMAND
+      ComputeResources:
+        - Name: c1
           InstanceType: {{ instance }}
       Networking:
         SubnetIds:
