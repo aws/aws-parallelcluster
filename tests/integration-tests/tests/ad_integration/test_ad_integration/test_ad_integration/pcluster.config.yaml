@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_subnet_id }}
+    SubnetId: {{ directory_subnet }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -32,7 +32,7 @@ Scheduling:
           MaxCount: 3000
       Networking:
         SubnetIds:
-          - {{ public_subnet_id }}
+          - {{ directory_subnet }}
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AdministratorAccess
