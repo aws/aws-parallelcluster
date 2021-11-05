@@ -1374,6 +1374,7 @@ class ComputeFleetConstruct(Construct):
                     name=instance_profiles[queue.name]
                 ),
                 instance_market_options=instance_market_options,
+                instance_initiated_shutdown_behavior="terminate",
                 user_data=Fn.base64(
                     Fn.sub(
                         get_user_data_content("../resources/compute_node/user_data.sh"),
