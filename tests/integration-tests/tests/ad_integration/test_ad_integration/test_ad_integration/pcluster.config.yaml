@@ -53,7 +53,10 @@ Monitoring:
       RetentionInDays: 14
 SharedStorage:
   - MountDir: /shared
-    Name: name1
+    Name: fsx
     StorageType: FsxLustre
     FsxLustreSettings:
       StorageCapacity: 2400
+  - MountDir: /ebs
+    Name: ebs
+    StorageType: Ebs
