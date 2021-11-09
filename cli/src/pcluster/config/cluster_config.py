@@ -111,6 +111,7 @@ from pcluster.validators.s3_validators import (
     S3BucketValidator,
     UrlValidator,
 )
+from pcluster.validators.scheduler_plugin_validators import SudoPrivilegesValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1789,6 +1790,15 @@ class SchedulerPluginSettings(Resource):
         self.scheduler_definition = scheduler_definition
         self.grant_sudo_privileges = Resource.init_param(grant_sudo_privileges, default=False)
         self.custom_settings = custom_settings
+
+    def _register_validators(self):
+        self._register_validator(
+            SudoPrivilegesValidator,
+            grant_sudo_privileges=self.grant_sudo_privileges,
+            requires_sudo_privileges=self.scheduler_definition.requirements.requires_sudo_privileges
+            if self.scheduler_definition.requirements
+            else None,
+        )
 
 
 class SchedulerPluginScheduling(Resource):
