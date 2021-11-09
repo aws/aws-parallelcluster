@@ -5,6 +5,13 @@ arm_pl:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm"]
+byos:
+  test_byos.py::test_byos:
+    dimensions:
+      - regions: ["ca-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["byos"]
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
     dimensions:

@@ -7,9 +7,14 @@ X.X.X
 **ENHANCEMENTS**
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
+- Add support for multiple compute resources with same instance type per queue.
 
 **CHANGES**
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
+- Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
+
+**BUG FIXES**
+- Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
 
 3.0.1
 ------

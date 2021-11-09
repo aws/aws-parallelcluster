@@ -155,5 +155,4 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
-test/test_list_official_images_response_content.py
 tox.ini

@@ -2,6 +2,11 @@ name: ParallelClusterTest
 description: Test ParallelCluster AMI
 schemaVersion: 1.0
 
+constants:
+  - CookbookDefaultFile:
+      type: string
+      value: /etc/chef/cookbooks/aws-parallelcluster/attributes/default.rb
+
 phases:
   - name: test
     steps:
@@ -14,6 +19,16 @@ phases:
               set -v
               NVSWITCHES=$(lspci -d 10de:1af1 | wc -l)
               echo "${NVSWITCHES}"
+
+      - name: BaseUID
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['reserved_base_uid']" {{ CookbookDefaultFile }})
+              RESERVED_BASE_UID=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo "${RESERVED_BASE_UID}"
 
       ### tests ###
       - name: FabricManager
@@ -38,3 +53,33 @@ phases:
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status | grep status | grep stopped
               [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
               echo "CloudWatch test passed"
+
+      - name: ByosUser
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              SYSTEM_USER_ID_START=$(( {{ test.BaseUID.outputs.stdout }} + 10 ))
+              for i in $(seq 0 9);
+              do
+                  USER_ID=$(($i + $SYSTEM_USER_ID_START))
+                  getent passwd ${USER_ID}
+                  [[ $? -eq 0 ]] && echo "uid ${USER_ID} exists, it should be reserved for ParallelCluster system users. Reserved uid range is ${SYSTEM_USER_ID_START} - $(($SYSTEM_USER_ID_START + 9))" && exit 1
+              done
+              echo "ByosUser test passed"
+
+      - name: ByosGroup
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              SYSTEM_GROUP_ID_START=$(( {{ test.BaseUID.outputs.stdout }} + 10 ))
+              for i in $(seq 0 9);
+              do
+                  GROUP_ID=$(($i + $SYSTEM_GROUP_ID_START))
+                  getent group ${GROUP_ID}
+                  [[ $? -eq 0 ]] && echo "gid ${GROUP_ID} exists, it should be reserved for ParallelCluster system group. Reserved gid range is ${SYSTEM_GROUP_ID_START} - $(($SYSTEM_GROUP_ID_START + 9))" && exit 1
+              done
+              echo "ByosGroup test passed"

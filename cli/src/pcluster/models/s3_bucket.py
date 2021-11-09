@@ -18,7 +18,6 @@ import logging
 import os
 import re
 from enum import Enum
-from urllib.error import URLError
 
 import yaml
 
@@ -403,7 +402,7 @@ def parse_bucket_url(url):
         object_key = match.group(2)
         object_name = object_key.split("/")[-1]
     else:
-        raise URLError("Invalid s3 url: {0}".format(url))
+        raise Exception("Invalid S3 url: {0}".format(url))
 
     return {"bucket_name": bucket_name, "object_key": object_key, "object_name": object_name}
 

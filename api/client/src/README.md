@@ -60,10 +60,10 @@ from pcluster_client.model.update_compute_fleet_request_content import UpdateCom
 from pcluster_client.model.update_compute_fleet_response_content import UpdateComputeFleetResponseContent
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster_client.Configuration(host = "http://localhost") # Set the base URL of the ParallelCluster API 
+configuration = pcluster_client.Configuration(host = "http://localhost") # Set the base URL of the ParallelCluster API
 
 # The client needs to authenticate with the ParallelCluster API server using SigV4.
-# Please ensure that your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID` 
+# Please ensure that your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID`
 # are set appropriately for the client to authenticate using SigV4.
 
 

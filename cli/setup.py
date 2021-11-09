@@ -20,14 +20,14 @@ def readme():
         return f.read()
 
 
-VERSION = "3.0.1"
+VERSION = "3.1.0"
 CDK_VERSION = "1.116"
 REQUIRES = [
     "setuptools",
     "boto3>=1.16.14",
     "tabulate~=0.8",
     "PyYAML>=5.3.1",
-    "jinja2>=2.11.0",
+    "jinja2~=3.0.2",
     "marshmallow~=3.10",
     "aws-cdk.core~=" + CDK_VERSION,
     "aws-cdk.aws-batch~=" + CDK_VERSION,
