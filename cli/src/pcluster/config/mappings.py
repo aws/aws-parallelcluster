@@ -855,7 +855,7 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("ec2_iam_role", {
         "cfn_param_mapping": "EC2IAMRoleName",
-        "update_policy": UpdatePolicy.SUPPORTED
+        "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("s3_read_resource", {
         "cfn_param_mapping": "S3ReadResource",

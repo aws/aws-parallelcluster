@@ -348,8 +348,8 @@ def test_patch_check_cluster_resource_bucket(
     mocker.patch("pcluster.config.update_policy._is_bucket_pcluster_generated", return_value=is_generated_bucket)
     expected_message_rows = [
         ["section", "parameter", "old value", "new value", "check", "reason", "action_needed"],
-        # ec2_iam_role is to make sure other parameters are not affected by cluster_resource_bucket custom logic
-        ["cluster some_cluster", "ec2_iam_role", "some_old_role", "some_new_role", "SUCCEEDED", "-", None],
+        # iam_lambda_role is to make sure other parameters are not affected by cluster_resource_bucket custom logic
+        ["cluster some_cluster", "iam_lambda_role", "some_old_role", "some_new_role", "SUCCEEDED", "-", None],
     ]
     if expected_error_row:
         error_message_row = [
@@ -367,8 +367,8 @@ def test_patch_check_cluster_resource_bucket(
             "Restore the value of parameter 'cluster_resource_bucket' to '{0}'".format(old_bucket_name),
         ]
         expected_message_rows.append(error_message_row)
-    src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "some_old_role"}
-    dst_dict = {"cluster_resource_bucket": new_bucket_name, "ec2_iam_role": "some_new_role"}
+    src_dict = {"cluster_resource_bucket": old_bucket_name, "iam_lambda_role": "some_old_role"}
+    dst_dict = {"cluster_resource_bucket": new_bucket_name, "iam_lambda_role": "some_new_role"}
     dst_config_file = "pcluster.config.dst.ini"
     duplicate_config_file(dst_config_file, test_datadir)
 
