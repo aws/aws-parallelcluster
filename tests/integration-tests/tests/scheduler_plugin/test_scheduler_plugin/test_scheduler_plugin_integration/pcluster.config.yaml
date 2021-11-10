@@ -7,10 +7,10 @@ HeadNode:
   Ssh:
     KeyName: {{ key_name }}
 Scheduling:
-  Scheduler: byos
-  ByosSettings:
+  Scheduler: plugin
+  SchedulerSettings:
     SchedulerDefinition:
-      ByosVersion: "1.0"
+      PluginInterfaceVersion: "1.0"
       Events:
         HeadInit:
           ExecuteCommand:
@@ -20,7 +20,7 @@ Scheduling:
             Command: env && echo "HeadConfigure executed"
         HeadFinalize:
           ExecuteCommand:
-            Command: touch ${PCLUSTER_SHARED_BYOS_DIR}/sharedFromHead && env && echo "HeadFinalize executed"
+            Command: touch ${PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR}/sharedFromHead && env && echo "HeadFinalize executed"
         ComputeInit:
           ExecuteCommand:
             Command: env && echo "ComputeInit executed"
@@ -42,16 +42,16 @@ Scheduling:
       PluginResources:
         ClusterSharedArtifacts:
           - Source : https://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/parallelcluster/3.0.0/cookbooks/aws-parallelcluster-cookbook-3.0.0.tgz
-          - Source: s3://{{ bucket }}/byos/artifact
+          - Source: s3://{{ bucket }}/scheduler_plugin/artifact
       ClusterInfrastructure:
         CloudFormation:
-          Template: s3://{{ bucket }}/byos/byos_infra.cfn.yaml
+          Template: s3://{{ bucket }}/scheduler_plugin/scheduler_plugin_infra.cfn.yaml
       SystemUsers:
         - Name: {{ user1 }}
           EnableImds: false
         - Name: {{ user2 }}
           EnableImds: true
-  ByosQueues:
+  SchedulerQueues:
     - Name: q1
       CapacityType: ONDEMAND
       ComputeResources:

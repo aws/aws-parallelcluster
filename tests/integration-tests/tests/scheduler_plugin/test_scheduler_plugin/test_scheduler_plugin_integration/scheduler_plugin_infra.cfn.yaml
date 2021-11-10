@@ -3,7 +3,7 @@
 # cluster_name
 # parallelcluster_version
 # instance_types_info
-# {% set queues = cluster_configuration.Scheduling.ByosQueues %}
+# {% set queues = cluster_configuration.Scheduling.SchedulerQueues %}
 AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   ClusterName:
@@ -29,7 +29,7 @@ Conditions:
 
 Resources:
   ## IAM
-  # Specify here additional IAM policies required by byos
+  # Specify here additional IAM policies required by scheduler plugin
   HeadNodeAdditionalIamPolicies:
     Type: AWS::IAM::Policy
     Condition: HasMangedHeadNodeRole
@@ -47,7 +47,7 @@ Resources:
             Effect: Allow
             Resource: '*'
         Version: '2012-10-17'
-      PolicyName: byos-policy
+      PolicyName: scheduler-plugin-policy
   ComputeNodeAdditionalIamPolicies:
     Type: AWS::IAM::Policy
     Condition: HasMangedComputeFleetRoles
@@ -60,9 +60,9 @@ Resources:
             Effect: Allow
             Resource: '*'
         Version: '2012-10-17'
-      PolicyName: byos-policy
+      PolicyName: scheduler-plugin-policy
 
-# Template outputs are passed to the byos event handlers
+# Template outputs are passed to the schedueler plugin event handlers
 Outputs:
   TestOutput:
     Value: TestValue

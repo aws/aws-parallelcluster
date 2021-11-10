@@ -16,9 +16,9 @@ PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 CIDR_ALL_IPS = "0.0.0.0/0"
 
 SUPPORTED_SCHEDULERS = ["slurm", "awsbatch"]
-SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "byos"]
+SCHEDULERS_SUPPORTING_IMDS_SECURED = ["slurm", "plugin"]
 SUPPORTED_OSES = ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]
-SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "byos": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
+SUPPORTED_OSES_FOR_SCHEDULER = {"slurm": SUPPORTED_OSES, "plugin": SUPPORTED_OSES, "awsbatch": ["alinux2"]}
 DELETION_POLICIES = ["Retain", "Delete"]
 DELETION_POLICIES_WITH_SNAPSHOT = DELETION_POLICIES + ["Snapshot"]
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
@@ -109,7 +109,7 @@ PCLUSTER_S3_ARTIFACTS_DICT = {
     "image_config_name": "image-config.yaml",
     "config_name": "cluster-config-with-implied-values.yaml",
     "template_name": "aws-parallelcluster.cfn.yaml",
-    "byos_template_name": "byos-substack.cfn",
+    "scheduler_plugin_template_name": "scheduler-plugin-substack.cfn",
     "instance_types_data_name": "instance-types-data.json",
     "custom_artifacts_name": "artifacts.zip",
     "scheduler_resources_name": "scheduler_resources.zip",
@@ -150,6 +150,6 @@ SUPPORTED_REGIONS = [
     "us-west-2",
 ]
 
-BYOS_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT = 1
-BYOS_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT = 1
-BYOS_MAX_NUMBER_OF_USERS = 10
+SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT = 1
+SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT = 1
+SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS = 10
