@@ -1,11 +1,42 @@
 CHANGELOG
 =========
 
+2.11.4
+-----
+
+**BUG FIXES**
+- Disable update of ec2_iam_role parameter.
+
+2.11.3
+-----
+
+**CHANGES**
+- Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
+  ParallelCluster does not reinstall EFA during node start.
+  Previously, EFA was reinstalled if `enable_efa_gdr` had been turned on in the configuration file.
+  The `enable_efa_gdr` parameter has no effect and should no longer be used.
+  - EFA configuration: ``efa-config-1.9-1``
+  - EFA profile: ``efa-profile-1.5-1``
+  - EFA kernel module: ``efa-1.14.2``
+  - RDMA core: ``rdma-core-37.0``
+  - Libfabric: ``libfabric-1.13.2``
+  - Open MPI: ``openmpi40-aws-4.1.1-2``
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+
+**BUG FIXES**
+- Fix the create custom AMI functionality issues:
+  - SGE download URL no more reachable. Use Debian repository to download SGE source archive.
+  - Outdated CA certificates used by Cinc. Update ca-certificates package during AMI build time.
+- Fix cluster update when using proxy setup.
+
 2.11.2
 -----
 
 **CHANGES**
 - When using a custom AMI with a preinstalled EFA package, no actions are taken at node bootstrap time in case GPUDirect RDMA is enabled. The original EFA package deployment is preserved as during the createami process.
+- Upgrade EFA installer to version 1.13.0
+  - Update ``rdma-core`` to v35.0.
+  - Update ``libfabric`` to v1.13.0amzn1.0.
 
 **BUG FIXES**
 - Lock the version of ``nvidia-fabricmanager`` package to the installed NVIDIA drivers to prevent updates and misalignments.

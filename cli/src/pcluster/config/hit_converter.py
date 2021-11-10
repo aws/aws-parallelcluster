@@ -82,7 +82,7 @@ class HitConverter:
                 self._copy_param_value(
                     sit_cluster_section.get_param("enable_efa_gdr"),
                     queue_section.get_param("enable_efa_gdr"),
-                    "compute" == sit_cluster_section.get_param("enable_efa_gdr").value,
+                    "compute" == sit_cluster_section.get_param("enable_efa_gdr").value or None,
                 )
                 self._copy_param_value(
                     sit_cluster_section.get_param("placement_group"), queue_section.get_param("placement_group")

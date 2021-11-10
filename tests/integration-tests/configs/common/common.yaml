@@ -213,10 +213,6 @@ efa:
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
-      - regions: ["eu-west-1"]
-        instances: ["p4d.24xlarge"]
-        oss: ["ubuntu2004"]
-        schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
@@ -520,11 +516,11 @@ storage:
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_multiple:
     dimensions:
-      - regions: ["ca-central-1"]
+      - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
-      - regions: ["ca-central-1"]
+      - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
         schedulers: ["slurm"]
@@ -603,10 +599,3 @@ resource_bucket:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
-#nccl:
-#  test_nccl.py::test_nccl:
-#    dimensions:
-#      - regions: ["eu-west-1"]
-#        instances: ["p4d.24xlarge"]
-#        oss: ["ubuntu1804"]
-#        schedulers: ["slurm"]

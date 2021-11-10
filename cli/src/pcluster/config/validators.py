@@ -508,9 +508,12 @@ def efa_gdr_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    cluster_section = pcluster_config.get_section("cluster")
-    if param_value and cluster_section.get_param_value("enable_efa") is None:
-        errors.append("The parameter '{0}' can be used only in combination with 'enable_efa'".format(param_key))
+    if param_value:
+        warnings.append(
+            "INFO: '{0}' is ignored because EFA enables GDR support by default on supported instance type(s).".format(
+                param_key
+            )
+        )
 
     return errors, warnings
 
@@ -1144,6 +1147,11 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
             "(M6g, C6g, etc.). To proceed please provide a custom_ami, "
             "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes"
         )
+    elif param_value == "centos8":
+        warnings.append(
+            f"Warning: The operating system you are using ({param_value}) will reach support end-of-life by the end "
+            "of 2021. It will not be included as part of future releases of ParallelCluster."
+        )
 
     return errors, warnings
 
@@ -1234,7 +1242,6 @@ def queue_validator(section_key, section_label, pcluster_config):
                 instance_types.append(instance_type)
 
             check_unsupported_feature(compute_resource, "EFA", "enable_efa")
-            check_unsupported_feature(compute_resource, "EFA GDR", "enable_efa_gdr")
 
     # Check that efa_gdr is used with enable_efa
     if queue_section.get_param_value("enable_efa_gdr") and not queue_section.get_param_value("enable_efa"):

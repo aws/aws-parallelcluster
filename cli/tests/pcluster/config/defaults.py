@@ -235,8 +235,8 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 64
-CFN_HIT_CONFIG_NUM_OF_PARAMS = 54
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 63
+CFN_HIT_CONFIG_NUM_OF_PARAMS = 53
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ArtifactS3RootDirectory", "RemoveBucketOnDeletion"]
@@ -299,7 +299,6 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "S3ReadResource": "NONE",
     "S3ReadWriteResource": "NONE",
     "EFA": "NONE",
-    "EFAGDR": "NONE",
     "EphemeralDir": "/scratch",
     "EncryptedEphemeral": "false",
     "CustomAMI": "NONE",
@@ -371,7 +370,6 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "S3ReadResource": "NONE",
     "S3ReadWriteResource": "NONE",
     "EFA": "NONE",
-    "EFAGDR": "NONE",
     "EphemeralDir": "/scratch",
     "EncryptedEphemeral": "false",
     "CustomAMI": "NONE",

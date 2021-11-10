@@ -25,6 +25,7 @@ from framework.tests_configuration.config_renderer import dump_rendered_config_f
 from framework.tests_configuration.config_utils import get_all_regions
 from framework.tests_configuration.config_validator import assert_valid_config
 from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
+from retrying import retry
 from utils import InstanceTypesData
 
 logger = logging.getLogger()
@@ -326,6 +327,7 @@ def _is_file(value):
     return value
 
 
+@retry(stop_max_attempt_number=6, wait_fixed=5000)
 def _is_url(value):
     try:
         urllib.request.urlopen(value)
