@@ -8,15 +8,18 @@ HeadNode:
   Ssh:
     KeyName: ec2-key-name
 Scheduling:
-  Scheduler: byos
-  ByosSettings:
+  Scheduler: plugin
+  SchedulerSettings:
     SchedulerDefinition:
-      ByosVersion: "1.0"
+      PluginInterfaceVersion: "1.0"
+      ClusterInfrastructure:
+        CloudFormation:
+          Template: https://bucket/scheduler_plugin/additional_cluster_infrastructure_no_jinja.cfn.yaml
       Events:
         HeadInit:
           ExecuteCommand:
             Command: env
-  ByosQueues:
+  SchedulerQueues:
     - Name: queue1
       Networking:
         SubnetIds:
@@ -26,3 +29,4 @@ Scheduling:
           InstanceType: c5.xlarge
         - Name: computeresource2
           InstanceType: c4.xlarge
+

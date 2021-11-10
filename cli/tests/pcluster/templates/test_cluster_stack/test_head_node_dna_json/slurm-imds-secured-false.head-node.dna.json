@@ -39,7 +39,7 @@
     "stack_name": "clustername",
     "volume": "NONE",
     "use_private_hostname": "false",
-    "byos_substack_arn": "",
+    "scheduler_plugin_substack_arn": "",
     "stack_arn": "{'Ref': 'AWS::StackId'}"
   }
 }

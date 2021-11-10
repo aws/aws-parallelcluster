@@ -159,7 +159,12 @@ class ClusterCdkStack(Stack):
         return compute_group_set
 
     def _generate_compute_fleet_role_names_cfn_parameter(self):
-        """Return a comma separate string for compute fleet role names cfn parameter in Byos cfn substack template."""
+        """
+        Generate compute fleet role names.
+
+        Return a comma separate string for compute fleet role names cfn parameter
+        in Scheduler Plugin cfn substack template.
+        """
         role_list = []
         for _, instance_role in self._managed_compute_instance_roles.items():
             if instance_role is None:
@@ -263,7 +268,7 @@ class ClusterCdkStack(Stack):
                 head_eni=self._head_eni,
             )
 
-        self._add_byos_substack()
+        self._add_scheduler_plugin_substack()
 
         # Wait condition
         self.wait_condition, self.wait_condition_handle = self._add_wait_condition()
@@ -746,8 +751,8 @@ class ClusterCdkStack(Stack):
         wait_condition = cfn.CfnWaitCondition(
             self, id="HeadNodeWaitCondition" + self.timestamp, count=1, handle=wait_condition_handle.ref, timeout="1800"
         )
-        if self.byos_stack:
-            wait_condition.add_depends_on(self.byos_stack)
+        if self.scheduler_plugin_stack:
+            wait_condition.add_depends_on(self.scheduler_plugin_stack)
         return wait_condition, wait_condition_handle
 
     def _add_head_node(self):
@@ -823,7 +828,9 @@ class ClusterCdkStack(Stack):
                 "cluster": {
                     "stack_name": self._stack_name,
                     "stack_arn": self.stack_id,
-                    "byos_substack_arn": self.byos_stack.ref if self.byos_stack else "",
+                    "scheduler_plugin_substack_arn": self.scheduler_plugin_stack.ref
+                    if self.scheduler_plugin_stack
+                    else "",
                     "raid_vol_ids": get_shared_storage_ids_by_type(
                         self.shared_storage_mappings, SharedStorageType.RAID
                     ),
@@ -1074,8 +1081,8 @@ class ClusterCdkStack(Stack):
         if not self._condition_is_batch():
             head_node_instance.node.add_dependency(self.compute_fleet_resources)
 
-        if self._condition_is_byos() and self.byos_stack:
-            head_node_instance.add_depends_on(self.byos_stack)
+        if self._condition_is_scheduler_plugin() and self.scheduler_plugin_stack:
+            head_node_instance.add_depends_on(self.scheduler_plugin_stack)
 
         return head_node_instance
 
@@ -1093,15 +1100,15 @@ class ClusterCdkStack(Stack):
 
         return lt_config
 
-    def _add_byos_substack(self):
-        self.byos_stack = None
-        if not self._condition_is_byos() or not get_attr(
+    def _add_scheduler_plugin_substack(self):
+        self.scheduler_plugin_stack = None
+        if not self._condition_is_scheduler_plugin() or not get_attr(
             self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
         ):
             return
 
         template_url = self.bucket.get_cfn_template_url(
-            template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("byos_template_name")
+            template_name=PCLUSTER_S3_ARTIFACTS_DICT.get("scheduler_plugin_template_name")
         )
 
         parameters = {
@@ -1123,7 +1130,9 @@ class ClusterCdkStack(Stack):
                     f"{generate_launch_template_version_cfn_parameter_hash(queue_name, compute_resource_name)}Version"
                 ] = compute_resource["LaunchTemplate"]["Version"]
 
-        self.byos_stack = CfnStack(self, "ByosStack", template_url=template_url, parameters=parameters)
+        self.scheduler_plugin_stack = CfnStack(
+            self, "SchedulerPluginStack", template_url=template_url, parameters=parameters
+        )
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 
@@ -1138,8 +1147,8 @@ class ClusterCdkStack(Stack):
     def _condition_is_slurm(self):
         return self.config.scheduling.scheduler == "slurm"
 
-    def _condition_is_byos(self):
-        return self.config.scheduling.scheduler == "byos"
+    def _condition_is_scheduler_plugin(self):
+        return self.config.scheduling.scheduler == "plugin"
 
     def _condition_is_batch(self):
         return self.config.scheduling.scheduler == "awsbatch"
