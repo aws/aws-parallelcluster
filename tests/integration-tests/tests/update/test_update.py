@@ -177,7 +177,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
                     "disable_hyperthreading": False,
                 },
                 "queue1_i2": {
-                    "instance_type": "t2.micro",
+                    "instance_type": "c5.large",
                     "expected_running_instances": 1,
                     "expected_power_saved_instances": 9,
                     "enable_efa": False,
@@ -214,9 +214,9 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     cluster.config_file = str(updated_config_file)
     cluster.update()
 
-    # Here is the expected list of nodes. Note that queue1-dy-t2micro-1 comes from the initial_count set when creating
+    # Here is the expected list of nodes. Note that queue1-dy-c5large-1 comes from the initial_count set when creating
     # the cluster:
-    # queue1-dy-t2micro-1
+    # queue1-dy-c5large-1
     # queue1-st-c5xlarge-1
     # queue1-st-c5xlarge-2
     assert_initial_conditions(slurm_commands, 2, 1, partition="queue1")
@@ -239,7 +239,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
                     "enable_efa": False,
                 },
                 "queue1_i3": {
-                    "instance_type": "t2.micro",
+                    "instance_type": "c5.large",
                     "expected_running_instances": 1,  # This comes from initial_count before update
                     "expected_power_saved_instances": 9,
                     "disable_hyperthreading": False,
