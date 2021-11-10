@@ -196,7 +196,7 @@ dns:
 efa:
   test_efa.py::test_efa:
     dimensions:
-      - regions: ["sa-east-1"]
+      - regions: ["me-south-1"]
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -235,7 +235,7 @@ iam:
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
-      - regions: ["sa-east-1"]
+      - regions: ["me-south-1"]
         instances: ["c5n.18xlarge"]
         oss: ["centos7"]
         schedulers: ["slurm"]
