@@ -10,21 +10,23 @@
 # limitations under the License.
 import datetime
 import json
+from io import BytesIO
 from unittest.mock import PropertyMock
 
 import pytest
 import yaml
 from assertpy import assert_that
+from botocore.response import StreamingBody
 from dateutil import tz
 
 from pcluster.api.models import ClusterStatus
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
-from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG
+from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_S3_ARTIFACTS_DICT
 from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
-from pcluster.models.s3_bucket import S3Bucket
+from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
@@ -621,6 +623,38 @@ class TestCluster:
                     validator_suppressors={AllValidatorsSuppressor()},
                     force=force,
                 )
+
+    @pytest.mark.parametrize("template_url", ["s3://bucketname/bucketkey", "https://test"])
+    def test_render_and_upload_scheduler_plugin_template(self, mocker, cluster, template_url):
+        scheduler_plugin_template = "Test"
+        scheduler_plugin_template_encoded = scheduler_plugin_template.encode("utf-8")
+        if template_url.startswith("s3://"):
+            mocker.patch(
+                "pcluster.aws.s3.S3Client.get_object",
+                autospec=True,
+                return_value={
+                    "Body": StreamingBody(
+                        BytesIO(scheduler_plugin_template_encoded), len(scheduler_plugin_template_encoded)
+                    )
+                },
+            )
+        else:
+            file_mock = mocker.MagicMock()
+            file_mock.read.return_value.decode.return_value = scheduler_plugin_template
+            mocker.patch("pcluster.models.cluster.urlopen").return_value.__enter__.return_value = file_mock
+        mocker.patch("pcluster.models.cluster.parse_config", return_value={"Test"})
+        mocker.patch("pcluster.models.cluster.Cluster.source_config_text", new_callable=PropertyMock)
+        cluster_config_mock = mocker.patch("pcluster.models.cluster.Cluster.config", new_callable=PropertyMock)
+        cluster_config_mock.return_value.scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template = (  # noqa
+            template_url
+        )
+        upload_cfn_template_mock = mocker.patch.object(cluster.bucket, "upload_cfn_template", autospec=True)
+
+        cluster._render_and_upload_scheduler_plugin_template()
+
+        upload_cfn_template_mock.assert_called_with(
+            scheduler_plugin_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
+        )
 
 
 OLD_CONFIGURATION = """

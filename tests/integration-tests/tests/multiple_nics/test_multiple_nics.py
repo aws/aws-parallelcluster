@@ -17,9 +17,6 @@ from utils import get_compute_nodes_instance_ids
 from tests.common.schedulers_common import get_scheduler_commands
 
 
-@pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["p4d.24xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_multiple_nics(scheduler, region, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()

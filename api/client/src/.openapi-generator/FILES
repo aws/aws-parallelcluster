@@ -31,10 +31,10 @@ docs/DescribeClusterInstancesResponseContent.md
 docs/DescribeClusterResponseContent.md
 docs/DescribeComputeFleetResponseContent.md
 docs/DescribeImageResponseContent.md
-docs/DescribeOfficialImagesResponseContent.md
 docs/DryrunOperationExceptionResponseContent.md
 docs/EC2Instance.md
 docs/Ec2AmiInfo.md
+docs/Ec2AmiInfoSummary.md
 docs/Ec2AmiState.md
 docs/GetClusterLogEventsResponseContent.md
 docs/GetClusterStackEventsResponseContent.md
@@ -54,6 +54,7 @@ docs/ListClusterLogStreamsResponseContent.md
 docs/ListClustersResponseContent.md
 docs/ListImageLogStreamsResponseContent.md
 docs/ListImagesResponseContent.md
+docs/ListOfficialImagesResponseContent.md
 docs/LogEvent.md
 docs/LogStream.md
 docs/NodeType.md
@@ -108,9 +109,9 @@ pcluster_client/model/describe_cluster_instances_response_content.py
 pcluster_client/model/describe_cluster_response_content.py
 pcluster_client/model/describe_compute_fleet_response_content.py
 pcluster_client/model/describe_image_response_content.py
-pcluster_client/model/describe_official_images_response_content.py
 pcluster_client/model/dryrun_operation_exception_response_content.py
 pcluster_client/model/ec2_ami_info.py
+pcluster_client/model/ec2_ami_info_summary.py
 pcluster_client/model/ec2_ami_state.py
 pcluster_client/model/ec2_instance.py
 pcluster_client/model/get_cluster_log_events_response_content.py
@@ -129,6 +130,7 @@ pcluster_client/model/list_cluster_log_streams_response_content.py
 pcluster_client/model/list_clusters_response_content.py
 pcluster_client/model/list_image_log_streams_response_content.py
 pcluster_client/model/list_images_response_content.py
+pcluster_client/model/list_official_images_response_content.py
 pcluster_client/model/log_event.py
 pcluster_client/model/log_stream.py
 pcluster_client/model/node_type.py

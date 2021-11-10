@@ -26,17 +26,16 @@ from tests.common.schedulers_common import SlurmCommands
 from tests.common.utils import generate_random_string, retrieve_latest_ami
 
 
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
-    bucket.upload_file(str(test_datadir / "postinstall.sh"), "scripts/postinstall.sh")
+    for script in ["preinstall.sh", "postinstall.sh", "updated_preinstall.sh", "updated_postinstall.sh"]:
+        bucket.upload_file(str(test_datadir / script), f"scripts/{script}")
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
+    init_config_file = pcluster_config_reader(resource_bucket=bucket_name, bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
@@ -85,6 +84,11 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     _assert_scheduler_nodes(queues_config=initial_queues_config, slurm_commands=slurm_commands)
     _assert_launch_templates_config(queues_config=initial_queues_config, cluster_name=cluster.name, region=region)
+
+    # submit job in queue1 to verify original pre/post-install script execution
+    initial_compute_nodes = slurm_commands.get_compute_nodes(filter_by_partition="queue1")
+    _check_script(command_executor, slurm_commands, initial_compute_nodes[0], "preinstall", "QWE")
+    _check_script(command_executor, slurm_commands, initial_compute_nodes[0], "postinstall", "RTY")
 
     # Submit a job in order to verify that jobs are not affected by an update of the queue size
     result = slurm_commands.submit_command("sleep infinity", constraint="static&c5.xlarge")
@@ -187,14 +191,13 @@ def test_update_slurm(region, pcluster_config_reader, s3_bucket_factory, cluster
 
     _check_volume(cluster, updated_config, region)
 
-    # launch a new instance for queue1 and test pre/post install script and extra json update
-    # Get new compute nodes
+    # Launch a new instance for queue1 and test updated pre/post install script execution and extra json update
     # Add a new dynamic node t2.micro to queue1-i3
     new_compute_node = _add_compute_nodes(slurm_commands, "queue1", "t2.micro")
 
     assert_that(len(new_compute_node)).is_equal_to(1)
-    _check_pre_install_script(command_executor, slurm_commands, new_compute_node[0], "ABC")
-    _check_post_install_script(command_executor, slurm_commands, new_compute_node[0], "DEF")
+    _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_preinstall", "ABC")
+    _check_script(command_executor, slurm_commands, new_compute_node[0], "updated_postinstall", "DEF")
 
     # check new extra json
     _check_extra_json(command_executor, slurm_commands, new_compute_node[0], "test_value")
@@ -204,8 +207,8 @@ def _assert_launch_templates_config(queues_config, cluster_name, region):
     logging.info("Checking launch templates")
     ec2_client = boto3.client("ec2", region_name=region)
     for queue, queue_config in queues_config.items():
-        for compute_resource_config in queue_config["compute_resources"].values():
-            launch_template_name = f"{cluster_name}-{queue}-{compute_resource_config.get('instance_type')}"
+        for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
+            launch_template_name = f"{cluster_name}-{queue}-{compute_resource_name}"
             logging.info("Validating LaunchTemplate: %s", launch_template_name)
             launch_template_data = ec2_client.describe_launch_template_versions(
                 LaunchTemplateName=launch_template_name, Versions=["$Latest"]
@@ -235,12 +238,13 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
         slurm_nodes_str += f"{node} {state}\n"
     for queue, queue_config in queues_config.items():
         for compute_resource_name, compute_resource_config in queue_config["compute_resources"].items():
-            sanitized_name = re.sub(r"[^A-Za-z0-9]", "", compute_resource_name)
             running_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{compute_resource_name}-\d+ (idle|mixed|alloc)\n").findall(
+                    slurm_nodes_str
+                )
             )
             power_saved_instances = len(
-                re.compile(fr"{queue}-(dy|st)-{sanitized_name}-\d+ idle~\n").findall(slurm_nodes_str)
+                re.compile(fr"{queue}-(dy|st)-{compute_resource_name}-\d+ idle~\n").findall(slurm_nodes_str)
             )
             assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
             assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
@@ -291,32 +295,22 @@ def _check_volume(cluster, config, region):
             assert_that(actual_volume_throughput).is_equal_to(int(volume_throughput))
 
 
-def _check_pre_install_script(command_executor, slurm_commands, new_compute_node, pre_install_args):
-    logging.info("checking pre install script")
-    _check_script(command_executor, slurm_commands, new_compute_node, "preinstall", pre_install_args)
-
-
-def _check_post_install_script(command_executor, slurm_commands, new_compute_node, post_install_args):
-    logging.info("checking post install script")
-    _check_script(command_executor, slurm_commands, new_compute_node, "postinstall", post_install_args)
-
-
 def _check_script(command_executor, slurm_commands, host, script_name, script_arg):
-    _retrieve_script_output(slurm_commands, script_name, host)
-    result = command_executor.run_remote_command("cat /shared/script_results/{1}_{0}_out.txt".format(script_name, host))
-    assert_that(result.stdout).matches(r"{0}-{1}".format(script_name, script_arg))
+    logging.info(f"Checking {script_name} script")
 
-
-def _retrieve_script_output(slurm_commands, script_name, host):
     # submit a job to retrieve pre and post install outputs
-    command = "cp /tmp/{0}_out.txt /shared/script_results/{1}_{0}_out.txt".format(script_name, host)
+    output_file_path = f"/shared/script_results/{host}_{script_name}_out.txt"
+    command = f"cp /tmp/{script_name}_out.txt {output_file_path}"
     result = slurm_commands.submit_command(command, host=host)
 
     job_id = slurm_commands.assert_job_submitted(result.stdout)
     slurm_commands.wait_job_completed(job_id)
     slurm_commands.assert_job_succeeded(job_id)
 
-    time.sleep(5)  # wait a bit to be sure to have the files
+    time.sleep(5)  # wait a bit to be sure to have the file
+
+    result = command_executor.run_remote_command(f"cat {output_file_path}")
+    assert_that(result.stdout).matches(fr"{script_name}-{script_arg}")
 
 
 def _add_compute_nodes(slurm_commands, partition, constraint, number_of_nodes=1):
@@ -358,7 +352,6 @@ def _check_extra_json(command_executor, slurm_commands, host, expected_value):
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
 
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("os", "instance")
 def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
     # Create cluster with initial configuration
@@ -384,10 +377,10 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
 
 @pytest.mark.usefixtures("instance")
-def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir):
+def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, clusters_factory, test_datadir, request):
     # Create cluster with initial configuration
     ec2 = boto3.client("ec2", region)
-    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster")
+    pcluster_ami_id = retrieve_latest_ami(region, os, ami_type="pcluster", request=request)
     init_config_file = pcluster_config_reader(global_custom_ami=pcluster_ami_id)
     cluster = clusters_factory(init_config_file)
     instances = cluster.get_cluster_instance_ids(node_type="Compute")
@@ -401,7 +394,6 @@ def test_update_compute_ami(region, os, pcluster_config_reader, ami_copy, cluste
     updated_config_file = pcluster_config_reader(
         config_file="pcluster.config.update.yaml", global_custom_ami=pcluster_ami_id, custom_ami=pcluster_copy_ami_id
     )
-
     # stop compute fleet before updating queue image
     cluster.stop()
     cluster.update(str(updated_config_file), force_update="true")

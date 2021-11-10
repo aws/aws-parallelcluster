@@ -11,10 +11,10 @@ from pcluster.config.cluster_config import (
     HeadNodeNetworking,
     Image,
     QueueImage,
-    QueueNetworking,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
+    SlurmQueueNetworking,
     SlurmScheduling,
     Tag,
 )
@@ -53,7 +53,7 @@ class TestBaseClusterConfig:
                 [
                     SlurmQueue(
                         name="queue0",
-                        networking=QueueNetworking(["subnet"]),
+                        networking=SlurmQueueNetworking(subnet_ids=["subnet"]),
                         compute_resources=[SlurmComputeResource(name="compute_resource_1", instance_type="c5.xlarge")],
                     )
                 ]
@@ -81,7 +81,7 @@ class TestBaseClusterConfig:
 
         expected_ami = head_node_custom_ami or global_custom_ami or "official-ami-id"
         aws_api_mock.ec2.get_official_image_id.return_value = "official-ami-id"
-        ami_id = base_cluster_config.headnode_ami
+        ami_id = base_cluster_config.head_node_ami
         assert_that(ami_id).is_equal_to(expected_ami)
 
         if not (global_custom_ami or head_node_custom_ami):

@@ -288,7 +288,9 @@ class TestCreateCluster:
                 {
                     "message": "Bad Request: ParallelCluster 3 requires configuration files to be "
                     "valid YAML documents. To create a basic cluster configuration, "
-                    "you can run the `pcluster configure` command."
+                    "you can run the `pcluster configure` command. To convert from ParallelCluster 2 configuration "
+                    "files, please run "
+                    "`pcluster3-config-converter --config-file <input_file> --output-file <output_file>`."
                 },
             ),
             (
@@ -545,7 +547,7 @@ class TestDescribeCluster:
         )
 
     @pytest.mark.parametrize(
-        "cfn_stack_data, headnode_data, fail_on_bucket_check, expected_response",
+        "cfn_stack_data, head_node_data, fail_on_bucket_check, expected_response",
         [
             (
                 cfn_describe_stack_mock_response(),
@@ -577,7 +579,7 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
-                    "headnode": {
+                    "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
@@ -693,7 +695,7 @@ class TestDescribeCluster:
                         },
                     ],
                     "version": get_installed_version(),
-                    "headnode": {
+                    "headNode": {
                         "instanceId": "i-020c2ec1b6d550000",
                         "instanceType": "t2.micro",
                         "launchTime": to_iso_timestr(datetime(2021, 5, 10, 13, 55, 48)),
@@ -706,12 +708,12 @@ class TestDescribeCluster:
         ids=["all", "no_head_node", "no_bucket", "mix", "no_head_public_ip"],
     )
     def test_successful_request(
-        self, mocker, client, cfn_stack_data, headnode_data, fail_on_bucket_check, expected_response
+        self, mocker, client, cfn_stack_data, head_node_data, fail_on_bucket_check, expected_response
     ):
         mocker.patch("pcluster.aws.cfn.CfnClient.describe_stack", return_value=cfn_stack_data)
         mocker.patch(
             "pcluster.aws.ec2.Ec2Client.describe_instances",
-            return_value=([headnode_data], "") if headnode_data else ([], ""),
+            return_value=([head_node_data], "") if head_node_data else ([], ""),
         )
         mocker.patch(
             "pcluster.models.cluster.Cluster.compute_fleet_status", new_callable=mocker.PropertyMock
@@ -1446,7 +1448,9 @@ class TestUpdateCluster:
                 {
                     "message": "Bad Request: Cluster update failed.\nParallelCluster 3 requires configuration files to "
                     "be valid YAML documents. To create a basic cluster configuration, "
-                    "you can run the `pcluster configure` command."
+                    "you can run the `pcluster configure` command. To convert from ParallelCluster 2 configuration "
+                    "files, please run "
+                    "`pcluster3-config-converter --config-file <input_file> --output-file <output_file>`."
                 },
                 id="invalid configuration with toml format",
             ),

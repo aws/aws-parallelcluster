@@ -1,4 +1,14 @@
-"""This module provides unit tests for the functions in the pcluster.utils module."""
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
+# with the License. A copy of the License is located at
+#
+# http://aws.amazon.com/apache2.0/
+#
+# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
+# limitations under the License.
+# This module provides unit tests for the functions in the pcluster.utils module."""
 import os
 import time
 
@@ -161,7 +171,13 @@ def test_init_from_instance_type(mocker, caplog):
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "c4.xlarge",
-                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
+                "VCpuInfo": {
+                    "DefaultVCpus": 4,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [1, 2],
+                    "ValidThreadsPerCore": [1, 2],
+                },
                 "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
@@ -172,6 +188,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(caplog.text).is_empty()
     assert_that(c4_instance_info.max_network_interface_count()).is_equal_to(1)
     assert_that(c4_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(c4_instance_info.valid_threads_per_core()).is_equal_to([1, 2])
     assert_that(c4_instance_info.vcpus_count()).is_equal_to(4)
     assert_that(c4_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(c4_instance_info.is_efa_supported()).is_equal_to(False)
@@ -181,7 +198,7 @@ def test_init_from_instance_type(mocker, caplog):
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "g4dn.metal",
-                "VCpuInfo": {"DefaultVCpus": 96},
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
                 "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
@@ -193,6 +210,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(caplog.text).is_empty()
     assert_that(g4dn_instance_info.max_network_interface_count()).is_equal_to(4)
     assert_that(g4dn_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(g4dn_instance_info.valid_threads_per_core()).is_equal_to([])
     assert_that(g4dn_instance_info.vcpus_count()).is_equal_to(96)
     assert_that(g4dn_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(g4dn_instance_info.is_efa_supported()).is_equal_to(True)
@@ -202,7 +220,13 @@ def test_init_from_instance_type(mocker, caplog):
         return_value=InstanceTypeInfo(
             {
                 "InstanceType": "g4ad.16xlarge",
-                "VCpuInfo": {"DefaultVCpus": 64},
+                "VCpuInfo": {
+                    "DefaultVCpus": 64,
+                    "DefaultCores": 32,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [2, 4, 8, 16, 32],
+                    "ValidThreadsPerCore": [1, 2],
+                },
                 "GpuInfo": {"Gpus": [{"Name": "*", "Manufacturer": "AMD", "Count": 4}]},
                 "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
@@ -214,6 +238,7 @@ def test_init_from_instance_type(mocker, caplog):
     assert_that(caplog.text).matches("not offer native support for 'AMD' GPUs.")
     assert_that(g4ad_instance_info.max_network_interface_count()).is_equal_to(1)
     assert_that(g4ad_instance_info.default_threads_per_core()).is_equal_to(2)
+    assert_that(g4ad_instance_info.valid_threads_per_core()).is_equal_to([1, 2])
     assert_that(g4ad_instance_info.vcpus_count()).is_equal_to(64)
     assert_that(g4ad_instance_info.supported_architecture()).is_equal_to(["x86_64"])
     assert_that(g4ad_instance_info.is_efa_supported()).is_equal_to(False)
@@ -249,3 +274,32 @@ def test_datetime_to_epoch(set_tz, time_isoformat, time_zone, expect_output):
     time.tzset()
     datetime_ = utils.to_utc_datetime(time_isoformat)
     assert_that(utils.datetime_to_epoch(datetime_)).is_equal_to(expect_output)
+
+
+@pytest.mark.parametrize(
+    "partition, domain_suffix",
+    [("aws-cn", "amazonaws.com.cn"), ("aws", "amazonaws.com"), ("aws-us-gov", "amazonaws.com")],
+)
+def test_get_url_domain_suffix(mocker, partition, domain_suffix):
+    mocker.patch("pcluster.utils.get_partition", return_value=partition)
+    assert_that(pcluster.utils.get_url_domain_suffix()).is_equal_to(domain_suffix)
+
+
+@pytest.mark.parametrize(
+    "url, expected_url",
+    (
+        [
+            "https://bucket.s3.${Region}.${URLSuffix}/parallelcluster/script.sh",
+            "https://bucket.s3.us-east-1.amazonaws.com/parallelcluster/script.sh",
+        ],
+        ["s3://bucket/parallelcluster/script.sh", "s3://bucket/parallelcluster/script.sh"],
+        [
+            "https://bucket.s3.us-east-1.amazonaws.com/parallelcluster/script.sh",
+            "https://bucket.s3.us-east-1.amazonaws.com/parallelcluster/script.sh",
+        ],
+    ),
+)
+def test_replace_url_parameters(mocker, url, expected_url):
+    mocker.patch("pcluster.utils.get_region", return_value="us-east-1")
+    mocker.patch("pcluster.utils.get_url_domain_suffix", return_value="amazonaws.com")
+    assert_that(pcluster.utils.replace_url_parameters(url)).is_equal_to(expected_url)

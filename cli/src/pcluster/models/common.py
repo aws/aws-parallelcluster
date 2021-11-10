@@ -53,7 +53,7 @@ class NotFound(Exception):
     pass
 
 
-def parse_config(config):
+def parse_config(config: str) -> dict:
     """Parse a YAML configuration into a dictionary."""
     try:
         config_dict = yaml.safe_load(config)
@@ -70,7 +70,9 @@ def parse_config(config):
         LOGGER.error("Please use pcluster3 configuration file format: %s", e)
         raise BadRequest(
             "ParallelCluster 3 requires configuration files to be valid YAML documents. "
-            "To create a basic cluster configuration, you can run the `pcluster configure` command."
+            "To create a basic cluster configuration, you can run the `pcluster configure` command. "
+            "To convert from ParallelCluster 2 configuration files, please run "
+            "`pcluster3-config-converter --config-file <input_file> --output-file <output_file>`."
         )
 
 

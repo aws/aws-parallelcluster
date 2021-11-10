@@ -23,9 +23,6 @@ from tests.storage.snapshots_factory import EBSSnapshotsFactory
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
-@pytest.mark.regions(["eu-west-3", "cn-north-1", "us-gov-west-1"])
-@pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
 def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region, os):
     mount_dir = "ebs_mount_dir"
@@ -47,9 +44,6 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
     _test_root_volume_encryption(cluster, os, region, scheduler, encrypted=True)
 
 
-@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "slurm")
-@pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "ubuntu1804", "slurm")
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_snapshot(
     request, vpc_stacks, region, scheduler, pcluster_config_reader, snapshots_factory, clusters_factory
@@ -80,10 +74,6 @@ def test_ebs_snapshot(
     assert_that(result.stdout.strip()).is_equal_to("hello world")
 
 
-# cn-north-1 does not support KMS
-@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "awsbatch")
-@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "ubuntu1804", "slurm")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "slurm")
 @pytest.mark.usefixtures("instance")
 def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region, os):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
@@ -138,7 +128,6 @@ def _get_ebs_settings_by_name(config, name):
             return shared_storage["EbsSettings"]
 
 
-@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_existing(
     request, vpc_stacks, region, scheduler, pcluster_config_reader, snapshots_factory, clusters_factory
@@ -153,10 +142,7 @@ def test_ebs_existing(
     )
 
     logging.info("Existing Volume id: %s" % volume_id)
-    cluster_config = pcluster_config_reader(
-        volume_id=volume_id,
-        existing_mount_dir=existing_mount_dir,
-    )
+    cluster_config = pcluster_config_reader(volume_id=volume_id, existing_mount_dir=existing_mount_dir)
 
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -273,7 +259,7 @@ def _test_root_volume_encryption(cluster, os, region, scheduler, encrypted):
             root_volume_id = utils.get_root_volume_id(instance, region, os)
             _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
     else:
-        # If the scheduler is awsbatch, only the headnode root volume can be encrypted.
+        # If the scheduler is awsbatch, only the head_node root volume can be encrypted.
         root_volume_id = utils.get_root_volume_id(cluster.cfn_resources["HeadNode"], region, os)
         _test_ebs_encrypted_with_kms(root_volume_id, region, encrypted=encrypted)
 

@@ -1,3 +1,4 @@
+Region: eu-west-1
 Image:
   Os: alinux2
 HeadNode:
@@ -13,7 +14,7 @@ Scheduling:
   AwsBatchQueues:
     - Name: myqueue
       ComputeResources:
-        - Name: myqueue-optimal
+        - Name: optimal
           InstanceTypes:
             - optimal
           MinvCpus: 0

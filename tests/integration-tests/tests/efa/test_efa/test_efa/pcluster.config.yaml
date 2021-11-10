@@ -14,10 +14,8 @@ Scheduling:
   SlurmQueues:
     - Name: efa-enabled
       Networking:
-        {% if instance != "p4d.24xlarge" %}
         PlacementGroup:
           Enabled: true
-        {% endif %}
         SubnetIds:
           - {{ private_subnet_id }}
       ComputeResources:

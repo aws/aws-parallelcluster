@@ -9,8 +9,10 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
+from assertpy import assert_that
 
 from pcluster.aws.aws_resources import InstanceTypeInfo
+from pcluster.config.cluster_config import Tag
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -20,7 +22,6 @@ from pcluster.validators.cluster_validators import (
     ComputeResourceSizeValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
-    DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
@@ -33,12 +34,14 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    MaxCountValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
     RegionValidator,
     SchedulerOsValidator,
     SharedStorageNameValidator,
+    _LaunchTemplateValidator,
 )
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -118,21 +121,28 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
 
 
 @pytest.mark.parametrize(
-    "instance_type_list, expected_message",
+    "resource_name, resources_length, max_length, expected_message",
     [
-        (["i1"], None),
-        (["i1", "i2"], None),
-        (["i1", "i2", "i3"], None),
-        (["i1", "i1", "i2"], "Instance type i1 cannot be specified for multiple compute resources"),
+        ("SlurmQueues", 5, 10, None),
+        ("ComputeResources", 4, 5, None),
         (
-            ["i1", "i2", "i3", "i2", "i1"],
-            "Instance types i2, i1 cannot be specified for multiple compute resources",
+            "SlurmQueues",
+            11,
+            10,
+            "Invalid number of SlurmQueues (11) specified. Currently only supports up to 10 SlurmQueues.",
+        ),
+        (
+            "ComputeResources",
+            6,
+            5,
+            "Invalid number of ComputeResources (6) specified. Currently only supports up to 5 ComputeResources.",
         ),
     ],
 )
-def test_duplicate_instance_type_validator(instance_type_list, expected_message):
-    instance_type_param_list = [instance_type for instance_type in instance_type_list]
-    actual_failures = DuplicateInstanceTypeValidator().execute(instance_type_param_list)
+def test_max_count_validator(resource_name, resources_length, max_length, expected_message):
+    actual_failures = MaxCountValidator().execute(
+        resource_name=resource_name, resources_length=resources_length, max_length=max_length
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -885,3 +895,22 @@ def test_hosted_zone_validator(mocker, vpcs, is_private_zone, domain_name, expec
         cluster_name="ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12",
     )
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "input_tags",
+    [
+        [],
+        [{"key": "SomeKey", "value": "SomeValue"}],
+    ],
+)
+def test_generate_tag_specifications(input_tags):
+    """Verify function to generate tag specifications for dry runs of RunInstances works as expected."""
+    input_tags = [Tag(tag.get("key"), tag.get("value")) for tag in input_tags]
+    if input_tags:
+        expected_output_tags = [
+            {"ResourceType": "instance", "Tags": [{"Key": tag.key, "Value": tag.value} for tag in input_tags]}
+        ]
+    else:
+        expected_output_tags = []
+    assert_that(_LaunchTemplateValidator._generate_tag_specifications(input_tags)).is_equal_to(expected_output_tags)

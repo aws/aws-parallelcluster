@@ -14,8 +14,9 @@
 import functools
 import logging
 import os
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Union
 
+import boto3
 from pkg_resources import packaging
 
 from pcluster.api.errors import (
@@ -30,10 +31,34 @@ from pcluster.aws.common import BadRequestError, LimitExceededError, StackNotFou
 from pcluster.config.common import AllValidatorsSuppressor, TypeMatchValidatorsSuppressor, ValidatorSuppressor
 from pcluster.constants import SUPPORTED_REGIONS
 from pcluster.models.cluster import Cluster
-from pcluster.models.common import BadRequest, Conflict, LimitExceeded, NotFound
+from pcluster.models.common import BadRequest, Conflict, LimitExceeded, NotFound, parse_config
 from pcluster.utils import get_installed_version, to_utc_datetime
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _set_region(region):
+    if not region:
+        raise BadRequestException("region needs to be set")
+    if region not in SUPPORTED_REGIONS:
+        raise BadRequestException(f"invalid or unsupported region '{region}'")
+
+    LOGGER.info("Setting AWS Region to %s", region)
+    os.environ["AWS_DEFAULT_REGION"] = region
+
+
+def configure_aws_region_from_config(region: Union[None, str], config_str: str):
+    """Set the region based on either the configuration or theregion parameter."""
+    # Allow parsing errors to pass through as they will be caught by later functions
+    # which can provide more specific error text based on the operation.
+    try:
+        config_region = parse_config(config_str).get("Region")
+    except Exception:
+        config_region = None
+    if region and config_region and region != config_region:
+        raise BadRequestException("region is set in both parameter and configuration and conflicts.")
+
+    _set_region(region or config_region or boto3.Session().region_name)
 
 
 def configure_aws_region():
@@ -48,19 +73,7 @@ def configure_aws_region():
     def _decorator_validate_region(func):
         @functools.wraps(func)
         def _wrapper_validate_region(*args, **kwargs):
-            region = kwargs.get("region")
-
-            if not region:
-                region = os.environ.get("AWS_DEFAULT_REGION")
-
-            if not region:
-                raise BadRequestException("region needs to be set")
-            if region not in SUPPORTED_REGIONS:
-                raise BadRequestException(f"invalid or unsupported region '{region}'")
-
-            LOGGER.info("Setting AWS Region to %s", region)
-            os.environ["AWS_DEFAULT_REGION"] = region
-
+            _set_region(kwargs.get("region") or boto3.Session().region_name)
             return func(*args, **kwargs)
 
         return _wrapper_validate_region

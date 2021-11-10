@@ -16,10 +16,6 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import get_scheduler_commands
 
 
-@pytest.mark.regions(["us-west-2"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["centos7", "alinux2", "ubuntu1804"])
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_spot_default(scheduler, pcluster_config_reader, clusters_factory):
     """Test that a cluster with spot instances can be created with default spot_price_value."""

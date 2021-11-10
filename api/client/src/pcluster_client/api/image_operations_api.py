@@ -28,12 +28,12 @@ from pcluster_client.model.build_image_response_content import BuildImageRespons
 from pcluster_client.model.conflict_exception_response_content import ConflictExceptionResponseContent
 from pcluster_client.model.delete_image_response_content import DeleteImageResponseContent
 from pcluster_client.model.describe_image_response_content import DescribeImageResponseContent
-from pcluster_client.model.describe_official_images_response_content import DescribeOfficialImagesResponseContent
 from pcluster_client.model.dryrun_operation_exception_response_content import DryrunOperationExceptionResponseContent
 from pcluster_client.model.image_status_filtering_option import ImageStatusFilteringOption
 from pcluster_client.model.internal_service_exception_response_content import InternalServiceExceptionResponseContent
 from pcluster_client.model.limit_exceeded_exception_response_content import LimitExceededExceptionResponseContent
 from pcluster_client.model.list_images_response_content import ListImagesResponseContent
+from pcluster_client.model.list_official_images_response_content import ListOfficialImagesResponseContent
 from pcluster_client.model.not_found_exception_response_content import NotFoundExceptionResponseContent
 from pcluster_client.model.unauthorized_client_error_response_content import UnauthorizedClientErrorResponseContent
 from pcluster_client.model.validation_level import ValidationLevel
@@ -479,131 +479,6 @@ class ImageOperationsApi(object):
             callable=__describe_image
         )
 
-        def __describe_official_images(
-            self,
-            **kwargs
-        ):
-            """describe_official_images  # noqa: E501
-
-            Describe ParallelCluster AMIs.  # noqa: E501
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
-
-            >>> thread = api.describe_official_images(async_req=True)
-            >>> result = thread.get()
-
-
-            Keyword Args:
-                region (str): AWS Region that the operation corresponds to.. [optional]
-                os (str): Filter by OS distribution (Default is to not filter.). [optional]
-                architecture (str): Filter by architecture (Default is to not filter.). [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
-
-            Returns:
-                DescribeOfficialImagesResponseContent
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            return self.call_with_http_info(**kwargs)
-
-        self.describe_official_images = _Endpoint(
-            settings={
-                'response_type': (DescribeOfficialImagesResponseContent,),
-                'auth': [
-                    'aws.auth.sigv4'
-                ],
-                'endpoint_path': '/v3/images/official',
-                'operation_id': 'describe_official_images',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'region',
-                    'os',
-                    'architecture',
-                ],
-                'required': [],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'region':
-                        (str,),
-                    'os':
-                        (str,),
-                    'architecture':
-                        (str,),
-                },
-                'attribute_map': {
-                    'region': 'region',
-                    'os': 'os',
-                    'architecture': 'architecture',
-                },
-                'location_map': {
-                    'region': 'query',
-                    'os': 'query',
-                    'architecture': 'query',
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__describe_official_images
-        )
-
         def __list_images(
             self,
             image_status,
@@ -733,4 +608,129 @@ class ImageOperationsApi(object):
             },
             api_client=api_client,
             callable=__list_images
+        )
+
+        def __list_official_images(
+            self,
+            **kwargs
+        ):
+            """list_official_images  # noqa: E501
+
+            List Official ParallelCluster AMIs.  # noqa: E501
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.list_official_images(async_req=True)
+            >>> result = thread.get()
+
+
+            Keyword Args:
+                region (str): AWS Region that the operation corresponds to.. [optional]
+                os (str): Filter by OS distribution (Default is to not filter.). [optional]
+                architecture (str): Filter by architecture (Default is to not filter.). [optional]
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                ListOfficialImagesResponseContent
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            return self.call_with_http_info(**kwargs)
+
+        self.list_official_images = _Endpoint(
+            settings={
+                'response_type': (ListOfficialImagesResponseContent,),
+                'auth': [
+                    'aws.auth.sigv4'
+                ],
+                'endpoint_path': '/v3/images/official',
+                'operation_id': 'list_official_images',
+                'http_method': 'GET',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'region',
+                    'os',
+                    'architecture',
+                ],
+                'required': [],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'region':
+                        (str,),
+                    'os':
+                        (str,),
+                    'architecture':
+                        (str,),
+                },
+                'attribute_map': {
+                    'region': 'region',
+                    'os': 'os',
+                    'architecture': 'architecture',
+                },
+                'location_map': {
+                    'region': 'query',
+                    'os': 'query',
+                    'architecture': 'query',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'application/json'
+                ],
+                'content_type': [],
+            },
+            api_client=api_client,
+            callable=__list_official_images
         )

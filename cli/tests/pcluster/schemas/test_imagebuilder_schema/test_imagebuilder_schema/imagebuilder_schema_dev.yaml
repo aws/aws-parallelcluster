@@ -1,3 +1,4 @@
+Region: us-east-1
 Image:
   Name: pcluster-3.0.0_ami
   Tags:
@@ -38,7 +39,7 @@ Build:
 DevSettings:
   DisablePclusterComponent: False
   Cookbook:
-    ChefCookbook: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
+    ChefCookbook: https://tests/aws-parallelcluster-cookbook-3.0.tgz
     ExtraChefAttributes: |
       {"cluster": {"scheduler_slots": "cores"}}
   NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz

@@ -24,9 +24,6 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.regions(["eu-west-2"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os")
 def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
     logging.info("Testing HIT cluster with cluster DNS disabled.")
@@ -61,7 +58,6 @@ def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_rea
 
 
 @pytest.mark.usefixtures("os", "instance")
-@pytest.mark.schedulers(["slurm"])
 def test_existing_hosted_zone(
     hosted_zone_factory,
     pcluster_config_reader,
@@ -77,7 +73,7 @@ def test_existing_hosted_zone(
     num_computes = 2
     hosted_zone_id, domain_name = hosted_zone_factory()
     cluster_config = pcluster_config_reader(existing_hosted_zone=hosted_zone_id, queue_size=num_computes)
-    cluster = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config, upper_case_cluster_name=True)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
@@ -98,7 +94,7 @@ def test_existing_hosted_zone(
 
     # Test domain name matches expected domain name
     resolv_conf = remote_command_executor.run_remote_command("cat /etc/resolv.conf").stdout
-    assert_that(resolv_conf).contains(cluster.cfn_name + "." + domain_name)
+    assert_that(resolv_conf).contains(cluster.cfn_name.lower() + "." + domain_name)
 
 
 @pytest.fixture(scope="class")

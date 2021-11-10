@@ -15,6 +15,7 @@ from pcluster.config.cluster_config import (
     AwsBatchClusterConfig,
     AwsBatchComputeResource,
     AwsBatchQueue,
+    AwsBatchQueueNetworking,
     AwsBatchScheduling,
     ClusterIam,
     Dcv,
@@ -23,15 +24,26 @@ from pcluster.config.cluster_config import (
     Iam,
     Image,
     Imds,
-    QueueNetworking,
+    Proxy,
     Raid,
     S3Access,
+    SchedulerPluginClusterConfig,
+    SchedulerPluginComputeResource,
+    SchedulerPluginDefinition,
+    SchedulerPluginEvent,
+    SchedulerPluginEvents,
+    SchedulerPluginExecuteCommand,
+    SchedulerPluginQueue,
+    SchedulerPluginQueueNetworking,
+    SchedulerPluginScheduling,
+    SchedulerPluginSettings,
     SharedEbs,
     SharedEfs,
     SharedFsx,
     SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
+    SlurmQueueNetworking,
     SlurmScheduling,
     Ssh,
     Tag,
@@ -77,13 +89,34 @@ class _DummyAwsBatchClusterConfig(AwsBatchClusterConfig):
         return "dummy_vpc_id"
 
 
+class _DummySchedulerPluginClusterConfig(SchedulerPluginClusterConfig):
+    """Generate dummy Scheduler Plugin cluster config."""
+
+    def __init__(self, scheduling: SchedulerPluginScheduling, **kwargs):
+        super().__init__("clustername", scheduling, **kwargs)
+
+    @property
+    def region(self):
+        return "us-east-1"
+
+    @property
+    def partition(self):
+        return "aws"
+
+    @property
+    def vpc_id(self):
+        return "dummy_vpc_id"
+
+
 def dummy_head_node(mocker):
     """Generate dummy head node."""
     mocker.patch(
         "pcluster.config.cluster_config.HeadNodeNetworking.availability_zone",
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
-    head_node_networking = HeadNodeNetworking(subnet_id="dummy-subnet-1")
+    head_node_networking = HeadNodeNetworking(
+        subnet_id="dummy-subnet-1", proxy=Proxy(http_proxy_address="http://10.0.0.164:3129")
+    )
     head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
     head_node_dcv = Dcv(enabled=True, port=1024)
     head_node_imds = Imds(secured=True)
@@ -112,9 +145,9 @@ def dummy_slurm_cluster_config(mocker):
         ]
     )
     compute_resources = [SlurmComputeResource(name="dummy_compute_resource1", instance_type="dummyc5.xlarge")]
-    queue_networking1 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
-    queue_networking2 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
-    queue_networking3 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
+    queue_networking1 = SlurmQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
+    queue_networking2 = SlurmQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
+    queue_networking3 = SlurmQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
     queues = [
         SlurmQueue(name="queue1", networking=queue_networking1, compute_resources=compute_resources, iam=queue_iam),
         SlurmQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
@@ -149,7 +182,7 @@ def dummy_awsbatch_cluster_config(mocker):
     compute_resources = [
         AwsBatchComputeResource(name="dummy_compute_resource1", instance_types=["dummyc5.xlarge", "optimal"])
     ]
-    queue_networking = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
+    queue_networking = AwsBatchQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
     queues = [AwsBatchQueue(name="queue1", networking=queue_networking, compute_resources=compute_resources)]
     scheduling = AwsBatchScheduling(queues=queues)
     # shared storage
@@ -162,6 +195,60 @@ def dummy_awsbatch_cluster_config(mocker):
     shared_storage.append(dummy_raid("/raid1"))
 
     cluster = _DummyAwsBatchClusterConfig(
+        image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
+    )
+    cluster.custom_s3_bucket = "s3://dummy-s3-bucket"
+    cluster.additional_resources = "https://additional.template.url"
+    cluster.config_version = "1.0"
+    cluster.iam = ClusterIam()
+
+    cluster.tags = [Tag(key="test", value="testvalue")]
+    return cluster
+
+
+def dummy_scheduler_plugin_cluster_config(mocker):
+    """Generate dummy cluster."""
+    image = Image(os="alinux2")
+    head_node = dummy_head_node(mocker)
+    queue_iam = Iam(
+        s3_access=[
+            S3Access("dummy-readonly-bucket", enable_write_access=True),
+            S3Access("dummy-readwrite-bucket"),
+        ]
+    )
+    compute_resources = [
+        SchedulerPluginComputeResource(
+            name="dummy_compute_resource1", instance_type="dummyc5.xlarge", custom_settings={"key1": "value1"}
+        )
+    ]
+    queue_networking1 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
+    queue_networking2 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
+    queue_networking3 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
+    scheduler_plugin_queues = [
+        SchedulerPluginQueue(
+            name="queue1", networking=queue_networking1, compute_resources=compute_resources, iam=queue_iam
+        ),
+        SchedulerPluginQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
+        SchedulerPluginQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
+    ]
+
+    scheduler_plugin_settings = SchedulerPluginSettings(
+        SchedulerPluginDefinition(
+            plugin_interface_version="1.0",
+            events=SchedulerPluginEvents(head_init=SchedulerPluginEvent(SchedulerPluginExecuteCommand("test"))),
+        )
+    )
+    scheduling = SchedulerPluginScheduling(queues=scheduler_plugin_queues, settings=scheduler_plugin_settings)
+    # shared storage
+    shared_storage: List[Resource] = []
+    shared_storage.append(dummy_fsx())
+    shared_storage.append(dummy_ebs("/ebs1"))
+    shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))
+    shared_storage.append(dummy_ebs("/ebs3", raid=Raid(raid_type=1, number_of_volumes=5)))
+    shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
+    shared_storage.append(dummy_raid("/raid1"))
+
+    cluster = _DummySchedulerPluginClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"

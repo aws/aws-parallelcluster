@@ -103,8 +103,8 @@ class DescribeClusterResponseContent(ModelNormal):
             'last_updated_time': (datetime,),  # noqa: E501
             'region': (str,),  # noqa: E501
             'cluster_status': (ClusterStatus,),  # noqa: E501
-            'headnode': (EC2Instance,),  # noqa: E501
             'failure_reason': (str,),  # noqa: E501
+            'head_node': (EC2Instance,),  # noqa: E501
         }
 
     @cached_property
@@ -124,8 +124,8 @@ class DescribeClusterResponseContent(ModelNormal):
         'last_updated_time': 'lastUpdatedTime',  # noqa: E501
         'region': 'region',  # noqa: E501
         'cluster_status': 'clusterStatus',  # noqa: E501
-        'headnode': 'headnode',  # noqa: E501
         'failure_reason': 'failureReason',  # noqa: E501
+        'head_node': 'headNode',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -187,8 +187,8 @@ class DescribeClusterResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            headnode (EC2Instance): [optional]  # noqa: E501
             failure_reason (str): Reason of the failure when the stack is in CREATE_FAILED, UPDATE_FAILED or DELETE_FAILED status.. [optional]  # noqa: E501
+            head_node (EC2Instance): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

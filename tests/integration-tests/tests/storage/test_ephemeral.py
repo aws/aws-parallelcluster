@@ -32,11 +32,11 @@ def test_head_node_stop(scheduler, pcluster_config_reader, clusters_factory, reg
 
     _test_head_ephemeral_setup(remote_command_executor, head_ephemeral_mount, folder, filename)
 
-    # reboot headnode (instance store is preserved)
+    # reboot head_node (instance store is preserved)
     reboot_head_node(cluster, remote_command_executor)
     _test_head_ephemeral_preserved(remote_command_executor, head_ephemeral_mount, folder, filename)
 
-    # stop/start headnode (instance store is recreated)
+    # stop/start head_node (instance store is recreated)
     restart_head_node(cluster)
     # RemoteCommandExecutor needs to be re-initialized because HeadNode changed public IP
     new_remote_command_executor = RemoteCommandExecutor(cluster)

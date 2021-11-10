@@ -1,3 +1,4 @@
+Region: eu-west-1
 Image:
   Os: alinux2
 HeadNode:
@@ -6,14 +7,12 @@ HeadNode:
     SubnetId: subnet-12345678
   Ssh:
     KeyName: key1
-  Imds:
-    Secured: true
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
     - Name: myqueue
       ComputeResources:
-        - Name: myqueue-t2micro
+        - Name: t2micro
           InstanceType: t2.micro
           MinCount: 0
           MaxCount: 14

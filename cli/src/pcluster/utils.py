@@ -41,6 +41,19 @@ def get_partition():
     return next(("aws-" + partition for partition in ["us-gov", "cn"] if get_region().startswith(partition)), "aws")
 
 
+def get_url_domain_suffix():
+    """Get domain suffix."""
+    if get_partition() == "aws-cn":
+        return "amazonaws.com.cn"
+    else:
+        return "amazonaws.com"
+
+
+def replace_url_parameters(url):
+    """Replace ${Region} and ${URLSuffix} in url."""
+    return url.replace("${Region}", get_region()).replace("${URLSuffix}", get_url_domain_suffix())
+
+
 def generate_random_name_with_prefix(name_prefix):
     """
     Generate a random name that is no more than 63 characters long, with the given prefix.
@@ -258,7 +271,8 @@ def error(message) -> NoReturn:
 
 
 def get_cli_log_file():
-    return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+    default_log_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+    return os.environ.get("PCLUSTER_LOG_FILE", default=default_log_file)
 
 
 def ellipsize(text, max_length):
@@ -310,3 +324,12 @@ def load_json_dict(file_path):
         json_content = json.load(file)
 
     return json_content
+
+
+def get_attr(obj, attributes, default=None):
+    """Get nested object attribute and return default if attr does not exist."""
+    for attribute in attributes.split("."):
+        obj = getattr(obj, attribute, None)
+        if obj is None:
+            return default
+    return obj

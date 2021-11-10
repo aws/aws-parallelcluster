@@ -1,0 +1,112 @@
+# Volume encrypted defaults to True in AWS ParallelCluster version 3 while it defaults to False in AWS ParallelCluster version 2.
+# In AWS ParallelCluster version 3, access to the Instance Metadata Service(IMDS) on the head node is restricted to the cluster administrator. If additional users required access to IMDS, you can set HeadNode/Imds/Secured to False.
+# vpc_id = vpc-12345678 is ignored
+# update_check = true is ignored
+# ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS} is ignored
+# encrypted_ephemeral = true is ignored
+Region: '{{ region }}'
+Image:
+  Os: centos7
+Tags:
+  - Key: key
+    Value: value
+  - Key: key2
+    Value: value2
+SharedStorage:
+  - Name: customebs
+    StorageType: Ebs
+    MountDir: /shared_dir1
+    EbsSettings:
+      Encrypted: false
+      VolumeType: gp2
+  - Name: customraid
+    StorageType: Ebs
+    MountDir: /shared_dir2
+    EbsSettings:
+      VolumeType: gp2
+      Raid:
+        NumberOfVolumes: 2
+        Type: 1
+  - Name: customfs
+    StorageType: Efs
+    MountDir: efs
+    EfsSettings:
+      Encrypted: false
+  - Name: fs
+    StorageType: FsxLustre
+    MountDir: /fsx
+    FsxLustreSettings:
+      StorageCapacity: 1200
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-12345678
+  Ssh:
+    KeyName: testkey
+  LocalStorage:
+    RootVolume:
+      Size: 35
+    EphemeralVolume:
+      MountDir: /test
+  CustomActions:
+    OnNodeStart:
+      Script: s3://testbucket/scripts/pre_install.sh
+      Args:
+        - s3://testbucket/scripts/pre_install.sh
+        - R
+        - curl
+        - wget
+    OnNodeConfigured:
+      Script: s3://testbucekt/scripts/post_install.sh
+      Args:
+        - s3://testbucekt/scripts/post_install.sh
+        - R
+        - curl
+        - wget
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: 10
+  SlurmQueues:
+    - Name: queue1
+      ComputeResources:
+        - Name: ondemand-i1
+          InstanceType: c5.large
+          MinCount: 1
+          MaxCount: 5
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: false
+            GdrSupport: false
+      CustomActions:
+        OnNodeStart:
+          Script: s3://testbucket/scripts/pre_install.sh
+          Args:
+            - s3://testbucket/scripts/pre_install.sh
+            - R
+            - curl
+            - wget
+        OnNodeConfigured:
+          Script: s3://testbucekt/scripts/post_install.sh
+          Args:
+            - s3://testbucekt/scripts/post_install.sh
+            - R
+            - curl
+            - wget
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Networking:
+        SubnetIds:
+          - subnet-01234567
+        PlacementGroup:
+          Enabled: true
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 35
+          EphemeralVolume:
+            MountDir: /test

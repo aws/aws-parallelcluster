@@ -1,5 +1,6 @@
 Image:
   Os: alinux2
+  CustomAmi: {{custom_ami}}
 HeadNode:
   InstanceType: t2.micro
   Networking:
@@ -8,10 +9,20 @@ HeadNode:
       - {{additional_sg}}
   Ssh:
     KeyName: test-key
+  Image:
+    CustomAmi: {{head_node_custom_ami}}
+  {% if head_node_instance_profile %}
+  Iam:
+    InstanceProfile: {{head_node_instance_profile}}
+  {% endif %}
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
     - Name: queue1
+      {% if queue_instance_profile %}
+      Iam:
+        InstanceProfile: {{queue_instance_profile}}
+      {% endif %}
       Networking:
         SubnetIds:
           - {{compute_subnet_id}}
@@ -20,6 +31,8 @@ Scheduling:
           InstanceType: {{compute_instance_type}}
           MinCount: 1
           MaxCount: {{max_count}}
+      Image:
+        CustomAmi: {{queue_custom_ami}}
 SharedStorage:
   - MountDir: vol1
     Name: ebs1

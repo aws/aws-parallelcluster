@@ -365,7 +365,7 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
     return instance_architectures[0]
 
 
-def check_headnode_security_group(region, cluster, port, expected_cidr):
+def check_head_node_security_group(region, cluster, port, expected_cidr):
     """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
     security_group_id = cluster.cfn_resources.get("HeadNodeSecurityGroup")
     response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
@@ -381,7 +381,7 @@ def check_status(cluster, cluster_status=None, head_node_status=None, compute_fl
     if cluster_status:
         assert_that(cluster_info["clusterStatus"]).is_equal_to(cluster_status)
     if head_node_status:
-        assert_that(cluster_info["headnode"]["state"]).is_equal_to(head_node_status)
+        assert_that(cluster_info["headNode"]["state"]).is_equal_to(head_node_status)
     if compute_fleet_status:
         assert_that(cluster_info["computeFleetStatus"]).is_equal_to(compute_fleet_status)
 
@@ -451,3 +451,27 @@ def get_arn_partition(region):
         return "aws-cn"
     else:
         return "aws"
+
+
+def check_pcluster_list_cluster_log_streams(cluster, os):
+    """Test pcluster list-cluster-logs functionality and return cfn-init log stream name."""
+    logging.info("Testing that pcluster list-cluster-log-streams is working as expected")
+
+    stream_names = cluster.get_all_log_stream_names()
+    expected_log_streams = {
+        "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
+        "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "computemgtd", "supervisord"},
+    }
+
+    # check there are the logs of all the instances
+    cluster_info = cluster.describe_cluster()
+    for instance in cluster.describe_cluster_instances():
+        instance_type = "HeadNode" if instance["instanceId"] == cluster_info["headNode"]["instanceId"] else "Compute"
+        for stream_name in expected_log_streams[instance_type]:
+            assert_that(stream_names).contains(instance_stream_name(instance, stream_name))
+
+
+def instance_stream_name(instance, stream_name):
+    """Return a stream name given an instance."""
+    ip_str = instance["privateIpAddress"].replace(".", "-")
+    return "ip-{}.{}.{}".format(ip_str, instance["instanceId"], stream_name)

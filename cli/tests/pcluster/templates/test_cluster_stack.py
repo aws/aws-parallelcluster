@@ -20,32 +20,158 @@ from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.utils import load_json_dict, load_yaml_dict
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
-from tests.pcluster.config.dummy_cluster_config import dummy_awsbatch_cluster_config, dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import dummy_cluster_bucket, mock_bucket
+from tests.pcluster.utils import load_cluster_model_from_yaml
 
 
-def test_slurm_cluster_builder(mocker):
+@pytest.mark.parametrize(
+    "config_file_name",
+    [
+        "slurm.required.yaml",
+        "slurm.full.yaml",
+        "awsbatch.simple.yaml",
+        "awsbatch.full.yaml",
+        "scheduler_plugin.required.yaml",
+        "scheduler_plugin.full.yaml",
+    ],
+)
+def test_cluster_builder_from_configuration_file(mocker, config_file_name):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
-
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_slurm_cluster_config(mocker), bucket=dummy_cluster_bucket(), stack_name="clustername"
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template
 
 
-def test_awsbatch_cluster_builder(mocker):
+@pytest.mark.parametrize(
+    "config_file_name, expected_scheduler_plugin_stack",
+    [
+        ("scheduler-plugin-without-template.yaml", {}),
+        (
+            "scheduler-plugin-with-template.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
+                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "scheduler-plugin-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": {"Ref": "RoleHeadNode"},
+                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+        (
+            "scheduler-plugin-with-head-node-instance-role.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region."
+                    "amazonaws.com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "scheduler-plugin-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": "",
+                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+        (
+            "scheduler-plugin-with-compute-fleet-instance-role.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
+                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "scheduler-plugin-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": "",
+                        "ComputeFleetRoleNames": "",
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplate7916067054f91933Version": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+        (
+            "scheduler_plugin.full.yaml",
+            {
+                "Type": "AWS::CloudFormation::Stack",
+                "Properties": {
+                    "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
+                    "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
+                    "scheduler-plugin-substack.cfn",
+                    "Parameters": {
+                        "ClusterName": "clustername",
+                        "ParallelClusterStackId": {"Ref": "AWS::StackId"},
+                        "VpcId": "vpc-123",
+                        "HeadNodeRoleName": "",
+                        "ComputeFleetRoleNames": {"Ref": "Role15b342af42246b70"},
+                        "LaunchTemplate1f8c19f38f8d4f7fVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate1f8c19f38f8d4f7f3489FB83", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA6f65dee6703df4aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA6f65dee6703df4a27E3DD2A", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplate7916067054f91933Version": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplate7916067054f919332FB9590D", "LatestVersionNumber"]
+                        },
+                        "LaunchTemplateA46d18b906a50d3aVersion": {
+                            "Fn::GetAtt": ["ComputeFleetLaunchTemplateA46d18b906a50d3a347605B0", "LatestVersionNumber"]
+                        },
+                    },
+                },
+            },
+        ),
+    ],
+)
+def test_scheduler_plugin_substack(mocker, config_file_name, expected_scheduler_plugin_stack, test_datadir):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
-
+    if config_file_name == "scheduler_plugin.full.yaml":
+        input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
+    else:
+        input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
     generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_awsbatch_cluster_config(mocker), bucket=dummy_cluster_bucket(), stack_name="clustername"
+        cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template
+    assert_that(generated_template["Resources"].get("SchedulerPluginStack", {})).is_equal_to(
+        expected_scheduler_plugin_stack
+    )
 
 
 @pytest.mark.parametrize(
@@ -54,6 +180,7 @@ def test_awsbatch_cluster_builder(mocker):
         ("slurm-imds-secured-true.yaml", "slurm-imds-secured-true.head-node.dna.json"),
         ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
         ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
+        ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value

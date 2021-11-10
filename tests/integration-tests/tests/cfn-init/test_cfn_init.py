@@ -22,10 +22,6 @@ from tests.common.compute_logs_common import wait_compute_log
 from tests.common.schedulers_common import get_scheduler_commands
 
 
-@pytest.mark.regions(["eu-central-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["centos7", "alinux2", "ubuntu1804"])
 @pytest.mark.usefixtures("os", "instance")
 def test_replace_compute_on_failure(
     region, scheduler, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir
@@ -51,11 +47,10 @@ def test_replace_compute_on_failure(
     _assert_compute_logs(remote_command_executor, instance_id)
 
     # check that instance got already replaced or is marked as Unhealthy
-    time.sleep(15)  # Instance waits for 10 seconds before terminating to allow logs to propagate to CloudWatch
+    time.sleep(25)  # Instance waits for 10 seconds before terminating to allow logs to propagate to CloudWatch
     assert_instance_replaced_or_terminating(instance_id, region)
 
 
-@pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_install_args_quotes(region, pcluster_config_reader, s3_bucket_factory, clusters_factory, test_datadir):
     """

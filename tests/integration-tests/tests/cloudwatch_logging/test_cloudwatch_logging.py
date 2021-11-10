@@ -18,7 +18,6 @@ from os import environ
 from pathlib import Path
 
 import boto3
-import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
@@ -528,11 +527,14 @@ class CloudWatchLoggingTestRunner:
     @retry(stop_max_attempt_number=36, wait_fixed=10 * 1000)
     def _verify_log_stream_data(self, logs_state, expected_stream_index, stream):
         """Verify that stream contains an event for the last line read from its corresponding log."""
-        events = cw_logs_utils.get_log_events(self.log_group_name, stream.get("logStreamName"))
-        assert_that(events).is_not_empty()
-        expected_tail = expected_stream_index.get(stream.get("logStreamName")).get("tail")
-        event_generator = (event for event in events if event.get("message") == expected_tail)
-        assert_that(next(event_generator, None)).is_not_none()
+        found_events_in_stream = False
+        found_event_with_tail_in_stream = False
+        for event in cw_logs_utils.get_log_events(self.log_group_name, stream.get("logStreamName")):
+            found_events_in_stream = True
+            if event.get("message") == expected_stream_index.get(stream.get("logStreamName")).get("tail"):
+                found_event_with_tail_in_stream = True
+        assert_that(found_events_in_stream).is_true()
+        assert_that(found_event_with_tail_in_stream).is_true()
 
     def verify_log_streams_data(self, logs_state, expected_stream_index, observed_streams):
         """Verify each observed log stream has >= 1 event and that its timestamp format is working."""
@@ -628,14 +630,7 @@ def get_config_param_vals():
     return {"enable": "true", "retention_days": retention_days, "queue_size": queue_size}
 
 
-# In order to limit the number of CloudWatch logging tests while still covering all the OSes...
-# 1) run the test for all of the schedulers with alinux2
-@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "*")
-# 2) run the test for all of the OSes with slurm
-@pytest.mark.dimensions("ap-east-1", "c5.xlarge", "*", "slurm")
-# 3) run the test for a single scheduler-OS combination on an ARM instance
-@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
-def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
+def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_reader, test_datadir, clusters_factory):
     """
     Test all CloudWatch logging features.
 
@@ -645,6 +640,10 @@ def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_rea
     config_params = get_config_param_vals()
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
+
+    # change CW agent to debug mode
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    remote_command_executor.run_remote_script(str(test_datadir / "cw_agent_debug.sh"), run_as_root=True)
     test_runner = CloudWatchLoggingTestRunner(
         log_group_name=_get_log_group_name_for_cluster(cluster.name),
         enabled=True,
@@ -652,7 +651,7 @@ def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_rea
         logs_persist_after_delete=True,
     )
     cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster).get_logs_state()
-    _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner)
+    _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner, remote_command_executor)
 
 
 def _check_log_groups_after_test(test_func):  # noqa: D202
@@ -678,8 +677,15 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
 
 
 @_check_log_groups_after_test
-def _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner):
+def _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner, remote_command_executor):
     """Verify CloudWatch logs integration behaves as expected while a cluster is running and after it's deleted."""
-    test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
+    try:
+        test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
+    finally:
+        cw_agent_log = remote_command_executor.run_remote_command(
+            "sudo cat /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log", hide=True, timeout=600
+        )
+        logging.info("Cloudwatch agent log:\n%s", cw_agent_log.stdout)
+
     cluster.delete(delete_logs=False)
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)

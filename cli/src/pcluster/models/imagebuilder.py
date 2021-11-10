@@ -276,10 +276,23 @@ class ImageBuilder:
 
     @property
     def image(self):
-        """Return Image object."""
+        """Return avaible image object."""
         if not self.__image:
             try:
                 self.__image = AWSApi.instance().ec2.describe_image_by_id_tag(self.image_id)
+            except ImageNotFoundError:
+                raise NonExistingImageError(self.image_id)
+            except AWSClientError as e:
+                raise _image_error_mapper(e, f"Unable to get image {self.image_id}, due to {e}.")
+
+        return self.__image
+
+    @property
+    def failed_image(self):
+        """Return failed image object."""
+        if not self.__image:
+            try:
+                self.__image = AWSApi.instance().ec2.describe_image_by_imagebuilder_arn_tag(self.image_id)
             except ImageNotFoundError:
                 raise NonExistingImageError(self.image_id)
             except AWSClientError as e:
@@ -483,6 +496,7 @@ class ImageBuilder:
 
     def _upload_config(self):
         """Upload source config to S3 bucket."""
+        self._check_bucket_existence()
         try:
             if self.config:
                 # Upload original config
@@ -491,11 +505,16 @@ class ImageBuilder:
                     config_name=self._s3_artifacts_dict.get("config_name"),
                     format=S3FileFormat.TEXT,
                 )
-
         except Exception as e:
             raise _imagebuilder_error_mapper(
                 e, f"Unable to upload imagebuilder config to the S3 bucket {self.bucket.name} due to exception: {e}"
             )
+
+    def _check_bucket_existence(self):
+        try:
+            return self.bucket
+        except Exception as e:
+            raise _imagebuilder_error_mapper(e, f"Unable to access bucket associated to the cluster.\n{e}")
 
     def _upload_artifacts(self):
         """
@@ -506,6 +525,7 @@ class ImageBuilder:
         All files contained in root dir will be uploaded to
         /{version}/parallelcluster/{version}/images/{image_id}-jfr4odbeonwb1w5k/{resource_dir}/artifact.
         """
+        self._check_bucket_existence()
         try:
             if self.template_body:
                 # upload cfn template
@@ -533,12 +553,19 @@ class ImageBuilder:
                     # Delete stack
                     AWSApi.instance().cfn.delete_stack(self.image_id)
 
-                if AWSApi.instance().ec2.image_exists(image_id=self.image_id, build_status_avaliable=False):
+                if AWSApi.instance().ec2.image_exists(image_id=self.image_id):
                     # Deregister image
                     AWSApi.instance().ec2.deregister_image(self.image.id)
 
                     # Delete snapshot
                     for snapshot_id in self.image.snapshot_ids:
+                        AWSApi.instance().ec2.delete_snapshot(snapshot_id)
+                elif AWSApi.instance().ec2.failed_image_exists(image_id=self.image_id):
+                    # Deregister image
+                    AWSApi.instance().ec2.deregister_image(self.failed_image.id)
+
+                    # Delete snapshot
+                    for snapshot_id in self.failed_image.snapshot_ids:
                         AWSApi.instance().ec2.delete_snapshot(snapshot_id)
 
                 # Delete s3 image directory
@@ -546,7 +573,9 @@ class ImageBuilder:
                     self.bucket.check_bucket_exists()
                     self.bucket.delete_s3_artifacts()
                 except AWSClientError:
-                    logging.warning("S3 bucket %s does not exist, skip image s3 artifacts deletion.", self.bucket.name)
+                    logging.warning(
+                        "S3 bucket associated to the image does not exist, skip image s3 artifacts deletion."
+                    )
 
                 # Delete log group
                 try:

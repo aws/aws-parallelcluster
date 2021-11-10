@@ -1,67 +1,167 @@
 CHANGELOG
 =========
 
+X.X.X
+------
+
+**ENHANCEMENTS**
+- Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
+- Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
+- Add support for multiple compute resources with same instance type per queue.
+
+**CHANGES**
+- Use compute resource name rather than instance type in compute fleet Launch Template name.
+- Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
+
+**BUG FIXES**
+- Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
+
+3.0.2
+-----
+
+**CHANGES**
+- Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
+  ParallelCluster does not reinstall EFA during node start. Previously, EFA was reinstalled if `GdrSupport` had been
+  turned on in the configuration file. The `GdrSupport` parameter has no effect and should no longer be used.
+  - EFA configuration: ``efa-config-1.9-1``
+  - EFA profile: ``efa-profile-1.5-1``
+  - EFA kernel module: ``efa-1.14.2``
+  - RDMA core: ``rdma-core-37.0``
+  - Libfabric: ``libfabric-1.13.2``
+  - Open MPI: ``openmpi40-aws-4.1.1-2``
+
+**BUG FIXES**
+- Fix issue that is preventing cluster names to start with `parallelcluster-` prefix.
+
+3.0.1
+------
+
+**ENHANCEMENTS**
+- Add `pcluster3-config-converter` CLI command to convert cluster configuration from ParallelCluster 2 to ParallelCluster 3 version.
+- The region parameter is now retrieved from the provider chain, thus supporting the use of profiles and defaults
+  specified in the `~/.aws/config` file.
+- export `ParallelClusterApiInvokeUrl` and `ParallelClusterApiUserRole` in CloudFormation API Stack so they can be
+  used by cross-stack references.
+
+**CHANGES**
+- Drop support for SysVinit. Only Systemd is supported.
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+- Allow '*' character in the configuration of S3Access/BucketName.
+
+**BUG FIXES**
+- Pin to the transitive dependencies resulting from the dependency on connexion.
+- Fix cleanup of ECR resources when API infrastructure template is deleted.
+- Fix supervisord service not enabled on Ubuntu. This was causing supervisord not to be started on instance reboot.
+- Update ca-certificates package during AMI build time and have Cinc use the updated CA certificates bundle.
+- Close stderr before exiting from pcluster CLI commands to avoid BrokenPipeError for processes that close the
+  other end of the stdout pipe.
+
 3.0.0
 ------
 
 **ENHANCEMENTS**
-- Add possibility to use an existing Instance Profile for cluster creation and Imagebuilder.
-- Support restart/reboot for instance type with instance store (ephemeral drives).  
-- Add possibility to use an existing Private Route53 Hosted Zone when using Slurm as scheduler.
-- Add possibility to suppress validators and filter validation failures by failure level at cluster creation and update time.
-- Add new set of commands to build and manage Custom AMIs.
-- Add new set of commands to list, view and export cluster and image builder logs.
-- Split head node and compute fleet instance roles and add possibility to configure a different instance role
-  for each queue.
+- Add support for pcluster actions (e.g., create-cluster, update-cluster, delete-cluster) through HTTP endpoints
+  with Amazon API Gateway.
+- Revamp custom AMI creation and management by leveraging EC2 Image Builder. This also includes the implementation of 
+  `build-image`, `delete-image`, `describe-image` and `list-image` commands to manage custom ParallelCluster images.
+- Add `list-official-images` command to describe ParallelCluster official AMIs.
+- Add `export-cluster-logs`, `list-cluster-logs` and `get-cluster-log-events` commands to retrieve both CloudWatch Logs
+  and CloudFormation Stack Events. Add `export-image-logs`, `list-image-logs` and `get-image-log-events` commands to
+  retrieve both Image Builder Logs and CloudFormation Stack Events.
+- Enable the possibility to restart / reboot the head node also for instance types with
+  [instance store](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html).
+  Those operations remain anyway managed by the user that is responsible for the status of the cluster while operating
+  on the head node, e.g. stopping the compute fleet first.
+- Add support to use an existing Private Route53 Hosted Zone when using Slurm as scheduler.
+- Add the possibility to configure the instance profile as alternative to configuring the IAM role for the head and for
+  each compute queue.
+- Add the possibility to configure IAM role, profile and policies for head node and for each compute queue.
 - Add possibility to configure different security groups for each queue.
+- Allow full control on the name of CloudFormation stacks created by ParallelCluster by removing the `parallelcluster-`
+  prefix.
+- Add multiple queues and compute resources support for pcluster configure when the scheduler is Slurm.
+- Add prompt for availability zone in pcluster configure automated subnets creation.
+- Add configuration `HeadNode / Imds / Secured` to enable/disable restricted access to Instance Metadata Service (IMDS).
+- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' 
+  state in case recurrent failures are encountered when provisioning nodes.
+- Add `--suppress-validators` and `--validation-failure-level` parameters to `create` and `update` commands.
 - Add support for associating an existing Elastic IP to the head node.
-- Create S3 bucket per region shared with cluster and image if custom bucket isn't specified instead creating bucket
-  per cluster.
-- Encrypt root EBS volumes and shared EBS volumes by default.
-  Note that if the scheduler is AWS Batch, the root volumes of the compute nodes cannot be encrypted by ParallelCluster.
-- Add multiple queues and compute resources support for `pcluster configure` when the scheduler is Slurm.
-- Add prompt for availability zone in `pcluster configure` automated subnets creation.
-- Use different permissions in instance roles based on the scheduler and the node's role in the cluster.
-- Implement scaling protection mechanism with Slurm scheduler: compute fleet is automatically set to 'PROTECTED' state
-  in case recurrent failures are encountered when provisioning nodes.
-- Add tag `Name` to every shared storage with the value specified in the shared storage name config.
+- Extend limits for supported number of Slurm queues (10) and compute resources (5).
+- Encrypt root EBS volumes and shared EBS volumes by default. Note that if the scheduler is AWS Batch, the root volumes
+  of the compute nodes cannot be encrypted by ParallelCluster.
 
 **CHANGES**
-- Drop support for SGE and Torque schedulers.
-- Drop support for CentOS8.
-- Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML.
-- Use AWS Cloud Development Kit to define and generate CloudFormation templates. Add Node.js as requirement.
-- Rename all the commands, refactor parameters and use JSON as output format.
-- Remove interactivity from commands used to create, update, delete and describe a cluster.
+- Upgrade EFA installer to version 1.13.0
+  - EFA configuration: ``efa-config-1.9``
+  - EFA profile: ``efa-profile-1.5``
+  - EFA kernel module: ``efa-1.13.0``
+  - RDMA core: ``rdma-core-35``
+  - Libfabric: ``libfabric-1.13.0``
+  - Open MPI: ``openmpi40-aws-4.1.1-2``
+- Upgrade NICE DCV to version 2021.1-10851.
+- Upgrade Slurm to version 20.11.8.
+- Upgrade NVIDIA driver to version 470.57.02.
+- Upgrade CUDA library to version 11.4.0.
+- Upgrade Cinc Client to version 17.2.29.
+- Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
+- Remove support for SGE and Torque schedulers.
+- Remove support for CentOS8.
+- Change format and syntax of the configuration file to be used to create the cluster, from ini to YAML. A cluster configuration
+  file now only includes the definition of a single cluster.
+- Remove `--cluster-template`, `--extra-parameters` and `--tags` parameters for the `create` command.
+- Remove `--cluster-template`, `--extra-parameters`, `--reset-desired` and `--yes` parameters for the `update` command.
+- Remove `--config` parameter for `delete`, `status`, `start`, `stop`, `instances` and `list` commands.
 - Remove possibility to specify aliases for `ssh` command in the configuration file.
-- Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub`
-  as a separate `aws-parallelcluster-awsbatch-cli` PyPI package.
+- Distribute AWS Batch commands: `awsbhosts`, `awsbkill`, `awsbout`, `awsbqueues`, `awsbstat` and `awsbsub` as a
+  separate `aws-parallelcluster-awsbatch-cli` PyPI package.
+- Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
 - Remove `amis.txt` file.
-- Upgrade Python runtime used by Lambda functions in AWS Batch integration to python3.8.
-- Add timestamp suffix to CloudWatch Log Group name created for the cluster.  
 - Remove additional EBS volume attached to the head node by default.
 - Change NICE DCV session storage path to `/home/{UserName}`.
-- Use inclusive language for internal variable, parameters and CloudFormation Outputs:  
-  - Rename variable exported in the AWS Batch job environment from `MASTER_IP` to `PCLUSTER_HEAD_NODE_IP`.
-  - Rename all CloudFormation outputs from `Master*` to `HeadNode*`.
-  - Rename `NodeType` and tags from `Master` to `HeadNode`.
-- Remove `parallelcluster-` prefix from CloudFormation stack created by ParallelCluster.
+- Create a single ParallelCluster S3 bucket for each AWS region rather than for each cluster.
+- Adopt inclusive language
+  - Rename MasterServer to HeadNode in CLI outputs.
+  - Rename variable exported in the AWS Batch job environment from MASTER_IP to PCLUSTER_HEAD_NODE_IP.
+  - Rename all CFN outputs from Master* to HeadNode*.
+  - Rename NodeType and tags from Master to HeadNode.
 - Rename tags (Note: the following tags are crucial for ParallelCluster scaling logic):
   - `aws-parallelcluster-node-type` -> `parallelcluster:node-type`
   - `ClusterName` -> `parallelcluster:cluster-name`
   - `aws-parallelcluster-attributes` -> `parallelcluster:attributes`
   - `Version` -> `parallelcluster:version`
 - Remove tag: `Application`.
-- Prevent runtime baking, i.e. `pcluster create-cluster` only works for official AMIs or custom AMIs created by `pcluster build-image` command.
-- Retain CloudWatch logs on cluster deletion by default.
+- Remove [runtime creation method](https://docs.aws.amazon.com/parallelcluster/latest/ug/tutorials_02_ami_customization.html)
+  of custom ParallelCluster AMIs.
+- Retain CloudWatch logs on cluster deletion by default. If you want to delete the logs during cluster deletion, set
+  `Monitoring / Logs / CloudWatch / RetainOnDeletion` to False in the configuration file.
+- Remove instance store software encryption option (encrypted_ephemeral) and rely on default hardware encryption provided
+  by NVMe instance store volumes.
+- Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
+- Remove installation of MPICH and FFTW packages.
 - Remove Ganglia support.
-- Restrict access to Instance Metadata Service (IMDS) and add configuration parameter to manage it.
-- Remove instance store software encryption option (encrypted_ephemeral).
-- Upgrade Slurm to version 20.11.8.
-- Upgrade Cinc Client to version 17.2.29.
-- CLI commands do not default to `~/.parallelcluster/config` file anymore. The cluster configuration is now a required parameter.
-- Slurm: Extend limits for supported number of queues to 10 and number of compute resources per queue to 5.
+
+2.11.3
+-----
+
+**CHANGES**
+- Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
+  ParallelCluster does not reinstall EFA during node start.
+  Previously, EFA was reinstalled if `enable_efa_gdr` had been turned on in the configuration file.
+  The `enable_efa_gdr` parameter has no effect and should no longer be used.
+  - EFA configuration: ``efa-config-1.9-1``
+  - EFA profile: ``efa-profile-1.5-1``
+  - EFA kernel module: ``efa-1.14.2``
+  - RDMA core: ``rdma-core-37.0``
+  - Libfabric: ``libfabric-1.13.2``
+  - Open MPI: ``openmpi40-aws-4.1.1-2``
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+
+**BUG FIXES**
+- Fix the create custom AMI functionality issues:
+  - SGE download URL no more reachable. Use Debian repository to download SGE source archive.
+  - Outdated CA certificates used by Cinc. Update ca-certificates package during AMI build time.
+- Fix cluster update when using proxy setup.
 
 2.11.2
 -----

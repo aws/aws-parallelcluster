@@ -13,6 +13,7 @@ jobs:
           with:
             path: './cli'
             format: 'HTML'
+            project: 'aws-parallelcluster'
         - name: Upload Test results
           uses: actions/upload-artifact@master
           with:
@@ -23,6 +24,7 @@ jobs:
           with:
             path: './awsbatch-cli'
             format: 'HTML'
+            project: 'aws-parallelcluster'
         - name: Upload AWS Batch CLI Test results
           uses: actions/upload-artifact@master
           with:
@@ -67,19 +69,19 @@ jobs:
             toxdir: cli
             toxenv: py38-cov
           - name: Code Checks
-            python: 3.6
+            python: 3.8
             toxdir: cli
             toxenv: code-linters
           - name: CLI CloudFormation Templates Checks
-            python: 3.6
+            python: 3.8
             toxdir: cli
             toxenv: cfn-format-check,cfn-lint,cfn-tests
           - name: API CloudFormation Templates Checks
-            python: 3.6
+            python: 3.8
             toxdir: api
             toxenv: cfn-lint
           - name: Integration Tests Config Checks
-            python: 3.6
+            python: 3.8
             toxdir: tests/integration-tests
             toxenv: validate-test-configs
     steps:
@@ -153,7 +155,15 @@ jobs:
           sudo npm install -g redoc-cli
           sudo snap install yq
       - working-directory: api
-        run: ./gradlew buildSmithyModel openApiValidate
+        run: ./gradlew buildSmithyModel openApiValidate redoc
+      - name: Verify Generation of OpenAPI Specs
+        run: |
+          git diff --exit-code --quiet api/spec/openapi
+      - working-directory: api
+        run: ./gradlew generatePythonClient
+      - name: Verify Generation of API client
+        run: |
+          git diff --exit-code --quiet -- api/client/src/ ':!api/client/src/.openapi-generator/FILES'
   api-docker-test:
     name: API Docker Tests
     runs-on: ubuntu-latest

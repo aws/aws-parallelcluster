@@ -10,22 +10,19 @@ import os
 import pytest
 from assertpy import assert_that
 
-from pcluster.api.controllers.common import configure_aws_region
+from pcluster.api.controllers.common import configure_aws_region, configure_aws_region_from_config
 from pcluster.api.errors import BadRequestException
 
 
 @pytest.mark.parametrize(
     "region, error",
-    [
-        ("eu-west-1", None),
-        ("eu-west-", "invalid or unsupported region"),
-        (None, "region needs to be set"),
-    ],
+    [("eu-west-1", None), ("eu-west-", "invalid or unsupported region"), (None, "region needs to be set")],
 )
 class TestConfigureAwsRegion:
     @pytest.fixture(autouse=True)
-    def unset_aws_default_region(self, unset_env):
+    def unset_aws_default_region(self, unset_env, mocker):
         unset_env("AWS_DEFAULT_REGION")
+        mocker.patch("botocore.session.Session.get_scoped_config", return_value={})
 
     def test_validate_region_query(self, region, error):
         @configure_aws_region()
@@ -54,3 +51,32 @@ class TestConfigureAwsRegion:
         else:
             _decorated_func()
             assert_that(os.environ["AWS_DEFAULT_REGION"]).is_equal_to(region)
+
+
+@pytest.mark.parametrize(
+    "region, yaml, error",
+    [
+        ("eu-west-1", "Test: asdf", None),
+        (None, "Region: eu-west-1", None),
+        ("us-east-1", "Region: us-west-1", "region is set in both parameter and configuration"),
+        ("eu-west-", "Test: asdf", "invalid or unsupported region"),
+        (None, "Region: us-west-", "invalid or unsupported region"),
+        (None, "Test: asdf", "region needs to be set"),
+    ],
+)
+class TestConfigureAwsRegionFromConfig:
+    @pytest.fixture(autouse=True)
+    def unset_aws_default_region(self, unset_env, mocker):
+        unset_env("AWS_DEFAULT_REGION")
+        mocker.patch("botocore.session.Session.get_scoped_config", return_value={})
+
+    def test_validate_region(self, region, yaml, error, set_env, unset_env):
+        expected = "eu-west-1"
+
+        if error:
+            with pytest.raises(BadRequestException) as e:
+                configure_aws_region_from_config(region, yaml)
+            assert_that(str(e.value.content)).contains(error)
+        else:
+            configure_aws_region_from_config(region, yaml)
+            assert_that(os.environ["AWS_DEFAULT_REGION"]).is_equal_to(expected)

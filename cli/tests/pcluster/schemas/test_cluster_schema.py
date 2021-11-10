@@ -10,38 +10,45 @@
 # limitations under the License.
 
 import json
-from copy import deepcopy
 
 import pytest
 import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from pcluster.schemas.cluster_schema import ClusterSchema, IamSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
-from pcluster.utils import load_yaml_dict
+from pcluster.constants import SUPPORTED_OSES
+from pcluster.schemas.cluster_schema import (
+    ClusterSchema,
+    HeadNodeIamSchema,
+    ImageSchema,
+    QueueIamSchema,
+    SchedulerPluginCloudFormationClusterInfrastructureSchema,
+    SchedulerPluginClusterSharedArtifactSchema,
+    SchedulerPluginDefinitionSchema,
+    SchedulerPluginFileSchema,
+    SchedulerPluginLogsSchema,
+    SchedulerPluginResourcesSchema,
+    SchedulerPluginSupportedDistrosSchema,
+    SchedulerPluginUserSchema,
+    SchedulingSchema,
+    SharedStorageSchema,
+)
+from pcluster.utils import replace_url_parameters
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
+from tests.pcluster.utils import load_cluster_model_from_yaml
 
 
-def _load_cluster_model_from_yaml(test_datadir, config_file_name):
-    # https://github.com/marshmallow-code/marshmallow/issues/1126
-    # TODO use yaml render_module: https://marshmallow.readthedocs.io/en/3.0/api_reference.html#marshmallow.Schema.Meta
-    input_yaml = load_yaml_dict(test_datadir / config_file_name)
-    print(input_yaml)
-    copy_input_yaml = deepcopy(input_yaml)
-    cluster = ClusterSchema(cluster_name="clustername").load(copy_input_yaml)
-    print(cluster)
-    return input_yaml, cluster
-
-
-def _check_cluster_schema(test_datadir, config_file_name):
+def _check_cluster_schema(config_file_name):
     # Load cluster model from Yaml file
-    input_yaml, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
+    input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
 
     # Re-create Yaml file from model and compare content
     cluster_schema = ClusterSchema(cluster_name="clustername")
     cluster_schema.context = {"delete_defaults_when_dump": True}
     output_json = cluster_schema.dump(cluster)
-    assert_that(json.dumps(input_yaml, sort_keys=True)).is_equal_to(json.dumps(output_json, sort_keys=True))
+    assert_that(replace_url_parameters(json.dumps(input_yaml, sort_keys=True))).is_equal_to(
+        json.dumps(output_json, sort_keys=True)
+    )
 
     # Print output yaml
     output_yaml = yaml.dump(output_json)
@@ -51,12 +58,22 @@ def _check_cluster_schema(test_datadir, config_file_name):
 @pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.full.yaml"])
 def test_cluster_schema_slurm(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
-    _check_cluster_schema(test_datadir, config_file_name)
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    _check_cluster_schema(config_file_name)
 
 
 @pytest.mark.parametrize("config_file_name", ["awsbatch.simple.yaml", "awsbatch.full.yaml"])
-def test_cluster_schema_awsbatch(test_datadir, config_file_name):
-    _check_cluster_schema(test_datadir, config_file_name)
+def test_cluster_schema_awsbatch(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    _check_cluster_schema(config_file_name)
+
+
+@pytest.mark.parametrize("config_file_name", ["scheduler_plugin.required.yaml", "scheduler_plugin.full.yaml"])
+def test_cluster_schema_scheduler_plugin(mocker, test_datadir, config_file_name):
+    mock_aws_api(mocker)
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    _check_cluster_schema(config_file_name)
 
 
 @pytest.mark.parametrize(
@@ -135,9 +152,17 @@ def test_iam_schema(instance_role, instance_profile, additional_iam_policies, s3
             ValidationError,
             match=failure_message,
         ):
-            IamSchema().load(iam_dict)
+            HeadNodeIamSchema().load(iam_dict)
+        with pytest.raises(
+            ValidationError,
+            match=failure_message,
+        ):
+            QueueIamSchema().load(iam_dict)
     else:
-        iam = IamSchema().load(iam_dict)
+        iam = HeadNodeIamSchema().load(iam_dict)
+        assert_that(iam.instance_role).is_equal_to(instance_role)
+        assert_that(iam.instance_profile).is_equal_to(instance_profile)
+        iam = QueueIamSchema().load(iam_dict)
         assert_that(iam.instance_role).is_equal_to(instance_role)
         assert_that(iam.instance_profile).is_equal_to(instance_profile)
 
@@ -235,26 +260,12 @@ def dummy_slurm_compute_resource(name, instance_type):
             },
             None,
         ),
-        (  # beyond maximum slurm queue length
-            {
-                "Scheduler": "slurm",
-                "SlurmQueues": dummpy_slurm_queue_list(11),
-            },
-            "Queue.*Longer than maximum length 10",
-        ),
         (  # maximum slurm queue length
             {
                 "Scheduler": "slurm",
                 "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=5)],
             },
             None,
-        ),
-        (  # beyond maximum slurm queue length
-            {
-                "Scheduler": "slurm",
-                "SlurmQueues": [dummy_slurm_queue("queue1", number_of_compute_resource=6)],
-            },
-            "ComputeResources.*Longer than maximum length 5",
         ),
     ],
 )
@@ -346,10 +357,223 @@ def test_scheduler_constraints_for_intel_packages(
             ValidationError,
             match=failure_message,
         ):
-            _load_cluster_model_from_yaml(test_datadir, config_file_name)
+            load_cluster_model_from_yaml(config_file_name, test_datadir)
     else:
-        _, cluster = _load_cluster_model_from_yaml(test_datadir, config_file_name)
+        _, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
         assert_that(cluster.scheduling.scheduler).is_equal_to(scheduler)
         assert_that(cluster.additional_packages.intel_software.intel_hpc_platform).is_equal_to(
             install_intel_packages_enabled
+        )
+
+
+@pytest.mark.parametrize(
+    "x86, arm64, failure_message",
+    [
+        (None, ["centos7"], None),
+        (["centos7"], None, None),
+        ("ubuntu1804", ["centos7"], "Not a valid list"),
+        (["ubuntu1804"], ["centos7"], None),
+    ],
+)
+def test_scheduler_plugin_supported_distros_schema(x86, arm64, failure_message):
+    scheduler_plugin_supported_distros_schema = {}
+    if x86:
+        scheduler_plugin_supported_distros_schema["X86"] = x86
+    if arm64:
+        scheduler_plugin_supported_distros_schema["Arm64"] = arm64
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginSupportedDistrosSchema().load(scheduler_plugin_supported_distros_schema)
+    else:
+        scheduler_plugin_supported_distros = SchedulerPluginSupportedDistrosSchema().load(
+            scheduler_plugin_supported_distros_schema
+        )
+        assert_that(scheduler_plugin_supported_distros.x86).is_equal_to(x86 or SUPPORTED_OSES)
+        assert_that(scheduler_plugin_supported_distros.arm64).is_equal_to(arm64 or SUPPORTED_OSES)
+
+
+@pytest.mark.parametrize(
+    "template, failure_message",
+    [
+        ("https://template.yaml", None),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_cloudformation_cluster_infrastructure_schema(mocker, template, failure_message):
+    scheduler_plugin_cloudformation_cluster_infrastructure_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    if template:
+        scheduler_plugin_cloudformation_cluster_infrastructure_schema["Template"] = template
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginCloudFormationClusterInfrastructureSchema().load(
+                scheduler_plugin_cloudformation_cluster_infrastructure_schema
+            )
+    else:
+        scheduler_plugin_cloudformation_cluster_infrastructure = (
+            SchedulerPluginCloudFormationClusterInfrastructureSchema().load(
+                scheduler_plugin_cloudformation_cluster_infrastructure_schema
+            )
+        )
+        assert_that(scheduler_plugin_cloudformation_cluster_infrastructure.template).is_equal_to(template)
+
+
+@pytest.mark.parametrize(
+    "source, failure_message",
+    [
+        ("https://artifacts.gz", None),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_scheduler_plugin_cluster_shared_artifact_schema(mocker, source, failure_message):
+    scheduler_plugin_cluster_shared_artifact_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    if source:
+        scheduler_plugin_cluster_shared_artifact_schema["Source"] = source
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginClusterSharedArtifactSchema().load(scheduler_plugin_cluster_shared_artifact_schema)
+    else:
+        scheduler_plugin_cluster_shared_artifact = SchedulerPluginClusterSharedArtifactSchema().load(
+            scheduler_plugin_cluster_shared_artifact_schema
+        )
+        assert_that(scheduler_plugin_cluster_shared_artifact.source).is_equal_to(source)
+
+
+@pytest.mark.parametrize(
+    "artifacts, failure_message",
+    [
+        (["https://artifacts.gz"], None),
+        (["https://artifacts1.gz", "https://artifacts2.gz"], None),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_scheduler_plugin_plugin_resources_schema(mocker, artifacts, failure_message):
+    scheduler_plugin_plugin_resources_schema = {}
+    mocker.patch("pcluster.utils.get_region", return_value="fake_region")
+    mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
+    if artifacts:
+        scheduler_plugin_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginResourcesSchema().load(scheduler_plugin_plugin_resources_schema)
+    else:
+        scheduler_plugin_plugin_resources = SchedulerPluginResourcesSchema().load(
+            scheduler_plugin_plugin_resources_schema
+        )
+        for artifact, source in zip(scheduler_plugin_plugin_resources.cluster_shared_artifacts, artifacts):
+            assert_that(artifact.source).is_equal_to(source)
+
+
+@pytest.mark.parametrize(
+    "name, enable_imds, failure_message",
+    [
+        ("user1", True, None),
+        ("user1", None, None),
+        (None, True, "Missing data for required field."),
+    ],
+)
+def test_scheduler_plugin_user_schema(name, enable_imds, failure_message):
+    scheduler_plugin_user_schema = {}
+    if name:
+        scheduler_plugin_user_schema["Name"] = name
+    if enable_imds:
+        scheduler_plugin_user_schema["EnableImds"] = enable_imds
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginResourcesSchema().load(scheduler_plugin_user_schema)
+    else:
+        scheduler_plugin_user = SchedulerPluginUserSchema().load(scheduler_plugin_user_schema)
+        assert_that(scheduler_plugin_user.name).is_equal_to(name)
+        if enable_imds:
+            assert_that(scheduler_plugin_user.enable_imds).is_equal_to(enable_imds)
+        else:
+            assert_that(scheduler_plugin_user.enable_imds).is_equal_to(False)
+
+
+@pytest.mark.parametrize(
+    "file_path, timestamp_format, failure_message",
+    [
+        ("/var/log/slurmctld.log", None, None),
+        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", None),
+        (
+            None,
+            "%Y-%m-%d %H:%M:%S,%f",
+            "Missing data for required field.",
+        ),
+    ],
+)
+def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message):
+    scheduler_plugin_file_schema = {}
+    if file_path:
+        scheduler_plugin_file_schema["FilePath"] = file_path
+    if timestamp_format:
+        scheduler_plugin_file_schema["TimestampFormat"] = timestamp_format
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginFileSchema().load(scheduler_plugin_file_schema)
+    else:
+        scheduler_plugin_file = SchedulerPluginFileSchema().load(scheduler_plugin_file_schema)
+        assert_that(scheduler_plugin_file.file_path).is_equal_to(file_path)
+        if timestamp_format:
+            assert_that(scheduler_plugin_file.timestamp_format).is_equal_to(timestamp_format)
+        else:
+            assert_that(scheduler_plugin_file.timestamp_format).is_equal_to("%Y-%m-%dT%H:%M:%S%z")
+
+
+@pytest.mark.parametrize(
+    "files, failure_message",
+    [
+        ([{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"}], None),
+        (
+            [
+                {"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"},
+                {"FilePath": "/var/log/scaling.log", "TimestampFormat": ""},
+            ],
+            None,
+        ),
+        (None, "Missing data for required field."),
+    ],
+)
+def test_scheduler_plugin_logs_schema(files, failure_message):
+    scheduler_plugin_logs_schema = {}
+    if files:
+        scheduler_plugin_logs_schema["Files"] = files
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginLogsSchema().load(scheduler_plugin_logs_schema)
+    else:
+        scheduler_plugin_logs = SchedulerPluginLogsSchema().load(scheduler_plugin_logs_schema)
+        for file, expected_file in zip(scheduler_plugin_logs.files, files):
+            assert_that(file.file_path).is_equal_to(expected_file["FilePath"])
+            assert_that(file.timestamp_format).is_equal_to(expected_file["TimestampFormat"])
+
+
+@pytest.mark.parametrize(
+    "plugin_interface_version, events, failure_message",
+    [
+        ("1.0", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, None),
+        (None, {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "Missing data for required field."),
+        ("1.0", None, "Missing data for required field."),
+    ],
+)
+def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, events, failure_message):
+    scheduler_plugin_definition_schema = {}
+    if plugin_interface_version:
+        scheduler_plugin_definition_schema["PluginInterfaceVersion"] = plugin_interface_version
+    if events:
+        scheduler_plugin_definition_schema["Events"] = events
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginDefinitionSchema().load(scheduler_plugin_definition_schema)
+    else:
+        scheduler_plugin_definition = SchedulerPluginDefinitionSchema().load(scheduler_plugin_definition_schema)
+        assert_that(scheduler_plugin_definition.plugin_interface_version).is_equal_to(plugin_interface_version)
+        assert_that(scheduler_plugin_definition.events.head_init.execute_command.command).is_equal_to(
+            events["HeadInit"]["ExecuteCommand"]["Command"]
         )

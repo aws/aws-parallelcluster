@@ -14,7 +14,7 @@
 #
 import logging
 from enum import Enum
-from typing import List, Union
+from typing import Dict, List, Union
 
 import pkg_resources
 
@@ -32,9 +32,14 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     EBS_VOLUME_TYPE_DEFAULT,
     EBS_VOLUME_TYPE_IOPS_DEFAULT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
+    SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT,
+    SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT,
+    SUPPORTED_OSES,
 )
-from pcluster.utils import get_partition, get_resource_name_from_resource_arn
+from pcluster.utils import get_partition, get_resource_name_from_resource_arn, replace_url_parameters
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -49,7 +54,6 @@ from pcluster.validators.cluster_validators import (
     CustomAmiTagValidator,
     DcvValidator,
     DisableSimultaneousMultithreadingArchitectureValidator,
-    DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     DuplicateNameValidator,
     EfaOsArchitectureValidator,
@@ -65,6 +69,7 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    MaxCountValidator,
     NameValidator,
     NumberOfStorageValidator,
     OverlappingMountDirValidator,
@@ -106,6 +111,7 @@ from pcluster.validators.s3_validators import (
     S3BucketValidator,
     UrlValidator,
 )
+from pcluster.validators.scheduler_plugin_validators import SudoPrivilegesValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -135,15 +141,10 @@ class Ebs(Resource):
     def _register_validators(self):
         self._register_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
         self._register_validator(
-            EbsVolumeIopsValidator,
-            volume_type=self.volume_type,
-            volume_size=self.size,
-            volume_iops=self.iops,
+            EbsVolumeIopsValidator, volume_type=self.volume_type, volume_size=self.size, volume_iops=self.iops
         )
         self._register_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_throughput=self.throughput,
+            EbsVolumeThroughputValidator, volume_type=self.volume_type, volume_throughput=self.throughput
         )
         self._register_validator(
             EbsVolumeThroughputIopsValidator,
@@ -400,16 +401,10 @@ class Proxy(Resource):
 class _BaseNetworking(Resource):
     """Represent the networking configuration shared by head node and compute node."""
 
-    def __init__(
-        self,
-        security_groups: List[str] = None,
-        additional_security_groups: List[str] = None,
-        proxy: Proxy = None,
-    ):
+    def __init__(self, security_groups: List[str] = None, additional_security_groups: List[str] = None):
         super().__init__()
         self.security_groups = Resource.init_param(security_groups)
         self.additional_security_groups = Resource.init_param(additional_security_groups)
-        self.proxy = proxy
 
     def _register_validators(self):
         self._register_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
@@ -419,10 +414,11 @@ class _BaseNetworking(Resource):
 class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
-    def __init__(self, subnet_id: str, elastic_ip: Union[str, bool] = None, **kwargs):
+    def __init__(self, subnet_id: str, elastic_ip: Union[str, bool] = None, proxy: Proxy = None, **kwargs):
         super().__init__(**kwargs)
         self.subnet_id = Resource.init_param(subnet_id)
         self.elastic_ip = Resource.init_param(elastic_ip)
+        self.proxy = proxy
 
     def _register_validators(self):
         super()._register_validators()
@@ -446,16 +442,35 @@ class PlacementGroup(Resource):
         self._register_validator(PlacementGroupIdValidator, placement_group_id=self.id)
 
 
-class QueueNetworking(_BaseNetworking):
+class _QueueNetworking(_BaseNetworking):
     """Represent the networking configuration for the Queue."""
 
-    def __init__(
-        self, subnet_ids: List[str], placement_group: PlacementGroup = None, assign_public_ip: str = None, **kwargs
-    ):
+    def __init__(self, subnet_ids: List[str], assign_public_ip: str = None, **kwargs):
         super().__init__(**kwargs)
         self.assign_public_ip = Resource.init_param(assign_public_ip)
         self.subnet_ids = Resource.init_param(subnet_ids)
+
+
+class SlurmQueueNetworking(_QueueNetworking):
+    """Represent the networking configuration for the slurm Queue."""
+
+    def __init__(self, placement_group: PlacementGroup = None, proxy: Proxy = None, **kwargs):
+        super().__init__(**kwargs)
         self.placement_group = placement_group
+        self.proxy = proxy
+
+
+class AwsBatchQueueNetworking(_QueueNetworking):
+    """Represent the networking configuration for the aws batch Queue."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class SchedulerPluginQueueNetworking(SlurmQueueNetworking):
+    """Represent the networking configuration for the Scheduler Plugin Queue."""
+
+    pass
 
 
 class Ssh(Resource):
@@ -542,38 +557,26 @@ class Monitoring(Resource):
 class Tag(BaseTag):
     """Represent the Tag configuration."""
 
-    def __init__(
-        self,
-        key: str = None,
-        value: str = None,
-    ):
+    def __init__(self, key: str = None, value: str = None):
         super().__init__(key, value)
 
 
 class Roles(Resource):
     """Represent the Roles configuration."""
 
-    def __init__(
-        self,
-        custom_lambda_resources: str = None,
-    ):
+    def __init__(self, lambda_functions_role: str = None):
         super().__init__()
-        self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
+        self.lambda_functions_role = Resource.init_param(lambda_functions_role)
 
     def _register_validators(self):
-        if self.custom_lambda_resources:
-            self._register_validator(RoleValidator, role_arn=self.custom_lambda_resources)
+        if self.lambda_functions_role:
+            self._register_validator(RoleValidator, role_arn=self.lambda_functions_role)
 
 
 class S3Access(Resource):
     """Represent the S3 Access configuration."""
 
-    def __init__(
-        self,
-        bucket_name: str,
-        key_name: str = None,
-        enable_write_access: bool = None,
-    ):
+    def __init__(self, bucket_name: str, key_name: str = None, enable_write_access: bool = None):
         super().__init__()
         self.bucket_name = Resource.init_param(bucket_name)
         self.key_name = Resource.init_param(key_name)
@@ -650,11 +653,7 @@ class Iam(Resource):
 class Imds(Resource):
     """Represent the IMDS configuration."""
 
-    def __init__(
-        self,
-        secured: bool = None,
-        **kwargs,
-    ):
+    def __init__(self, secured: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.secured = Resource.init_param(secured, default=True)
 
@@ -662,11 +661,7 @@ class Imds(Resource):
 class ClusterIam(Resource):
     """Represent the IAM configuration for Cluster."""
 
-    def __init__(
-        self,
-        roles: Roles = None,
-        permissions_boundary: str = None,
-    ):
+    def __init__(self, roles: Roles = None, permissions_boundary: str = None):
         super().__init__()
         self.roles = roles
         self.permissions_boundary = Resource.init_param(permissions_boundary)
@@ -679,10 +674,7 @@ class ClusterIam(Resource):
 class IntelSoftware(Resource):
     """Represent the Intel select solution configuration."""
 
-    def __init__(
-        self,
-        intel_hpc_platform: bool = None,
-    ):
+    def __init__(self, intel_hpc_platform: bool = None):
         super().__init__()
         self.intel_hpc_platform = Resource.init_param(intel_hpc_platform, default=False)
 
@@ -690,10 +682,7 @@ class IntelSoftware(Resource):
 class AdditionalPackages(Resource):
     """Represent the additional packages configuration."""
 
-    def __init__(
-        self,
-        intel_software: IntelSoftware = None,
-    ):
+    def __init__(self, intel_software: IntelSoftware = None):
         super().__init__()
         self.intel_software = intel_software
 
@@ -891,10 +880,7 @@ class HeadNode(Resource):
 class BaseComputeResource(Resource):
     """Represent the base Compute Resource, with the fields in common between all the schedulers."""
 
-    def __init__(
-        self,
-        name: str,
-    ):
+    def __init__(self, name: str):
         super().__init__()
         self.name = Resource.init_param(name)
 
@@ -912,11 +898,7 @@ class CapacityType(Enum):
 class ComputeSettings(Resource):
     """Represent the ComputeSettings resource."""
 
-    def __init__(
-        self,
-        local_storage: LocalStorage = None,
-        **kwargs,
-    ):
+    def __init__(self, local_storage: LocalStorage = None, **kwargs):
         super().__init__(**kwargs)
         self.local_storage = local_storage or LocalStorage(implied=True)
 
@@ -924,15 +906,9 @@ class ComputeSettings(Resource):
 class BaseQueue(Resource):
     """Represent the generic Queue resource."""
 
-    def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        capacity_type: str = None,
-    ):
+    def __init__(self, name: str, capacity_type: str = None):
         super().__init__()
         self.name = Resource.init_param(name)
-        self.networking = networking
         _capacity_type = CapacityType[capacity_type.upper()] if capacity_type else None
         self.capacity_type = Resource.init_param(_capacity_type, default=CapacityType.ONDEMAND)
 
@@ -953,12 +929,19 @@ class BaseClusterConfig(Resource):
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
         iam: ClusterIam = None,
+        config_region: str = None,
         custom_s3_bucket: str = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
     ):
         super().__init__()
         self.__region = None
+        # config_region represents the region parameter in the configuration file
+        # and is only used by configure_aws_region_from_config in controllers.
+        # Since the region is already set by configure_aws_region_from_config to the environment variable,
+        # the self.config_region is never used. It has to be here to make sure cluster_config stores all information
+        # from a configuration file, so it is able to recreate the same file.
+        self.config_region = config_region
         self.cluster_name = cluster_name
         self.image = image
         self.head_node = head_node
@@ -987,11 +970,11 @@ class BaseClusterConfig(Resource):
             custom_ami=self.image.custom_ami,
             ami_search_filters=self.dev_settings.ami_search_filters if self.dev_settings else None,
         )
-        if self.headnode_ami:
+        if self.head_node_ami:
             self._register_validator(
                 InstanceTypeBaseAMICompatibleValidator,
                 instance_type=self.head_node.instance_type,
-                image=self.headnode_ami,
+                image=self.head_node_ami,
             )
         if self.head_node.image and self.head_node.image.custom_ami:
             self._register_validator(
@@ -1001,7 +984,9 @@ class BaseClusterConfig(Resource):
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         self._register_storage_validators()
-        self._register_validator(HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.headnode_ami)
+        self._register_validator(
+            HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami, tags=self.tags
+        )
 
         if self.head_node.dcv:
             self._register_validator(
@@ -1019,10 +1004,7 @@ class BaseClusterConfig(Resource):
             and self.additional_packages.intel_software.intel_hpc_platform
         ):
             self._register_validator(IntelHpcOsValidator, os=self.image.os)
-            self._register_validator(
-                IntelHpcArchitectureValidator,
-                architecture=self.head_node.architecture,
-            )
+            self._register_validator(IntelHpcArchitectureValidator, architecture=self.head_node.architecture)
         if self.custom_s3_bucket:
             self._register_validator(S3BucketValidator, bucket=self.custom_s3_bucket)
             self._register_validator(S3BucketRegionValidator, bucket=self.custom_s3_bucket, region=self.region)
@@ -1036,10 +1018,7 @@ class BaseClusterConfig(Resource):
                 resource_name="Shared Storage",
             )
             for storage in self.shared_storage:
-                self._register_validator(
-                    SharedStorageNameValidator,
-                    name=storage.name,
-                )
+                self._register_validator(SharedStorageNameValidator, name=storage.name)
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
                     if storage.file_system_id:
@@ -1049,9 +1028,7 @@ class BaseClusterConfig(Resource):
                             head_node_subnet_id=self.head_node.networking.subnet_id,
                         )
                     self._register_validator(
-                        FsxArchitectureOsValidator,
-                        architecture=self.head_node.architecture,
-                        os=self.image.os,
+                        FsxArchitectureOsValidator, architecture=self.head_node.architecture, os=self.image.os
                     )
                 if isinstance(storage, SharedEbs):
                     if storage.raid:
@@ -1138,7 +1115,7 @@ class BaseClusterConfig(Resource):
         return AWSApi.instance().ec2.get_subnet_vpc(self.head_node.networking.subnet_id)
 
     @property
-    def headnode_ami(self):
+    def head_node_ami(self):
         """Get the image id of the HeadNode."""
         if self.head_node.image and self.head_node.image.custom_ami:
             return self.head_node.image.custom_ami
@@ -1258,9 +1235,10 @@ class AwsBatchComputeResource(BaseComputeResource):
 class AwsBatchQueue(BaseQueue):
     """Represent the AwsBatch Queue resource."""
 
-    def __init__(self, compute_resources: List[AwsBatchComputeResource], **kwargs):
+    def __init__(self, compute_resources: List[AwsBatchComputeResource], networking: AwsBatchQueueNetworking, **kwargs):
         super().__init__(**kwargs)
         self.compute_resources = compute_resources
+        self.networking = networking
 
     def _register_validators(self):
         super()._register_validators()
@@ -1353,11 +1331,7 @@ class SlurmComputeResource(BaseComputeResource):
 
     def _register_validators(self):
         super()._register_validators()
-        self._register_validator(
-            ComputeResourceSizeValidator,
-            min_count=self.min_count,
-            max_count=self.max_count,
-        )
+        self._register_validator(ComputeResourceSizeValidator, min_count=self.min_count, max_count=self.max_count)
         self._register_validator(
             DisableSimultaneousMultithreadingArchitectureValidator,
             disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
@@ -1419,12 +1393,11 @@ class SlurmComputeResource(BaseComputeResource):
         return self.disable_simultaneous_multithreading and not self.instance_type_info.is_cpu_options_supported_in_lt()
 
 
-class SlurmQueue(BaseQueue):
-    """Represent the Slurm Queue resource."""
+class _CommonQueue(BaseQueue):
+    """Represent the Common Queue resource between Slurm and Scheduler Plugin."""
 
     def __init__(
         self,
-        compute_resources: List[SlurmComputeResource],
         compute_settings: ComputeSettings = None,
         custom_actions: CustomActions = None,
         iam: Iam = None,
@@ -1432,15 +1405,151 @@ class SlurmQueue(BaseQueue):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.compute_resources = compute_resources
         self.compute_settings = compute_settings or ComputeSettings(implied=True)
         self.custom_actions = custom_actions
         self.iam = iam or Iam(implied=True)
         self.image = image
 
+    @property
+    def instance_role(self):
+        """Return the IAM role for compute nodes, if set."""
+        return self.iam.instance_role if self.iam else None
+
+    @property
+    def instance_profile(self):
+        """Return the IAM instance profile for compute nodes, if set."""
+        return self.iam.instance_profile if self.iam else None
+
+    @property
+    def queue_ami(self):
+        """Return queue image id."""
+        if self.image and self.image.custom_ami:
+            return self.image.custom_ami
+        else:
+            return None
+
+
+class SlurmQueue(_CommonQueue):
+    """Represent the Slurm Queue resource."""
+
+    def __init__(
+        self,
+        compute_resources: List[SlurmComputeResource],
+        networking: SlurmQueueNetworking,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.compute_resources = compute_resources
+        self.networking = networking
+
     def _register_validators(self):
         super()._register_validators()
-        self._register_validator(DuplicateInstanceTypeValidator, instance_type_list=self.instance_type_list)
+        self._register_validator(
+            DuplicateNameValidator,
+            name_list=[compute_resource.name for compute_resource in self.compute_resources],
+            resource_name="Compute resource",
+        )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.compute_resources),
+            max_length=MAX_NUMBER_OF_COMPUTE_RESOURCES,
+            resource_name="ComputeResources",
+        )
+        for compute_resource in self.compute_resources:
+            self._register_validator(
+                CapacityTypeValidator, capacity_type=self.capacity_type, instance_type=compute_resource.instance_type
+            )
+            self._register_validator(
+                EfaSecurityGroupValidator,
+                efa_enabled=compute_resource.efa.enabled,
+                security_groups=self.networking.security_groups,
+                additional_security_groups=self.networking.additional_security_groups,
+            )
+            self._register_validator(
+                EfaPlacementGroupValidator,
+                efa_enabled=compute_resource.efa.enabled,
+                placement_group_enabled=self.networking.placement_group and self.networking.placement_group.enabled,
+                placement_group_config_implicit=self.networking.placement_group is None
+                or self.networking.placement_group.is_implied("enabled"),
+            )
+
+    @property
+    def instance_type_list(self):
+        """Return the list of instance types associated to the Queue."""
+        return [compute_resource.instance_type for compute_resource in self.compute_resources]
+
+
+class Dns(Resource):
+    """Represent the DNS settings."""
+
+    def __init__(
+        self, disable_managed_dns: bool = None, hosted_zone_id: str = None, use_ec2_hostnames: bool = None, **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
+        self.hosted_zone_id = Resource.init_param(hosted_zone_id)
+        self.use_ec2_hostnames = Resource.init_param(use_ec2_hostnames, default=False)
+
+
+class SlurmSettings(Resource):
+    """Represent the Slurm settings."""
+
+    def __init__(self, scaledown_idletime: int = None, dns: Dns = None, **kwargs):
+        super().__init__()
+        self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
+        self.dns = dns or Dns(implied=True)
+
+
+class SlurmScheduling(Resource):
+    """Represent a slurm Scheduling resource."""
+
+    def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None):
+        super().__init__()
+        self.scheduler = "slurm"
+        self.queues = queues
+        self.settings = settings or SlurmSettings(implied=True)
+
+    def _register_validators(self):
+        self._register_validator(
+            DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
+        )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.queues),
+            max_length=MAX_NUMBER_OF_QUEUES,
+            resource_name="SlurmQueues",
+        )
+
+
+class SchedulerPluginComputeResource(SlurmComputeResource):
+    """Represent the Scheduler Plugin Compute Resource."""
+
+    def __init__(
+        self,
+        custom_settings: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.custom_settings = custom_settings
+
+
+class SchedulerPluginQueue(_CommonQueue):
+    """Represent the Scheduler Plugin queue."""
+
+    def __init__(
+        self,
+        compute_resources: List[SchedulerPluginComputeResource],
+        networking: SchedulerPluginQueueNetworking,
+        custom_settings: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.compute_resources = compute_resources
+        self.networking = networking
+        self.custom_settings = custom_settings
+
+    def _register_validators(self):
+        super()._register_validators()
         self._register_validator(
             DuplicateNameValidator,
             name_list=[compute_resource.name for compute_resource in self.compute_resources],
@@ -1469,56 +1578,274 @@ class SlurmQueue(BaseQueue):
         """Return the list of instance types associated to the Queue."""
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
 
-    @property
-    def instance_role(self):
-        """Return the IAM role for compute nodes, if set."""
-        return self.iam.instance_role if self.iam else None
 
-    @property
-    def instance_profile(self):
-        """Return the IAM instance profile for compute nodes, if set."""
-        return self.iam.instance_profile if self.iam else None
+class SchedulerPluginSupportedDistros(Resource):
+    """Represent the Supported Distros for a Scheduler Plugin plugin."""
 
-    @property
-    def queue_ami(self):
-        """Return queue image id."""
-        if self.image and self.image.custom_ami:
-            return self.image.custom_ami
-        else:
-            return None
-
-
-class Dns(Resource):
-    """Represent the DNS settings."""
-
-    def __init__(self, disable_managed_dns: bool = None, hosted_zone_id: str = None):
-        super().__init__()
-        self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
-        self.hosted_zone_id = Resource.init_param(hosted_zone_id)
-
-
-class SlurmSettings(Resource):
-    """Represent the Slurm settings."""
-
-    def __init__(self, scaledown_idletime: int = None, dns: Dns = None, **kwargs):
+    def __init__(self, x86: List[str] = None, arm64: List[str] = None, **kwargs):
         super().__init__(**kwargs)
-        self.scaledown_idletime = Resource.init_param(scaledown_idletime, default=10)
-        self.dns = dns
+        self.x86 = Resource.init_param(x86, default=SUPPORTED_OSES)
+        self.arm64 = Resource.init_param(arm64, default=SUPPORTED_OSES)
 
 
-class SlurmScheduling(Resource):
-    """Represent a slurm Scheduling resource."""
+class SchedulerPluginQueueConstraints(Resource):
+    """Represent the Queue Constraints for a Scheduler Plugin plugin."""
 
-    def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None):
-        super().__init__()
-        self.scheduler = "slurm"
+    def __init__(self, max_count: int = None, max_subnets_count: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_QUEUES)
+        self.max_subnets_count = Resource.init_param(
+            max_subnets_count, default=SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT
+        )
+
+
+class SchedulerPluginComputeResourceConstraints(Resource):
+    """Represent the Compute Resource Constraints for a Scheduler Plugin plugin."""
+
+    def __init__(self, max_count: int = None, max_instance_types_count: int = None, **kwargs):
+        super().__init__(**kwargs)
+        self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_COMPUTE_RESOURCES)
+        self.max_instance_types_count = Resource.init_param(
+            max_instance_types_count, default=SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT
+        )
+
+
+class SchedulerPluginRequirements(Resource):
+    """Represent the Requirements for a Scheduler Plugin plugin."""
+
+    def __init__(
+        self,
+        supported_distros: SchedulerPluginSupportedDistros = None,
+        supported_regions: List[str] = None,
+        queue_constraints: SchedulerPluginQueueConstraints = None,
+        compute_resource_constraints: SchedulerPluginComputeResourceConstraints = None,
+        requires_sudo_privileges: bool = None,
+        supports_cluster_update: bool = None,
+        supported_parallel_cluster_versions: str = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.supported_distros = supported_distros
+        self.supported_regions = supported_regions
+        self.queue_constraints = queue_constraints
+        self.compute_resource_constraints = compute_resource_constraints
+        self.requires_sudo_privileges = Resource.init_param(requires_sudo_privileges, default=False)
+        self.supports_cluster_update = Resource.init_param(supports_cluster_update, default=True)
+        self.supported_parallel_cluster_versions = supported_parallel_cluster_versions
+
+
+class SchedulerPluginCloudFormationInfrastructure(Resource):
+    """Represent the CloudFormation infrastructure for a Scheduler Plugin plugin."""
+
+    def __init__(self, template: str, **kwargs):
+        super().__init__(**kwargs)
+        self.template = replace_url_parameters(template)
+
+    def _register_validators(self):
+        self._register_validator(UrlValidator, url=self.template, fail_on_https_error=True)
+
+
+class SchedulerPluginClusterInfrastructure(Resource):
+    """Represent the ClusterInfastructure config for a Scheduler Plugin plugin."""
+
+    def __init__(self, cloud_formation: SchedulerPluginCloudFormationInfrastructure = None, **kwargs):
+        super().__init__(**kwargs)
+        self.cloud_formation = cloud_formation
+
+
+class SchedulerPluginClusterSharedArtifact(Resource):
+    """Represent the ClusterSharedArtifact config for a Scheduler Plugin plugin."""
+
+    def __init__(self, source: str, **kwargs):
+        super().__init__(**kwargs)
+        self.source = replace_url_parameters(source)
+
+    def _register_validators(self):
+        self._register_validator(UrlValidator, url=self.source)
+
+
+class SchedulerPluginPluginResources(Resource):
+    """Represent the PluginResources config for a Scheduler Plugin plugin."""
+
+    def __init__(self, cluster_shared_artifacts: [SchedulerPluginClusterSharedArtifact], **kwargs):
+        super().__init__(**kwargs)
+        self.cluster_shared_artifacts = cluster_shared_artifacts
+
+
+class SchedulerPluginExecuteCommand(Resource):
+    """Represent the ExecuteCommand for a Scheduler Plugin plugin."""
+
+    def __init__(self, command: str, **kwargs):
+        super().__init__(**kwargs)
+        self.command = command
+
+
+class SchedulerPluginEvent(Resource):
+    """Represent the Event config for a Scheduler Plugin plugin."""
+
+    def __init__(self, execute_command: SchedulerPluginExecuteCommand, **kwargs):
+        super().__init__(**kwargs)
+        self.execute_command = execute_command
+
+
+class SchedulerPluginEvents(Resource):
+    """Represent the Events config for a Scheduler Plugin plugin."""
+
+    def __init__(
+        self,
+        head_init: SchedulerPluginEvent = None,
+        head_configure: SchedulerPluginEvent = None,
+        head_finalize: SchedulerPluginEvent = None,
+        compute_init: SchedulerPluginEvent = None,
+        compute_configure: SchedulerPluginEvent = None,
+        compute_finalize: SchedulerPluginEvent = None,
+        head_cluster_update: SchedulerPluginEvent = None,
+        head_compute_fleet_start: SchedulerPluginEvent = None,
+        head_compute_fleet_stop: SchedulerPluginEvent = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.head_init = head_init
+        self.head_configure = head_configure
+        self.head_finalize = head_finalize
+        self.compute_init = compute_init
+        self.compute_configure = compute_configure
+        self.compute_finalize = compute_finalize
+        self.head_cluster_update = head_cluster_update
+        self.head_compute_fleet_start = head_compute_fleet_start
+        self.head_compute_fleet_stop = head_compute_fleet_stop
+
+
+class SchedulerPluginFile(Resource):
+    """Represent the Scheduler Plugin file resource."""
+
+    def __init__(self, file_path: str, timestamp_format: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.file_path = file_path
+        self.timestamp_format = Resource.init_param(timestamp_format, default="%Y-%m-%dT%H:%M:%S%z")
+
+
+class SchedulerPluginLogs(Resource):
+    """Represent the Scheduler Plugin logs resource."""
+
+    def __init__(self, files: [SchedulerPluginFile], **kwargs):
+        super().__init__(**kwargs)
+        self.files = files
+
+
+class SchedulerPluginMonitoring(Resource):
+    """Represent the Scheduler Plugin monitoring resource."""
+
+    def __init__(self, logs: SchedulerPluginLogs, **kwargs):
+        super().__init__(**kwargs)
+        self.logs = logs
+
+
+class SchedulerPluginUser(Resource):
+    """Represent the Scheduler Plugin user resource."""
+
+    def __init__(self, name: str, enable_imds: bool = None, **kwargs):
+        super().__init__(**kwargs)
+        self.name = name
+        self.enable_imds = Resource.init_param(enable_imds, default=False)
+
+
+class SchedulerPluginDefinition(Resource):
+    """Represent the Scheduler Plugin scheduler definition."""
+
+    def __init__(
+        self,
+        plugin_interface_version: str,
+        events: SchedulerPluginEvents,
+        metadata: Dict = None,
+        requirements: SchedulerPluginRequirements = None,
+        cluster_infrastructure: SchedulerPluginClusterInfrastructure = None,
+        plugin_resources: SchedulerPluginPluginResources = None,
+        monitoring: SchedulerPluginMonitoring = None,
+        system_users: [SchedulerPluginUser] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.plugin_interface_version = plugin_interface_version
+        self.metadata = metadata
+        self.requirements = requirements
+        self.cluster_infrastructure = cluster_infrastructure
+        self.plugin_resources = plugin_resources
+        self.events = events
+        self.monitoring = monitoring
+        self.system_users = system_users
+
+
+class SchedulerPluginSettings(Resource):
+    """Represent the Scheduler Plugin settings."""
+
+    def __init__(
+        self,
+        scheduler_definition: SchedulerPluginDefinition,
+        grant_sudo_privileges: bool = None,
+        custom_settings: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.scheduler_definition = scheduler_definition
+        self.grant_sudo_privileges = Resource.init_param(grant_sudo_privileges, default=False)
+        self.custom_settings = custom_settings
+
+    def _register_validators(self):
+        self._register_validator(
+            SudoPrivilegesValidator,
+            grant_sudo_privileges=self.grant_sudo_privileges,
+            requires_sudo_privileges=self.scheduler_definition.requirements.requires_sudo_privileges
+            if self.scheduler_definition.requirements
+            else None,
+        )
+
+
+class SchedulerPluginScheduling(Resource):
+    """Represent a Scheduler Plugin Scheduling resource."""
+
+    def __init__(self, queues: List[SchedulerPluginQueue], settings: SchedulerPluginSettings, **kwargs):
+        super().__init__(**kwargs)
+        self.scheduler = "plugin"
         self.queues = queues
-        self.settings = settings or SlurmSettings(implied=True)
+        self.settings = settings
 
     def _register_validators(self):
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
+
+
+class SchedulerPluginClusterConfig(BaseClusterConfig):
+    """Represent the full Scheduler Plugin Cluster configuration."""
+
+    def __init__(self, cluster_name: str, scheduling: SchedulerPluginScheduling, **kwargs):
+        super().__init__(cluster_name, **kwargs)
+        self.scheduling = scheduling
+        self.__image_dict = None
+
+    def get_instance_types_data(self):
+        """Get instance type infos for all instance types used in the configuration file."""
+        result = {}
+        instance_type_info = self.head_node.instance_type_info
+        result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                instance_type_info = compute_resource.instance_type_info
+                result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
+        return result
+
+    @property
+    def image_dict(self):
+        """Return image dict of queues, key is queue name, value is image id."""
+        if self.__image_dict:
+            return self.__image_dict
+        self.__image_dict = {}
+
+        for queue in self.scheduling.queues:
+            self.__image_dict[queue.name] = queue.queue_ami or self.image.custom_ami or self.official_ami
+
+        return self.__image_dict
 
 
 class SlurmClusterConfig(BaseClusterConfig):
@@ -1558,16 +1885,12 @@ class SlurmClusterConfig(BaseClusterConfig):
 
         for queue in self.scheduling.queues:
             self._register_validator(
-                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name]
+                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name], tags=self.tags
             )
             queue_image = self.image_dict[queue.name]
             if queue_image not in checked_images and queue.queue_ami:
                 checked_images.append(queue_image)
-                self._register_validator(
-                    AmiOsCompatibleValidator,
-                    os=self.image.os,
-                    image_id=queue_image,
-                )
+                self._register_validator(AmiOsCompatibleValidator, os=self.image.os, image_id=queue_image)
             for compute_resource in queue.compute_resources:
                 if self.image_dict[queue.name]:
                     self._register_validator(

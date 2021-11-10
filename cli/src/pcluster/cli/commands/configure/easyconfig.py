@@ -34,9 +34,15 @@ from pcluster.cli.commands.configure.utils import (
     prompt,
     prompt_iterable,
 )
-from pcluster.constants import DEFAULT_MAX_COUNT, DEFAULT_MIN_COUNT, SUPPORTED_SCHEDULERS
+from pcluster.constants import (
+    DEFAULT_MAX_COUNT,
+    DEFAULT_MIN_COUNT,
+    MAX_NUMBER_OF_COMPUTE_RESOURCES,
+    MAX_NUMBER_OF_QUEUES,
+    SUPPORTED_SCHEDULERS,
+)
 from pcluster.utils import error, get_supported_os_for_scheduler
-from pcluster.validators.cluster_validators import NAME_REGEX
+from pcluster.validators.cluster_validators import NameValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -135,10 +141,8 @@ def configure(args):  # noqa: C901
 
     if scheduler == "awsbatch":
         base_os = "alinux2"
-        head_node_imds_secured = False
     else:
         base_os = prompt_iterable("Operating System", get_supported_os_for_scheduler(scheduler))
-        head_node_imds_secured = True
 
     default_instance_type = AWSApi.instance().ec2.get_default_instance_type()
     head_node_instance_type = prompt(
@@ -152,9 +156,17 @@ def configure(args):  # noqa: C901
     )
     if scheduler == "awsbatch":
         number_of_queues = 1
+        size_name = "vCPU"
     else:
-        number_of_queues = int(prompt("Number of queues", lambda x: str(x).isdigit() and int(x) >= 1, default_value=1))
-    size_name = "vCPU" if scheduler == "awsbatch" else "instance count"
+        number_of_queues = int(
+            prompt(
+                "Number of queues",
+                lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_QUEUES,
+                default_value=1,
+            )
+        )
+        size_name = "instance count"
+
     queues = []
     queue_names = []
     compute_instance_types = []
@@ -163,7 +175,7 @@ def configure(args):  # noqa: C901
         while True:
             queue_name = prompt(
                 f"Name of queue {queue_index+1}",
-                validator=lambda x: re.match(NAME_REGEX, x),
+                validator=lambda x: len(NameValidator().execute(x)) == 0,
                 default_value=f"queue{queue_index+1}",
             )
             if queue_name not in queue_names:
@@ -179,7 +191,7 @@ def configure(args):  # noqa: C901
             number_of_compute_resources = int(
                 prompt(
                     f"Number of compute resources for {queue_name}",
-                    validator=lambda x: str(x).isdigit() and int(x) >= 1,
+                    validator=lambda x: str(x).isdigit() and int(x) >= 1 and int(x) <= MAX_NUMBER_OF_COMPUTE_RESOURCES,
                     default_value=1,
                 )
             )
@@ -200,8 +212,7 @@ def configure(args):  # noqa: C901
                         f"Error: Instance type {compute_instance_type} cannot be specified for multiple compute "
                         "resources in the same queue. Please insert a different instance type."
                     )
-                sanitized_instance_type = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
-                compute_resource_name = f"{queue_name}-{sanitized_instance_type}"
+                compute_resource_name = re.sub(r"[^A-Za-z0-9]", "", compute_instance_type)
             min_cluster_size = DEFAULT_MIN_COUNT
             max_cluster_size = int(
                 prompt(
@@ -213,7 +224,7 @@ def configure(args):  # noqa: C901
             if scheduler == "awsbatch":
                 compute_resources.append(
                     {
-                        "Name": f"{queue_name}-optimal",
+                        "Name": "optimal",
                         "InstanceTypes": ["optimal"],
                         "MinvCpus": min_cluster_size,
                         "DesiredvCpus": min_cluster_size,
@@ -229,26 +240,33 @@ def configure(args):  # noqa: C901
                         "MaxCount": max_cluster_size,
                     }
                 )
-            if scheduler != "awsbatch":
                 compute_instance_types.append(compute_instance_type)
+
             queue_names.append(queue_name)
             cluster_size += max_cluster_size  # Fixme: is it the right calculation for awsbatch?
         queues.append({"Name": queue_name, "ComputeResources": compute_resources})
+
     vpc_parameters = _create_vpc_parameters(scheduler, head_node_instance_type, compute_instance_types, cluster_size)
 
     # Here is the end of prompt. Code below assembles config and write to file
     for queue in queues:
         queue["Networking"] = {"SubnetIds": [vpc_parameters["compute_subnet_id"]]}
 
-    scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
+    head_node_config = {
+        "InstanceType": head_node_instance_type,
+        "Networking": {"SubnetId": vpc_parameters["head_node_subnet_id"]},
+        "Ssh": {"KeyName": key_name},
+    }
+    if scheduler == "awsbatch":
+        scheduler_prefix = "AwsBatch"
+        head_node_config["Imds"] = {"Secured": False}
+    else:
+        scheduler_prefix = scheduler.capitalize()
+
     result = {
+        "Region": os.environ.get("AWS_DEFAULT_REGION"),
         "Image": {"Os": base_os},
-        "HeadNode": {
-            "InstanceType": head_node_instance_type,
-            "Networking": {"SubnetId": vpc_parameters["head_node_subnet_id"]},
-            "Ssh": {"KeyName": key_name},
-            "Imds": {"Secured": head_node_imds_secured},
-        },
+        "HeadNode": head_node_config,
         "Scheduling": {"Scheduler": scheduler, f"{scheduler_prefix}Queues": queues},
     }
 

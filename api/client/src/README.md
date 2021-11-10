@@ -17,7 +17,7 @@ Python >= 3.6
 If the python package is hosted on a repository, you can install directly using:
 
 ```sh
-pip install git+https://github.com/GIT_USER_ID/GIT_REPO_ID.git
+pip install git+https://github.com/aws/aws-parallelcluster.git#subdirectory=api/client/src
 ```
 (you may need to run `pip` with root permission: `sudo pip install git+https://github.com/GIT_USER_ID/GIT_REPO_ID.git`)
 
@@ -60,27 +60,18 @@ from pcluster_client.model.update_compute_fleet_request_content import UpdateCom
 from pcluster_client.model.update_compute_fleet_response_content import UpdateComputeFleetResponseContent
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
-configuration = pcluster_client.Configuration(
-    host = "http://localhost"
-)
+configuration = pcluster_client.Configuration(host = "http://localhost") # Set the base URL of the ParallelCluster API
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: aws.auth.sigv4
-configuration.api_key['aws.auth.sigv4'] = 'YOUR_API_KEY'
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['aws.auth.sigv4'] = 'Bearer'
+# The client needs to authenticate with the ParallelCluster API server using SigV4.
+# Please ensure that your `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID`
+# are set appropriately for the client to authenticate using SigV4.
 
 
 # Enter a context with an instance of the API client
 with pcluster_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = cluster_compute_fleet_api.ClusterComputeFleetApi(api_client)
-    cluster_name = "AqWzy" # str | Name of the cluster
+    cluster_name = "mycluster" # str | Name of the cluster
 region = "region_example" # str | AWS Region that the operation corresponds to. (optional)
 
     try:
@@ -114,8 +105,8 @@ Class | Method | HTTP request | Description
 *ImageOperationsApi* | [**build_image**](docs/ImageOperationsApi.md#build_image) | **POST** /v3/images/custom | 
 *ImageOperationsApi* | [**delete_image**](docs/ImageOperationsApi.md#delete_image) | **DELETE** /v3/images/custom/{imageId} | 
 *ImageOperationsApi* | [**describe_image**](docs/ImageOperationsApi.md#describe_image) | **GET** /v3/images/custom/{imageId} | 
-*ImageOperationsApi* | [**describe_official_images**](docs/ImageOperationsApi.md#describe_official_images) | **GET** /v3/images/official | 
 *ImageOperationsApi* | [**list_images**](docs/ImageOperationsApi.md#list_images) | **GET** /v3/images/custom | 
+*ImageOperationsApi* | [**list_official_images**](docs/ImageOperationsApi.md#list_official_images) | **GET** /v3/images/official | 
 
 
 ## Documentation For Models
@@ -145,10 +136,10 @@ Class | Method | HTTP request | Description
  - [DescribeClusterResponseContent](docs/DescribeClusterResponseContent.md)
  - [DescribeComputeFleetResponseContent](docs/DescribeComputeFleetResponseContent.md)
  - [DescribeImageResponseContent](docs/DescribeImageResponseContent.md)
- - [DescribeOfficialImagesResponseContent](docs/DescribeOfficialImagesResponseContent.md)
  - [DryrunOperationExceptionResponseContent](docs/DryrunOperationExceptionResponseContent.md)
  - [EC2Instance](docs/EC2Instance.md)
  - [Ec2AmiInfo](docs/Ec2AmiInfo.md)
+ - [Ec2AmiInfoSummary](docs/Ec2AmiInfoSummary.md)
  - [Ec2AmiState](docs/Ec2AmiState.md)
  - [GetClusterLogEventsResponseContent](docs/GetClusterLogEventsResponseContent.md)
  - [GetClusterStackEventsResponseContent](docs/GetClusterStackEventsResponseContent.md)
@@ -166,6 +157,7 @@ Class | Method | HTTP request | Description
  - [ListClustersResponseContent](docs/ListClustersResponseContent.md)
  - [ListImageLogStreamsResponseContent](docs/ListImageLogStreamsResponseContent.md)
  - [ListImagesResponseContent](docs/ListImagesResponseContent.md)
+ - [ListOfficialImagesResponseContent](docs/ListOfficialImagesResponseContent.md)
  - [LogEvent](docs/LogEvent.md)
  - [LogStream](docs/LogStream.md)
  - [NodeType](docs/NodeType.md)

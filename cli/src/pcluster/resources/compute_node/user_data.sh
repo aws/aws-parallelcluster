@@ -39,6 +39,7 @@ fi
 Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
 
+datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
 write_files:
@@ -77,11 +78,13 @@ write_files:
           "enable_intel_hpc_platform": "${IntelHPCPlatform}",
           "cw_logging_enabled": "${CWLoggingEnabled}",
           "scheduler_queue_name": "${QueueName}",
+          "scheduler_compute_resource_name": "${ComputeResourceName}",
           "enable_efa_gdr": "${EnableEfaGdr}",
           "custom_node_package": "${CustomNodePackage}",
-          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}"
-        },
-        "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
+          "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
+          "use_private_hostname": "${UsePrivateHostname}",
+          "head_node_private_ip": "${HeadNodePrivateIp}"
+        }
       }
   - path: /etc/chef/client.rb
     permissions: '0644'
@@ -164,9 +167,9 @@ touch /etc/chef/ohai/hints/ec2.json
 jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cluster = $f1.cluster + $f2.cluster' > /etc/chef/dna.json || ( echo "jq not installed or invalid extra_json"; cp /tmp/dna.json /etc/chef/dna.json)
 {
   pushd /etc/chef &&
-  chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::prep_env &&
+  chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::init &&
   /opt/parallelcluster/scripts/fetch_and_run -preinstall &&
-  chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json &&
+  chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::config &&
   /opt/parallelcluster/scripts/fetch_and_run -postinstall &&
   chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize &&
   popd

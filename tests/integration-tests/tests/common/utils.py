@@ -62,7 +62,7 @@ AMI_TYPE_DICT = {
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None):
+def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", additional_filters=None, request=None):
     if additional_filters is None:
         additional_filters = []
     try:
@@ -71,6 +71,14 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64", 
                 version=get_installed_parallelcluster_version(),
                 ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name"),
             )
+            if (
+                request
+                and not request.config.getoption("pcluster_git_ref")
+                and not request.config.getoption("cookbook_git_ref")
+                and not request.config.getoption("node_git_ref")
+            ):  # If none of Git refs is provided, the test is running against released version.
+                # Then retrieve public pcluster AMIs
+                additional_filters.append({"Name": "is-public", "Values": ["true"]})
         else:
             ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
         logging.info("Parent image name %s" % ami_name)
@@ -161,7 +169,7 @@ def generate_random_string():
 
 
 def restart_head_node(cluster):
-    # stop/start headnode
+    # stop/start head_node
     logging.info(f"Restarting head node for cluster: {cluster.name}")
     head_node_instance = cluster.get_cluster_instance_ids(node_type="HeadNode")
     ec2_client = boto3.client("ec2", region_name=cluster.region)
@@ -191,3 +199,24 @@ def wait_head_node_running(cluster):
     boto3.client("ec2", region_name=cluster.region).get_waiter("instance_running").wait(
         InstanceIds=cluster.get_cluster_instance_ids(node_type="HeadNode"), WaiterConfig={"Delay": 60, "MaxAttempts": 5}
     )
+
+
+def get_default_vpc_security_group(vpc_id, region):
+    return (
+        boto3.client("ec2", region_name=region)
+        .describe_security_groups(
+            Filters=[
+                {"Name": "vpc-id", "Values": [vpc_id]},
+                {"Name": "group-name", "Values": ["default"]},
+            ]
+        )
+        .get("SecurityGroups")[0]
+        .get("GroupId")
+    )
+
+
+def get_route_tables(subnet_id, region):
+    response = boto3.client("ec2", region_name=region).describe_route_tables(
+        Filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}]
+    )
+    return [table["RouteTableId"] for table in response["RouteTables"]]

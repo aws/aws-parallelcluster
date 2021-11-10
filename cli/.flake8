@@ -21,6 +21,7 @@ per-file-ignores =
     ../tests/integration-tests/*: D202, D205, D400, D401
     src/pcluster/api/models/*: D101, D202, D205, D400, D401, D403
     src/pcluster/api/awslambda/serverless_wsgi.py: D205, D400
+    tests/pcluster3_config_converter/test_data.py: E501, W291
 exclude =
     .tox,
     .git,

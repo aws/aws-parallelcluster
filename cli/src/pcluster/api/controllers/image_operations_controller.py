@@ -12,6 +12,7 @@ import os as os_lib
 
 from pcluster.api.controllers.common import (
     configure_aws_region,
+    configure_aws_region_from_config,
     convert_errors,
     get_validator_suppressors,
     http_success_status_code,
@@ -33,17 +34,19 @@ from pcluster.api.models import (
     BuildImageResponseContent,
     CloudFormationStackStatus,
     DescribeImageResponseContent,
-    DescribeOfficialImagesResponseContent,
     Ec2AmiInfo,
+    Ec2AmiInfoSummary,
     ImageConfigurationStructure,
     ImageInfoSummary,
     ImageStatusFilteringOption,
     ListImagesResponseContent,
+    ListOfficialImagesResponseContent,
     Tag,
     ValidationLevel,
 )
 from pcluster.api.models.delete_image_response_content import DeleteImageResponseContent
 from pcluster.api.models.image_build_status import ImageBuildStatus
+from pcluster.api.util import assert_node_executable
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError
 from pcluster.aws.ec2 import Ec2Client
@@ -61,7 +64,6 @@ from pcluster.validators.common import FailureLevel
 LOGGER = logging.getLogger(__name__)
 
 
-@configure_aws_region()
 @http_success_status_code(202)
 @convert_errors()
 def build_image(
@@ -94,6 +96,8 @@ def build_image(
 
     :rtype: BuildImageResponseContent
     """
+    assert_node_executable()
+    configure_aws_region_from_config(region, build_image_request_content["imageConfiguration"])
     rollback_on_failure = rollback_on_failure if rollback_on_failure is not None else False
     disable_rollback = not rollback_on_failure
     validation_failure_level = validation_failure_level or ValidationLevel.ERROR
@@ -262,7 +266,7 @@ def _stack_to_describe_image_response(imagebuilder):
 
 @configure_aws_region()
 @convert_errors()
-def describe_official_images(region=None, os=None, architecture=None):
+def list_official_images(region=None, os=None, architecture=None):
     """
     Describe ParallelCluster AMIs.
 
@@ -273,7 +277,7 @@ def describe_official_images(region=None, os=None, architecture=None):
     :param architecture: Filter by architecture (Default is to not filter.)
     :type architecture: str
 
-    :rtype: DescribeOfficialImagesResponseContent
+    :rtype: ListOfficialImagesResponseContent
     """
     _validate_optional_filters(os, architecture)
 
@@ -282,7 +286,7 @@ def describe_official_images(region=None, os=None, architecture=None):
         for image in AWSApi.instance().ec2.get_official_images(os=os, architecture=architecture)
     ]
 
-    return DescribeOfficialImagesResponseContent(images=images)
+    return ListOfficialImagesResponseContent(images=images)
 
 
 def _validate_optional_filters(os, architecture):
@@ -384,7 +388,7 @@ def _image_info_to_image_info_summary(image):
     return ImageInfoSummary(
         image_id=image.pcluster_image_id,
         image_build_status=ImageBuildStatus.BUILD_COMPLETE,
-        ec2_ami_info=Ec2AmiInfo(ami_id=image.id),
+        ec2_ami_info=Ec2AmiInfoSummary(ami_id=image.id),
         region=os_lib.environ.get("AWS_DEFAULT_REGION"),
         version=image.version,
     )

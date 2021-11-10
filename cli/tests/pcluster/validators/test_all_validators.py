@@ -77,7 +77,7 @@ def test_all_validators_are_called(test_datadir, mocker):
         new_callable=PropertyMock(return_value="us-east-1a"),
     )
     mocker.patch(
-        "pcluster.config.cluster_config.BaseClusterConfig.headnode_ami",
+        "pcluster.config.cluster_config.BaseClusterConfig.head_node_ami",
         new_callable=PropertyMock(return_value="ami-12345678"),
     )
     mock_aws_api(mocker)
@@ -107,17 +107,14 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         cluster_validators + ".ComputeResourceSizeValidator._validate", return_value=[]
     )
     disable_simultaneous_multithreading_architecture_validator = mocker.patch(
-        cluster_validators + ".DisableSimultaneousMultithreadingArchitectureValidator._validate",
-        return_value=[],
+        cluster_validators + ".DisableSimultaneousMultithreadingArchitectureValidator._validate", return_value=[]
     )
     architecture_os_validator = mocker.patch(cluster_validators + ".ArchitectureOsValidator._validate", return_value=[])
     instance_architecture_compatibility_validator = mocker.patch(
         cluster_validators + ".InstanceArchitectureCompatibilityValidator._validate", return_value=[]
     )
     name_validator = mocker.patch(cluster_validators + ".NameValidator._validate", return_value=[])
-    duplicate_instance_type_validator = mocker.patch(
-        cluster_validators + ".DuplicateInstanceTypeValidator._validate", return_value=[]
-    )
+    max_count_validator = mocker.patch(cluster_validators + ".MaxCountValidator._validate", return_value=[])
     fsx_architecture_os_validator = mocker.patch(
         cluster_validators + ".FsxArchitectureOsValidator._validate", return_value=[]
     )
@@ -204,8 +201,12 @@ def test_validators_are_called_with_correct_argument(test_datadir, mocker):
         ],
         any_order=True,
     )
-    duplicate_instance_type_validator.assert_has_calls(
-        [call(instance_type_list=["c5.2xlarge", "c4.2xlarge"]), call(instance_type_list=["c5.4xlarge", "c4.4xlarge"])],
+    max_count_validator.assert_has_calls(
+        [
+            call(max_length=10, resource_name="SlurmQueues", resources_length=2),
+            call(max_length=5, resource_name="ComputeResources", resources_length=2),
+            call(max_length=5, resource_name="ComputeResources", resources_length=2),
+        ],
         any_order=True,
     )
     key_pair_validator.assert_has_calls([call(key_name="ec2-key-name")])
