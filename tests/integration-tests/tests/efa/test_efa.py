@@ -267,8 +267,13 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
         ) as result:
             previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
 
-            # Use a tolerance of 10us for 2 digits values and 20% tolerance for 3+ digits values
-            accepted_tolerance = 10 if len(previous_result) <= 2 else float(previous_result) * 0.2
+            # Use a tolerance of 10us for 2 digits values.
+            # For 3+ digits values use a 20% tolerance, except for the higher-variance latency benchmark.
+            if len(previous_result) <= 2:
+                accepted_tolerance = 10
+            else:
+                multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
+                accepted_tolerance = float(previous_result) * multiplier
             tolerated_latency = float(previous_result) + accepted_tolerance
 
             message = (
