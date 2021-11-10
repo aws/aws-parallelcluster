@@ -47,10 +47,10 @@ HeadNode:
   Image:
     CustomAmi: ami-98765432
 Scheduling:
-  Scheduler: byos
-  ByosSettings:
+  Scheduler: plugin
+  SchedulerSettings:
     SchedulerDefinition:
-      ByosVersion: "1.0"
+      PluginInterfaceVersion: "1.0"
       Requirements:
         SupportedDistros:
           X86: ["ubuntu1804", "centos7"]
@@ -62,12 +62,12 @@ Scheduling:
         ComputeResourceConstraints:
           MaxCount: 3
           MaxInstanceTypesCount: 1
-        RequiresSudoPriviledges: False
+        RequiresSudoPrivileges: False
         SupportsClusterUpdate: True
         SupportedParallelClusterVersions: 3.1.0,3.4.2
       ClusterInfrastructure:
         CloudFormation:
-          Template: https://bucket/byos/additional_cluster_infrastructure_no_jinja.cfn.yaml
+          Template: https://bucket/scheduler_plugin/additional_cluster_infrastructure_no_jinja.cfn.yaml
       PluginResources:
         ClusterSharedArtifacts:
           - Source: s3://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/plugins/slurm/v1.0.0/artifacts.tar.gz
@@ -113,12 +113,12 @@ Scheduling:
         - Name: user1
           EnableImds: true # optional, defaults to 'false'
         - Name: user2
-    GrantSudoPriviledges: true
+    GrantSudoPrivileges: true
     CustomSettings:  # here you can add any custom setting
       ScaledownIdletime: 10
       SchedulerType: "sched/backfill"
       SuspendTimeout: 60
-  ByosQueues:
+  SchedulerQueues:
     - Name: queue1
       CapacityType: ONDEMAND
       Networking:

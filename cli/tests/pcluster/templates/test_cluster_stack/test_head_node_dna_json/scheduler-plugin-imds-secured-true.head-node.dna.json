@@ -35,11 +35,11 @@
     "raid_parameters": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     "raid_vol_ids": "NONE",
     "region": "{'Ref': 'AWS::Region'}",
-    "scheduler": "byos",
+    "scheduler": "plugin",
     "stack_name": "clustername",
     "volume": "NONE",
     "use_private_hostname": "false",
-    "byos_substack_arn": "{'Ref': 'ByosStack'}",
+    "scheduler_plugin_substack_arn": "{'Ref': 'SchedulerPluginStack'}",
     "stack_arn": "{'Ref': 'AWS::StackId'}"
   }
 }
