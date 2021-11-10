@@ -1062,7 +1062,7 @@ class ClusterCdkStack(Stack):
         }
 
         if not self._condition_is_batch():
-            cfn_init["deployConfigFiles"]["files"]["/opt/parallelcluster/shared/launch_templates_config.json"] = {
+            cfn_init["deployConfigFiles"]["files"]["/opt/parallelcluster/shared/launch-templates-config.json"] = {
                 "mode": "000644",
                 "owner": "root",
                 "group": "root",

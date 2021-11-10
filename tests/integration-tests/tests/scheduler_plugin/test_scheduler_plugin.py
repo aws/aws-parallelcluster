@@ -25,10 +25,10 @@ from tests.common.assertions import assert_head_node_is_running, assert_instance
 from tests.common.utils import get_installed_parallelcluster_version
 
 PCLUSTER_CLUSTER_CONFIG = "/home/pcluster-scheduler-plugin/.parallelcluster/cluster-config.yaml"
-PCLUSTER_LAUNCH_TEMPLATES = "/home/pcluster-scheduler-plugin/.parallelcluster/launch_templates_config.json"
+PCLUSTER_LAUNCH_TEMPLATES = "/home/pcluster-scheduler-plugin/.parallelcluster/launch-templates-config.json"
 PCLUSTER_INSTANCE_TYPES_DATA = "/home/pcluster-scheduler-plugin/.parallelcluster/instance-types-data.json"
 PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_OUTPUTS = (
-    "/home/pcluster-scheduler-plugin/.parallelcluster/scheduler_plugin_substack_outputs.json"
+    "/home/pcluster-scheduler-plugin/.parallelcluster/scheduler-plugin-substack-outputs.json"
 )
 PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR = "/opt/parallelcluster/shared/scheduler-plugin"
 PCLUSTER_LOCAL_SCHEDULER_PLUGIN_DIR = "/opt/parallelcluster/scheduler-plugin"
