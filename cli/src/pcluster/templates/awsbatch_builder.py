@@ -351,7 +351,7 @@ class AwsBatchConstruct(Construct):
                                     ),
                                     self._format_arn(
                                         service="ecs",
-                                        resource=f"cluster/{self._get_compute_env_prefix()}_Batch_*",
+                                        resource=f"cluster/AWSBatch-{self._get_compute_env_prefix()}*",
                                         region=self._stack_region,
                                         account=self._stack_account,
                                     ),

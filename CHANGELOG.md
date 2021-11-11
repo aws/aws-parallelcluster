@@ -15,6 +15,7 @@ X.X.X
 
 **BUG FIXES**
 - Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
+- Fix ecs:ListContainerInstances permission in BatchUserRole
 
 3.0.2
 -----
