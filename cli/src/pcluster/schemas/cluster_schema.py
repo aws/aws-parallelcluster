@@ -1482,7 +1482,12 @@ class SchedulingSchema(BaseSchema):
         if self.fields_coexist(
             data, ["aws_batch_queues", "slurm_queues", "scheduler_queues"], one_required=True, **kwargs
         ):
-            scheduler_prefix = "AwsBatch" if scheduler == "awsbatch" else scheduler.capitalize()
+            if scheduler == "awsbatch":
+                scheduler_prefix = "AwsBatch"
+            elif scheduler == "plugin":
+                scheduler_prefix = "Scheduler"
+            else:
+                scheduler_prefix = scheduler.capitalize()
             raise ValidationError(f"{scheduler_prefix}Queues section must be specified in the Scheduling section.")
 
     @validates_schema
