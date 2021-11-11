@@ -593,7 +593,8 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
 
             scheduler = config_content["Scheduling"]["Scheduler"]
             if scheduler != "awsbatch":
-                for queue in config_content["Scheduling"][f"{scheduler.capitalize()}Queues"]:
+                scheduler_prefix = "Scheduler" if scheduler == "plugin" else scheduler.capitalize()
+                for queue in config_content["Scheduling"][f"{scheduler_prefix}Queues"]:
                     if not dict_has_nested_key(queue, ("CustomActions", config_param)):
                         dict_add_nested_key(
                             queue, request.config.getoption(option), ("CustomActions", config_param, "Script")
