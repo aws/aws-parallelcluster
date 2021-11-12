@@ -40,6 +40,17 @@
     "volume": "NONE",
     "use_private_hostname": "false",
     "scheduler_plugin_substack_arn": "{'Ref': 'SchedulerPluginStack'}",
-    "stack_arn": "{'Ref': 'AWS::StackId'}"
+    "stack_arn": "{'Ref': 'AWS::StackId'}",
+    "directory_service": {
+      "enabled": "false",
+      "domain_name": "NONE",
+      "domain_addr": "NONE",
+      "password_secret_arn": "NONE",
+      "domain_read_only_user": "NONE",
+      "ldap_tls_ca_cert": "NONE",
+      "ldap_tls_req_cert": "NONE",
+      "ldap_access_filter": "NONE",
+      "generate_ssh_keys_for_users": "NONE"
+    }
   }
 }

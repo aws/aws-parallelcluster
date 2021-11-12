@@ -83,7 +83,18 @@ write_files:
           "custom_node_package": "${CustomNodePackage}",
           "custom_awsbatchcli_package": "${CustomAwsBatchCliPackage}",
           "use_private_hostname": "${UsePrivateHostname}",
-          "head_node_private_ip": "${HeadNodePrivateIp}"
+          "head_node_private_ip": "${HeadNodePrivateIp}",
+          "directory_service": {
+            "enabled": "${DirectoryServiceEnabled}",
+            "domain_name": "${DirectoryServiceDomainName}",
+            "domain_addr": "${DirectoryServiceDomainAddr}",
+            "password_secret_arn": "${DirectoryServicePasswordSecretArn}",
+            "domain_read_only_user": "${DirectoryServiceDomainReadOnlyUser}",
+            "ldap_tls_ca_cert": "${DirectoryServiceLdapTlsCaCert}",
+            "ldap_tls_req_cert": "${DirectoryServiceLdapTlsReqCert}",
+            "ldap_access_filter": "${DirectoryServiceLdapAccessFilter}",
+            "generate_ssh_keys_for_users": "${DirectoryServiceGenerateSshKeysForUsers}"
+          }
         }
       }
   - path: /etc/chef/client.rb
