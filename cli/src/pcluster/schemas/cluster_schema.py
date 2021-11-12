@@ -1178,7 +1178,7 @@ class AwsBatchSettingsSchema(BaseSchema):
 
 
 class SchedulerPluginSupportedDistrosSchema(BaseSchema):
-    """Represent the schema for SupportedDistros in a Scheduler Plugin plugin."""
+    """Represent the schema for SupportedDistros in a Scheduler Plugin."""
 
     x86 = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     arm64 = fields.List(fields.Str(), metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1190,7 +1190,7 @@ class SchedulerPluginSupportedDistrosSchema(BaseSchema):
 
 
 class SchedulerPluginQueueConstraintsSchema(BaseSchema):
-    """Represent the schema for QueueConstraints in a Scheduler Plugin plugin."""
+    """Represent the schema for QueueConstraints in a Scheduler Plugin."""
 
     max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     max_subnets_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1202,7 +1202,7 @@ class SchedulerPluginQueueConstraintsSchema(BaseSchema):
 
 
 class SchedulerPluginComputeResourceConstraintsSchema(BaseSchema):
-    """Represent the schema for ComputeResourceConstraints in a Scheduler Plugin plugin."""
+    """Represent the schema for ComputeResourceConstraints in a Scheduler Plugin."""
 
     max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     max_instance_types_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1214,7 +1214,7 @@ class SchedulerPluginComputeResourceConstraintsSchema(BaseSchema):
 
 
 class SchedulerPluginRequirementsSchema(BaseSchema):
-    """Represent the schema for Requirements in a Scheduler Plugin plugin."""
+    """Represent the schema for Requirements in a Scheduler Plugin."""
 
     supported_distros = fields.Nested(
         SchedulerPluginSupportedDistrosSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
@@ -1248,7 +1248,7 @@ class SchedulerPluginCloudFormationClusterInfrastructureSchema(BaseSchema):
 
 
 class SchedulerPluginClusterInfrastructureSchema(BaseSchema):
-    """Represent the schema for ClusterInfrastructure schema in a Scheduler Plugin plugin."""
+    """Represent the schema for ClusterInfrastructure schema in a Scheduler Plugin."""
 
     cloud_formation = fields.Nested(
         SchedulerPluginCloudFormationClusterInfrastructureSchema,
@@ -1263,7 +1263,7 @@ class SchedulerPluginClusterInfrastructureSchema(BaseSchema):
 
 
 class SchedulerPluginClusterSharedArtifactSchema(BaseSchema):
-    """Represent the schema for Cluster Shared Artifact in a Scheduler Plugin plugin."""
+    """Represent the schema for Cluster Shared Artifact in a Scheduler Plugin."""
 
     source = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
@@ -1274,7 +1274,7 @@ class SchedulerPluginClusterSharedArtifactSchema(BaseSchema):
 
 
 class SchedulerPluginResourcesSchema(BaseSchema):
-    """Represent the schema for Plugin Resouces in a Scheduler Plugin plugin."""
+    """Represent the schema for Plugin Resouces in a Scheduler Plugin."""
 
     cluster_shared_artifacts = fields.Nested(
         SchedulerPluginClusterSharedArtifactSchema,
@@ -1290,7 +1290,7 @@ class SchedulerPluginResourcesSchema(BaseSchema):
 
 
 class SchedulerPluginExecuteCommandSchema(BaseSchema):
-    """Represent the schema for ExecuteCommand in a Scheduler Plugin plugin."""
+    """Represent the schema for ExecuteCommand in a Scheduler Plugin."""
 
     command = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
@@ -1301,7 +1301,7 @@ class SchedulerPluginExecuteCommandSchema(BaseSchema):
 
 
 class SchedulerPluginEventSchema(BaseSchema):
-    """Represent the schema for Event in a Scheduler Plugin plugin."""
+    """Represent the schema for Event in a Scheduler Plugin."""
 
     execute_command = fields.Nested(
         SchedulerPluginExecuteCommandSchema, required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
@@ -1314,7 +1314,7 @@ class SchedulerPluginEventSchema(BaseSchema):
 
 
 class SchedulerPluginEventsSchema(BaseSchema):
-    """Represent the schema for Events in a Scheduler Plugin plugin."""
+    """Represent the schema for Events in a Scheduler Plugin."""
 
     head_init = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     head_configure = fields.Nested(SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1339,7 +1339,7 @@ class SchedulerPluginEventsSchema(BaseSchema):
 
 
 class SchedulerPluginFileSchema(BaseSchema):
-    """Represent the schema of the Scheduler Plugin plugin file."""
+    """Represent the schema of the Scheduler Plugin."""
 
     file_path = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     timestamp_format = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
@@ -1378,7 +1378,7 @@ class SchedulerPluginMonitoringSchema(BaseSchema):
 
 
 class SchedulerPluginUserSchema(BaseSchema):
-    """Represent the schema of the Scheduler Plugin plugin user."""
+    """Represent the schema of the Scheduler Plugin."""
 
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     enable_imds = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})

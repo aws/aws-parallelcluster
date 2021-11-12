@@ -1580,7 +1580,7 @@ class SchedulerPluginQueue(_CommonQueue):
 
 
 class SchedulerPluginSupportedDistros(Resource):
-    """Represent the Supported Distros for a Scheduler Plugin plugin."""
+    """Represent the Supported Distros for a Scheduler Plugin."""
 
     def __init__(self, x86: List[str] = None, arm64: List[str] = None, **kwargs):
         super().__init__(**kwargs)
@@ -1589,7 +1589,7 @@ class SchedulerPluginSupportedDistros(Resource):
 
 
 class SchedulerPluginQueueConstraints(Resource):
-    """Represent the Queue Constraints for a Scheduler Plugin plugin."""
+    """Represent the Queue Constraints for a Scheduler Plugin."""
 
     def __init__(self, max_count: int = None, max_subnets_count: int = None, **kwargs):
         super().__init__(**kwargs)
@@ -1600,7 +1600,7 @@ class SchedulerPluginQueueConstraints(Resource):
 
 
 class SchedulerPluginComputeResourceConstraints(Resource):
-    """Represent the Compute Resource Constraints for a Scheduler Plugin plugin."""
+    """Represent the Compute Resource Constraints for a Scheduler Plugin."""
 
     def __init__(self, max_count: int = None, max_instance_types_count: int = None, **kwargs):
         super().__init__(**kwargs)
@@ -1611,7 +1611,7 @@ class SchedulerPluginComputeResourceConstraints(Resource):
 
 
 class SchedulerPluginRequirements(Resource):
-    """Represent the Requirements for a Scheduler Plugin plugin."""
+    """Represent the Requirements for a Scheduler Plugin."""
 
     def __init__(
         self,
@@ -1635,7 +1635,7 @@ class SchedulerPluginRequirements(Resource):
 
 
 class SchedulerPluginCloudFormationInfrastructure(Resource):
-    """Represent the CloudFormation infrastructure for a Scheduler Plugin plugin."""
+    """Represent the CloudFormation infrastructure for a Scheduler Plugin."""
 
     def __init__(self, template: str, **kwargs):
         super().__init__(**kwargs)
@@ -1646,7 +1646,7 @@ class SchedulerPluginCloudFormationInfrastructure(Resource):
 
 
 class SchedulerPluginClusterInfrastructure(Resource):
-    """Represent the ClusterInfastructure config for a Scheduler Plugin plugin."""
+    """Represent the ClusterInfastructure config for a Scheduler Plugin."""
 
     def __init__(self, cloud_formation: SchedulerPluginCloudFormationInfrastructure = None, **kwargs):
         super().__init__(**kwargs)
@@ -1654,7 +1654,7 @@ class SchedulerPluginClusterInfrastructure(Resource):
 
 
 class SchedulerPluginClusterSharedArtifact(Resource):
-    """Represent the ClusterSharedArtifact config for a Scheduler Plugin plugin."""
+    """Represent the ClusterSharedArtifact config for a Scheduler Plugin."""
 
     def __init__(self, source: str, **kwargs):
         super().__init__(**kwargs)
@@ -1665,7 +1665,7 @@ class SchedulerPluginClusterSharedArtifact(Resource):
 
 
 class SchedulerPluginPluginResources(Resource):
-    """Represent the PluginResources config for a Scheduler Plugin plugin."""
+    """Represent the PluginResources config for a Scheduler Plugin."""
 
     def __init__(self, cluster_shared_artifacts: [SchedulerPluginClusterSharedArtifact], **kwargs):
         super().__init__(**kwargs)
@@ -1673,7 +1673,7 @@ class SchedulerPluginPluginResources(Resource):
 
 
 class SchedulerPluginExecuteCommand(Resource):
-    """Represent the ExecuteCommand for a Scheduler Plugin plugin."""
+    """Represent the ExecuteCommand for a Scheduler Plugin."""
 
     def __init__(self, command: str, **kwargs):
         super().__init__(**kwargs)
@@ -1681,7 +1681,7 @@ class SchedulerPluginExecuteCommand(Resource):
 
 
 class SchedulerPluginEvent(Resource):
-    """Represent the Event config for a Scheduler Plugin plugin."""
+    """Represent the Event config for a Scheduler Plugin."""
 
     def __init__(self, execute_command: SchedulerPluginExecuteCommand, **kwargs):
         super().__init__(**kwargs)
@@ -1689,7 +1689,7 @@ class SchedulerPluginEvent(Resource):
 
 
 class SchedulerPluginEvents(Resource):
-    """Represent the Events config for a Scheduler Plugin plugin."""
+    """Represent the Events config for a Scheduler Plugin."""
 
     def __init__(
         self,
