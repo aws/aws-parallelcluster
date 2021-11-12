@@ -41,7 +41,7 @@ Scheduling:
             Command: env && echo "HeadComputeFleetStop executed"
       PluginResources:
         ClusterSharedArtifacts:
-          - Source : https://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/parallelcluster/3.0.0/cookbooks/aws-parallelcluster-cookbook-3.0.0.tgz
+          - Source: https://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/parallelcluster/3.0.0/cookbooks/aws-parallelcluster-cookbook-3.0.0.tgz
           - Source: s3://{{ bucket }}/scheduler_plugin/artifact
       ClusterInfrastructure:
         CloudFormation:
