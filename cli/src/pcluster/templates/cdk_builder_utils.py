@@ -46,6 +46,7 @@ from pcluster.utils import (
     get_resource_name_from_resource_arn,
     get_url_scheme,
     policy_name_to_arn,
+    to_pascal_case,
 )
 
 
@@ -107,6 +108,37 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClus
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
         "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
     }
+
+
+def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> dict:
+    """Return a dict containing directory service settings to be written to dna.json of head node."""
+    directory_service = config.directory_service
+    return {
+        "enabled": "true" if directory_service else "false",
+        "domain_name": directory_service.domain_name if directory_service else "NONE",
+        "domain_addr": directory_service.domain_addr if directory_service else "NONE",
+        "password_secret_arn": directory_service.password_secret_arn if directory_service else "NONE",
+        "domain_read_only_user": directory_service.domain_read_only_user if directory_service else "NONE",
+        "ldap_tls_ca_cert": directory_service.ldap_tls_ca_cert or "NONE" if directory_service else "NONE",
+        "ldap_tls_req_cert": directory_service.ldap_tls_req_cert or "NONE" if directory_service else "NONE",
+        "ldap_access_filter": directory_service.ldap_access_filter or "NONE" if directory_service else "NONE",
+        "generate_ssh_keys_for_users": str(directory_service.generate_ssh_keys_for_users).lower()
+        if directory_service
+        else "NONE",
+    }
+
+
+def get_directory_service_user_data_env_for_compute_node(config: BaseClusterConfig) -> dict:
+    """
+    Return a dict containing the directory service variables to be replaced in user data of compute nodes.
+
+    Head node uses MetaData while compute nodes use Userdata. Therefore the code to construct dna.json is different.
+    """
+    directory_service_dna_json = get_directory_service_dna_json_for_head_node(config)
+    result = {}
+    for key, value in directory_service_dna_json.items():
+        result[f"DirectoryService{to_pascal_case(key)}"] = value
+    return result
 
 
 def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
@@ -602,6 +634,14 @@ class HeadNodeIamResources(NodeIamResourcesBase):
                                 ),
                             ]
                         )
+        if self._config.directory_service:
+            policy.append(
+                iam.PolicyStatement(
+                    actions=["secretsmanager:GetSecretValue"],
+                    effect=iam.Effect.ALLOW,
+                    resources=[self._config.directory_service.password_secret_arn],
+                )
+            )
 
         return policy
 

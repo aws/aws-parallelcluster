@@ -21,8 +21,12 @@ import zipfile
 import boto3
 import pytest
 from assertpy import assert_that
+from cfn_stacks_factory import CfnStack
 from jinja2 import Environment, FileSystemLoader
 from remote_command_executor import RemoteCommandExecutor
+from troposphere import Template
+from troposphere.secretsmanager import Secret
+from utils import generate_stack_name
 
 from tests.ad_integration.cluster_user import ClusterUser
 from tests.common.osu_common import compile_osu, run_osu_benchmarks
@@ -41,7 +45,7 @@ def get_infra_stack_outputs(stack_name):
     }
 
 
-def get_ad_config_param_vals(stack_name, bucket_name, post_install_script_name):
+def get_ad_config_param_vals(stack_name, bucket_name, post_install_script_name, password_secret_arn):
     """Return a dict used to set values for config file parameters."""
     infra_stack_outputs = get_infra_stack_outputs(stack_name)
     ldap_search_base = ",".join(
@@ -55,7 +59,7 @@ def get_ad_config_param_vals(stack_name, bucket_name, post_install_script_name):
         "ldap_search_base": ldap_search_base,
         # TODO: is the CN=Users portion of this a valid assumption?
         "ldap_default_bind_dn": f"CN={read_only_username},CN=Users,{ldap_search_base}",
-        "ldap_client_password": infra_stack_outputs.get("Password"),
+        "password_secret_arn": password_secret_arn,
     }
 
 
@@ -121,11 +125,40 @@ def upload_custom_resources(test_resources_dir, bucket_name):
         )
 
 
+@pytest.fixture(scope="class")
+def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
+
+    secret_stack_name = generate_stack_name("integ-tests-secret", request.config.getoption("stackname_suffix"))
+
+    def _store_secret(secret):
+        template = Template()
+        template.set_version("2010-09-09")
+        template.set_description("stack to store a secret string")
+        template.add_resource(Secret("Secret", SecretString=secret))
+        stack = CfnStack(
+            name=secret_stack_name,
+            region=region,
+            template=template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(stack)
+        return stack.cfn_resources["Secret"]
+
+    yield _store_secret
+
+    if request.config.getoption("no_delete"):
+        logging.info("Not deleting stack %s because --no-delete option was specified", secret_stack_name)
+    else:
+        logging.info("Deleting stack %s", secret_stack_name)
+        cfn_stacks_factory.delete_stack(secret_stack_name, region)
+
+
 @pytest.fixture(scope="module")
 def directory_factory(request):
     created_directory_stacks = []
 
-    def _directory_factory(existing_stack_name, directory_type, bucket_name, test_resources_dir, region):
+    def _directory_factory(
+        existing_stack_name, directory_type, bucket_name, test_resources_dir, region, ad_admin_password
+    ):
         if existing_stack_name:
             logging.info("Using pre-existing directory stack named %s", existing_stack_name)
             return existing_stack_name
@@ -146,7 +179,7 @@ def directory_factory(request):
             "admin_node_ami_id": retrieve_latest_ami(region, "alinux2"),
             "admin_node_instance_type": "c5.large",
             "admin_node_key_name": request.config.getoption("key_name"),
-            "ad_admin_password": "MultiUserInfraDirectoryReadOnlyPassword!",  # TODO: not secure
+            "ad_admin_password": ad_admin_password,
             "ad_domain_name": f"{directory_type.lower()}.multiuser.pcluster",
             "default_ec2_domain": "ec2.internal" if region == "us-east-1" else f"{region}.compute.internal",
             "ad_admin_user": "Administrator" if directory_type == "SimpleAD" else "Admin",
@@ -283,17 +316,27 @@ def test_ad_integration(
     directory_factory,
     user_factory,
     request,
+    store_secret_in_secret_manager,
 ):
     """Verify AD integration works as expected."""
     compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
     config_params = {"compute_instance_type": compute_instance_type_info.get("name")}
+    ad_admin_password = "MultiUserInfraDirectoryReadOnlyPassword!"  # TODO: not secure
+    password_secret_arn = store_secret_in_secret_manager(ad_admin_password)
     if directory_type:
         post_install_script_name = "all-nodes-ldap.sh"
         bucket_name = s3_bucket_factory()
         directory_stack_name = directory_factory(
-            request.config.getoption("directory_stack_name"), directory_type, bucket_name, str(test_datadir), region
+            request.config.getoption("directory_stack_name"),
+            directory_type,
+            bucket_name,
+            str(test_datadir),
+            region,
+            ad_admin_password=ad_admin_password,
         )
-        config_params.update(get_ad_config_param_vals(directory_stack_name, bucket_name, post_install_script_name))
+        config_params.update(
+            get_ad_config_param_vals(directory_stack_name, bucket_name, post_install_script_name, password_secret_arn)
+        )
         bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
         bucket.upload_file(str(test_datadir / post_install_script_name), post_install_script_name)
     cluster_config = pcluster_config_reader(**config_params)

@@ -42,6 +42,7 @@ from pcluster.config.cluster_config import (
     CustomActions,
     Dashboards,
     Dcv,
+    DirectoryService,
     Dns,
     Efa,
     EphemeralVolume,
@@ -1591,6 +1592,27 @@ class SchedulingSchema(BaseSchema):
         return adapted_data
 
 
+class DirectoryServiceSchema(BaseSchema):
+    """Represent the schema of the DirectoryService."""
+
+    domain_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    domain_addr = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    password_secret_arn = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    domain_read_only_user = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    ldap_tls_ca_cert = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    ldap_tls_req_cert = fields.Str(
+        validate=validate.OneOf(["never", "allow", "try", "demand", "hard"]),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
+    ldap_access_filter = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    generate_ssh_keys_for_users = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return DirectoryService(**data)
+
+
 class ClusterSchema(BaseSchema):
     """Represent the schema of the Cluster."""
 
@@ -1612,6 +1634,9 @@ class ClusterSchema(BaseSchema):
     additional_packages = fields.Nested(AdditionalPackagesSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"})
     iam = fields.Nested(ClusterIamSchema, metadata={"update_policy": UpdatePolicy.SUPPORTED})
+    directory_service = fields.Nested(
+        DirectoryServiceSchema, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP}
+    )
     config_region = fields.Str(data_key="Region", metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     custom_s3_bucket = fields.Str(metadata={"update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET})
     additional_resources = fields.Str(metadata={"update_policy": UpdatePolicy.SUPPORTED})
@@ -1627,19 +1652,16 @@ class ClusterSchema(BaseSchema):
         validate_no_reserved_tag(tags)
 
     @validates_schema
-    def no_intel_software_for_batch(self, data, **kwargs):
-        """Ensure IntelSoftware section is not included when AWS Batch is the scheduler."""
+    def no_settings_for_batch(self, data, **kwargs):
+        """Ensure IntelSoftware and DirectoryService section is not included when AWS Batch is the scheduler."""
         scheduling = data.get("scheduling")
-        additional_packages = data.get("additional_packages")
-        if (
-            scheduling
-            and scheduling.scheduler == "awsbatch"
-            and additional_packages
-            and additional_packages.intel_software.intel_hpc_platform
-        ):
-            raise ValidationError(
-                "The use of the IntelSoftware configuration is not supported when using awsbatch as the scheduler."
-            )
+        if scheduling and scheduling.scheduler == "awsbatch":
+            error_message = "The use of the {} configuration is not supported when using awsbatch as the scheduler."
+            additional_packages = data.get("additional_packages")
+            if additional_packages and additional_packages.intel_software.intel_hpc_platform:
+                raise ValidationError(error_message.format("IntelSoftware"))
+            if data.get("directory_service"):
+                raise ValidationError(error_message.format("DirectoryService"))
 
     @post_load(pass_original=True)
     def make_resource(self, data, original_data, **kwargs):
