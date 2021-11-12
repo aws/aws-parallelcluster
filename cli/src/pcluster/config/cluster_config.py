@@ -77,6 +77,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerOsValidator,
     SharedStorageNameValidator,
 )
+from pcluster.validators.directory_service_validators import DomainAddrValidator, LdapTlsReqCertValidator
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EbsVolumeSizeSnapshotValidator,
@@ -658,6 +659,40 @@ class Imds(Resource):
         self.secured = Resource.init_param(secured, default=True)
 
 
+class DirectoryService(Resource):
+    """Represent DirectoryService configuration."""
+
+    def __init__(
+        self,
+        domain_name: str = None,
+        domain_addr: str = None,
+        password_secret_arn: str = None,
+        domain_read_only_user: str = None,
+        ldap_tls_ca_cert: str = None,
+        ldap_tls_req_cert: str = None,
+        ldap_access_filter: str = None,
+        generate_ssh_keys_for_users: bool = None,
+        additional_sssd_configs: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.domain_name = Resource.init_param(domain_name)
+        self.domain_addr = Resource.init_param(domain_addr)
+        self.password_secret_arn = Resource.init_param(password_secret_arn)
+        self.domain_read_only_user = Resource.init_param(domain_read_only_user)
+        self.ldap_tls_ca_cert = Resource.init_param(ldap_tls_ca_cert)
+        self.ldap_tls_req_cert = Resource.init_param(ldap_tls_req_cert, default="hard")
+        self.ldap_access_filter = Resource.init_param(ldap_access_filter)
+        self.generate_ssh_keys_for_users = Resource.init_param(generate_ssh_keys_for_users, default=True)
+        self.additional_sssd_configs = Resource.init_param(additional_sssd_configs, default={})
+
+    def _register_validators(self):
+        if self.domain_addr:
+            self._register_validator(DomainAddrValidator, domain_addr=self.domain_addr)
+        if self.ldap_tls_req_cert:
+            self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
+
+
 class ClusterIam(Resource):
     """Represent the IAM configuration for Cluster."""
 
@@ -929,6 +964,7 @@ class BaseClusterConfig(Resource):
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
         iam: ClusterIam = None,
+        directory_service: DirectoryService = None,
         config_region: str = None,
         custom_s3_bucket: str = None,
         additional_resources: str = None,
@@ -950,6 +986,7 @@ class BaseClusterConfig(Resource):
         self.additional_packages = additional_packages
         self.tags = tags
         self.iam = iam
+        self.directory_service = directory_service
         self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
         self._bucket = None
         self.additional_resources = Resource.init_param(additional_resources)
