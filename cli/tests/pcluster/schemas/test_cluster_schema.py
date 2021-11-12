@@ -453,20 +453,18 @@ def test_scheduler_plugin_cluster_shared_artifact_schema(mocker, source, failure
         (None, "Missing data for required field."),
     ],
 )
-def test_scheduler_plugin_plugin_resources_schema(mocker, artifacts, failure_message):
-    scheduler_plugin_plugin_resources_schema = {}
+def test_scheduler_plugin_resources_schema(mocker, artifacts, failure_message):
+    scheduler_plugin_resources_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
     if artifacts:
-        scheduler_plugin_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
+        scheduler_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SchedulerPluginResourcesSchema().load(scheduler_plugin_plugin_resources_schema)
+            SchedulerPluginResourcesSchema().load(scheduler_plugin_resources_schema)
     else:
-        scheduler_plugin_plugin_resources = SchedulerPluginResourcesSchema().load(
-            scheduler_plugin_plugin_resources_schema
-        )
-        for artifact, source in zip(scheduler_plugin_plugin_resources.cluster_shared_artifacts, artifacts):
+        scheduler_plugin_resources = SchedulerPluginResourcesSchema().load(scheduler_plugin_resources_schema)
+        for artifact, source in zip(scheduler_plugin_resources.cluster_shared_artifacts, artifacts):
             assert_that(artifact.source).is_equal_to(source)
 
 
