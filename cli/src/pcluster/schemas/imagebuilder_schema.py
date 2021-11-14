@@ -67,6 +67,7 @@ class ImageSchema(BaseSchema):
     )
     tags = fields.List(fields.Nested(TagSchema))
     root_volume = fields.Nested(VolumeSchema)
+    enhanced_image_metadata_enabled = fields.Bool()
 
     @post_load
     def make_resource(self, data, **kwargs):

@@ -56,11 +56,13 @@ class Image(Resource):
         name: str = None,
         tags: List[BaseTag] = None,
         root_volume: Volume = None,
+        enhanced_image_metadata_enabled: bool = None
     ):
         super().__init__()
         self.name = name
         self.tags = tags
         self.root_volume = root_volume
+        self.enhanced_image_metadata_enabled = Resource.init_param(enhanced_image_metadata_enabled, default=True)
 
 
 # ---------------------- Build ---------------------- #
