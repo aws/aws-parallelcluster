@@ -290,7 +290,7 @@ class ImageBuilderCdkStack(Stack):
             image_recipe_arn=Fn.ref("ImageRecipe"),
             infrastructure_configuration_arn=Fn.ref("InfrastructureConfiguration"),
             distribution_configuration_arn=Fn.ref("DistributionConfiguration"),
-            enhanced_image_metadata_enabled=self.config.image.enhanced_image_metadata_enabled,
+            enhanced_image_metadata_enabled=self.config.image.enhanced_image_metadata_enabled if self.config.image else True
         )
         if not self.custom_cleanup_lambda_role:
             self._add_resource_delete_policy(
