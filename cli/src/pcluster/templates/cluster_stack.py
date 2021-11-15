@@ -989,7 +989,7 @@ class ClusterCdkStack(Stack):
                 "commands": {
                     "chef": {
                         "command": (
-                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster::init"
@@ -1005,7 +1005,7 @@ class ClusterCdkStack(Stack):
                 "commands": {
                     "chef": {
                         "command": (
-                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster::config"
@@ -1021,7 +1021,7 @@ class ClusterCdkStack(Stack):
                 "commands": {
                     "chef": {
                         "command": (
-                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster::finalize"
@@ -1040,7 +1040,7 @@ class ClusterCdkStack(Stack):
                 "commands": {
                     "chef": {
                         "command": (
-                            "chef-client --local-mode --config /etc/chef/client.rb --log_level info "
+                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
                             "--logfile /var/log/chef-client.log --force-formatter --no-color "
                             "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
                             "--override-runlist aws-parallelcluster::update_head_node || "
