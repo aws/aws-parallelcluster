@@ -535,7 +535,8 @@ class Cluster:
             )
             template = environment.from_string(file_content)
             rendered_template = template.render(
-                cluster_configuration=parse_config(self.source_config_text), cluster_name=self.name
+                cluster_configuration=ClusterSchema(cluster_name=self.name).dump(deepcopy(self.config)),
+                cluster_name=self.name,
             )
         except Exception as e:
             raise BadRequestClusterActionError(
