@@ -16,9 +16,12 @@
 
 import copy
 import re
+from urllib.request import urlopen
 
-from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
+import yaml
+from marshmallow import ValidationError, fields, post_load, pre_dump, pre_load, validate, validates, validates_schema
 
+from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
     AdditionalPackages,
     AmiSearchFilters,
@@ -103,6 +106,7 @@ from pcluster.constants import (
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
     SUPPORTED_OSES,
 )
+from pcluster.models.s3_bucket import parse_bucket_url
 from pcluster.schemas.common_schema import (
     AdditionalIamPolicySchema,
     BaseDevSettingsSchema,
@@ -1435,6 +1439,32 @@ class SchedulerPluginSettingsSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return SchedulerPluginSettings(**data)
+
+    @pre_load
+    def fetch_scheduler_definition(self, data, **kwargs):
+        """Fetch scheduler definition if it is s3 or https url."""
+        original_scheduler_definition = data["SchedulerDefinition"]
+        if isinstance(original_scheduler_definition, str):
+            try:
+                if original_scheduler_definition.startswith("s3"):
+                    bucket_parsing_result = parse_bucket_url(original_scheduler_definition)
+                    result = AWSApi.instance().s3.get_object(
+                        bucket_name=bucket_parsing_result["bucket_name"], key=bucket_parsing_result["object_key"]
+                    )
+                    data["SchedulerDefinition"] = yaml.safe_load(result["Body"].read().decode("utf-8"))
+                elif original_scheduler_definition.startswith("https"):
+                    with urlopen(original_scheduler_definition) as f:  # nosec nosemgrep
+                        data["SchedulerDefinition"] = yaml.safe_load(f.read().decode("utf-8"))
+                else:
+                    raise ValidationError(
+                        f"The provided value for SchedulerDefinition ('{original_scheduler_definition}') is invalid. "
+                        f"You can specify this as an S3 URL, HTTPS URL or as an inline YAML object."
+                    )
+            except Exception as e:
+                raise ValidationError(
+                    f"Error while downloading scheduler definition from '{original_scheduler_definition}': {str(e)}"
+                )
+        return data
 
 
 class SchedulingSchema(BaseSchema):

@@ -10,12 +10,17 @@
 # limitations under the License.
 
 import json
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
 import yaml
 from assertpy import assert_that
+from botocore.response import StreamingBody
 from marshmallow.validate import ValidationError
+from yaml.parser import ParserError
 
+from pcluster.aws.common import AWSClientError
 from pcluster.constants import SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
@@ -28,6 +33,7 @@ from pcluster.schemas.cluster_schema import (
     SchedulerPluginFileSchema,
     SchedulerPluginLogsSchema,
     SchedulerPluginResourcesSchema,
+    SchedulerPluginSettingsSchema,
     SchedulerPluginSupportedDistrosSchema,
     SchedulerPluginUserSchema,
     SchedulingSchema,
@@ -575,3 +581,101 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
         assert_that(scheduler_plugin_definition.events.head_init.execute_command.command).is_equal_to(
             events["HeadInit"]["ExecuteCommand"]["Command"]
         )
+
+
+@pytest.mark.parametrize(
+    "scheduler_definition, grant_sudo_privileges, s3_error, https_error, yaml_load_error, failure_message",
+    [
+        ("s3://bucket/scheduler_definition.yaml", True, None, None, None, None),
+        (
+            "s3://bucket/scheduler_definition_fake.yaml",
+            True,
+            AWSClientError(function_name="get_object", message="The specified key does not exist."),
+            None,
+            None,
+            "Error while downloading scheduler definition from "
+            "'s3://bucket/scheduler_definition_fake.yaml': The specified key does not exist.",
+        ),
+        ("https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition.yaml", False, None, None, None, None),
+        (
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+            None,
+            None,
+            HTTPError(
+                url="https://test-slurm.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+                code=403,
+                msg="Forbidden",
+                hdrs="dummy",
+                fp="dummy",
+            ),
+            None,
+            "Error while downloading scheduler definition from "
+            "'https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml': HTTP Error 403: Forbidden",
+        ),
+        (
+            {"PluginInterfaceVersion": "1.0", "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}},
+            True,
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "ftp://bucket/scheduler_definition_fake.yaml",
+            True,
+            None,
+            None,
+            None,
+            r"Error while downloading scheduler definition from 'ftp://bucket/scheduler_definition_fake.yaml': "
+            r"The provided value for SchedulerDefinition \('ftp://bucket/scheduler_definition_fake.yaml'\) is invalid. "
+            r"You can specify this as an S3 URL, HTTPS URL or as an inline YAML object.",
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            None,
+            None,
+            ParserError("parse error"),
+            "Error while downloading scheduler definition from 's3://bucket/scheduler_definition.yaml': parse error",
+        ),
+    ],
+)
+def test_scheduler_plugin_settings_schema(
+    mocker, scheduler_definition, grant_sudo_privileges, s3_error, https_error, yaml_load_error, failure_message
+):
+    scheduler_plugin_settings_schema = {}
+    body_encoded = json.dumps(
+        {"PluginInterfaceVersion": "1.0", "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}}
+    ).encode("utf8")
+    if isinstance(scheduler_definition, str):
+        if scheduler_definition.startswith("s3"):
+            mocker.patch(
+                "pcluster.aws.s3.S3Client.get_object",
+                return_value={"Body": StreamingBody(BytesIO(body_encoded), len(body_encoded))},
+                side_effect=s3_error,
+            )
+        else:
+            file_mock = mocker.MagicMock()
+            file_mock.read.return_value.decode.return_value = body_encoded
+            mocker.patch(
+                "pcluster.schemas.cluster_schema.urlopen", side_effect=https_error
+            ).return_value.__enter__.return_value = file_mock
+    if yaml_load_error:
+        mocker.patch("pcluster.schemas.cluster_schema.yaml.safe_load", side_effect=yaml_load_error)
+    if scheduler_definition:
+        scheduler_plugin_settings_schema["SchedulerDefinition"] = scheduler_definition
+    if grant_sudo_privileges:
+        scheduler_plugin_settings_schema["GrantSudoPrivileges"] = grant_sudo_privileges
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginSettingsSchema().load(scheduler_plugin_settings_schema)
+    else:
+        scheduler_plugin_settings = SchedulerPluginSettingsSchema().load(scheduler_plugin_settings_schema)
+        assert_that(scheduler_plugin_settings.scheduler_definition.plugin_interface_version).is_equal_to("1.0")
+        assert_that(
+            scheduler_plugin_settings.scheduler_definition.events.head_init.execute_command.command
+        ).is_equal_to("env")
+        if grant_sudo_privileges:
+            assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(grant_sudo_privileges)
+        else:
+            assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(False)
