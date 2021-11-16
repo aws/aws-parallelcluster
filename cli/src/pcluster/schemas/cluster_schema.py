@@ -20,6 +20,7 @@ from urllib.request import urlopen
 
 import yaml
 from marshmallow import ValidationError, fields, post_load, pre_dump, pre_load, validate, validates, validates_schema
+from yaml import YAMLError
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import (
@@ -1451,19 +1452,27 @@ class SchedulerPluginSettingsSchema(BaseSchema):
                     result = AWSApi.instance().s3.get_object(
                         bucket_name=bucket_parsing_result["bucket_name"], key=bucket_parsing_result["object_key"]
                     )
-                    data["SchedulerDefinition"] = yaml.safe_load(result["Body"].read().decode("utf-8"))
+                    scheduler_definition = result["Body"].read().decode("utf-8")
                 elif original_scheduler_definition.startswith("https"):
-                    with urlopen(original_scheduler_definition) as f:  # nosec nosemgrep
-                        data["SchedulerDefinition"] = yaml.safe_load(f.read().decode("utf-8"))
+                    try:
+                        with urlopen(original_scheduler_definition) as f:  # nosec nosemgrep
+                            scheduler_definition = f.read().decode("utf-8")
+                    except Exception:
+                        raise ValidationError("The provided URL is invalid or unavailable.")
                 else:
                     raise ValidationError(
-                        f"The provided value for SchedulerDefinition ('{original_scheduler_definition}') is invalid. "
-                        f"You can specify this as an S3 URL, HTTPS URL or as an inline YAML object."
+                        "The provided value for SchedulerDefinition is invalid. "
+                        "You can specify this as an S3 URL, HTTPS URL or as an inline YAML object."
                     )
+                data["SchedulerDefinition"] = yaml.safe_load(scheduler_definition)
+            except YAMLError as e:
+                raise ValidationError(
+                    f"The retrieved SchedulerDefinition ({original_scheduler_definition}) is not a valid YAML."
+                ) from e
             except Exception as e:
                 raise ValidationError(
-                    f"Error while downloading scheduler definition from '{original_scheduler_definition}': {str(e)}"
-                )
+                    f"Error while downloading scheduler definition from {original_scheduler_definition}: {str(e)}"
+                ) from e
         return data
 
 

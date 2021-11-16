@@ -594,7 +594,7 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
             None,
             None,
             "Error while downloading scheduler definition from "
-            "'s3://bucket/scheduler_definition_fake.yaml': The specified key does not exist.",
+            "s3://bucket/scheduler_definition_fake.yaml: The specified key does not exist.",
         ),
         ("https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition.yaml", False, None, None, None, None),
         (
@@ -610,7 +610,8 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
             ),
             None,
             "Error while downloading scheduler definition from "
-            "'https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml': HTTP Error 403: Forbidden",
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml: "
+            "The provided URL is invalid or unavailable.",
         ),
         (
             {"PluginInterfaceVersion": "1.0", "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}},
@@ -626,8 +627,8 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
             None,
             None,
             None,
-            r"Error while downloading scheduler definition from 'ftp://bucket/scheduler_definition_fake.yaml': "
-            r"The provided value for SchedulerDefinition \('ftp://bucket/scheduler_definition_fake.yaml'\) is invalid. "
+            r"Error while downloading scheduler definition from ftp://bucket/scheduler_definition_fake.yaml: "
+            r"The provided value for SchedulerDefinition is invalid. "
             r"You can specify this as an S3 URL, HTTPS URL or as an inline YAML object.",
         ),
         (
@@ -636,7 +637,7 @@ def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, 
             None,
             None,
             ParserError("parse error"),
-            "Error while downloading scheduler definition from 's3://bucket/scheduler_definition.yaml': parse error",
+            r"The retrieved SchedulerDefinition \(s3://bucket/scheduler_definition.yaml\) is not a valid YAML.",
         ),
     ],
 )
