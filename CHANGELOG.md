@@ -8,6 +8,7 @@ X.X.X
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 - Add support for multiple compute resources with same instance type per queue.
+- Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
 
 **CHANGES**
 - Use compute resource name rather than instance type in compute fleet Launch Template name.

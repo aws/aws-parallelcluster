@@ -54,6 +54,7 @@ from pcluster.constants import (
     CW_LOGS_CFN_PARAM_NAME,
     OS_MAPPING,
     PCLUSTER_CLUSTER_NAME_TAG,
+    PCLUSTER_COMPUTE_RESOURCE_NAME_TAG,
     PCLUSTER_QUEUE_NAME_TAG,
     PCLUSTER_S3_ARTIFACTS_DICT,
 )
@@ -1472,12 +1473,14 @@ class ComputeFleetConstruct(Construct):
                             self.stack_name, self._config, compute_resource, "Compute", self._shared_storage_mappings
                         )
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
+                        + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
                         + get_custom_tags(self._config),
                     ),
                     ec2.CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="volume",
                         tags=get_default_volume_tags(self.stack_name, "Compute")
                         + [CfnTag(key=PCLUSTER_QUEUE_NAME_TAG, value=queue.name)]
+                        + [CfnTag(key=PCLUSTER_COMPUTE_RESOURCE_NAME_TAG, value=compute_resource.name)]
                         + get_custom_tags(self._config),
                     ),
                 ],
