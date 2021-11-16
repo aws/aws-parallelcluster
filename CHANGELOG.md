@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+2.11.4
+-----
+
+**BUG FIXES**
+- Disable update of ec2_iam_role parameter.
+
 2.11.3
 -----
 

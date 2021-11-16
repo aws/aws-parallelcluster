@@ -198,7 +198,7 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 10, 1, 1)
+    _assert_cluster_initial_conditions(scheduler_commands, instance, 10, 20, 1, 1)
     _test_cloud_node_health_check(
         remote_command_executor,
         scheduler_commands,
@@ -217,6 +217,13 @@ def test_error_handling(scheduler, region, instance, pcluster_config_reader, clu
         region,
         partition="ondemand1",
         num_static_nodes=1,
+    )
+    _test_cluster_stop_with_powering_up_node(
+        scheduler_commands,
+        cluster,
+        partition="clusterstop",
+        num_dynamic_nodes=1,
+        dynamic_instance_type=instance,
     )
     # Next test will introduce error in logs, assert no error now
     assert_no_errors_in_logs(remote_command_executor, scheduler)
@@ -1032,3 +1039,40 @@ def _get_num_gpus_on_instance(instance_type_info):
     }
     """
     return sum([gpu_type.get("Count") for gpu_type in instance_type_info.get("GpuInfo").get("Gpus")])
+
+
+def _test_cluster_stop_with_powering_up_node(
+    scheduler_commands, cluster, partition, num_dynamic_nodes, dynamic_instance_type
+):
+    """Test powering up nodes are set to power_down after cluster stop."""
+    # Submit a job to a dynamic node
+    submit_initial_job(
+        scheduler_commands,
+        "sleep 30",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    # Wait for node to be powering up
+    dynamic_nodes = [node for node in scheduler_commands.get_compute_nodes(partition) if "-dy-" in node]
+    _wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["alloc#", "idle#", "mix#"])
+    # stop cluster
+    cluster.stop()
+    _wait_for_computefleet_changed(cluster, "STOPPED")
+    # start cluster
+    cluster.start()
+    _wait_for_computefleet_changed(cluster, "RUNNING")
+    # wait node power save
+    _wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
+    # submit the job to the node again and assert job succeeded
+    job_id = scheduler_commands.submit_command_and_assert_job_accepted(
+        submit_command_args={"command": "sleep 1", "nodes": num_dynamic_nodes, "partition": partition}
+    )
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def _wait_for_computefleet_changed(cluster, desired_status):
+    assert_that(cluster.status()).contains(f"ComputeFleetStatus: {desired_status}")

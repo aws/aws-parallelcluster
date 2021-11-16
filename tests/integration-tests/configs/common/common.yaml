@@ -99,7 +99,7 @@ createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition, disable alinux2 due to endpoint from where SGE source is downloaded is down
+        oss: ["alinux2", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"] # alinux2 temporarily disabled due to incompatible device name
@@ -209,7 +209,7 @@ dns:
 efa:
   test_efa.py::test_hit_efa:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["me-south-1"]
         instances: ["c5n.18xlarge"]
         oss: ["alinux2"]
         schedulers: ["slurm"]
@@ -223,7 +223,7 @@ efa:
         schedulers: ["slurm"]
   test_efa.py::test_sit_efa:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["me-south-1"]
         instances: ["c5n.18xlarge"]
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         # Torque is not supported by OpenMPI distributed with EFA
@@ -251,7 +251,7 @@ iam:
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
-      - regions: ["us-east-1"]
+      - regions: ["me-south-1"]
         instances: ["c5n.18xlarge"]
         oss: ["centos7"]
         schedulers: ["slurm"]
