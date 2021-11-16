@@ -537,6 +537,7 @@ class Cluster:
             rendered_template = template.render(
                 cluster_configuration=ClusterSchema(cluster_name=self.name).dump(deepcopy(self.config)),
                 cluster_name=self.name,
+                instance_types_info=self.config.get_instance_types_data(),
             )
         except Exception as e:
             raise BadRequestClusterActionError(
