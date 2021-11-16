@@ -235,13 +235,18 @@ def _run_user_workloads(user_factory, test_datadir, cluster, scheduler, remote_c
     users = []
     for user_num in range(1, NUM_USERS_TO_TEST + 1):
         users.append(user_factory(user_num, test_datadir, cluster, scheduler, remote_command_executor))
-    job_ids = [
+    job_submission_outputs = [
         # TODO: render script from template to dynamically provide path to benchmarks and other paramters
-        user.submit_script(str(test_datadir / "workload.sh"))
+        user.submit_script(script=str(test_datadir / "workload.sh"), nodes=2, slots=2).stdout
         for user in users
     ]
+    job_ids = [
+        user.assert_job_submitted(job_submission_output)
+        for user, job_submission_output in zip(users, job_submission_outputs)
+    ]
     for user, job_id in zip(users, job_ids):
-        user.assert_job_succeded(job_id)
+        user.wait_job_completed(job_id)
+        user.assert_job_succeeded(job_id)
 
 
 def _run_benchmarks(
