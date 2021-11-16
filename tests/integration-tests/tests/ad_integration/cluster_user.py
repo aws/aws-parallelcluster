@@ -15,7 +15,7 @@ class ClusterUser:
         self.user_num = user_num  # TODO: don't need to keep this?
         self.alias = f"PclusterUser{user_num}"
         self.ssh_keypair_path_prefix = str(test_datadir / self.alias)
-        self.ssh_private_key_path = f"{self.ssh_keypair_path_prefix}.pem"
+        self.ssh_private_key_path = self.ssh_keypair_path_prefix
         self.ssh_public_key_path = f"{self.ssh_private_key_path}.pub"
         # TODO: randomly generate this. It's hardcoded here because it's also hard-coded in the script
         #       that creates users as part of the directory stack.
@@ -71,6 +71,14 @@ class ClusterUser:
     def submit_script(self, **submit_comand_kwargs):
         """Wrapper around SchedulerCommand's submit_script method."""
         return self._personalized_scheduler_commands.submit_script(**submit_comand_kwargs)
+
+    def assert_job_submitted(self, stdout):
+        """Wrapper around SchedulerCommand's assert_job_submitted method."""
+        return self._personalized_scheduler_commands.assert_job_submitted(stdout)
+
+    def wait_job_completed(self, job_id):
+        """Wrapper around SchedulerCommand's wait_job_completed method."""
+        return self._personalized_scheduler_commands.wait_job_completed(job_id)
 
     def assert_job_succeeded(self, job_id):
         """Wrapper around SchedulerCommand's assert_job_succeded method."""
