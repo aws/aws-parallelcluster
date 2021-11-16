@@ -54,7 +54,7 @@ configure:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_ONE_PER_DISTRO }}
         schedulers: ["slurm"]
-      - regions: ["ca-central-1"]
+      - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
         schedulers: ["slurm"]
