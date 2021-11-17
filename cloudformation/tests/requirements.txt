@@ -1,5 +1,5 @@
 pytest
 jinja2
 cfn-lint
-cfn-flip
+cfn-flip<=1.2.3
 assertpy

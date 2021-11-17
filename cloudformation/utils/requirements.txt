@@ -1,1 +1,1 @@
-cfn_flip
+cfn-flip<=1.2.3
