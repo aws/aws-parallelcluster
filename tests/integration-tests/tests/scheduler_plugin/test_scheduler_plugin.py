@@ -35,6 +35,7 @@ PCLUSTER_LOCAL_SCHEDULER_PLUGIN_DIR = "/opt/parallelcluster/scheduler-plugin"
 
 SCHEDULER_PLUGIN_LOG_PATH = "/var/log/parallelcluster/scheduler-plugin.log"
 SCHEDULER_PLUGIN_HOME = "/home/pcluster-scheduler-plugin"
+SCHEDULER_PLUGIN_USER = "pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USERS_LIST = ["user1", "schedulerPluginUser"]
 
 ANOTHER_INSTANCE_TYPE = "c4.xlarge"
@@ -158,10 +159,13 @@ def _wait_compute_cloudinit_done(command_executor, compute_node):
 def _test_event_handler_execution(cluster, region, os, architecture, command_executor, head_node, compute_node):
     """Test event handler execution and environment"""
     head_scheduler_plugin_log_output = command_executor.run_remote_command(f"cat {SCHEDULER_PLUGIN_LOG_PATH}").stdout
+    python_root = command_executor.run_remote_command(f"sudo su - {SCHEDULER_PLUGIN_USER} -c 'which python'").stdout[
+        : -len("/python")
+    ]
     for event in ["HeadInit", "HeadConfigure", "HeadFinalize"]:
         assert_that(head_scheduler_plugin_log_output).contains(f"[{event}] - INFO: {event} executed")
         _test_event_handler_environment(
-            cluster, region, os, architecture, event, head_scheduler_plugin_log_output, head_node
+            cluster, region, os, architecture, event, head_scheduler_plugin_log_output, head_node, python_root
         )
 
     compute_node_private_ip = compute_node.get("privateIpAddress")
@@ -171,11 +175,11 @@ def _test_event_handler_execution(cluster, region, os, architecture, command_exe
     for event in ["ComputeInit", "ComputeConfigure", "ComputeFinalize"]:
         assert_that(compute_scheduler_plugin_log_output).contains(f"[{event}] - INFO: {event} executed")
         _test_event_handler_environment(
-            cluster, region, os, architecture, event, compute_scheduler_plugin_log_output, head_node
+            cluster, region, os, architecture, event, compute_scheduler_plugin_log_output, head_node, python_root
         )
 
 
-def _test_event_handler_environment(cluster, region, os, architecture, event, log_output, head_node):
+def _test_event_handler_environment(cluster, region, os, architecture, event, log_output, head_node, python_root):
     """Test event handler environment"""
     for var in [
         f"PCLUSTER_CLUSTER_CONFIG={PCLUSTER_CLUSTER_CONFIG}",
@@ -194,6 +198,7 @@ def _test_event_handler_environment(cluster, region, os, architecture, event, lo
         f"PCLUSTER_VERSION={get_installed_parallelcluster_version()}",
         f"PCLUSTER_HEADNODE_PRIVATE_IP={head_node.get('PrivateIpAddress')}",
         f"PCLUSTER_HEADNODE_HOSTNAME={head_node.get('PrivateDnsName').split('.')[0]}",
+        f"PCLUSTER_PYTHON_ROOT={python_root}",
         # TODO
         # PCLUSTER_<CLUSTER_CONFIG_OLD,
         # PROXY
