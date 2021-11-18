@@ -154,7 +154,8 @@ def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
 
 @pytest.fixture(scope="module")
 def directory_factory(request):
-    created_directory_stacks = []
+    # This fixture does not support running tests in parallel
+    created_directory_stacks = {}
 
     def _directory_factory(
         existing_stack_name, directory_type, bucket_name, test_resources_dir, region, ad_admin_password
@@ -162,6 +163,10 @@ def directory_factory(request):
         if existing_stack_name:
             logging.info("Using pre-existing directory stack named %s", existing_stack_name)
             return existing_stack_name
+        created_directory_stack_in_region = created_directory_stacks.get(region)
+        if created_directory_stack_in_region:
+            logging.info("Using directory stack named %s created by another test", created_directory_stack_in_region)
+            return created_directory_stack_in_region
 
         if directory_type not in ("MicrosoftAD", "SimpleAD"):
             raise Exception(f"Unknown directory type: {directory_type}")
@@ -201,12 +206,12 @@ def directory_factory(request):
         waiter = cfn_client.get_waiter("stack_create_complete")
         waiter.wait(StackName=stack_name)
         logging.info("Creation of stack %s complete", stack_name)
-        created_directory_stacks.append(stack_name)
+        created_directory_stacks[region] = stack_name
         return stack_name
 
     yield _directory_factory
 
-    for directory_stack in created_directory_stacks:
+    for directory_stack in created_directory_stacks.values():
         if request.config.getoption("no_delete"):
             logging.info("Not deleting stack %s because --no-delete option was specified", directory_stack)
         else:
