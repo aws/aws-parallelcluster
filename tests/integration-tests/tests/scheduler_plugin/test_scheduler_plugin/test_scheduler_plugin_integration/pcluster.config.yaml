@@ -14,7 +14,7 @@ Scheduling:
       Events:
         HeadInit:
           ExecuteCommand:
-            Command: env && echo "HeadInit executed"
+            Command: env && echo "HeadInit executed" && >&2 echo "log to stderr"
         HeadConfigure:
           ExecuteCommand:
             Command: env && echo "HeadConfigure executed"
