@@ -33,7 +33,9 @@ PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_OUTPUTS = (
 PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR = "/opt/parallelcluster/shared/scheduler-plugin"
 PCLUSTER_LOCAL_SCHEDULER_PLUGIN_DIR = "/opt/parallelcluster/scheduler-plugin"
 
-SCHEDULER_PLUGIN_LOG_PATH = "/var/log/parallelcluster/scheduler-plugin.log"
+SCHEDULER_PLUGIN_LOG_DIR = "/var/log/parallelcluster/"
+SCHEDULER_PLUGIN_LOG_OUT_PATH = "/var/log/parallelcluster/scheduler-plugin.out.log"
+SCHEDULER_PLUGIN_LOG_ERR_PATH = "/var/log/parallelcluster/scheduler-plugin.err.log"
 SCHEDULER_PLUGIN_HOME = "/home/pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USER = "pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USERS_LIST = ["user1", "schedulerPluginUser"]
@@ -91,6 +93,8 @@ def test_scheduler_plugin_integration(
     _test_cluster_config(command_executor, cluster_config)
     # Test instance types data
     _test_instance_types_data(command_executor, instance)
+    # Test error log
+    _test_error_log(command_executor)
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
@@ -158,7 +162,9 @@ def _wait_compute_cloudinit_done(command_executor, compute_node):
 
 def _test_event_handler_execution(cluster, region, os, architecture, command_executor, head_node, compute_node):
     """Test event handler execution and environment"""
-    head_scheduler_plugin_log_output = command_executor.run_remote_command(f"cat {SCHEDULER_PLUGIN_LOG_PATH}").stdout
+    head_scheduler_plugin_log_output = command_executor.run_remote_command(
+        f"cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
+    ).stdout
     python_root = command_executor.run_remote_command(f"sudo su - {SCHEDULER_PLUGIN_USER} -c 'which python'").stdout[
         : -len("/python")
     ]
@@ -170,7 +176,7 @@ def _test_event_handler_execution(cluster, region, os, architecture, command_exe
 
     compute_node_private_ip = compute_node.get("privateIpAddress")
     compute_scheduler_plugin_log_output = command_executor.run_remote_command(
-        f"ssh -q {compute_node_private_ip} cat {SCHEDULER_PLUGIN_LOG_PATH}"
+        f"ssh -q {compute_node_private_ip} cat {SCHEDULER_PLUGIN_LOG_OUT_PATH}"
     ).stdout
     for event in ["ComputeInit", "ComputeConfigure", "ComputeFinalize"]:
         assert_that(compute_scheduler_plugin_log_output).contains(f"[{event}] - INFO: {event} executed")
@@ -212,6 +218,18 @@ def _test_artifacts_download(command_executor):
     home_listing = command_executor.run_remote_command(f"sudo ls {SCHEDULER_PLUGIN_HOME}").stdout
     assert_that(home_listing).contains("aws-parallelcluster-cookbook-3.0.0.tgz")
     assert_that(home_listing).contains("artifact")
+
+
+def _test_error_log(command_executor):
+    """Test error log is written"""
+    head_scheduler_plugin_log_error = command_executor.run_remote_command(f"cat {SCHEDULER_PLUGIN_LOG_ERR_PATH}").stdout
+    assert_that(head_scheduler_plugin_log_error).contains("[HeadInit] - ERROR: log to stderr")
+    # assert that nothing else is written after the error log
+    assert_that(
+        head_scheduler_plugin_log_error[head_scheduler_plugin_log_error.find("log to stderr") :]  # noqa: E203
+    ).is_equal_to("log to stderr")
+    # assert that there is only one error log line
+    assert_that(head_scheduler_plugin_log_error.splitlines()).is_length(1)
 
 
 def _test_artifacts_shared_from_head(command_executor, compute_node):
