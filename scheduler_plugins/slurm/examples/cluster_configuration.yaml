@@ -11,6 +11,8 @@ Scheduling:
   SchedulerSettings:
     GrantSudoPrivileges: true
     SchedulerDefinition: <PLUGIN_DEFINITION>
+    CustomSettings:
+      ScaledownIdletime: 10
   SchedulerQueues:
     - Name: queue1
       CapacityType: ONDEMAND

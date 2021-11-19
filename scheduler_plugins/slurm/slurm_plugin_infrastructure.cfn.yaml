@@ -1,7 +1,6 @@
 # Available Jinja variables:
 # cluster_configuration
 # cluster_name
-# parallelcluster_version
 # instance_types_info
 # {%- set queues = cluster_configuration.Scheduling.SchedulerQueues -%}
 AWSTemplateFormatVersion: '2010-09-09'

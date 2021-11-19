@@ -28,4 +28,3 @@
 set -e
 
 echo "Handling event: HeadConfigure"
-env
