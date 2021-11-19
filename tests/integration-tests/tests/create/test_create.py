@@ -96,7 +96,7 @@ def test_create_imds_secured(
     """
     custom_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
     cluster_config = pcluster_config_reader(custom_ami=custom_ami, imds_secured=imds_secured)
-    cluster = clusters_factory(cluster_config, raise_on_error=False)
+    cluster = clusters_factory(cluster_config, raise_on_error=True)
 
     assert_head_node_is_running(region, cluster)
     assert_aws_identity_access_is_correct(cluster, users_allow_list)
