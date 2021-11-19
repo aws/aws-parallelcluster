@@ -199,6 +199,7 @@ def _test_event_handler_environment(cluster, region, os, architecture, event, lo
         f"PCLUSTER_HEADNODE_PRIVATE_IP={head_node.get('PrivateIpAddress')}",
         f"PCLUSTER_HEADNODE_HOSTNAME={head_node.get('PrivateDnsName').split('.')[0]}",
         f"PCLUSTER_PYTHON_ROOT={python_root}",
+        f"PATH={python_root}"
         # TODO
         # PCLUSTER_<CLUSTER_CONFIG_OLD,
         # PROXY
