@@ -12,16 +12,6 @@
 
 set -e
 
-# TODO: remove once this is provided out of the box
-echo "Creating python virutualenv"
-HOME=/home/pcluster-scheduler-plugin
-export PYENV_ROOT="$HOME/.pyenv"
-/opt/parallelcluster/pyenv/bin/pyenv install --skip-existing 3.9.7
-/opt/parallelcluster/pyenv/bin/pyenv virtualenv --force 3.9.7 scheduler_plugin
-
-# TODO: remove once this is provided out of the box
-echo "Activating python virutualenv"
-source /home/pcluster-scheduler-plugin/.pyenv/versions/3.9.7/envs/scheduler_plugin/bin/activate
 pip install --upgrade supervisor awscli jinja2 requests PyYAML
 
 bash artifacts/init_cookbook.sh

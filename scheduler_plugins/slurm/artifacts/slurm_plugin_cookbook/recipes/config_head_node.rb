@@ -60,14 +60,14 @@ end
 # Generate pcluster specific configs
 no_gpu = nvidia_installed? ? '' : '--no-gpu'
 execute 'generate_pcluster_slurm_configs' do
-  command "#{node['python']['virtualenv_path']}/bin/python #{node['pcluster']['local_dir']}/scripts/slurm/pcluster_slurm_config_generator.py"\
+  command "#{node['pcluster']['python_root']}/python #{node['pcluster']['local_dir']}/scripts/slurm/pcluster_slurm_config_generator.py"\
           " --output-directory #{node['slurm']['install_dir']}/etc/ --template-directory #{node['pcluster']['local_dir']}/scripts/slurm/templates/"\
           " --input-file #{node['pcluster']['cluster_config_path']}  --instance-types-data #{node['pcluster']['instance_types_data_path']} #{no_gpu}"
 end
 
 execute 'initialize compute fleet status in DynamoDB' do
   # Initialize the status of the compute fleet in the DynamoDB table. Set it to RUNNING.
-  command "#{node['python']['virtualenv_path']}/bin/aws dynamodb put-item --table-name #{node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable']}"\
+  command "#{node['pcluster']['python_root']}/aws dynamodb put-item --table-name #{node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable']}"\
             " --item '{\"Id\": {\"S\": \"COMPUTE_FLEET\"}, \"Status\": {\"S\": \"RUNNING\"}, \"LastUpdatedTime\": {\"S\": \"#{Time.now.utc}\"}}'"\
             " --region #{node['pcluster']['region']}"
   retries 3
