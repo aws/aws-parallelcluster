@@ -25,7 +25,7 @@ end
 def get_node_info
   require 'chef/mixin/shell_out'
 
-  output = shell_out!('aws dynamodb ' \
+  output = shell_out!("#{node['pcluster']['python_root']}/aws dynamodb " \
                       "--region #{node['pcluster']['region']} query --table-name #{node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable']} " \
                       "--index-name InstanceId --key-condition-expression 'InstanceId = :instanceid' " \
                       "--expression-attribute-values '{\":instanceid\": {\"S\":\"#{node['ec2']['instance_id']}\"}}' " \

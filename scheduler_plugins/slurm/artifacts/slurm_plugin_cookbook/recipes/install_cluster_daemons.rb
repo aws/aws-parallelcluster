@@ -22,7 +22,7 @@ bash 'install' do
     set -e
 
     # FIXME: installing from GitHub is discouraged
-    #{node['python']['virtualenv_path']}/bin/pip install https://github.com/aws/aws-parallelcluster-node/tarball/refs/heads/develop
+    #{node['pcluster']['python_root']}/pip install https://github.com/aws/aws-parallelcluster-node/tarball/refs/heads/develop
   DAEMONS
-  not_if "#{node['python']['virtualenv_path']}/bin/pip list | grep aws-parallelcluster-node"
+  not_if "#{node['pcluster']['python_root']}/pip list | grep aws-parallelcluster-node"
 end
