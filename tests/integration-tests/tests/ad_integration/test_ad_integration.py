@@ -167,7 +167,7 @@ def directory_factory(request):
             raise Exception(f"Unknown directory type: {directory_type}")
 
         upload_custom_resources(test_resources_dir, bucket_name)
-        template_path = os_lib.path.join(test_resources_dir, f"{directory_type}_stack.yaml")
+        template_path = os_lib.path.join(test_resources_dir, "ad_stack.yaml")
         account_id = (
             boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
             .get_caller_identity()
