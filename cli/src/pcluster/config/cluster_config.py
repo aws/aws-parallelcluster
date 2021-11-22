@@ -672,6 +672,7 @@ class DirectoryService(Resource):
         ldap_tls_req_cert: str = None,
         ldap_access_filter: str = None,
         generate_ssh_keys_for_users: bool = None,
+        additional_sssd_configs: Dict = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -683,6 +684,7 @@ class DirectoryService(Resource):
         self.ldap_tls_req_cert = Resource.init_param(ldap_tls_req_cert, default="hard")
         self.ldap_access_filter = Resource.init_param(ldap_access_filter)
         self.generate_ssh_keys_for_users = Resource.init_param(generate_ssh_keys_for_users, default=True)
+        self.additional_sssd_configs = Resource.init_param(additional_sssd_configs, default={})
 
     def _register_validators(self):
         if self.domain_addr:

@@ -46,7 +46,6 @@ from pcluster.utils import (
     get_resource_name_from_resource_arn,
     get_url_scheme,
     policy_name_to_arn,
-    to_pascal_case,
 )
 
 
@@ -125,20 +124,8 @@ def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> d
         "generate_ssh_keys_for_users": str(directory_service.generate_ssh_keys_for_users).lower()
         if directory_service
         else "NONE",
+        "additional_sssd_configs": directory_service.additional_sssd_configs if directory_service else "NONE",
     }
-
-
-def get_directory_service_user_data_env_for_compute_node(config: BaseClusterConfig) -> dict:
-    """
-    Return a dict containing the directory service variables to be replaced in user data of compute nodes.
-
-    Head node uses MetaData while compute nodes use Userdata. Therefore the code to construct dna.json is different.
-    """
-    directory_service_dna_json = get_directory_service_dna_json_for_head_node(config)
-    result = {}
-    for key, value in directory_service_dna_json.items():
-        result[f"DirectoryService{to_pascal_case(key)}"] = value
-    return result
 
 
 def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
