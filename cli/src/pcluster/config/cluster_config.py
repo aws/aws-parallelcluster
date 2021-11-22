@@ -77,7 +77,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerOsValidator,
     SharedStorageNameValidator,
 )
-from pcluster.validators.directory_service_validators import DomainAddrValidator
+from pcluster.validators.directory_service_validators import DomainAddrValidator, LdapTlsReqCertValidator
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EbsVolumeSizeSnapshotValidator,
@@ -687,6 +687,8 @@ class DirectoryService(Resource):
     def _register_validators(self):
         if self.domain_addr:
             self._register_validator(DomainAddrValidator, domain_addr=self.domain_addr)
+        if self.ldap_tls_req_cert:
+            self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
 
 
 class ClusterIam(Resource):

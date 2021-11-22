@@ -10,7 +10,7 @@
 # limitations under the License.
 import pytest
 
-from pcluster.validators.directory_service_validators import DomainAddrValidator
+from pcluster.validators.directory_service_validators import DomainAddrValidator, LdapTlsReqCertValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -25,4 +25,19 @@ from tests.pcluster.validators.utils import assert_failure_messages
 )
 def test_domain_addr_protocol(domain_addr, expected_message):
     actual_failures = DomainAddrValidator().execute(domain_addr=domain_addr)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "ldap_tls_reqcert, expected_message",
+    [
+        ("hard", None),
+        ("demand", None),
+        ("never", "For security reasons it's recommended to use hard or demand"),
+        ("allow", "For security reasons it's recommended to use hard or demand"),
+        ("try", "For security reasons it's recommended to use hard or demand"),
+    ],
+)
+def test_ldap_tls_reqcert_validator(ldap_tls_reqcert, expected_message):
+    actual_failures = LdapTlsReqCertValidator().execute(ldap_tls_reqcert=ldap_tls_reqcert)
     assert_failure_messages(actual_failures, expected_message)
