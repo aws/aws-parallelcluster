@@ -1183,7 +1183,7 @@
       "default": {
         "parallelcluster": "2.11.4",
         "cookbook": "aws-parallelcluster-cookbook-2.11.4",
-        "chef": "16.13.16",
+        "chef": "17.2.29",
         "berkshelf": "7.0.10",
         "ami": "dev"
       }

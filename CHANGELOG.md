@@ -6,6 +6,7 @@ CHANGELOG
 
 **CHANGES**
 - Upgrade Slurm to version 20.11.8.
+- Upgrade Cinc Client to version 17.2.29.
 
 **BUG FIXES**
 - Disable update of ec2_iam_role parameter.
