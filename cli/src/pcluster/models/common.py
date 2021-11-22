@@ -146,7 +146,6 @@ class CloudWatchLogsExporter:
                 f"The bucket used for exporting logs must be in the same region as the {resource_id}. "
                 f"The given resource is in {get_region()}, but the bucket's region is {bucket_region}."
             )
-
         self.bucket = bucket
         self.log_group_name = log_group_name
         self.output_dir = output_dir
