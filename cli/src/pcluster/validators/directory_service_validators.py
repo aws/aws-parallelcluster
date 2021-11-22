@@ -38,3 +38,16 @@ class DomainAddrValidator(Validator):
             self._add_failure(
                 "The use of the ldaps protocol is strongly encouraged for security reasons.", FailureLevel.WARNING
             )
+
+
+class LdapTlsReqCertValidator(Validator):
+    """LDAP TLS require certificate parameter validator."""
+
+    def _validate(self, ldap_tls_reqcert):
+        """Warn user of potentially insecure configurations."""
+        values_requiring_cert_validation = ("hard", "demand")
+        if ldap_tls_reqcert not in values_requiring_cert_validation:
+            self._add_failure(
+                f"For security reasons it's recommended to use {' or '.join(values_requiring_cert_validation)}",
+                FailureLevel.WARNING,
+            )
