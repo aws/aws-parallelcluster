@@ -507,7 +507,7 @@ def _find_overlapping_paths(paths_list):
     overlapping_paths = []
     if paths_list:
         for path in paths_list:
-            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path))
+            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path + "/"))
             if is_overlapping:
                 overlapping_paths.append(path)
 
