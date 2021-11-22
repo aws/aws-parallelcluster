@@ -146,6 +146,7 @@ class CloudWatchLogsExporter:
                 f"The bucket used for exporting logs must be in the same region as the {resource_id}. "
                 f"The given resource is in {get_region()}, but the bucket's region is {bucket_region}."
             )
+
         self.bucket = bucket
         self.log_group_name = log_group_name
         self.output_dir = output_dir
@@ -273,8 +274,9 @@ def upload_archive(bucket: str, bucket_prefix: str, archive_path: str):
     archive_filename = os.path.basename(archive_path)
     with open(archive_path, "rb") as archive_file:
         archive_data = archive_file.read()
-    AWSApi.instance().s3.put_object(bucket, archive_data, f"{bucket_prefix}/{archive_filename}")
-    return f"s3://{bucket}/{bucket_prefix}/{archive_filename}"
+    bucket_path = f"{bucket_prefix}/{archive_filename}" if bucket_prefix else archive_filename
+    AWSApi.instance().s3.put_object(bucket, archive_data, bucket_path)
+    return f"s3://{bucket}/{bucket_path}"
 
 
 class LogStreams:
