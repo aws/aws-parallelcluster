@@ -303,6 +303,7 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
     }
     boto3.client("s3").put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
 
+    # test with a prefix and an output file
     with tempfile.TemporaryDirectory() as tempdir:
         output_file = f"{tempdir}/testfile.tar.gz"
         bucket_prefix = "test_prefix"
@@ -324,6 +325,18 @@ def _test_pcluster_export_cluster_logs(s3_bucket_factory, cluster):
         if exc.response["Error"]["Code"] == "404":
             bucket_cleaned_up = True
     assert_that(bucket_cleaned_up).is_true()
+
+    # test without a prefix or output file
+    ret = cluster.export_logs(bucket=bucket_name)
+    assert_that(ret).contains_key("url")
+    filename = ret["url"].split(".tar.gz")[0].split("/")[-1] + ".tar.gz"
+    archive_found = True
+    try:
+        boto3.resource("s3").Object(bucket_name, filename).load()
+    except botocore.exceptions.ClientError as exc:
+        if exc.response["Error"]["Code"] == "404":
+            archive_found = False
+    assert_that(archive_found).is_true()
 
 
 def _test_pcluster_get_cluster_log_events(cluster):
