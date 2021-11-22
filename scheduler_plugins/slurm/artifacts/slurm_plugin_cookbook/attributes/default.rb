@@ -20,6 +20,7 @@ default['pcluster']['cfn_stack_outputs_file'] = ENV['PCLUSTER_SCHEDULER_PLUGIN_C
 default['pcluster']['cfn_stack_outputs'] = JSON.load_file(node['pcluster']['cfn_stack_outputs_file']) unless node['pcluster']['cfn_stack_outputs_file'].nil?
 default['pcluster']['instance_types_data_path'] = ENV['PCLUSTER_INSTANCE_TYPES_DATA']
 default['pcluster']['node_type'] = ENV['PCLUSTER_NODE_TYPE']
+default['pcluster']['python_root'] = ENV['PCLUSTER_PYTHON_ROOT']
 
 default['slurm']['version'] = '21-08-4-1'
 default['slurm']['url'] = "https://github.com/SchedMD/slurm/archive/slurm-#{node['slurm']['version']}.tar.gz"
@@ -33,4 +34,3 @@ default['munge']['group'] = node['munge']['user']
 
 default['plugin']['user'] = 'pcluster-scheduler-plugin'
 default['dns']['domain'] = "#{node['pcluster']['cluster_name']}.pcluster"
-default['python']['virtualenv_path'] = "/home/#{node['plugin']['user']}/.pyenv/versions/scheduler_plugin"

@@ -57,9 +57,6 @@ bash 'make install' do
   code <<-SLURM
     set -e
 
-    # python3 is required to build slurm >= 20.02
-    source #{node['python']['virtualenv_path']}/bin/activate
-
     tar xf #{slurm_tarball}
     cd slurm-slurm-#{node['slurm']['version']}
     ./configure --prefix=#{node['slurm']['install_dir']} --with-pmix=/opt/pmix --enable-slurmrestd
@@ -67,7 +64,6 @@ bash 'make install' do
     make -j $CORES
     make install
     make install-contrib
-    deactivate
   SLURM
   creates "#{node['slurm']['install_dir']}/bin/srun"
 end

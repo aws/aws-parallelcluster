@@ -6,9 +6,9 @@ Documentation=http://supervisord.org
 After=network.target
 
 [Service]
-ExecStart=<%= node['python']['virtualenv_path'] %>/bin/supervisord -n -c <%= node['pcluster']['local_dir'] %>/supervisord.conf
-ExecStop=<%= node['python']['virtualenv_path'] %>/bin/supervisorctl $OPTIONS shutdown
-ExecReload=<%= node['python']['virtualenv_path'] %>/bin/supervisorctl -c <%= node['pcluster']['local_dir'] %>/supervisord.conf $OPTIONS reload
+ExecStart=<%= node['pcluster']['python_root'] %>/supervisord -n -c <%= node['pcluster']['local_dir'] %>/supervisord.conf
+ExecStop=<%= node['pcluster']['python_root'] %>/supervisorctl $OPTIONS shutdown
+ExecReload=<%= node['pcluster']['python_root'] %>/supervisorctl -c <%= node['pcluster']['local_dir'] %>/supervisord.conf $OPTIONS reload
 KillMode=process
 Restart=on-failure
 RestartSec=50s

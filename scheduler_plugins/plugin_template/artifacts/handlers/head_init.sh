@@ -28,4 +28,18 @@
 set -e
 
 echo "Handling event: HeadInit"
-env
+
+echo "Available env:"
+env | grep "PCLUSTER_"
+
+echo "Cluster configuration file:"
+cat ${PCLUSTER_CLUSTER_CONFIG}
+
+echo "Launch templates:"
+jq . ${PCLUSTER_LAUNCH_TEMPLATES}
+
+echo "CloudFormation substack outputs:"
+jq . ${PCLUSTER_SCHEDULER_PLUGIN_CFN_SUBSTACK_OUTPUTS}
+
+echo "Instance types data:"
+jq . ${PCLUSTER_INSTANCE_TYPES_DATA}

@@ -28,4 +28,6 @@
 set -e
 
 echo "Handling event: HeadFinalize"
-env
+
+echo "Launching a compute node for queue 'queue1' and compute resource 'cr1'"
+aws ec2 run-instances --region ${PCLUSTER_AWS_REGION} --launch-template LaunchTemplateName=${PCLUSTER_CLUSTER_NAME}-queue1-cr1
