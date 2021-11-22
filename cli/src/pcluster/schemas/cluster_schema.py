@@ -1606,6 +1606,7 @@ class DirectoryServiceSchema(BaseSchema):
     )
     ldap_access_filter = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     generate_ssh_keys_for_users = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    additional_sssd_configs = fields.Dict(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
 
     @post_load
     def make_resource(self, data, **kwargs):
