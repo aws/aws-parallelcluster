@@ -62,7 +62,6 @@ def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, a
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     slurm_commands = SlurmCommands(remote_command_executor)
-    _test_slurm_version(remote_command_executor)
 
     if supports_impi:
         _test_mpi_job_termination(remote_command_executor, test_datadir)
@@ -890,12 +889,6 @@ def _gpu_resource_check(slurm_commands, partition, instance_type, instance_type_
     )
     job_info = slurm_commands.get_job_info(job_id)
     assert_that(job_info).contains(f"TresPerNode=gpu:{gpus_per_instance}", f"CpusPerTres=gpu:{cpus_per_gpu}")
-
-
-def _test_slurm_version(remote_command_executor):
-    logging.info("Testing Slurm Version")
-    version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 20.11.8")
 
 
 def _test_job_dependencies(slurm_commands, region, stack_name, scaledown_idletime):
