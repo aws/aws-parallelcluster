@@ -1,6 +1,8 @@
 import logging
 import os
 
+from assertpy import assert_that
+from paramiko import AutoAddPolicy, SSHClient
 from remote_command_executor import RemoteCommandExecutor
 from utils import run_command
 
@@ -20,6 +22,7 @@ class ClusterUser:
         # TODO: randomly generate this. It's hardcoded here because it's also hard-coded in the script
         #       that creates users as part of the directory stack.
         self.password = "ApplesBananasCherries!"
+        self._validate_automatic_homedir_creation(cluster.head_node_ip)
         self._configure_public_ssh_keys()
         self._personalized_remote_command_executor = RemoteCommandExecutor(
             cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
@@ -47,8 +50,6 @@ class ClusterUser:
 
     def _copy_public_ssh_key_to_authorized_keys(self):
         """Copy user's public SSH key to authorized keys file on cluster's head node."""
-        # TODO: do this with a password instead of creating home directory. this ensures
-        #       password auth works as expected as does automatic creation of home directory
         user_home_dir = f"/home/{self.alias}"
         user_ssh_dir = f"{user_home_dir}/.ssh"
         public_key_basename = os.path.basename(self.ssh_public_key_path)
@@ -89,3 +90,23 @@ class ClusterUser:
         user_home_dir = f"/home/{self.alias}"
         logging.info("Removing home directory for user %s (%s)", self.alias, user_home_dir)
         self._default_user_remote_command_executor.run_remote_command(f"sudo rm -rf {user_home_dir}")
+
+    def _validate_automatic_homedir_creation(self, head_node_ip, port=22):
+        """Ensure password can be used to login to cluster."""
+        ssh = SSHClient()
+        ssh.set_missing_host_key_policy(AutoAddPolicy())
+        ssh.connect(head_node_ip, port, self.alias, self.password, allow_agent=False, look_for_keys=False)
+
+        homedir = f"/home/{self.alias}"
+        command = f"[ -d {homedir} ] || echo failure"
+        logging.info(
+            "Verifying home directory for user %s is automatically created at %s before running command: %s",
+            self.alias,
+            homedir,
+            command,
+        )
+        _, stdout, stderr = ssh.exec_command(command)
+        stdout_str = stdout.read().decode()
+        stderr_str = stderr.read().decode()
+        logging.info("Output from command %s\nstdout:\n%s\nstderr:\n%s", command, stdout_str, stderr_str)
+        assert_that(stdout.read().decode()).does_not_contain("failure")
