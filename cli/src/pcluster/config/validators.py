@@ -96,7 +96,7 @@ FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE", "data_compression_type": "
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],
-    "arm64": ["centos7", "centos8"],
+    "arm64": ["centos7"],
 }
 
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
@@ -1092,7 +1092,7 @@ def intel_hpc_os_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    allowed_oses = ["centos7", "centos8"]
+    allowed_oses = ["centos7"]
 
     cluster_section = pcluster_config.get_section("cluster")
     if param_value and cluster_section.get_param_value("base_os") not in allowed_oses:
@@ -1146,11 +1146,6 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
             "Warning: The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
             "(M6g, C6g, etc.). To proceed please provide a custom_ami, "
             "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes"
-        )
-    elif param_value == "centos8":
-        warnings.append(
-            f"Warning: The operating system you are using ({param_value}) will reach support end-of-life by the end "
-            "of 2021. It will not be included as part of future releases of ParallelCluster."
         )
 
     return errors, warnings

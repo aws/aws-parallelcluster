@@ -446,12 +446,12 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
 @pytest.mark.parametrize(
     "scheduler, supported_oses",
     [
-        ("sge", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
-        ("slurm", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
-        ("torque", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
+        ("sge", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
+        ("slurm", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
+        ("torque", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
         ("awsbatch", ["alinux2"]),
         # doesn't check architecture's validity, only whether it's awsbatch or not
-        ("madeup-scheduler", ["alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu2004"]),
+        ("madeup-scheduler", ["alinux2", "centos7", "ubuntu1804", "ubuntu2004"]),
     ],
 )
 def test_get_supported_os_for_scheduler(scheduler, supported_oses):

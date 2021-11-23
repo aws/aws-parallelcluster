@@ -557,7 +557,7 @@ def get_supported_os_for_scheduler(scheduler):
     """
     oses = ["alinux2"]
     if scheduler != "awsbatch":
-        oses.extend(["centos7", "centos8", "ubuntu1804", "ubuntu2004"])
+        oses.extend(["centos7", "ubuntu1804", "ubuntu2004"])
     return list(oses)
 
 

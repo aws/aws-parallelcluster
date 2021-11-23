@@ -191,7 +191,6 @@ def get_root_volume_id(instance_id, region, os):
     os_to_root_volume_device = {
         # These are taken from the main CFN template
         "centos7": "/dev/sda1",
-        "centos8": "/dev/sda1",
         "alinux2": "/dev/xvda",
         "ubuntu1804": "/dev/sda1",
     }

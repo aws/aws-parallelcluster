@@ -23,7 +23,6 @@ from tests.common.utils import get_installed_parallelcluster_version, retrieve_l
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
-@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos8", "*")
 @pytest.mark.dimensions("us-east-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "*")
@@ -121,8 +120,8 @@ def test_createami_wrong_os(region, instance, os, request, pcluster_config_reade
     """Test error message when os provide is different from the os of custom AMI"""
     cluster_config = pcluster_config_reader()
 
-    # centos7 is specified in the config file but an AMI of centos8 is provided
-    wrong_os = "centos8"
+    # ubuntu1804 is specified in the config file but an AMI of ubuntu2004 is provided
+    wrong_os = "ubuntu2004"
     logging.info("Asserting os fixture is different from wrong_os variable")
     assert_that(os != wrong_os).is_true()
     # This test only works if both OSs have the same login username
