@@ -5,6 +5,7 @@ CHANGELOG
 -----
 
 **CHANGES**
+- CentOS 8 is no longer supported (EOL on December 31st, 2021).
 - Upgrade Slurm to version 20.11.8.
 - Upgrade Cinc Client to version 17.2.29.
 

@@ -47,7 +47,6 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key
 
 @pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "sge")
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "ubuntu1804", "slurm")
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos8", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_snapshot(
     request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory
@@ -81,7 +80,6 @@ def test_ebs_snapshot(
 # cn-north-1 does not support KMS
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "ubuntu1804", "slurm")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos8", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]

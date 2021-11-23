@@ -307,22 +307,18 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ),
         # verify awsbatch supported OSes
         ("eu-west-1", "centos7", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "centos8", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "alinux2", "awsbatch", None),
         # verify sge supports all the OSes
         ("eu-west-1", "centos7", "sge", None),
-        ("eu-west-1", "centos8", "sge", None),
         ("eu-west-1", "ubuntu1804", "sge", None),
         ("eu-west-1", "alinux2", "sge", None),
         # verify slurm supports all the OSes
         ("eu-west-1", "centos7", "slurm", None),
-        ("eu-west-1", "centos8", "slurm", None),
         ("eu-west-1", "ubuntu1804", "slurm", None),
         ("eu-west-1", "alinux2", "slurm", None),
         # verify torque supports all the OSes
         ("eu-west-1", "centos7", "torque", None),
-        ("eu-west-1", "centos8", "torque", None),
         ("eu-west-1", "ubuntu1804", "torque", None),
         ("eu-west-1", "alinux2", "torque", None),
     ],
@@ -1462,7 +1458,6 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
     "section_dict, expected_message",
     [
         ({"enable_intel_hpc_platform": "true", "base_os": "centos7"}, None),
-        ({"enable_intel_hpc_platform": "true", "base_os": "centos8"}, None),
         ({"enable_intel_hpc_platform": "true", "base_os": "alinux2"}, "it is required to set the 'base_os'"),
         ({"enable_intel_hpc_platform": "true", "base_os": "ubuntu1804"}, "it is required to set the 'base_os'"),
         # intel hpc disabled, you can use any os
@@ -1800,18 +1795,15 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
     "base_os, instance_type, access_from, expected_error, expected_warning",
     [
         ("centos7", "t2.medium", None, None, None),
-        ("centos8", "t2.medium", None, None, None),
         ("ubuntu1804", "t2.medium", None, None, None),
         ("ubuntu1804", "t2.medium", "1.2.3.4/32", None, None),
         ("centos7", "t2.medium", "0.0.0.0/0", None, None),
-        ("centos8", "t2.medium", "0.0.0.0/0", None, None),
         ("alinux2", "t2.medium", None, None, None),
         ("alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
         ("alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
         ("ubuntu1804", "m6g.xlarge", None, None, None),
         ("alinux2", "m6g.xlarge", None, None, None),
         ("centos7", "m6g.xlarge", None, None, None),
-        ("centos8", "m6g.xlarge", None, None, None),
     ],
 )
 def test_dcv_enabled_validator(
@@ -1843,12 +1835,10 @@ def test_dcv_enabled_validator(
         # Supported combinations
         ("x86_64", "alinux2", None),
         ("x86_64", "centos7", None),
-        ("x86_64", "centos8", None),
         ("x86_64", "ubuntu1804", None),
         ("arm64", "ubuntu1804", None),
         ("arm64", "alinux2", None),
         ("arm64", "centos7", None),
-        ("arm64", "centos8", None),
         # Unsupported combinations
         (
             "UnsupportedArchitecture",
@@ -2318,15 +2308,6 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         # All OSes supported for x86_64
         ("alinux2", "x86_64", [], []),
         ("centos7", "x86_64", [], []),
-        (
-            "centos8",
-            "x86_64",
-            [
-                "Warning: The operating system you are using (centos8) will reach support end-of-life by the end "
-                "of 2021. It will not be included as part of future releases of ParallelCluster."
-            ],
-            [],
-        ),
         ("ubuntu1804", "x86_64", [], []),
         # Only a subset of OSes supported for arm64
         ("alinux2", "arm64", [], []),
@@ -2337,15 +2318,6 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
                 "Warning: The aarch64 CentOS 7 OS is not validated for the 6th generation aarch64 instances "
                 "(M6g, C6g, etc.). To proceed please provide a custom_ami, "
                 "for more info see: https://wiki.centos.org/Cloud/AWS#aarch64_notes"
-            ],
-            [],
-        ),
-        (
-            "centos8",
-            "arm64",
-            [
-                "Warning: The operating system you are using (centos8) will reach support end-of-life by the end "
-                "of 2021. It will not be included as part of future releases of ParallelCluster."
             ],
             [],
         ),
@@ -2890,14 +2862,14 @@ def test_extra_json_validator(mocker, capsys, extra_json, expected_message):
     [
         ({"base_os": "alinux2", "enable_efa": "compute"}, "x86_64", None),
         ({"base_os": "alinux2", "enable_efa": "compute"}, "arm64", None),
-        ({"base_os": "centos8", "enable_efa": "compute"}, "x86_64", None),
-        ({"base_os": "centos8"}, "x86_64", None),
+        ({"base_os": "centos7", "enable_efa": "compute"}, "x86_64", None),
+        ({"base_os": "centos7"}, "x86_64", None),
         (
-            {"base_os": "centos8", "enable_efa": "compute"},
+            {"base_os": "centos7", "enable_efa": "compute"},
             "arm64",
-            "EFA currently not supported on centos8 for arm64 architecture",
+            "EFA currently not supported on centos7 for arm64 architecture",
         ),
-        ({"base_os": "centos8"}, "arm64", None),  # must not fail because by default EFA is disabled
+        ({"base_os": "centos7"}, "arm64", None),  # must not fail because by default EFA is disabled
         ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "x86_64", None),
         ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "arm64", None),
     ],

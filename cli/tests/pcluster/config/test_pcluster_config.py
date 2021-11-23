@@ -117,11 +117,9 @@ def test_load_from_file_errors(capsys, config_parser_dict, expected_message):
         # Official ami
         (None, "alinux2", "x86_64", "amzn2-hvm-x86_64", "ami-official", None, None, False),
         (None, "centos7", "x86_64", "centos7-hvm-x86_64", "ami-official", None, None, False),
-        (None, "centos8", "x86_64", "centos8-hvm-x86_64", "ami-official", None, None, False),
         (None, "ubuntu1804", "x86_64", "ubuntu-1804-lts-hvm-x86_64", "ami-official", None, None, False),
         (None, "alinux2", "arm_64", "amzn2-hvm-arm_64", "ami-official", None, None, False),
         (None, "centos7", "arm_64", "centos7-hvm-arm_64", "ami-official", None, None, False),
-        (None, "centos8", "arm_64", "centos8-hvm-arm_64", "ami-official", None, None, False),
         (None, "ubuntu1804", "arm_64", "ubuntu-1804-lts-hvm-arm_64", "ami-official", None, None, False),
         # Custom ami
         ("ami-custom", "alinux2", "x86_64", None, "ami-custom", None, None, False),

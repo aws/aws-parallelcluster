@@ -8,7 +8,7 @@ test-suites:
   runtime_bake:
     test_runtime_bake.py::test_runtime_bake: # arm instance tests are temporarily skipped
       dimensions:
-        {%- for os, scheduler in [("centos8", "torque"), ("centos7", "sge"), ("alinux2", "slurm"), ("ubuntu2004", "torque")] %}
+        {%- for os, scheduler in [("ubuntu1804", "torque"), ("centos7", "sge"), ("alinux2", "slurm"), ("ubuntu2004", "torque")] %}
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]

@@ -18,7 +18,6 @@ from tests.common.utils import retrieve_latest_ami
 
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "sge")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos8", "torque")
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos7", "sge")
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "ubuntu2004", "torque")
 # @pytest.mark.dimensions("us-east-1", "m6g.xlarge", "alinux2", "slurm")
@@ -38,14 +37,10 @@ def test_runtime_bake(
 ):
     """Test cluster creation with runtime bake."""
     # Remarkable AMIs are not available for ARM yet
-    # Disable centos7,8 remarkable AMIs, because FPGA AMI's volume size is not enough.
+    # Disable centos7 remarkable AMIs, because FPGA AMI's volume size is not enough.
     # Use official AMI with ubuntu2004 because DLAMI is not available yet
-    if architecture == "x86_64" and os not in ["centos7", "centos8", "ubuntu2004"]:
+    if architecture == "x86_64" and os not in ["centos7", "ubuntu2004"]:
         custom_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
-    elif architecture == "x86_64" and os == "centos8":
-        # Test centos8 for epel package installation with pcluster ami as base AMI instead of official AMI,
-        # Because unable to update os during runtime baking
-        custom_ami = amis_dict.get(os)
     else:
         custom_ami = retrieve_latest_ami(region, os, architecture=architecture)
 
@@ -67,11 +62,6 @@ def test_runtime_bake(
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    # Skip cinc download verification for centos8, because the test is using pcluster AMI as base AMI
-    if os != "centos8":
-        # Verify no chef.io endpoint is called in cloud-init-output log to download chef installer or chef packages"""
-        remote_command_executor.run_remote_script(str(test_datadir / "verify_cinc_download.sh"))
-
     # Verify epel installed on centos during runtime bake
-    if os in ["centos8", "centos7"]:
+    if os in ["centos7"]:
         remote_command_executor.run_remote_script(str(test_datadir / "verify_epel.sh"))
