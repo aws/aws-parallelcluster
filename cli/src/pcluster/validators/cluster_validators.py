@@ -507,7 +507,7 @@ def _find_overlapping_paths(paths_list):
     overlapping_paths = []
     if paths_list:
         for path in paths_list:
-            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path))
+            is_overlapping = any(x for x in paths_list if x != path and x.startswith(path + "/"))
             if is_overlapping:
                 overlapping_paths.append(path)
 
@@ -751,17 +751,17 @@ class _LaunchTemplateValidator(Validator, ABC):
             elif code == "InstanceLimitExceeded":
                 self._add_failure(
                     "You've reached the limit on the number of instances you can run concurrently "
-                    f"for the configured instance type.\n{message}",
+                    f"for the configured instance type. {message}",
                     FailureLevel.ERROR,
                 )
             elif code == "InsufficientInstanceCapacity":
                 self._add_failure(
-                    f"There is not enough capacity to fulfill your request.\n{message}", FailureLevel.ERROR
+                    f"There is not enough capacity to fulfill your request. {message}", FailureLevel.ERROR
                 )
             elif code == "InsufficientFreeAddressesInSubnet":
                 self._add_failure(
                     "The specified subnet does not contain enough free private IP addresses "
-                    f"to fulfill your request.\n{message}",
+                    f"to fulfill your request. {message}",
                     FailureLevel.ERROR,
                 )
             elif code == "InvalidParameterCombination":
@@ -791,7 +791,7 @@ class _LaunchTemplateValidator(Validator, ABC):
             else:
                 self._add_failure(
                     f"Unable to validate configuration parameters for instance type {kwargs['InstanceType']}. "
-                    f"Please double check your cluster configuration.\n{message}",
+                    f"Please double check your cluster configuration. {message}",
                     FailureLevel.ERROR,
                 )
 
@@ -845,7 +845,7 @@ class HeadNodeLaunchTemplateValidator(_LaunchTemplateValidator):
             )
         except Exception as e:
             self._add_failure(
-                f"Unable to validate configuration parameters for the head node.\n{str(e)}", FailureLevel.ERROR
+                f"Unable to validate configuration parameters for the head node. {str(e)}", FailureLevel.ERROR
             )
 
 
@@ -904,7 +904,7 @@ class ComputeResourceLaunchTemplateValidator(_LaunchTemplateValidator):
             )
         except Exception as e:
             self._add_failure(
-                f"Unable to validate configuration parameters for queue {queue.name}.\n{str(e)}", FailureLevel.ERROR
+                f"Unable to validate configuration parameters for queue {queue.name}. {str(e)}", FailureLevel.ERROR
             )
 
     def _test_compute_resource(

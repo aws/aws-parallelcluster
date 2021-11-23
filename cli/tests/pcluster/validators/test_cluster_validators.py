@@ -720,6 +720,10 @@ def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
             ["dir1", "dir1/subdir", "dir2", "dir2/subdir", "dir3"],
             "Mount directories dir1, dir2 cannot contain other mount directories",
         ),
+        (
+            ["dir", "dir1"],
+            None,
+        ),
     ],
 )
 def test_overlapping_mount_dir_validator(mount_dir_list, expected_message):
