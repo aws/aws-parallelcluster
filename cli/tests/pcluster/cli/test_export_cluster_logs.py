@@ -55,6 +55,7 @@ class TestExportClusterLogsCommand:
         [
             {},
             {"output_file": "output-path"},
+            {"bucket": "bucket-name", "keep_s3_objects": True},
             {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
             {"filters": "Name=private-dns-name,Values=ip-10-10-10-10"},
             {
