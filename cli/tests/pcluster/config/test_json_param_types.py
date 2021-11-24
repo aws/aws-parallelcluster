@@ -30,7 +30,13 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
         "InstanceTypes": [
             {
                 "InstanceType": "c4.xlarge",
-                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
+                "VCpuInfo": {
+                    "DefaultVCpus": 4,
+                    "DefaultCores": 2,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [1, 2],
+                    "ValidThreadsPerCore": [1, 2],
+                },
                 "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
@@ -42,7 +48,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
         "InstanceTypes": [
             {
                 "InstanceType": "g4dn.metal",
-                "VCpuInfo": {"DefaultVCpus": 96},
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
                 "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
@@ -55,7 +61,38 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
         "InstanceTypes": [
             {
                 "InstanceType": "i3en.24xlarge",
-                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
+                "VCpuInfo": {
+                    "DefaultVCpus": 96,
+                    "DefaultCores": 48,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [
+                        2,
+                        4,
+                        6,
+                        8,
+                        10,
+                        12,
+                        14,
+                        16,
+                        18,
+                        20,
+                        22,
+                        24,
+                        26,
+                        28,
+                        30,
+                        32,
+                        34,
+                        36,
+                        38,
+                        40,
+                        42,
+                        44,
+                        46,
+                        48,
+                    ],
+                    "ValidThreadsPerCore": [1, 2],
+                },
                 "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
@@ -79,7 +116,13 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
         "InstanceTypes": [
             {
                 "InstanceType": "m6g.xlarge",
-                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
+                "VCpuInfo": {
+                    "DefaultVCpus": 4,
+                    "DefaultCores": 4,
+                    "DefaultThreadsPerCore": 1,
+                    "ValidCores": [1, 2, 3, 4],
+                    "ValidThreadsPerCore": [1],
+                },
                 "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["arm64"]},
             }
@@ -104,7 +147,38 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
         "InstanceTypes": [
             {
                 "InstanceType": "p4d.24xlarge",
-                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
+                "VCpuInfo": {
+                    "DefaultVCpus": 96,
+                    "DefaultCores": 48,
+                    "DefaultThreadsPerCore": 2,
+                    "ValidCores": [
+                        2,
+                        4,
+                        6,
+                        8,
+                        10,
+                        12,
+                        14,
+                        16,
+                        18,
+                        20,
+                        22,
+                        24,
+                        26,
+                        28,
+                        30,
+                        32,
+                        34,
+                        36,
+                        38,
+                        40,
+                        42,
+                        44,
+                        46,
+                        48,
+                    ],
+                    "ValidThreadsPerCore": [1, 2],
+                },
                 "GpuInfo": {"Gpus": [{"Name": "A100", "Manufacturer": "NVIDIA", "Count": 8}]},
                 "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},

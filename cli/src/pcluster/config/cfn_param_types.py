@@ -661,7 +661,7 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
         else:
             cores = instance_type_info.vcpus_count() // default_threads_per_core
 
-        return cores, disable_ht_via_cpu_options(instance_type, default_threads_per_core)
+        return cores, disable_ht_via_cpu_options(instance_type)
 
     def to_cfn(self):
         """

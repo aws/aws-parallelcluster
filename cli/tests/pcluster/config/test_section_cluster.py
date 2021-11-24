@@ -11,6 +11,7 @@
 import json
 
 import pytest
+from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
 from pcluster.config.mappings import CLUSTER_HIT, CLUSTER_SIT
@@ -762,66 +763,82 @@ def test_sit_cluster_section_to_file(mocker, section_dict, expected_config_parse
 
 
 @pytest.mark.parametrize(
-    "cluster_section_definition, section_dict, expected_cfn_params, default_threads_per_core",
+    "cluster_section_definition, section_dict, expected_cfn_params, default_threads_per_core, valid_threads_per_core",
+    # Cores is a comma seperated string of:
+    # * head node cores,
+    # * compute cores,
+    # * head node instance type supports disabling hyperthreading via CPU options,
+    # * compute instance type supports disabling hyperthreading via CPU options
     [
-        (CLUSTER_SIT, DefaultDict["cluster_sit"].value, DefaultCfnParams["cluster_sit"].value, (1, 1)),
-        (CLUSTER_HIT, DefaultDict["cluster_hit"].value, DefaultCfnParams["cluster_hit"].value, (1, 1)),
+        (CLUSTER_SIT, DefaultDict["cluster_sit"].value, DefaultCfnParams["cluster_sit"].value, (), ()),
+        (CLUSTER_HIT, DefaultDict["cluster_hit"].value, DefaultCfnParams["cluster_hit"].value, (), ()),
+        # SIT clusters
         (
             CLUSTER_SIT,
             utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
             utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "2,2,true,true"}),
-            (2, 2),
+            (2, 2, 2, 2),
+            ([1], [1]),
         ),
         (
             CLUSTER_SIT,
             utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
             utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "NONE,NONE,false,false"}),
-            (1, 1),
+            (1, 1, 1, 1),
+            (),
         ),
         (
             CLUSTER_SIT,
             utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
             utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "2,NONE,true,false"}),
-            (2, 1),
+            (2, 2, 1, 1),
+            ([1],),
         ),
         (
             CLUSTER_SIT,
             utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
             utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "NONE,2,false,true"}),
-            (1, 2),
+            (1, 1, 2, 2),
+            ([1],),
         ),
+        # HIT clusters: there should be no cores information for compute instance type
         (
             CLUSTER_HIT,
             utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
-            # With HIT clusters there should be no cores information for compute instance type
             utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "2,0,true,false"}),
             (2, 2),
+            ([1],),
         ),
         (
             CLUSTER_HIT,
             utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
-            # With HIT clusters there should be no cores information for compute instance type
             utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "NONE,0,false,false"}),
             (1, 1),
+            (),
         ),
         (
             CLUSTER_HIT,
             utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
-            # With HIT clusters there should be no cores information for compute instance type
             utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "2,0,true,false"}),
-            (2, 1),
+            (2, 2),
+            ([1],),
         ),
         (
             CLUSTER_HIT,
             utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
-            # With HIT clusters there should be no cores information for compute instance type
             utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "NONE,0,false,false"}),
-            (1, 2),
+            (1, 1),
+            (),
         ),
     ],
 )
 def test_cluster_section_to_cfn(
-    mocker, cluster_section_definition, section_dict, expected_cfn_params, default_threads_per_core
+    mocker,
+    cluster_section_definition,
+    section_dict,
+    expected_cfn_params,
+    default_threads_per_core,
+    valid_threads_per_core,
 ):
     section_dict["master_instance_type"] = "t2.micro"
     if cluster_section_definition == CLUSTER_SIT:
@@ -835,7 +852,13 @@ def test_cluster_section_to_cfn(
     )
     instance_type_info_mock.vcpus_count.return_value = 4
     instance_type_info_mock.default_threads_per_core.side_effect = default_threads_per_core
+    instance_type_info_mock.valid_threads_per_core.side_effect = valid_threads_per_core
     utils.assert_section_to_cfn(mocker, cluster_section_definition, section_dict, expected_cfn_params)
+
+    # _get_cfn_params_for_instance_type calls default_threads_per_core 2 times for the head node
+    # and (only for SIT clusters) other 2 times for the compute nodes
+    assert_that(instance_type_info_mock.default_threads_per_core.call_count).is_equal_to(len(default_threads_per_core))
+    assert_that(instance_type_info_mock.valid_threads_per_core.call_count).is_equal_to(len(valid_threads_per_core))
 
 
 @pytest.mark.parametrize(
