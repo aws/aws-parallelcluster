@@ -67,8 +67,7 @@ class HITClusterModel(ClusterModel):
         head_node_threads_per_core = head_node_instance_type_info.default_threads_per_core()
         head_node_cpu_options = (
             {"CoreCount": head_node_vcpus // head_node_threads_per_core, "ThreadsPerCore": 1}
-            if disable_hyperthreading
-            and disable_ht_via_cpu_options(head_node_instance_type, head_node_threads_per_core)
+            if disable_hyperthreading and disable_ht_via_cpu_options(head_node_instance_type)
             else {}
         )
         try:

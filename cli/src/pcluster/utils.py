@@ -1050,21 +1050,12 @@ def cluster_has_running_capacity(stack_name):
     return cluster_has_running_capacity.cached_result
 
 
-def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
-    """Return a boolean describing whether hyperthreading should be disabled via CPU options for instance_type."""
-    if default_threads_per_core is None:
-        default_threads_per_core = InstanceTypeInfo.init_from_instance_type(instance_type).default_threads_per_core()
-    res = all(
-        [
-            # If default threads per core is 1, HT doesn't need to be disabled
-            default_threads_per_core > 1,
-            # Currently, hyperthreading must be disabled manually on *.metal instances
-            not (
-                instance_type.endswith(".metal") or instance_type.startswith("m4.") or instance_type in ["cc2.8xlarge"]
-            ),
-        ]
-    )
-    return res
+def disable_ht_via_cpu_options(instance_type):
+    """Return a boolean describing whether hyper-threading should be disabled via CPU options for instance_type."""
+    instance_info = InstanceTypeInfo.init_from_instance_type(instance_type)
+    # If default threads per core is 1, HT doesn't need to be disabled
+    # When CpuOptions is not supported, ValidThreadsPerCore can't be found in VCpuInfo info
+    return instance_info.default_threads_per_core() > 1 and 1 in instance_info.valid_threads_per_core()
 
 
 def is_hit_enabled_scheduler(scheduler):
@@ -1316,16 +1307,11 @@ class InstanceTypeInfo:
 
     def default_threads_per_core(self):
         """Return the default threads per core for the given instance type."""
-        # NOTE: currently, .metal instances do not contain the DefaultThreadsPerCore
-        #       attribute in their VCpuInfo section. This is a known issue with the
-        #       ec2 DescribeInstanceTypes API. For these instance types an assumption
-        #       is made that if the instance's supported architectures list includes
-        #       x86_64 then the default is 2, otherwise it's 1.
-        threads_per_core = self.instance_type_data.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
-        if threads_per_core is None:
-            supported_architectures = self.instance_type_data.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
-            threads_per_core = 2 if "x86_64" in supported_architectures else 1
-        return threads_per_core
+        return self.instance_type_data.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
+
+    def valid_threads_per_core(self):
+        """Return the valid threads per core for the given instance type."""
+        return self.instance_type_data.get("VCpuInfo", {}).get("ValidThreadsPerCore", [])
 
     def vcpus_count(self):
         """Get number of vcpus for the given instance type."""
