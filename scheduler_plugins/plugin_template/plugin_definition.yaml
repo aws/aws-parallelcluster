@@ -77,6 +77,9 @@ Events:
   ComputeFinalize:
     ExecuteCommand:
       Command: artifacts/handlers/compute_finalize.sh
+  HeadClusterUpdate:
+    ExecuteCommand:
+      Command: artifacts/handlers/head_cluster_update.sh
 # NOT AVAILABLE YET
 # Allows the registration of custom log files to be uploaded to the CloudWatch log group managed by ParallelCluster
 # Monitoring:

@@ -13,6 +13,7 @@ default['pcluster']['local_dir'] = ENV['PCLUSTER_LOCAL_SCHEDULER_PLUGIN_DIR']
 default['pcluster']['shared_dir'] = ENV['PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR']
 default['pcluster']['region'] = ENV['PCLUSTER_AWS_REGION']
 default['pcluster']['cluster_config_path'] = ENV['PCLUSTER_CLUSTER_CONFIG']
+default['pcluster']['previous_cluster_config_path'] = ENV['PCLUSTER_CLUSTER_CONFIG_OLD']
 default['pcluster']['cluster_config'] = YAML.load_file("#{node['pcluster']['cluster_config_path']}")
 default['pcluster']['launch_templates_config_path'] = ENV['PCLUSTER_LAUNCH_TEMPLATES']
 default['pcluster']['launch_templates_config'] = JSON.load_file(node['pcluster']['launch_templates_config_path'])
