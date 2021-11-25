@@ -27,9 +27,9 @@ class TestCreateClusterCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({}, "error: the following arguments are required: --cluster-name, --cluster-configuration"),
+            ({}, "error: the following arguments are required: -c/--cluster-name, --cluster-configuration"),
             ({"--cluster-configuration": None}, "error: argument --cluster-configuration: expected one argument"),
-            ({"--cluster-name": None}, "error: argument --cluster-name: expected one argument"),
+            ({"--cluster-name": None}, "error: argument -c/--cluster-name: expected one argument"),
             (
                 {"--cluster-configuration": "file", "--cluster-name": "cluster", "--invalid": None},
                 "Invalid arguments ['--invalid']",
@@ -131,7 +131,8 @@ class TestCreateClusterCommand:
         assert_that(cf_waiter_mock.call_args[1]).is_equal_to({"StackName": "cluster"})
         describe_cluster_mock.assert_called_with(cluster_name="cluster")
 
-    def test_execute(self, mocker, test_datadir):
+    @pytest.mark.parametrize("cluster_name_arg, region_arg", [("--cluster-name", "--region"), ("-c", "-r")])
+    def test_execute(self, cluster_name_arg, region_arg, mocker, test_datadir):
         response_dict = {
             "cluster": {
                 "clusterName": "cluster",
@@ -152,7 +153,7 @@ class TestCreateClusterCommand:
 
         path = str(test_datadir / "config.yaml")
         out = run(
-            ["create-cluster", "--cluster-name", "cluster", "--cluster-configuration", path, "--region", "eu-west-1"]
+            ["create-cluster", cluster_name_arg, "cluster", "--cluster-configuration", path, region_arg, "eu-west-1"]
         )
         assert_that(out).is_equal_to(response_dict)
         assert_that(create_cluster_mock.call_args).is_length(2)

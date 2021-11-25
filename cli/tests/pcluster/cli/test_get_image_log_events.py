@@ -29,8 +29,7 @@ class TestGetImageLogEventsCommand:
         assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
-        "args, error_message",
-        [({}, "the following arguments are required: --image-id, --log-stream-name")],
+        "args, error_message", [({}, "the following arguments are required: -i/--image-id, --log-stream-name")]
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)

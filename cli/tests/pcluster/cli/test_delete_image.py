@@ -14,27 +14,15 @@ class TestDeleteImageCommand:
         command = ["pcluster", "delete-image", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: --image-id"),
-            (
-                ["--image-id"],
-                "error: argument --image-id: expected one argument",
-            ),
-            (
-                ["--image-id", "image", "--invalid"],
-                "Invalid arguments ['--invalid']",
-            ),
-            (
-                ["--image-id", "image", "--region", "eu-west-"],
-                "Bad Request: invalid or unsupported region 'eu-west-'",
-            ),
+            ([""], "error: the following arguments are required: -i/--image-id"),
+            (["--image-id"], "error: argument -i/--image-id: expected one argument"),
+            (["--image-id", "image", "--invalid"], "Invalid arguments ['--invalid']"),
+            (["--image-id", "image", "--region", "eu-west-"], "Bad Request: invalid or unsupported region 'eu-west-'"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):

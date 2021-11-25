@@ -18,27 +18,15 @@ class TestGetImageStackEventsCommand:
         command = ["pcluster", "get-image-stack-events", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: --image-id"),
-            (
-                ["--image-id"],
-                "error: argument --image-id: expected one argument",
-            ),
-            (
-                ["--image-id", "image", "--invalid"],
-                "Invalid arguments ['--invalid']",
-            ),
-            (
-                ["--image-id", "image", "--region", "eu-west-"],
-                "Bad Request: invalid or unsupported region 'eu-west-'",
-            ),
+            ([""], "error: the following arguments are required: -i/--image-id"),
+            (["--image-id"], "error: argument -i/--image-id: expected one argument"),
+            (["--image-id", "image", "--invalid"], "Invalid arguments ['--invalid']"),
+            (["--image-id", "image", "--region", "eu-west-"], "Bad Request: invalid or unsupported region 'eu-west-'"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -87,12 +75,6 @@ class TestGetImageStackEventsCommand:
         )
 
         with pytest.raises(APIOperationException) as exc_info:
-            command = [
-                "get-image-stack-events",
-                "--region",
-                "eu-west-1",
-                "--image-id",
-                "image-id",
-            ]
+            command = ["get-image-stack-events", "--region", "eu-west-1", "--image-id", "image-id"]
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])

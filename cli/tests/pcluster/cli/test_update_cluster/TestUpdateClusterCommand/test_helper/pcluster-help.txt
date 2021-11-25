@@ -1,7 +1,7 @@
-usage: pcluster update-cluster [-h] --cluster-name CLUSTER_NAME
+usage: pcluster update-cluster [-h] -c CLUSTER_NAME
                                [--suppress-validators SUPPRESS_VALIDATORS [SUPPRESS_VALIDATORS ...]]
                                [--validation-failure-level {INFO,WARNING,ERROR}]
-                               [--region REGION] [--dryrun DRYRUN]
+                               [-r REGION] [--dryrun DRYRUN]
                                [--force-update FORCE_UPDATE]
                                --cluster-configuration CLUSTER_CONFIGURATION
                                [--debug] [--query QUERY]
@@ -10,7 +10,7 @@ Update a cluster managed in a given region.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --cluster-name CLUSTER_NAME
+  -c CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
   --suppress-validators SUPPRESS_VALIDATORS [SUPPRESS_VALIDATORS ...]
                         Identifies one or more config validators to suppress.
@@ -18,7 +18,8 @@ optional arguments:
   --validation-failure-level {INFO,WARNING,ERROR}
                         Min validation level that will cause the update to
                         fail. (Defaults to 'ERROR'.)
-  --region REGION       AWS Region that the operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
   --dryrun DRYRUN       Only perform request validation without creating any
                         resource. May be used to validate the cluster
                         configuration and update requirements. (Defaults to

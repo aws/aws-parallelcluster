@@ -1,5 +1,4 @@
-usage: pcluster get-image-stack-events [-h] --image-id IMAGE_ID
-                                       [--region REGION]
+usage: pcluster get-image-stack-events [-h] -i IMAGE_ID [-r REGION]
                                        [--next-token NEXT_TOKEN] [--debug]
                                        [--query QUERY]
 
@@ -7,8 +6,10 @@ Retrieve the events associated with the stack for a given image build.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --image-id IMAGE_ID   Id of the image.
-  --region REGION       AWS Region that the operation corresponds to.
+  -i IMAGE_ID, --image-id IMAGE_ID
+                        Id of the image.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --debug               Turn on debug logging.

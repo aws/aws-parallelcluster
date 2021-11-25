@@ -1,5 +1,4 @@
-usage: pcluster list-image-log-streams [-h] --image-id IMAGE_ID
-                                       [--region REGION]
+usage: pcluster list-image-log-streams [-h] -i IMAGE_ID [-r REGION]
                                        [--next-token NEXT_TOKEN] [--debug]
                                        [--query QUERY]
 
@@ -7,8 +6,10 @@ Retrieve the list of log streams associated with an image.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --image-id IMAGE_ID   Id of the image.
-  --region REGION       Region that the given image belongs to.
+  -i IMAGE_ID, --image-id IMAGE_ID
+                        Id of the image.
+  -r REGION, --region REGION
+                        Region that the given image belongs to.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --debug               Turn on debug logging.

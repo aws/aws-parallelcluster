@@ -1,4 +1,4 @@
-usage: pcluster list-images [-h] [--region REGION] [--next-token NEXT_TOKEN]
+usage: pcluster list-images [-h] [-r REGION] [--next-token NEXT_TOKEN]
                             --image-status {AVAILABLE,PENDING,FAILED}
                             [--debug] [--query QUERY]
 
@@ -6,7 +6,8 @@ Retrieve the list of existing custom images.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --region REGION       List images built in a given AWS Region.
+  -r REGION, --region REGION
+                        List images built in a given AWS Region.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --image-status {AVAILABLE,PENDING,FAILED}

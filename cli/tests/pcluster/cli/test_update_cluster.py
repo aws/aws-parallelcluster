@@ -27,9 +27,9 @@ class TestUpdateClusterCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({}, "error: the following arguments are required: --cluster-name, --cluster-configuration"),
+            ({}, "error: the following arguments are required: -c/--cluster-name, --cluster-configuration"),
             ({"--cluster-configuration": None}, "error: argument --cluster-configuration: expected one argument"),
-            ({"--cluster-name": None}, "error: argument --cluster-name: expected one argument"),
+            ({"--cluster-name": None}, "error: argument -c/--cluster-name: expected one argument"),
             (
                 {"--cluster-configuration": "file", "--cluster-name": "cluster", "--invalid": None},
                 "Invalid arguments ['--invalid']",

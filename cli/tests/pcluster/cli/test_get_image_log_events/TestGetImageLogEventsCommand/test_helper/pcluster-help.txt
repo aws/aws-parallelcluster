@@ -1,6 +1,5 @@
-usage: pcluster get-image-log-events [-h] --image-id IMAGE_ID
-                                     --log-stream-name LOG_STREAM_NAME
-                                     [--region REGION]
+usage: pcluster get-image-log-events [-h] -i IMAGE_ID --log-stream-name
+                                     LOG_STREAM_NAME [-r REGION]
                                      [--next-token NEXT_TOKEN]
                                      [--start-from-head START_FROM_HEAD]
                                      [--limit LIMIT] [--start-time START_TIME]
@@ -11,10 +10,12 @@ Retrieve the events associated with an image build.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --image-id IMAGE_ID   Id of the image.
+  -i IMAGE_ID, --image-id IMAGE_ID
+                        Id of the image.
   --log-stream-name LOG_STREAM_NAME
                         Name of the log stream.
-  --region REGION       AWS Region that the operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --start-from-head START_FROM_HEAD
