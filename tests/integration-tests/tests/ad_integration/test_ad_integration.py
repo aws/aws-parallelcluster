@@ -214,12 +214,12 @@ def directory_factory(request, cfn_stacks_factory):
         created_directory_stacks[region] = stack_name
         logging.info("Creating %s users in directory service", str(NUM_USERS_TO_CREATE))
         ssm_client = boto3.client("ssm", region_name=region)
-        document_name = stack.cfn_resources["MultiUserInfraUserAddingDocument"]
-        admin_node_instance_id = stack.cfn_resources["MultiUserInfraAdDomainAdminNode"]
-        directory_id = stack.cfn_resources["MultiUserInfraDirectory"]
+        document_name = stack.cfn_resources["UserAddingDocument"]
+        admin_node_instance_id = stack.cfn_resources["AdDomainAdminNode"]
+        directory_id = stack.cfn_resources["Directory"]
         command_id = ssm_client.send_command(
             DocumentName=document_name,
-            InstanceIds=[stack.cfn_resources["MultiUserInfraAdDomainAdminNode"]],
+            InstanceIds=[stack.cfn_resources["AdDomainAdminNode"]],
             MaxErrors="0",
             TimeoutSeconds=600,
             Parameters={"DirectoryId": [directory_id], "NumUsersToCreate": [str(NUM_USERS_TO_CREATE)]},

@@ -1,81 +1,81 @@
 Resources:
-  MultiUserInfraVpc:
+  Vpc:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 172.31.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
       InstanceTenancy: default
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C:
+  PublicSubnetOne:
     Type: AWS::EC2::Subnet
     Properties:
       CidrBlock: 172.31.0.0/17
       VpcId:
-        Ref: MultiUserInfraVpc
+        Ref: Vpc
       AvailabilityZone: {{ region }}a
       MapPublicIpOnLaunch: true
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTable440E65B1:
+  PublicSubnetOneRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTableAssociation2F67DCF9:
+        Ref: Vpc
+  PublicSubnetOneRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTable440E65B1
+        Ref: PublicSubnetOneRouteTable
       SubnetId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1DefaultRouteB1A9DE6E:
+        Ref: PublicSubnetOne
+  PublicSubnetOneIgwRoute:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTable440E65B1
+        Ref: PublicSubnetOneRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: MultiUserInfraVpcIGW322D5805
+        Ref: InternetGateway
     DependsOn:
-      - MultiUserInfraVpcVPCGW8C41E9C2
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9:
+      - VpcGatewayAttachment
+  PublicSubnetTwo:
     Type: AWS::EC2::Subnet
     Properties:
       CidrBlock: 172.31.128.0/17
       VpcId:
-        Ref: MultiUserInfraVpc
+        Ref: Vpc
       AvailabilityZone: {{ region }}b
       MapPublicIpOnLaunch: true
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTable94561FFD:
+  PublicSubnetTwoRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTableAssociation69E447BF:
+        Ref: Vpc
+  PublicSubnetTwoRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTable94561FFD
+        Ref: PublicSubnetTwoRouteTable
       SubnetId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2DefaultRouteFFA92127:
+        Ref: PublicSubnetTwo
+  PublicSubnetTwoIgwRoute:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTable94561FFD
+        Ref: PublicSubnetTwoRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: MultiUserInfraVpcIGW322D5805
+        Ref: InternetGateway
     DependsOn:
-      - MultiUserInfraVpcVPCGW8C41E9C2
-  MultiUserInfraVpcIGW322D5805:
+      - VpcGatewayAttachment
+  InternetGateway:
     Type: AWS::EC2::InternetGateway
-  MultiUserInfraVpcVPCGW8C41E9C2:
+  VpcGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId:
-        Ref: MultiUserInfraVpc
+        Ref: Vpc
       InternetGatewayId:
-        Ref: MultiUserInfraVpcIGW322D5805
-  MultiUserInfraAdDomainAdminNodeSecurityGroup:
+        Ref: InternetGateway
+  AdDomainAdminNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH access
@@ -90,49 +90,49 @@ Resources:
           IpProtocol: tcp
           ToPort: 22
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraDirectory:
+        Ref: Vpc
+  Directory:
     Type: AWS::DirectoryService::{{ directory_type }}
     Properties:
       Name: {{ ad_domain_name }}
       Password: {{ ad_admin_password }}
       VpcSettings:
         SubnetIds:
-          - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
-          - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9
+          - Ref: PublicSubnetOne
+          - Ref: PublicSubnetTwo
         VpcId:
-          Ref: MultiUserInfraVpc
+          Ref: Vpc
       {% if directory_type == "SimpleAD" %}
       Size: Large
       {% endif %}
       ShortName: NET
-  MultiUserInfraVpcDhcpOptsSet:
+  VpcDhcpOptsSet:
     Type: AWS::EC2::DHCPOptions
     Properties:
       DomainName: {{ ad_domain_name }} {{ default_ec2_domain }}
       DomainNameServers:
         Fn::GetAtt:
-          - MultiUserInfraDirectory
+          - Directory
           - DnsIpAddresses
-  MultiUserInfraAdDomainAdminNodeWaitConditionHandle:
+  AdDomainAdminNodeWaitConditionHandle:
     Type: AWS::CloudFormation::WaitConditionHandle
-  MultiUserInfraVpcDhcpOptsSetAssociation:
+  VpcDhcpOptsSetAssociation:
     Type: AWS::EC2::VPCDHCPOptionsAssociation
     Properties:
       DhcpOptionsId:
-        Ref: MultiUserInfraVpcDhcpOptsSet
+        Ref: VpcDhcpOptsSet
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraAdDomainAdminNodeWaitCondition:
+        Ref: Vpc
+  AdDomainAdminNodeWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
     Properties:
       Count: 1
       Handle:
-        Ref: MultiUserInfraAdDomainAdminNodeWaitConditionHandle
+        Ref: AdDomainAdminNodeWaitConditionHandle
       Timeout: "1800"
     DependsOn:
-      - MultiUserInfraDirectory
-  MultiUserInfraJoinRole:
+      - Directory
+  JoinRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -157,32 +157,32 @@ Resources:
                       - - "arn:"
                         - Ref: AWS::Partition
                         - :ds:{{ region }}:{{ account }}:directory/
-                        - Ref: MultiUserInfraDirectory
+                        - Ref: Directory
           PolicyName:
             Fn::Join:
               - ""
               - - Ref: AWS::StackName
                 - resetuserpassword
-  MultiUserInfraJoinProfile:
+  JoinProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
-        - Ref: MultiUserInfraJoinRole
+        - Ref: JoinRole
     DependsOn:
-      - MultiUserInfraJoinRole
-  MultiUserInfraAdDomainAdminNode:
+      - JoinRole
+  AdDomainAdminNode:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: {{ region }}a
       IamInstanceProfile:
-        Ref: MultiUserInfraJoinProfile
+        Ref: JoinProfile
       ImageId: {{ admin_node_ami_id }}
       InstanceType: {{ admin_node_instance_type }}
       KeyName: {{ admin_node_key_name }}
       SecurityGroupIds:
-        - Ref: MultiUserInfraAdDomainAdminNodeSecurityGroup
+        - Ref: AdDomainAdminNodeSecurityGroup
       SubnetId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
+        Ref: PublicSubnetOne
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -273,14 +273,14 @@ Resources:
                 # Signal success
                 # TODO: don't assumed this is installed (in case non-AL2 AMI used)
                 /opt/aws/bin/cfn-signal --exit-code=0 --reason="admin node setup complete" '
-              - Ref: MultiUserInfraAdDomainAdminNodeWaitConditionHandle
+              - Ref: AdDomainAdminNodeWaitConditionHandle
               - "'"
     DependsOn:
-      - MultiUserInfraDirectory
-      - MultiUserInfraJoinProfile
-      - MultiUserInfraVpcDhcpOptsSet
-      - MultiUserInfraVpcDhcpOptsSetAssociation
-  MultiUserInfraUserAddingDocument:
+      - Directory
+      - JoinProfile
+      - VpcDhcpOptsSet
+      - VpcDhcpOptsSetAssociation
+  UserAddingDocument:
     Type: AWS::SSM::Document
     Properties:
       Content:
@@ -304,7 +304,7 @@ Resources:
 Outputs:
   VpcId:
     Value:
-      Ref: MultiUserInfraVpc
+      Ref: Vpc
     Export:
       Name:
         Fn::Join:
@@ -315,9 +315,9 @@ Outputs:
     Value:
       Fn::Join:
         - ""
-        - - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
+        - - Ref: PublicSubnetOne
           - ","
-          - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9
+          - Ref: PublicSubnetTwo
     Export:
       Name:
         Fn::Join:
@@ -340,7 +340,7 @@ Outputs:
           - Fn::Select:
               - 0
               - Fn::GetAtt:
-                  - MultiUserInfraDirectory
+                  - Directory
                   - DnsIpAddresses
     Export:
       Name:
