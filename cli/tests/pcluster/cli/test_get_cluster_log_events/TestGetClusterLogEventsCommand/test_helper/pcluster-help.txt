@@ -1,4 +1,4 @@
-usage: pcluster get-cluster-log-events [-h] -c CLUSTER_NAME --log-stream-name
+usage: pcluster get-cluster-log-events [-h] -n CLUSTER_NAME --log-stream-name
                                        LOG_STREAM_NAME [-r REGION]
                                        [--next-token NEXT_TOKEN]
                                        [--start-from-head START_FROM_HEAD]
@@ -11,7 +11,7 @@ Retrieve the events associated with a log stream.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c CLUSTER_NAME, --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
   --log-stream-name LOG_STREAM_NAME
                         Name of the log stream.

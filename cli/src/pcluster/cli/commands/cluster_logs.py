@@ -34,7 +34,7 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         parser.add_argument(
-            "-c", "--cluster-name", help="Export the logs of the cluster name provided here.", required=True
+            "-n", "--cluster-name", help="Export the logs of the cluster name provided here.", required=True
         )
         # Export options
         parser.add_argument(

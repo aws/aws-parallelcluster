@@ -136,9 +136,15 @@ def gen_parser(model):
             else:
                 type_coerce = None
 
-            abbrev_args = {"cluster-name", "image-id", "region"}
+            abbrev_args = {
+                "cluster-name": "-n",
+                "image-id": "-i",
+                "region": "-r",
+                "cluster-configuration": "-c",
+                "image-configuration": "-c",
+            }
             if param["name"] in abbrev_args:
-                arg_name = [f"-{param['name'][0]}", f"--{param['name']}"]
+                arg_name = [abbrev_args[param["name"]], f"--{param['name']}"]
             else:
                 arg_name = [f"--{param['name']}"]
 

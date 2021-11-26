@@ -27,9 +27,9 @@ class TestCreateClusterCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({}, "error: the following arguments are required: -c/--cluster-name, --cluster-configuration"),
-            ({"--cluster-configuration": None}, "error: argument --cluster-configuration: expected one argument"),
-            ({"--cluster-name": None}, "error: argument -c/--cluster-name: expected one argument"),
+            ({}, "error: the following arguments are required: -n/--cluster-name, -c/--cluster-configuration"),
+            ({"--cluster-configuration": None}, "error: argument -c/--cluster-configuration: expected one argument"),
+            ({"--cluster-name": None}, "error: argument -n/--cluster-name: expected one argument"),
             (
                 {"--cluster-configuration": "file", "--cluster-name": "cluster", "--invalid": None},
                 "Invalid arguments ['--invalid']",
@@ -104,16 +104,7 @@ class TestCreateClusterCommand:
         mock_aws_api(mocker)
 
         path = str(test_datadir / "config.yaml")
-        command = [
-            "create-cluster",
-            "--cluster-name",
-            "cluster",
-            "--cluster-configuration",
-            path,
-            "--region",
-            "eu-west-1",
-            "--wait",
-        ]
+        command = ["create-cluster", "-n", "cluster", "-c", path, "-r", "eu-west-1", "--wait"]
         out = run(command)
 
         expected = wire_translate(response)
@@ -131,7 +122,7 @@ class TestCreateClusterCommand:
         assert_that(cf_waiter_mock.call_args[1]).is_equal_to({"StackName": "cluster"})
         describe_cluster_mock.assert_called_with(cluster_name="cluster")
 
-    @pytest.mark.parametrize("cluster_name_arg, region_arg", [("--cluster-name", "--region"), ("-c", "-r")])
+    @pytest.mark.parametrize("cluster_name_arg, region_arg", [("--cluster-name", "--region"), ("-n", "-r")])
     def test_execute(self, cluster_name_arg, region_arg, mocker, test_datadir):
         response_dict = {
             "cluster": {

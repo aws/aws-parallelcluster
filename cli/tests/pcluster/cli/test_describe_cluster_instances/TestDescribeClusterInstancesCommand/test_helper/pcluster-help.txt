@@ -1,4 +1,4 @@
-usage: pcluster describe-cluster-instances [-h] -c CLUSTER_NAME [-r REGION]
+usage: pcluster describe-cluster-instances [-h] -n CLUSTER_NAME [-r REGION]
                                            [--next-token NEXT_TOKEN]
                                            [--node-type {HeadNode,ComputeNode}]
                                            [--queue-name QUEUE_NAME] [--debug]
@@ -8,7 +8,7 @@ Describe the instances belonging to a given cluster.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c CLUSTER_NAME, --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.

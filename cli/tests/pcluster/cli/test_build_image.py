@@ -25,22 +25,19 @@ class TestBuildImageCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({}, "error: the following arguments are required: --image-configuration, -i/--image-id"),
-            ({"--image-configuration": None}, "error: argument --image-configuration: expected one argument"),
+            ({}, "error: the following arguments are required: -c/--image-configuration, -i/--image-id"),
+            ({"--image-configuration": None}, "error: argument -c/--image-configuration: expected one argument"),
             ({"--image-id": None}, "error: argument -i/--image-id: expected one argument"),
+            ({"-c": "file", "-i": "id", "--invalid": None}, "Invalid arguments ['--invalid']"),
             (
-                {"--image-configuration": "file", "--image-id": "id", "--invalid": None},
-                "Invalid arguments ['--invalid']",
-            ),
-            (
-                {"--image-configuration": "file", "--image-id": "id", "--region": "eu-west-"},
+                {"-c": "file", "--image-id": "id", "--region": "eu-west-"},
                 "Bad Request: invalid or unsupported region 'eu-west-'",
             ),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys, test_datadir):
-        if args.get("--image-configuration"):
-            args["--image-configuration"] = str(test_datadir / "file")
+        if args.get("-c"):
+            args["-c"] = str(test_datadir / "file")
         args = self._build_args(args)
         command = ["pcluster", "build-image"] + args
         run_cli(command, expect_failure=True)

@@ -23,8 +23,8 @@ class TestGetClusterStackEventsCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: -c/--cluster-name"),
-            (["--cluster-name"], "error: argument -c/--cluster-name: expected one argument"),
+            ([""], "error: the following arguments are required: -n/--cluster-name"),
+            (["--cluster-name"], "error: argument -n/--cluster-name: expected one argument"),
             (["--cluster-name", "cluster", "--invalid"], "Invalid arguments ['--invalid']"),
             (
                 ["--cluster-name", "cluster", "--region", "eu-west-"],

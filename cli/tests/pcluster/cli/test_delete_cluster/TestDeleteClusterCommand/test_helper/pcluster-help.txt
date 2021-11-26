@@ -1,11 +1,11 @@
-usage: pcluster delete-cluster [-h] -c CLUSTER_NAME [-r REGION] [--debug]
+usage: pcluster delete-cluster [-h] -n CLUSTER_NAME [-r REGION] [--debug]
                                [--query QUERY]
 
 Initiate the deletion of a cluster.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c CLUSTER_NAME, --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.

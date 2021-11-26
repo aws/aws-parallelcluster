@@ -1,11 +1,11 @@
-usage: pcluster describe-compute-fleet [-h] -c CLUSTER_NAME [-r REGION]
+usage: pcluster describe-compute-fleet [-h] -n CLUSTER_NAME [-r REGION]
                                        [--debug] [--query QUERY]
 
 Describe the status of the compute fleet.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c CLUSTER_NAME, --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.

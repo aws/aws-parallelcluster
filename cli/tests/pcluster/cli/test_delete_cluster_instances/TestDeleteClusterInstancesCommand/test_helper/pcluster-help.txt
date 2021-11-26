@@ -1,4 +1,4 @@
-usage: pcluster delete-cluster-instances [-h] -c CLUSTER_NAME [-r REGION]
+usage: pcluster delete-cluster-instances [-h] -n CLUSTER_NAME [-r REGION]
                                          [--force FORCE] [--debug]
                                          [--query QUERY]
 
@@ -7,7 +7,7 @@ with AWS Batch clusters.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c CLUSTER_NAME, --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.

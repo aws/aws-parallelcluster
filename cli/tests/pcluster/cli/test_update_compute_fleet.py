@@ -24,8 +24,8 @@ class TestUpdateComputeFleetCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: -c/--cluster-name"),
-            (["--cluster-name"], "error: argument -c/--cluster-name: expected one argument"),
+            ([""], "error: the following arguments are required: -n/--cluster-name"),
+            (["--cluster-name"], "error: argument -n/--cluster-name: expected one argument"),
             (["--status"], "error: argument --status: expected one argument"),
             (
                 ["--cluster-name", "cluster", "--status", "START_REQUESTED", "--invalid"],
