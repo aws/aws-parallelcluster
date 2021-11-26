@@ -20,6 +20,7 @@ X.X.X
 - Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
 - Fix ecs:ListContainerInstances permission in BatchUserRole
 - Fix exporting of cluster logs when there is no prefix specified, previously exported to a `None` prefix.
+- Fix rollback not being performed in case of cluster update failure.  
 
 3.0.2
 -----
