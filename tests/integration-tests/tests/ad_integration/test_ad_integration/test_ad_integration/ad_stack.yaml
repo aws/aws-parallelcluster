@@ -145,6 +145,24 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - ds:ResetUserPassword
+                Effect: Allow
+                Resource:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - :ds:{{ region }}:{{ account }}:directory/
+                        - Ref: MultiUserInfraDirectory
+          PolicyName:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - resetuserpassword
   MultiUserInfraJoinProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -204,6 +222,7 @@ Resources:
 
                 # Write a script that will be invoked via SSM in order to add users to the domain
                 mkdir -p $(dirname /usr/local/bin/add_user.sh)
+                # Script to add a single user
                 cat << EOF > /usr/local/bin/add_user.sh
                 #!/bin/bash
                 NEW_USER_ALIAS=\$1
@@ -214,6 +233,42 @@ Resources:
                 echo "${AD_ADMIN_PASSWORD}" | adcli create-user -U ${AD_ADMIN_USER} \${NEW_USER_ALIAS} --domain="${AD_DOMAIN}" --display-name="\${NEW_USER_ALIAS}" --stdin-password
                 EOF
                 chmod +x /usr/local/bin/add_user.sh
+                # Script to add a number of users
+                cat << EOF > /usr/local/bin/add_a_number_of_users.sh
+                #!/bin/bash
+                DIRECTORY_ID=\$1
+                NUM_USERS_TO_CREATE=\$2
+                if [ -z "\${DIRECTORY_ID}" ]; then
+                    echo 1>&2 "DIRECTORY_ID must be passed as first arg"
+                    exit 1
+                fi
+                if [ -z "\${NUM_USERS_TO_CREATE}" ]; then
+                    echo 1>&2 "NUM_USERS_TO_CREATE must be passed as second arg"
+                    exit 1
+                fi
+                for i in \$(seq 1 "\${NUM_USERS_TO_CREATE}"); do
+                    NEW_USER_ALIASES="\${NEW_USER_ALIASES} PclusterUser\${i}"
+                done
+                # Create users in directory
+                # TODO: add ability to trigger this via lambda
+                for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
+                    echo "Creating \${NEW_USER_ALIAS} in directory \${DIRECTORY_ID}"
+                    /usr/local/bin/add_user.sh \${NEW_USER_ALIAS}
+                done
+
+                # Change user passwords
+                # TODO: put this in a lambda that can be triggered by users
+                for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
+                    sleep 1  # TODO: retry w/ backoff instead of sleeping
+                    echo "Setting password for user \${NEW_USER_ALIAS}"
+                    aws ds reset-user-password \
+                        --region {{ region }} \
+                        --directory-id "\${DIRECTORY_ID}" \
+                        --user-name "\${NEW_USER_ALIAS}" \
+                        --new-password "ApplesBananasCherries!"  # TODO: generate random passwords
+                done
+                EOF
+                chmod +x /usr/local/bin/add_a_number_of_users.sh
 
                 # Signal success
                 # TODO: don't assumed this is installed (in case non-AL2 AMI used)
@@ -232,15 +287,18 @@ Resources:
         schemaVersion: "2.2"
         description: Add user to AD domain
         parameters:
-          NewUserAlias:
+          DirectoryId:
             type: String
-            description: Alias to give new user
+            description: ID of the direc
+          NumUsersToCreate:
+            type: String
+            description: Number of users to be created
         mainSteps:
           - action: aws:runShellScript
             name: addAdUser
             inputs:
               runCommand:
-                - "su - {{ ad_admin_user }} /usr/local/bin/add_user.sh {% raw %}{{ NewUserAlias }}{% endraw %} "
+                - "su - {{ ad_admin_user }} /usr/local/bin/add_a_number_of_users.sh {% raw %}{{ DirectoryId }} {{ NumUsersToCreate }}{% endraw %} "
       DocumentType: Command
       TargetType: /AWS::EC2::Instance
   MultiUserInfraUserAddingProjectRoleC4F44634:
@@ -307,7 +365,11 @@ Resources:
             Effect: Allow
             Resource: "*"
         Version: "2012-10-17"
-      PolicyName: MultiUserInfraUserAddingProjectRoleDefaultPolicy63A414C8
+      PolicyName:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - AddingProjectRoleDefaultPolicy63A414C8
       Roles:
         - Ref: MultiUserInfraUserAddingProjectRoleC4F44634
   MultiUserInfraUserAddingProjectA380D59C:
