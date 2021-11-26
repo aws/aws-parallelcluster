@@ -45,7 +45,7 @@ def get_infra_stack_outputs(stack_name):
     }
 
 
-def get_ad_config_param_vals(stack_name, bucket_name, post_install_script_name, password_secret_arn):
+def get_ad_config_param_vals(stack_name, bucket_name, password_secret_arn):
     """Return a dict used to set values for config file parameters."""
     infra_stack_outputs = get_infra_stack_outputs(stack_name)
     ldap_search_base = ",".join(
@@ -54,7 +54,6 @@ def get_ad_config_param_vals(stack_name, bucket_name, post_install_script_name, 
     read_only_username = infra_stack_outputs.get("ReadOnlyUserName")
     return {
         "directory_subnet": random.choice(infra_stack_outputs.get("SubnetIds").split(",")),
-        "post_install_script_uri": f"s3://{bucket_name}/{post_install_script_name}",
         "ldap_uri": infra_stack_outputs.get("LdapUris").split(",")[0],
         "ldap_search_base": ldap_search_base,
         # TODO: is the CN=Users portion of this a valid assumption?
@@ -154,7 +153,6 @@ def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
 
 @pytest.fixture(scope="module")
 def directory_factory(request):
-    # This fixture does not support running tests in parallel
     created_directory_stacks = {}
 
     def _directory_factory(
@@ -192,7 +190,9 @@ def directory_factory(request):
             "bucket_name": bucket_name,
             "directory_type": directory_type,
         }
-        stack_name = f"MultiUserInfraStack{directory_type}"
+        stack_name = generate_stack_name(
+            f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
+        )
         cfn_client = boto3.client("cloudformation")
         logging.info("Creating stack %s", stack_name)
         with open(render_jinja_template(template_path, **config_args)) as template:
@@ -234,15 +234,12 @@ def user_factory():
         user.cleanup()
 
 
-def _run_user_workloads(user_factory, test_datadir, cluster, scheduler, remote_command_executor):
+def _run_user_workloads(users, test_datadir, remote_command_executor):
     compile_osu("openmpi", remote_command_executor)
-    assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
-    users = []
-    for user_num in range(1, NUM_USERS_TO_TEST + 1):
-        users.append(user_factory(user_num, test_datadir, cluster, scheduler, remote_command_executor))
+    _check_files_permissions(users)
     job_submission_outputs = [
         # TODO: render script from template to dynamically provide path to benchmarks and other paramters
-        user.submit_script(script=str(test_datadir / "workload.sh"), nodes=2, slots=2).stdout
+        user.submit_script(str(test_datadir / "workload.sh"), nodes=2, slots=2).stdout
         for user in users
     ]
     job_ids = [
@@ -252,6 +249,54 @@ def _run_user_workloads(user_factory, test_datadir, cluster, scheduler, remote_c
     for user, job_id in zip(users, job_ids):
         user.wait_job_completed(job_id)
         user.assert_job_succeeded(job_id)
+
+
+def _check_files_permissions(users):
+    logging.info("Checking file permissions")
+    for index in range(0, NUM_USERS_TO_TEST):
+        user = users[index]
+        logging.info("Checking permission of sssd.conf file from user %s", user.alias)
+        result = user.run_remote_command(
+            "cat /opt/parallelcluster/shared/directory_service/sssd.conf", raise_on_error=False
+        )
+        _check_failed_result_for_permission_denied(result)
+        result = user.run_remote_command("cat /etc/sssd/sssd.conf", raise_on_error=False)
+        _check_failed_result_for_permission_denied(result)
+        previous_user = users[(index - 1) % NUM_USERS_TO_TEST]
+        for path in [
+            f"/home/{user.alias}/my_file",
+            f"/shared/{user.alias}_file",
+            f"/ebs/{user.alias}_file",
+            f"/efs/{user.alias}_file",
+        ]:
+            user.run_remote_command(f"touch {path}")
+            if not path.startswith(f"/home/{user.alias}/"):
+                # Files under homedir is only readable by the owner by default.
+                # Otherwise, change the permission to 600 for the test.
+                user.run_remote_command(f"chmod 600 {path}")
+            # If the user is the first user, choose the last user as previous user
+            logging.info("Check %s is not able to read files created by %s", previous_user.alias, user.alias)
+            result = previous_user.run_remote_command(f"cat {path}", raise_on_error=False)
+            _check_failed_result_for_permission_denied(result)
+
+
+def _check_failed_result_for_permission_denied(result):
+    assert_that(result.failed).is_true()
+    assert_that(result.stdout).matches("Permission denied")
+
+
+def _check_ssh_key_generation(user, scheduler_commands, generate_ssh_keys_for_user):
+    result = user.run_remote_command("cat ~/.ssh/id_rsa", raise_on_error=generate_ssh_keys_for_user)
+    if not generate_ssh_keys_for_user:
+        assert_that(result.failed).is_true()
+    else:
+        compute_nodes = scheduler_commands.get_compute_nodes()
+        static_compute_node = None
+        for node in compute_nodes:
+            if "-st" in node:
+                static_compute_node = node
+                break
+        user.run_remote_command(f"ssh {static_compute_node} hostname")
 
 
 def _run_benchmarks(
@@ -281,7 +326,8 @@ def _run_benchmarks(
             "DirectoryType": directory_type,
         }
         metric_publishing_timestamp = datetime.datetime.now()
-        for num_nodes in [100, 250, 500, 1000, 2000]:
+        for num_nodes in [100, 250]:
+            # ToDo: Test 500, 1000, 2000 nodes in a benchmark test
             metric_data = []
             output = run_osu_benchmarks(
                 mpi_version=common_metric_dimensions.get("MpiFlavor"),
@@ -334,7 +380,6 @@ def test_ad_integration(
     ad_admin_password = "MultiUserInfraDirectoryReadOnlyPassword!"  # TODO: not secure
     password_secret_arn = store_secret_in_secret_manager(ad_admin_password)
     if directory_type:
-        post_install_script_name = "all-nodes-ldap.sh"
         bucket_name = s3_bucket_factory()
         directory_stack_name = directory_factory(
             request.config.getoption("directory_stack_name"),
@@ -344,11 +389,7 @@ def test_ad_integration(
             region,
             ad_admin_password=ad_admin_password,
         )
-        config_params.update(
-            get_ad_config_param_vals(directory_stack_name, bucket_name, post_install_script_name, password_secret_arn)
-        )
-        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
-        bucket.upload_file(str(test_datadir / post_install_script_name), post_install_script_name)
+        config_params.update(get_ad_config_param_vals(directory_stack_name, bucket_name, password_secret_arn))
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 
@@ -364,7 +405,16 @@ def test_ad_integration(
     )
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _run_user_workloads(user_factory, test_datadir, cluster, scheduler, remote_command_executor)
+    assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
+    users = []
+    for user_num in range(1, NUM_USERS_TO_TEST + 1):
+        users.append(user_factory(user_num, test_datadir, cluster, scheduler, remote_command_executor))
+    _run_user_workloads(users, test_datadir, remote_command_executor)
+    logging.info("Testing pcluster update and generate ssh keys for user")
+    _check_ssh_key_generation(users[0], scheduler_commands, False)
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", **config_params)
+    cluster.update(str(updated_config_file), force_update="true")
+    _check_ssh_key_generation(users[1], scheduler_commands, True)
     _run_benchmarks(
         os,
         instance,
