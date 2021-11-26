@@ -69,9 +69,13 @@ class ClusterUser:
         self._generate_ssh_keypair()
         self._copy_public_ssh_key_to_authorized_keys()
 
-    def submit_script(self, **submit_comand_kwargs):
+    def submit_script(self, script, **submit_command_kwargs):
         """Wrapper around SchedulerCommand's submit_script method."""
-        return self._personalized_scheduler_commands.submit_script(**submit_comand_kwargs)
+        return self._personalized_scheduler_commands.submit_script(script, **submit_command_kwargs)
+
+    def run_remote_command(self, command, **submit_command_kwargs):
+        """Wrapper around RemoteCommandExecutor's run_command method."""
+        return self._personalized_remote_command_executor.run_remote_command(command, **submit_command_kwargs)
 
     def assert_job_submitted(self, stdout):
         """Wrapper around SchedulerCommand's assert_job_submitted method."""
