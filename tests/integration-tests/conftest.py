@@ -132,6 +132,11 @@ def pytest_addoption(parser):
         "--directory-stack-name",
         help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
     )
+    parser.addoption(
+        "--ldaps-nlb-stack-name",
+        help="Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD "
+        "integration feature.",
+    )
 
 
 def pytest_generate_tests(metafunc):

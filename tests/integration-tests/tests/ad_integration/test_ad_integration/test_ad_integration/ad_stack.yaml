@@ -1,81 +1,159 @@
 Resources:
-  MultiUserInfraVpc:
+  Vpc:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 172.31.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
       InstanceTenancy: default
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C:
+  PrivateSubnetOne:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: 172.31.0.0/17
       VpcId:
-        Ref: MultiUserInfraVpc
+        Ref: Vpc
+      AvailabilityZone: {{ region }}a
+      CidrBlock: 172.31.0.0/18
+      MapPublicIpOnLaunch: false
+  NatGatewayOneEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGatewayOne:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayOneEIP.AllocationId
+      SubnetId:
+        Ref: PublicSubnetOne
+  PrivateRouteTableOne:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+  DefaultPrivateRouteOne:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableOne
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGatewayOne
+  PrivateSubnetOneRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableOne
+      SubnetId:
+        Ref: PrivateSubnetOne
+  PrivateSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      AvailabilityZone: {{ region }}b
+      CidrBlock: 172.31.64.0/18
+      MapPublicIpOnLaunch: false
+  NatGatewayTwoEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGatewayTwo:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayTwoEIP.AllocationId
+      SubnetId:
+        Ref: PublicSubnetTwo
+  PrivateRouteTableTwo:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+  DefaultPrivateRouteTwo:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableTwo
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGatewayTwo
+  PrivateSubnetTwoRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableTwo
+      SubnetId:
+        Ref: PrivateSubnetTwo
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 172.31.128.0/18
+      VpcId:
+        Ref: Vpc
       AvailabilityZone: {{ region }}a
       MapPublicIpOnLaunch: true
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTable440E65B1:
+  PublicSubnetOneRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTableAssociation2F67DCF9:
+        Ref: Vpc
+  PublicSubnetOneRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTable440E65B1
+        Ref: PublicSubnetOneRouteTable
       SubnetId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1DefaultRouteB1A9DE6E:
+        Ref: PublicSubnetOne
+  PublicSubnetOneIgwRoute:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1RouteTable440E65B1
+        Ref: PublicSubnetOneRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: MultiUserInfraVpcIGW322D5805
+        Ref: InternetGateway
     DependsOn:
-      - MultiUserInfraVpcVPCGW8C41E9C2
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9:
+      - VpcGatewayAttachment
+  PublicSubnetTwo:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: 172.31.128.0/17
+      CidrBlock: 172.31.192.0/18
       VpcId:
-        Ref: MultiUserInfraVpc
+        Ref: Vpc
       AvailabilityZone: {{ region }}b
       MapPublicIpOnLaunch: true
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTable94561FFD:
+  PublicSubnetTwoRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTableAssociation69E447BF:
+        Ref: Vpc
+  PublicSubnetTwoRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTable94561FFD
+        Ref: PublicSubnetTwoRouteTable
       SubnetId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9
-  MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2DefaultRouteFFA92127:
+        Ref: PublicSubnetTwo
+  PublicSubnetTwoIgwRoute:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2RouteTable94561FFD
+        Ref: PublicSubnetTwoRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId:
-        Ref: MultiUserInfraVpcIGW322D5805
+        Ref: InternetGateway
     DependsOn:
-      - MultiUserInfraVpcVPCGW8C41E9C2
-  MultiUserInfraVpcIGW322D5805:
+      - VpcGatewayAttachment
+  InternetGateway:
     Type: AWS::EC2::InternetGateway
-  MultiUserInfraVpcVPCGW8C41E9C2:
+  VpcGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId:
-        Ref: MultiUserInfraVpc
+        Ref: Vpc
       InternetGatewayId:
-        Ref: MultiUserInfraVpcIGW322D5805
-  MultiUserInfraAdDomainAdminNodeSecurityGroup:
+        Ref: InternetGateway
+  AdDomainAdminNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH access
@@ -90,49 +168,49 @@ Resources:
           IpProtocol: tcp
           ToPort: 22
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraDirectory:
+        Ref: Vpc
+  Directory:
     Type: AWS::DirectoryService::{{ directory_type }}
     Properties:
       Name: {{ ad_domain_name }}
       Password: {{ ad_admin_password }}
       VpcSettings:
         SubnetIds:
-          - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
-          - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9
+          - Ref: PrivateSubnetOne
+          - Ref: PrivateSubnetTwo
         VpcId:
-          Ref: MultiUserInfraVpc
+          Ref: Vpc
       {% if directory_type == "SimpleAD" %}
       Size: Large
       {% endif %}
       ShortName: NET
-  MultiUserInfraVpcDhcpOptsSet:
+  VpcDhcpOptsSet:
     Type: AWS::EC2::DHCPOptions
     Properties:
       DomainName: {{ ad_domain_name }} {{ default_ec2_domain }}
       DomainNameServers:
         Fn::GetAtt:
-          - MultiUserInfraDirectory
+          - Directory
           - DnsIpAddresses
-  MultiUserInfraAdDomainAdminNodeWaitConditionHandle:
+  AdDomainAdminNodeWaitConditionHandle:
     Type: AWS::CloudFormation::WaitConditionHandle
-  MultiUserInfraVpcDhcpOptsSetAssociation:
+  VpcDhcpOptsSetAssociation:
     Type: AWS::EC2::VPCDHCPOptionsAssociation
     Properties:
       DhcpOptionsId:
-        Ref: MultiUserInfraVpcDhcpOptsSet
+        Ref: VpcDhcpOptsSet
       VpcId:
-        Ref: MultiUserInfraVpc
-  MultiUserInfraAdDomainAdminNodeWaitCondition:
+        Ref: Vpc
+  AdDomainAdminNodeWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
     Properties:
       Count: 1
       Handle:
-        Ref: MultiUserInfraAdDomainAdminNodeWaitConditionHandle
+        Ref: AdDomainAdminNodeWaitConditionHandle
       Timeout: "1800"
     DependsOn:
-      - MultiUserInfraDirectory
-  MultiUserInfraJoinRole:
+      - Directory
+  JoinRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -145,26 +223,44 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
-  MultiUserInfraJoinProfile:
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - ds:ResetUserPassword
+                Effect: Allow
+                Resource:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - :ds:{{ region }}:{{ account }}:directory/
+                        - Ref: Directory
+          PolicyName:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - resetuserpassword
+  JoinProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
-        - Ref: MultiUserInfraJoinRole
+        - Ref: JoinRole
     DependsOn:
-      - MultiUserInfraJoinRole
-  MultiUserInfraAdDomainAdminNode:
+      - JoinRole
+  AdDomainAdminNode:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: {{ region }}a
       IamInstanceProfile:
-        Ref: MultiUserInfraJoinProfile
+        Ref: JoinProfile
       ImageId: {{ admin_node_ami_id }}
       InstanceType: {{ admin_node_instance_type }}
       KeyName: {{ admin_node_key_name }}
       SecurityGroupIds:
-        - Ref: MultiUserInfraAdDomainAdminNodeSecurityGroup
+        - Ref: AdDomainAdminNodeSecurityGroup
       SubnetId:
-        Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
+        Ref: PublicSubnetOne
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -204,6 +300,7 @@ Resources:
 
                 # Write a script that will be invoked via SSM in order to add users to the domain
                 mkdir -p $(dirname /usr/local/bin/add_user.sh)
+                # Script to add a single user
                 cat << EOF > /usr/local/bin/add_user.sh
                 #!/bin/bash
                 NEW_USER_ALIAS=\$1
@@ -214,208 +311,109 @@ Resources:
                 echo "${AD_ADMIN_PASSWORD}" | adcli create-user -U ${AD_ADMIN_USER} \${NEW_USER_ALIAS} --domain="${AD_DOMAIN}" --display-name="\${NEW_USER_ALIAS}" --stdin-password
                 EOF
                 chmod +x /usr/local/bin/add_user.sh
+                # Script to add a number of users
+                cat << EOF > /usr/local/bin/add_a_number_of_users.sh
+                #!/bin/bash
+                DIRECTORY_ID=\$1
+                NUM_USERS_TO_CREATE=\$2
+                if [ -z "\${DIRECTORY_ID}" ]; then
+                    echo 1>&2 "DIRECTORY_ID must be passed as first arg"
+                    exit 1
+                fi
+                if [ -z "\${NUM_USERS_TO_CREATE}" ]; then
+                    echo 1>&2 "NUM_USERS_TO_CREATE must be passed as second arg"
+                    exit 1
+                fi
+                for i in \$(seq 1 "\${NUM_USERS_TO_CREATE}"); do
+                    NEW_USER_ALIASES="\${NEW_USER_ALIASES} PclusterUser\${i}"
+                done
+                # Create users in directory
+                # TODO: add ability to trigger this via lambda
+                for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
+                    echo "Creating \${NEW_USER_ALIAS} in directory \${DIRECTORY_ID}"
+                    /usr/local/bin/add_user.sh \${NEW_USER_ALIAS}
+                done
+
+                # Change user passwords
+                # TODO: put this in a lambda that can be triggered by users
+                for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
+                    sleep 1  # TODO: retry w/ backoff instead of sleeping
+                    echo "Setting password for user \${NEW_USER_ALIAS}"
+                    aws ds reset-user-password \
+                        --region {{ region }} \
+                        --directory-id "\${DIRECTORY_ID}" \
+                        --user-name "\${NEW_USER_ALIAS}" \
+                        --new-password "ApplesBananasCherries!"  # TODO: generate random passwords
+                done
+                EOF
+                chmod +x /usr/local/bin/add_a_number_of_users.sh
 
                 # Signal success
                 # TODO: don't assumed this is installed (in case non-AL2 AMI used)
                 /opt/aws/bin/cfn-signal --exit-code=0 --reason="admin node setup complete" '
-              - Ref: MultiUserInfraAdDomainAdminNodeWaitConditionHandle
+              - Ref: AdDomainAdminNodeWaitConditionHandle
               - "'"
     DependsOn:
-      - MultiUserInfraDirectory
-      - MultiUserInfraJoinProfile
-      - MultiUserInfraVpcDhcpOptsSet
-      - MultiUserInfraVpcDhcpOptsSetAssociation
-  MultiUserInfraUserAddingDocument:
+      - Directory
+      - JoinProfile
+      - VpcDhcpOptsSet
+      - VpcDhcpOptsSetAssociation
+  UserAddingDocument:
     Type: AWS::SSM::Document
     Properties:
       Content:
         schemaVersion: "2.2"
         description: Add user to AD domain
         parameters:
-          NewUserAlias:
+          DirectoryId:
             type: String
-            description: Alias to give new user
+            description: ID of the direc
+          NumUsersToCreate:
+            type: String
+            description: Number of users to be created
         mainSteps:
           - action: aws:runShellScript
             name: addAdUser
             inputs:
               runCommand:
-                - "su - {{ ad_admin_user }} /usr/local/bin/add_user.sh {% raw %}{{ NewUserAlias }}{% endraw %} "
+                - "su - {{ ad_admin_user }} /usr/local/bin/add_a_number_of_users.sh {% raw %}{{ DirectoryId }} {{ NumUsersToCreate }}{% endraw %} "
       DocumentType: Command
       TargetType: /AWS::EC2::Instance
-  MultiUserInfraUserAddingProjectRoleC4F44634:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: codebuild.amazonaws.com
-        Version: "2012-10-17"
-  MultiUserInfraUserAddingProjectRoleDefaultPolicy63A414C8:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action:
-              - s3:GetObject*
-              - s3:GetBucket*
-              - s3:List*
-            Effect: Allow
-            Resource:
-              - arn:aws:s3:::{{ bucket_name }}
-          - Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Effect: Allow
-            Resource:
-              - Fn::Join:
-                  - ""
-                  - - "arn:"
-                    - Ref: AWS::Partition
-                    - :logs:{{ region }}:{{ account }}:log-group:/aws/codebuild/
-                    - Ref: MultiUserInfraUserAddingProjectA380D59C
-              - Fn::Join:
-                  - ""
-                  - - "arn:"
-                    - Ref: AWS::Partition
-                    - :logs:{{ region }}:{{ account }}:log-group:/aws/codebuild/
-                    - Ref: MultiUserInfraUserAddingProjectA380D59C
-                    - :*
-          - Action:
-              - codebuild:CreateReportGroup
-              - codebuild:CreateReport
-              - codebuild:UpdateReport
-              - codebuild:BatchPutTestCases
-              - codebuild:BatchPutCodeCoverages
-            Effect: Allow
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - :codebuild:{{ region }}:{{ account }}:report-group/
-                  - Ref: MultiUserInfraUserAddingProjectA380D59C
-                  - -*
-          - Action:
-              - ecr:GetAuthorizationToken
-              - ssm:*
-              - ds:*
-              - s3:*
-            Effect: Allow
-            Resource: "*"
-        Version: "2012-10-17"
-      PolicyName: MultiUserInfraUserAddingProjectRoleDefaultPolicy63A414C8
-      Roles:
-        - Ref: MultiUserInfraUserAddingProjectRoleC4F44634
-  MultiUserInfraUserAddingProjectA380D59C:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Artifacts:
-        Type: NO_ARTIFACTS
-      Environment:
-        ComputeType: BUILD_GENERAL1_SMALL
-        EnvironmentVariables:
-          - Name: DIRECTORY_ID
-            Type: PLAINTEXT
-            Value:
-              Ref: MultiUserInfraDirectory
-          - Name: ADMIN_NODE_INSTANCE_ID
-            Type: PLAINTEXT
-            Value:
-              Ref: MultiUserInfraAdDomainAdminNode
-          - Name: NUM_USERS_TO_CREATE
-            Type: PLAINTEXT
-            Value: "{{ num_users_to_create }}"
-          - Name: USER_ADDING_DOCUMENT_NAME
-            Type: PLAINTEXT
-            Value:
-              Ref: MultiUserInfraUserAddingDocument
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:1.0
-        ImagePullCredentialsType: CODEBUILD
-        PrivilegedMode: true
-        Type: LINUX_CONTAINER
-      ServiceRole:
-        Fn::GetAtt:
-          - MultiUserInfraUserAddingProjectRoleC4F44634
-          - Arn
-      Source:
-        Location: {{ bucket_name }}/codebuild_sources/archive.zip
-        Type: S3
-  MultiUserInfraUserAdderRole33101908:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-        Version: "2012-10-17"
-      Policies:
-        - PolicyDocument:
-            Statement:
-              - Action:
-                  - s3:*
-                  - lambda:*
-                  - codebuild:*
-                  - events:*
-                Effect: Allow
-                Resource: "*"
-            Version: "2012-10-17"
-          PolicyName: inline
-  MultiUserInfraUserAdderEventHandler2ECBB45C:
-    Type: AWS::Lambda::Function
-    Properties:
-      Code:
-        S3Bucket: {{ bucket_name }}
-        S3Key: custom_resources_code/archive.zip
-      Role:
-        Fn::GetAtt:
-          - MultiUserInfraUserAdderRole33101908
-          - Arn
-      Handler: user_adder_event_handler.handler
-      Runtime: python3.8
-      Timeout: 900
-    DependsOn:
-      - MultiUserInfraAdDomainAdminNodeWaitCondition
-      - MultiUserInfraUserAdderRole33101908
-  MultiUserInfraUserAdderCustomResource:
-    Type: AWS::CloudFormation::CustomResource
-    Properties:
-      ServiceToken:
-        Fn::GetAtt:
-          - MultiUserInfraUserAdderEventHandler2ECBB45C
-          - Arn
-      codebuild_project_name:
-        Ref: MultiUserInfraUserAddingProjectA380D59C
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
 Outputs:
   VpcId:
     Value:
-      Ref: MultiUserInfraVpc
+      Ref: Vpc
     Export:
       Name:
         Fn::Join:
           - ""
           - - Ref: AWS::StackName
             - VpcId
-  SubnetIds:
+  PublicSubnetIds:
     Value:
       Fn::Join:
         - ""
-        - - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet1Subnet281E6D3C
+        - - Ref: PublicSubnetOne
           - ","
-          - Ref: MultiUserInfraVpcMultiUserSubnetOneConfigurationSubnet2Subnet5218CAF9
+          - Ref: PublicSubnetTwo
     Export:
       Name:
         Fn::Join:
           - ""
           - - Ref: AWS::StackName
-            - SubnetIds
+            - PublicSubnetIds
+  PrivateSubnetIds:
+    Value:
+      Fn::Join:
+        - ","
+        - - Ref: PrivateSubnetOne
+          - Ref: PrivateSubnetTwo
+    Export:
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - PrivateSubnetIds
   DomainName:
     Value: {{ ad_domain_name }}
     Export:
@@ -424,22 +422,6 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - DomainName
-  LdapUris:
-    Value:
-      Fn::Join:
-        - ""
-        - - ldap://
-          - Fn::Select:
-              - 0
-              - Fn::GetAtt:
-                  - MultiUserInfraDirectory
-                  - DnsIpAddresses
-    Export:
-      Name:
-        Fn::Join:
-          - ""
-          - - Ref: AWS::StackName
-            - LdapUris
   Password:
     Value: {{ ad_admin_password }}
     Export:
@@ -456,4 +438,17 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - ReadOnlyUserName
+  DirectoryDnsIpAddresses:
+    Value:
+      Fn::Join:
+        - ","
+        - Fn::GetAtt:
+          - Directory
+          - DnsIpAddresses
+    Export:
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - DirectoryDnsIpAddresses
 
