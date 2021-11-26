@@ -24,6 +24,8 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from jinja2 import Environment, FileSystemLoader
 from remote_command_executor import RemoteCommandExecutor
+from retrying import retry
+from time_utils import seconds
 from troposphere import Template
 from troposphere.secretsmanager import Secret
 from utils import generate_stack_name
@@ -152,8 +154,14 @@ def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
 
 
 @pytest.fixture(scope="module")
-def directory_factory(request):
+def directory_factory(request, cfn_stacks_factory):
     created_directory_stacks = {}
+
+    @retry(wait_fixed=seconds(20), stop_max_delay=seconds(700))
+    def _check_ssm_success(ssm_client, command_id, instance_id):
+        assert_that(
+            ssm_client.get_command_invocation(CommandId=command_id, InstanceId=instance_id)["Status"] == "Success"
+        ).is_true()
 
     def _directory_factory(
         existing_stack_name, directory_type, bucket_name, test_resources_dir, region, ad_admin_password
@@ -193,20 +201,31 @@ def directory_factory(request):
         stack_name = generate_stack_name(
             f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
         )
-        cfn_client = boto3.client("cloudformation")
         logging.info("Creating stack %s", stack_name)
         with open(render_jinja_template(template_path, **config_args)) as template:
-            cfn_client.create_stack(
-                StackName=stack_name,
-                TemplateBody=template.read(),
-                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
-                OnFailure="DO_NOTHING",
+            stack = CfnStack(
+                name=stack_name,
+                region=region,
+                template=template.read(),
+                capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
             )
-        logging.info("Waiting for creation of stack %s to complete", stack_name)
-        waiter = cfn_client.get_waiter("stack_create_complete")
-        waiter.wait(StackName=stack_name)
+        cfn_stacks_factory.create_stack(stack)
         logging.info("Creation of stack %s complete", stack_name)
         created_directory_stacks[region] = stack_name
+        logging.info("Creating %s users in directory service", str(NUM_USERS_TO_CREATE))
+        ssm_client = boto3.client("ssm", region_name=region)
+        document_name = stack.cfn_resources["MultiUserInfraUserAddingDocument"]
+        admin_node_instance_id = stack.cfn_resources["MultiUserInfraAdDomainAdminNode"]
+        directory_id = stack.cfn_resources["MultiUserInfraDirectory"]
+        command_id = ssm_client.send_command(
+            DocumentName=document_name,
+            InstanceIds=[stack.cfn_resources["MultiUserInfraAdDomainAdminNode"]],
+            MaxErrors="0",
+            TimeoutSeconds=600,
+            Parameters={"DirectoryId": [directory_id], "NumUsersToCreate": [str(NUM_USERS_TO_CREATE)]},
+        )["Command"]["CommandId"]
+        _check_ssm_success(ssm_client, command_id, admin_node_instance_id)
+        logging.info("Creation of %s users in directory service completed", str(NUM_USERS_TO_CREATE))
         return stack_name
 
     yield _directory_factory
