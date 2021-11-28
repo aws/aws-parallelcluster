@@ -6,10 +6,88 @@ Resources:
       EnableDnsHostnames: true
       EnableDnsSupport: true
       InstanceTenancy: default
+  PrivateSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      AvailabilityZone: {{ region }}a
+      CidrBlock: 172.31.0.0/18
+      MapPublicIpOnLaunch: false
+  NatGatewayOneEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGatewayOne:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayOneEIP.AllocationId
+      SubnetId:
+        Ref: PublicSubnetOne
+  PrivateRouteTableOne:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+  DefaultPrivateRouteOne:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableOne
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGatewayOne
+  PrivateSubnetOneRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableOne
+      SubnetId:
+        Ref: PrivateSubnetOne
+  PrivateSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      AvailabilityZone: {{ region }}b
+      CidrBlock: 172.31.64.0/18
+      MapPublicIpOnLaunch: false
+  NatGatewayTwoEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      Domain: vpc
+  NatGatewayTwo:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayTwoEIP.AllocationId
+      SubnetId:
+        Ref: PublicSubnetTwo
+  PrivateRouteTableTwo:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+  DefaultPrivateRouteTwo:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableTwo
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGatewayTwo
+  PrivateSubnetTwoRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTableTwo
+      SubnetId:
+        Ref: PrivateSubnetTwo
   PublicSubnetOne:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: 172.31.0.0/17
+      CidrBlock: 172.31.128.0/18
       VpcId:
         Ref: Vpc
       AvailabilityZone: {{ region }}a
@@ -39,7 +117,7 @@ Resources:
   PublicSubnetTwo:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: 172.31.128.0/17
+      CidrBlock: 172.31.192.0/18
       VpcId:
         Ref: Vpc
       AvailabilityZone: {{ region }}b
@@ -98,8 +176,8 @@ Resources:
       Password: {{ ad_admin_password }}
       VpcSettings:
         SubnetIds:
-          - Ref: PublicSubnetOne
-          - Ref: PublicSubnetTwo
+          - Ref: PrivateSubnetOne
+          - Ref: PrivateSubnetTwo
         VpcId:
           Ref: Vpc
       {% if directory_type == "SimpleAD" %}
@@ -311,7 +389,7 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - VpcId
-  SubnetIds:
+  PublicSubnetIds:
     Value:
       Fn::Join:
         - ""
@@ -323,7 +401,19 @@ Outputs:
         Fn::Join:
           - ""
           - - Ref: AWS::StackName
-            - SubnetIds
+            - PublicSubnetIds
+  PrivateSubnetIds:
+    Value:
+      Fn::Join:
+        - ","
+        - - Ref: PrivateSubnetOne
+          - Ref: PrivateSubnetTwo
+    Export:
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - PrivateSubnetIds
   DomainName:
     Value: {{ ad_domain_name }}
     Export:
