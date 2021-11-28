@@ -14,7 +14,6 @@ import datetime
 import io
 import logging
 import os as os_lib
-import random
 import re
 import zipfile
 
@@ -55,7 +54,8 @@ def get_ad_config_param_vals(stack_name, bucket_name, password_secret_arn):
     )
     read_only_username = infra_stack_outputs.get("ReadOnlyUserName")
     return {
-        "directory_subnet": random.choice(infra_stack_outputs.get("SubnetIds").split(",")),
+        "public_directory_subnet": infra_stack_outputs.get("PublicSubnetIds").split(",")[0],
+        "private_directory_subnet": infra_stack_outputs.get("PrivateSubnetIds").split(",")[0],
         "ldap_uri": infra_stack_outputs.get("LdapUris").split(",")[0],
         "ldap_search_base": ldap_search_base,
         # TODO: is the CN=Users portion of this a valid assumption?
