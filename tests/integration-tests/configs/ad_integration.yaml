@@ -6,5 +6,5 @@ test-suites:
       dimensions:
         - regions: ["us-east-1"]
           instances: ["c5n.18xlarge"]
-          oss: ["alinux2"]
+          oss: ["alinux2", "ubuntu2004"]
           schedulers: ["slurm"]
