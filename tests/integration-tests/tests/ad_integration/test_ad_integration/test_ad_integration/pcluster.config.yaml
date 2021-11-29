@@ -39,12 +39,11 @@ SharedStorage:
     StorageType: Efs
 DirectoryService:
   DomainName: {{ ldap_search_base }}
-  DomainAddr: {{ ldap_uri }}
+  DomainAddr: {{ ldaps_uri }}
   PasswordSecretArn: {{ password_secret_arn }}
   DomainReadOnlyUser: {{ ldap_default_bind_dn }}
   LdapTlsReqCert: never
   GenerateSshKeysForUsers: false
   AdditionalSssdConfigs:
-    debug_level: 0x1ff
-    ldap_auth_disable_tls_never_use_in_production: True
+    debug_level: "0x1ff"
     enumerate: True
