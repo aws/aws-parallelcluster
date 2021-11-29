@@ -14,6 +14,8 @@ class ClusterUser:
 
     def __init__(self, user_num, test_datadir, cluster, scheduler, default_user_remote_command_executor):
         self._default_user_remote_command_executor = default_user_remote_command_executor
+        self.cluster = cluster
+        self.scheduler = scheduler
         self.user_num = user_num  # TODO: don't need to keep this?
         self.alias = f"PclusterUser{user_num}"
         self.ssh_keypair_path_prefix = str(test_datadir / self.alias)
@@ -22,10 +24,10 @@ class ClusterUser:
         # TODO: randomly generate this. It's hardcoded here because it's also hard-coded in the script
         #       that creates users as part of the directory stack.
         self.password = "ApplesBananasCherries!"
-        self._validate_automatic_homedir_creation(cluster.head_node_ip)
+        self._validate_automatic_homedir_creation(self.cluster.head_node_ip)
         self._configure_public_ssh_keys()
         self._personalized_remote_command_executor = RemoteCommandExecutor(
-            cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
+            self.cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
         )
         self._personalized_scheduler_commands = get_scheduler_commands(
             scheduler, self._personalized_remote_command_executor
@@ -114,3 +116,16 @@ class ClusterUser:
         stderr_str = stderr.read().decode()
         logging.info("Output from command %s\nstdout:\n%s\nstderr:\n%s", command, stdout_str, stderr_str)
         assert_that(stdout.read().decode()).does_not_contain("failure")
+
+    def reset_stateful_connection_objects(self, default_user_remote_command_executor):
+        """Reset objects that might maintain an open SSH connection."""
+        del self._default_user_remote_command_executor
+        del self._personalized_remote_command_executor
+        del self._personalized_scheduler_commands
+        self._default_user_remote_command_executor = default_user_remote_command_executor
+        self._personalized_remote_command_executor = RemoteCommandExecutor(
+            self.cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
+        )
+        self._personalized_scheduler_commands = get_scheduler_commands(
+            self.scheduler, self._personalized_remote_command_executor
+        )
