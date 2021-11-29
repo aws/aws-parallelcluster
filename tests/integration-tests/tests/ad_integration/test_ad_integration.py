@@ -304,6 +304,16 @@ def _check_failed_result_for_permission_denied(result):
 
 
 def _check_ssh_key_generation(user, scheduler_commands, generate_ssh_keys_for_user):
+    # Remove user's home directory to ensure public SSH key doesn't exist
+    user.cleanup()
+    # Run remote command as user via password so that the feature has a chance to generate
+    # SSH keys if their ~/.ssh directory doesn't exist (and the cluster is configured to do so).
+    user.validate_password_auth_and_automatic_homedir_creation()
+    # Copy user's SSH key to the head node to facilitate the validation to follow. Note that this
+    # must be done after the above validation of home directory creation. If it's done before,
+    # then the user's ~/.ssh directory will have already been created and thus a keypair won't be
+    # generated regardless of the value of the GenerateSshKeysForUsers parameter in the cluster config.
+    user.copy_public_ssh_key_to_authorized_keys()
     result = user.run_remote_command("cat ~/.ssh/id_rsa", raise_on_error=generate_ssh_keys_for_user)
     if not generate_ssh_keys_for_user:
         assert_that(result.failed).is_true()
