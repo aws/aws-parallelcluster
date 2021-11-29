@@ -432,6 +432,11 @@ def test_ad_integration(
     _check_ssh_key_generation(users[0], scheduler_commands, False)
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.yaml", **config_params)
     cluster.update(str(updated_config_file), force_update="true")
+    # Reset stateful connection variables after the cluster update
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    for user in users:
+        user.reset_stateful_connection_objects(remote_command_executor)
     _check_ssh_key_generation(users[1], scheduler_commands, True)
     _run_benchmarks(
         os,
