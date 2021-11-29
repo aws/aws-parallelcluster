@@ -422,22 +422,6 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - DomainName
-  LdapUris:
-    Value:
-      Fn::Join:
-        - ""
-        - - ldap://
-          - Fn::Select:
-              - 0
-              - Fn::GetAtt:
-                  - Directory
-                  - DnsIpAddresses
-    Export:
-      Name:
-        Fn::Join:
-          - ""
-          - - Ref: AWS::StackName
-            - LdapUris
   Password:
     Value: {{ ad_admin_password }}
     Export:
@@ -454,4 +438,17 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - ReadOnlyUserName
+  DirectoryDnsIpAddresses:
+    Value:
+      Fn::Join:
+        - ","
+        - Fn::GetAtt:
+          - Directory
+          - DnsIpAddresses
+    Export:
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - DirectoryDnsIpAddresses
 

@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |-
+  LDAPS NLB Stack from https://aws.amazon.com/blogs/security/how-to-configure-ldaps-endpoint-for-simple-ad/
+Parameters:
+  LDAPSCertificateARN:
+    Description: ARN of SSL Certificate
+    AllowedPattern: "arn:aws:acm:.*"
+    Type: String
+  VPCId:
+    Description: Please provide a VPC to deploy the solution into.
+    Type: AWS::EC2::VPC::Id
+  SubnetId1:
+    Description: Please provide the first Simple AD private subnet id with outbound connectivity within the VPC you selected above.
+    Type: AWS::EC2::Subnet::Id
+  SubnetId2:
+    Description: Please provide the second Simple AD private subnet id with outbound connectivity within the VPC you selected above.
+    Type: AWS::EC2::Subnet::Id
+  SimpleADPriIP:
+    Description: IP Address of primary Simple AD instance
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})"
+    Type: String
+  SimpleADSecIP:
+    Description: IP Address of secondary Simple AD instance
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})"
+    Type: String
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Network Configuration
+      Parameters:
+      - VPCId
+      - SubnetId1
+      - SubnetId2
+      - SimpleADPriIP
+      - SimpleADSecIP
+      - LDAPSCertificateARN
+    ParameterLabels:
+      VPCId:
+        default: Target VPC for solution
+      SubnetId1:
+        default: Simple AD Primary Subnet
+      SubnetId2:
+        default: Simple AD Secondary Subnet
+      SimpleADPriIP:
+        default: Primary Simple AD Server IP
+      SimpleADSecIP:
+        default: Secondary Simple AD Server IP
+      LDAPSCertificateARN:
+        default: ARN for SSL Certificate
+Resources:
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: IntegTestsLdapsNlb
+      Scheme: internal
+      Subnets:
+        - !Ref SubnetId1
+        - !Ref SubnetId2
+      Type: network
+  NetworkLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: IntegTestsLdapsEndpoint
+      Port: 389
+      Protocol: TCP
+      VpcId: !Ref VPCId
+      HealthCheckEnabled: True
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPort: 389
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
+      Targets:
+        - Id: !Ref SimpleADPriIP
+          Port: 389
+        - Id: !Ref SimpleADSecIP
+          Port: 389
+      TargetType: ip
+  NetworkLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NetworkLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref NetworkLoadBalancer
+      Port: '636'
+      Protocol: TLS
+      SslPolicy: ELBSecurityPolicy-TLS-1-2-2017-01
+      Certificates:
+        - CertificateArn: !Ref LDAPSCertificateARN
+Outputs:
+  LDAPSURL:
+    Description: LDAPS Route53 Alias Target
+    Value: !GetAtt NetworkLoadBalancer.DNSName
