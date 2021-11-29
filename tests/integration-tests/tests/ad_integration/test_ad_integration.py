@@ -272,8 +272,7 @@ def _run_user_workloads(users, test_datadir, remote_command_executor):
 
 def _check_files_permissions(users):
     logging.info("Checking file permissions")
-    for index in range(0, NUM_USERS_TO_TEST):
-        user = users[index]
+    for index, user in enumerate(users):
         logging.info("Checking permission of sssd.conf file from user %s", user.alias)
         result = user.run_remote_command(
             "cat /opt/parallelcluster/shared/directory_service/sssd.conf", raise_on_error=False
@@ -281,7 +280,7 @@ def _check_files_permissions(users):
         _check_failed_result_for_permission_denied(result)
         result = user.run_remote_command("cat /etc/sssd/sssd.conf", raise_on_error=False)
         _check_failed_result_for_permission_denied(result)
-        previous_user = users[(index - 1) % NUM_USERS_TO_TEST]
+        previous_user = users[index - 1]
         for path in [
             f"/home/{user.alias}/my_file",
             f"/shared/{user.alias}_file",
@@ -345,8 +344,8 @@ def _run_benchmarks(
             "DirectoryType": directory_type,
         }
         metric_publishing_timestamp = datetime.datetime.now()
-        for num_nodes in [100, 250]:
-            # ToDo: Test 500, 1000, 2000 nodes in a benchmark test
+        for num_nodes in [20, 50]:
+            # ToDo: Test 100, 250, 500, 1000, 2000 nodes in a benchmark test
             metric_data = []
             output = run_osu_benchmarks(
                 mpi_version=common_metric_dimensions.get("MpiFlavor"),
