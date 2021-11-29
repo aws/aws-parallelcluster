@@ -24,14 +24,14 @@ class ClusterUser:
         # TODO: randomly generate this. It's hardcoded here because it's also hard-coded in the script
         #       that creates users as part of the directory stack.
         self.password = "ApplesBananasCherries!"
-        self._validate_automatic_homedir_creation(self.cluster.head_node_ip)
-        self._configure_public_ssh_keys()
         self._personalized_remote_command_executor = RemoteCommandExecutor(
             self.cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
         )
         self._personalized_scheduler_commands = get_scheduler_commands(
             scheduler, self._personalized_remote_command_executor
         )
+        self.validate_password_auth_and_automatic_homedir_creation()
+        self._configure_public_ssh_keys()
 
     def _generate_ssh_keypair(self):
         """Create an RSA SSH keypair for the user."""
@@ -50,7 +50,7 @@ class ClusterUser:
         ]
         run_command(cmd)
 
-    def _copy_public_ssh_key_to_authorized_keys(self):
+    def copy_public_ssh_key_to_authorized_keys(self):
         """Copy user's public SSH key to authorized keys file on cluster's head node."""
         user_home_dir = f"/home/{self.alias}"
         user_ssh_dir = f"{user_home_dir}/.ssh"
@@ -69,7 +69,7 @@ class ClusterUser:
 
     def _configure_public_ssh_keys(self):
         self._generate_ssh_keypair()
-        self._copy_public_ssh_key_to_authorized_keys()
+        self.copy_public_ssh_key_to_authorized_keys()
 
     def submit_script(self, script, **submit_command_kwargs):
         """Wrapper around SchedulerCommand's submit_script method."""
@@ -97,11 +97,11 @@ class ClusterUser:
         logging.info("Removing home directory for user %s (%s)", self.alias, user_home_dir)
         self._default_user_remote_command_executor.run_remote_command(f"sudo rm -rf {user_home_dir}")
 
-    def _validate_automatic_homedir_creation(self, head_node_ip, port=22):
-        """Ensure password can be used to login to cluster."""
+    def validate_password_auth_and_automatic_homedir_creation(self, port=22):
+        """Ensure password can be used to login to cluster and that user's home directory is created."""
         ssh = SSHClient()
         ssh.set_missing_host_key_policy(AutoAddPolicy())
-        ssh.connect(head_node_ip, port, self.alias, self.password, allow_agent=False, look_for_keys=False)
+        ssh.connect(self.cluster.head_node_ip, port, self.alias, self.password, allow_agent=False, look_for_keys=False)
 
         homedir = f"/home/{self.alias}"
         command = f"[ -d {homedir} ] || echo failure"
