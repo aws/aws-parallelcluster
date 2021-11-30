@@ -214,7 +214,7 @@ efa:
         oss: ["alinux2"]
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
-        instances: ["c6gn.16xlarge"]
+        instances: ["c6gn.large"]
         oss: ["alinux2", "ubuntu1804", "ubuntu2004"]
         schedulers: ["slurm"]
       - regions: ["us-east-2"]
