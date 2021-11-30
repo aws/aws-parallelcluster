@@ -379,10 +379,8 @@ def _check_files_permissions(users):
             f"/efs/{user.alias}_file",
         ]:
             user.run_remote_command(f"touch {path}")
-            if not path.startswith(f"/home/{user.alias}/"):
-                # Files under homedir is only readable by the owner by default.
-                # Otherwise, change the permission to 600 for the test.
-                user.run_remote_command(f"chmod 600 {path}")
+            # Specify that only owner of file should have read/write access.
+            user.run_remote_command(f"chmod 600 {path}")
             # If the user is the first user, choose the last user as previous user
             logging.info("Check %s is not able to read files created by %s", previous_user.alias, user.alias)
             result = previous_user.run_remote_command(f"cat {path}", raise_on_error=False)
