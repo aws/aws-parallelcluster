@@ -36,8 +36,8 @@ class ValidatorSuppressor(ABC):
 class AllValidatorsSuppressor(ValidatorSuppressor):
     """Suppressor that suppresses all validators."""
 
-    def __eq__(self, obj: object) -> bool:
-        return isinstance(obj, AllValidatorsSuppressor)
+    def __eq__(self, o: object) -> bool:  # pylint: disable=C0103
+        return isinstance(o, AllValidatorsSuppressor)
 
     def __hash__(self) -> int:
         return hash(1)
@@ -49,9 +49,9 @@ class AllValidatorsSuppressor(ValidatorSuppressor):
 class TypeMatchValidatorsSuppressor(ValidatorSuppressor):
     """Suppressor that suppresses validators based on their type."""
 
-    def __eq__(self, obj: object) -> bool:
-        if isinstance(obj, TypeMatchValidatorsSuppressor):
-            return obj._validators_to_suppress == self._validators_to_suppress
+    def __eq__(self, o: object) -> bool:  # pylint: disable=C0103
+        if isinstance(o, TypeMatchValidatorsSuppressor):
+            return o._validators_to_suppress == self._validators_to_suppress
         return False
 
     def __hash__(self) -> int:

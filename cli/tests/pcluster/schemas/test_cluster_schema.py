@@ -25,6 +25,7 @@ from pcluster.constants import SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
     ClusterSchema,
     HeadNodeIamSchema,
+    HeadNodeRootVolumeSchema,
     ImageSchema,
     QueueIamSchema,
     SchedulerPluginCloudFormationClusterInfrastructureSchema,
@@ -171,6 +172,35 @@ def test_iam_schema(instance_role, instance_profile, additional_iam_policies, s3
         iam = QueueIamSchema().load(iam_dict)
         assert_that(iam.instance_role).is_equal_to(instance_role)
         assert_that(iam.instance_profile).is_equal_to(instance_profile)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # failures
+        ({"KmsKeyId": "test"}, "Unknown field"),
+        # success
+        (
+            {
+                "VolumeType": "gp3",
+                "Iops": 100,
+                "Size": 50,
+                "Throughput": 300,
+                "Encrypted": True,
+                "DeleteOnTermination": True,
+            },
+            None,
+        ),
+    ],
+)
+def test_head_node_root_volume_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            HeadNodeRootVolumeSchema().load(config_dict)
+    else:
+        HeadNodeRootVolumeSchema().load(config_dict)
 
 
 DUMMY_AWSBATCH_QUEUE = {
