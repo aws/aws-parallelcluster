@@ -136,7 +136,7 @@ class AWSBatchCommands(SchedulerCommands):
             result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id), log_output=True)
             return re.findall(r"status\s+: (.+)", result.stdout)
 
-        _job_status_retryer()
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         return self.wait_job_completed(job_id)
@@ -205,7 +205,7 @@ class SlurmCommands(SchedulerCommands):
             )
             return result.stdout
 
-        _job_status_retryer()
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
@@ -462,7 +462,7 @@ class TorqueCommands(SchedulerCommands):
             result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
             return result.stdout
 
-        _job_status_retryer()
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
