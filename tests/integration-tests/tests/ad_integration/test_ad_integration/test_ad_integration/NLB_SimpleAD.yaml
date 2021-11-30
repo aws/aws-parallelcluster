@@ -52,7 +52,6 @@ Resources:
   NetworkLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: IntegTestsLdapsNlb
       Scheme: internal
       Subnets:
         - !Ref SubnetId1
@@ -61,7 +60,6 @@ Resources:
   NetworkLoadBalancerTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: IntegTestsLdapsEndpoint
       Port: 389
       Protocol: TCP
       VpcId: !Ref VPCId
