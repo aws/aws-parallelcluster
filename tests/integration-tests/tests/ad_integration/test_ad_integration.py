@@ -329,21 +329,6 @@ def directory_factory(request, cfn_stacks_factory):
                 cfn_stacks_factory.delete_stack(stack_name, region)
 
 
-@pytest.fixture(scope="module")
-def user_factory():
-    created_users = []
-
-    def _user_creator(user_num, test_datadir, cluster, scheduler, remote_command_executor):
-        user = ClusterUser(user_num, test_datadir, cluster, scheduler, remote_command_executor)
-        created_users.append(user)
-        return user
-
-    yield _user_creator
-
-    for user in created_users:
-        user.cleanup()
-
-
 def _run_user_workloads(users, test_datadir, remote_command_executor):
     compile_osu("openmpi", remote_command_executor)
     _check_files_permissions(users)
@@ -487,7 +472,6 @@ def test_ad_integration(
     test_datadir,
     s3_bucket_factory,
     directory_factory,
-    user_factory,
     request,
     store_secret_in_secret_manager,
 ):
@@ -528,7 +512,7 @@ def test_ad_integration(
     assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
     users = []
     for user_num in range(1, NUM_USERS_TO_TEST + 1):
-        users.append(user_factory(user_num, test_datadir, cluster, scheduler, remote_command_executor))
+        users.append(ClusterUser(user_num, test_datadir, cluster, scheduler, remote_command_executor))
     _run_user_workloads(users, test_datadir, remote_command_executor)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], scheduler_commands, False)
