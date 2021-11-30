@@ -21,6 +21,7 @@ X.X.X
 - Fix ecs:ListContainerInstances permission in BatchUserRole
 - Fix exporting of cluster logs when there is no prefix specified, previously exported to a `None` prefix.
 - Fix rollback not being performed in case of cluster update failure.  
+- Fix RootVolume schema for the HeadNode.
 
 3.0.2
 -----
