@@ -1456,6 +1456,7 @@ class ComputeFleetConstruct(Construct):
                                     get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
                                 ).lower(),
                                 "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
+                                "DirectoryServiceEnabled": str(self._config.directory_service is not None).lower(),
                             },
                             **get_common_user_data_env(queue, self._config),
                         },
