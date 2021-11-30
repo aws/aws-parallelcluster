@@ -112,20 +112,24 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClus
 def get_directory_service_dna_json_for_head_node(config: BaseClusterConfig) -> dict:
     """Return a dict containing directory service settings to be written to dna.json of head node."""
     directory_service = config.directory_service
-    return {
-        "enabled": "true" if directory_service else "false",
-        "domain_name": directory_service.domain_name if directory_service else "NONE",
-        "domain_addr": directory_service.domain_addr if directory_service else "NONE",
-        "password_secret_arn": directory_service.password_secret_arn if directory_service else "NONE",
-        "domain_read_only_user": directory_service.domain_read_only_user if directory_service else "NONE",
-        "ldap_tls_ca_cert": directory_service.ldap_tls_ca_cert or "NONE" if directory_service else "NONE",
-        "ldap_tls_req_cert": directory_service.ldap_tls_req_cert or "NONE" if directory_service else "NONE",
-        "ldap_access_filter": directory_service.ldap_access_filter or "NONE" if directory_service else "NONE",
-        "generate_ssh_keys_for_users": str(directory_service.generate_ssh_keys_for_users).lower()
+    return (
+        {
+            "directory_service": {
+                "enabled": "true",
+                "domain_name": directory_service.domain_name,
+                "domain_addr": directory_service.domain_addr,
+                "password_secret_arn": directory_service.password_secret_arn,
+                "domain_read_only_user": directory_service.domain_read_only_user,
+                "ldap_tls_ca_cert": directory_service.ldap_tls_ca_cert or "NONE",
+                "ldap_tls_req_cert": directory_service.ldap_tls_req_cert or "NONE",
+                "ldap_access_filter": directory_service.ldap_access_filter or "NONE",
+                "generate_ssh_keys_for_users": str(directory_service.generate_ssh_keys_for_users).lower(),
+                "additional_sssd_configs": directory_service.additional_sssd_configs,
+            }
+        }
         if directory_service
-        else "NONE",
-        "additional_sssd_configs": directory_service.additional_sssd_configs if directory_service else "NONE",
-    }
+        else {}
+    )
 
 
 def get_shared_storage_ids_by_type(shared_storage_ids: dict, storage_type: SharedStorageType):
