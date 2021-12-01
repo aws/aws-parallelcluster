@@ -37,3 +37,6 @@ Events:
   ComputeFinalize:
     ExecuteCommand:
       Command: artifacts/handlers/compute_finalize.sh
+  HeadClusterUpdate:
+    ExecuteCommand:
+      Command: artifacts/handlers/head_cluster_update.sh

@@ -914,7 +914,7 @@ class ClusterCdkStack(Stack):
                     "shellRunPostInstall",
                     "chefFinalize",
                 ],
-                "update": ["deployConfigFiles", "chefUpdate", "sendSignal"],
+                "update": ["deployConfigFiles", "chefUpdate"],
             },
             "deployConfigFiles": {
                 "files": {
@@ -1041,22 +1041,16 @@ class ClusterCdkStack(Stack):
                 "commands": {
                     "chef": {
                         "command": (
-                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info "
-                            "--logfile /var/log/chef-client.log --force-formatter --no-color "
-                            "--chef-zero-port 8889 --json-attributes /etc/chef/dna.json "
-                            "--override-runlist aws-parallelcluster::update_head_node || "
-                            "cfn-signal --exit-code=1 --reason='Chef client failed' "
-                            f"'{self.wait_condition_handle.ref}'"
+                            "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
+                            " --logfile /var/log/chef-client.log --force-formatter --no-color"
+                            " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
+                            " --override-runlist aws-parallelcluster::update &&"
+                            " cfn-signal --exit-code=0 --reason='Update complete'"
+                            f" '{self.wait_condition_handle.ref}' ||"
+                            " cfn-signal --exit-code=1 --reason='Update failed'"
+                            f" '{self.wait_condition_handle.ref}'"
                         ),
                         "cwd": "/etc/chef",
-                    }
-                }
-            },
-            "sendSignal": {
-                "commands": {
-                    "sendSignal": {
-                        "command": f"cfn-signal --exit-code=0 --reason='HeadNode setup complete' "
-                        f"'{self.wait_condition_handle.ref}'"
                     }
                 }
             },

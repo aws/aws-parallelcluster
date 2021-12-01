@@ -144,7 +144,6 @@ class HeadNodeRootVolumeSchema(BaseSchema):
             )
         }
     )
-    kms_key_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     throughput = fields.Int(metadata={"update_policy": UpdatePolicy.SUPPORTED})
     encrypted = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     delete_on_termination = fields.Bool(metadata={"update_policy": UpdatePolicy.SUPPORTED})
