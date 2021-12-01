@@ -16,6 +16,7 @@ from collections import namedtuple
 import boto3
 from fabric import Connection
 from retrying import retry
+from time_utils import minutes, seconds
 from utils import random_alphanumeric
 
 SnapshotConfig = namedtuple("ClusterConfig", ["ssh_key", "key_name", "vpc_id", "head_node_subnet_id"])
@@ -154,9 +155,19 @@ class EBSSnapshotsFactory:
             raise ConnectionError()
         return ssh_conn
 
+    @retry(retry_on_result=lambda state: state != "attached", wait_fixed=seconds(2), stop_max_delay=minutes(5))
+    def _wait_volume_attached(self):
+        vol = self.ec2.Volume(self.volume.id)
+        attachment_state = next(
+            (attachment["State"] for attachment in vol.attachments if attachment["InstanceId"] == self.instance.id), ""
+        )
+        return attachment_state
+
     def _attach_volume(self):
-        result = self.boto_client.attach_volume(VolumeId=self.volume.id, InstanceId=self.instance.id, Device="/dev/sdf")
+        result = self.volume.attach_to_instance(InstanceId=self.instance.id, Device="/dev/sdf")
         logging.info("Attach Volume Result: ", result)
+        self._wait_volume_attached()
+        logging.info("Volume attached")
 
     def _create_volume(self, subnet):
         vol = self.ec2.create_volume(
