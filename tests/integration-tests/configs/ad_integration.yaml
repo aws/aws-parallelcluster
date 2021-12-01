@@ -8,3 +8,10 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2", "ubuntu2004"]
           schedulers: ["slurm"]
+          benchmarks:
+            - mpi_variants: ["openmpi"]
+              num_of_instances: [100]
+              osu_benchmarks:
+                # Available collective benchmarks "osu_allgather", "osu_allreduce", "osu_alltoall", "osu_barrier", "osu_bcast", "osu_gather", "osu_reduce", "osu_reduce_scatter", "osu_scatter"
+                collective: ["osu_allreduce", "osu_alltoall"]
+                pt2pt: []

@@ -436,7 +436,7 @@ class SlurmCommands(SchedulerCommands):
             f'/opt/slurm/bin/scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
         ).stdout
 
-    @retry(wait_fixed=seconds(20), stop_max_delay=minutes(8))
+    @retry(wait_fixed=seconds(10), stop_max_delay=minutes(13))
     def wait_job_running(self, job_id):
         """Wait till job starts running."""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))

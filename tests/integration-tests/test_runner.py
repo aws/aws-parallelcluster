@@ -437,14 +437,10 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     pytest_args.append(f"--key-path={args.key_path}")
     pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
 
+    pytest_args.extend(["--rootdir", args.tests_root_dir])
+    pytest_args.append("--ignore=./benchmarks")
     if args.benchmarks:
-        pytest_args.append("--ignore=./tests")
-        pytest_args.append("--rootdir=./benchmarks")
-        pytest_args.append("--benchmarks-target-capacity={0}".format(args.benchmarks_target_capacity))
-        pytest_args.append("--benchmarks-max-time={0}".format(args.benchmarks_max_time))
-    else:
-        pytest_args.extend(["--rootdir", args.tests_root_dir])
-        pytest_args.append("--ignore=./benchmarks")
+        pytest_args.append("--benchmarks")
 
     # Show all tests durations
     pytest_args.append("--durations=0")

@@ -54,3 +54,9 @@ mapping:
                         required: false
                         sequence:
                           - type: str
+                      benchmarks:
+                        type: seq
+                        required: false
+                        sequence:
+                          - type: any
+                            required: true

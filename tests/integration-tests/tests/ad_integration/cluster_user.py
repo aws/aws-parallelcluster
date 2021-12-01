@@ -134,3 +134,11 @@ class ClusterUser:
         self._personalized_scheduler_commands = get_scheduler_commands(
             self.scheduler, self._personalized_remote_command_executor
         )
+
+    def remote_command_executor(self):
+        """Get remote command executor."""
+        return self._personalized_remote_command_executor
+
+    def scheduler_commands(self):
+        """Get scheduler commands."""
+        return self._personalized_scheduler_commands
