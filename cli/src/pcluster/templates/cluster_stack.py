@@ -1044,7 +1044,7 @@ class ClusterCdkStack(Stack):
                             "cinc-client --local-mode --config /etc/chef/client.rb --log_level info"
                             " --logfile /var/log/chef-client.log --force-formatter --no-color"
                             " --chef-zero-port 8889 --json-attributes /etc/chef/dna.json"
-                            " --override-runlist aws-parallelcluster::update_head_node &&"
+                            " --override-runlist aws-parallelcluster::update &&"
                             " cfn-signal --exit-code=0 --reason='Update complete'"
                             f" '{self.wait_condition_handle.ref}' ||"
                             " cfn-signal --exit-code=1 --reason='Update failed'"
