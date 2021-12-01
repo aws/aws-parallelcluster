@@ -15,7 +15,6 @@ import io
 import logging
 import os as os_lib
 import random
-import re
 import string
 import time
 import zipfile
@@ -34,7 +33,7 @@ from time_utils import seconds
 from utils import generate_stack_name
 
 from tests.ad_integration.cluster_user import ClusterUser
-from tests.common.osu_common import compile_osu, run_osu_benchmarks
+from tests.common.osu_common import compile_osu
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import get_sts_endpoint, retrieve_latest_ami
 
@@ -218,7 +217,6 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_re
         "ad_domain_short_name": ad_domain_short_name,
         "default_ec2_domain": "ec2.internal" if region == "us-east-1" else f"{region}.compute.internal",
         "ad_admin_user": "Administrator" if directory_type == "SimpleAD" else "Admin",
-        "num_users_to_create": 100,
         "directory_type": directory_type,
     }
     logging.info("Creating stack %s", directory_stack_name)
@@ -261,7 +259,7 @@ def _populate_directory_with_users(directory_stack, num_users_to_create, region)
         DocumentName=document_name,
         InstanceIds=[directory_stack.cfn_resources["AdDomainAdminNode"]],
         MaxErrors="0",
-        TimeoutSeconds=600,
+        TimeoutSeconds=num_users_to_create * 4 + 300,
         Parameters={"DirectoryId": [directory_id], "NumUsersToCreate": [str(num_users_to_create)]},
     )["Command"]["CommandId"]
     _check_ssm_success(ssm_client, command_id, admin_node_instance_id)
@@ -525,62 +523,6 @@ def _check_ssh_key_generation(user, scheduler_commands, generate_ssh_keys_for_us
         user.run_remote_command(f"ssh {static_compute_node} hostname")
 
 
-def _run_benchmarks(
-    os, instance, compute_instance_type_info, directory_type, remote_command_executor, scheduler_commands, test_datadir
-):
-    """Run benchmarks across increasingly large number of nodes."""
-    cloudwatch_client = boto3.client("cloudwatch")
-    for benchmark_name in [
-        "osu_allgather",
-        "osu_allreduce",
-        "osu_alltoall",
-        "osu_barrier",
-        "osu_bcast",
-        "osu_gather",
-        "osu_reduce",
-        "osu_reduce_scatter",
-        "osu_scatter",
-    ]:
-        common_metric_dimensions = {
-            "MpiFlavor": "openmpi",
-            "BenchmarkGroup": "collective",
-            "BenchmarkName": benchmark_name,
-            "HeadNodeInstanceType": instance,
-            "ComputeInstanceType": compute_instance_type_info.get("name"),
-            "ProcessesPerNode": 1,
-            "Os": os,
-            "DirectoryType": directory_type,
-        }
-        metric_publishing_timestamp = datetime.datetime.now()
-        for num_nodes in [20, 50]:
-            # ToDo: Test 100, 250, 500, 1000, 2000 nodes in a benchmark test
-            metric_data = []
-            output = run_osu_benchmarks(
-                mpi_version=common_metric_dimensions.get("MpiFlavor"),
-                benchmark_group=common_metric_dimensions.get("BenchmarkGroup"),
-                benchmark_name=common_metric_dimensions.get("BenchmarkName"),
-                partition=None,
-                remote_command_executor=remote_command_executor,
-                scheduler_commands=scheduler_commands,
-                num_of_instances=num_nodes,
-                slots_per_instance=common_metric_dimensions.get("ProcessesPerNode"),
-                test_datadir=test_datadir,
-                timeout=120,
-            )
-            for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
-                dimensions = {**common_metric_dimensions, "NumNodes": num_nodes, "PacketSize": packet_size}
-                metric_data.append(
-                    {
-                        "MetricName": "Latency",
-                        "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions.items()],
-                        "Value": int(latency),
-                        "Timestamp": metric_publishing_timestamp,
-                        "Unit": "Microseconds",
-                    }
-                )
-            cloudwatch_client.put_metric_data(Namespace="ParallelCluster/AdIntegration", MetricData=metric_data)
-
-
 # Some tests have been disabled to save time and reduce costs.
 @pytest.mark.parametrize(
     "directory_type,directory_protocol,directory_certificate_verification",
@@ -608,10 +550,15 @@ def test_ad_integration(
     request,
     store_secret_in_secret_manager,
     clusters_factory,
+    run_benchmarks,
 ):
     """Verify AD integration works as expected."""
+    head_node_instance_type = "c5n.18xlarge" if request.config.getoption("benchmarks") else "c5.xlarge"
     compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
-    config_params = {"compute_instance_type": compute_instance_type_info.get("name")}
+    config_params = {
+        "compute_instance_type": compute_instance_type_info.get("name"),
+        "head_node_instance_type": head_node_instance_type,
+    }
     directory_stack_name, nlb_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
         request.config.getoption("ldaps_nlb_stack_name"),
@@ -685,6 +632,7 @@ def test_ad_integration(
     for user in users:
         logging.info(f"Checking SSH access for user {user.alias}")
         _check_ssh_auth(user=user, expect_success=user.alias != "PclusterUser3")
+    run_benchmarks(users[0].remote_command_executor(), users[0].scheduler_commands(), diretory_type=directory_type)
 
 
 def _check_ssh_auth(user, expect_success=True):

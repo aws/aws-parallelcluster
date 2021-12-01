@@ -18,7 +18,7 @@ from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
-from tests.common.osu_common import run_osu_benchmarks
+from tests.common.osu_common import run_individual_osu_benchmark
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
@@ -134,7 +134,7 @@ def _test_osu_benchmarks_pt2pt(
 
     failed_benchmarks = []
     for benchmark_name in ["osu_latency", "osu_bibw"]:
-        output = run_osu_benchmarks(
+        output = run_individual_osu_benchmark(
             mpi_version,
             "pt2pt",
             benchmark_name,
@@ -167,7 +167,7 @@ def _test_osu_benchmarks_collective(
 
     failed_benchmarks = []
     for benchmark_name in ["osu_allgather", "osu_bcast", "osu_allreduce", "osu_alltoall"]:
-        output = run_osu_benchmarks(
+        output = run_individual_osu_benchmark(
             mpi_version,
             "collective",
             benchmark_name,
@@ -190,7 +190,7 @@ def _test_osu_benchmarks_multiple_bandwidth(
     remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
 ):
     num_of_instances = 2
-    run_osu_benchmarks(
+    run_individual_osu_benchmark(
         "openmpi",
         "mbw_mr",
         "osu_mbw_mr",

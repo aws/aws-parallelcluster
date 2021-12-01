@@ -12,10 +12,13 @@
 import logging
 import os as os_lib
 import pathlib
+import re
 from shutil import copyfile
 
 from constants import OSU_BENCHMARK_VERSION
 from jinja2 import Environment, FileSystemLoader
+
+from tests.common.utils import fetch_instance_slots
 
 OSU_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/osu/"
 SUPPORTED_MPIS = ["openmpi", "intelmpi"]
@@ -37,7 +40,7 @@ def compile_osu(mpi_variant, remote_command_executor):
     )
 
 
-def run_osu_benchmarks(
+def run_individual_osu_benchmark(
     mpi_version,
     benchmark_group,
     benchmark_name,
@@ -103,11 +106,50 @@ def run_osu_benchmarks(
     return output
 
 
-def render_jinja_template(template_file_path, **kwargs):
-    file_loader = FileSystemLoader(str(os_lib.path.dirname(template_file_path)))
-    env = Environment(loader=file_loader)
-    rendered_template = env.get_template(os_lib.path.basename(template_file_path)).render(**kwargs)
-    logging.info("Writing the following to %s\n%s", template_file_path, rendered_template)
-    with open(template_file_path, "w", encoding="utf-8") as f:
-        f.write(rendered_template)
-    return template_file_path
+def run_osu_benchmarks(
+    osu_benchmarks,
+    mpi_variant,
+    partition,
+    remote_command_executor,
+    scheduler_commands,
+    num_of_instances,
+    region,
+    instance,
+    test_datadir,
+    dimensions,
+):
+    for osu_benchmark_group, osu_benchmark_names in osu_benchmarks.items():
+        for osu_benchmark_name in osu_benchmark_names:
+            dimensions_copy = dimensions.copy()
+            logging.info("Running benchmark %s", osu_benchmark_name)
+            output = run_individual_osu_benchmark(
+                mpi_version=mpi_variant,
+                benchmark_group=osu_benchmark_group,
+                benchmark_name=osu_benchmark_name,
+                partition=partition,
+                remote_command_executor=remote_command_executor,
+                scheduler_commands=scheduler_commands,
+                num_of_instances=num_of_instances,
+                slots_per_instance=fetch_instance_slots(region, instance),
+                test_datadir=test_datadir,
+                timeout=40,
+            )
+            logging.info("Preparing benchmarks %s metrics", osu_benchmark_name)
+            metric_data = []
+            for packet_size, latency in re.findall(r"(\d+)\s+(\d+)\.", output):
+                dimensions_copy.update(
+                    {
+                        "OsuBenchmarkGroup": osu_benchmark_group,
+                        "OsuBenchmarkName": osu_benchmark_name,
+                        "PacketSize": packet_size,
+                    }
+                )
+                metric_data.append(
+                    {
+                        "MetricName": "Latency",
+                        "Dimensions": [{"Name": name, "Value": str(value)} for name, value in dimensions_copy.items()],
+                        "Value": int(latency),
+                        "Unit": "Microseconds",
+                    }
+                )
+            yield metric_data
