@@ -27,6 +27,6 @@ optional arguments:
                         Force update by ignoring the update validation errors.
                         (Defaults to 'false'.)
   -c CLUSTER_CONFIGURATION, --cluster-configuration CLUSTER_CONFIGURATION
-                        Cluster configuration as a YAML document
+                        Cluster configuration as a YAML document.
   --debug               Turn on debug logging.
   --query QUERY         JMESPath query to perform on output.

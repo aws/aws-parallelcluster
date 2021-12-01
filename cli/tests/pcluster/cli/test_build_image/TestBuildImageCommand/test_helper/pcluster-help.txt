@@ -25,7 +25,7 @@ optional arguments:
   -r REGION, --region REGION
                         AWS Region that the operation corresponds to.
   -c IMAGE_CONFIGURATION, --image-configuration IMAGE_CONFIGURATION
-                        Image configuration as a YAML document
+                        Image configuration as a YAML document.
   -i IMAGE_ID, --image-id IMAGE_ID
                         Id of the Image that will be built.
   --debug               Turn on debug logging.

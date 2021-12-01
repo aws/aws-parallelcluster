@@ -27,6 +27,6 @@ optional arguments:
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster that will be created.
   -c CLUSTER_CONFIGURATION, --cluster-configuration CLUSTER_CONFIGURATION
-                        Cluster configuration as a YAML document
+                        Cluster configuration as a YAML document.
   --debug               Turn on debug logging.
   --query QUERY         JMESPath query to perform on output.
