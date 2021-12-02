@@ -165,7 +165,7 @@ class EBSSnapshotsFactory:
 
     def _attach_volume(self):
         result = self.volume.attach_to_instance(InstanceId=self.instance.id, Device="/dev/sdf")
-        logging.info("Attach Volume Result: ", result)
+        logging.info("Attach Volume Result: %s", result)
         self._wait_volume_attached()
         logging.info("Volume attached")
 
