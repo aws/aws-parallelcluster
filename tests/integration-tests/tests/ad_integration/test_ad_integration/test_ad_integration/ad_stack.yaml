@@ -1,158 +1,17 @@
-Resources:
+Parameters:
   Vpc:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 172.31.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      InstanceTenancy: default
+    Description: VPC ID.
+    Type: String
   PrivateSubnetOne:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId:
-        Ref: Vpc
-      AvailabilityZone: {{ region }}a
-      CidrBlock: 172.31.0.0/18
-      MapPublicIpOnLaunch: false
-  NatGatewayOneEIP:
-    Type: AWS::EC2::EIP
-    DependsOn: VpcGatewayAttachment
-    Properties:
-      Domain: vpc
-  NatGatewayOne:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayOneEIP.AllocationId
-      SubnetId:
-        Ref: PublicSubnetOne
-  PrivateRouteTableOne:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId:
-        Ref: Vpc
-  DefaultPrivateRouteOne:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId:
-        Ref: PrivateRouteTableOne
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        Ref: NatGatewayOne
-  PrivateSubnetOneRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId:
-        Ref: PrivateRouteTableOne
-      SubnetId:
-        Ref: PrivateSubnetOne
+    Description: Subnet ID of the first subnet.
+    Type: String
   PrivateSubnetTwo:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId:
-        Ref: Vpc
-      AvailabilityZone: {{ region }}b
-      CidrBlock: 172.31.64.0/18
-      MapPublicIpOnLaunch: false
-  NatGatewayTwoEIP:
-    Type: AWS::EC2::EIP
-    DependsOn: VpcGatewayAttachment
-    Properties:
-      Domain: vpc
-  NatGatewayTwo:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayTwoEIP.AllocationId
-      SubnetId:
-        Ref: PublicSubnetTwo
-  PrivateRouteTableTwo:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId:
-        Ref: Vpc
-  DefaultPrivateRouteTwo:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId:
-        Ref: PrivateRouteTableTwo
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        Ref: NatGatewayTwo
-  PrivateSubnetTwoRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId:
-        Ref: PrivateRouteTableTwo
-      SubnetId:
-        Ref: PrivateSubnetTwo
+    Description: Subnet ID of the second subnet. This subnet should be in another availability zone
+    Type: String
   PublicSubnetOne:
-    Type: AWS::EC2::Subnet
-    Properties:
-      CidrBlock: 172.31.128.0/18
-      VpcId:
-        Ref: Vpc
-      AvailabilityZone: {{ region }}a
-      MapPublicIpOnLaunch: true
-  PublicSubnetOneRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId:
-        Ref: Vpc
-  PublicSubnetOneRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId:
-        Ref: PublicSubnetOneRouteTable
-      SubnetId:
-        Ref: PublicSubnetOne
-  PublicSubnetOneIgwRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId:
-        Ref: PublicSubnetOneRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId:
-        Ref: InternetGateway
-    DependsOn:
-      - VpcGatewayAttachment
-  PublicSubnetTwo:
-    Type: AWS::EC2::Subnet
-    Properties:
-      CidrBlock: 172.31.192.0/18
-      VpcId:
-        Ref: Vpc
-      AvailabilityZone: {{ region }}b
-      MapPublicIpOnLaunch: true
-  PublicSubnetTwoRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId:
-        Ref: Vpc
-  PublicSubnetTwoRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId:
-        Ref: PublicSubnetTwoRouteTable
-      SubnetId:
-        Ref: PublicSubnetTwo
-  PublicSubnetTwoIgwRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId:
-        Ref: PublicSubnetTwoRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId:
-        Ref: InternetGateway
-    DependsOn:
-      - VpcGatewayAttachment
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-  VpcGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId:
-        Ref: Vpc
-      InternetGatewayId:
-        Ref: InternetGateway
+    Description: Subnet ID of the public subnet.
+    Type: String
+Resources:
   AdDomainAdminNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -251,7 +110,6 @@ Resources:
   AdDomainAdminNode:
     Type: AWS::EC2::Instance
     Properties:
-      AvailabilityZone: {{ region }}a
       IamInstanceProfile:
         Ref: JoinProfile
       ImageId: {{ admin_node_ami_id }}
@@ -389,19 +247,6 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - VpcId
-  PublicSubnetIds:
-    Value:
-      Fn::Join:
-        - ""
-        - - Ref: PublicSubnetOne
-          - ","
-          - Ref: PublicSubnetTwo
-    Export:
-      Name:
-        Fn::Join:
-          - ""
-          - - Ref: AWS::StackName
-            - PublicSubnetIds
   PrivateSubnetIds:
     Value:
       Fn::Join:
