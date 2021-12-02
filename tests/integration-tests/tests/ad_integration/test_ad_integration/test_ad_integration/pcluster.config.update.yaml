@@ -3,7 +3,7 @@ Image:
 HeadNode:
   InstanceType: {{ instance }}
   Networking:
-    SubnetId: {{ public_directory_subnet }}
+    SubnetId: {{ public_subnet_id }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -19,7 +19,7 @@ Scheduling:
           MaxCount: 3000
       Networking:
         SubnetIds:
-          - {{ private_directory_subnet }}
+          - {{ private_subnet_id }}
 Monitoring:
   Logs:
     CloudWatch:

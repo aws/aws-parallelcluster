@@ -56,8 +56,6 @@ def get_ad_config_param_vals(directory_stack_name, nlb_stack_name, bucket_name, 
     )
     read_only_username = directory_stack_outputs.get("ReadOnlyUserName")
     return {
-        "public_directory_subnet": directory_stack_outputs.get("PublicSubnetIds").split(",")[0],
-        "private_directory_subnet": directory_stack_outputs.get("PrivateSubnetIds").split(",")[0],
         "ldaps_uri": nlb_stack_outputs.get("LDAPSURL"),
         "ldap_search_base": ldap_search_base,
         # TODO: is the CN=Users portion of this a valid assumption?
@@ -156,7 +154,7 @@ def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
 
 
 def _create_directory_stack(
-    cfn_stacks_factory, request, directory_type, test_resources_dir, ad_admin_password, bucket_name, region
+    cfn_stacks_factory, request, directory_type, test_resources_dir, ad_admin_password, bucket_name, region, vpc_stack
 ):
     directory_stack_name = generate_stack_name(
         f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
@@ -188,10 +186,20 @@ def _create_directory_stack(
     }
     logging.info("Creating stack %s", directory_stack_name)
     with open(render_jinja_template(directory_stack_template_path, **config_args)) as directory_stack_template:
+        params = [
+            {"ParameterKey": "Vpc", "ParameterValue": vpc_stack.cfn_outputs["VpcId"]},
+            {"ParameterKey": "PrivateSubnetOne", "ParameterValue": vpc_stack.cfn_outputs["PrivateSubnetId"]},
+            {
+                "ParameterKey": "PrivateSubnetTwo",
+                "ParameterValue": vpc_stack.cfn_outputs["PrivateAdditionalCidrSubnetId"],
+            },
+            {"ParameterKey": "PublicSubnetOne", "ParameterValue": vpc_stack.cfn_outputs["PublicSubnetId"]},
+        ]
         directory_stack = CfnStack(
             name=directory_stack_name,
             region=region,
             template=directory_stack_template.read(),
+            parameters=params,
             capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
         )
     cfn_stacks_factory.create_stack(directory_stack)
@@ -270,7 +278,7 @@ def _create_nlb_stack(cfn_stacks_factory, request, directory_stack, region, test
 
 
 @pytest.fixture(scope="module")
-def directory_factory(request, cfn_stacks_factory):
+def directory_factory(request, cfn_stacks_factory, vpc_stacks):
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
 
@@ -294,7 +302,14 @@ def directory_factory(request, cfn_stacks_factory):
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
             directory_stack = _create_directory_stack(
-                cfn_stacks_factory, request, directory_type, test_resources_dir, ad_admin_password, bucket_name, region
+                cfn_stacks_factory,
+                request,
+                directory_type,
+                test_resources_dir,
+                ad_admin_password,
+                bucket_name,
+                region,
+                vpc_stacks[region],
             )
             directory_stack_name = directory_stack.name
             created_directory_stacks[region]["directory"] = directory_stack_name
