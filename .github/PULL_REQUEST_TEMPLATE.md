@@ -1,15 +1,15 @@
 
 ### Description of changes
 * Describe *what* you're changing and *why* you're doing these changes.
-* Link impacted open issues.
+* Link to impacted open issues.
 
 ### Tests
-* List the integration tests executed to validate the patch.
+* Describe the automated and/or manual tests executed to validate the patch.
 * Describe the added/modified tests.
 
 ### References
-* Link related PRs in other packages (i.e. cookbook, node).
-* Link documentation useful to understand the changes.
+* Link to related PRs in other packages (i.e. cookbook, node).
+* Link to documentation useful to understand the changes.
 
 ### Checklist
 - [ ] Make sure you are pointing to **the right branch** and add a label in the PR title (i.e. **2.x** vs **3.x**)
