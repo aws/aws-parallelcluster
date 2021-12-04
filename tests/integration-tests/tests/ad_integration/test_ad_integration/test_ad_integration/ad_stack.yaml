@@ -43,23 +43,8 @@ Resources:
       Size: Large
       {% endif %}
       ShortName: NET
-  VpcDhcpOptsSet:
-    Type: AWS::EC2::DHCPOptions
-    Properties:
-      DomainName: {{ ad_domain_name }} {{ default_ec2_domain }}
-      DomainNameServers:
-        Fn::GetAtt:
-          - Directory
-          - DnsIpAddresses
   AdDomainAdminNodeWaitConditionHandle:
     Type: AWS::CloudFormation::WaitConditionHandle
-  VpcDhcpOptsSetAssociation:
-    Type: AWS::EC2::VPCDHCPOptionsAssociation
-    Properties:
-      DhcpOptionsId:
-        Ref: VpcDhcpOptsSet
-      VpcId:
-        Ref: Vpc
   AdDomainAdminNodeWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
     Properties:
@@ -127,10 +112,27 @@ Resources:
                 #!/bin/bash
 
                 set -ex
+                DIRECTORY_DNS_SERVER_IPS=
+              - Fn::Join:
+                - ","
+                - Fn::GetAtt:
+                  - Directory
+                  - DnsIpAddresses
+              - |-
+
+                DNS_IP_ONE=$(echo $DIRECTORY_DNS_SERVER_IPS | cut -d ',' -f 1)
+                DNS_IP_TWO=$(echo $DIRECTORY_DNS_SERVER_IPS | cut -d ',' -f 2)
 
                 AD_ADMIN_PASSWORD='{{ ad_admin_password }}'
                 AD_DOMAIN='{{ ad_domain_name }}'
                 AD_ADMIN_USER='{{ ad_admin_user }}'
+                DEFAULT_EC2_DOMAIN={{ default_ec2_domain }}
+
+                cat << EOF > /etc/resolv.conf
+                domain           $AD_DOMAIN $DEFAULT_EC2_DOMAIN
+                nameserver       $DNS_IP_ONE
+                nameserver       $DNS_IP_TWO
+                EOF
 
                 SSSD_CONFIG_PATH=/etc/sssd/sssd.conf
                 SSHD_CONFIG_PATH=/etc/ssh/sshd_config
@@ -214,8 +216,6 @@ Resources:
     DependsOn:
       - Directory
       - JoinProfile
-      - VpcDhcpOptsSet
-      - VpcDhcpOptsSetAssociation
   UserAddingDocument:
     Type: AWS::SSM::Document
     Properties:
