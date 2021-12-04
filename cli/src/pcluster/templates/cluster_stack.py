@@ -76,6 +76,7 @@ from pcluster.templates.cdk_builder_utils import (
     get_custom_tags,
     get_default_instance_tags,
     get_default_volume_tags,
+    get_directory_service_dna_json_for_head_node,
     get_log_group_deletion_policy,
     get_queue_security_groups_full,
     get_shared_storage_ids_by_type,
@@ -898,6 +899,7 @@ class ClusterCdkStack(Stack):
                     "use_private_hostname": str(self.config.scheduling.settings.dns.use_ec2_hostnames).lower()
                     if self._condition_is_slurm()
                     else "false",
+                    **get_directory_service_dna_json_for_head_node(self.config),
                 },
             },
             indent=4,
@@ -1454,6 +1456,7 @@ class ComputeFleetConstruct(Construct):
                                     get_attr(self._config, "scheduling.settings.dns.use_ec2_hostnames", default=False)
                                 ).lower(),
                                 "HeadNodePrivateIp": self._head_eni.attr_primary_private_ip_address,
+                                "DirectoryServiceEnabled": str(self._config.directory_service is not None).lower(),
                             },
                             **get_common_user_data_env(queue, self._config),
                         },

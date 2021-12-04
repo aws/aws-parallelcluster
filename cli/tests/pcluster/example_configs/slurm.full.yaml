@@ -183,6 +183,18 @@ Tags:
     Value: two22
 CustomS3Bucket: String
 AdditionalResources: https://template.url
+DirectoryService:
+  DomainName: string  # required
+  DomainAddr: string  # required
+  PasswordSecretArn: string  # required
+  DomainReadOnlyUser: string  # required
+  LdapTlsCaCert: string  # optional, default is dictated by LDAP client
+  LdapTlsReqCert: never
+  LdapAccessFilter: string  # optional
+  GenerateSshKeysForUsers: false
+  AdditionalSssdConfigs:
+    parameter_1: value_1
+    parameter_2: value_2
 DevSettings:
   ClusterTemplate: https://tests/aws-parallelcluster-template-3.0.tgz
   Cookbook:
