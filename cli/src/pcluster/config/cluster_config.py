@@ -39,7 +39,7 @@ from pcluster.constants import (
     SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT,
     SUPPORTED_OSES,
 )
-from pcluster.utils import get_partition, get_resource_name_from_resource_arn, replace_url_parameters
+from pcluster.utils import get_attr, get_partition, get_resource_name_from_resource_arn, replace_url_parameters
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -1851,6 +1851,27 @@ class SchedulerPluginScheduling(Resource):
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.queues),
+            max_length=get_attr(
+                self.settings.scheduler_definition,
+                "requirements.queue_constraints.max_count",
+                default=MAX_NUMBER_OF_QUEUES,
+            ),
+            resource_name="SchedulerQueues",
+        )
+        for queue in self.queues:
+            self._register_validator(
+                MaxCountValidator,
+                resources_length=len(queue.compute_resources),
+                max_length=get_attr(
+                    self.settings.scheduler_definition,
+                    "requirements.compute_resource_constraints.max_count",
+                    default=MAX_NUMBER_OF_COMPUTE_RESOURCES,
+                ),
+                resource_name="ComputeResources",
+            )
 
 
 class SchedulerPluginClusterConfig(BaseClusterConfig):
