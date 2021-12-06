@@ -103,8 +103,6 @@ from pcluster.constants import (
     EBS_VOLUME_SIZE_DEFAULT,
     FSX_HDD_THROUGHPUT,
     FSX_SSD_THROUGHPUT,
-    MAX_NUMBER_OF_COMPUTE_RESOURCES,
-    MAX_NUMBER_OF_QUEUES,
     SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS,
     SUPPORTED_OSES,
 )
@@ -1134,7 +1132,6 @@ class SchedulerPluginQueueSchema(_CommonQueueSchema):
     compute_resources = fields.Nested(
         SchedulerPluginComputeResourceSchema,
         many=True,
-        validate=validate.Length(max=MAX_NUMBER_OF_COMPUTE_RESOURCES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
     networking = fields.Nested(
@@ -1508,7 +1505,6 @@ class SchedulingSchema(BaseSchema):
     scheduler_queues = fields.Nested(
         SchedulerPluginQueueSchema,
         many=True,
-        validate=validate.Length(max=MAX_NUMBER_OF_QUEUES),
         metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP, "update_key": "Name"},
     )
 
