@@ -1935,7 +1935,7 @@ components:
         imageId: imageId
       properties:
         imageConfiguration:
-          description: Image configuration as a YAML document
+          description: Image configuration as a YAML document.
           type: string
         imageId:
           description: Id of the Image that will be built.
@@ -2224,7 +2224,7 @@ components:
           pattern: "^[a-zA-Z][a-zA-Z0-9-]+$"
           type: string
         clusterConfiguration:
-          description: Cluster configuration as a YAML document
+          description: Cluster configuration as a YAML document.
           type: string
       required:
       - clusterConfiguration
@@ -3255,7 +3255,7 @@ components:
         clusterConfiguration: clusterConfiguration
       properties:
         clusterConfiguration:
-          description: Cluster configuration as a YAML document
+          description: Cluster configuration as a YAML document.
           type: string
       required:
       - clusterConfiguration

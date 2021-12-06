@@ -27,7 +27,7 @@ class TestExportClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({"output_file": "path"}, "the following arguments are required: --cluster-name, --bucket")],
+        [({"output_file": "path"}, "the following arguments are required: -n/--cluster-name, --bucket")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)

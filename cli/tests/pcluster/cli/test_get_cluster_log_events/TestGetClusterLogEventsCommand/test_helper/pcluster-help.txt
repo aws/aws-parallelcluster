@@ -1,6 +1,5 @@
-usage: pcluster get-cluster-log-events [-h] --cluster-name CLUSTER_NAME
-                                       --log-stream-name LOG_STREAM_NAME
-                                       [--region REGION]
+usage: pcluster get-cluster-log-events [-h] -n CLUSTER_NAME --log-stream-name
+                                       LOG_STREAM_NAME [-r REGION]
                                        [--next-token NEXT_TOKEN]
                                        [--start-from-head START_FROM_HEAD]
                                        [--limit LIMIT]
@@ -12,11 +11,12 @@ Retrieve the events associated with a log stream.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
   --log-stream-name LOG_STREAM_NAME
                         Name of the log stream.
-  --region REGION       AWS Region that the operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --start-from-head START_FROM_HEAD

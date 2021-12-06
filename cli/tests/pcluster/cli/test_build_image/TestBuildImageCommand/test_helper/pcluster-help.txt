@@ -3,9 +3,8 @@ usage: pcluster build-image [-h]
                             [--validation-failure-level {INFO,WARNING,ERROR}]
                             [--dryrun DRYRUN]
                             [--rollback-on-failure ROLLBACK_ON_FAILURE]
-                            [--region REGION] --image-configuration
-                            IMAGE_CONFIGURATION --image-id IMAGE_ID [--debug]
-                            [--query QUERY]
+                            [-r REGION] -c IMAGE_CONFIGURATION -i IMAGE_ID
+                            [--debug] [--query QUERY]
 
 Create a custom ParallelCluster image in a given region.
 
@@ -23,9 +22,11 @@ optional arguments:
   --rollback-on-failure ROLLBACK_ON_FAILURE
                         When set, will automatically initiate an image stack
                         rollback on failure. (Defaults to 'false'.)
-  --region REGION       AWS Region that the operation corresponds to.
-  --image-configuration IMAGE_CONFIGURATION
-                        Image configuration as a YAML document
-  --image-id IMAGE_ID   Id of the Image that will be built.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
+  -c IMAGE_CONFIGURATION, --image-configuration IMAGE_CONFIGURATION
+                        Image configuration as a YAML document.
+  -i IMAGE_ID, --image-id IMAGE_ID
+                        Id of the Image that will be built.
   --debug               Turn on debug logging.
   --query QUERY         JMESPath query to perform on output.

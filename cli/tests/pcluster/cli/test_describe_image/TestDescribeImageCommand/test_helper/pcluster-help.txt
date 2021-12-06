@@ -1,11 +1,13 @@
-usage: pcluster describe-image [-h] --image-id IMAGE_ID [--region REGION]
-                               [--debug] [--query QUERY]
+usage: pcluster describe-image [-h] -i IMAGE_ID [-r REGION] [--debug]
+                               [--query QUERY]
 
 Get detailed information about an existing image.
 
 optional arguments:
-  -h, --help           show this help message and exit
-  --image-id IMAGE_ID  Id of the image.
-  --region REGION      AWS Region that the operation corresponds to.
-  --debug              Turn on debug logging.
-  --query QUERY        JMESPath query to perform on output.
+  -h, --help            show this help message and exit
+  -i IMAGE_ID, --image-id IMAGE_ID
+                        Id of the image.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
+  --debug               Turn on debug logging.
+  --query QUERY         JMESPath query to perform on output.

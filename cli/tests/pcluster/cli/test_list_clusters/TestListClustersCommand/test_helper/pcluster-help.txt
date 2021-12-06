@@ -1,4 +1,4 @@
-usage: pcluster list-clusters [-h] [--region REGION] [--next-token NEXT_TOKEN]
+usage: pcluster list-clusters [-h] [-r REGION] [--next-token NEXT_TOKEN]
                               [--cluster-status {CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} [{CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} ...]]
                               [--debug] [--query QUERY]
 
@@ -6,7 +6,8 @@ Retrieve the list of existing clusters.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --region REGION       List clusters deployed to a given AWS Region.
+  -r REGION, --region REGION
+                        List clusters deployed to a given AWS Region.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --cluster-status {CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} [{CREATE_IN_PROGRESS,CREATE_FAILED,CREATE_COMPLETE,DELETE_IN_PROGRESS,DELETE_FAILED,UPDATE_IN_PROGRESS,UPDATE_COMPLETE,UPDATE_FAILED} ...]

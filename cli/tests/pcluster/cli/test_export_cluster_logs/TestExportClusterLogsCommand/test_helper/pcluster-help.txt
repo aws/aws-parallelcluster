@@ -1,6 +1,6 @@
-usage: pcluster export-cluster-logs [-h] [--debug] [--region REGION]
-                                    --cluster-name CLUSTER_NAME --bucket
-                                    BUCKET [--output-file OUTPUT_FILE]
+usage: pcluster export-cluster-logs [-h] [--debug] [--region REGION] -n
+                                    CLUSTER_NAME --bucket BUCKET
+                                    [--output-file OUTPUT_FILE]
                                     [--bucket-prefix BUCKET_PREFIX]
                                     [--keep-s3-objects KEEP_S3_OBJECTS]
                                     [--start-time START_TIME]
@@ -14,7 +14,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
   --region REGION       AWS Region this operation corresponds to.
-  --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Export the logs of the cluster name provided here.
   --bucket BUCKET       S3 bucket to export cluster logs data to. It must be
                         in the same region of the cluster
