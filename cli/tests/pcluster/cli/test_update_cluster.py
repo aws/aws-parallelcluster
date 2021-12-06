@@ -27,22 +27,19 @@ class TestUpdateClusterCommand:
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ({}, "error: the following arguments are required: --cluster-name, --cluster-configuration"),
-            ({"--cluster-configuration": None}, "error: argument --cluster-configuration: expected one argument"),
-            ({"--cluster-name": None}, "error: argument --cluster-name: expected one argument"),
+            ({}, "error: the following arguments are required: -n/--cluster-name, -c/--cluster-configuration"),
+            ({"--cluster-configuration": None}, "error: argument -c/--cluster-configuration: expected one argument"),
+            ({"--cluster-name": None}, "error: argument -n/--cluster-name: expected one argument"),
+            ({"-c": "file", "-n": "cluster", "--invalid": None}, "Invalid arguments ['--invalid']"),
             (
-                {"--cluster-configuration": "file", "--cluster-name": "cluster", "--invalid": None},
-                "Invalid arguments ['--invalid']",
-            ),
-            (
-                {"--cluster-configuration": "file", "--cluster-name": "cluster", "--region": "eu-west-"},
+                {"-c": "file", "-n": "cluster", "-r": "eu-west-"},
                 "Bad Request: invalid or unsupported region 'eu-west-'",
             ),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys, test_datadir):
-        if args.get("--cluster-configuration"):
-            args["--cluster-configuration"] = str(test_datadir / "config.yaml")
+        if args.get("-c"):
+            args["-c"] = str(test_datadir / "config.yaml")
         args = self._build_args(args)
         command = ["pcluster", "update-cluster"] + args
         run_cli(command, expect_failure=True)
@@ -183,15 +180,7 @@ class TestUpdateClusterCommand:
 
         path = str(test_datadir / "config.yaml")
         with pytest.raises(APIOperationException) as exc_info:
-            command = [
-                "update-cluster",
-                "--region",
-                "eu-west-1",
-                "--cluster-name",
-                "name",
-                "--cluster-configuration",
-                path,
-            ]
+            command = ["update-cluster", "-r", "eu-west-1", "-n", "name", "-c", path]
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])
 
@@ -199,17 +188,7 @@ class TestUpdateClusterCommand:
         """Test expected message is printed out if nodejs is not installed."""
         mocker.patch("pcluster.api.util.shutil.which", return_value=None)
         with pytest.raises(APIOperationException) as exc_info:
-            run(
-                [
-                    "update-cluster",
-                    "--region",
-                    "eu-west-1",
-                    "--cluster-name",
-                    "name",
-                    "--cluster-configuration",
-                    str(test_datadir / "config.yaml"),
-                ]
-            )
+            run(["update-cluster", "-r", "eu-west-1", "-n", "name", "-c", str(test_datadir / "config.yaml")])
         assert_that(exc_info.value.data.get("message")).matches("Node.js is required")
 
     def _build_args(self, args):

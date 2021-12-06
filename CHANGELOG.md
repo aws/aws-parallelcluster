@@ -9,6 +9,7 @@ X.X.X
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 - Add support for multiple compute resources with same instance type per queue.
 - Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
+- Add abbreviated flags for `cluster-name` (-n), `region` (-r), `image-id` (-i) and `cluster-configuration` / `image-configuration` (-c) to the cli.
 - Enable clusters to authenticate users by integrating with Active Directory (AD) domains managed via AWS Directory Service.
 
 **CHANGES**

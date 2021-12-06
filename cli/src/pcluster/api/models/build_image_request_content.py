@@ -51,7 +51,7 @@ class BuildImageRequestContent(Model):
     def image_configuration(self):
         """Gets the image_configuration of this BuildImageRequestContent.
 
-        Image configuration as a YAML document
+        Image configuration as a YAML document.
 
         :return: The image_configuration of this BuildImageRequestContent.
         :rtype: str
@@ -62,7 +62,7 @@ class BuildImageRequestContent(Model):
     def image_configuration(self, image_configuration):
         """Sets the image_configuration of this BuildImageRequestContent.
 
-        Image configuration as a YAML document
+        Image configuration as a YAML document.
 
         :param image_configuration: The image_configuration of this BuildImageRequestContent.
         :type image_configuration: str

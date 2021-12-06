@@ -19,27 +19,15 @@ class TestDescribeImageCommand:
         command = ["pcluster", "describe-image", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: --image-id"),
-            (
-                ["--image-id"],
-                "error: argument --image-id: expected one argument",
-            ),
-            (
-                ["--image-id", "image", "--invalid"],
-                "Invalid arguments ['--invalid']",
-            ),
-            (
-                ["--image-id", "image", "--region", "eu-west-"],
-                "Bad Request: invalid or unsupported region 'eu-west-'",
-            ),
+            ([""], "error: the following arguments are required: -i/--image-id"),
+            (["--image-id"], "error: argument -i/--image-id: expected one argument"),
+            (["--image-id", "image", "--invalid"], "Invalid arguments ['--invalid']"),
+            (["--image-id", "image", "--region", "eu-west-"], "Bad Request: invalid or unsupported region 'eu-west-'"),
         ],
     )
     def test_invalid_args(self, args, error_message, run_cli, capsys):
@@ -65,10 +53,7 @@ class TestDescribeImageCommand:
                 "state": "AVAILABLE",
                 "tags": [
                     {"key": "parallelcluster:lustre_version", "value": "5.4.0.1051.33"},
-                    {
-                        "key": "parallelcluster:bootstrap_file",
-                        "value": "aws-parallelcluster-cookbook-3.0.0",
-                    },
+                    {"key": "parallelcluster:bootstrap_file", "value": "aws-parallelcluster-cookbook-3.0.0"},
                 ],
                 "architecture": "x86_64",
             },
@@ -77,9 +62,7 @@ class TestDescribeImageCommand:
 
         response = DescribeImageResponseContent().from_dict(response_dict)
         describe_image_mock = mocker.patch(
-            "pcluster.api.controllers.image_operations_controller.describe_image",
-            return_value=response,
-            autospec=True,
+            "pcluster.api.controllers.image_operations_controller.describe_image", return_value=response, autospec=True
         )
 
         out = run(["describe-image", "--image-id", "image"])
@@ -97,12 +80,6 @@ class TestDescribeImageCommand:
         )
 
         with pytest.raises(APIOperationException) as exc_info:
-            command = [
-                "describe-image",
-                "--region",
-                "eu-west-1",
-                "--image-id",
-                "name",
-            ]
+            command = ["describe-image", "--region", "eu-west-1", "--image-id", "name"]
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])

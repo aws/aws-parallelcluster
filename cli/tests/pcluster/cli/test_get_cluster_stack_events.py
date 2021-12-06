@@ -18,23 +18,14 @@ class TestGetClusterStackEventsCommand:
         command = ["pcluster", "get-cluster-stack-events", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: --cluster-name"),
-            (
-                ["--cluster-name"],
-                "error: argument --cluster-name: expected one argument",
-            ),
-            (
-                ["--cluster-name", "cluster", "--invalid"],
-                "Invalid arguments ['--invalid']",
-            ),
+            ([""], "error: the following arguments are required: -n/--cluster-name"),
+            (["--cluster-name"], "error: argument -n/--cluster-name: expected one argument"),
+            (["--cluster-name", "cluster", "--invalid"], "Invalid arguments ['--invalid']"),
             (
                 ["--cluster-name", "cluster", "--region", "eu-west-"],
                 "Bad Request: invalid or unsupported region 'eu-west-'",
@@ -87,12 +78,6 @@ class TestGetClusterStackEventsCommand:
         )
 
         with pytest.raises(APIOperationException) as exc_info:
-            command = [
-                "get-cluster-stack-events",
-                "--region",
-                "eu-west-1",
-                "--cluster-name",
-                "name",
-            ]
+            command = ["get-cluster-stack-events", "--region", "eu-west-1", "--cluster-name", "name"]
             run(command)
         assert_that(exc_info.value.data).is_equal_to(api_response[0])
