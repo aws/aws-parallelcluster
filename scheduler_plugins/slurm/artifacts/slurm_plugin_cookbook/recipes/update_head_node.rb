@@ -15,33 +15,35 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-unless ::FileUtils.identical?(node['pcluster']['previous_cluster_config_path'], node['pcluster']['cluster_config_path'])
-  # Generate pcluster specific configs
-  no_gpu = nvidia_installed? ? "" : "--no-gpu"
-  execute "generate_pcluster_slurm_configs" do
-    command "#{node['pcluster']['python_root']}/python #{node['pcluster']['local_dir']}/scripts/slurm/pcluster_slurm_config_generator.py" \
-            " --output-directory #{node['slurm']['install_dir']}/etc/" \
-            " --template-directory #{node['pcluster']['local_dir']}/scripts/slurm/templates/" \
-            " --input-file #{node['pcluster']['cluster_config_path']}" \
-            " --instance-types-data #{node['pcluster']['instance_types_data_path']}" \
-            " #{no_gpu}"
-  end
+# Generate pcluster specific configs
+execute "generate_pcluster_slurm_configs" do
+  command "#{node['pcluster']['python_root']}/python #{node['pcluster']['local_dir']}/scripts/slurm/pcluster_slurm_config_generator.py" \
+          " --output-directory #{node['slurm']['install_dir']}/etc/" \
+          " --template-directory #{node['pcluster']['local_dir']}/scripts/slurm/templates/" \
+          " --input-file #{node['pcluster']['cluster_config_path']}" \
+          " --instance-types-data #{node['pcluster']['instance_types_data_path']}" \
+          " #{nvidia_installed? ? '' : '--no-gpu'}"
+  not_if { ::File.exist?(node['pcluster']['previous_cluster_config_path']) && ::FileUtils.identical?(node['pcluster']['previous_cluster_config_path'], node['pcluster']['cluster_config_path']) }
+end
 
-  execute 'stop clustermgtd' do
-    command "#{node['pcluster']['python_root']}/supervisorctl -c #{node['pcluster']['local_dir']}/supervisord.conf stop clustermgtd"
-  end
+execute 'stop clustermgtd' do
+  command "#{node['pcluster']['python_root']}/supervisorctl -c #{node['pcluster']['local_dir']}/supervisord.conf stop clustermgtd"
+  not_if { ::File.exist?(node['pcluster']['previous_cluster_config_path']) && ::FileUtils.identical?(node['pcluster']['previous_cluster_config_path'], node['pcluster']['cluster_config_path']) }
+end
 
-  service 'slurmctld' do
-    action :restart
-  end
+service 'slurmctld' do
+  action :restart
+  not_if { ::File.exist?(node['pcluster']['previous_cluster_config_path']) && ::FileUtils.identical?(node['pcluster']['previous_cluster_config_path'], node['pcluster']['cluster_config_path']) }
+end
 
-  execute 'reload config for running nodes' do
-    command "#{node['slurm']['install_dir']}/bin/scontrol reconfigure && sleep 15"
-    retries 3
-    retry_delay 5
-  end
+execute 'reload config for running nodes' do
+  command "#{node['slurm']['install_dir']}/bin/scontrol reconfigure && sleep 15"
+  retries 3
+  retry_delay 5
+  not_if { ::File.exist?(node['pcluster']['previous_cluster_config_path']) && ::FileUtils.identical?(node['pcluster']['previous_cluster_config_path'], node['pcluster']['cluster_config_path']) }
+end
 
-  execute 'start clustermgtd' do
-    command "#{node['pcluster']['python_root']}/supervisorctl -c #{node['pcluster']['local_dir']}/supervisord.conf start clustermgtd"
-  end
+execute 'start clustermgtd' do
+  command "#{node['pcluster']['python_root']}/supervisorctl -c #{node['pcluster']['local_dir']}/supervisord.conf start clustermgtd"
+  not_if { ::File.exist?(node['pcluster']['previous_cluster_config_path']) && ::FileUtils.identical?(node['pcluster']['previous_cluster_config_path'], node['pcluster']['cluster_config_path']) }
 end
