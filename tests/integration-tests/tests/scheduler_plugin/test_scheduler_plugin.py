@@ -237,7 +237,8 @@ def _test_artifacts_shared_from_head(command_executor, compute_node):
     """Test artifacts shared from head to compute node"""
     compute_node_private_ip = compute_node.get("privateIpAddress")
     shared_listing = command_executor.run_remote_command(
-        f"ssh -q {compute_node_private_ip} ls {PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR}"
+        f"ssh -q {compute_node_private_ip} "
+        "\"sudo su - {SCHEDULER_PLUGIN_USER} -c 'ls {PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR}'\""
     ).stdout
     assert_that(shared_listing).contains("sharedFromHead")
 
