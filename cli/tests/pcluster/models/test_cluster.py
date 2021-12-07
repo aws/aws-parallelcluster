@@ -24,7 +24,13 @@ from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_S3_ARTIFACTS_DICT
-from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
+from pcluster.models.cluster import (
+    BadRequestClusterActionError,
+    Cluster,
+    ClusterActionError,
+    ClusterUpdateError,
+    NodeType,
+)
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -656,6 +662,113 @@ class TestCluster:
         upload_cfn_template_mock.assert_called_with(
             scheduler_plugin_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
         )
+
+    @pytest.mark.parametrize(
+        "support_update, instance_type, match",
+        [
+            (
+                "false",
+                "c5.xlarge",
+                "Update failure: The scheduler plugin used for this cluster does not support updating the scheduling "
+                "configuration.",
+            ),
+            ("false", "c5.2xlarge", None),
+            ("true", "c5.xlarge", None),
+        ],
+    )
+    def test_validate_scheduling_update(self, mocker, support_update, instance_type, match):
+        plugin_old_configuration = f"""
+Image:
+  Os: alinux2
+  CustomAmi: ami-08cf50b131bcd4db2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-08a5068070f6bc23d
+  Ssh:
+    KeyName: ermann-dub-ef
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+Scheduling:
+  Scheduler: plugin
+  SchedulerSettings:
+    SchedulerDefinition:
+      PluginInterfaceVersion: "1.0"
+      Requirements:
+        SupportsClusterUpdate: {support_update}
+      Events:
+        HeadInit:
+          ExecuteCommand:
+            Command: env
+  SchedulerQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: c5.2xlarge
+"""
+
+        plugin_new_configuration = f"""
+Image:
+  Os: alinux2
+  CustomAmi: ami-08cf50b131bcd4db2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-08a5068070f6bc23d
+  Ssh:
+    KeyName: ermann-dub-ef
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/FakePolicy
+Scheduling:
+  Scheduler: plugin
+  SchedulerSettings:
+    SchedulerDefinition:
+      PluginInterfaceVersion: "1.0"
+      Requirements:
+        SupportsClusterUpdate: {support_update}
+      Events:
+        HeadInit:
+          ExecuteCommand:
+            Command: env
+  SchedulerQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: {instance_type}
+"""
+
+        mock_aws_api(mocker)
+        cluster = Cluster(
+            FAKE_NAME,
+            stack=ClusterStack(
+                {
+                    "StackName": FAKE_NAME,
+                    "CreationTime": "2021-06-04 10:23:20.199000+00:00",
+                    "StackStatus": ClusterStatus.CREATE_COMPLETE,
+                }
+            ),
+            config=plugin_old_configuration,
+        )
+
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+
+        if match:
+            with pytest.raises(ClusterUpdateError, match=match):
+                cluster.validate_update_request(
+                    target_source_config=plugin_new_configuration, validator_suppressors={AllValidatorsSuppressor()}
+                )
+        else:
+            cluster.validate_update_request(
+                target_source_config=plugin_new_configuration, validator_suppressors={AllValidatorsSuppressor()}
+            )
 
 
 OLD_CONFIGURATION = """

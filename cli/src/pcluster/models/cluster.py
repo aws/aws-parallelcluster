@@ -788,6 +788,8 @@ class Cluster:
         )
         changes = self._validate_patch(force, target_config)
 
+        self._validate_scheduling_update(changes, target_config)
+
         return target_config, changes, ignored_validation_failures
 
     def _validate_patch(self, force, target_config):
@@ -1078,3 +1080,21 @@ class Cluster:
     def _stack_events_stream_name(self):
         """Return the name of the stack events log stream."""
         return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.stack_name)
+
+    def _validate_scheduling_update(self, changes, target_config):
+        """Update of Scheduling is not supported when SupportsClusterUpdate of the scheduler plugin is set to false."""
+        if (
+            self.config.scheduling.scheduler == "plugin"
+            and self.config.scheduling.settings.scheduler_definition.requirements
+            and self.config.scheduling.settings.scheduler_definition.requirements.supports_cluster_update is False
+        ) and target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling"):
+            scheduling_changes = []
+            for change in changes[1:]:
+                if change[0][0] == "Scheduling":
+                    scheduling_changes.append(change)
+            if len(scheduling_changes) >= 1:
+                raise ClusterUpdateError(
+                    "Update failure: The scheduler plugin used for this cluster does not support updating the "
+                    "scheduling configuration.",
+                    [changes[0]] + scheduling_changes,
+                )
