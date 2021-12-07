@@ -12,7 +12,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 class ClusterUser:
     """Class to represent a cluster user in a multi-user environment."""
 
-    def __init__(self, user_num, test_datadir, cluster, scheduler, default_user_remote_command_executor):
+    def __init__(self, user_num, test_datadir, cluster, scheduler, default_user_remote_command_executor, password):
         self._default_user_remote_command_executor = default_user_remote_command_executor
         self.cluster = cluster
         self.scheduler = scheduler
@@ -23,7 +23,7 @@ class ClusterUser:
         self.ssh_public_key_path = f"{self.ssh_private_key_path}.pub"
         # TODO: randomly generate this. It's hardcoded here because it's also hard-coded in the script
         #       that creates users as part of the directory stack.
-        self.password = "ApplesBananasCherries!"
+        self.password = password
         self._personalized_remote_command_executor = RemoteCommandExecutor(
             self.cluster, username=self.alias, alternate_ssh_key=self.ssh_private_key_path
         )

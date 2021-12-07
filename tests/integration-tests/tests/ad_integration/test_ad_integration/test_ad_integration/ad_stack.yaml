@@ -203,7 +203,7 @@ Resources:
                         --region {{ region }} \
                         --directory-id "\${DIRECTORY_ID}" \
                         --user-name "\${NEW_USER_ALIAS}" \
-                        --new-password "ApplesBananasCherries!"  # TODO: generate random passwords
+                        --new-password "{{ ad_user_password }}"
                 done
                 EOF
                 chmod +x /usr/local/bin/add_a_number_of_users.sh
@@ -267,14 +267,22 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - DomainName
-  Password:
+  AdminPassword:
     Value: {{ ad_admin_password }}
     Export:
       Name:
         Fn::Join:
           - ""
           - - Ref: AWS::StackName
-            - Password
+            - AdminPassword
+  UserPassword:
+    Value: {{ ad_user_password }}
+    Export:
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - UserPassword
   ReadOnlyUserName:
     Value: {{ ad_admin_user }}
     Export:
