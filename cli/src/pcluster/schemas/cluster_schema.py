@@ -1235,7 +1235,9 @@ class SchedulerPluginRequirementsSchema(BaseSchema):
     )
     requires_sudo_privileges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     supports_cluster_update = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    supported_parallel_cluster_versions = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    supported_parallel_cluster_versions = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"[a-z0-9\>\=\<\.]")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
