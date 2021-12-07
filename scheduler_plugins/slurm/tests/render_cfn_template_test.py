@@ -45,7 +45,7 @@ def test_render_cfn_template():
     with NamedTemporaryFile(mode="w") as f:
         f.write(rendered_template)
         f.flush()
-        subprocess.check_call(f"cfn-lint -i W2001 W8001 -- {f.name}", shell=True)
+        subprocess.check_call((["cfn-lint", "-i", "W2001", "W8001", "--", f.name]))
 
 
 def _read_yaml_file(file):
