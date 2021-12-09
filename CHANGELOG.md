@@ -8,6 +8,7 @@ CHANGELOG
 - CentOS 8 is no longer supported (EOL on December 31st, 2021).
 - Upgrade Slurm to version 20.11.8.
 - Upgrade Cinc Client to version 17.2.29.
+- Disable packages update at instance launch time on Amazon Linux 2.
 
 **BUG FIXES**
 - Disable update of ec2_iam_role parameter.
