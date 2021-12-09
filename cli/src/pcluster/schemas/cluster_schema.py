@@ -1597,7 +1597,11 @@ class DirectoryServiceSchema(BaseSchema):
 
     domain_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     domain_addr = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
-    password_secret_arn = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    password_secret_arn = fields.Str(
+        required=True,
+        validate=validate.Regexp(r"^arn:.*:secret"),
+        metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP},
+    )
     domain_read_only_user = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     ldap_tls_ca_cert = fields.Str(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
     ldap_tls_req_cert = fields.Str(

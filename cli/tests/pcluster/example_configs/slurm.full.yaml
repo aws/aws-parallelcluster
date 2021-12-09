@@ -186,7 +186,7 @@ AdditionalResources: https://template.url
 DirectoryService:
   DomainName: string  # required
   DomainAddr: string  # required
-  PasswordSecretArn: string  # required
+  PasswordSecretArn: arn:aws:secretsmanager:us-east-1:111111111111:secret:Secret-xxxxxxxx-xxxxx  # required
   DomainReadOnlyUser: string  # required
   LdapTlsCaCert: string  # optional, default is dictated by LDAP client
   LdapTlsReqCert: never
