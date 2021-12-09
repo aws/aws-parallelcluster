@@ -450,6 +450,15 @@ Resources:
               export NO_PROXY="localhost,127.0.0.1,169.254.169.254"
               PROXY
               fi
+
+              --==BOUNDARY==
+              Content-Type: text/cloud-config; charset=us-ascii
+              MIME-Version: 1.0
+
+              package_update: false
+              package_upgrade: false
+              repo_upgrade: none
+
               --==BOUNDARY==
               Content-Type: text/x-shellscript; charset="us-ascii"
               MIME-Version: 1.0
