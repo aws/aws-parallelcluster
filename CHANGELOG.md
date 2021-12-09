@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-X.X.X
+3.1.0
 ------
 
 **ENHANCEMENTS**
