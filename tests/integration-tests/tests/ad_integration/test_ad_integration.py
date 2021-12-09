@@ -14,7 +14,9 @@ import datetime
 import io
 import logging
 import os as os_lib
+import random
 import re
+import string
 import zipfile
 from collections import defaultdict
 
@@ -154,7 +156,7 @@ def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
 
 
 def _create_directory_stack(
-    cfn_stacks_factory, request, directory_type, test_resources_dir, ad_admin_password, bucket_name, region, vpc_stack
+    cfn_stacks_factory, request, directory_type, test_resources_dir, bucket_name, region, vpc_stack
 ):
     directory_stack_name = generate_stack_name(
         f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
@@ -170,6 +172,8 @@ def _create_directory_stack(
         .get_caller_identity()
         .get("Account")
     )
+    ad_admin_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
+    ad_user_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
     config_args = {
         "region": region,
         "account": account_id,
@@ -177,6 +181,7 @@ def _create_directory_stack(
         "admin_node_instance_type": "c5.large",
         "admin_node_key_name": request.config.getoption("key_name"),
         "ad_admin_password": ad_admin_password,
+        "ad_user_password": ad_user_password,
         "ad_domain_name": f"{directory_type.lower()}.multiuser.pcluster",
         "default_ec2_domain": "ec2.internal" if region == "us-east-1" else f"{region}.compute.internal",
         "ad_admin_user": "Administrator" if directory_type == "SimpleAD" else "Admin",
@@ -283,13 +288,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
     created_directory_stacks = defaultdict(dict)
 
     def _directory_factory(
-        existing_directory_stack_name,
-        existing_nlb_stack_name,
-        directory_type,
-        bucket_name,
-        test_resources_dir,
-        region,
-        ad_admin_password,
+        existing_directory_stack_name, existing_nlb_stack_name, directory_type, bucket_name, test_resources_dir, region
     ):
         directory_stack = None
         if existing_directory_stack_name:
@@ -302,14 +301,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
             directory_stack = _create_directory_stack(
-                cfn_stacks_factory,
-                request,
-                directory_type,
-                test_resources_dir,
-                ad_admin_password,
-                bucket_name,
-                region,
-                vpc_stacks[region],
+                cfn_stacks_factory, request, directory_type, test_resources_dir, bucket_name, region, vpc_stacks[region]
             )
             directory_stack_name = directory_stack.name
             created_directory_stacks[region]["directory"] = directory_stack_name
@@ -482,33 +474,32 @@ def test_ad_integration(
     instance,
     os,
     pcluster_config_reader,
-    clusters_factory,
     directory_type,
     test_datadir,
     s3_bucket_factory,
     directory_factory,
     request,
     store_secret_in_secret_manager,
+    clusters_factory,
 ):
     """Verify AD integration works as expected."""
     compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
     config_params = {"compute_instance_type": compute_instance_type_info.get("name")}
-    ad_admin_password = "MultiUserInfraDirectoryReadOnlyPassword!"  # TODO: not secure
-    password_secret_arn = store_secret_in_secret_manager(ad_admin_password)
-    if directory_type:
-        bucket_name = s3_bucket_factory()
-        directory_stack_name, nlb_stack_name = directory_factory(
-            request.config.getoption("directory_stack_name"),
-            request.config.getoption("ldaps_nlb_stack_name"),
-            directory_type,
-            bucket_name,
-            str(test_datadir),
-            region,
-            ad_admin_password=ad_admin_password,
-        )
-        config_params.update(
-            get_ad_config_param_vals(directory_stack_name, nlb_stack_name, bucket_name, password_secret_arn)
-        )
+    bucket_name = s3_bucket_factory()
+    directory_stack_name, nlb_stack_name = directory_factory(
+        request.config.getoption("directory_stack_name"),
+        request.config.getoption("ldaps_nlb_stack_name"),
+        directory_type,
+        bucket_name,
+        str(test_datadir),
+        region,
+    )
+    directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
+    ad_user_password = directory_stack_outputs.get("UserPassword")
+    password_secret_arn = store_secret_in_secret_manager(directory_stack_outputs.get("AdminPassword"))
+    config_params.update(
+        get_ad_config_param_vals(directory_stack_name, nlb_stack_name, bucket_name, password_secret_arn)
+    )
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 
@@ -527,7 +518,7 @@ def test_ad_integration(
     assert_that(NUM_USERS_TO_TEST).is_less_than_or_equal_to(NUM_USERS_TO_CREATE)
     users = []
     for user_num in range(1, NUM_USERS_TO_TEST + 1):
-        users.append(ClusterUser(user_num, test_datadir, cluster, scheduler, remote_command_executor))
+        users.append(ClusterUser(user_num, test_datadir, cluster, scheduler, remote_command_executor, ad_user_password))
     _run_user_workloads(users, test_datadir, remote_command_executor)
     logging.info("Testing pcluster update and generate ssh keys for user")
     _check_ssh_key_generation(users[0], scheduler_commands, False)
