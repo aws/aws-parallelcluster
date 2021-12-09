@@ -104,7 +104,7 @@ createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2", "ubuntu2004", "centos7"]
+        oss: ["alinux2", "ubuntu2004"]  # "centos7" removed because of https://github.com/aws/aws-parallelcluster/issues/3584
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
