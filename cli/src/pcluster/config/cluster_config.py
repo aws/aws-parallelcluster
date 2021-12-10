@@ -35,8 +35,6 @@ from pcluster.constants import (
     MAX_NUMBER_OF_COMPUTE_RESOURCES,
     MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
-    SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT,
-    SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT,
     SUPPORTED_OSES,
 )
 from pcluster.utils import (
@@ -1639,23 +1637,17 @@ class SchedulerPluginSupportedDistros(Resource):
 class SchedulerPluginQueueConstraints(Resource):
     """Represent the Queue Constraints for a Scheduler Plugin."""
 
-    def __init__(self, max_count: int = None, max_subnets_count: int = None, **kwargs):
+    def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_QUEUES)
-        self.max_subnets_count = Resource.init_param(
-            max_subnets_count, default=SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT
-        )
 
 
 class SchedulerPluginComputeResourceConstraints(Resource):
     """Represent the Compute Resource Constraints for a Scheduler Plugin."""
 
-    def __init__(self, max_count: int = None, max_instance_types_count: int = None, **kwargs):
+    def __init__(self, max_count: int = None, **kwargs):
         super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_COMPUTE_RESOURCES)
-        self.max_instance_types_count = Resource.init_param(
-            max_instance_types_count, default=SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT
-        )
 
 
 class SchedulerPluginRequirements(Resource):

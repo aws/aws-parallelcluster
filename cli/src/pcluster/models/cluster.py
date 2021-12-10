@@ -1086,14 +1086,52 @@ class Cluster:
 
     def _validate_scheduling_update(self, changes, target_config):
         """Update of Scheduling is not supported when SupportsClusterUpdate of the scheduler plugin is set to false."""
+        # target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling") doesn't mean
+        # there's changes in the config, if queue list in the scheduling dict has different order, target_config dict
+        # and original config dict may be different.
         if (
             self.config.scheduling.scheduler == "plugin"
-            and self.config.scheduling.settings.scheduler_definition.requirements
-            and self.config.scheduling.settings.scheduler_definition.requirements.supports_cluster_update is False
-        ) and target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling"):
+            and get_attr(self.config, "scheduling.settings.scheduler_definition.requirements.supports_cluster_update")
+            is False
+            and target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling")
+        ):
             scheduling_changes = []
+            # Example format of changes:
+            # changes = [
+            #     ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+            #     [
+            #         ["HeadNode", "Iam"],
+            #         "AdditionalIamPolicies",
+            #         None,
+            #         {"Policy": "arn:aws:iam::aws:policy/FakePolicy"},
+            #         "SUCCEEDED",
+            #         "-",
+            #         None,
+            #     ],
+            #     [
+            #         ["HeadNode", "Iam"],
+            #         "AdditionalIamPolicies",
+            #         {"Policy": "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"},
+            #         None,
+            #         "SUCCEEDED",
+            #         "-",
+            #         None,
+            #     ],
+            #     [
+            #         ["Scheduling", "SchedulerQueues[queue1]", "ComputeResources[compute-resource1]"],
+            #         "InstanceType",
+            #         "c5.2xlarge",
+            #         "c5.xlarge",
+            #         "SUCCEEDED",
+            #         "-",
+            #         None,
+            #     ],
+            # ]
+
+            # The first element of changes is:
+            # ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]
             for change in changes[1:]:
-                if change[0][0] == "Scheduling":
+                if change[0][0] == "Scheduling":  # check if the param_path of the change start from Scheduling
                     scheduling_changes.append(change)
             if len(scheduling_changes) >= 1:
                 raise ClusterUpdateError(
