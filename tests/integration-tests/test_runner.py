@@ -360,7 +360,7 @@ def _is_file(value):
     return value
 
 
-@retry(stop_max_attempt_number=6, wait_fixed=5000)
+@retry(stop_max_attempt_number=10, wait_fixed=5000)
 def _is_url(value):
     scheme = urllib.request.urlparse(value).scheme
     if scheme in ["https", "s3", "file"]:
