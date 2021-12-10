@@ -25,6 +25,8 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from jinja2 import Environment, FileSystemLoader
+from OpenSSL import crypto
+from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
@@ -216,14 +218,12 @@ def _populate_directory_with_users(directory_stack, num_users_to_create, region)
     logging.info("Creation of %s users in directory service completed", str(num_users_to_create))
 
 
-def _create_nlb_stack(cfn_stacks_factory, request, directory_stack, region, test_resources_dir):
+def _create_nlb_stack(cfn_stacks_factory, request, directory_stack, region, test_resources_dir, certificate_arn):
     nlb_stack_template_path = os_lib.path.join(test_resources_dir, "NLB_SimpleAD.yaml")
     nlb_stack_name = generate_stack_name(
         "integ-tests-MultiUserInfraStackNLB", request.config.getoption("stackname_suffix")
     )
     logging.info("Creating stack %s", nlb_stack_name)
-    # TODO: don't hardcode this ARN
-    certificate_arn = "arn:aws:acm:us-east-1:447714826191:certificate/a17e8574-0cea-4d4c-8e79-a8ebb60f6f47"
     nlb_stack = None
     with open(nlb_stack_template_path) as nlb_stack_template:
         nlb_stack = CfnStack(
@@ -262,10 +262,32 @@ def _create_nlb_stack(cfn_stacks_factory, request, directory_stack, region, test
     return nlb_stack
 
 
+def _generate_certificate():
+    key = crypto.PKey()
+    key.generate_key(TYPE_RSA, 2048)
+    crt = X509()
+    common_name = "ldap.simplead.multiuser.pcluster"
+    crt.get_subject().commonName = common_name
+    crt.get_issuer().commonName = common_name
+    now = datetime.datetime.now()
+    days = datetime.timedelta(days=90)
+    asn1_time_format = "%Y%m%d000000Z"
+    crt.set_notBefore((now - days).strftime(asn1_time_format).encode())
+    crt.set_notAfter((now + days).strftime(asn1_time_format).encode())
+    crt.set_serial_number(random.randrange(1, 99999))
+    crt.set_pubkey(key)
+    crt.sign(key, "sha256")
+    certificate_arn = boto3.client("acm").import_certificate(
+        Certificate=dump_certificate(FILETYPE_PEM, crt), PrivateKey=dump_privatekey(FILETYPE_PEM, key)
+    )["CertificateArn"]
+    return certificate_arn
+
+
 @pytest.fixture(scope="module")
 def directory_factory(request, cfn_stacks_factory, vpc_stacks):
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
+    created_certificates = defaultdict(dict)
 
     def _directory_factory(
         existing_directory_stack_name, existing_nlb_stack_name, directory_type, test_resources_dir, region
@@ -293,8 +315,10 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
             nlb_stack_name = created_directory_stacks.get(region, {}).get("nlb")
             logging.info("Using NLB stack named %s created by another test", nlb_stack_name)
         else:
+            certificate_arn = _generate_certificate()
+            created_certificates[region] = certificate_arn
             nlb_stack_name = _create_nlb_stack(
-                cfn_stacks_factory, request, directory_stack, region, test_resources_dir
+                cfn_stacks_factory, request, directory_stack, region, test_resources_dir, certificate_arn
             ).name
             created_directory_stacks[region]["nlb"] = nlb_stack_name
         return directory_stack_name, nlb_stack_name
@@ -314,6 +338,9 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
             else:
                 logging.info("Deleting %s stack named %s in region %s", stack_type, stack_name, region)
                 cfn_stacks_factory.delete_stack(stack_name, region)
+
+    for region, certificate_arn in created_certificates.items():
+        boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
 
 
 def _run_user_workloads(users, test_datadir, remote_command_executor):
