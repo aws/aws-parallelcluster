@@ -323,7 +323,8 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
     yield _directory_factory
 
     for region, stack_dict in created_directory_stacks.items():
-        for stack_type, stack_name in stack_dict.items():
+        for stack_type in ["nlb", "directory"]:
+            stack_name = stack_dict[stack_type]
             if request.config.getoption("no_delete"):
                 logging.info(
                     "Not deleting %s stack named %s in region %s because --no-delete option was specified",
