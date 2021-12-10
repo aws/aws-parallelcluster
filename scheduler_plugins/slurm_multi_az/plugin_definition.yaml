@@ -1,0 +1,39 @@
+PluginInterfaceVersion: "1.0"
+Metadata:
+  Scheduler:
+    Name: Slurm
+    Version: 20.11.8
+  Author: fdm
+  Documentation: link
+  License: link
+  Version: 1.0.0
+Requirements:
+  RequiresSudoPrivileges: true
+ClusterInfrastructure:
+  CloudFormation:
+    Template: s3://<BUCKET>/scheduler_plugins/slurm_multi_az/slurm_plugin_infrastructure.cfn.yaml
+PluginResources:
+  ClusterSharedArtifacts:
+    - Source: s3://<BUCKET>/scheduler_plugins/slurm_multi_az/artifacts.tar.gz
+SystemUsers:
+  - Name: slurm_user
+    EnableImds: true
+Events:
+  HeadInit:
+    ExecuteCommand:
+      Command: /bin/bash -c 'tar -xf artifacts.tar.gz && artifacts/handlers/head_init.sh'
+  HeadConfigure:
+    ExecuteCommand:
+      Command: artifacts/handlers/head_configure.sh
+  HeadFinalize:
+    ExecuteCommand:
+      Command: artifacts/handlers/head_finalize.sh
+  ComputeInit:
+    ExecuteCommand:
+      Command: artifacts/handlers/compute_init.sh
+  ComputeConfigure:
+    ExecuteCommand:
+      Command: artifacts/handlers/compute_configure.sh
+  ComputeFinalize:
+    ExecuteCommand:
+      Command: artifacts/handlers/compute_finalize.sh

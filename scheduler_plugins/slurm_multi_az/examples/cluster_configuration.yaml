@@ -1,0 +1,127 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: c5.2xlarge
+  Ssh:
+    KeyName: fdm-jenkins
+  Networking:
+    SubnetId: subnet-2bf1a173
+Scheduling:
+  Scheduler: plugin
+  SchedulerSettings:
+    GrantSudoPrivileges: true
+    SchedulerDefinition: <PLUGIN_DEFINITION>
+    CustomSettings:
+      ScaledownIdletime: 10
+  SchedulerQueues:
+    - Name: ondemand-queue
+      CapacityType: ONDEMAND
+      CustomSettings:
+        AllocationStrategy: lowest-price
+        SubnetIds:
+          - subnet-2bf1a173  # euw1-az3
+          - subnet-4c0a1d28  # euw1-az1
+          - subnet-3e160248  # euw1-az2
+      Networking:
+        SubnetIds:
+          - subnet-2bf1a173
+      ComputeResources:
+        - Name: multi-instance
+          InstanceType: c5.xlarge
+          MinCount: 0
+          MaxCount: 1000
+          CustomSettings:
+            InstanceTypes:  # vCPUs/GPUs need to match the ones in InstanceType
+            - c5.xlarge
+            - c4.xlarge
+            - c5a.xlarge
+            - c5d.xlarge
+            - c5ad.xlarge
+    - Name: spot-queue
+      CapacityType: SPOT
+      CustomSettings:
+        AllocationStrategy: lowest-price
+      # InstanceRequirements does not seem to work with multiple subnets
+      Networking:
+        SubnetIds:
+          - subnet-2bf1a173
+      ComputeResources:
+        - Name: instance-req
+          InstanceType: c5.2xlarge
+          MinCount: 0
+          MaxCount: 1000
+          CustomSettings:
+            InstanceRequirements:
+              VCpuCount:  # Min/Max needs to be the same and match vCPUs of InstanceType
+                Min: 8
+                Max: 8
+              MemoryMiB:
+                Min: 0
+              InstanceGenerations:
+              - current
+    - Name: efa-queue
+      CapacityType: ONDEMAND
+      CustomSettings:
+        AllocationStrategy: lowest-price
+        SubnetIds:
+          - subnet-2bf1a173  # euw1-az3
+          - subnet-4c0a1d28  # euw1-az1
+          - subnet-3e160248  # euw1-az2
+      Networking:
+        SubnetIds:
+          - subnet-2bf1a173
+        PlacementGroup:
+          Enabled: false
+      ComputeResources:
+        - Name: efa24xlarge
+          InstanceType: m5dn.24xlarge
+          DisableSimultaneousMultithreading: true
+          Efa:
+            Enabled: true
+          CustomSettings:
+            InstanceTypes:  # vCPUs/GPUs need to match the ones in InstanceType
+            - m5dn.24xlarge
+            - m5n.24xlarge
+            - r5dn.24xlarge
+            - r5n.24xlarge
+    - Name: gpu-queue
+      CapacityType: ONDEMAND
+      CustomSettings:
+        AllocationStrategy: lowest-price
+      # InstanceRequirements does not seem to work with multiple subnets
+      Networking:
+        SubnetIds:
+          - subnet-2bf1a173
+      ComputeResources:
+        - Name: gpu1-cpu8
+          InstanceType: p3.2xlarge
+          CustomSettings:
+            InstanceRequirements:
+              VCpuCount:  # Min/Max needs to be the same and match vCPUs of InstanceType
+                Min: 8
+                Max: 8
+              MemoryMiB:
+                Min: 0
+              AcceleratorCount:
+                Min: 1
+                Max: 1
+              AcceleratorManufacturers:
+              - nvidia
+              InstanceGenerations:
+              - current
+SharedStorage:
+  - MountDir: /shared/fsx
+    Name: fsx
+    StorageType: FsxLustre
+    FsxLustreSettings:
+      StorageCapacity: 1200
+  - MountDir: /shared/efs
+    Name: efs
+    StorageType: Efs
+  - MountDir: /shared/ebs
+    Name: ebs
+    StorageType: Ebs
+    EbsSettings:
+      VolumeType: gp3
+      DeletionPolicy: Delete
+      Size: 10
