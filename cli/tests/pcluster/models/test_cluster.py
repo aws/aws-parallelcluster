@@ -24,13 +24,7 @@ from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
 from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_S3_ARTIFACTS_DICT
-from pcluster.models.cluster import (
-    BadRequestClusterActionError,
-    Cluster,
-    ClusterActionError,
-    ClusterUpdateError,
-    NodeType,
-)
+from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
@@ -664,19 +658,38 @@ class TestCluster:
         )
 
     @pytest.mark.parametrize(
-        "support_update, instance_type, match",
+        "support_update, instance_type, match, update_changes",
         [
             (
                 "false",
                 "c5.xlarge",
                 "Update failure: The scheduler plugin used for this cluster does not support updating the scheduling "
                 "configuration.",
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        ["Scheduling", "SchedulerQueues[queue1]", "ComputeResources[compute-resource1]"],
+                        "InstanceType",
+                        "c5.2xlarge",
+                        "c5.xlarge",
+                        "SUCCEEDED",
+                        "-",
+                        None,
+                    ],
+                ],
             ),
-            ("false", "c5.2xlarge", None),
-            ("true", "c5.xlarge", None),
+            ("false", "c5.2xlarge", None, None),
+            ("true", "c5.xlarge", None, None),
+        ],
+        ids=[
+            "Scheduler plugin doesn't support update, change both HeadNode.IAM.AdditionalIamPolicies and Queue "
+            "instance type",
+            "Scheduler plugin doesn't support update, change HeadNode.IAM.AdditionalIamPolicies and Queue instance "
+            "type",
+            "Scheduler plugin support update, change HeadNode.IAM.AdditionalIamPolicies",
         ],
     )
-    def test_validate_scheduling_update(self, mocker, support_update, instance_type, match):
+    def test_validate_scheduling_update(self, mocker, support_update, instance_type, match, update_changes):
         plugin_old_configuration = f"""
 Image:
   Os: alinux2
@@ -759,16 +772,13 @@ Scheduling:
         )
 
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
-
-        if match:
-            with pytest.raises(ClusterUpdateError, match=match):
-                cluster.validate_update_request(
-                    target_source_config=plugin_new_configuration, validator_suppressors={AllValidatorsSuppressor()}
-                )
-        else:
+        try:
             cluster.validate_update_request(
                 target_source_config=plugin_new_configuration, validator_suppressors={AllValidatorsSuppressor()}
             )
+        except ClusterActionError as e:
+            assert_that(e.args[0]).is_equal_to(match)
+            assert_that(e.update_changes).is_equal_to(update_changes)
 
 
 OLD_CONFIGURATION = """

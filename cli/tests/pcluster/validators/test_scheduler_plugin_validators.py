@@ -144,17 +144,25 @@ def test_scheduler_plugin_region_validator(region, supported_regions, expected_m
         (
             "2.8.0",
             ">=2.9.0, <=3.1.1",
-            "The installed version 2.8.0 is not supported by the scheduler plugin (>=2.9.0, <=3.1.1).",
+            "The installed version 2.8.0 is not supported by the scheduler plugin. Supported versions are: "
+            ">=2.9.0, <=3.1.1.",
+        ),
+        (
+            "2.8.0",
+            ">=2.9.0, <=3.1.1, <=3.2.0, >=2.8.0",
+            "The installed version 2.8.0 is not supported by the scheduler plugin. Supported versions are: "
+            ">=2.9.0, <=3.1.1, <=3.2.0, >=2.8.0.",
         ),
         (
             "3.1.1",
             "<2.9.0, >3.1.1",
-            "The installed version 3.1.1 is not supported by the scheduler plugin (<2.9.0, >3.1.1).",
+            "The installed version 3.1.1 is not supported by the scheduler plugin. Supported versions are: "
+            "<2.9.0, >3.1.1.",
         ),
         (
             "3.1.1",
-            "3.0.0 >=3.1.1",
-            "Unable to parse SupportedParallelClusterVersions 3.0.0 >=3.1.1 in the scheduler plugin",
+            "3.0.0, >=3.1.1",
+            "Unable to parse SupportedParallelClusterVersions 3.0.0, >=3.1.1 in the scheduler plugin",
         ),
     ],
 )

@@ -16,8 +16,6 @@ from pkg_resources import packaging
 
 from pcluster.validators.common import FailureLevel, Validator
 
-CliRequirement = namedtuple("Requirement", "operator version")
-
 
 class SudoPrivilegesValidator(Validator):
     """Sudo Privileges Validator."""
@@ -68,43 +66,49 @@ class SupportedVersionsValidator(Validator):
 
     def _validate(self, installed_version, supported_versions_string):
         if supported_versions_string:
-            comparison_operators = {
-                "<": operator.lt,
-                "<=": operator.le,
-                "==": operator.eq,
-                "!=": operator.ne,
-                ">=": operator.ge,
-                ">": operator.gt,
-            }
             supported_versions_list = [version.strip() for version in supported_versions_string.split(",")]
             if any(x in supported_versions_string for x in [">", "<"]):  # Input string is a range
-                requirements = []
-                for version in supported_versions_list:
-                    try:
-                        match = re.search(r"^([<>=!]+)([\d.]+)", version)
-                        requirements.append(CliRequirement(operator=match.group(1), version=match.group(2)))
-                    except Exception as e:
-                        self._add_failure(
-                            "Unable to parse SupportedParallelClusterVersions {0} in the scheduler plugin: {1}.".format(
-                                supported_versions_string, e
-                            ),
-                            FailureLevel.ERROR,
-                        )
-                for req in requirements:
-                    if not comparison_operators[req.operator](
-                        packaging.version.parse(installed_version),
-                        packaging.version.parse(req.version),
-                    ):
-                        self._add_failure(
-                            "The installed version {0} is not supported by the scheduler plugin ({1}).".format(
-                                installed_version, supported_versions_string
-                            ),
-                            FailureLevel.ERROR,
-                        )
+                self._check_version_in_range(installed_version, supported_versions_list, supported_versions_string)
             elif installed_version not in supported_versions_list:  # Input string is a list of versions
                 self._add_failure(
                     "The installed version {0} is not supported by the scheduler plugin ({1}).".format(
                         installed_version, supported_versions_string
                     ),
+                    FailureLevel.ERROR,
+                )
+
+    def _check_version_in_range(self, installed_version, supported_versions_list, supported_versions_string):
+        """Check if the installed version is inside the supported versions range."""
+        CliRequirement = namedtuple("Requirement", "operator version")
+        comparison_operators = {
+            "<": operator.lt,
+            "<=": operator.le,
+            "==": operator.eq,
+            "!=": operator.ne,
+            ">=": operator.ge,
+            ">": operator.gt,
+        }
+        requirements = []
+        for version in supported_versions_list:
+            try:
+                match = re.search(r"^([<>=!]+)([\d.]+)", version)
+                requirements.append(CliRequirement(operator=match.group(1), version=match.group(2)))
+            except Exception as e:
+                self._add_failure(
+                    "Unable to parse SupportedParallelClusterVersions {0} in the scheduler plugin: {1}. "
+                    "The input of SupportedParallelClusterVersions can either contain multiple versions"
+                    "(e.g., '3.0.0, 3.0.1') or a version range(e.g., '>=3.0.1, <3.4.0')".format(
+                        supported_versions_string, e
+                    ),
+                    FailureLevel.ERROR,
+                )
+        for req in requirements:
+            if not comparison_operators[req.operator](
+                packaging.version.parse(installed_version),
+                packaging.version.parse(req.version),
+            ):
+                self._add_failure(
+                    "The installed version {0} is not supported by the scheduler plugin. Supported versions are: "
+                    "{1}.".format(installed_version, supported_versions_string),
                     FailureLevel.ERROR,
                 )
