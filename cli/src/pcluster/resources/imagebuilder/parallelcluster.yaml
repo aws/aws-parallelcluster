@@ -123,14 +123,7 @@ phases:
               set -v
               BUCKET="s3.amazonaws.com"
               [[ ${AWS::Region} =~ ^cn- ]] && BUCKET="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
-
-              OS='{{ build.OperatingSystemName.outputs.stdout }}'
-
-              if [[ ${!OS} =~ ^(ubuntu2004)$ ]]; then
-                echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"
-              else
-                echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz"
-              fi
+              echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"
 
       # Get input base AMI Architecture
       - name: OperatingSystemArchitecture
@@ -262,7 +255,7 @@ phases:
               set -v
               echo "Calling chef-client with /etc/parallelcluster/image_dna.json"
               cat /etc/parallelcluster/image_dna.json
-              chef-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster::default
+              cinc-client --local-mode --config /etc/chef/client.rb --log_level info --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/parallelcluster/image_dna.json --override-runlist aws-parallelcluster::default
 
       - name: InstallCfnBootstrap
         action: ExecuteBash
@@ -273,21 +266,8 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
               if [[ ${!OS} =~ ^(centos7|ubuntu(18|20)04)$ ]]; then
-                if [[ ${!OS} == centos7 ]]; then
-                  which pip2
-                  if [ $? -eq 0 ]; then
-                    PIP_COMMAND="pip2"
-                  else
-                    PIP_COMMAND="pip"
-                  fi
-                elif [[ ${!OS} == ubuntu1804 ]]; then
-                  PIP_COMMAND="pip"
-                elif [[ ${!OS} == ubuntu2004 ]]; then
-                  PIP_COMMAND="pip3"
-                fi
-
                 curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
-                ${!PIP_COMMAND} install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                pip3 install /tmp/aws-cfn-bootstrap-latest.tar.gz
               fi
 
       - name: CreateBootstrapFile

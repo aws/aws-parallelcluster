@@ -80,7 +80,7 @@ class CreateClusterRequestContent(Model):
     def cluster_configuration(self):
         """Gets the cluster_configuration of this CreateClusterRequestContent.
 
-        Cluster configuration as a YAML document
+        Cluster configuration as a YAML document.
 
         :return: The cluster_configuration of this CreateClusterRequestContent.
         :rtype: str
@@ -91,7 +91,7 @@ class CreateClusterRequestContent(Model):
     def cluster_configuration(self, cluster_configuration):
         """Sets the cluster_configuration of this CreateClusterRequestContent.
 
-        Cluster configuration as a YAML document
+        Cluster configuration as a YAML document.
 
         :param cluster_configuration: The cluster_configuration of this CreateClusterRequestContent.
         :type cluster_configuration: str

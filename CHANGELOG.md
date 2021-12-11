@@ -1,20 +1,46 @@
 CHANGELOG
 =========
 
-X.X.X
+3.1.0
 ------
 
 **ENHANCEMENTS**
 - Add support for `UseEc2Hostnames` in the cluster configuration file. When set to `true`, use EC2 default hostnames (e.g. ip-1-2-3-4) for compute nodes.
 - Explicitly set cloud-init datasource to be EC2. This save boot time for Ubuntu and CentOS platforms.
 - Add support for multiple compute resources with same instance type per queue.
+- Add `parallelcluster:compute-resource-name` tag to LaunchTemplates used by compute nodes.
+- Add abbreviated flags for `cluster-name` (-n), `region` (-r), `image-id` (-i) and `cluster-configuration` / `image-configuration` (-c) to the cli.
+- Enable clusters to authenticate users by integrating with Active Directory (AD) domains managed via AWS Directory Service.
 
 **CHANGES**
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
 - Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
+- Upgrade Slurm to version 21.08.4.
+- Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
 
 **BUG FIXES**
 - Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
+- Fix ecs:ListContainerInstances permission in BatchUserRole
+- Fix exporting of cluster logs when there is no prefix specified, previously exported to a `None` prefix.
+- Fix rollback not being performed in case of cluster update failure.  
+- Fix RootVolume schema for the HeadNode.
+
+3.0.2
+-----
+
+**CHANGES**
+- Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
+  ParallelCluster does not reinstall EFA during node start. Previously, EFA was reinstalled if `GdrSupport` had been
+  turned on in the configuration file. The `GdrSupport` parameter has no effect and should no longer be used.
+  - EFA configuration: ``efa-config-1.9-1``
+  - EFA profile: ``efa-profile-1.5-1``
+  - EFA kernel module: ``efa-1.14.2``
+  - RDMA core: ``rdma-core-37.0``
+  - Libfabric: ``libfabric-1.13.2``
+  - Open MPI: ``openmpi40-aws-4.1.1-2``
+
+**BUG FIXES**
+- Fix issue that is preventing cluster names to start with `parallelcluster-` prefix.
 
 3.0.1
 ------
@@ -123,6 +149,28 @@ X.X.X
 - Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
 - Remove installation of MPICH and FFTW packages.
 - Remove Ganglia support.
+
+2.11.3
+-----
+
+**CHANGES**
+- Upgrade EFA installer to version 1.14.1. Thereafter, EFA enables GDR support by default on supported instance type(s).
+  ParallelCluster does not reinstall EFA during node start.
+  Previously, EFA was reinstalled if `enable_efa_gdr` had been turned on in the configuration file.
+  The `enable_efa_gdr` parameter has no effect and should no longer be used.
+  - EFA configuration: ``efa-config-1.9-1``
+  - EFA profile: ``efa-profile-1.5-1``
+  - EFA kernel module: ``efa-1.14.2``
+  - RDMA core: ``rdma-core-37.0``
+  - Libfabric: ``libfabric-1.13.2``
+  - Open MPI: ``openmpi40-aws-4.1.1-2``
+- Include tags from cluster configuration file in the RunInstances dry runs performed during configuration validation.
+
+**BUG FIXES**
+- Fix the create custom AMI functionality issues:
+  - SGE download URL no more reachable. Use Debian repository to download SGE source archive.
+  - Outdated CA certificates used by Cinc. Update ca-certificates package during AMI build time.
+- Fix cluster update when using proxy setup.
 
 2.11.2
 -----

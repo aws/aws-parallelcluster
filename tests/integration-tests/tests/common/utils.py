@@ -154,6 +154,10 @@ def get_installed_parallelcluster_version():
     return pkg_resources.get_distribution("aws-parallelcluster").version
 
 
+def get_installed_parallelcluster_base_version():
+    return pkg_resources.packaging.version.parse(get_installed_parallelcluster_version()).base_version
+
+
 def get_sts_endpoint(region):
     """Get regionalized STS endpoint."""
     return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")

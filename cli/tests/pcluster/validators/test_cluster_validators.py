@@ -124,12 +124,19 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
     "resource_name, resources_length, max_length, expected_message",
     [
         ("SlurmQueues", 5, 10, None),
+        ("SchedulerQueues", 10, 10, None),
         ("ComputeResources", 4, 5, None),
         (
             "SlurmQueues",
             11,
             10,
             "Invalid number of SlurmQueues (11) specified. Currently only supports up to 10 SlurmQueues.",
+        ),
+        (
+            "SchedulerQueues",
+            12,
+            10,
+            "Invalid number of SchedulerQueues (12) specified. Currently only supports up to 10 SchedulerQueues.",
         ),
         (
             "ComputeResources",
@@ -719,6 +726,10 @@ def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
         (
             ["dir1", "dir1/subdir", "dir2", "dir2/subdir", "dir3"],
             "Mount directories dir1, dir2 cannot contain other mount directories",
+        ),
+        (
+            ["dir", "dir1"],
+            None,
         ),
     ],
 )

@@ -1,5 +1,4 @@
-usage: pcluster get-cluster-stack-events [-h] --cluster-name CLUSTER_NAME
-                                         [--region REGION]
+usage: pcluster get-cluster-stack-events [-h] -n CLUSTER_NAME [-r REGION]
                                          [--next-token NEXT_TOKEN] [--debug]
                                          [--query QUERY]
 
@@ -7,9 +6,10 @@ Retrieve the events associated with the stack for a given cluster.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster
-  --region REGION       AWS Region that the operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
   --next-token NEXT_TOKEN
                         Token to use for paginated requests.
   --debug               Turn on debug logging.

@@ -20,4 +20,5 @@ retrying
 troposphere
 untangle
 requests
+pyOpenSSL
 ../../api/client/src

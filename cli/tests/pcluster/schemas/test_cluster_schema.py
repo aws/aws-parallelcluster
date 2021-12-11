@@ -10,26 +10,33 @@
 # limitations under the License.
 
 import json
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
 import yaml
 from assertpy import assert_that
+from botocore.response import StreamingBody
 from marshmallow.validate import ValidationError
+from yaml.parser import ParserError
 
+from pcluster.aws.common import AWSClientError
 from pcluster.constants import SUPPORTED_OSES
 from pcluster.schemas.cluster_schema import (
-    ByosCloudFormationClusterInfrastructureSchema,
-    ByosClusterSharedArtifactSchema,
-    ByosFileSchema,
-    ByosLogsSchema,
-    ByosPluginResourcesSchema,
-    ByosSchedulerDefinitionSchema,
-    ByosSupportedDistrosSchema,
-    ByosUserSchema,
     ClusterSchema,
     HeadNodeIamSchema,
+    HeadNodeRootVolumeSchema,
     ImageSchema,
     QueueIamSchema,
+    SchedulerPluginCloudFormationClusterInfrastructureSchema,
+    SchedulerPluginClusterSharedArtifactSchema,
+    SchedulerPluginDefinitionSchema,
+    SchedulerPluginFileSchema,
+    SchedulerPluginLogsSchema,
+    SchedulerPluginResourcesSchema,
+    SchedulerPluginSettingsSchema,
+    SchedulerPluginSupportedDistrosSchema,
+    SchedulerPluginUserSchema,
     SchedulingSchema,
     SharedStorageSchema,
 )
@@ -69,8 +76,8 @@ def test_cluster_schema_awsbatch(mocker, test_datadir, config_file_name):
     _check_cluster_schema(config_file_name)
 
 
-@pytest.mark.parametrize("config_file_name", ["byos.required.yaml", "byos.full.yaml"])
-def test_cluster_schema_byos(mocker, test_datadir, config_file_name):
+@pytest.mark.parametrize("config_file_name", ["scheduler_plugin.required.yaml", "scheduler_plugin.full.yaml"])
+def test_cluster_schema_scheduler_plugin(mocker, test_datadir, config_file_name):
     mock_aws_api(mocker)
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     _check_cluster_schema(config_file_name)
@@ -165,6 +172,35 @@ def test_iam_schema(instance_role, instance_profile, additional_iam_policies, s3
         iam = QueueIamSchema().load(iam_dict)
         assert_that(iam.instance_role).is_equal_to(instance_role)
         assert_that(iam.instance_profile).is_equal_to(instance_profile)
+
+
+@pytest.mark.parametrize(
+    "config_dict, failure_message",
+    [
+        # failures
+        ({"KmsKeyId": "test"}, "Unknown field"),
+        # success
+        (
+            {
+                "VolumeType": "gp3",
+                "Iops": 100,
+                "Size": 50,
+                "Throughput": 300,
+                "Encrypted": True,
+                "DeleteOnTermination": True,
+            },
+            None,
+        ),
+    ],
+)
+def test_head_node_root_volume_schema(mocker, config_dict, failure_message):
+    mock_aws_api(mocker)
+
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            HeadNodeRootVolumeSchema().load(config_dict)
+    else:
+        HeadNodeRootVolumeSchema().load(config_dict)
 
 
 DUMMY_AWSBATCH_QUEUE = {
@@ -375,20 +411,22 @@ def test_scheduler_constraints_for_intel_packages(
         (["ubuntu1804"], ["centos7"], None),
     ],
 )
-def test_byos_supported_distros_schema(x86, arm64, failure_message):
-    byos_supported_distros_schema = {}
+def test_scheduler_plugin_supported_distros_schema(x86, arm64, failure_message):
+    scheduler_plugin_supported_distros_schema = {}
     if x86:
-        byos_supported_distros_schema["X86"] = x86
+        scheduler_plugin_supported_distros_schema["X86"] = x86
     if arm64:
-        byos_supported_distros_schema["Arm64"] = arm64
+        scheduler_plugin_supported_distros_schema["Arm64"] = arm64
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosSupportedDistrosSchema().load(byos_supported_distros_schema)
+            SchedulerPluginSupportedDistrosSchema().load(scheduler_plugin_supported_distros_schema)
     else:
-        byos_supported_distros = ByosSupportedDistrosSchema().load(byos_supported_distros_schema)
-        assert_that(byos_supported_distros.x86).is_equal_to(x86 or SUPPORTED_OSES)
-        assert_that(byos_supported_distros.arm64).is_equal_to(arm64 or SUPPORTED_OSES)
+        scheduler_plugin_supported_distros = SchedulerPluginSupportedDistrosSchema().load(
+            scheduler_plugin_supported_distros_schema
+        )
+        assert_that(scheduler_plugin_supported_distros.x86).is_equal_to(x86 or SUPPORTED_OSES)
+        assert_that(scheduler_plugin_supported_distros.arm64).is_equal_to(arm64 or SUPPORTED_OSES)
 
 
 @pytest.mark.parametrize(
@@ -399,20 +437,24 @@ def test_byos_supported_distros_schema(x86, arm64, failure_message):
     ],
 )
 def test_cloudformation_cluster_infrastructure_schema(mocker, template, failure_message):
-    byos_cloudformation_cluster_infrastructure_schema = {}
+    scheduler_plugin_cloudformation_cluster_infrastructure_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
     if template:
-        byos_cloudformation_cluster_infrastructure_schema["Template"] = template
+        scheduler_plugin_cloudformation_cluster_infrastructure_schema["Template"] = template
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosCloudFormationClusterInfrastructureSchema().load(byos_cloudformation_cluster_infrastructure_schema)
+            SchedulerPluginCloudFormationClusterInfrastructureSchema().load(
+                scheduler_plugin_cloudformation_cluster_infrastructure_schema
+            )
     else:
-        byos_cloudformation_cluster_infrastructure = ByosCloudFormationClusterInfrastructureSchema().load(
-            byos_cloudformation_cluster_infrastructure_schema
+        scheduler_plugin_cloudformation_cluster_infrastructure = (
+            SchedulerPluginCloudFormationClusterInfrastructureSchema().load(
+                scheduler_plugin_cloudformation_cluster_infrastructure_schema
+            )
         )
-        assert_that(byos_cloudformation_cluster_infrastructure.template).is_equal_to(template)
+        assert_that(scheduler_plugin_cloudformation_cluster_infrastructure.template).is_equal_to(template)
 
 
 @pytest.mark.parametrize(
@@ -422,19 +464,21 @@ def test_cloudformation_cluster_infrastructure_schema(mocker, template, failure_
         (None, "Missing data for required field."),
     ],
 )
-def test_byos_cluster_shared_artifact_schema(mocker, source, failure_message):
-    byos_cluster_shared_artifact_schema = {}
+def test_scheduler_plugin_cluster_shared_artifact_schema(mocker, source, failure_message):
+    scheduler_plugin_cluster_shared_artifact_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
     if source:
-        byos_cluster_shared_artifact_schema["Source"] = source
+        scheduler_plugin_cluster_shared_artifact_schema["Source"] = source
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosClusterSharedArtifactSchema().load(byos_cluster_shared_artifact_schema)
+            SchedulerPluginClusterSharedArtifactSchema().load(scheduler_plugin_cluster_shared_artifact_schema)
     else:
-        byos_cluster_shared_artifact = ByosClusterSharedArtifactSchema().load(byos_cluster_shared_artifact_schema)
-        assert_that(byos_cluster_shared_artifact.source).is_equal_to(source)
+        scheduler_plugin_cluster_shared_artifact = SchedulerPluginClusterSharedArtifactSchema().load(
+            scheduler_plugin_cluster_shared_artifact_schema
+        )
+        assert_that(scheduler_plugin_cluster_shared_artifact.source).is_equal_to(source)
 
 
 @pytest.mark.parametrize(
@@ -445,18 +489,18 @@ def test_byos_cluster_shared_artifact_schema(mocker, source, failure_message):
         (None, "Missing data for required field."),
     ],
 )
-def test_byos_plugin_resources_schema(mocker, artifacts, failure_message):
-    byos_plugin_resources_schema = {}
+def test_scheduler_plugin_resources_schema(mocker, artifacts, failure_message):
+    scheduler_plugin_resources_schema = {}
     mocker.patch("pcluster.utils.get_region", return_value="fake_region")
     mocker.patch("pcluster.utils.replace_url_parameters", return_value="fake_url")
     if artifacts:
-        byos_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
+        scheduler_plugin_resources_schema["ClusterSharedArtifacts"] = [{"Source": item} for item in artifacts]
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosPluginResourcesSchema().load(byos_plugin_resources_schema)
+            SchedulerPluginResourcesSchema().load(scheduler_plugin_resources_schema)
     else:
-        byos_plugin_resources = ByosPluginResourcesSchema().load(byos_plugin_resources_schema)
-        for artifact, source in zip(byos_plugin_resources.cluster_shared_artifacts, artifacts):
+        scheduler_plugin_resources = SchedulerPluginResourcesSchema().load(scheduler_plugin_resources_schema)
+        for artifact, source in zip(scheduler_plugin_resources.cluster_shared_artifacts, artifacts):
             assert_that(artifact.source).is_equal_to(source)
 
 
@@ -468,22 +512,22 @@ def test_byos_plugin_resources_schema(mocker, artifacts, failure_message):
         (None, True, "Missing data for required field."),
     ],
 )
-def test_byos_user_schema(name, enable_imds, failure_message):
-    byos_user_schema = {}
+def test_scheduler_plugin_user_schema(name, enable_imds, failure_message):
+    scheduler_plugin_user_schema = {}
     if name:
-        byos_user_schema["Name"] = name
+        scheduler_plugin_user_schema["Name"] = name
     if enable_imds:
-        byos_user_schema["EnableImds"] = enable_imds
+        scheduler_plugin_user_schema["EnableImds"] = enable_imds
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosPluginResourcesSchema().load(byos_user_schema)
+            SchedulerPluginResourcesSchema().load(scheduler_plugin_user_schema)
     else:
-        byos_user = ByosUserSchema().load(byos_user_schema)
-        assert_that(byos_user.name).is_equal_to(name)
+        scheduler_plugin_user = SchedulerPluginUserSchema().load(scheduler_plugin_user_schema)
+        assert_that(scheduler_plugin_user.name).is_equal_to(name)
         if enable_imds:
-            assert_that(byos_user.enable_imds).is_equal_to(enable_imds)
+            assert_that(scheduler_plugin_user.enable_imds).is_equal_to(enable_imds)
         else:
-            assert_that(byos_user.enable_imds).is_equal_to(False)
+            assert_that(scheduler_plugin_user.enable_imds).is_equal_to(False)
 
 
 @pytest.mark.parametrize(
@@ -498,22 +542,22 @@ def test_byos_user_schema(name, enable_imds, failure_message):
         ),
     ],
 )
-def test_byos_file_schema(file_path, timestamp_format, failure_message):
-    byos_file_schema = {}
+def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message):
+    scheduler_plugin_file_schema = {}
     if file_path:
-        byos_file_schema["FilePath"] = file_path
+        scheduler_plugin_file_schema["FilePath"] = file_path
     if timestamp_format:
-        byos_file_schema["TimestampFormat"] = timestamp_format
+        scheduler_plugin_file_schema["TimestampFormat"] = timestamp_format
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosFileSchema().load(byos_file_schema)
+            SchedulerPluginFileSchema().load(scheduler_plugin_file_schema)
     else:
-        byos_file = ByosFileSchema().load(byos_file_schema)
-        assert_that(byos_file.file_path).is_equal_to(file_path)
+        scheduler_plugin_file = SchedulerPluginFileSchema().load(scheduler_plugin_file_schema)
+        assert_that(scheduler_plugin_file.file_path).is_equal_to(file_path)
         if timestamp_format:
-            assert_that(byos_file.timestamp_format).is_equal_to(timestamp_format)
+            assert_that(scheduler_plugin_file.timestamp_format).is_equal_to(timestamp_format)
         else:
-            assert_that(byos_file.timestamp_format).is_equal_to("%Y-%m-%dT%H:%M:%S%z")
+            assert_that(scheduler_plugin_file.timestamp_format).is_equal_to("%Y-%m-%dT%H:%M:%S%z")
 
 
 @pytest.mark.parametrize(
@@ -530,40 +574,139 @@ def test_byos_file_schema(file_path, timestamp_format, failure_message):
         (None, "Missing data for required field."),
     ],
 )
-def test_byos_logs_schema(files, failure_message):
-    byos_logs_schema = {}
+def test_scheduler_plugin_logs_schema(files, failure_message):
+    scheduler_plugin_logs_schema = {}
     if files:
-        byos_logs_schema["Files"] = files
+        scheduler_plugin_logs_schema["Files"] = files
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosLogsSchema().load(byos_logs_schema)
+            SchedulerPluginLogsSchema().load(scheduler_plugin_logs_schema)
     else:
-        byos_logs = ByosLogsSchema().load(byos_logs_schema)
-        for file, expected_file in zip(byos_logs.files, files):
+        scheduler_plugin_logs = SchedulerPluginLogsSchema().load(scheduler_plugin_logs_schema)
+        for file, expected_file in zip(scheduler_plugin_logs.files, files):
             assert_that(file.file_path).is_equal_to(expected_file["FilePath"])
             assert_that(file.timestamp_format).is_equal_to(expected_file["TimestampFormat"])
 
 
 @pytest.mark.parametrize(
-    "byos_version, events, failure_message",
+    "plugin_interface_version, events, failure_message",
     [
         ("1.0", {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, None),
         (None, {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}, "Missing data for required field."),
         ("1.0", None, "Missing data for required field."),
     ],
 )
-def test_byos_scheduler_definition_schema(byos_version, events, failure_message):
-    byos_scheduler_definition_schema = {}
-    if byos_version:
-        byos_scheduler_definition_schema["ByosVersion"] = byos_version
+def test_scheduler_plugin_scheduler_definition_schema(plugin_interface_version, events, failure_message):
+    scheduler_plugin_definition_schema = {}
+    if plugin_interface_version:
+        scheduler_plugin_definition_schema["PluginInterfaceVersion"] = plugin_interface_version
     if events:
-        byos_scheduler_definition_schema["Events"] = events
+        scheduler_plugin_definition_schema["Events"] = events
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            ByosSchedulerDefinitionSchema().load(byos_scheduler_definition_schema)
+            SchedulerPluginDefinitionSchema().load(scheduler_plugin_definition_schema)
     else:
-        byos_scheduler_definition = ByosSchedulerDefinitionSchema().load(byos_scheduler_definition_schema)
-        assert_that(byos_scheduler_definition.byos_version).is_equal_to(byos_version)
-        assert_that(byos_scheduler_definition.events.head_init.execute_command.command).is_equal_to(
+        scheduler_plugin_definition = SchedulerPluginDefinitionSchema().load(scheduler_plugin_definition_schema)
+        assert_that(scheduler_plugin_definition.plugin_interface_version).is_equal_to(plugin_interface_version)
+        assert_that(scheduler_plugin_definition.events.head_init.execute_command.command).is_equal_to(
             events["HeadInit"]["ExecuteCommand"]["Command"]
         )
+
+
+@pytest.mark.parametrize(
+    "scheduler_definition, grant_sudo_privileges, s3_error, https_error, yaml_load_error, failure_message",
+    [
+        ("s3://bucket/scheduler_definition.yaml", True, None, None, None, None),
+        (
+            "s3://bucket/scheduler_definition_fake.yaml",
+            True,
+            AWSClientError(function_name="get_object", message="The specified key does not exist."),
+            None,
+            None,
+            "Error while downloading scheduler definition from "
+            "s3://bucket/scheduler_definition_fake.yaml: The specified key does not exist.",
+        ),
+        ("https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition.yaml", False, None, None, None, None),
+        (
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+            None,
+            None,
+            HTTPError(
+                url="https://test-slurm.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml",
+                code=403,
+                msg="Forbidden",
+                hdrs="dummy",
+                fp="dummy",
+            ),
+            None,
+            "Error while downloading scheduler definition from "
+            "https://bucket.s3.us-east-2.amazonaws.com/scheduler_definition_fake.yaml: "
+            "The provided URL is invalid or unavailable.",
+        ),
+        (
+            {"PluginInterfaceVersion": "1.0", "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}},
+            True,
+            None,
+            None,
+            None,
+            None,
+        ),
+        (
+            "ftp://bucket/scheduler_definition_fake.yaml",
+            True,
+            None,
+            None,
+            None,
+            r"Error while downloading scheduler definition from ftp://bucket/scheduler_definition_fake.yaml: "
+            r"The provided value for SchedulerDefinition is invalid. "
+            r"You can specify this as an S3 URL, HTTPS URL or as an inline YAML object.",
+        ),
+        (
+            "s3://bucket/scheduler_definition.yaml",
+            True,
+            None,
+            None,
+            ParserError("parse error"),
+            r"The retrieved SchedulerDefinition \(s3://bucket/scheduler_definition.yaml\) is not a valid YAML.",
+        ),
+    ],
+)
+def test_scheduler_plugin_settings_schema(
+    mocker, scheduler_definition, grant_sudo_privileges, s3_error, https_error, yaml_load_error, failure_message
+):
+    scheduler_plugin_settings_schema = {}
+    body_encoded = json.dumps(
+        {"PluginInterfaceVersion": "1.0", "Events": {"HeadInit": {"ExecuteCommand": {"Command": "env"}}}}
+    ).encode("utf8")
+    if isinstance(scheduler_definition, str):
+        if scheduler_definition.startswith("s3"):
+            mocker.patch(
+                "pcluster.aws.s3.S3Client.get_object",
+                return_value={"Body": StreamingBody(BytesIO(body_encoded), len(body_encoded))},
+                side_effect=s3_error,
+            )
+        else:
+            file_mock = mocker.MagicMock()
+            file_mock.read.return_value.decode.return_value = body_encoded
+            mocker.patch(
+                "pcluster.schemas.cluster_schema.urlopen", side_effect=https_error
+            ).return_value.__enter__.return_value = file_mock
+    if yaml_load_error:
+        mocker.patch("pcluster.schemas.cluster_schema.yaml.safe_load", side_effect=yaml_load_error)
+    if scheduler_definition:
+        scheduler_plugin_settings_schema["SchedulerDefinition"] = scheduler_definition
+    if grant_sudo_privileges:
+        scheduler_plugin_settings_schema["GrantSudoPrivileges"] = grant_sudo_privileges
+    if failure_message:
+        with pytest.raises(ValidationError, match=failure_message):
+            SchedulerPluginSettingsSchema().load(scheduler_plugin_settings_schema)
+    else:
+        scheduler_plugin_settings = SchedulerPluginSettingsSchema().load(scheduler_plugin_settings_schema)
+        assert_that(scheduler_plugin_settings.scheduler_definition.plugin_interface_version).is_equal_to("1.0")
+        assert_that(
+            scheduler_plugin_settings.scheduler_definition.events.head_init.execute_command.command
+        ).is_equal_to("env")
+        if grant_sudo_privileges:
+            assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(grant_sudo_privileges)
+        else:
+            assert_that(scheduler_plugin_settings.grant_sudo_privileges).is_equal_to(False)

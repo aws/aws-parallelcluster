@@ -31,8 +31,8 @@ from tests.pcluster.utils import load_cluster_model_from_yaml
         "slurm.full.yaml",
         "awsbatch.simple.yaml",
         "awsbatch.full.yaml",
-        "byos.required.yaml",
-        "byos.full.yaml",
+        "scheduler_plugin.required.yaml",
+        "scheduler_plugin.full.yaml",
     ],
 )
 def test_cluster_builder_from_configuration_file(mocker, config_file_name):
@@ -47,17 +47,17 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
 
 
 @pytest.mark.parametrize(
-    "config_file_name, expected_byos_stack",
+    "config_file_name, expected_scheduler_plugin_stack",
     [
-        ("byos-without-template.yaml", {}),
+        ("scheduler-plugin-without-template.yaml", {}),
         (
-            "byos-with-template.yaml",
+            "scheduler-plugin-with-template.yaml",
             {
                 "Type": "AWS::CloudFormation::Stack",
                 "Properties": {
                     "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
                     "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "byos-substack.cfn",
+                    "scheduler-plugin-substack.cfn",
                     "Parameters": {
                         "ClusterName": "clustername",
                         "ParallelClusterStackId": {"Ref": "AWS::StackId"},
@@ -75,13 +75,13 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
             },
         ),
         (
-            "byos-with-head-node-instance-role.yaml",
+            "scheduler-plugin-with-head-node-instance-role.yaml",
             {
                 "Type": "AWS::CloudFormation::Stack",
                 "Properties": {
                     "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region."
                     "amazonaws.com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "byos-substack.cfn",
+                    "scheduler-plugin-substack.cfn",
                     "Parameters": {
                         "ClusterName": "clustername",
                         "ParallelClusterStackId": {"Ref": "AWS::StackId"},
@@ -99,13 +99,13 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
             },
         ),
         (
-            "byos-with-compute-fleet-instance-role.yaml",
+            "scheduler-plugin-with-compute-fleet-instance-role.yaml",
             {
                 "Type": "AWS::CloudFormation::Stack",
                 "Properties": {
                     "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
                     "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "byos-substack.cfn",
+                    "scheduler-plugin-substack.cfn",
                     "Parameters": {
                         "ClusterName": "clustername",
                         "ParallelClusterStackId": {"Ref": "AWS::StackId"},
@@ -126,13 +126,13 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
             },
         ),
         (
-            "byos.full.yaml",
+            "scheduler_plugin.full.yaml",
             {
                 "Type": "AWS::CloudFormation::Stack",
                 "Properties": {
                     "TemplateURL": "https://parallelcluster-a69601b5ee1fc2f2-v1-do-not-delete.s3.fake-region.amazonaws."
                     "com/parallelcluster/clusters/dummy-cluster-randomstring123/templates/"
-                    "byos-substack.cfn",
+                    "scheduler-plugin-substack.cfn",
                     "Parameters": {
                         "ClusterName": "clustername",
                         "ParallelClusterStackId": {"Ref": "AWS::StackId"},
@@ -157,11 +157,11 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
         ),
     ],
 )
-def test_byos_substack(mocker, config_file_name, expected_byos_stack, test_datadir):
+def test_scheduler_plugin_substack(mocker, config_file_name, expected_scheduler_plugin_stack, test_datadir):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
-    if config_file_name == "byos.full.yaml":
+    if config_file_name == "scheduler_plugin.full.yaml":
         input_yaml, cluster = load_cluster_model_from_yaml(config_file_name)
     else:
         input_yaml, cluster = load_cluster_model_from_yaml(config_file_name, test_datadir)
@@ -169,7 +169,9 @@ def test_byos_substack(mocker, config_file_name, expected_byos_stack, test_datad
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
     print(yaml.dump(generated_template))
-    assert_that(generated_template["Resources"].get("ByosStack", {})).is_equal_to(expected_byos_stack)
+    assert_that(generated_template["Resources"].get("SchedulerPluginStack", {})).is_equal_to(
+        expected_scheduler_plugin_stack
+    )
 
 
 @pytest.mark.parametrize(
@@ -178,7 +180,7 @@ def test_byos_substack(mocker, config_file_name, expected_byos_stack, test_datad
         ("slurm-imds-secured-true.yaml", "slurm-imds-secured-true.head-node.dna.json"),
         ("slurm-imds-secured-false.yaml", "slurm-imds-secured-false.head-node.dna.json"),
         ("awsbatch-imds-secured-false.yaml", "awsbatch-imds-secured-false.head-node.dna.json"),
-        ("byos-imds-secured-true.yaml", "byos-imds-secured-true.head-node.dna.json"),
+        ("scheduler-plugin-imds-secured-true.yaml", "scheduler-plugin-imds-secured-true.head-node.dna.json"),
     ],
 )
 # Datetime mocking is required because some template values depend on the current datetime value

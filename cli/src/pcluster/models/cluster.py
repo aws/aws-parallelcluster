@@ -31,7 +31,7 @@ from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.aws.common import AWSClientError, BadRequestError, LimitExceededError, StackNotFoundError, get_region
-from pcluster.config.cluster_config import BaseClusterConfig, ByosScheduling, SlurmScheduling, Tag
+from pcluster.config.cluster_config import BaseClusterConfig, SchedulerPluginScheduling, SlurmScheduling, Tag
 from pcluster.config.common import ValidatorSuppressor
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.constants import (
@@ -486,7 +486,7 @@ class Cluster:
             if self.template_body:
                 self.bucket.upload_cfn_template(self.template_body, PCLUSTER_S3_ARTIFACTS_DICT.get("template_name"))
 
-            if isinstance(self.config.scheduling, (SlurmScheduling, ByosScheduling)):
+            if isinstance(self.config.scheduling, (SlurmScheduling, SchedulerPluginScheduling)):
                 # upload instance types data
                 self.bucket.upload_config(
                     self.config.get_instance_types_data(),
@@ -494,8 +494,8 @@ class Cluster:
                     format=S3FileFormat.JSON,
                 )
 
-            if isinstance(self.config.scheduling, ByosScheduling):
-                self._render_and_upload_byos_template()
+            if isinstance(self.config.scheduling, SchedulerPluginScheduling):
+                self._render_and_upload_scheduler_plugin_template()
         except BadRequestClusterActionError:
             raise
         except Exception as e:
@@ -503,26 +503,28 @@ class Cluster:
             LOGGER.error(message)
             raise _cluster_error_mapper(e, message)
 
-    def _render_and_upload_byos_template(self):
-        byos_template = get_attr(
+    def _render_and_upload_scheduler_plugin_template(self):
+        scheduler_plugin_template = get_attr(
             self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
         )
-        if not byos_template:
+        if not scheduler_plugin_template:
             return
 
         try:
-            if byos_template.startswith("s3"):
-                bucket_parsing_result = parse_bucket_url(byos_template)
+            if scheduler_plugin_template.startswith("s3"):
+                bucket_parsing_result = parse_bucket_url(scheduler_plugin_template)
                 result = AWSApi.instance().s3.get_object(
                     bucket_name=bucket_parsing_result["bucket_name"], key=bucket_parsing_result["object_key"]
                 )
                 file_content = result["Body"].read().decode("utf-8")
             else:
-                with urlopen(byos_template) as f:  # nosec nosemgrep - byos_template url is properly validated
+                with urlopen(  # nosec nosemgrep - scheduler_plugin_template url is properly validated
+                    scheduler_plugin_template
+                ) as f:
                     file_content = f.read().decode("utf-8")
         except Exception as e:
             raise BadRequestClusterActionError(
-                f"Error while downloading scheduler plugin artifacts from '{byos_template}': {str(e)}"
+                f"Error while downloading scheduler plugin artifacts from '{scheduler_plugin_template}': {str(e)}"
             ) from e
 
         # jinja rendering
@@ -533,15 +535,17 @@ class Cluster:
             )
             template = environment.from_string(file_content)
             rendered_template = template.render(
-                cluster_configuration=parse_config(self.source_config_text), cluster_name=self.name
+                cluster_configuration=ClusterSchema(cluster_name=self.name).dump(deepcopy(self.config)),
+                cluster_name=self.name,
+                instance_types_info=self.config.get_instance_types_data(),
             )
         except Exception as e:
             raise BadRequestClusterActionError(
-                f"Error while rendering scheduler plugin template '{byos_template}': {str(e)}"
+                f"Error while rendering scheduler plugin template '{scheduler_plugin_template}': {str(e)}"
             ) from e
 
         self.bucket.upload_cfn_template(
-            rendered_template, PCLUSTER_S3_ARTIFACTS_DICT["byos_template_name"], S3FileFormat.TEXT
+            rendered_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
         )
 
     def delete(self, keep_logs: bool = True):

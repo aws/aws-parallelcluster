@@ -23,8 +23,6 @@ from pcluster.aws.aws_resources import InstanceTypeInfo
 from pcluster.aws.common import get_region
 from pcluster.config.common import AdditionalIamPolicy, BaseDevSettings, BaseTag, Resource
 from pcluster.constants import (
-    BYOS_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT,
-    BYOS_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT,
     CIDR_ALL_IPS,
     CW_DASHBOARD_ENABLED_DEFAULT,
     CW_LOGS_ENABLED_DEFAULT,
@@ -37,9 +35,11 @@ from pcluster.constants import (
     MAX_NUMBER_OF_COMPUTE_RESOURCES,
     MAX_NUMBER_OF_QUEUES,
     MAX_STORAGE_COUNT,
+    SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT,
+    SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT,
     SUPPORTED_OSES,
 )
-from pcluster.utils import get_partition, get_resource_name_from_resource_arn, replace_url_parameters
+from pcluster.utils import get_attr, get_partition, get_resource_name_from_resource_arn, replace_url_parameters
 from pcluster.validators.awsbatch_validators import (
     AwsBatchComputeInstanceTypeValidator,
     AwsBatchComputeResourceSizeValidator,
@@ -77,6 +77,7 @@ from pcluster.validators.cluster_validators import (
     SchedulerOsValidator,
     SharedStorageNameValidator,
 )
+from pcluster.validators.directory_service_validators import DomainAddrValidator, LdapTlsReqCertValidator
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EbsVolumeSizeSnapshotValidator,
@@ -111,6 +112,7 @@ from pcluster.validators.s3_validators import (
     S3BucketValidator,
     UrlValidator,
 )
+from pcluster.validators.scheduler_plugin_validators import SudoPrivilegesValidator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -466,8 +468,8 @@ class AwsBatchQueueNetworking(_QueueNetworking):
         super().__init__(**kwargs)
 
 
-class ByosQueueNetworking(SlurmQueueNetworking):
-    """Represent the networking configuration for the Byos Queue."""
+class SchedulerPluginQueueNetworking(SlurmQueueNetworking):
+    """Represent the networking configuration for the Scheduler Plugin Queue."""
 
     pass
 
@@ -655,6 +657,40 @@ class Imds(Resource):
     def __init__(self, secured: bool = None, **kwargs):
         super().__init__(**kwargs)
         self.secured = Resource.init_param(secured, default=True)
+
+
+class DirectoryService(Resource):
+    """Represent DirectoryService configuration."""
+
+    def __init__(
+        self,
+        domain_name: str = None,
+        domain_addr: str = None,
+        password_secret_arn: str = None,
+        domain_read_only_user: str = None,
+        ldap_tls_ca_cert: str = None,
+        ldap_tls_req_cert: str = None,
+        ldap_access_filter: str = None,
+        generate_ssh_keys_for_users: bool = None,
+        additional_sssd_configs: Dict = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.domain_name = Resource.init_param(domain_name)
+        self.domain_addr = Resource.init_param(domain_addr)
+        self.password_secret_arn = Resource.init_param(password_secret_arn)
+        self.domain_read_only_user = Resource.init_param(domain_read_only_user)
+        self.ldap_tls_ca_cert = Resource.init_param(ldap_tls_ca_cert)
+        self.ldap_tls_req_cert = Resource.init_param(ldap_tls_req_cert, default="hard")
+        self.ldap_access_filter = Resource.init_param(ldap_access_filter)
+        self.generate_ssh_keys_for_users = Resource.init_param(generate_ssh_keys_for_users, default=True)
+        self.additional_sssd_configs = Resource.init_param(additional_sssd_configs, default={})
+
+    def _register_validators(self):
+        if self.domain_addr:
+            self._register_validator(DomainAddrValidator, domain_addr=self.domain_addr)
+        if self.ldap_tls_req_cert:
+            self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
 
 
 class ClusterIam(Resource):
@@ -928,6 +964,7 @@ class BaseClusterConfig(Resource):
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
         iam: ClusterIam = None,
+        directory_service: DirectoryService = None,
         config_region: str = None,
         custom_s3_bucket: str = None,
         additional_resources: str = None,
@@ -949,6 +986,7 @@ class BaseClusterConfig(Resource):
         self.additional_packages = additional_packages
         self.tags = tags
         self.iam = iam
+        self.directory_service = directory_service
         self.custom_s3_bucket = Resource.init_param(custom_s3_bucket)
         self._bucket = None
         self.additional_resources = Resource.init_param(additional_resources)
@@ -1393,7 +1431,7 @@ class SlurmComputeResource(BaseComputeResource):
 
 
 class _CommonQueue(BaseQueue):
-    """Represent the Common Queue resource between Slurm and Byos."""
+    """Represent the Common Queue resource between Slurm and Scheduler Plugin."""
 
     def __init__(
         self,
@@ -1520,8 +1558,8 @@ class SlurmScheduling(Resource):
         )
 
 
-class ByosComputeResource(SlurmComputeResource):
-    """Represent the Byos Compute Resource."""
+class SchedulerPluginComputeResource(SlurmComputeResource):
+    """Represent the Scheduler Plugin Compute Resource."""
 
     def __init__(
         self,
@@ -1532,13 +1570,13 @@ class ByosComputeResource(SlurmComputeResource):
         self.custom_settings = custom_settings
 
 
-class ByosQueue(_CommonQueue):
-    """Represent the Byos queue."""
+class SchedulerPluginQueue(_CommonQueue):
+    """Represent the Scheduler Plugin queue."""
 
     def __init__(
         self,
-        compute_resources: List[ByosComputeResource],
-        networking: ByosQueueNetworking,
+        compute_resources: List[SchedulerPluginComputeResource],
+        networking: SchedulerPluginQueueNetworking,
         custom_settings: Dict = None,
         **kwargs,
     ):
@@ -1578,8 +1616,8 @@ class ByosQueue(_CommonQueue):
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
 
 
-class ByosSupportedDistros(Resource):
-    """Represent the Supported Distros for a BYOS plugin."""
+class SchedulerPluginSupportedDistros(Resource):
+    """Represent the Supported Distros for a Scheduler Plugin."""
 
     def __init__(self, x86: List[str] = None, arm64: List[str] = None, **kwargs):
         super().__init__(**kwargs)
@@ -1587,38 +1625,38 @@ class ByosSupportedDistros(Resource):
         self.arm64 = Resource.init_param(arm64, default=SUPPORTED_OSES)
 
 
-class ByosQueueConstraints(Resource):
-    """Represent the Queue Constraints for a BYOS plugin."""
+class SchedulerPluginQueueConstraints(Resource):
+    """Represent the Queue Constraints for a Scheduler Plugin."""
 
     def __init__(self, max_count: int = None, max_subnets_count: int = None, **kwargs):
         super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_QUEUES)
         self.max_subnets_count = Resource.init_param(
-            max_subnets_count, default=BYOS_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT
+            max_subnets_count, default=SCHEDULER_PLUGIN_QUEUE_CONSTRAINTS_MAX_SUBNETS_COUNT
         )
 
 
-class ByosComputeResourceConstraints(Resource):
-    """Represent the Compute Resource Constraints for a BYOS plugin."""
+class SchedulerPluginComputeResourceConstraints(Resource):
+    """Represent the Compute Resource Constraints for a Scheduler Plugin."""
 
     def __init__(self, max_count: int = None, max_instance_types_count: int = None, **kwargs):
         super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=MAX_NUMBER_OF_COMPUTE_RESOURCES)
         self.max_instance_types_count = Resource.init_param(
-            max_instance_types_count, default=BYOS_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT
+            max_instance_types_count, default=SCHEDULER_PLUGIN_COMPUTE_RESOURCE_CONSTRAINTS_MAX_INSTANCE_TYPES_COUNT
         )
 
 
-class ByosRequirements(Resource):
-    """Represent the Requirements for a BYOS plugin."""
+class SchedulerPluginRequirements(Resource):
+    """Represent the Requirements for a Scheduler Plugin."""
 
     def __init__(
         self,
-        supported_distros: ByosSupportedDistros = None,
+        supported_distros: SchedulerPluginSupportedDistros = None,
         supported_regions: List[str] = None,
-        queue_constraints: ByosQueueConstraints = None,
-        compute_resource_constraints: ByosComputeResourceConstraints = None,
-        requires_sudo_priviledges: bool = None,
+        queue_constraints: SchedulerPluginQueueConstraints = None,
+        compute_resource_constraints: SchedulerPluginComputeResourceConstraints = None,
+        requires_sudo_privileges: bool = None,
         supports_cluster_update: bool = None,
         supported_parallel_cluster_versions: str = None,
         **kwargs,
@@ -1628,13 +1666,13 @@ class ByosRequirements(Resource):
         self.supported_regions = supported_regions
         self.queue_constraints = queue_constraints
         self.compute_resource_constraints = compute_resource_constraints
-        self.requires_sudo_priviledges = Resource.init_param(requires_sudo_priviledges, default=False)
+        self.requires_sudo_privileges = Resource.init_param(requires_sudo_privileges, default=False)
         self.supports_cluster_update = Resource.init_param(supports_cluster_update, default=True)
         self.supported_parallel_cluster_versions = supported_parallel_cluster_versions
 
 
-class ByosCloudFormationInfrastructure(Resource):
-    """Represent the CloudFormation infrastructure for a BYOS plugin."""
+class SchedulerPluginCloudFormationInfrastructure(Resource):
+    """Represent the CloudFormation infrastructure for a Scheduler Plugin."""
 
     def __init__(self, template: str, **kwargs):
         super().__init__(**kwargs)
@@ -1644,16 +1682,16 @@ class ByosCloudFormationInfrastructure(Resource):
         self._register_validator(UrlValidator, url=self.template, fail_on_https_error=True)
 
 
-class ByosClusterInfrastructure(Resource):
-    """Represent the ClusterInfastructure config for a BYOS plugin."""
+class SchedulerPluginClusterInfrastructure(Resource):
+    """Represent the ClusterInfastructure config for a Scheduler Plugin."""
 
-    def __init__(self, cloud_formation: ByosCloudFormationInfrastructure = None, **kwargs):
+    def __init__(self, cloud_formation: SchedulerPluginCloudFormationInfrastructure = None, **kwargs):
         super().__init__(**kwargs)
         self.cloud_formation = cloud_formation
 
 
-class ByosClusterSharedArtifact(Resource):
-    """Represent the ClusterSharedArtifact config for a BYOS plugin."""
+class SchedulerPluginClusterSharedArtifact(Resource):
+    """Represent the ClusterSharedArtifact config for a Scheduler Plugin."""
 
     def __init__(self, source: str, **kwargs):
         super().__init__(**kwargs)
@@ -1663,44 +1701,44 @@ class ByosClusterSharedArtifact(Resource):
         self._register_validator(UrlValidator, url=self.source)
 
 
-class ByosPluginResources(Resource):
-    """Represent the PluginResources config for a BYOS plugin."""
+class SchedulerPluginPluginResources(Resource):
+    """Represent the PluginResources config for a Scheduler Plugin."""
 
-    def __init__(self, cluster_shared_artifacts: [ByosClusterSharedArtifact], **kwargs):
+    def __init__(self, cluster_shared_artifacts: [SchedulerPluginClusterSharedArtifact], **kwargs):
         super().__init__(**kwargs)
         self.cluster_shared_artifacts = cluster_shared_artifacts
 
 
-class ByosExecuteCommand(Resource):
-    """Represent the ExecuteCommand for a BYOS plugin."""
+class SchedulerPluginExecuteCommand(Resource):
+    """Represent the ExecuteCommand for a Scheduler Plugin."""
 
     def __init__(self, command: str, **kwargs):
         super().__init__(**kwargs)
         self.command = command
 
 
-class ByosEvent(Resource):
-    """Represent the Event config for a BYOS plugin."""
+class SchedulerPluginEvent(Resource):
+    """Represent the Event config for a Scheduler Plugin."""
 
-    def __init__(self, execute_command: ByosExecuteCommand, **kwargs):
+    def __init__(self, execute_command: SchedulerPluginExecuteCommand, **kwargs):
         super().__init__(**kwargs)
         self.execute_command = execute_command
 
 
-class ByosEvents(Resource):
-    """Represent the Events config for a BYOS plugin."""
+class SchedulerPluginEvents(Resource):
+    """Represent the Events config for a Scheduler Plugin."""
 
     def __init__(
         self,
-        head_init: ByosEvent = None,
-        head_configure: ByosEvent = None,
-        head_finalize: ByosEvent = None,
-        compute_init: ByosEvent = None,
-        compute_configure: ByosEvent = None,
-        compute_finalize: ByosEvent = None,
-        head_cluster_update: ByosEvent = None,
-        head_compute_fleet_start: ByosEvent = None,
-        head_compute_fleet_stop: ByosEvent = None,
+        head_init: SchedulerPluginEvent = None,
+        head_configure: SchedulerPluginEvent = None,
+        head_finalize: SchedulerPluginEvent = None,
+        compute_init: SchedulerPluginEvent = None,
+        compute_configure: SchedulerPluginEvent = None,
+        compute_finalize: SchedulerPluginEvent = None,
+        head_cluster_update: SchedulerPluginEvent = None,
+        head_compute_fleet_start: SchedulerPluginEvent = None,
+        head_compute_fleet_stop: SchedulerPluginEvent = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1715,8 +1753,8 @@ class ByosEvents(Resource):
         self.head_compute_fleet_stop = head_compute_fleet_stop
 
 
-class ByosFile(Resource):
-    """Represent the Byos file resource."""
+class SchedulerPluginFile(Resource):
+    """Represent the Scheduler Plugin file resource."""
 
     def __init__(self, file_path: str, timestamp_format: str = None, **kwargs):
         super().__init__(**kwargs)
@@ -1724,24 +1762,24 @@ class ByosFile(Resource):
         self.timestamp_format = Resource.init_param(timestamp_format, default="%Y-%m-%dT%H:%M:%S%z")
 
 
-class ByosLogs(Resource):
-    """Represent the Byos logs resource."""
+class SchedulerPluginLogs(Resource):
+    """Represent the Scheduler Plugin logs resource."""
 
-    def __init__(self, files: [ByosFile], **kwargs):
+    def __init__(self, files: [SchedulerPluginFile], **kwargs):
         super().__init__(**kwargs)
         self.files = files
 
 
-class ByosMonitoring(Resource):
-    """Represent the Byos monitoring resource."""
+class SchedulerPluginMonitoring(Resource):
+    """Represent the Scheduler Plugin monitoring resource."""
 
-    def __init__(self, logs: ByosLogs, **kwargs):
+    def __init__(self, logs: SchedulerPluginLogs, **kwargs):
         super().__init__(**kwargs)
         self.logs = logs
 
 
-class ByosUser(Resource):
-    """Represent the Byos user resource."""
+class SchedulerPluginUser(Resource):
+    """Represent the Scheduler Plugin user resource."""
 
     def __init__(self, name: str, enable_imds: bool = None, **kwargs):
         super().__init__(**kwargs)
@@ -1749,23 +1787,23 @@ class ByosUser(Resource):
         self.enable_imds = Resource.init_param(enable_imds, default=False)
 
 
-class ByosSchedulerDefinition(Resource):
-    """Represent the Byos scheduler definition."""
+class SchedulerPluginDefinition(Resource):
+    """Represent the Scheduler Plugin scheduler definition."""
 
     def __init__(
         self,
-        byos_version: str,
-        events: ByosEvents,
+        plugin_interface_version: str,
+        events: SchedulerPluginEvents,
         metadata: Dict = None,
-        requirements: ByosRequirements = None,
-        cluster_infrastructure: ByosClusterInfrastructure = None,
-        plugin_resources: ByosPluginResources = None,
-        monitoring: ByosMonitoring = None,
-        system_users: [ByosUser] = None,
+        requirements: SchedulerPluginRequirements = None,
+        cluster_infrastructure: SchedulerPluginClusterInfrastructure = None,
+        plugin_resources: SchedulerPluginPluginResources = None,
+        monitoring: SchedulerPluginMonitoring = None,
+        system_users: [SchedulerPluginUser] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.byos_version = byos_version
+        self.plugin_interface_version = plugin_interface_version
         self.metadata = metadata
         self.requirements = requirements
         self.cluster_infrastructure = cluster_infrastructure
@@ -1775,28 +1813,37 @@ class ByosSchedulerDefinition(Resource):
         self.system_users = system_users
 
 
-class ByosSettings(Resource):
-    """Represent the Byos settings."""
+class SchedulerPluginSettings(Resource):
+    """Represent the Scheduler Plugin settings."""
 
     def __init__(
         self,
-        scheduler_definition: ByosSchedulerDefinition,
-        grant_sudo_priviledges: bool = None,
+        scheduler_definition: SchedulerPluginDefinition,
+        grant_sudo_privileges: bool = None,
         custom_settings: Dict = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.scheduler_definition = scheduler_definition
-        self.grant_sudo_priviledges = Resource.init_param(grant_sudo_priviledges, default=False)
+        self.grant_sudo_privileges = Resource.init_param(grant_sudo_privileges, default=False)
         self.custom_settings = custom_settings
 
+    def _register_validators(self):
+        self._register_validator(
+            SudoPrivilegesValidator,
+            grant_sudo_privileges=self.grant_sudo_privileges,
+            requires_sudo_privileges=self.scheduler_definition.requirements.requires_sudo_privileges
+            if self.scheduler_definition.requirements
+            else None,
+        )
 
-class ByosScheduling(Resource):
-    """Represent a byos Scheduling resource."""
 
-    def __init__(self, queues: List[ByosQueue], settings: ByosSettings, **kwargs):
+class SchedulerPluginScheduling(Resource):
+    """Represent a Scheduler Plugin Scheduling resource."""
+
+    def __init__(self, queues: List[SchedulerPluginQueue], settings: SchedulerPluginSettings, **kwargs):
         super().__init__(**kwargs)
-        self.scheduler = "byos"
+        self.scheduler = "plugin"
         self.queues = queues
         self.settings = settings
 
@@ -1804,12 +1851,33 @@ class ByosScheduling(Resource):
         self._register_validator(
             DuplicateNameValidator, name_list=[queue.name for queue in self.queues], resource_name="Queue"
         )
+        self._register_validator(
+            MaxCountValidator,
+            resources_length=len(self.queues),
+            max_length=get_attr(
+                self.settings.scheduler_definition,
+                "requirements.queue_constraints.max_count",
+                default=MAX_NUMBER_OF_QUEUES,
+            ),
+            resource_name="SchedulerQueues",
+        )
+        for queue in self.queues:
+            self._register_validator(
+                MaxCountValidator,
+                resources_length=len(queue.compute_resources),
+                max_length=get_attr(
+                    self.settings.scheduler_definition,
+                    "requirements.compute_resource_constraints.max_count",
+                    default=MAX_NUMBER_OF_COMPUTE_RESOURCES,
+                ),
+                resource_name="ComputeResources",
+            )
 
 
-class ByosClusterConfig(BaseClusterConfig):
-    """Represent the full Byos Cluster configuration."""
+class SchedulerPluginClusterConfig(BaseClusterConfig):
+    """Represent the full Scheduler Plugin Cluster configuration."""
 
-    def __init__(self, cluster_name: str, scheduling: ByosScheduling, **kwargs):
+    def __init__(self, cluster_name: str, scheduling: SchedulerPluginScheduling, **kwargs):
         super().__init__(cluster_name, **kwargs)
         self.scheduling = scheduling
         self.__image_dict = None

@@ -129,16 +129,6 @@ phases:
               fi
 
       ### versions ###
-      - name: PythonVersion
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PATTERN=$(grep -F "default['cluster']['python-version']" {{ CookbookDefaultFile }})
-              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              echo ${VERSION}
-
       - name: MungeVersion
         action: ExecuteBash
         inputs:
@@ -211,70 +201,6 @@ phases:
               set -v
               HAS_GPU=$(lspci | grep -o "NVIDIA") || HAS_GPU="false"
               echo "${HAS_GPU}"
-
-      ### paths ###
-      - name: SystemPyenvRoot
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              PATTERN=$(grep -F "default['cluster']['base_dir']" {{ CookbookDefaultFile }})
-              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
-              PYENV_ROOT+="${BASE_DIR}/pyenv"
-              echo ${PYENV_ROOT}
-
-      - name: CookbookVirtualenvPath
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              echo "{{ validate.SystemPyenvRoot.outputs.stdout }}/versions/{{ validate.PythonVersion.outputs.stdout }}/envs/cookbook_virtualenv"
-
-      - name: NodeVirtualenvPath
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -v
-              echo "{{ validate.SystemPyenvRoot.outputs.stdout }}/versions/{{ validate.PythonVersion.outputs.stdout }}/envs/node_virtualenv"
-
-      ### validations ###
-      - name: AWSCli
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              OS="{{ validate.CookbookVirtualenvPath.outputs.stdout }}"
-              if [[ ${OS} =~ ^alinux ]]; then
-                username="ec2-user"
-              elif [[ ${OS} =~ ^centos ]]; then
-                username="centos"
-              elif [[ ${OS} =~ ^ubuntu ]]; then
-                username="ubuntu"
-              fi
-              export PATH="/usr/local/bin:/usr/bin/:${PATH}"
-
-              echo "Executing awscli as user..."
-              su - ${username} -c "aws --version"
-
-              echo "Executing awscli as root..."
-              aws --version
-              [[ $? -ne 0 ]] && echo "fail to execute awscli as root" && exit 1
-
-              echo "Executing awscli as root in cookbook virtualenv.."
-              {{ validate.CookbookVirtualenvPath.outputs.stdout }}/bin/aws --version
-              [[ $? -ne 0 ]] && echo "fail to execute awscli as root in cookbook virtualenv" && exit 1
-
-              echo "Checking virtualenv python version..."
-              {{ validate.CookbookVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ validate.PythonVersion.outputs.stdout }}
-              [[ $? -ne 0 ]] && echo "Check cookbook virtualenv python version failed" && exit 1
-
-              {{ validate.NodeVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ validate.PythonVersion.outputs.stdout }}
-              [[ $? -ne 0 ]] && echo "Check node virtualenv python version failed" && exit 1
-              echo "AWSCli test passed"
 
       - name: Munge
         action: ExecuteBash
@@ -376,32 +302,6 @@ phases:
               fi
               [[ $? -ne 0 ]] && echo "Check for Lustre client failed" && exit 1
               echo "FSx Lustre test passed"
-
-      - name: PIP
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -vx
-              COOKBOOK_PIP_VERSION=$({{ validate.CookbookVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
-              NODE_PIP_VERSION=$({{ validate.NodeVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
-
-              compare_version(){
-                CURRENT_VERSION="$1"
-                PEQUIRED_VERSION="19.3"
-                if (( ${CURRENT_VERSION%%.*} < ${PEQUIRED_VERSION%%.*} || ( ${CURRENT_VERSION%%.*} == ${PEQUIRED_VERSION%%.*} && ${CURRENT_VERSION##*.} < ${PEQUIRED_VERSION##*.} ) )) ; then
-                    echo "true"
-                else
-                    echo "false"
-                fi
-              }
-              # pip versions >= 19.3 is required to enable installation of python wheel binaries on Graviton
-              if [ $(compare_version "${COOKBOOK_PIP_VERSION}") == true ]; then
-                echo "pip version in cookbook virtualenv must be greater than 19.3" && exit 1
-              fi
-
-              [[ $(compare_version "${NODE_PIP_VERSION}") == true ]] && echo "pip version in node virtualenv must be greater than 19.3" && exit 1
-              echo "Pip test passed"
 
       - name: ArmPL
         action: ExecuteBash

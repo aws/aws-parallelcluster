@@ -1,17 +1,17 @@
-usage: pcluster create-cluster [-h] [--region REGION]
+usage: pcluster create-cluster [-h] [-r REGION]
                                [--suppress-validators SUPPRESS_VALIDATORS [SUPPRESS_VALIDATORS ...]]
                                [--validation-failure-level {INFO,WARNING,ERROR}]
                                [--dryrun DRYRUN]
-                               [--rollback-on-failure ROLLBACK_ON_FAILURE]
-                               --cluster-name CLUSTER_NAME
-                               --cluster-configuration CLUSTER_CONFIGURATION
-                               [--debug] [--query QUERY]
+                               [--rollback-on-failure ROLLBACK_ON_FAILURE] -n
+                               CLUSTER_NAME -c CLUSTER_CONFIGURATION [--debug]
+                               [--query QUERY]
 
 Create a managed cluster in a given region.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --region REGION       AWS Region that the operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region that the operation corresponds to.
   --suppress-validators SUPPRESS_VALIDATORS [SUPPRESS_VALIDATORS ...]
                         Identifies one or more config validators to suppress.
                         Format: (ALL|type:[A-Za-z0-9]+)
@@ -24,9 +24,9 @@ optional arguments:
   --rollback-on-failure ROLLBACK_ON_FAILURE
                         When set it automatically initiates a cluster stack
                         rollback on failures. (Defaults to 'true'.)
-  --cluster-name CLUSTER_NAME
+  -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster that will be created.
-  --cluster-configuration CLUSTER_CONFIGURATION
-                        Cluster configuration as a YAML document
+  -c CLUSTER_CONFIGURATION, --cluster-configuration CLUSTER_CONFIGURATION
+                        Cluster configuration as a YAML document.
   --debug               Turn on debug logging.
   --query QUERY         JMESPath query to perform on output.

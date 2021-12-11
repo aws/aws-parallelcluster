@@ -27,7 +27,7 @@ class TestExportClusterLogsCommand:
 
     @pytest.mark.parametrize(
         "args, error_message",
-        [({"output_file": "path"}, "the following arguments are required: --cluster-name, --bucket")],
+        [({"output_file": "path"}, "the following arguments are required: -n/--cluster-name, --bucket")],
     )
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
@@ -55,6 +55,7 @@ class TestExportClusterLogsCommand:
         [
             {},
             {"output_file": "output-path"},
+            {"bucket": "bucket-name", "keep_s3_objects": True},
             {"bucket": "bucket-name", "bucket_prefix": "test", "keep_s3_objects": True},
             {"filters": "Name=private-dns-name,Values=ip-10-10-10-10"},
             {

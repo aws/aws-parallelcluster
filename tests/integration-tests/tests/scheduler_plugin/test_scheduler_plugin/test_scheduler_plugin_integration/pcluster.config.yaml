@@ -1,0 +1,72 @@
+Image:
+  Os: {{ os }}
+HeadNode:
+  InstanceType: {{ instance }}
+  Networking:
+    SubnetId: {{ public_subnet_id }}
+  Ssh:
+    KeyName: {{ key_name }}
+Scheduling:
+  Scheduler: plugin
+  SchedulerSettings:
+    SchedulerDefinition:
+      PluginInterfaceVersion: "1.0"
+      Events:
+        HeadInit:
+          ExecuteCommand:
+            Command: env && echo "HeadInit executed" && >&2 echo "log to stderr"
+        HeadConfigure:
+          ExecuteCommand:
+            Command: env && echo "HeadConfigure executed"
+        HeadFinalize:
+          ExecuteCommand:
+            Command: touch ${PCLUSTER_SHARED_SCHEDULER_PLUGIN_DIR}/sharedFromHead && env && echo "HeadFinalize executed"
+        ComputeInit:
+          ExecuteCommand:
+            Command: env && echo "ComputeInit executed"
+        ComputeConfigure:
+          ExecuteCommand:
+            Command: env && echo "ComputeConfigure executed"
+        ComputeFinalize:
+          ExecuteCommand:
+            Command: env && echo "ComputeFinalize executed"
+        HeadClusterUpdate:
+          ExecuteCommand:
+            Command: env && echo "HeadClusterUpdate executed"
+        HeadComputeFleetStart:
+          ExecuteCommand:
+            Command: env && echo "HeadComputeFleetStart executed"
+        HeadComputeFleetStop:
+          ExecuteCommand:
+            Command: env && echo "HeadComputeFleetStop executed"
+      PluginResources:
+        ClusterSharedArtifacts:
+          - Source: https://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/parallelcluster/3.0.0/cookbooks/aws-parallelcluster-cookbook-3.0.0.tgz
+          - Source: s3://{{ bucket }}/scheduler_plugin/artifact
+      ClusterInfrastructure:
+        CloudFormation:
+          Template: s3://{{ bucket }}/scheduler_plugin/scheduler_plugin_infra.cfn.yaml
+      SystemUsers:
+        - Name: {{ user1 }}
+          EnableImds: false
+        - Name: {{ user2 }}
+          EnableImds: true
+  SchedulerQueues:
+    - Name: q1
+      CapacityType: ONDEMAND
+      ComputeResources:
+        - Name: c1
+          InstanceType: {{ instance }}
+        - Name: c2
+          InstanceType: {{ instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}
+    - Name: q2
+      CapacityType: ONDEMAND
+      ComputeResources:
+        - Name: c1
+          InstanceType: {{ another_instance }}
+      Networking:
+        SubnetIds:
+          - {{ private_subnet_id }}

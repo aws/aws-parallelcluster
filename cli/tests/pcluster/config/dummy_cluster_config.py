@@ -17,16 +17,6 @@ from pcluster.config.cluster_config import (
     AwsBatchQueue,
     AwsBatchQueueNetworking,
     AwsBatchScheduling,
-    ByosClusterConfig,
-    ByosComputeResource,
-    ByosEvent,
-    ByosEvents,
-    ByosExecuteCommand,
-    ByosQueue,
-    ByosQueueNetworking,
-    ByosSchedulerDefinition,
-    ByosScheduling,
-    ByosSettings,
     ClusterIam,
     Dcv,
     HeadNode,
@@ -37,6 +27,16 @@ from pcluster.config.cluster_config import (
     Proxy,
     Raid,
     S3Access,
+    SchedulerPluginClusterConfig,
+    SchedulerPluginComputeResource,
+    SchedulerPluginDefinition,
+    SchedulerPluginEvent,
+    SchedulerPluginEvents,
+    SchedulerPluginExecuteCommand,
+    SchedulerPluginQueue,
+    SchedulerPluginQueueNetworking,
+    SchedulerPluginScheduling,
+    SchedulerPluginSettings,
     SharedEbs,
     SharedEfs,
     SharedFsx,
@@ -89,10 +89,10 @@ class _DummyAwsBatchClusterConfig(AwsBatchClusterConfig):
         return "dummy_vpc_id"
 
 
-class _DummyByosClusterConfig(ByosClusterConfig):
-    """Generate dummy Byos cluster config."""
+class _DummySchedulerPluginClusterConfig(SchedulerPluginClusterConfig):
+    """Generate dummy Scheduler Plugin cluster config."""
 
-    def __init__(self, scheduling: ByosScheduling, **kwargs):
+    def __init__(self, scheduling: SchedulerPluginScheduling, **kwargs):
         super().__init__("clustername", scheduling, **kwargs)
 
     @property
@@ -206,7 +206,7 @@ def dummy_awsbatch_cluster_config(mocker):
     return cluster
 
 
-def dummy_byos_cluster_config(mocker):
+def dummy_scheduler_plugin_cluster_config(mocker):
     """Generate dummy cluster."""
     image = Image(os="alinux2")
     head_node = dummy_head_node(mocker)
@@ -217,23 +217,28 @@ def dummy_byos_cluster_config(mocker):
         ]
     )
     compute_resources = [
-        ByosComputeResource(
+        SchedulerPluginComputeResource(
             name="dummy_compute_resource1", instance_type="dummyc5.xlarge", custom_settings={"key1": "value1"}
         )
     ]
-    queue_networking1 = ByosQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
-    queue_networking2 = ByosQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
-    queue_networking3 = ByosQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
-    queues = [
-        ByosQueue(name="queue1", networking=queue_networking1, compute_resources=compute_resources, iam=queue_iam),
-        ByosQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
-        ByosQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
+    queue_networking1 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-2"])
+    queue_networking2 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=["sg-1", "sg-3"])
+    queue_networking3 = SchedulerPluginQueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
+    scheduler_plugin_queues = [
+        SchedulerPluginQueue(
+            name="queue1", networking=queue_networking1, compute_resources=compute_resources, iam=queue_iam
+        ),
+        SchedulerPluginQueue(name="queue2", networking=queue_networking2, compute_resources=compute_resources),
+        SchedulerPluginQueue(name="queue3", networking=queue_networking3, compute_resources=compute_resources),
     ]
 
-    byos_settings = ByosSettings(
-        ByosSchedulerDefinition(byos_version="1.0", events=ByosEvents(head_init=ByosEvent(ByosExecuteCommand("test"))))
+    scheduler_plugin_settings = SchedulerPluginSettings(
+        SchedulerPluginDefinition(
+            plugin_interface_version="1.0",
+            events=SchedulerPluginEvents(head_init=SchedulerPluginEvent(SchedulerPluginExecuteCommand("test"))),
+        )
     )
-    scheduling = ByosScheduling(queues=queues, settings=byos_settings)
+    scheduling = SchedulerPluginScheduling(queues=scheduler_plugin_queues, settings=scheduler_plugin_settings)
     # shared storage
     shared_storage: List[Resource] = []
     shared_storage.append(dummy_fsx())
@@ -243,7 +248,7 @@ def dummy_byos_cluster_config(mocker):
     shared_storage.append(dummy_efs("/efs1", file_system_id="fs-efs-1"))
     shared_storage.append(dummy_raid("/raid1"))
 
-    cluster = _DummyByosClusterConfig(
+    cluster = _DummySchedulerPluginClusterConfig(
         image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage
     )
     cluster.custom_s3_bucket = "s3://dummy-s3-bucket"

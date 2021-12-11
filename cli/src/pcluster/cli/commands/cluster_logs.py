@@ -33,7 +33,9 @@ class ExportClusterLogsCommand(ExportLogsCommand, CliCommand):
         super().__init__(subparsers, name=self.name, help=self.help, description=self.description)
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("--cluster-name", help="Export the logs of the cluster name provided here.", required=True)
+        parser.add_argument(
+            "-n", "--cluster-name", help="Export the logs of the cluster name provided here.", required=True
+        )
         # Export options
         parser.add_argument(
             "--bucket",

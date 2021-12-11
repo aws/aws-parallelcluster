@@ -34,7 +34,9 @@ class ExportImageLogsCommand(ExportLogsCommand, CliCommand):
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
         super()._register_common_command_args(parser)
-        parser.add_argument("--image-id", help="Export the logs related to the image id provided here.", required=True)
+        parser.add_argument(
+            "-i", "--image-id", help="Export the logs related to the image id provided here.", required=True
+        )
         # Export options
         parser.add_argument(
             "--bucket",

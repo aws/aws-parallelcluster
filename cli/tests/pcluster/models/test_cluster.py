@@ -625,18 +625,22 @@ class TestCluster:
                 )
 
     @pytest.mark.parametrize("template_url", ["s3://bucketname/bucketkey", "https://test"])
-    def test_render_and_upload_byos_template(self, mocker, cluster, template_url):
-        byos_template = "Test"
-        byos_template_encoded = byos_template.encode("utf-8")
+    def test_render_and_upload_scheduler_plugin_template(self, mocker, cluster, template_url):
+        scheduler_plugin_template = "Test"
+        scheduler_plugin_template_encoded = scheduler_plugin_template.encode("utf-8")
         if template_url.startswith("s3://"):
             mocker.patch(
                 "pcluster.aws.s3.S3Client.get_object",
                 autospec=True,
-                return_value={"Body": StreamingBody(BytesIO(byos_template_encoded), len(byos_template_encoded))},
+                return_value={
+                    "Body": StreamingBody(
+                        BytesIO(scheduler_plugin_template_encoded), len(scheduler_plugin_template_encoded)
+                    )
+                },
             )
         else:
             file_mock = mocker.MagicMock()
-            file_mock.read.return_value.decode.return_value = byos_template
+            file_mock.read.return_value.decode.return_value = scheduler_plugin_template
             mocker.patch("pcluster.models.cluster.urlopen").return_value.__enter__.return_value = file_mock
         mocker.patch("pcluster.models.cluster.parse_config", return_value={"Test"})
         mocker.patch("pcluster.models.cluster.Cluster.source_config_text", new_callable=PropertyMock)
@@ -644,12 +648,13 @@ class TestCluster:
         cluster_config_mock.return_value.scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template = (  # noqa
             template_url
         )
+        cluster_config_mock.return_value.get_instance_types_data.return_value = {"t2.micro": "instance_info"}
         upload_cfn_template_mock = mocker.patch.object(cluster.bucket, "upload_cfn_template", autospec=True)
 
-        cluster._render_and_upload_byos_template()
+        cluster._render_and_upload_scheduler_plugin_template()
 
         upload_cfn_template_mock.assert_called_with(
-            byos_template, PCLUSTER_S3_ARTIFACTS_DICT["byos_template_name"], S3FileFormat.TEXT
+            scheduler_plugin_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
         )
 
 

@@ -20,23 +20,14 @@ class TestDeleteClusterCommand:
         command = ["pcluster", "delete-cluster", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: --cluster-name"),
-            (
-                ["--cluster-name"],
-                "error: argument --cluster-name: expected one argument",
-            ),
-            (
-                ["--cluster-name", "cluster", "--invalid"],
-                "Invalid arguments ['--invalid']",
-            ),
+            ([""], "error: the following arguments are required: -n/--cluster-name"),
+            (["--cluster-name"], "error: argument -n/--cluster-name: expected one argument"),
+            (["--cluster-name", "cluster", "--invalid"], "Invalid arguments ['--invalid']"),
             (
                 ["--cluster-name", "cluster", "--region", "eu-west-"],
                 "Bad Request: invalid or unsupported region 'eu-west-'",

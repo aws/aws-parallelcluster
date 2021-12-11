@@ -11,16 +11,14 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
-from shutil import copyfile
 
 from assertpy import assert_that
-from constants import OSU_BENCHMARK_VERSION
 from remote_command_executor import RemoteCommandExecutor
 from utils import get_compute_nodes_instance_ids
 
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
-from tests.common.osu_common import compile_osu, render_jinja_template
+from tests.common.osu_common import run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
@@ -49,7 +47,7 @@ def test_efa(
     # 2 instances are enough for other EFA tests.
     max_queue_size = 4 if instance in osu_benchmarks_instances else 2
     slots_per_instance = fetch_instance_slots(region, instance)
-    head_node_instance = "c5n.18xlarge" if architecture == "x86_64" else "c6gn.16xlarge"
+    head_node_instance = "c5.18xlarge" if architecture == "x86_64" else "c6g.16xlarge"
     cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, head_node_instance=head_node_instance)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -218,45 +216,6 @@ def _test_osu_benchmarks_multiple_bandwidth(
     assert_that(float(max_bandwidth)).is_greater_than(expected_bandwidth)
 
 
-def run_osu_benchmarks(
-    mpi_version,
-    benchmark_group,
-    benchmark_name,
-    partition,
-    remote_command_executor,
-    scheduler_commands,
-    num_of_instances,
-    slots_per_instance,
-    test_datadir,
-):
-    logging.info(f"Running OSU benchmark {OSU_BENCHMARK_VERSION}: {benchmark_name} for {mpi_version}")
-
-    compile_osu(mpi_version, remote_command_executor)
-
-    # Prepare submission script and pass to the scheduler for the job submission
-    copyfile(
-        test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}.sh",
-        test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
-    )
-    slots = num_of_instances * slots_per_instance
-    submission_script = render_jinja_template(
-        template_file_path=test_datadir / f"osu_{benchmark_group}_submit_{mpi_version}_{benchmark_name}.sh",
-        benchmark_name=benchmark_name,
-        osu_benchmark_version=OSU_BENCHMARK_VERSION,
-        num_of_processes=slots,
-    )
-    if partition:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots, partition=partition)
-    else:
-        result = scheduler_commands.submit_script(str(submission_script), slots=slots)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-
-    output = remote_command_executor.run_remote_command(f"cat /shared/{benchmark_name}.out").stdout
-    return output
-
-
 def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark_name, output):
     logging.info(output)
     # Check avg latency for all packet sizes
@@ -267,8 +226,13 @@ def _check_osu_benchmarks_results(test_datadir, instance, mpi_version, benchmark
         ) as result:
             previous_result = re.search(rf"{packet_size}\s+(\d+)\.", result.read()).group(1)
 
-            # Use a tolerance of 10us for 2 digits values and 20% tolerance for 3+ digits values
-            accepted_tolerance = 10 if len(previous_result) <= 2 else float(previous_result) * 0.2
+            # Use a tolerance of 10us for 2 digits values.
+            # For 3+ digits values use a 20% tolerance, except for the higher-variance latency benchmark.
+            if len(previous_result) <= 2:
+                accepted_tolerance = 10
+            else:
+                multiplier = 0.3 if benchmark_name == "osu_latency" else 0.2
+                accepted_tolerance = float(previous_result) * multiplier
             tolerated_latency = float(previous_result) + accepted_tolerance
 
             message = (

@@ -10,6 +10,112 @@ constants:
 phases:
   - name: test
     steps:
+      ### basic ###
+      - name: OperatingSystemRelease
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              FILE=/etc/os-release
+              if [ -e ${FILE} ]; then
+                . ${FILE}
+                echo "${ID}${VERSION_ID:+.${VERSION_ID}}"
+              else
+                echo "The file '${FILE}' does not exist. Failing build." && exit 1
+              fi
+
+      # Get uniformed OS name
+      - name: OperatingSystemName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              RELEASE='{{ test.OperatingSystemRelease.outputs.stdout }}'
+
+              if [ `echo "${RELEASE}" | grep -w '^amzn\.2'` ]; then
+                OS='alinux2'
+              elif [ `echo "${RELEASE}" | grep '^centos\.7'` ]; then
+                OS='centos7'
+              elif [ `echo "${RELEASE}" | grep '^ubuntu\.18'` ]; then
+                OS='ubuntu1804'
+              elif [ `echo "${RELEASE}" | grep '^ubuntu\.20'` ]; then
+                OS='ubuntu2004'
+              else
+                echo "Operating System '${RELEASE}' is not supported. Failing build." && exit 1
+              fi
+
+              echo ${OS}
+
+      ### versions ###
+      - name: PythonVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['python-version']" {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      - name: SchedulerPluginPythonVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['scheduler_plugin']['python_version']" {{ CookbookDefaultFile }})
+              VERSION=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              echo ${VERSION}
+
+      ### paths ###
+      - name: SystemPyenvRoot
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['base_dir']" {{ CookbookDefaultFile }})
+              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              PYENV_ROOT+="${BASE_DIR}/pyenv"
+              echo ${PYENV_ROOT}
+
+      - name: SchedulerPluginPyenvRoot
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              PATTERN=$(grep -F "default['cluster']['scheduler_plugin']['home']" {{ CookbookDefaultFile }})
+              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              PYENV_ROOT+="${BASE_DIR}/.pyenv"
+              echo ${PYENV_ROOT}
+
+      - name: CookbookVirtualenvPath
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              echo "{{ test.SystemPyenvRoot.outputs.stdout }}/versions/{{ test.PythonVersion.outputs.stdout }}/envs/cookbook_virtualenv"
+
+      - name: NodeVirtualenvPath
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              echo "{{ test.SystemPyenvRoot.outputs.stdout }}/versions/{{ test.PythonVersion.outputs.stdout }}/envs/node_virtualenv"
+
+      - name: SchedulerPluginVirtualenvPath
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              echo "{{ test.SchedulerPluginPyenvRoot.outputs.stdout }}/versions/{{ test.SchedulerPluginPythonVersion.outputs.stdout }}/envs/scheduler_plugin_virtualenv"
+
       ### utils ###
       - name: NvSwitches
         action: ExecuteBash
@@ -31,6 +137,80 @@ phases:
               echo "${RESERVED_BASE_UID}"
 
       ### tests ###
+      - name: AWSCli
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              OS="{{ test.OperatingSystemName.outputs.stdout }}"
+              if [[ ${OS} =~ ^alinux ]]; then
+                username="ec2-user"
+              elif [[ ${OS} =~ ^centos ]]; then
+                username="centos"
+              elif [[ ${OS} =~ ^ubuntu ]]; then
+                username="ubuntu"
+              fi
+              export PATH="/usr/local/bin:/usr/bin/:${PATH}"
+
+              echo "Executing awscli as user..."
+              su - ${username} -c "aws --version"
+
+              echo "Executing awscli as root..."
+              aws --version
+              [[ $? -ne 0 ]] && echo "fail to execute awscli as root" && exit 1
+
+              echo "Executing awscli as root in cookbook virtualenv.."
+              {{ test.CookbookVirtualenvPath.outputs.stdout }}/bin/aws --version
+              [[ $? -ne 0 ]] && echo "fail to execute awscli as root in cookbook virtualenv" && exit 1
+              echo "AWSCli test passed"
+
+      - name: Virtualenv
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+
+              echo "Checking virtualenv python version..."
+              {{ test.CookbookVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.PythonVersion.outputs.stdout }}
+              [[ $? -ne 0 ]] && echo "Check cookbook virtualenv python version failed" && exit 1
+
+              {{ test.NodeVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.PythonVersion.outputs.stdout }}
+              [[ $? -ne 0 ]] && echo "Check node virtualenv python version failed" && exit 1
+
+              {{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/python -V | grep {{ test.SchedulerPluginPythonVersion.outputs.stdout }}
+              [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python version failed" && exit 1
+              su -l pcluster-scheduler-plugin -c "which python" | grep envs/scheduler_plugin_virtualenv/bin/python
+              [[ $? -ne 0 ]] && echo "Check scheduler plugin virtualenv python path failed" && exit 1
+
+              echo "Virtualenv test passed"
+
+      - name: Pip
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              COOKBOOK_PIP_VERSION=$({{ test.CookbookVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
+              NODE_PIP_VERSION=$({{ test.NodeVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
+              SCHEDULER_PLUGIN_PIP_VERSION=$({{ test.SchedulerPluginVirtualenvPath.outputs.stdout }}/bin/pip show pip 2> /dev/null | grep -i "^Version:" | tr -s ' ' | cut -d' ' -f2) || echo "NOT_INSTALLED"
+
+              older_than_required_version(){
+                CURRENT_VERSION="$1"
+                REQUIRED_VERSION="19.3"
+                if (( ${CURRENT_VERSION%%.*} < ${REQUIRED_VERSION%%.*} || ( ${CURRENT_VERSION%%.*} == ${REQUIRED_VERSION%%.*} && ${CURRENT_VERSION##*.} < ${REQUIRED_VERSION##*.} ) )) ; then
+                    echo "true"
+                else
+                    echo "false"
+                fi
+              }
+              # pip versions >= 19.3 is required to enable installation of python wheel binaries on Graviton
+              [[ $(older_than_required_version "${COOKBOOK_PIP_VERSION}") == true ]] && echo "pip version in cookbook virtualenv must be greater than 19.3" && exit 1
+              [[ $(older_than_required_version "${NODE_PIP_VERSION}") == true ]] && echo "pip version in node virtualenv must be greater than 19.3" && exit 1
+              [[ $(older_than_required_version "${SCHEDULER_PLUGIN_PIP_VERSION}") == true ]] && echo "pip version in scheduler plugin virtualenv must be greater than 19.3" && exit 1
+              echo "Pip test passed"
+
       - name: FabricManager
         action: ExecuteBash
         inputs:
@@ -54,7 +234,7 @@ phases:
               [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
               echo "CloudWatch test passed"
 
-      - name: ByosUser
+      - name: SchedulerPluginUser
         action: ExecuteBash
         inputs:
           commands:
@@ -67,9 +247,9 @@ phases:
                   getent passwd ${USER_ID}
                   [[ $? -eq 0 ]] && echo "uid ${USER_ID} exists, it should be reserved for ParallelCluster system users. Reserved uid range is ${SYSTEM_USER_ID_START} - $(($SYSTEM_USER_ID_START + 9))" && exit 1
               done
-              echo "ByosUser test passed"
+              echo "SchedulerPlugin User test passed"
 
-      - name: ByosGroup
+      - name: SchedulerPluginGroup
         action: ExecuteBash
         inputs:
           commands:
@@ -82,4 +262,4 @@ phases:
                   getent group ${GROUP_ID}
                   [[ $? -eq 0 ]] && echo "gid ${GROUP_ID} exists, it should be reserved for ParallelCluster system group. Reserved gid range is ${SYSTEM_GROUP_ID_START} - $(($SYSTEM_GROUP_ID_START + 9))" && exit 1
               done
-              echo "ByosGroup test passed"
+              echo "SchedulerPlugin Group test passed"

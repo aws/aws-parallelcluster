@@ -1,0 +1,31 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: c5.xlarge
+  Ssh:
+    KeyName: <KEY_NAME>
+  Networking:
+    SubnetId: <HEAD_SUBNET>
+Scheduling:
+  Scheduler: plugin
+  SchedulerSettings:
+    SchedulerDefinition: <PLUGIN_DEFINITION>
+    GrantSudoPrivileges: true
+    CustomSettings:
+      CustomKey1: CustomValue1
+  SchedulerQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - <COMPUTE_SUBNET>
+      CustomSettings:
+        CustomQueueKey1: CustomValue1
+      ComputeResources:
+        - Name: cr1
+          InstanceType: c5.xlarge
+          CustomSettings:
+            CustomComputeResourceKey1: CustomValue1
+Monitoring:
+  Logs:
+    CloudWatch:
+      DeletionPolicy: Delete

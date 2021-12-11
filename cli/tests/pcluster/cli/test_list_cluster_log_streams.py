@@ -24,10 +24,7 @@ class TestListClusterLogStreamsCommand:
 
         assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
-    @pytest.mark.parametrize(
-        "args, error_message",
-        [({}, "the following arguments are required: --cluster-name")],
-    )
+    @pytest.mark.parametrize("args, error_message", [({}, "the following arguments are required: -n/--cluster-name")])
     def test_required_args(self, args, error_message, run_cli, capsys):
         command = BASE_COMMAND + self._build_cli_args(args)
         run_cli(command, expect_failure=True)

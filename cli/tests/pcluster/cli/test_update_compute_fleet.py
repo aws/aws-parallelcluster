@@ -19,42 +19,20 @@ class TestUpdateComputeFleetCommand:
         command = ["pcluster", "update-compute-fleet", "--help"]
         run_cli(command, expect_failure=False)
 
-        assert_out_err(
-            expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(),
-            expected_err="",
-        )
+        assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
 
     @pytest.mark.parametrize(
         "args, error_message",
         [
-            ([""], "error: the following arguments are required: --cluster-name"),
+            ([""], "error: the following arguments are required: -n/--cluster-name"),
+            (["--cluster-name"], "error: argument -n/--cluster-name: expected one argument"),
+            (["--status"], "error: argument --status: expected one argument"),
             (
-                ["--cluster-name"],
-                "error: argument --cluster-name: expected one argument",
-            ),
-            (
-                ["--status"],
-                "error: argument --status: expected one argument",
-            ),
-            (
-                [
-                    "--cluster-name",
-                    "cluster",
-                    "--status",
-                    "START_REQUESTED",
-                    "--invalid",
-                ],
+                ["--cluster-name", "cluster", "--status", "START_REQUESTED", "--invalid"],
                 "Invalid arguments ['--invalid']",
             ),
             (
-                [
-                    "--cluster-name",
-                    "cluster",
-                    "--status",
-                    "START_REQUESTED",
-                    "--region",
-                    "eu-west-",
-                ],
+                ["--cluster-name", "cluster", "--status", "START_REQUESTED", "--region", "eu-west-"],
                 "Bad Request: invalid or unsupported region 'eu-west-'",
             ),
         ],
@@ -75,15 +53,7 @@ class TestUpdateComputeFleetCommand:
             autospec=True,
         )
 
-        out = run(
-            [
-                "update-compute-fleet",
-                "--cluster-name",
-                "cluster",
-                "--status",
-                "START_REQUESTED",
-            ]
-        )
+        out = run(["update-compute-fleet", "--cluster-name", "cluster", "--status", "START_REQUESTED"])
         assert_that(out).is_equal_to(wire_translate(response))
         assert_that(update_compute_fleet_status_mock.call_args).is_length(
             2

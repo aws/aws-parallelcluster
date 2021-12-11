@@ -128,6 +128,15 @@ def pytest_addoption(parser):
         help="use default IAM creds when running pcluster commands",
         action="store_true",
     )
+    parser.addoption(
+        "--directory-stack-name",
+        help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
+    )
+    parser.addoption(
+        "--ldaps-nlb-stack-name",
+        help="Name of CFN stack providing NLB to enable use of LDAPS with a Simple AD directory when testing AD "
+        "integration feature.",
+    )
 
 
 def pytest_generate_tests(metafunc):
@@ -593,7 +602,8 @@ def inject_additional_config_settings(cluster_config, request, region):  # noqa 
 
             scheduler = config_content["Scheduling"]["Scheduler"]
             if scheduler != "awsbatch":
-                for queue in config_content["Scheduling"][f"{scheduler.capitalize()}Queues"]:
+                scheduler_prefix = "Scheduler" if scheduler == "plugin" else scheduler.capitalize()
+                for queue in config_content["Scheduling"][f"{scheduler_prefix}Queues"]:
                     if not dict_has_nested_key(queue, ("CustomActions", config_param)):
                         dict_add_nested_key(
                             queue, request.config.getoption(option), ("CustomActions", config_param, "Script")
@@ -689,9 +699,7 @@ def parameterized_cfn_stacks_factory(request):
 AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in use1-az3
     # FSx Lustre file system creation is currently not supported for use1-az3
-    # m6g.xlarge is not supported in use1-az2 or use1-az3
-    # p4d.24xlarge is only available on use1-az2
-    "us-east-1": ["use1-az2"],
+    "us-east-1": ["use1-az1", "use1-az2"],
     # some instance type is only supported in use2-az2
     "us-east-2": ["use2-az2"],
     # c4.xlarge is not supported in usw2-az4
@@ -979,7 +987,7 @@ def _create_vpc_stack(request, template, region, cfn_stacks_factory):
 
 
 @pytest.fixture(scope="class")
-def s3_bucket_factory(region):
+def s3_bucket_factory(request, region):
     """
     Define a fixture to create S3 buckets.
     :param region: region where the test is running
@@ -997,11 +1005,14 @@ def s3_bucket_factory(region):
     yield _create_bucket
 
     for bucket in created_buckets:
-        logging.info("Deleting S3 bucket {0}".format(bucket[0]))
-        try:
-            delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
-        except Exception as e:
-            logging.error("Failed deleting bucket {0} with exception: {1}".format(bucket[0], e))
+        if request.config.getoption("no_delete"):
+            logging.info(f"Not deleting S3 bucket {bucket[0]}")
+        else:
+            logging.info(f"Deleting S3 bucket {bucket[0]}")
+            try:
+                delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
+            except Exception as e:
+                logging.error(f"Failed deleting bucket {bucket[0]} with exception: {e}")
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

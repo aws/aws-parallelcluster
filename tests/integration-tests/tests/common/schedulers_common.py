@@ -36,11 +36,12 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def wait_job_completed(self, job_id):
+    def wait_job_completed(self, job_id, timeout=None):
         """
         Wait for job completion.
 
         :param job_id: id of the job to wait for.
+        :param timeout: max minutes to wait for job to complete
         :return: status of the job.
         """
         pass
@@ -122,14 +123,20 @@ class AWSBatchCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(
-        retry_on_result=lambda result: "FAILED" not in result and any(status != "SUCCEEDED" for status in result),
-        wait_fixed=seconds(7),
-        stop_max_delay=minutes(15),
-    )
-    def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id), log_output=True)
-        return re.findall(r"status\s+: (.+)", result.stdout)
+    def wait_job_completed(self, job_id, timeout=None):  # noqa: D102
+        if not timeout:
+            timeout = 15
+
+        @retry(
+            retry_on_result=lambda result: "FAILED" not in result and any(status != "SUCCEEDED" for status in result),
+            wait_fixed=seconds(7),
+            stop_max_delay=minutes(timeout),
+        )
+        def _job_status_retryer():
+            result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id), log_output=True)
+            return re.findall(r"status\s+: (.+)", result.stdout)
+
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         return self.wait_job_completed(job_id)
@@ -179,20 +186,26 @@ class SlurmCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(
-        retry_on_result=lambda result: "JobState" not in result
-        or any(
-            value in result
-            for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]
-        ),
-        wait_fixed=seconds(10),
-        stop_max_delay=minutes(12),
-    )
-    def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command(
-            "scontrol show jobs -o {0}".format(job_id), raise_on_error=False
+    def wait_job_completed(self, job_id, timeout=None):  # noqa: D102
+        if not timeout:
+            timeout = 12
+
+        @retry(
+            retry_on_result=lambda result: "JobState" not in result
+            or any(
+                value in result
+                for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]
+            ),
+            wait_fixed=seconds(10),
+            stop_max_delay=minutes(timeout),
         )
-        return result.stdout
+        def _job_status_retryer():
+            result = self._remote_command_executor.run_remote_command(
+                "scontrol show jobs -o {0}".format(job_id), raise_on_error=False
+            )
+            return result.stdout
+
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
@@ -423,7 +436,7 @@ class SlurmCommands(SchedulerCommands):
             f'/opt/slurm/bin/scontrol show partition={partition} | grep -oP "State=\\K(\\S+)"'
         ).stdout
 
-    @retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+    @retry(wait_fixed=seconds(20), stop_max_delay=minutes(8))
     def wait_job_running(self, job_id):
         """Wait till job starts running."""
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
@@ -436,12 +449,20 @@ class TorqueCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(
-        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(12)
-    )
-    def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
-        return result.stdout
+    def wait_job_completed(self, job_id, timeout=None):  # noqa: D102
+        if not timeout:
+            timeout = 12
+
+        @retry(
+            retry_on_result=lambda result: "job_state = C" not in result,
+            wait_fixed=seconds(3),
+            stop_max_delay=minutes(timeout),
+        )
+        def _job_status_retryer():
+            result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
+            return result.stdout
+
+        return _job_status_retryer()
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
