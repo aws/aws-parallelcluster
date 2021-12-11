@@ -25,6 +25,8 @@ import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from jinja2 import Environment, FileSystemLoader
+from OpenSSL import crypto
+from OpenSSL.crypto import FILETYPE_PEM, TYPE_RSA, X509, dump_certificate, dump_privatekey
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import seconds
@@ -49,7 +51,7 @@ def get_infra_stack_outputs(stack_name):
     }
 
 
-def get_ad_config_param_vals(directory_stack_name, nlb_stack_name, bucket_name, password_secret_arn):
+def get_ad_config_param_vals(directory_stack_name, nlb_stack_name, password_secret_arn):
     """Return a dict used to set values for config file parameters."""
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
     nlb_stack_outputs = get_infra_stack_outputs(nlb_stack_name)
@@ -112,22 +114,6 @@ def zip_dir(path):
     return file_out
 
 
-def upload_custom_resources(test_resources_dir, bucket_name):
-    """
-    Upload custom resources to S3 bucket.
-
-    :param test_resources_dir: resource directory containing the resources to upload.
-    :bucket_name: bucket to upload resources to
-    """
-    for dirname in ("custom_resources_code", "codebuild_sources"):
-        dirpath = os_lib.path.join(test_resources_dir, dirname)
-        boto3.client("s3").upload_fileobj(
-            Fileobj=zip_dir(dirpath),
-            Bucket=bucket_name,
-            Key=f"{dirname}/archive.zip",
-        )
-
-
 @pytest.fixture(scope="class")
 def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
 
@@ -155,9 +141,7 @@ def store_secret_in_secret_manager(request, region, cfn_stacks_factory):
         cfn_stacks_factory.delete_stack(secret_stack_name, region)
 
 
-def _create_directory_stack(
-    cfn_stacks_factory, request, directory_type, test_resources_dir, bucket_name, region, vpc_stack
-):
+def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stack):
     directory_stack_name = generate_stack_name(
         f"integ-tests-MultiUserInfraStack{directory_type}", request.config.getoption("stackname_suffix")
     )
@@ -165,7 +149,6 @@ def _create_directory_stack(
     if directory_type not in ("MicrosoftAD", "SimpleAD"):
         raise Exception(f"Unknown directory type: {directory_type}")
 
-    upload_custom_resources(test_resources_dir, bucket_name)
     directory_stack_template_path = os_lib.path.join(test_resources_dir, "ad_stack.yaml")
     account_id = (
         boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
@@ -186,7 +169,6 @@ def _create_directory_stack(
         "default_ec2_domain": "ec2.internal" if region == "us-east-1" else f"{region}.compute.internal",
         "ad_admin_user": "Administrator" if directory_type == "SimpleAD" else "Admin",
         "num_users_to_create": 100,
-        "bucket_name": bucket_name,
         "directory_type": directory_type,
     }
     logging.info("Creating stack %s", directory_stack_name)
@@ -236,14 +218,12 @@ def _populate_directory_with_users(directory_stack, num_users_to_create, region)
     logging.info("Creation of %s users in directory service completed", str(num_users_to_create))
 
 
-def _create_nlb_stack(cfn_stacks_factory, request, directory_stack, region, test_resources_dir):
+def _create_nlb_stack(cfn_stacks_factory, request, directory_stack, region, test_resources_dir, certificate_arn):
     nlb_stack_template_path = os_lib.path.join(test_resources_dir, "NLB_SimpleAD.yaml")
     nlb_stack_name = generate_stack_name(
         "integ-tests-MultiUserInfraStackNLB", request.config.getoption("stackname_suffix")
     )
     logging.info("Creating stack %s", nlb_stack_name)
-    # TODO: don't hardcode this ARN
-    certificate_arn = "arn:aws:acm:us-east-1:447714826191:certificate/a17e8574-0cea-4d4c-8e79-a8ebb60f6f47"
     nlb_stack = None
     with open(nlb_stack_template_path) as nlb_stack_template:
         nlb_stack = CfnStack(
@@ -282,15 +262,36 @@ def _create_nlb_stack(cfn_stacks_factory, request, directory_stack, region, test
     return nlb_stack
 
 
+def _generate_certificate():
+    key = crypto.PKey()
+    key.generate_key(TYPE_RSA, 2048)
+    crt = X509()
+    common_name = "ldap.simplead.multiuser.pcluster"
+    crt.get_subject().commonName = common_name
+    crt.get_issuer().commonName = common_name
+    now = datetime.datetime.now()
+    days = datetime.timedelta(days=90)
+    asn1_time_format = "%Y%m%d000000Z"
+    crt.set_notBefore((now - days).strftime(asn1_time_format).encode())
+    crt.set_notAfter((now + days).strftime(asn1_time_format).encode())
+    crt.set_serial_number(random.randrange(1, 99999))
+    crt.set_pubkey(key)
+    crt.sign(key, "sha256")
+    certificate_arn = boto3.client("acm").import_certificate(
+        Certificate=dump_certificate(FILETYPE_PEM, crt), PrivateKey=dump_privatekey(FILETYPE_PEM, key)
+    )["CertificateArn"]
+    return certificate_arn
+
+
 @pytest.fixture(scope="module")
 def directory_factory(request, cfn_stacks_factory, vpc_stacks):
     # TODO: use external data file and file locking in order to share directories across processes
     created_directory_stacks = defaultdict(dict)
+    created_certificates = defaultdict(dict)
 
     def _directory_factory(
-        existing_directory_stack_name, existing_nlb_stack_name, directory_type, bucket_name, test_resources_dir, region
+        existing_directory_stack_name, existing_nlb_stack_name, directory_type, test_resources_dir, region
     ):
-        directory_stack = None
         if existing_directory_stack_name:
             directory_stack_name = existing_directory_stack_name
             directory_stack = CfnStack(name=directory_stack_name, region=region, template=None)
@@ -301,7 +302,7 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
             logging.info("Using directory stack named %s created by another test", directory_stack_name)
         else:
             directory_stack = _create_directory_stack(
-                cfn_stacks_factory, request, directory_type, test_resources_dir, bucket_name, region, vpc_stacks[region]
+                cfn_stacks_factory, request, directory_type, test_resources_dir, region, vpc_stacks[region]
             )
             directory_stack_name = directory_stack.name
             created_directory_stacks[region]["directory"] = directory_stack_name
@@ -314,8 +315,10 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
             nlb_stack_name = created_directory_stacks.get(region, {}).get("nlb")
             logging.info("Using NLB stack named %s created by another test", nlb_stack_name)
         else:
+            certificate_arn = _generate_certificate()
+            created_certificates[region] = certificate_arn
             nlb_stack_name = _create_nlb_stack(
-                cfn_stacks_factory, request, directory_stack, region, test_resources_dir
+                cfn_stacks_factory, request, directory_stack, region, test_resources_dir, certificate_arn
             ).name
             created_directory_stacks[region]["nlb"] = nlb_stack_name
         return directory_stack_name, nlb_stack_name
@@ -323,7 +326,8 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
     yield _directory_factory
 
     for region, stack_dict in created_directory_stacks.items():
-        for stack_type, stack_name in stack_dict.items():
+        for stack_type in ["nlb", "directory"]:
+            stack_name = stack_dict[stack_type]
             if request.config.getoption("no_delete"):
                 logging.info(
                     "Not deleting %s stack named %s in region %s because --no-delete option was specified",
@@ -334,6 +338,9 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks):
             else:
                 logging.info("Deleting %s stack named %s in region %s", stack_type, stack_name, region)
                 cfn_stacks_factory.delete_stack(stack_name, region)
+
+    for region, certificate_arn in created_certificates.items():
+        boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
 
 
 def _run_user_workloads(users, test_datadir, remote_command_executor):
@@ -485,21 +492,17 @@ def test_ad_integration(
     """Verify AD integration works as expected."""
     compute_instance_type_info = {"name": "c5.xlarge", "num_cores": 4}
     config_params = {"compute_instance_type": compute_instance_type_info.get("name")}
-    bucket_name = s3_bucket_factory()
     directory_stack_name, nlb_stack_name = directory_factory(
         request.config.getoption("directory_stack_name"),
         request.config.getoption("ldaps_nlb_stack_name"),
         directory_type,
-        bucket_name,
         str(test_datadir),
         region,
     )
     directory_stack_outputs = get_infra_stack_outputs(directory_stack_name)
     ad_user_password = directory_stack_outputs.get("UserPassword")
     password_secret_arn = store_secret_in_secret_manager(directory_stack_outputs.get("AdminPassword"))
-    config_params.update(
-        get_ad_config_param_vals(directory_stack_name, nlb_stack_name, bucket_name, password_secret_arn)
-    )
+    config_params.update(get_ad_config_param_vals(directory_stack_name, nlb_stack_name, password_secret_arn))
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
 
