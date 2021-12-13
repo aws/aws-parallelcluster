@@ -26,7 +26,8 @@ from urllib.request import urlopen
 
 import pkg_resources
 import yaml
-from jinja2 import BaseLoader, Environment
+from jinja2 import BaseLoader
+from jinja2.sandbox import SandboxedEnvironment
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
@@ -529,7 +530,7 @@ class Cluster:
 
         # jinja rendering
         try:
-            environment = Environment(loader=BaseLoader)  # nosec nosemgrep
+            environment = SandboxedEnvironment(loader=BaseLoader)
             environment.filters["hash"] = (
                 lambda value: hashlib.sha1(value.encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
             )
