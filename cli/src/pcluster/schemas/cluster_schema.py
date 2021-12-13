@@ -15,6 +15,7 @@
 #
 
 import copy
+import logging
 import re
 from urllib.request import urlopen
 
@@ -118,6 +119,10 @@ from pcluster.schemas.common_schema import (
 from pcluster.validators.cluster_validators import FSX_MESSAGES
 
 # pylint: disable=C0302
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 # ---------------------- Storage ---------------------- #
 
@@ -1443,6 +1448,7 @@ class SchedulerPluginSettingsSchema(BaseSchema):
         """Fetch scheduler definition if it is s3 or https url."""
         original_scheduler_definition = data["SchedulerDefinition"]
         if isinstance(original_scheduler_definition, str):
+            LOGGER.info("Downloading scheduler plugin definition from %s", original_scheduler_definition)
             try:
                 if original_scheduler_definition.startswith("s3"):
                     bucket_parsing_result = parse_bucket_url(original_scheduler_definition)
@@ -1461,6 +1467,7 @@ class SchedulerPluginSettingsSchema(BaseSchema):
                         "The provided value for SchedulerDefinition is invalid. "
                         "You can specify this as an S3 URL, HTTPS URL or as an inline YAML object."
                     )
+                LOGGER.info("Using the following scheduler plugin definition:\n%s", scheduler_definition)
                 data["SchedulerDefinition"] = yaml.safe_load(scheduler_definition)
             except YAMLError as e:
                 raise ValidationError(
