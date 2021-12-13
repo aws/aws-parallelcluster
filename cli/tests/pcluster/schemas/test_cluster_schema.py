@@ -531,23 +531,32 @@ def test_scheduler_plugin_user_schema(name, enable_imds, failure_message):
 
 
 @pytest.mark.parametrize(
-    "file_path, timestamp_format, failure_message",
+    "file_path, timestamp_format, log_stream_name, failure_message",
     [
-        ("/var/log/slurmctld.log", None, None),
-        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", None),
+        ("/var/log/slurmctld.log", None, "slurmctld.log", None),
+        ("/var/log/slurmctld.log", "%Y-%m-%d %H:%M:%S,%f", "slurmctld.log", None),
         (
             None,
             "%Y-%m-%d %H:%M:%S,%f",
+            "slurmctld.log",
+            "Missing data for required field.",
+        ),
+        (
+            "/var/log/slurmctld.log",
+            "%Y-%m-%d %H:%M:%S,%f",
+            None,
             "Missing data for required field.",
         ),
     ],
 )
-def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message):
+def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_message, log_stream_name):
     scheduler_plugin_file_schema = {}
     if file_path:
         scheduler_plugin_file_schema["FilePath"] = file_path
     if timestamp_format:
         scheduler_plugin_file_schema["TimestampFormat"] = timestamp_format
+    if log_stream_name:
+        scheduler_plugin_file_schema["LogStreamName"] = log_stream_name
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
             SchedulerPluginFileSchema().load(scheduler_plugin_file_schema)
@@ -563,11 +572,18 @@ def test_scheduler_plugin_file_schema(file_path, timestamp_format, failure_messa
 @pytest.mark.parametrize(
     "files, failure_message",
     [
-        ([{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"}], None),
+        (
+            [{"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f", "LogStreamName": "log"}],
+            None,
+        ),
         (
             [
-                {"FilePath": "/var/log/slurmctld.log", "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f"},
-                {"FilePath": "/var/log/scaling.log", "TimestampFormat": ""},
+                {
+                    "FilePath": "/var/log/slurmctld.log",
+                    "TimestampFormat": "%Y-%m-%d %H:%M:%S,%f",
+                    "LogStreamName": "log1",
+                },
+                {"FilePath": "/var/log/scaling.log", "TimestampFormat": "", "LogStreamName": "log2"},
             ],
             None,
         ),
