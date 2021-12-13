@@ -39,6 +39,10 @@ fi
 Content-Type: text/cloud-config; charset=us-ascii
 MIME-Version: 1.0
 
+package_update: false
+package_upgrade: false
+repo_upgrade: none
+
 datasource_list: [ Ec2, None ]
 output:
   all: "| tee -a /var/log/cloud-init-output.log | logger -t user-data -s 2>/dev/console"
