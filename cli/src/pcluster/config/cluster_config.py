@@ -1756,10 +1756,14 @@ class SchedulerPluginEvents(Resource):
 class SchedulerPluginFile(Resource):
     """Represent the Scheduler Plugin file resource."""
 
-    def __init__(self, file_path: str, timestamp_format: str = None, **kwargs):
+    def __init__(
+        self, file_path: str, log_stream_name: str, node_type: str = None, timestamp_format: str = None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.file_path = file_path
         self.timestamp_format = Resource.init_param(timestamp_format, default="%Y-%m-%dT%H:%M:%S%z")
+        self.node_type = Resource.init_param(node_type, default="ALL")
+        self.log_stream_name = log_stream_name
 
 
 class SchedulerPluginLogs(Resource):

@@ -1345,6 +1345,10 @@ class SchedulerPluginFileSchema(BaseSchema):
 
     file_path = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     timestamp_format = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    node_type = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["HEAD", "COMPUTE", "ALL"])
+    )
+    log_stream_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):

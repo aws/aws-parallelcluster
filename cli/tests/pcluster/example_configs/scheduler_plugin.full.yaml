@@ -105,10 +105,16 @@ Scheduling:
           Files:
             - FilePath: /var/log/slurmctld.log
               TimestampFormat: "%Y-%m-%dT%H:%M:%S.%f"
+              NodeType: ALL
+              LogStreamName: slurmctld.log
             - FilePath: /var/log/slurmd.log
-              TimestampFormat: "%Y-%m-%dT%H:%M:%S.%f"
+              TimestampFormat: "%b %-d %H:%M:%S"
+              NodeType: HEAD
+              LogStreamName: slurmctld.log
             - FilePath: "/var/log/aws-autoscaler/logfile.log"
               TimestampFormat: "%Y-%m-%d %H:%M:%S,%f"
+              NodeType: COMPUTE
+              LogStreamName: logfile.log
       SystemUsers:
         - Name: user1
           EnableImds: true # optional, defaults to 'false'
