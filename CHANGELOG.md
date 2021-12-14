@@ -25,6 +25,7 @@ CHANGELOG
 - Fix exporting of cluster logs when there is no prefix specified, previously exported to a `None` prefix.
 - Fix rollback not being performed in case of cluster update failure.  
 - Fix RootVolume schema for the HeadNode.
+- Fix EfaSecurityGroupValidator. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
 
 3.0.2
 -----
