@@ -320,36 +320,24 @@ class EfaSecurityGroupValidator(Validator):
         for security_group in security_groups:
             try:
                 sec_group = AWSApi.instance().ec2.describe_security_group(security_group)
-                allowed_in = False
-                allowed_out = False
-
                 # check inbound rules
-                for rule in sec_group.get("IpPermissions"):
-                    # UserIdGroupPairs is always of length 1, so grabbing 0th object is ok
-                    if (
-                        rule.get("IpProtocol") == "-1"
-                        and rule.get("UserIdGroupPairs")
-                        and rule.get("UserIdGroupPairs")[0].get("GroupId") == security_group
-                    ):
-                        allowed_in = True
-                        break
-
+                allowed_in = self._all_traffic_allowed(security_group, sec_group.get("IpPermissions"))
                 # check outbound rules
-                for rule in sec_group.get("IpPermissionsEgress"):
-                    if (
-                        rule.get("IpProtocol") == "-1"
-                        and rule.get("UserIdGroupPairs")
-                        and rule.get("UserIdGroupPairs")[0].get("GroupId") == security_group
-                    ):
-                        allowed_out = True
-                        break
-
+                allowed_out = self._all_traffic_allowed(security_group, sec_group.get("IpPermissionsEgress"))
                 if allowed_in and allowed_out:
                     efa_sg_found = True
                     break
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.WARNING)
         return efa_sg_found
+
+    def _all_traffic_allowed(self, security_group_id, security_group_permission):
+        for rule in security_group_permission:
+            if rule.get("IpProtocol") == "-1" and rule.get("UserIdGroupPairs"):
+                for group in rule.get("UserIdGroupPairs"):
+                    if group.get("GroupId") == security_group_id:
+                        return True
+        return False
 
 
 # --------------- Storage validators --------------- #
