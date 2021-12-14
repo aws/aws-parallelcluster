@@ -26,7 +26,8 @@ from urllib.request import urlopen
 
 import pkg_resources
 import yaml
-from jinja2 import BaseLoader, Environment
+from jinja2 import BaseLoader
+from jinja2.sandbox import SandboxedEnvironment
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
@@ -511,6 +512,7 @@ class Cluster:
             return
 
         try:
+            LOGGER.info("Downloading scheduler plugin CloudFormation template from %s", scheduler_plugin_template)
             if scheduler_plugin_template.startswith("s3"):
                 bucket_parsing_result = parse_bucket_url(scheduler_plugin_template)
                 result = AWSApi.instance().s3.get_object(
@@ -529,7 +531,8 @@ class Cluster:
 
         # jinja rendering
         try:
-            environment = Environment(loader=BaseLoader)  # nosec nosemgrep
+            LOGGER.info("Rendering the following scheduler plugin CloudFormation template:\n%s", file_content)
+            environment = SandboxedEnvironment(loader=BaseLoader)
             environment.filters["hash"] = (
                 lambda value: hashlib.sha1(value.encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
             )

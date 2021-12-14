@@ -769,6 +769,15 @@ Resources:
               - s3:GetObject
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::parallelcluster-*/*'
+          - Action:
+              - iam:CreateServiceLinkedRole
+            Resource:
+              - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/imagebuilder.amazonaws.com/AWSServiceRoleForImageBuilder
+            Effect: Allow
+            Condition:
+              StringLike:
+                iam:AWSServiceName:
+                  - imagebuilder.amazonaws.com
 
   ParallelClusterDeleteImageManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
