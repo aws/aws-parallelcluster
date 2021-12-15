@@ -1200,7 +1200,6 @@ class SchedulerPluginQueueConstraintsSchema(BaseSchema):
     """Represent the schema for QueueConstraints in a Scheduler Plugin."""
 
     max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    max_subnets_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1212,7 +1211,6 @@ class SchedulerPluginComputeResourceConstraintsSchema(BaseSchema):
     """Represent the schema for ComputeResourceConstraints in a Scheduler Plugin."""
 
     max_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    max_instance_types_count = fields.Int(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1235,7 +1233,10 @@ class SchedulerPluginRequirementsSchema(BaseSchema):
     )
     requires_sudo_privileges = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     supports_cluster_update = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
-    supported_parallel_cluster_versions = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    supported_parallel_cluster_versions = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
+        validate=validate.Regexp(r"^((>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+,\s*)*(>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+$"),
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

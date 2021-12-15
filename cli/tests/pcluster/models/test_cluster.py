@@ -657,6 +657,129 @@ class TestCluster:
             scheduler_plugin_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
         )
 
+    @pytest.mark.parametrize(
+        "support_update, instance_type, match, update_changes",
+        [
+            (
+                "false",
+                "c5.xlarge",
+                "Update failure: The scheduler plugin used for this cluster does not support updating the scheduling "
+                "configuration.",
+                [
+                    ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+                    [
+                        ["Scheduling", "SchedulerQueues[queue1]", "ComputeResources[compute-resource1]"],
+                        "InstanceType",
+                        "c5.2xlarge",
+                        "c5.xlarge",
+                        "SUCCEEDED",
+                        "-",
+                        None,
+                    ],
+                ],
+            ),
+            ("false", "c5.2xlarge", None, None),
+            ("true", "c5.xlarge", None, None),
+        ],
+        ids=[
+            "Scheduler plugin doesn't support update, change both HeadNode.IAM.AdditionalIamPolicies and Queue "
+            "instance type",
+            "Scheduler plugin doesn't support update, change HeadNode.IAM.AdditionalIamPolicies and Queue instance "
+            "type",
+            "Scheduler plugin support update, change HeadNode.IAM.AdditionalIamPolicies",
+        ],
+    )
+    def test_validate_scheduling_update(self, mocker, support_update, instance_type, match, update_changes):
+        plugin_old_configuration = f"""
+Image:
+  Os: alinux2
+  CustomAmi: ami-08cf50b131bcd4db2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-08a5068070f6bc23d
+  Ssh:
+    KeyName: ermann-dub-ef
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+Scheduling:
+  Scheduler: plugin
+  SchedulerSettings:
+    SchedulerDefinition:
+      PluginInterfaceVersion: "1.0"
+      Requirements:
+        SupportsClusterUpdate: {support_update}
+      Events:
+        HeadInit:
+          ExecuteCommand:
+            Command: env
+  SchedulerQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: c5.2xlarge
+"""
+
+        plugin_new_configuration = f"""
+Image:
+  Os: alinux2
+  CustomAmi: ami-08cf50b131bcd4db2
+HeadNode:
+  InstanceType: t2.micro
+  Networking:
+    SubnetId: subnet-08a5068070f6bc23d
+  Ssh:
+    KeyName: ermann-dub-ef
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/FakePolicy
+Scheduling:
+  Scheduler: plugin
+  SchedulerSettings:
+    SchedulerDefinition:
+      PluginInterfaceVersion: "1.0"
+      Requirements:
+        SupportsClusterUpdate: {support_update}
+      Events:
+        HeadInit:
+          ExecuteCommand:
+            Command: env
+  SchedulerQueues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-12345678
+      ComputeResources:
+        - Name: compute-resource1
+          InstanceType: {instance_type}
+"""
+
+        mock_aws_api(mocker)
+        cluster = Cluster(
+            FAKE_NAME,
+            stack=ClusterStack(
+                {
+                    "StackName": FAKE_NAME,
+                    "CreationTime": "2021-06-04 10:23:20.199000+00:00",
+                    "StackStatus": ClusterStatus.CREATE_COMPLETE,
+                }
+            ),
+            config=plugin_old_configuration,
+        )
+
+        mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+        try:
+            cluster.validate_update_request(
+                target_source_config=plugin_new_configuration, validator_suppressors={AllValidatorsSuppressor()}
+            )
+        except ClusterActionError as e:
+            assert_that(e.args[0]).is_equal_to(match)
+            assert_that(e.update_changes).is_equal_to(update_changes)
+
 
 OLD_CONFIGURATION = """
 Image:
