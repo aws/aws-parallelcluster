@@ -1343,12 +1343,16 @@ class SchedulerPluginEventsSchema(BaseSchema):
 class SchedulerPluginFileSchema(BaseSchema):
     """Represent the schema of the Scheduler Plugin."""
 
-    file_path = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    file_path = fields.Str(
+        required=True, validate=get_field_validator("file_path"), metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
+    )
     timestamp_format = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     node_type = fields.Str(
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.OneOf(["HEAD", "COMPUTE", "ALL"])
     )
-    log_stream_name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    log_stream_name = fields.Str(
+        required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[^:*]*$")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

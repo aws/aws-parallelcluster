@@ -108,7 +108,7 @@ Scheduling:
               NodeType: ALL
               LogStreamName: slurmctld.log
             - FilePath: /var/log/slurmd.log
-              TimestampFormat: "%b %-d %H:%M:%S"
+              TimestampFormat: "%Y-%m-%dT%H:%M:%S.%f"
               NodeType: HEAD
               LogStreamName: slurmctld.log
             - FilePath: "/var/log/aws-autoscaler/logfile.log"
