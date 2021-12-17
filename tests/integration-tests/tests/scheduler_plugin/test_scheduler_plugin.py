@@ -19,6 +19,15 @@ import yaml
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
+from tags_utils import (
+    convert_tags_dicts_to_tags_list,
+    get_compute_node_root_volume_tags,
+    get_compute_node_tags,
+    get_head_node_root_volume_tags,
+    get_head_node_tags,
+    get_main_stack_tags,
+    get_shared_volume_tags,
+)
 from time_utils import minutes, seconds
 from utils import check_pcluster_list_cluster_log_streams
 
@@ -101,6 +110,8 @@ def test_scheduler_plugin_integration(
     _test_logs_uploaded(cluster, os)
     # Test custom log files in Monitoring configuration
     _test_custom_log(cluster, os)
+    # Test scheduler plugin tags
+    _test_tags(cluster, os)
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
@@ -317,6 +328,47 @@ def _test_cluster_config(command_executor, cluster_config):
         ).is_equal_to(
             target_config.get("Scheduling").get("SchedulerSettings").get("SchedulerDefinition").get("SystemUsers")
         )
+
+
+def _test_tags(cluster, os):
+    scheduler_plugin_tags = {"SchedulerPluginTag": "SchedulerPluginTagValue"}
+    config_file_tags = {"ConfigFileTag": "ConfigFileTagValue"}
+
+    test_cases = [
+        {
+            "resource": "Main CloudFormation Stack",
+            "tag_getter": get_main_stack_tags,
+        },
+        {
+            "resource": "Head Node",
+            "tag_getter": get_head_node_tags,
+        },
+        {
+            "resource": "Head Node Root Volume",
+            "tag_getter": get_head_node_root_volume_tags,
+            "tag_getter_kwargs": {"cluster": cluster, "os": os},
+        },
+        {
+            "resource": "Compute Node",
+            "tag_getter": get_compute_node_tags,
+        },
+        {
+            "resource": "Compute Node Root Volume",
+            "tag_getter": get_compute_node_root_volume_tags,
+            "tag_getter_kwargs": {"cluster": cluster, "os": os},
+        },
+        {
+            "resource": "Shared EBS Volume",
+            "tag_getter": get_shared_volume_tags,
+        },
+    ]
+    for test_case in test_cases:
+        logging.info("Verifying tags were propagated to %s", test_case.get("resource"))
+        tag_getter = test_case.get("tag_getter")
+        # Assume tag getters use lone cluster object arg if none explicitly given
+        tag_getter_args = test_case.get("tag_getter_kwargs", {"cluster": cluster})
+        observed_tags = tag_getter(**tag_getter_args)
+        assert_that(observed_tags).contains(*convert_tags_dicts_to_tags_list([scheduler_plugin_tags, config_file_tags]))
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))
