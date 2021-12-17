@@ -242,6 +242,31 @@ def test_efa_placement_group_validator(
             [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
             None,
         ),
+        # right sg. Test when UserIdGroupPairs contains more entries
+        (
+            True,
+            ["sg-12345678"],
+            [],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [
+                        {"UserId": "123456789012", "GroupId": "sg-23456789"},
+                        {"UserId": "123456789012", "GroupId": "sg-12345678"},
+                    ],
+                }
+            ],
+            [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [
+                        {"UserId": "123456789012", "GroupId": "sg-23456789"},
+                        {"UserId": "123456789012", "GroupId": "sg-12345678"},
+                    ],
+                }
+            ],
+            None,
+        ),
         # Multiple sec groups, one right
         (
             True,

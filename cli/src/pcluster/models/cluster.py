@@ -26,7 +26,8 @@ from urllib.request import urlopen
 
 import pkg_resources
 import yaml
-from jinja2 import BaseLoader, Environment
+from jinja2 import BaseLoader
+from jinja2.sandbox import SandboxedEnvironment
 from marshmallow import ValidationError
 
 from pcluster.aws.aws_api import AWSApi
@@ -511,6 +512,7 @@ class Cluster:
             return
 
         try:
+            LOGGER.info("Downloading scheduler plugin CloudFormation template from %s", scheduler_plugin_template)
             if scheduler_plugin_template.startswith("s3"):
                 bucket_parsing_result = parse_bucket_url(scheduler_plugin_template)
                 result = AWSApi.instance().s3.get_object(
@@ -529,7 +531,8 @@ class Cluster:
 
         # jinja rendering
         try:
-            environment = Environment(loader=BaseLoader)  # nosec nosemgrep
+            LOGGER.info("Rendering the following scheduler plugin CloudFormation template:\n%s", file_content)
+            environment = SandboxedEnvironment(loader=BaseLoader)
             environment.filters["hash"] = (
                 lambda value: hashlib.sha1(value.encode()).hexdigest()[0:16].capitalize()  # nosec nosemgrep
             )
@@ -787,6 +790,8 @@ class Cluster:
             validator_suppressors, validation_failure_level, target_source_config
         )
         changes = self._validate_patch(force, target_config)
+
+        self._validate_scheduling_update(changes, target_config)
 
         return target_config, changes, ignored_validation_failures
 
@@ -1078,3 +1083,59 @@ class Cluster:
     def _stack_events_stream_name(self):
         """Return the name of the stack events log stream."""
         return STACK_EVENTS_LOG_STREAM_NAME_FORMAT.format(self.stack_name)
+
+    def _validate_scheduling_update(self, changes, target_config):
+        """Update of Scheduling is not supported when SupportsClusterUpdate of the scheduler plugin is set to false."""
+        # target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling") doesn't mean
+        # there's changes in the config, if queue list in the scheduling dict has different order, target_config dict
+        # and original config dict may be different.
+        if (
+            self.config.scheduling.scheduler == "plugin"
+            and get_attr(self.config, "scheduling.settings.scheduler_definition.requirements.supports_cluster_update")
+            is False
+            and target_config.source_config.get("Scheduling") != self.config.source_config.get("Scheduling")
+        ):
+            scheduling_changes = []
+            # Example format of changes:
+            # changes = [
+            #     ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+            #     [
+            #         ["HeadNode", "Iam"],
+            #         "AdditionalIamPolicies",
+            #         None,
+            #         {"Policy": "arn:aws:iam::aws:policy/FakePolicy"},
+            #         "SUCCEEDED",
+            #         "-",
+            #         None,
+            #     ],
+            #     [
+            #         ["HeadNode", "Iam"],
+            #         "AdditionalIamPolicies",
+            #         {"Policy": "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"},
+            #         None,
+            #         "SUCCEEDED",
+            #         "-",
+            #         None,
+            #     ],
+            #     [
+            #         ["Scheduling", "SchedulerQueues[queue1]", "ComputeResources[compute-resource1]"],
+            #         "InstanceType",
+            #         "c5.2xlarge",
+            #         "c5.xlarge",
+            #         "SUCCEEDED",
+            #         "-",
+            #         None,
+            #     ],
+            # ]
+
+            # The first element of changes is:
+            # ["param_path", "parameter", "old value", "new value", "check", "reason", "action_needed"]
+            for change in changes[1:]:
+                if change[0][0] == "Scheduling":  # check if the param_path of the change start from Scheduling
+                    scheduling_changes.append(change)
+            if len(scheduling_changes) >= 1:
+                raise ClusterUpdateError(
+                    "Update failure: The scheduler plugin used for this cluster does not support updating the "
+                    "scheduling configuration.",
+                    [changes[0]] + scheduling_changes,
+                )

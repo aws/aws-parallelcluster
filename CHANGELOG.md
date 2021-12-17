@@ -17,6 +17,7 @@ CHANGELOG
 - Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
 - Upgrade Slurm to version 21.08.4.
 - Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
+- Disable packages update at instance launch time on Amazon Linux 2.
 
 **BUG FIXES**
 - Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
@@ -24,6 +25,7 @@ CHANGELOG
 - Fix exporting of cluster logs when there is no prefix specified, previously exported to a `None` prefix.
 - Fix rollback not being performed in case of cluster update failure.  
 - Fix RootVolume schema for the HeadNode.
+- Fix EfaSecurityGroupValidator. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
 
 3.0.2
 -----
@@ -149,6 +151,7 @@ CHANGELOG
 - Add tag 'Name' to every shared storage with the value specified in the shared storage name config.
 - Remove installation of MPICH and FFTW packages.
 - Remove Ganglia support.
+- Disable unattended packages update on Ubuntu.
 
 2.11.3
 -----
