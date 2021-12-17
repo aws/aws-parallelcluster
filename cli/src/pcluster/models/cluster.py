@@ -391,12 +391,14 @@ class Cluster:
             validation_failures = [ValidationResult(data, FailureLevel.ERROR, validator_type="ConfigSchemaValidator")]
             raise ConfigValidationError("Invalid cluster configuration.", validation_failures=validation_failures)
 
-    def validate_create_request(self, validator_suppressors, validation_failure_level):
+    def validate_create_request(self, validator_suppressors, validation_failure_level, dry_run=False):
         """Validate a create cluster request."""
         self._validate_no_existing_stack()
         self.config, ignored_validation_failures = self._validate_and_parse_config(
             validator_suppressors, validation_failure_level
         )
+        if dry_run and isinstance(self.config.scheduling, SchedulerPluginScheduling):
+            self._render_and_upload_scheduler_plugin_template(dry_run=dry_run)
         return ignored_validation_failures
 
     def _validate_no_existing_stack(self):
@@ -504,7 +506,7 @@ class Cluster:
             LOGGER.error(message)
             raise _cluster_error_mapper(e, message)
 
-    def _render_and_upload_scheduler_plugin_template(self):
+    def _render_and_upload_scheduler_plugin_template(self, dry_run=False):
         scheduler_plugin_template = get_attr(
             self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template"
         )
@@ -546,10 +548,10 @@ class Cluster:
             raise BadRequestClusterActionError(
                 f"Error while rendering scheduler plugin template '{scheduler_plugin_template}': {str(e)}"
             ) from e
-
-        self.bucket.upload_cfn_template(
-            rendered_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
-        )
+        if not dry_run:
+            self.bucket.upload_cfn_template(
+                rendered_template, PCLUSTER_S3_ARTIFACTS_DICT["scheduler_plugin_template_name"], S3FileFormat.TEXT
+            )
 
     def delete(self, keep_logs: bool = True):
         """Delete cluster preserving log groups."""
@@ -782,6 +784,7 @@ class Cluster:
         validator_suppressors: Set[ValidatorSuppressor] = None,
         validation_failure_level: FailureLevel = FailureLevel.ERROR,
         force: bool = False,
+        dry_run: bool = False,
     ):
         """Validate a cluster update request."""
         self._validate_cluster_exists()
@@ -792,6 +795,9 @@ class Cluster:
         changes = self._validate_patch(force, target_config)
 
         self._validate_scheduling_update(changes, target_config)
+
+        if dry_run and isinstance(self.config.scheduling, SchedulerPluginScheduling):
+            self._render_and_upload_scheduler_plugin_template(dry_run=dry_run)
 
         return target_config, changes, ignored_validation_failures
 
