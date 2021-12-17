@@ -1153,7 +1153,7 @@ class SchedulerPluginQueueSchema(_CommonQueueSchema):
 class DnsSchema(BaseSchema):
     """Represent the schema of Dns Settings."""
 
-    disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.COMPUTE_FLEET_STOP})
+    disable_managed_dns = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     hosted_zone_id = fields.Str(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     use_ec2_hostnames = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
 
