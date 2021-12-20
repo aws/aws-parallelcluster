@@ -8,11 +8,17 @@ CHANGELOG
 - CentOS 8 is no longer supported (EOL on December 31st, 2021).
 - Upgrade Slurm to version 20.11.8.
 - Upgrade Cinc Client to version 17.2.29.
+- Upgrade NICE DCV to version 2021.2-11190.
+- Upgrade NVIDIA driver to version 470.82.01.
+- Upgrade CUDA library to version 11.4.3.
+- Upgrade NVIDIA Fabric manager to 470.82.01.
 - Disable packages update at instance launch time on Amazon Linux 2.
 - Disable unattended packages update on Ubuntu.
+- Install Python 3 version of `aws-cfn-bootstrap` scripts on CentOS 7 and Ubuntu 18.04, aligning with Ubuntu 20.04 and Amazon Linux 2.
 
 **BUG FIXES**
-- Disable update of ec2_iam_role parameter.
+- Disable update of `ec2_iam_role` parameter.
+- Fix `CpuOptions` configuration in LaunchTemplate for t2 instances.
 
 2.11.3
 -----
