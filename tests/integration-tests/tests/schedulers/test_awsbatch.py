@@ -39,6 +39,7 @@ def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog
     assert_that(get_batch_ce_max_size(cluster.cfn_name, region)).is_equal_to(int(max_vcpus))
 
     timeout = 120 if region.startswith("cn-") else 60  # Longer timeout in china regions due to less reliable networking
+    _test_run_job_user(remote_command_executor, timeout)
     _test_simple_job_submission(remote_command_executor, test_datadir, timeout)
     _test_array_submission(remote_command_executor)
     _test_mnp_submission(remote_command_executor, test_datadir)
@@ -130,3 +131,13 @@ def _assert_compute_instance_type_validation_successful(caplog):
     ]
     for error_message in error_messages:
         assert_that(caplog.text).does_not_contain(error_message)
+
+
+def _test_run_job_user(remote_command_executor, timeout):
+    logging.info("Testing job are running as ec2-user.")
+    awsbatch_commands = AWSBatchCommands(remote_command_executor)
+    result = remote_command_executor.run_remote_command(f"awsbsub --vcpus 2 --memory 256 --timeout {timeout} whoami")
+    job_id = awsbatch_commands.assert_job_submitted(result.stdout)
+    awsbatch_commands.wait_job_completed(job_id)
+    result = remote_command_executor.run_remote_command(f"awsbout {job_id}", raise_on_error=False, log_output=True)
+    assert_that(result.stdout).matches("ec2-user")

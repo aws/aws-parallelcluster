@@ -42,6 +42,9 @@ if [ -n "${AWS_BATCH_JOB_NUM_NODES}" ]; then
   /parallelcluster/bin/generate_hostfile.sh "${first_ebs_shared_dir}" "${HOME}"
 fi
 
-# run the user's script
+# run the user's script as ec2-user
+sudo -i -u ec2-user bash << EOF
 echo "Starting the job..."
 exec "$@"
+EOF
+
