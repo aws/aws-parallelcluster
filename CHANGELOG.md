@@ -15,7 +15,7 @@ CHANGELOG
 **CHANGES**
 - Use compute resource name rather than instance type in compute fleet Launch Template name.
 - Change SlurmQueues length and ComputeResources length schema validators to be config validators. 
-- Upgrade Slurm to version 21.08.4.
+- Upgrade Slurm to version 21.08.5.
 - Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
 - Disable packages update at instance launch time on Amazon Linux 2.
 
