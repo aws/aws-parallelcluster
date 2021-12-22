@@ -697,7 +697,9 @@ class DirectoryService(Resource):
 
     def _register_validators(self):
         if self.domain_addr:
-            self._register_validator(DomainAddrValidator, domain_addr=self.domain_addr)
+            self._register_validator(
+                DomainAddrValidator, domain_addr=self.domain_addr, additional_sssd_configs=self.additional_sssd_configs
+            )
         if self.ldap_tls_req_cert:
             self._register_validator(LdapTlsReqCertValidator, ldap_tls_reqcert=self.ldap_tls_req_cert)
 
