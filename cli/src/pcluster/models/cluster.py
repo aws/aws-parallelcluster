@@ -191,6 +191,11 @@ class Cluster:
             self._get_artifact_dir()
         return self.__s3_artifact_dir
 
+    @property
+    def compute_fleet_status_manager(self) -> ComputeFleetStatusManager:
+        """Return compute fleet status manager."""
+        return ComputeFleetStatusManager.get_manager(self.name, self.stack.version, self.stack.scheduler)
+
     def _get_artifact_dir(self):
         """Get artifact directory in S3 bucket by stack output."""
         try:
@@ -272,7 +277,7 @@ class Cluster:
         return status
 
     @property
-    def compute_fleet_status_with_last_updated_time(self):
+    def compute_fleet_status_with_last_updated_time(self) -> Tuple[ComputeFleetStatus, str]:
         """Status of the cluster compute fleet and the last compute fleet status updated time."""
         if self.stack.is_working_status or self.stack.status == "UPDATE_IN_PROGRESS":
             if self.stack.scheduler == "awsbatch":
@@ -281,8 +286,7 @@ class Cluster:
                 )
                 last_updated_time = None
             else:
-                compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-                status, last_updated_time = compute_fleet_status_manager.get_status_with_last_updated_time()
+                status, last_updated_time = self.compute_fleet_status_manager.get_status_with_last_updated_time()
             return status, last_updated_time
         else:
             LOGGER.info(
@@ -686,15 +690,15 @@ class Cluster:
         except AWSClientError as e:
             raise _cluster_error_mapper(e, f"Failed to retrieve cluster instances. {e}")
 
-    def has_running_capacity(self, updated_value: bool = False):
+    def has_running_capacity(self, updated_value: bool = False) -> bool:
         """Return True if the cluster has running capacity. Note: the value will be cached."""
         if self.__has_running_capacity is None or updated_value:
-            if self.stack.scheduler == "slurm":
-                self.__has_running_capacity = (
-                    ComputeFleetStatusManager(self.name).get_status() != ComputeFleetStatus.STOPPED
-                )
-            elif self.stack.scheduler == "awsbatch":
+            if self.stack.scheduler == "awsbatch":
                 self.__has_running_capacity = self.get_running_capacity() > 0
+            else:
+                self.__has_running_capacity = (
+                    self.compute_fleet_status_manager.get_status() != ComputeFleetStatus.STOPPED
+                )
         return self.__has_running_capacity
 
     def get_running_capacity(self, updated_value: bool = False):
@@ -719,8 +723,8 @@ class Cluster:
             scheduler = self.config.scheduling.scheduler
             if scheduler == "awsbatch":
                 self.enable_awsbatch_compute_environment()
-            else:  # scheduler == "slurm"
-                self.start_slurm_compute_fleet()
+            else:  # traditional scheduler
+                self.start_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
             raise BadRequestClusterActionError(
                 "Failed when starting compute fleet due to a concurrent update of the status. "
@@ -729,10 +733,9 @@ class Cluster:
         except Exception as e:
             raise _cluster_error_mapper(e, f"Failed when starting compute fleet with error: {str(e)}")
 
-    def start_slurm_compute_fleet(self):
-        """Start Slurm compute fleet."""
-        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-        compute_fleet_status_manager.update_status(
+    def start_compute_fleet(self):
+        """Start compute fleet."""
+        self.compute_fleet_status_manager.update_status(
             ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
         )
 
@@ -762,8 +765,8 @@ class Cluster:
             scheduler = self.config.scheduling.scheduler
             if scheduler == "awsbatch":
                 self.disable_awsbatch_compute_environment()
-            else:  # scheduler == "slurm"
-                self.stop_slurm_compute_fleet()
+            else:  # traditional scheduler
+                self.stop_compute_fleet()
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
             raise BadRequestClusterActionError(
                 "Failed when stopping compute fleet due to a concurrent update of the status. "
@@ -772,10 +775,9 @@ class Cluster:
         except Exception as e:
             raise _cluster_error_mapper(e, f"Failed when stopping compute fleet with error: {str(e)}")
 
-    def stop_slurm_compute_fleet(self):
-        """Stop Slurm compute fleet."""
-        compute_fleet_status_manager = ComputeFleetStatusManager(self.name)
-        compute_fleet_status_manager.update_status(
+    def stop_compute_fleet(self):
+        """Stop compute fleet."""
+        self.compute_fleet_status_manager.update_status(
             ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
         )
 

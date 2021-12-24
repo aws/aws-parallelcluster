@@ -73,7 +73,7 @@ write_files:
           "ephemeral_dir": "${EphemeralDir}",
           "ebs_shared_dirs": "${EbsSharedDirs}",
           "proxy": "${ProxyServer}",
-          "ddb_table": "${DynamoDBTable}",
+          "slurm_ddb_table": "${SlurmDynamoDBTable}",
           "log_group_name": "${LogGroupName}",
           "dns_domain": "${ClusterDNSDomain}",
           "hosted_zone": "${ClusterHostedZone}",

@@ -95,12 +95,9 @@ Scheduling:
         HeadClusterUpdate:
           ExecuteCommand:
             Command: artifacts/handlers/head_cluster_update.sh
-        HeadComputeFleetStart:
+        HeadComputeFleetUpdate:
           ExecuteCommand:
-            Command: artifacts/handlers/head_computefleet_start.sh
-        HeadComputeFleetStop:
-          ExecuteCommand:
-            Command: artifacts/handlers/head_computefleet_stop.sh
+            Command: artifacts/handlers/head_computefleet_update.sh
       Monitoring:
         Logs:
           Files:

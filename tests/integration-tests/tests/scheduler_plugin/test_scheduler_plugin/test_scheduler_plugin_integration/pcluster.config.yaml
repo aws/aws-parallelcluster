@@ -33,12 +33,9 @@ Scheduling:
         HeadClusterUpdate:
           ExecuteCommand:
             Command: env && echo "HeadClusterUpdate executed"
-        HeadComputeFleetStart:
+        HeadComputeFleetUpdate:
           ExecuteCommand:
-            Command: env && echo "HeadComputeFleetStart executed"
-        HeadComputeFleetStop:
-          ExecuteCommand:
-            Command: env && echo "HeadComputeFleetStop executed"
+            Command: env && echo "HeadComputeFleetUpdate executed"
       Monitoring:
         Logs:
           Files:

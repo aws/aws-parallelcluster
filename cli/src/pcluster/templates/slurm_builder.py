@@ -19,7 +19,7 @@ from aws_cdk.core import CfnCustomResource, CfnDeletionPolicy, CfnOutput, CfnPar
 
 from pcluster.aws.aws_api import AWSApi
 from pcluster.config.cluster_config import SlurmClusterConfig
-from pcluster.constants import PCLUSTER_DYNAMODB_PREFIX
+from pcluster.constants import PCLUSTER_SLURM_DYNAMODB_PREFIX
 from pcluster.models.s3_bucket import S3Bucket
 from pcluster.templates.cdk_builder_utils import (
     PclusterLambdaConstruct,
@@ -115,14 +115,16 @@ class SlurmConstruct(Construct):
 
         policy_statements = [
             {
-                "sid": "DynamoDBTableQuery",
+                "sid": "SlurmDynamoDBTableQuery",
                 "effect": iam.Effect.ALLOW,
                 "actions": ["dynamodb:Query"],
                 "resources": [
-                    self._format_arn(service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}"),
+                    self._format_arn(
+                        service="dynamodb", resource=f"table/{PCLUSTER_SLURM_DYNAMODB_PREFIX}{self.stack_name}"
+                    ),
                     self._format_arn(
                         service="dynamodb",
-                        resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}/index/*",
+                        resource=f"table/{PCLUSTER_SLURM_DYNAMODB_PREFIX}{self.stack_name}/index/*",
                     ),
                 ],
             },
@@ -143,7 +145,7 @@ class SlurmConstruct(Construct):
 
         policy_statements = [
             {
-                "sid": "DynamoDBTable",
+                "sid": "SlurmDynamoDBTable",
                 "actions": [
                     "dynamodb:PutItem",
                     "dynamodb:BatchWriteItem",
@@ -151,7 +153,9 @@ class SlurmConstruct(Construct):
                 ],
                 "effect": iam.Effect.ALLOW,
                 "resources": [
-                    self._format_arn(service="dynamodb", resource=f"table/{PCLUSTER_DYNAMODB_PREFIX}{self.stack_name}")
+                    self._format_arn(
+                        service="dynamodb", resource=f"table/{PCLUSTER_SLURM_DYNAMODB_PREFIX}{self.stack_name}"
+                    )
                 ],
             },
         ]
@@ -170,8 +174,8 @@ class SlurmConstruct(Construct):
     def _add_dynamodb_table(self):
         table = dynamodb.CfnTable(
             self.stack_scope,
-            "DynamoDBTable",
-            table_name=PCLUSTER_DYNAMODB_PREFIX + self.stack_name,
+            "SlurmDynamoDBTable",
+            table_name=PCLUSTER_SLURM_DYNAMODB_PREFIX + self.stack_name,
             attribute_definitions=[
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="Id", attribute_type="S"),
                 dynamodb.CfnTable.AttributeDefinitionProperty(attribute_name="InstanceId", attribute_type="S"),
