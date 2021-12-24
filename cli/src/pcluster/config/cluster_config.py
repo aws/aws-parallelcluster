@@ -1762,8 +1762,7 @@ class SchedulerPluginEvents(Resource):
         compute_configure: SchedulerPluginEvent = None,
         compute_finalize: SchedulerPluginEvent = None,
         head_cluster_update: SchedulerPluginEvent = None,
-        head_compute_fleet_start: SchedulerPluginEvent = None,
-        head_compute_fleet_stop: SchedulerPluginEvent = None,
+        head_compute_fleet_update: SchedulerPluginEvent = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1774,8 +1773,7 @@ class SchedulerPluginEvents(Resource):
         self.compute_configure = compute_configure
         self.compute_finalize = compute_finalize
         self.head_cluster_update = head_cluster_update
-        self.head_compute_fleet_start = head_compute_fleet_start
-        self.head_compute_fleet_stop = head_compute_fleet_stop
+        self.head_compute_fleet_update = head_compute_fleet_update
 
 
 class SchedulerPluginFile(Resource):

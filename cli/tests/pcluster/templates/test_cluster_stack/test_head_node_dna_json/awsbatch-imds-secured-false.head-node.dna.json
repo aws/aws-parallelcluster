@@ -11,6 +11,7 @@
     "dcv_enabled": "false",
     "dcv_port": "NONE",
     "ddb_table": "NONE",
+    "slurm_ddb_table": "NONE",
     "disable_hyperthreading_manually": "false",
     "dns_domain": "",
     "ebs_shared_dirs": "NONE,NONE,NONE,NONE,NONE",

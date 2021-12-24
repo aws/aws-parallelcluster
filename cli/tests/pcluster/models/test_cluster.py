@@ -23,14 +23,15 @@ from pcluster.api.models import ClusterStatus
 from pcluster.aws.common import AWSClientError
 from pcluster.config.cluster_config import Tag
 from pcluster.config.common import AllValidatorsSuppressor
-from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_S3_ARTIFACTS_DICT
+from pcluster.constants import PCLUSTER_CLUSTER_NAME_TAG, PCLUSTER_S3_ARTIFACTS_DICT, PCLUSTER_VERSION_TAG
 from pcluster.models.cluster import BadRequestClusterActionError, Cluster, ClusterActionError, NodeType
 from pcluster.models.cluster_resources import ClusterStack
+from pcluster.models.compute_fleet_status_manager import ComputeFleetStatus
 from pcluster.models.s3_bucket import S3Bucket, S3FileFormat
 from tests.pcluster.aws.dummy_aws_api import mock_aws_api
 from tests.pcluster.config.dummy_cluster_config import dummy_slurm_cluster_config
 from tests.pcluster.models.dummy_s3_bucket import mock_bucket, mock_bucket_object_utils, mock_bucket_utils
-from tests.pcluster.test_utils import FAKE_NAME
+from tests.pcluster.test_utils import FAKE_NAME, FAKE_VERSION
 
 LOG_GROUP_TYPE = "AWS::Logs::LogGroup"
 ARTIFACT_DIRECTORY = "s3_artifacts_dir"
@@ -48,7 +49,14 @@ class TestCluster:
             ),
         )
         return Cluster(
-            FAKE_NAME, stack=ClusterStack({"StackName": FAKE_NAME, "CreationTime": "2021-06-04 10:23:20.199000+00:00"})
+            FAKE_NAME,
+            stack=ClusterStack(
+                {
+                    "StackName": FAKE_NAME,
+                    "CreationTime": "2021-06-04 10:23:20.199000+00:00",
+                    "Tags": [{"Key": PCLUSTER_VERSION_TAG, "Value": FAKE_VERSION}],
+                }
+            ),
         )
 
     @pytest.mark.parametrize(
@@ -602,6 +610,7 @@ class TestCluster:
                     "StackName": FAKE_NAME,
                     "CreationTime": "2021-06-04 10:23:20.199000+00:00",
                     "StackStatus": ClusterStatus.CREATE_COMPLETE,
+                    "Tags": [{"Key": PCLUSTER_VERSION_TAG, "Value": FAKE_VERSION}],
                 }
             ),
             config=OLD_CONFIGURATION,
@@ -769,12 +778,16 @@ Scheduling:
                     "StackName": FAKE_NAME,
                     "CreationTime": "2021-06-04 10:23:20.199000+00:00",
                     "StackStatus": ClusterStatus.CREATE_COMPLETE,
+                    "Tags": [{"Key": PCLUSTER_VERSION_TAG, "Value": FAKE_VERSION}],
                 }
             ),
             config=plugin_old_configuration,
         )
 
         mocker.patch("pcluster.aws.cfn.CfnClient.stack_exists", return_value=True)
+        mocker.patch(
+            "pcluster.models.cluster.ComputeFleetStatusManager.get_status", return_value=ComputeFleetStatus.STOPPED
+        )
         try:
             cluster.validate_update_request(
                 target_source_config=plugin_new_configuration, validator_suppressors={AllValidatorsSuppressor()}

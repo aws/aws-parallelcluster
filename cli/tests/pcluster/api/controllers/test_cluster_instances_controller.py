@@ -228,7 +228,10 @@ class TestDeleteClusterInstances:
             (
                 {"scheduler": "awsbatch"},
                 False,
-                {"message": "Bad Request: the delete cluster instances operation does not support AWS Batch clusters."},
+                {
+                    "message": "Bad Request: the delete cluster instances operation does not support "
+                    "AWS Batch clusters."
+                },
             ),
             (
                 {"version": "2.11.0"},

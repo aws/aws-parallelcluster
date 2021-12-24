@@ -1346,10 +1346,7 @@ class SchedulerPluginEventsSchema(BaseSchema):
     head_cluster_update = fields.Nested(
         SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
-    head_compute_fleet_start = fields.Nested(
-        SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
-    )
-    head_compute_fleet_stop = fields.Nested(
+    head_compute_fleet_update = fields.Nested(
         SchedulerPluginEventSchema, metadata={"update_policy": UpdatePolicy.UNSUPPORTED}
     )
 

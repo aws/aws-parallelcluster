@@ -83,6 +83,7 @@ STACK_EVENTS_LOG_STREAM_NAME_FORMAT = "{}-cfn-events"
 PCLUSTER_IMAGE_NAME_REGEX = r"^[-_A-Za-z0-9{][-_A-Za-z0-9\s:{}\.]+[-_A-Za-z0-9}]$"
 PCLUSTER_IMAGE_ID_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,127})$"
 
+PCLUSTER_SLURM_DYNAMODB_PREFIX = "parallelcluster-slurm-"
 PCLUSTER_DYNAMODB_PREFIX = "parallelcluster-"
 PCLUSTER_PREFIX = "parallelcluster:"
 PCLUSTER_IMAGE_NAME_TAG = f"{PCLUSTER_PREFIX}image_name"
