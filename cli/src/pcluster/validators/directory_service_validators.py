@@ -37,7 +37,8 @@ class DomainAddrValidator(Validator):
         elif domain_addr_scheme == "ldap":
             warning_message = "The use of the ldaps protocol is strongly encouraged for security reasons."
             tls_disabled = (
-                additional_sssd_configs.get("ldap_auth_disable_tls_never_use_in_production", "false").lower() == "true"
+                str(additional_sssd_configs.get("ldap_auth_disable_tls_never_use_in_production", "false")).lower()
+                == "true"
             )
             if not tls_disabled:
                 warning_message += (

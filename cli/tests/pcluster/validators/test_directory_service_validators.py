@@ -25,6 +25,11 @@ from tests.pcluster.validators.utils import assert_failure_messages
         ),
         (
             "ldap://172.31.8.14",
+            {"ldap_auth_disable_tls_never_use_in_production": True},
+            "The use of the ldaps protocol is strongly encouraged for security reasons.",
+        ),
+        (
+            "ldap://172.31.8.14",
             {},
             [
                 "The use of the ldaps protocol is strongly encouraged for security reasons.",
@@ -35,6 +40,15 @@ from tests.pcluster.validators.utils import assert_failure_messages
         (
             "ldap://172.31.8.14",
             {"ldap_auth_disable_tls_never_use_in_production": "false"},
+            [
+                "The use of the ldaps protocol is strongly encouraged for security reasons.",
+                "When using ldap, the additional SSSD config is required: "
+                "'ldap_auth_disable_tls_never_use_in_production: true'.",
+            ],
+        ),
+        (
+            "ldap://172.31.8.14",
+            {"ldap_auth_disable_tls_never_use_in_production": False},
             [
                 "The use of the ldaps protocol is strongly encouraged for security reasons.",
                 "When using ldap, the additional SSSD config is required: "
