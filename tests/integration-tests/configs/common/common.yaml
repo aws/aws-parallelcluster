@@ -147,7 +147,7 @@ dcv:
     dimensions:
       # DCV on GPU enabled instance
       - regions: ["ca-central-1"]
-        instances: ["g3.8xlarge"]
+        instances: ["g4dn.xlarge"]
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
       # DCV on ARM
@@ -156,8 +156,8 @@ dcv:
         oss: ["alinux2", "ubuntu1804"]
         schedulers: ["slurm"]
       # DCV on Batch
-      - regions: ["eu-west-1"]
-        instances: ["g3.8xlarge"]
+      - regions: ["ca-central-1"]
+        instances: ["g4dn.xlarge"]
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
       # DCV on Batch + ARM
