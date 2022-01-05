@@ -31,9 +31,9 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "slurm")
-@pytest.mark.dimensions("ca-central-1", "g4dn.xlarge", "alinux2", "slurm")
-@pytest.mark.dimensions("ca-central-1", "g4dn.xlarge", "centos7", "slurm")
-@pytest.mark.dimensions("ca-central-1", "g4dn.xlarge", "ubuntu1804", "slurm")
+@pytest.mark.dimensions("us-east-1", "g4dn.2xlarge", "alinux2", "slurm")
+@pytest.mark.dimensions("us-east-1", "g4dn.2xlarge", "centos7", "slurm")
+@pytest.mark.dimensions("us-east-1", "g4dn.2xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "centos7", "slurm")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "ubuntu1804", "slurm")
