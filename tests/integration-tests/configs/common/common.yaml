@@ -132,8 +132,8 @@ dcv:
   test_dcv.py::test_dcv_configuration:
     dimensions:
       # DCV on GPU enabled instance
-      - regions: ["ca-central-1"]
-        instances: ["g4dn.xlarge"]
+      - regions: ["us-east-1"]
+        instances: ["g4dn.2xlarge"]
         oss: {{common.OSS_COMMERCIAL_X86}}
         schedulers: ["slurm"]
       # DCV on ARM
@@ -145,8 +145,8 @@ dcv:
         {{- common.OSS_COMMERCIAL_ARM.append("ubuntu2004") or "" }}
         schedulers: ["slurm"]
       # DCV on Batch
-      - regions: ["ca-central-1"]
-        instances: ["g4dn.xlarge"]
+      - regions: ["us-east-1"]
+        instances: ["g4dn.2xlarge"]
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
       # DCV on Batch + ARM
