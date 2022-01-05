@@ -1431,6 +1431,7 @@ class SchedulerPluginDefinitionSchema(BaseSchema):
         validate=validate.Length(max=SCHEDULER_PLUGIN_MAX_NUMBER_OF_USERS),
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"},
     )
+    tags = fields.Nested(TagSchema, many=True, metadata={"update_policy": UpdatePolicy.SUPPORTED, "update_key": "Key"})
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1563,8 +1564,8 @@ class SchedulingSchema(BaseSchema):
     @validates_schema
     def same_subnet_in_different_queues(self, data, **kwargs):
         """Validate subnet_ids configured in different queues are the same."""
-        queues = "slurm_queues"
-        if queues in data:
+        if "slurm_queues" in data or "scheduler_queues" in data:
+            queues = "slurm_queues" if "slurm_queues" in data else "scheduler_queues"
 
             def _queue_has_subnet_ids(queue):
                 return queue.networking and queue.networking.subnet_ids

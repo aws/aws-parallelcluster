@@ -170,10 +170,11 @@ def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedSto
 
 def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     """Return a list of tags set by the user."""
+    cluster_tags = config.get_cluster_tags()
     if raw_dict:
-        custom_tags = {tag.key: tag.value for tag in config.tags} if config.tags else {}
+        custom_tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
     else:
-        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in config.tags] if config.tags else []
+        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in cluster_tags] if cluster_tags else []
     return custom_tags
 
 
