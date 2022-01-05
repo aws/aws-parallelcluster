@@ -35,7 +35,7 @@ from tests.pcluster.utils import load_cluster_model_from_yaml
         "scheduler_plugin.full.yaml",
     ],
 )
-def test_cluster_builder_from_configuration_file(mocker, config_file_name):
+def test_cluster_builder_from_configuration_file(mocker, capsys, config_file_name):
     mock_aws_api(mocker)
     # mock bucket initialization parameters
     mock_bucket(mocker)
@@ -43,7 +43,9 @@ def test_cluster_builder_from_configuration_file(mocker, config_file_name):
     generated_template = CDKTemplateBuilder().build_cluster_template(
         cluster_config=cluster, bucket=dummy_cluster_bucket(), stack_name="clustername"
     )
-    print(yaml.dump(generated_template))
+    _, err = capsys.readouterr()
+    assert_that(err).is_empty()  # Assertion failure may become an update of dependency warning deprecations.
+    yaml.dump(generated_template)
 
 
 @pytest.mark.parametrize(
