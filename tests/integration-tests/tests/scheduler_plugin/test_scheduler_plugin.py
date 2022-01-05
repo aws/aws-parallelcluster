@@ -67,6 +67,7 @@ def test_scheduler_plugin_integration(
     # Create bucket and upload resources
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    account_id = boto3.client("sts", region_name=region).get_caller_identity().get("Account")
     for file in ["scheduler_plugin_infra.cfn.yaml", "artifact"]:
         bucket.upload_file(str(test_datadir / file), f"scheduler_plugin/{file}")
     # Create cluster
@@ -75,6 +76,7 @@ def test_scheduler_plugin_integration(
         another_instance=ANOTHER_INSTANCE_TYPE,
         user1=SCHEDULER_PLUGIN_USERS_LIST[0],
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],
+        account_id=account_id,
     )
     cluster = clusters_factory(cluster_config)
     # Verify head node is running

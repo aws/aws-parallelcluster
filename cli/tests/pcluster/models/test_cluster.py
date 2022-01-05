@@ -648,6 +648,9 @@ class TestCluster:
         cluster_config_mock.return_value.scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.template = (  # noqa
             template_url
         )
+        cluster_config_mock.return_value.scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.checksum = (  # noqa
+            "532eaabd9574880dbf76b9b8cc00832c20a6ec113d682299550d7a6e0f345e25"
+        )
         cluster_config_mock.return_value.get_instance_types_data.return_value = {"t2.micro": "instance_info"}
         upload_cfn_template_mock = mocker.patch.object(cluster.bucket, "upload_cfn_template", autospec=True)
 

@@ -56,9 +56,13 @@ Scheduling:
         ClusterSharedArtifacts:
           - Source: https://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/parallelcluster/3.0.0/cookbooks/aws-parallelcluster-cookbook-3.0.0.tgz
           - Source: s3://{{ bucket }}/scheduler_plugin/artifact
+            Checksum: cb30bed55f490e4f718dec95d841c5db175d9f9c5342fd8cb29af873e0efd9ee
+            S3BucketOwner: '{{account_id}}'
       ClusterInfrastructure:
         CloudFormation:
           Template: s3://{{ bucket }}/scheduler_plugin/scheduler_plugin_infra.cfn.yaml
+          Checksum: 6f9db6ee447ef457e8e58a0da79c14039154f5b4785a03a2fd2348079f90cf1e
+          S3BucketOwner: '{{account_id}}'
       SystemUsers:
         - Name: {{ user1 }}
           EnableImds: false

@@ -1693,12 +1693,16 @@ class SchedulerPluginRequirements(Resource):
 class SchedulerPluginCloudFormationInfrastructure(Resource):
     """Represent the CloudFormation infrastructure for a Scheduler Plugin."""
 
-    def __init__(self, template: str, **kwargs):
+    def __init__(self, template: str, s3_bucket_owner: str = None, checksum: str = None, **kwargs):
         super().__init__(**kwargs)
         self.template = replace_url_parameters(template)
+        self.s3_bucket_owner = s3_bucket_owner
+        self.checksum = checksum
 
     def _register_validators(self):
-        self._register_validator(UrlValidator, url=self.template, fail_on_https_error=True)
+        self._register_validator(
+            UrlValidator, url=self.template, fail_on_https_error=True, expected_bucket_owner=self.s3_bucket_owner
+        )
 
 
 class SchedulerPluginClusterInfrastructure(Resource):
@@ -1712,12 +1716,14 @@ class SchedulerPluginClusterInfrastructure(Resource):
 class SchedulerPluginClusterSharedArtifact(Resource):
     """Represent the ClusterSharedArtifact config for a Scheduler Plugin."""
 
-    def __init__(self, source: str, **kwargs):
+    def __init__(self, source: str, s3_bucket_owner: str = None, checksum: str = None, **kwargs):
         super().__init__(**kwargs)
         self.source = replace_url_parameters(source)
+        self.s3_bucket_owner = s3_bucket_owner
+        self.checksum = checksum
 
     def _register_validators(self):
-        self._register_validator(UrlValidator, url=self.source)
+        self._register_validator(UrlValidator, url=self.source, expected_bucket_owner=self.s3_bucket_owner)
 
 
 class SchedulerPluginPluginResources(Resource):

@@ -109,13 +109,17 @@ def test_imagebuilder_kms_key_id_encrypted_validator_and_ami_volume_size_validat
                 },
             },
             True,
-            AWSClientError(function_name="head_object", message="error"),
+            AWSClientError(
+                function_name="head_object",
+                message="Failed when accessing object 'aws-parallelcluster-node-3.0.tgz' from bucket 'test'. "
+                "This can be due to 'aws-parallelcluster-node-3.0.tgz' not found in 'test'",
+            ),
             URLError("[Errno 2] No such file or directory: '/test/aws-parallelcluster-cookbook-3.0.tgz'"),
             [
                 "The url 'https:///test/aws-parallelcluster-cookbook-3.0.tgz' causes URLError, the error reason is "
                 "'[Errno 2] No such file or directory: '/test/aws-parallelcluster-cookbook-3.0.tgz''",
-                "The S3 object 's3://test/aws-parallelcluster-node-3.0.tgz' does not exist or you do not have access "
-                "to it.",
+                "Failed when accessing object 'aws-parallelcluster-node-3.0.tgz' from bucket 'test'. This can be due "
+                "to 'aws-parallelcluster-node-3.0.tgz' not found in 'test'",
                 "The value 'ftp://test/aws-parallelcluster-batch-3.0.tgz' is not a valid URL, choose URL with "
                 "'https' or 's3' prefix.",
             ],

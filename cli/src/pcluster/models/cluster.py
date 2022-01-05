@@ -518,7 +518,13 @@ class Cluster:
             if scheduler_plugin_template.startswith("s3"):
                 bucket_parsing_result = parse_bucket_url(scheduler_plugin_template)
                 result = AWSApi.instance().s3.get_object(
-                    bucket_name=bucket_parsing_result["bucket_name"], key=bucket_parsing_result["object_key"]
+                    bucket_name=bucket_parsing_result["bucket_name"],
+                    key=bucket_parsing_result["object_key"],
+                    expected_bucket_owner=get_attr(
+                        self.config,
+                        "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation."
+                        "s3_bucket_owner",
+                    ),
                 )
                 file_content = result["Body"].read().decode("utf-8")
             else:
@@ -530,6 +536,9 @@ class Cluster:
             raise BadRequestClusterActionError(
                 f"Error while downloading scheduler plugin artifacts from '{scheduler_plugin_template}': {str(e)}"
             ) from e
+
+        # checksum
+        self.validate_scheduler_plugin_template_checksum(file_content, scheduler_plugin_template)
 
         # jinja rendering
         try:
@@ -1150,4 +1159,17 @@ class Cluster:
                     "Update failure: The scheduler plugin used for this cluster does not support updating the "
                     "scheduling configuration.",
                     [changes[0]] + scheduling_changes,
+                )
+
+    def validate_scheduler_plugin_template_checksum(self, file_content, scheduler_plugin_template):
+        """Validate scheduler plugin template checksum match the expected checksum."""
+        checksum = get_attr(
+            self.config, "scheduling.settings.scheduler_definition.cluster_infrastructure.cloud_formation.checksum"
+        )
+        if checksum:
+            actual_checksum = hashlib.sha256(file_content.encode()).hexdigest()
+            if actual_checksum != checksum:
+                raise BadRequestClusterActionError(
+                    f"Error when validating scheduler plugin template '{scheduler_plugin_template}': "
+                    f"checksum: {actual_checksum} does not match expected one: {checksum}"
                 )
