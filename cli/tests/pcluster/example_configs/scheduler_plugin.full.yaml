@@ -66,9 +66,12 @@ Scheduling:
       ClusterInfrastructure:
         CloudFormation:
           Template: https://bucket/scheduler_plugin/additional_cluster_infrastructure_no_jinja.cfn.yaml
+          Checksum: b4479e35f4e1f60b680f343b21d9dc30c958a6d239974e96a463b4479e35f4e1
       PluginResources:
         ClusterSharedArtifacts:
           - Source: s3://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/plugins/slurm/v1.0.0/artifacts.tar.gz
+            S3BucketOwner: "012345678910"
+            Checksum: b4479e35f4e1f60b680f343b21d9dc30c958a6d239974e96a463b4479e35f4e0
           - Source: s3://${Region}-aws-parallelcluster.s3.${Region}.${URLSuffix}/plugins/slurm/v1.0.0/artifacts2.tar.gz
       Events:
         HeadInit:

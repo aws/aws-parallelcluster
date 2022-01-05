@@ -1248,6 +1248,12 @@ class SchedulerPluginCloudFormationClusterInfrastructureSchema(BaseSchema):
     """Represent the CloudFormation section of the Scheduler Plugin ClusterInfrastructure schema."""
 
     template = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    s3_bucket_owner = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
+    )
+    checksum = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -1274,6 +1280,12 @@ class SchedulerPluginClusterSharedArtifactSchema(BaseSchema):
     """Represent the schema for Cluster Shared Artifact in a Scheduler Plugin."""
 
     source = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    s3_bucket_owner = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^\d{12}$")
+    )
+    checksum = fields.Str(
+        metadata={"update_policy": UpdatePolicy.UNSUPPORTED}, validate=validate.Regexp(r"^[A-Fa-f0-9]{64}$")
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):
