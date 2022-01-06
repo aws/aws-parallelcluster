@@ -384,7 +384,7 @@ class PclusterApi:
         List existing images.
 
         :param region: AWS region
-        :return list
+        :return: list
         """
         try:
             if region:

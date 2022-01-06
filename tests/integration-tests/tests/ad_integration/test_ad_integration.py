@@ -99,7 +99,7 @@ def zip_dir(path):
 
     The archive is created in memory and a file handler is returned by the function.
     :param path: directory containing the resources to archive.
-    :return file handler pointing to the compressed archive.
+    :return: file handler pointing to the compressed archive.
     """
     file_out = io.BytesIO()
     with zipfile.ZipFile(file_out, "w", zipfile.ZIP_DEFLATED) as ziph:
