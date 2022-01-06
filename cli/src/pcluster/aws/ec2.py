@@ -312,8 +312,8 @@ class Ec2Client(Boto3Client):
         """
         Return a tuple of availability zones that have the instance_type.
 
-        This function build above _get_supported_az_for_instance_types,
-        but simplify the input to 1 instance type and result to a list
+        This function builds on get_supported_az_for_instance_types,
+        but simplifies the input to 1 instance type and returns a tuple
 
         :param instance_type: the instance type for which the supporting AZs.
         :return: a tuple of the supporting AZs
@@ -361,7 +361,7 @@ class Ec2Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def get_ebs_snapshot_info(self, ebs_snapshot_id):
         """
-        Return a dict described the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
+        Return a dict describing the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
 
         Example of output:
         {

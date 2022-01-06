@@ -112,7 +112,7 @@ class Image:
         return response
 
     def export_logs(self, **args):
-        """Export the logs from the  image build process."""
+        """Export the logs from the image build process."""
         logging.info("Get image %s build log.", self.image_id)
         command = ["pcluster", "export-image-logs", "--region", self.region, "--image-id", self.image_id]
         for k, val in args.items():
@@ -177,7 +177,7 @@ class ImagesFactory:
 
     def create_image(self, image: Image, **kwargs):
         """
-        Create a image with a given config.
+        Create an image with a given config.
         :param image: image to create.
         :param raise_on_error: raise exception if image creation fails
         :param log_error: log error when error occurs. This can be set to False when error is expected

@@ -17,7 +17,7 @@ config generation.
 
 To run the integration tests you have to use Python >= 3.7.
 
-Before executing integration tests it is required to install all the python dependencies required by the framework.
+Before executing integration tests it is required to install all the Python dependencies required by the framework.
 In order to do that simply run the following command:
 ```bash
 pip install -r tests/integration-tests/requirements.txt
@@ -161,8 +161,8 @@ Executing the command will run an integration testing suite with the following f
 ### Parametrize and select the tests to run
 
 Each test contained in the suite can be parametrized, at submission time, across four different dimensions: regions,
-instances, operative systems and schedulers. These dimensions allow to dynamically customize the combination of cluster
-parameters the need to be validated by the scheduler. Some tests, due to the specific feature they are validating,
+instances, operating systems and schedulers. These dimensions allow to dynamically customize the combination of cluster
+parameters that need to be validated by the scheduler. Some tests, due to the specific feature they are validating,
 might not be compatible with the entire set of available dimensions. 
 
 In order to specify what tests to execute and the dimensions to select there are two different possibilities:
@@ -245,7 +245,7 @@ Some tox commands are offered in order to simplify the generation and validation
   with the additional arguments: `--tests-configs-dir` and `--tests-config-file`
   (e.g. tox -e validate-test-configs -- --tests-config-file configs/develop.yaml)
 * `tox -e generate-test-config my-config-file` can be used to automatically generate a configuration file pre-filled
-  with the list of all available file. The config file is generated in the `tests/integration-tests/configs` directory.
+  with the list of all available files. The config file is generated in the `tests/integration-tests/configs` directory.
 
 #### Using CLI options
  
@@ -258,7 +258,7 @@ The following options can be used to control the parametrization of test cases:
 Note that each test case can specify a subset of dimensions it is allowed to run against (for example
 a test case written specifically for the awsbatch scheduler should only be executed against the awsbatch scheduler).
 This means that the final parametrization of the tests is given by an intersection of the input dimensions and
-the tests specific dimensions so that all constraints are verified.
+the test-specific dimensions so that all constraints are verified.
 
 The `-f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]` option allows to limit the number of test
 cases to execute by only running those that are meant to verify a specific feature or subset of features.
@@ -297,12 +297,12 @@ tests_outputs
     │         ├── results.html: html report for the given region
     │         ├── results.xml: junitxml report for the given region
     │         ├── collected_tests.txt: the list of collected parametrized tests that are executed in the specific region
-    │         └── tests_config.yaml: the configuration file used to defined the tests to run (if present)
+    │         └── tests_config.yaml: the configuration file used to define the tests to run (if present)
     ├── test_report.json: global json report
     └── test_report.xml: global junitxml report
 ```
 
-If tests are ran sequentially by adding the `--sequential` option the result is the following:
+If tests are run sequentially by adding the `--sequential` option the result is the following:
 ```
 tests_outputs
 ├── $timestamp..logs
@@ -317,7 +317,7 @@ tests_outputs
     ├── test_report.json: global json report
     ├── test_report.xml: global junitxml report
     ├── collected_tests.txt: the list of collected parametrized tests
-    └── tests_config.yaml: the configuration file used to defined the tests to run (if present)
+    └── tests_config.yaml: the configuration file used to define the tests to run (if present)
 ```
 
 By specifying the option `--reports cw`, the results of the tests run will be published as a series of CloudWatch
@@ -417,7 +417,7 @@ account).
  * `ARN` is the ARN of the delegation role in the optin region account to be assumed by the main account
  * `external_id` is the external ID of the delegation role  
 
-By default, the delegation role lifetime last for one hour. Mind that if you are planning to launch tests that last 
+By default, the delegation role lifetime is one hour. Mind that if you are planning to launch tests that last 
 more than one hour.
 
 ## Write Integration Tests

@@ -22,7 +22,7 @@ def trigger_codebuild(project_name):
     Start a build for a specific CodeBuild project.
 
     :param project_name: name of the CodeBuild project to build.
-    :return the id of the started build.
+    :return: the id of the started build.
     """
     codebuild_client = boto3.client("codebuild")
     """ :type : pyboto3.codebuild """
