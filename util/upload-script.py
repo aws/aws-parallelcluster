@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--bucket",
         type=str,
-        help="Bucket to upload too, defaults to {region}-aws-parallelcluster",
+        help="Bucket to upload to, defaults to {region}-aws-parallelcluster",
         required=False,
         default="{region}-aws-parallelcluster",
     )

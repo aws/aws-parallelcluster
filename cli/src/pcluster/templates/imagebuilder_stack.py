@@ -10,7 +10,7 @@
 # limitations under the License.
 
 #
-# This module contains all the classes required to convert a ImageBuilder into a CFN template by using CDK.
+# This module contains all the classes required to convert an ImageBuilder into a CFN template by using CDK.
 #
 
 # pylint: disable=too-many-lines

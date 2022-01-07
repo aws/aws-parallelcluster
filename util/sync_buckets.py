@@ -58,7 +58,7 @@ def _parse_args():
     parser.add_argument(
         "--regions",
         type=str,
-        help="Regions where the files whould be deployed to",
+        help="Regions where the files would be deployed to",
         required=False,
         nargs="+",
         default=[],

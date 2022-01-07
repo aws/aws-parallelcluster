@@ -387,8 +387,8 @@ def main():
         )
     else:
         # This path is used by the pre_release_flow pipeline, which uses the
-        # retrieve_ami_list pipeline to generate json file with updated mappings
-        # for each partition and then aggregates the mappings from each those files
+        # retrieve_ami_list pipeline to generate a json file with updated mappings
+        # for each partition and then aggregates the mappings from those files
         # into a single json file.
         regions = get_aws_regions_from_file(args.json_regions)
         amis_dict = get_ami_list_from_file(regions, args.json_amis)

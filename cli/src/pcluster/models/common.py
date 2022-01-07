@@ -185,7 +185,7 @@ class CloudWatchLogsExporter:
     def _export_logs_to_s3(
         self, log_stream_prefix=None, start_time: datetime.datetime = None, end_time: datetime.datetime = None
     ):
-        """Export the contents of a image's CloudWatch log group to an s3 bucket."""
+        """Export the contents of an image's CloudWatch log group to an s3 bucket."""
         try:
             LOGGER.debug("Starting export of logs from log group %s to s3 bucket %s", self.log_group_name, self.bucket)
             task_id = AWSApi.instance().logs.create_export_task(

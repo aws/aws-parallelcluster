@@ -18,7 +18,7 @@ _help() {
 
   Copy the AWS ParallelCluster Package to an S3 bucket.
 
-  --bucket <bucket>             Bucket where upload the package
+  --bucket <bucket>             Bucket to upload the package to
   --srcdir <src-dir>            Root folder of the pcluster project
   --profile <aws-profile>       AWS profile name to use for the upload
                                 (optional, default is AWS_PROFILE env variable or "default").
@@ -69,7 +69,7 @@ main() {
     # check bucket or create it
     aws ${_profile} s3api head-bucket --bucket "${_bucket}" --region "${_region}"
     if [ $? -ne 0 ]; then
-        _info "Bucket ${_bucket} do not exist, trying to create it"
+        _info "Bucket ${_bucket} does not exist, trying to create it"
         aws ${_profile} s3api create-bucket --bucket "${_bucket}" --region "${_region}"
         if [ $? -ne 0 ]; then
             _error_exit "Unable to create bucket ${_bucket}"
