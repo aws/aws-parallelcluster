@@ -23,6 +23,12 @@ Parameters:
     Description: IP Address of secondary Simple AD instance
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})"
     Type: String
+  CertificateSecretArn:
+    Description: The Arn of the secret storing the certificate
+    Type: String
+  DomainName:
+    Description: The domain name of the certificate in the CertificateSecretArn
+    Type: String
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -90,6 +96,22 @@ Resources:
       SslPolicy: ELBSecurityPolicy-TLS-1-2-2017-01
       Certificates:
         - CertificateArn: !Ref LDAPSCertificateARN
+  DNS:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Ref DomainName
+      VPCs:
+        - VPCId: !Ref VPCId
+          VPCRegion: !Ref AWS::Region
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Name: !Ref DomainName
+      AliasTarget:
+        DNSName: !GetAtt NetworkLoadBalancer.DNSName
+        HostedZoneId: !GetAtt NetworkLoadBalancer.CanonicalHostedZoneID
+      Type: A
 Outputs:
   LDAPSURL:
     Description: LDAPS Route53 Alias Target
