@@ -96,6 +96,7 @@ from pcluster.config.cluster_config import (
     SlurmScheduling,
     SlurmSettings,
     Ssh,
+    SudoerConfiguration,
 )
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import (
@@ -1405,11 +1406,26 @@ class SchedulerPluginMonitoringSchema(BaseSchema):
         return SchedulerPluginMonitoring(**data)
 
 
+class SudoerConfigurationSchema(BaseSchema):
+    """Represent the SudoerConfiguration for scheduler plugin SystemUsers declared in the SchedulerDefinition."""
+
+    commands = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    run_as = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SudoerConfiguration(**data)
+
+
 class SchedulerPluginUserSchema(BaseSchema):
     """Represent the schema of the Scheduler Plugin."""
 
     name = fields.Str(required=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     enable_imds = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
+    sudoer_configuration = fields.Nested(
+        SudoerConfigurationSchema, many=True, metadata={"update_policy": UpdatePolicy.UNSUPPORTED, "update_key": "Name"}
+    )
 
     @post_load
     def make_resource(self, data, **kwargs):

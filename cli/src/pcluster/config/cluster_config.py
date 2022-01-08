@@ -1807,13 +1807,25 @@ class SchedulerPluginMonitoring(Resource):
         self.logs = logs
 
 
+class SudoerConfiguration(Resource):
+    """Represent the SudoerConfiguration resource."""
+
+    def __init__(self, commands: str, run_as: str, **kwargs):
+        super().__init__(**kwargs)
+        self.commands = commands
+        self.run_as = run_as
+
+
 class SchedulerPluginUser(Resource):
     """Represent the Scheduler Plugin user resource."""
 
-    def __init__(self, name: str, enable_imds: bool = None, **kwargs):
+    def __init__(
+        self, name: str, enable_imds: bool = None, sudoer_configuration: List[SudoerConfiguration] = (), **kwargs
+    ):
         super().__init__(**kwargs)
         self.name = name
         self.enable_imds = Resource.init_param(enable_imds, default=False)
+        self.sudoer_configuration = sudoer_configuration
 
 
 class SchedulerPluginDefinition(Resource):

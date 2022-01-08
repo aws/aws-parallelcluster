@@ -52,6 +52,12 @@ SCHEDULER_PLUGIN_USER = "pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USERS_LIST = ["user1", "schedulerPluginUser"]
 
 ANOTHER_INSTANCE_TYPE = "c4.xlarge"
+OS_MAPPING = {
+    "centos7": "centos",
+    "alinux2": "ec2-user",
+    "ubuntu1804": "ubuntu",
+    "ubuntu2004": "ubuntu",
+}
 
 
 @pytest.mark.usefixtures("instance", "scheduler")
@@ -70,6 +76,7 @@ def test_scheduler_plugin_integration(
     account_id = boto3.client("sts", region_name=region).get_caller_identity().get("Account")
     for file in ["scheduler_plugin_infra.cfn.yaml", "artifact"]:
         bucket.upload_file(str(test_datadir / file), f"scheduler_plugin/{file}")
+    run_as_user = OS_MAPPING[os]
     # Create cluster
     cluster_config = pcluster_config_reader(
         bucket=bucket_name,
@@ -77,6 +84,7 @@ def test_scheduler_plugin_integration(
         user1=SCHEDULER_PLUGIN_USERS_LIST[0],
         user2=SCHEDULER_PLUGIN_USERS_LIST[1],
         account_id=account_id,
+        run_as_user=run_as_user,
     )
     cluster = clusters_factory(cluster_config)
     # Verify head node is running
@@ -100,6 +108,8 @@ def test_scheduler_plugin_integration(
     _test_subtack_outputs(command_executor)
     # Test users are created
     _test_users(command_executor, compute_node)
+    # Test sudoer configuration for users
+    _test_sudoer_configuration(command_executor, run_as_user)
     # Test user imds
     _test_imds(command_executor)
     # Test cluster configuration
@@ -117,7 +127,6 @@ def test_scheduler_plugin_integration(
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
-
     # TODO:
     #  test sudo privilege for the users
 
@@ -395,3 +404,32 @@ def _test_logs_uploaded(cluster, os):
         "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "supervisord", "scheduler-plugin-out"},
     }
     check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=expected_log_streams)
+
+
+def _test_sudoer_configuration(command_executor, run_as_user):
+    """Verify users are able to run sudo commands without password in SudoerConfiguration."""
+
+    user1 = SCHEDULER_PLUGIN_USERS_LIST[0]
+    # Test user1 is able to run "touch" and "ls" commands as {run_as_user}
+    command_executor.run_remote_command(f"sudo su {user1} -c 'sudo -u {run_as_user} touch test_user1_touch'")
+    result = command_executor.run_remote_command(f"sudo su {user1} -c 'sudo -u {run_as_user} ls'").stdout
+    assert_that(result).contains("test_user1_touch")
+
+    # Test user1 is not able to run "mkdir" command as {run_as_user}
+    result = command_executor.run_remote_command(
+        f"sudo su {user1} -c 'sudo -u {run_as_user} mkdir test_mkdir'", raise_on_error=False
+    )
+    assert_that(result.failed).is_true()
+    # Test user1 is able to run "mkdir" command as root user
+    result = command_executor.run_remote_command(f"sudo su {user1} -c 'sudo -u root mkdir test_mkdir'")
+    assert_that(result.failed).is_false()
+
+    user2 = SCHEDULER_PLUGIN_USERS_LIST[1]
+    # Test user2 is not able to run "mkdir" command as root
+    result = command_executor.run_remote_command(
+        f"sudo su {user2} -c 'sudo -u root mkdir test_mkdir'", raise_on_error=False
+    )
+    assert_that(result.failed).is_true()
+    # Test user2 is able to run "ls" command as root
+    result = command_executor.run_remote_command(f"sudo su {user2} -c 'sudo -u root ls'")
+    assert_that(result.failed).is_false()
