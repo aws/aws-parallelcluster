@@ -85,10 +85,10 @@ class ClusterInfoSummary(ModelNormal):
         lazy_import()
         return {
             'cluster_name': (str,),  # noqa: E501
-            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
-            'cloudformation_stack_arn': (str,),  # noqa: E501
             'region': (str,),  # noqa: E501
             'version': (str,),  # noqa: E501
+            'cloudformation_stack_arn': (str,),  # noqa: E501
+            'cloudformation_stack_status': (CloudFormationStackStatus,),  # noqa: E501
             'cluster_status': (ClusterStatus,),  # noqa: E501
         }
 
@@ -99,10 +99,10 @@ class ClusterInfoSummary(ModelNormal):
 
     attribute_map = {
         'cluster_name': 'clusterName',  # noqa: E501
-        'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
-        'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
         'region': 'region',  # noqa: E501
         'version': 'version',  # noqa: E501
+        'cloudformation_stack_arn': 'cloudformationStackArn',  # noqa: E501
+        'cloudformation_stack_status': 'cloudformationStackStatus',  # noqa: E501
         'cluster_status': 'clusterStatus',  # noqa: E501
     }
 
@@ -118,15 +118,15 @@ class ClusterInfoSummary(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, cluster_name, cloudformation_stack_status, cloudformation_stack_arn, region, version, cluster_status, *args, **kwargs):  # noqa: E501
+    def __init__(self, cluster_name, region, version, cloudformation_stack_arn, cloudformation_stack_status, cluster_status, *args, **kwargs):  # noqa: E501
         """ClusterInfoSummary - a model defined in OpenAPI
 
         Args:
             cluster_name (str): Name of the cluster.
-            cloudformation_stack_status (CloudFormationStackStatus):
-            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
             region (str): AWS region where the cluster is created.
             version (str): ParallelCluster version used to create the cluster.
+            cloudformation_stack_arn (str): ARN of the main CloudFormation stack.
+            cloudformation_stack_status (CloudFormationStackStatus):
             cluster_status (ClusterStatus):
 
         Keyword Args:
@@ -186,10 +186,10 @@ class ClusterInfoSummary(ModelNormal):
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
         self.cluster_name = cluster_name
-        self.cloudformation_stack_status = cloudformation_stack_status
-        self.cloudformation_stack_arn = cloudformation_stack_arn
         self.region = region
         self.version = version
+        self.cloudformation_stack_arn = cloudformation_stack_arn
+        self.cloudformation_stack_status = cloudformation_stack_status
         self.cluster_status = cluster_status
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \

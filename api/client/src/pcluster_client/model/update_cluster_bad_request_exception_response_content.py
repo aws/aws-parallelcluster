@@ -81,8 +81,8 @@ class UpdateClusterBadRequestExceptionResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'configuration_validation_errors': ([ConfigValidationMessage],),  # noqa: E501
             'message': (str,),  # noqa: E501
+            'configuration_validation_errors': ([ConfigValidationMessage],),  # noqa: E501
             'update_validation_errors': ([UpdateError],),  # noqa: E501
             'change_set': ([Change],),  # noqa: E501
         }
@@ -93,8 +93,8 @@ class UpdateClusterBadRequestExceptionResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'configuration_validation_errors': 'configurationValidationErrors',  # noqa: E501
         'message': 'message',  # noqa: E501
+        'configuration_validation_errors': 'configurationValidationErrors',  # noqa: E501
         'update_validation_errors': 'updateValidationErrors',  # noqa: E501
         'change_set': 'changeSet',  # noqa: E501
     }
@@ -145,8 +145,8 @@ class UpdateClusterBadRequestExceptionResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            configuration_validation_errors ([ConfigValidationMessage]): [optional]  # noqa: E501
             message (str): [optional]  # noqa: E501
+            configuration_validation_errors ([ConfigValidationMessage]): [optional]  # noqa: E501
             update_validation_errors ([UpdateError]): [optional]  # noqa: E501
             change_set ([Change]): [optional]  # noqa: E501
         """

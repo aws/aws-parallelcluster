@@ -72,13 +72,13 @@ class LogStream(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'log_stream_arn': (str,),  # noqa: E501
-            'creation_time': (datetime,),  # noqa: E501
             'log_stream_name': (str,),  # noqa: E501
+            'creation_time': (datetime,),  # noqa: E501
             'first_event_timestamp': (datetime,),  # noqa: E501
             'last_event_timestamp': (datetime,),  # noqa: E501
             'last_ingestion_time': (datetime,),  # noqa: E501
             'upload_sequence_token': (str,),  # noqa: E501
+            'log_stream_arn': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -87,13 +87,13 @@ class LogStream(ModelNormal):
 
 
     attribute_map = {
-        'log_stream_arn': 'logStreamArn',  # noqa: E501
-        'creation_time': 'creationTime',  # noqa: E501
         'log_stream_name': 'logStreamName',  # noqa: E501
+        'creation_time': 'creationTime',  # noqa: E501
         'first_event_timestamp': 'firstEventTimestamp',  # noqa: E501
         'last_event_timestamp': 'lastEventTimestamp',  # noqa: E501
         'last_ingestion_time': 'lastIngestionTime',  # noqa: E501
         'upload_sequence_token': 'uploadSequenceToken',  # noqa: E501
+        'log_stream_arn': 'logStreamArn',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -108,17 +108,17 @@ class LogStream(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, log_stream_arn, creation_time, log_stream_name, first_event_timestamp, last_event_timestamp, last_ingestion_time, upload_sequence_token, *args, **kwargs):  # noqa: E501
+    def __init__(self, log_stream_name, creation_time, first_event_timestamp, last_event_timestamp, last_ingestion_time, upload_sequence_token, log_stream_arn, *args, **kwargs):  # noqa: E501
         """LogStream - a model defined in OpenAPI
 
         Args:
-            log_stream_arn (str): The Amazon Resource Name (ARN) of the log stream.
-            creation_time (datetime): The creation time of the stream.
             log_stream_name (str): Name of the log stream.
+            creation_time (datetime): The creation time of the stream.
             first_event_timestamp (datetime): The time of the first event of the stream.
             last_event_timestamp (datetime): The time of the last event of the stream. The lastEventTime value updates on an eventual consistency basis. It typically updates in less than an hour from ingestion, but in rare situations might take longer.
             last_ingestion_time (datetime): The last ingestion time.
             upload_sequence_token (str): The sequence token.
+            log_stream_arn (str): The Amazon Resource Name (ARN) of the log stream.
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -176,13 +176,13 @@ class LogStream(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.log_stream_arn = log_stream_arn
-        self.creation_time = creation_time
         self.log_stream_name = log_stream_name
+        self.creation_time = creation_time
         self.first_event_timestamp = first_event_timestamp
         self.last_event_timestamp = last_event_timestamp
         self.last_ingestion_time = last_ingestion_time
         self.upload_sequence_token = upload_sequence_token
+        self.log_stream_arn = log_stream_arn
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \
