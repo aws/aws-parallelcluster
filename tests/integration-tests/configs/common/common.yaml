@@ -155,6 +155,11 @@ dcv:
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2", "ubuntu1804"]
         schedulers: ["slurm"]
+      # DCV on ARM + GPU
+      - regions: ["us-east-1"]
+        instances: ["g5g.2xlarge"]
+        oss: ["alinux2", "ubuntu1804"]
+        schedulers: ["slurm"]
       # DCV on Batch
       - regions: ["us-east-1"]
         instances: ["g4dn.2xlarge"]
