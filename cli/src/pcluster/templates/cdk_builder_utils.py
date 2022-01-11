@@ -29,6 +29,7 @@ from pcluster.config.cluster_config import (
     LocalStorage,
     RootVolume,
     SharedStorageType,
+    SlurmClusterConfig,
     SlurmQueue,
 )
 from pcluster.constants import (
@@ -106,6 +107,16 @@ def get_common_user_data_env(node: Union[HeadNode, SlurmQueue], config: BaseClus
         "CookbookVersion": COOKBOOK_PACKAGES_VERSIONS["cookbook"],
         "ChefVersion": COOKBOOK_PACKAGES_VERSIONS["chef"],
         "BerkshelfVersion": COOKBOOK_PACKAGES_VERSIONS["berkshelf"],
+    }
+
+
+def get_slurm_specific_dna_json_for_head_node(config: SlurmClusterConfig, scheduler_resources) -> dict:
+    """Return a dict containing slurm specific settings to be written to dna.json of head node."""
+    return {
+        "dns_domain": scheduler_resources.cluster_hosted_zone.name if scheduler_resources.cluster_hosted_zone else "",
+        "hosted_zone": scheduler_resources.cluster_hosted_zone.ref if scheduler_resources.cluster_hosted_zone else "",
+        "ddb_table": scheduler_resources.dynamodb_table.ref,
+        "use_private_hostname": str(config.scheduling.settings.dns.use_ec2_hostnames).lower(),
     }
 
 
