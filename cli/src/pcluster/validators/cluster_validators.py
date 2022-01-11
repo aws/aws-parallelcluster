@@ -349,7 +349,7 @@ def _check_in_out_access(security_groups_ids, port):
 
     :param security_groups_ids: list of security groups to verify
     :param port: port to verify
-    :return true if
+    :return: True if both in and out access are allowed
     :raise: ClientError if a given security group doesn't exist
     """
     in_out_access = False

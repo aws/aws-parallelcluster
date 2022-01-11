@@ -77,9 +77,9 @@ class ConfigValidationMessage(ModelNormal):
         """
         lazy_import()
         return {
-            'level': (ValidationLevel,),  # noqa: E501
             'id': (str,),  # noqa: E501
             'type': (str,),  # noqa: E501
+            'level': (ValidationLevel,),  # noqa: E501
             'message': (str,),  # noqa: E501
         }
 
@@ -89,9 +89,9 @@ class ConfigValidationMessage(ModelNormal):
 
 
     attribute_map = {
-        'level': 'level',  # noqa: E501
         'id': 'id',  # noqa: E501
         'type': 'type',  # noqa: E501
+        'level': 'level',  # noqa: E501
         'message': 'message',  # noqa: E501
     }
 
@@ -141,9 +141,9 @@ class ConfigValidationMessage(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            level (ValidationLevel): [optional]  # noqa: E501
             id (str): Id of the validator.. [optional]  # noqa: E501
             type (str): Type of the validator.. [optional]  # noqa: E501
+            level (ValidationLevel): [optional]  # noqa: E501
             message (str): Validation message. [optional]  # noqa: E501
         """
 

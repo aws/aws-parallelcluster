@@ -42,7 +42,8 @@ DirectoryService:
   DomainAddr: {{ ldaps_uri }}
   PasswordSecretArn: {{ password_secret_arn }}
   DomainReadOnlyUser: {{ ldap_default_bind_dn }}
-  LdapTlsReqCert: never
+  LdapTlsCaCert: {{ ldap_tls_ca_cert }}
+  # LdapTlsReqCert: never
   GenerateSshKeysForUsers: false
   AdditionalSssdConfigs:
     debug_level: "0x1ff"

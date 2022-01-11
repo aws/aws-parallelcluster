@@ -1033,9 +1033,11 @@ class BaseClusterConfig(Resource):
         )
         self._register_storage_validators()
         self._register_validator(
-            HeadNodeLaunchTemplateValidator, head_node=self.head_node, ami_id=self.head_node_ami, tags=self.tags
+            HeadNodeLaunchTemplateValidator,
+            head_node=self.head_node,
+            ami_id=self.head_node_ami,
+            tags=self.get_cluster_tags(),
         )
-
         if self.head_node.dcv:
             self._register_validator(
                 DcvValidator,
@@ -1246,6 +1248,10 @@ class BaseClusterConfig(Resource):
                 self.image.os, self.head_node.architecture, ami_filters
             )
         return self._official_ami
+
+    def get_cluster_tags(self):
+        """Return tags configured in the cluster configuration."""
+        return self.tags
 
 
 class AwsBatchComputeResource(BaseComputeResource):
@@ -1817,6 +1823,7 @@ class SchedulerPluginDefinition(Resource):
         plugin_resources: SchedulerPluginPluginResources = None,
         monitoring: SchedulerPluginMonitoring = None,
         system_users: [SchedulerPluginUser] = None,
+        tags: List[Tag] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1828,6 +1835,7 @@ class SchedulerPluginDefinition(Resource):
         self.events = events
         self.monitoring = monitoring
         self.system_users = system_users
+        self.tags = tags
 
 
 class SchedulerPluginSettings(Resource):
@@ -1910,6 +1918,12 @@ class SchedulerPluginClusterConfig(BaseClusterConfig):
                 result[instance_type_info.instance_type()] = instance_type_info.instance_type_data
         return result
 
+    def get_cluster_tags(self):
+        """Return tags configured in the root of the cluster config and under scheduler definition."""
+        return (self.tags if self.tags else []) + get_attr(
+            self.scheduling, "settings.scheduler_definition.tags", default=[]
+        )
+
     def _register_validators(self):
         super()._register_validators()
         self._register_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
@@ -1936,7 +1950,10 @@ class SchedulerPluginClusterConfig(BaseClusterConfig):
 
         for queue in self.scheduling.queues:
             self._register_validator(
-                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name], tags=self.tags
+                ComputeResourceLaunchTemplateValidator,
+                queue=queue,
+                ami_id=self.image_dict[queue.name],
+                tags=self.get_cluster_tags(),
             )
             queue_image = self.image_dict[queue.name]
             if queue_image not in checked_images and queue.queue_ami:
@@ -2011,7 +2028,10 @@ class SlurmClusterConfig(BaseClusterConfig):
 
         for queue in self.scheduling.queues:
             self._register_validator(
-                ComputeResourceLaunchTemplateValidator, queue=queue, ami_id=self.image_dict[queue.name], tags=self.tags
+                ComputeResourceLaunchTemplateValidator,
+                queue=queue,
+                ami_id=self.image_dict[queue.name],
+                tags=self.get_cluster_tags(),
             )
             queue_image = self.image_dict[queue.name]
             if queue_image not in checked_images and queue.queue_ami:

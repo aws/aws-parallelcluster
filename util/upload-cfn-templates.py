@@ -105,7 +105,7 @@ def upload_to_s3(args, region, aws_credentials=None):
                     s3 = boto3.client("s3", region_name=region)
 
                 s3.head_object(Bucket=bucket, Key=key)
-                print("Warning: %s already exist in bucket %s" % (key, bucket))
+                print("Warning: %s already exists in bucket %s" % (key, bucket))
                 exist = True
             except ClientError:
                 exist = False

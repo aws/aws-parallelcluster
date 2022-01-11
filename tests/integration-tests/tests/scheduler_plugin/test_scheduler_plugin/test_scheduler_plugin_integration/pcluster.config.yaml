@@ -64,6 +64,9 @@ Scheduling:
           EnableImds: false
         - Name: {{ user2 }}
           EnableImds: true
+      Tags:
+        - Key: SchedulerPluginTag
+          Value: SchedulerPluginTagValue
   SchedulerQueues:
     - Name: q1
       CapacityType: ONDEMAND
@@ -83,3 +86,10 @@ Scheduling:
       Networking:
         SubnetIds:
           - {{ private_subnet_id }}
+SharedStorage:
+  - MountDir: /shared
+    Name: name1
+    StorageType: Ebs
+Tags:
+  - Key: ConfigFileTag
+    Value: ConfigFileTagValue

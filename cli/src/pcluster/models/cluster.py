@@ -891,7 +891,13 @@ class Cluster:
 
     def _get_cfn_tags(self):
         """Return tag list in the format expected by CFN."""
-        return [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]
+        cluster_tags = [{"Key": tag.key, "Value": tag.value} for tag in self.config.tags]
+        if self.config.scheduling.scheduler == "plugin":
+            scheduler_plugin_tags = get_attr(self.config, "scheduling.settings.scheduler_definition.tags")
+            if scheduler_plugin_tags:
+                custom_scheduler_plugin_tags = [{"Key": tag.key, "Value": tag.value} for tag in scheduler_plugin_tags]
+                cluster_tags += custom_scheduler_plugin_tags
+        return cluster_tags
 
     def export_logs(
         self,

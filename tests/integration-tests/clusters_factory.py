@@ -317,6 +317,11 @@ class Cluster:
         return instance.get("PublicIpAddress") if instance.get("PublicIpAddress") else instance.get("PrivateIpAddress")
 
     @property
+    def head_node_instance_id(self):
+        """Return the given cluster's head node's instance ID."""
+        return self.cfn_resources.get("HeadNode")
+
+    @property
     def os(self):
         """Return the os used for the cluster."""
         return self.config["Image"]["Os"]

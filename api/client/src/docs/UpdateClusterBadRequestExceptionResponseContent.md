@@ -5,8 +5,8 @@ This exception is thrown when a client calls the UpdateCluster API with an inval
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**configuration_validation_errors** | [**[ConfigValidationMessage]**](ConfigValidationMessage.md) |  | [optional] 
 **message** | **str** |  | [optional] 
+**configuration_validation_errors** | [**[ConfigValidationMessage]**](ConfigValidationMessage.md) |  | [optional] 
 **update_validation_errors** | [**[UpdateError]**](UpdateError.md) |  | [optional] 
 **change_set** | [**[Change]**](Change.md) |  | [optional] 
 
