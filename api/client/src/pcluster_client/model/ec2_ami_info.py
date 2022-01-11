@@ -80,11 +80,11 @@ class Ec2AmiInfo(ModelNormal):
         lazy_import()
         return {
             'ami_id': (str,),  # noqa: E501
-            'ami_name': (str,),  # noqa: E501
-            'description': (str,),  # noqa: E501
-            'state': (Ec2AmiState,),  # noqa: E501
             'tags': ([Tag],),  # noqa: E501
+            'ami_name': (str,),  # noqa: E501
             'architecture': (str,),  # noqa: E501
+            'state': (Ec2AmiState,),  # noqa: E501
+            'description': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -94,11 +94,11 @@ class Ec2AmiInfo(ModelNormal):
 
     attribute_map = {
         'ami_id': 'amiId',  # noqa: E501
-        'ami_name': 'amiName',  # noqa: E501
-        'description': 'description',  # noqa: E501
-        'state': 'state',  # noqa: E501
         'tags': 'tags',  # noqa: E501
+        'ami_name': 'amiName',  # noqa: E501
         'architecture': 'architecture',  # noqa: E501
+        'state': 'state',  # noqa: E501
+        'description': 'description',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -150,11 +150,11 @@ class Ec2AmiInfo(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            ami_name (str): EC2 AMI name. [optional]  # noqa: E501
-            description (str): EC2 AMI description. [optional]  # noqa: E501
-            state (Ec2AmiState): [optional]  # noqa: E501
             tags ([Tag]): EC2 AMI Tags. [optional]  # noqa: E501
+            ami_name (str): EC2 AMI name. [optional]  # noqa: E501
             architecture (str): EC2 AMI architecture. [optional]  # noqa: E501
+            state (Ec2AmiState): [optional]  # noqa: E501
+            description (str): EC2 AMI description. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

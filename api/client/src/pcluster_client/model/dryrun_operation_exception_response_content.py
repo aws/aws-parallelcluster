@@ -79,9 +79,9 @@ class DryrunOperationExceptionResponseContent(ModelNormal):
         """
         lazy_import()
         return {
-            'validation_messages': ([ConfigValidationMessage],),  # noqa: E501
             'message': (str,),  # noqa: E501
             'change_set': ([Change],),  # noqa: E501
+            'validation_messages': ([ConfigValidationMessage],),  # noqa: E501
         }
 
     @cached_property
@@ -90,9 +90,9 @@ class DryrunOperationExceptionResponseContent(ModelNormal):
 
 
     attribute_map = {
-        'validation_messages': 'validationMessages',  # noqa: E501
         'message': 'message',  # noqa: E501
         'change_set': 'changeSet',  # noqa: E501
+        'validation_messages': 'validationMessages',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -141,9 +141,9 @@ class DryrunOperationExceptionResponseContent(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            validation_messages ([ConfigValidationMessage]): List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.. [optional]  # noqa: E501
             message (str): [optional]  # noqa: E501
             change_set ([Change]): List of configuration changes requested by the operation.. [optional]  # noqa: E501
+            validation_messages ([ConfigValidationMessage]): List of messages collected during cluster config validation whose level is lower than the 'validationFailureLevel' set by the user.. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

@@ -72,11 +72,11 @@ class AmiInfo(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'ami_id': (str,),  # noqa: E501
-            'os': (str,),  # noqa: E501
-            'name': (str,),  # noqa: E501
-            'version': (str,),  # noqa: E501
             'architecture': (str,),  # noqa: E501
+            'ami_id': (str,),  # noqa: E501
+            'name': (str,),  # noqa: E501
+            'os': (str,),  # noqa: E501
+            'version': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -85,11 +85,11 @@ class AmiInfo(ModelNormal):
 
 
     attribute_map = {
-        'ami_id': 'amiId',  # noqa: E501
-        'os': 'os',  # noqa: E501
-        'name': 'name',  # noqa: E501
-        'version': 'version',  # noqa: E501
         'architecture': 'architecture',  # noqa: E501
+        'ami_id': 'amiId',  # noqa: E501
+        'name': 'name',  # noqa: E501
+        'os': 'os',  # noqa: E501
+        'version': 'version',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -104,15 +104,15 @@ class AmiInfo(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, ami_id, os, name, version, architecture, *args, **kwargs):  # noqa: E501
+    def __init__(self, architecture, ami_id, name, os, version, *args, **kwargs):  # noqa: E501
         """AmiInfo - a model defined in OpenAPI
 
         Args:
-            ami_id (str):
-            os (str):
-            name (str):
-            version (str):
             architecture (str):
+            ami_id (str):
+            name (str):
+            os (str):
+            version (str):
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -170,11 +170,11 @@ class AmiInfo(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.ami_id = ami_id
-        self.os = os
-        self.name = name
-        self.version = version
         self.architecture = architecture
+        self.ami_id = ami_id
+        self.name = name
+        self.os = os
+        self.version = version
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \
