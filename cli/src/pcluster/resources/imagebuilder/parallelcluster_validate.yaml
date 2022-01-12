@@ -235,9 +235,11 @@ phases:
                   rpm -qa | grep libfabric && rpm -qa | grep efa-
                   [[ $? -ne 0 ]] && echo "Check efa rpm failed" && exit 1
 
-                  echo "Checking intel mpi installed..."
-                  rpm -qa | grep intel-mpi
-                  [[ $? -ne 0 ]] && echo "Check intel-mpi rpm failed" && exit 1
+                  echo "Checking Intel MPI 20xx installed and module available..."
+                  unset MODULEPATH
+                  source /etc/profile.d/modules.sh
+                  (module avail intelmpi)2>&1 | grep "/opt/intel/mpi/20.*/modulefiles/"
+                  [[ $? -ne 0 ]] && echo "Check Intel MPI failed" && exit 1
                 else
                   dpkg -l | grep libfabric && modinfo efa | grep efa && [ -d /opt/amazon/efa ]
                   [[ $? -ne 0 ]] && echo "Check efa deb failed" && exit 1
