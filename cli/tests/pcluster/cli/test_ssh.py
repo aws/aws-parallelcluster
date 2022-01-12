@@ -6,8 +6,6 @@
 #  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from pcluster.cli.entrypoint import run
-
 
 class TestSshCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
