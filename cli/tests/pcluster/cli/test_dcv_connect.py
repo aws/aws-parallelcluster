@@ -9,7 +9,7 @@
 
 class TestDcvConnectCommand:
     def test_helper(self, test_datadir, run_cli, assert_out_err):
-        command = ["pcluster", "ssh", "--help"]
+        command = ["pcluster", "dcv-connect", "--help"]
         run_cli(command, expect_failure=False)
 
         assert_out_err(expected_out=(test_datadir / "pcluster-help.txt").read_text().strip(), expected_err="")
