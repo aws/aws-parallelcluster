@@ -1,10 +1,11 @@
-usage: pcluster configure [-h] [--debug] [--region REGION] -c CONFIG
+usage: pcluster configure [-h] [--debug] [-r REGION] -c CONFIG
 
 Start the AWS ParallelCluster configuration.
 
 optional arguments:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
-  --region REGION       AWS Region this operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region this operation corresponds to.
   -c CONFIG, --config CONFIG
                         Path to output the generated config file.

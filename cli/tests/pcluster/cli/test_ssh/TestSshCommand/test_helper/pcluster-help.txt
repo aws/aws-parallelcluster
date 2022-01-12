@@ -1,4 +1,4 @@
-usage: pcluster ssh [-h] [--debug] [--region REGION] -n CLUSTER_NAME
+usage: pcluster ssh [-h] [--debug] [-r REGION] -n CLUSTER_NAME
                     [--dryrun DRYRUN]
 
 Run ssh command with the cluster username and IP address pre-populated. Arbitrary arguments are appended to the end of the ssh command.
@@ -6,7 +6,8 @@ Run ssh command with the cluster username and IP address pre-populated. Arbitrar
 optional arguments:
   -h, --help            show this help message and exit
   --debug               Turn on debug logging.
-  --region REGION       AWS Region this operation corresponds to.
+  -r REGION, --region REGION
+                        AWS Region this operation corresponds to.
   -n CLUSTER_NAME, --cluster-name CLUSTER_NAME
                         Name of the cluster to connect to.
   --dryrun DRYRUN       Prints command and exits (defaults to 'false').
