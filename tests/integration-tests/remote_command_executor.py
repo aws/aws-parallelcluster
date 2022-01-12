@@ -87,7 +87,7 @@ class RemoteCommandExecutor:
         if isinstance(command, list):
             command = " ".join(command)
         self._copy_additional_files(additional_files)
-        logging.info("Executing remote command command on {0}: {1}".format(self.__user_at_hostname, command))
+        logging.info("Executing remote command on {0}: {1}".format(self.__user_at_hostname, command))
         if login_shell:
             command = "/bin/bash --login -c {0}".format(shlex.quote(command))
 
