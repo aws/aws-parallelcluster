@@ -42,7 +42,7 @@ Resources:
       {% if directory_type == "SimpleAD" %}
       Size: Large
       {% endif %}
-      ShortName: NET
+      ShortName: {{ ad_domain_short_name }}
   AdDomainAdminNodeWaitConditionHandle:
     Type: AWS::CloudFormation::WaitConditionHandle
   AdDomainAdminNodeWaitCondition:
@@ -197,13 +197,23 @@ Resources:
                 # Change user passwords
                 # TODO: put this in a lambda that can be triggered by users
                 for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
-                    sleep 1  # TODO: retry w/ backoff instead of sleeping
-                    echo "Setting password for user \${NEW_USER_ALIAS}"
-                    aws ds reset-user-password \
-                        --region {{ region }} \
-                        --directory-id "\${DIRECTORY_ID}" \
-                        --user-name "\${NEW_USER_ALIAS}" \
-                        --new-password "{{ ad_user_password }}"
+                    max_attempts=5
+                    for attempt in $(seq 1 $max_attempts); do
+                      echo "Setting password for user \${NEW_USER_ALIAS} (attempt $attempt/$max_attempts)"
+                      aws ds reset-user-password \
+                          --region {{ region }} \
+                          --directory-id "\${DIRECTORY_ID}" \
+                          --user-name "\${NEW_USER_ALIAS}" \
+                          --new-password "{{ ad_user_password }}" && break
+                      if [ $attempt -ge $max_attempts ]; then
+                        echo "ERROR: Cannot set password for user \${NEW_USER_ALIAS}"
+                        exit 1
+                      else
+                        sleep_time=$attempt
+                        echo "WARNING: Cannot set password for user \${NEW_USER_ALIAS}. Will retry in $sleep_time seconds"
+                        sleep $sleep_time
+                      fi
+                    done
                 done
                 EOF
                 chmod +x /usr/local/bin/add_a_number_of_users.sh
@@ -267,6 +277,14 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - DomainName
+  DomainShortName:
+    Value: {{ ad_domain_short_name }}
+    Export:
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - DomainShortName
   AdminPassword:
     Value: {{ ad_admin_password }}
     Export:
@@ -304,4 +322,3 @@ Outputs:
           - ""
           - - Ref: AWS::StackName
             - DirectoryDnsIpAddresses
-
