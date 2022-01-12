@@ -129,6 +129,10 @@ def pytest_addoption(parser):
         action="store_true",
     )
     parser.addoption(
+        "--iam-user-role-stack-name",
+        help="Name of CFN stack providing IAM user roles.",
+    )
+    parser.addoption(
         "--directory-stack-name",
         help="Name of CFN stack providing AD domain to be used for testing AD integration feature.",
     )
@@ -805,14 +809,23 @@ def initialize_cli_creds(cfn_stacks_factory, request):
         return
 
     regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
+    stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
+    with open(stack_template_path, encoding="utf-8") as stack_template_file:
+        stack_template_data = stack_template_file.read()
     for region in regions:
-        logging.info("Creating IAM roles for pcluster CLI")
-        stack_name = generate_stack_name("integ-tests-iam-user-role", request.config.getoption("stackname_suffix"))
-        stack_template_path = os.path.join("..", "iam_policies", "user-role.cfn.yaml")
-        with open(stack_template_path, encoding="utf-8") as stack_template_file:
-            stack_template_data = stack_template_file.read()
-        stack = CfnStack(name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data)
-        cfn_stacks_factory.create_stack(stack)
+        if request.config.getoption("iam_user_role_stack_name"):
+            stack_name = request.config.getoption("iam_user_role_stack_name")
+            logging.info("Using stack {0} in region {1}".format(stack_name, region))
+            stack = CfnStack(
+                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+            )
+        else:
+            logging.info("Creating IAM roles for pcluster CLI")
+            stack_name = generate_stack_name("integ-tests-iam-user-role", request.config.getoption("stackname_suffix"))
+            stack = CfnStack(
+                name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
+            )
+            cfn_stacks_factory.create_stack(stack)
         # register providers
         register_cli_credentials_for_region(region, stack.cfn_outputs["ParallelClusterUserRole"])
 
