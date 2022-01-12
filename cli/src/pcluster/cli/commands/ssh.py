@@ -110,7 +110,7 @@ Returns an ssh command with the cluster username and IP address pre-populated:
         )
 
     def register_command_args(self, parser: ArgumentParser) -> None:  # noqa: D102
-        parser.add_argument("--cluster-name", help="Name of the cluster to connect to.", required=True)
+        parser.add_argument("-n", "--cluster-name", help="Name of the cluster to connect to.", required=True)
         parser.add_argument(
             "--dryrun",
             default=False,
