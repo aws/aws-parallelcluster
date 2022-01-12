@@ -815,7 +815,7 @@ def initialize_cli_creds(cfn_stacks_factory, request):
     for region in regions:
         if request.config.getoption("iam_user_role_stack_name"):
             stack_name = request.config.getoption("iam_user_role_stack_name")
-            logging.info("Using stack {0} in region {1}".format(stack_name, region))
+            logging.info(f"Using stack {stack_name} in region {region}")
             stack = CfnStack(
                 name=stack_name, region=region, capabilities=["CAPABILITY_IAM"], template=stack_template_data
             )
