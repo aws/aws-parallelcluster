@@ -38,3 +38,19 @@ phases:
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status | grep status | grep stopped
               [[ $? -ne 0 ]] && echo "amazon-cloudwatch-agent is not stopped" && exit 1
               echo "CloudWatch test passed"
+
+      - name: Log4jPatcher
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              OS="{{ test.OperatingSystemName.outputs.stdout }}"
+              if [[ ${OS} =~ ^alinux ]]; then
+                echo "verify log4j-cve-2021-44228-hotpatch service is disabled"
+                systemctl show -p SubState log4j-cve-2021-44228-hotpatch | grep -i -v running
+                [[ $? -ne 0 ]] && echo "log4j-cve-2021-44228-hotpatch service is running" && exit 1
+                systemctl show -p LoadState log4j-cve-2021-44228-hotpatch | grep -i "LoadState=masked"
+                [[ $? -ne 0 ]] && echo "log4j-cve-2021-44228-hotpatch service is not masked" && exit 1
+              fi
+              echo "Log4jPatcher Group test passed"
