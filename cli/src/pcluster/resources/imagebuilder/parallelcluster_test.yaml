@@ -278,3 +278,4 @@ phases:
                 systemctl show -p LoadState log4j-cve-2021-44228-hotpatch | grep -i "LoadState=masked"
                 [[ $? -ne 0 ]] && echo "log4j-cve-2021-44228-hotpatch service is not masked" && exit 1
               fi
+              echo "Log4jPatcher Group test passed"
