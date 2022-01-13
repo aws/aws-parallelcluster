@@ -436,39 +436,77 @@ class ClusterCdkStack(Stack):
     def _add_security_groups(self):
         """Associate security group to Head node and queues."""
         # Head Node Security Group
-        head_security_group = None
-        if not self.config.head_node.networking.security_groups:
-            head_security_group = self._add_head_security_group()
+        managed_head_security_group = None
+        custom_head_security_groups = self.config.head_node.networking.security_groups or []
+        if not custom_head_security_groups:
+            managed_head_security_group = self._add_head_security_group()
+            head_node_security_groups = [managed_head_security_group.ref]
+        else:
+            head_node_security_groups = custom_head_security_groups
 
         # Compute Security Groups
         managed_compute_security_group = None
-        if any(not queue.networking.security_groups for queue in self.config.scheduling.queues):
+        custom_compute_security_groups = set()
+        managed_compute_security_group_required = False
+        for queue in self.config.scheduling.queues:
+            queue_security_groups = queue.networking.security_groups
+            if queue_security_groups:
+                for security_group in queue_security_groups:
+                    custom_compute_security_groups.add(security_group)
+            else:
+                managed_compute_security_group_required = True
+        compute_security_groups = list(custom_compute_security_groups)
+        if managed_compute_security_group_required:
             managed_compute_security_group = self._add_compute_security_group()
+            compute_security_groups.append(managed_compute_security_group.ref)
 
-        if head_security_group and managed_compute_security_group:
-            # Access to head node from compute nodes
-            ec2.CfnSecurityGroupIngress(
-                self,
-                "HeadNodeSecurityGroupComputeIngress",
-                ip_protocol="-1",
-                from_port=0,
-                to_port=65535,
-                source_security_group_id=managed_compute_security_group.ref,
-                group_id=head_security_group.ref,
-            )
+        self._add_inbounds_to_managed_security_groups(
+            compute_security_groups,
+            custom_compute_security_groups,
+            head_node_security_groups,
+            managed_compute_security_group,
+            managed_head_security_group,
+        )
 
+        return managed_head_security_group, managed_compute_security_group
+
+    def _add_inbounds_to_managed_security_groups(
+        self,
+        compute_security_groups,
+        custom_compute_security_groups,
+        head_node_security_groups,
+        managed_compute_security_group,
+        managed_head_security_group,
+    ):
+        if managed_head_security_group:
+            for security_group in compute_security_groups:
+                # Access to head node from compute nodes
+                self._allow_all_ingress(
+                    "HeadNodeSecurityGroupComputeIngress", security_group, managed_head_security_group.ref
+                )
+        if managed_compute_security_group:
             # Access to compute nodes from head node
-            ec2.CfnSecurityGroupIngress(
-                self,
-                "ComputeSecurityGroupHeadNodeIngress",
-                ip_protocol="-1",
-                from_port=0,
-                to_port=65535,
-                source_security_group_id=head_security_group.ref,
-                group_id=managed_compute_security_group.ref,
-            )
+            for security_group in head_node_security_groups:
+                self._allow_all_ingress(
+                    "ComputeSecurityGroupHeadNodeIngress", security_group, managed_compute_security_group.ref
+                )
+            for security_group in custom_compute_security_groups:
+                self._allow_all_ingress(
+                    "ComputeSecurityGroupCustomComputeSecurityGroupIngress",
+                    security_group,
+                    managed_compute_security_group.ref,
+                )
 
-        return head_security_group, managed_compute_security_group
+    def _allow_all_ingress(self, description, source_security_group_id, group_id):
+        ec2.CfnSecurityGroupIngress(
+            self,
+            description,
+            ip_protocol="-1",
+            from_port=0,
+            to_port=65535,
+            source_security_group_id=source_security_group_id,
+            group_id=group_id,
+        )
 
     def _add_compute_security_group(self):
         compute_security_group = ec2.CfnSecurityGroup(
