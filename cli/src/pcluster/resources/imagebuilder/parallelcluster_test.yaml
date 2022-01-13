@@ -263,3 +263,18 @@ phases:
                   [[ $? -eq 0 ]] && echo "gid ${GROUP_ID} exists, it should be reserved for ParallelCluster system group. Reserved gid range is ${SYSTEM_GROUP_ID_START} - $(($SYSTEM_GROUP_ID_START + 9))" && exit 1
               done
               echo "SchedulerPlugin Group test passed"
+
+      - name: Log4jPatcher
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -vx
+              OS="{{ test.OperatingSystemName.outputs.stdout }}"
+              if [[ ${OS} =~ ^alinux ]]; then
+                echo "verify log4j-cve-2021-44228-hotpatch service is disabled"
+                systemctl show -p SubState log4j-cve-2021-44228-hotpatch | grep -i -v running
+                [[ $? -ne 0 ]] && echo "log4j-cve-2021-44228-hotpatch service is running" && exit 1
+                systemctl show -p LoadState log4j-cve-2021-44228-hotpatch | grep -i "LoadState=masked"
+                [[ $? -ne 0 ]] && echo "log4j-cve-2021-44228-hotpatch service is not masked" && exit 1
+              fi
