@@ -4,8 +4,6 @@ HeadNode:
   InstanceType: {{ instance }}
   Networking:
     SubnetId: {{ public_subnet_id }}
-    SecurityGroups:
-      - {{ vpc_security_group_id }}
   Ssh:
     KeyName: {{ key_name }}
   Imds:
@@ -29,6 +27,8 @@ Scheduling:
           - {{ private_additional_cidr_subnet_id }}
         SecurityGroups:
           - {{ vpc_security_group_id }}
+          # Compute nodes use custom sg while the head node is using managed id
+          # to test the managed sg allow access from the custom sg
 SharedStorage:
   - MountDir: efs
     Name: efs
