@@ -18,7 +18,6 @@ CHANGELOG
 - Upgrade Slurm to version 21.08.5.
 - Disable EC2 ImageBuilder enhanced image metadata when building ParallelCluster custom images.
 - Disable packages update at instance launch time on Amazon Linux 2.
-- Disable log4j-cve-2021-44228-hotpatch service on Amazon Linux to avoid incurring in potential performance degradation.
 
 **BUG FIXES**
 - Redirect stderr and stdout to CLI log file to prevent unwanted text to pollute the pcluster CLI output.
@@ -27,6 +26,12 @@ CHANGELOG
 - Fix rollback not being performed in case of cluster update failure.  
 - Fix RootVolume schema for the HeadNode.
 - Fix EfaSecurityGroupValidator. Previously, it may produce false failures when custom security groups were provided and EFA was enabled.
+
+3.0.3
+-----
+
+**CHANGES**
+- Disable log4j-cve-2021-44228-hotpatch service on Amazon Linux to avoid incurring in potential performance degradation.
 
 3.0.2
 -----
