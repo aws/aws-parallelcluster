@@ -130,7 +130,16 @@ def test_cluster_in_no_internet_subnet(
     _check_no_internet_access(remote_command_executor)
     _check_hostname(remote_command_executor)
     _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_commands, cluster, region)
-    utils.check_pcluster_list_cluster_log_streams(cluster, os)
+    expected_log_streams = {
+        "HeadNode": {"cfn-init", "cloud-init", "clustermgtd", "chef-client", "slurmctld", "supervisord"},
+        "Compute": {
+            "syslog" if os.startswith("ubuntu") else "system-messages",
+            "computemgtd",
+            "supervisord",
+            "slurm_prolog_epilog",
+        },
+    }
+    utils.check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams)
     assert_no_errors_in_logs(remote_command_executor, scheduler)
     logging.info("Checking compute node is scaled down after scaledown idle time")
     wait_for_num_instances_in_cluster(cluster.cfn_name, region, 1)
@@ -163,7 +172,7 @@ def _run_mpi_jobs(mpi_variants, remote_command_executor, test_datadir, slurm_com
         )
         result = slurm_commands.submit_script(str(submission_script))
         job_id = slurm_commands.assert_job_submitted(result.stdout)
-        slurm_commands.wait_job_completed(job_id)
+        slurm_commands.wait_job_completed(job_id, timeout=15)
         slurm_commands.assert_job_succeeded(job_id)
     logging.info("Checking cluster has two nodes after running MPI jobs")  # 1 static node + 1 dynamic node
     assert_that(len(get_compute_nodes_instance_ids(cluster.cfn_name, region))).is_equal_to(2)
