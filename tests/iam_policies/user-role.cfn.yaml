@@ -264,6 +264,7 @@ Resources:
               - dynamodb:DeleteTable
               - dynamodb:GetItem
               - dynamodb:PutItem
+              - dynamodb:UpdateItem
               - dynamodb:Query
               - dynamodb:TagResource
             Resource: !Sub arn:${AWS::Partition}:dynamodb:${Region}:${AWS::AccountId}:table/parallelcluster-*
@@ -745,6 +746,7 @@ Resources:
               - dynamodb:Query
               - dynamodb:GetItem
               - dynamodb:PutItem
+              - dynamodb:UpdateItem
               - dynamodb:BatchWriteItem
             Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
             Effect: Allow

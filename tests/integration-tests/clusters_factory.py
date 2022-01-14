@@ -145,10 +145,10 @@ class Cluster:
         """Run pcluster start and return the result."""
         cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
-        if scheduler == "slurm":
-            cmd_args.append("START_REQUESTED")
-        elif scheduler == "awsbatch":
+        if scheduler == "awsbatch":
             cmd_args.append("ENABLED")
+        else:  # slurm and scheduler plugin case
+            cmd_args.append("START_REQUESTED")
         try:
             result = run_pcluster_command(cmd_args, log_error=False)
             logging.info("Cluster {0} started successfully".format(self.name))
@@ -161,10 +161,10 @@ class Cluster:
         """Run pcluster stop and return the result."""
         cmd_args = ["pcluster", "update-compute-fleet", "--cluster-name", self.name, "--status"]
         scheduler = self.config["Scheduling"]["Scheduler"]
-        if scheduler == "slurm":
-            cmd_args.append("STOP_REQUESTED")
-        elif scheduler == "awsbatch":
+        if scheduler == "awsbatch":
             cmd_args.append("DISABLED")
+        else:  # slurm and scheduler plugin case
+            cmd_args.append("STOP_REQUESTED")
         try:
             result = run_pcluster_command(cmd_args, log_error=False)
             logging.info("Cluster {0} stopped successfully".format(self.name))

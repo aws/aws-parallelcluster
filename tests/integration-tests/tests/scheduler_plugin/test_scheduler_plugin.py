@@ -29,7 +29,7 @@ from tags_utils import (
     get_shared_volume_tags,
 )
 from time_utils import minutes, seconds
-from utils import check_pcluster_list_cluster_log_streams
+from utils import check_pcluster_list_cluster_log_streams, check_status
 
 from tests.common.assertions import assert_head_node_is_running, assert_instance_replaced_or_terminating
 from tests.common.utils import get_installed_parallelcluster_version
@@ -51,7 +51,7 @@ SCHEDULER_PLUGIN_HOME = "/home/pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USER = "pcluster-scheduler-plugin"
 SCHEDULER_PLUGIN_USERS_LIST = ["user1", "schedulerPluginUser"]
 
-ANOTHER_INSTANCE_TYPE = "c4.xlarge"
+ANOTHER_INSTANCE_TYPE = "c5.xlarge"
 OS_MAPPING = {
     "centos7": "centos",
     "alinux2": "ec2-user",
@@ -124,6 +124,8 @@ def test_scheduler_plugin_integration(
     _test_custom_log(cluster, os)
     # Test scheduler plugin tags
     _test_tags(cluster, os)
+    # Test compute fleet status update
+    _test_compute_fleet_status_update(cluster, command_executor)
     # Test computes are terminated on cluster deletion
     cluster.delete()
     _test_compute_terminated(compute_node, region)
@@ -243,8 +245,7 @@ def _test_event_handler_environment(cluster, region, os, architecture, event, lo
 def _test_artifacts_download(command_executor):
     """Test artifacts download"""
     home_listing = command_executor.run_remote_command(f"sudo ls {SCHEDULER_PLUGIN_HOME}").stdout
-    assert_that(home_listing).contains("aws-parallelcluster-cookbook-3.0.0.tgz")
-    assert_that(home_listing).contains("artifact")
+    assert_that(home_listing).contains("aws-parallelcluster-cookbook-3.0.0.tgz", "artifact")
 
 
 def _test_error_log(command_executor):
@@ -380,6 +381,25 @@ def _test_tags(cluster, os):
         tag_getter_args = test_case.get("tag_getter_kwargs", {"cluster": cluster})
         observed_tags = tag_getter(**tag_getter_args)
         assert_that(observed_tags).contains(*convert_tags_dicts_to_tags_list([scheduler_plugin_tags, config_file_tags]))
+
+
+def _test_compute_fleet_status_update(cluster, command_executor):
+    cluster.stop()
+    _check_fleet_status(cluster, "STOPPED")
+    home_listing = command_executor.run_remote_command(f"sudo ls {SCHEDULER_PLUGIN_HOME}").stdout
+    assert_that(home_listing).contains("stop_failure", "stop_executed")
+    assert_that(home_listing).does_not_contain("start_failure", "start_executed")
+    cluster.start()
+    _check_fleet_status(cluster, "RUNNING")
+    home_listing = command_executor.run_remote_command(f"sudo ls {SCHEDULER_PLUGIN_HOME}").stdout
+    assert_that(home_listing).contains("start_failure", "start_executed")
+    # assert that update event handler is not called multiple times
+    assert_that(home_listing).does_not_contain("update_wrong_execution")
+
+
+@retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))
+def _check_fleet_status(cluster, status):
+    check_status(cluster, compute_fleet_status=status)
 
 
 @retry(wait_fixed=seconds(10), stop_max_delay=minutes(3))
