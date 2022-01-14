@@ -36,6 +36,7 @@
     {
       "Action": [
         "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
         "dynamodb:Query",
         "dynamodb:GetItem",
         "dynamodb:BatchWriteItem",

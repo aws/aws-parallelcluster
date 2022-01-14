@@ -77,6 +77,7 @@ Resources:
               - Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
+                  - dynamodb:UpdateItem
                   - dynamodb:BatchWriteItem
                 Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/parallelcluster-*
                 Effect: Allow

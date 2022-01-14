@@ -35,7 +35,27 @@ Scheduling:
             Command: env && echo "HeadClusterUpdate executed"
         HeadComputeFleetUpdate:
           ExecuteCommand:
-            Command: env && echo "HeadComputeFleetUpdate executed"
+            Command: |
+              env
+              STATUS=$(cat ${PCLUSTER_COMPUTEFLEET_STATUS} | jq -r '.status')
+              if [[ "${STATUS}" == "STOP_REQUESTED" ]] && [[ ! -f "stop_failure" ]]; then
+                echo "HeadComputeFleetUpdate failing the first stop execution"
+                touch stop_failure && exit 1
+              fi
+              if [[ "${STATUS}" == "STOP_REQUESTED" ]] && [[ ! -f "stop_executed" ]]; then
+                echo "HeadComputeFleetUpdate stop executed"
+                touch stop_executed && exit 0
+              fi
+              if [[ "${STATUS}" == "START_REQUESTED" ]] && [[ ! -f "start_failure" ]]; then
+                echo "HeadComputeFleetUpdate failing the first start execution"
+                touch start_failure && exit 1
+              fi
+              if [[ "${STATUS}" == "START_REQUESTED" ]] && [[ ! -f "start_executed" ]]; then
+                echo "HeadComputeFleetUpdate start executed"
+                touch start_executed && exit 0
+              fi
+              echo "HeadComputeFleetUpdate not supposed to be here"
+              touch update_wrong_execution
       Monitoring:
         Logs:
           Files:
