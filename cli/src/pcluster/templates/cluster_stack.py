@@ -951,8 +951,8 @@ class ClusterCdkStack(Stack):
                     "touch": {"command": "touch /etc/chef/ohai/hints/ec2.json"},
                     "jq": {
                         "command": (
-                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 "
-                            "| .cluster = $f1.cluster + $f2.cluster' > /etc/chef/dna.json "
+                            "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 * $f2' "
+                            "> /etc/chef/dna.json "
                             '|| ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json )'
                         )
                     },
