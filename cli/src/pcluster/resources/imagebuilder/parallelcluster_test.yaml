@@ -15,6 +15,30 @@ phases:
               NVSWITCHES=$(lspci -d 10de:1af1 | wc -l)
               echo "${NVSWITCHES}"
 
+      - name: OperatingSystemName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              FILE=/etc/os-release
+              if [ -e ${FILE} ]; then
+                . ${FILE}
+                RELEASE="${ID}${VERSION_ID:+.${VERSION_ID}}"
+              fi
+
+              if [ $(echo "${RELEASE}" | grep -w '^amzn\.2') ]; then
+                OS='alinux2'
+              elif [ $(echo "${RELEASE}" | grep '^centos\.7') ]; then
+                OS='centos7'
+              elif [ $(echo "${RELEASE}" | grep '^ubuntu\.18') ]; then
+                OS='ubuntu1804'
+              elif [ $(echo "${RELEASE}" | grep '^ubuntu\.20') ]; then
+                OS='ubuntu2004'
+              fi
+
+              echo ${OS}
+
       ### tests ###
       - name: FabricManager
         action: ExecuteBash
