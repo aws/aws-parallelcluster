@@ -38,7 +38,7 @@ from tests.common.osu_common import compile_osu, run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import get_sts_endpoint, retrieve_latest_ami
 
-NUM_USERS_TO_CREATE = 100
+NUM_USERS_TO_CREATE = 20
 NUM_USERS_TO_TEST = 10
 
 
@@ -173,7 +173,7 @@ def store_secret_in_secret_manager(request, cfn_stacks_factory):
         for region, secrets in secret_arns.items():
             secrets_manager_client = boto3.client("secretsmanager", region_name=region)
             for secret_arn in secrets:
-                logging.info("Deleting secrete %s", secret_arn)
+                logging.info("Deleting secret %s", secret_arn)
                 secrets_manager_client.delete_secret(SecretId=secret_arn)
 
 
@@ -338,6 +338,12 @@ def _generate_certificate(common_name):
     return certificate_arn, certificate
 
 
+@retry(stop_max_attempt_number=10, wait_exponential_multiplier=2000, wait_exponential_max=30000)
+def _delete_certificate(certificate_arn, region):
+    logging.info("Deleting ACM certificate %s in region %s", certificate_arn, region)
+    boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
+
+
 @pytest.fixture(scope="module")
 def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_secret_manager):  # noqa: C901
     # TODO: use external data file and file locking in order to share directories across processes
@@ -415,8 +421,13 @@ def directory_factory(request, cfn_stacks_factory, vpc_stacks, store_secret_in_s
                 region,
             )
         else:
-            logging.info("Deleting ACM certificate %s in region %s", certificate_arn, region)
-            boto3.client("acm", region_name=region).delete_certificate(CertificateArn=certificate_arn)
+            logging.info(
+                "Sleeping 180 seconds to wait for the ACM certificate %s in region %s to become unused",
+                certificate_arn,
+                region,
+            )
+            time.sleep(180)
+            _delete_certificate(certificate_arn=certificate_arn, region=region)
 
 
 def _run_user_workloads(users, test_datadir, remote_command_executor):

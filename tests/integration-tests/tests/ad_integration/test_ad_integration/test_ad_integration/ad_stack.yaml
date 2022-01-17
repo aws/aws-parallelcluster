@@ -168,7 +168,11 @@ Resources:
                     echo 1>&2 "Alias for new user must be passed as first arg"
                     exit 1
                 fi
-                echo "${AD_ADMIN_PASSWORD}" | adcli create-user -U ${AD_ADMIN_USER} \${NEW_USER_ALIAS} --domain="${AD_DOMAIN}" --display-name="\${NEW_USER_ALIAS}" --stdin-password
+                result=\$(echo "${AD_ADMIN_PASSWORD}" | adcli create-user -U ${AD_ADMIN_USER} \${NEW_USER_ALIAS} --domain="${AD_DOMAIN}" --display-name="\${NEW_USER_ALIAS}" --stdin-password 2>&1)
+                if [[ \$? != "0" && "\${result}" != *"already exists"* ]]; then
+                  echo "Creation of user \${NEW_USER_ALIAS} failed: \${result}"
+                  exit 1
+                fi
                 EOF
                 chmod +x /usr/local/bin/add_user.sh
                 # Script to add a number of users
@@ -190,28 +194,39 @@ Resources:
                 # Create users in directory
                 # TODO: add ability to trigger this via lambda
                 for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
-                    echo "Creating \${NEW_USER_ALIAS} in directory \${DIRECTORY_ID}"
-                    /usr/local/bin/add_user.sh \${NEW_USER_ALIAS}
+                  MAX_ATTEMPTS=5
+                  for ATTEMPT in \$(seq 1 \${MAX_ATTEMPTS}); do
+                    echo "Creating user \${NEW_USER_ALIAS} (attempt \${ATTEMPT}/\${MAX_ATTEMPTS})"
+                    /usr/local/bin/add_user.sh \${NEW_USER_ALIAS} && break
+                    if [ \${ATTEMPT} -ge \${MAX_ATTEMPTS} ]; then
+                      echo "ERROR: Cannot create user \${NEW_USER_ALIAS}"
+                      exit 1
+                    else
+                      SLEEP_TIME=\${ATTEMPT}
+                      echo "WARNING: Cannot create user \${NEW_USER_ALIAS}. Will retry in \${SLEEP_TIME} seconds"
+                      sleep \${SLEEP_TIME}
+                    fi
+                  done
                 done
 
                 # Change user passwords
                 # TODO: put this in a lambda that can be triggered by users
                 for NEW_USER_ALIAS in \${NEW_USER_ALIASES}; do
-                    max_attempts=5
-                    for attempt in $(seq 1 $max_attempts); do
-                      echo "Setting password for user \${NEW_USER_ALIAS} (attempt $attempt/$max_attempts)"
+                    MAX_ATTEMPTS=5
+                    for ATTEMPT in \$(seq 1 \${MAX_ATTEMPTS}); do
+                      echo "Setting password for user \${NEW_USER_ALIAS} (attempt \${ATTEMPT}/\${MAX_ATTEMPTS})"
                       aws ds reset-user-password \
                           --region {{ region }} \
                           --directory-id "\${DIRECTORY_ID}" \
                           --user-name "\${NEW_USER_ALIAS}" \
                           --new-password "{{ ad_user_password }}" && break
-                      if [ $attempt -ge $max_attempts ]; then
+                      if [ \${ATTEMPT} -ge \${MAX_ATTEMPTS} ]; then
                         echo "ERROR: Cannot set password for user \${NEW_USER_ALIAS}"
                         exit 1
                       else
-                        sleep_time=$attempt
-                        echo "WARNING: Cannot set password for user \${NEW_USER_ALIAS}. Will retry in $sleep_time seconds"
-                        sleep $sleep_time
+                        SLEEP_TIME=\${ATTEMPT}
+                        echo "WARNING: Cannot set password for user \${NEW_USER_ALIAS}. Will retry in \${SLEEP_TIME} seconds"
+                        sleep \${SLEEP_TIME}
                       fi
                     done
                 done
