@@ -35,7 +35,3 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
-        - regions: ["us-west-2"]
-          instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          oss: {{ common.OSS_COMMERCIAL_ARM }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
