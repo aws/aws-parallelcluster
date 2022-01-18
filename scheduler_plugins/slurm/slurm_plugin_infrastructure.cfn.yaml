@@ -46,7 +46,7 @@ Resources:
       KeySchema:
         - AttributeName: Id
           KeyType: HASH
-      TableName: "parallelcluster-{{ cluster_name | lower }}"
+      TableName: "parallelcluster-slurm-plugin-{{ cluster_name | lower }}"
     Type: AWS::DynamoDB::Table
     UpdateReplacePolicy: Retain
 

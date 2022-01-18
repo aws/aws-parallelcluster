@@ -65,6 +65,7 @@ execute 'generate_pcluster_slurm_configs' do
           " --input-file #{node['pcluster']['cluster_config_path']}  --instance-types-data #{node['pcluster']['instance_types_data_path']} #{no_gpu}"
 end
 
+# TODO: REMOVE
 execute 'initialize compute fleet status in DynamoDB' do
   # Initialize the status of the compute fleet in the DynamoDB table. Set it to RUNNING.
   command "#{node['pcluster']['python_root']}/aws dynamodb put-item --table-name #{node['pcluster']['cfn_stack_outputs']['Outputs']['DynamoDBTable']}"\
@@ -143,9 +144,9 @@ template "#{node['pcluster']['local_dir']}/parallelcluster_clustermgtd.conf" do
 end
 
 # Create shared directory used to store clustermgtd heartbeat and computemgtd config
-directory "#{node['slurm']['install_dir']}/etc/pcluster/.slurm_plugin" do
-  owner node['plugin']['user']
-  group node['plugin']['user']
+directory "#{node['pcluster']['shared_dir']}/.slurm_plugin" do
+  owner node['plugin']['fleet_mgt_user']
+  group node['plugin']['fleet_mgt_user']
   mode '0755'
   action :create
   recursive true
