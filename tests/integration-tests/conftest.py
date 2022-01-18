@@ -23,7 +23,6 @@ from shutil import copyfile
 from traceback import format_tb
 
 import boto3
-import pkg_resources
 import pytest
 import yaml
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
@@ -62,11 +61,7 @@ from utils import (
     set_logger_formatter,
 )
 
-from tests.common.utils import (
-    get_installed_parallelcluster_version,
-    get_sts_endpoint,
-    retrieve_pcluster_ami_without_standard_naming,
-)
+from tests.common.utils import get_installed_parallelcluster_version, retrieve_pcluster_ami_without_standard_naming
 
 
 def pytest_addoption(parser):
