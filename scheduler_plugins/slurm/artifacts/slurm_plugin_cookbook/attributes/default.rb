@@ -26,7 +26,7 @@ default['pcluster']['python_root'] = ENV['PCLUSTER_PYTHON_ROOT']
 default['slurm']['version'] = '21-08-5-1'
 default['slurm']['url'] = "https://github.com/SchedMD/slurm/archive/slurm-#{node['slurm']['version']}.tar.gz"
 default['slurm']['sha1'] = '1416539a06c866605b8d464daf6c98d881592361'
-default['slurm']['user'] = 'slurm_user'
+default['slurm']['user'] = 'slurm-user'
 default['slurm']['group'] = node['slurm']['user']
 default['slurm']['install_dir'] = "#{node['pcluster']['shared_dir']}/slurm"
 
@@ -34,4 +34,5 @@ default['munge']['user'] = 'munge'
 default['munge']['group'] = node['munge']['user']
 
 default['plugin']['user'] = 'pcluster-scheduler-plugin'
+default['plugin']['fleet_mgt_user'] = 'pcluster-scheduler-plugin'  # TODO: change to fleet-mgt-user
 default['dns']['domain'] = "#{node['pcluster']['cluster_name']}.pcluster"

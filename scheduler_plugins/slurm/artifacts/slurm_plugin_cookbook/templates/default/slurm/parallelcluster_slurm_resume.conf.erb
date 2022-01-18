@@ -7,6 +7,6 @@ hosted_zone = <%= node['pcluster']['cfn_stack_outputs']['Outputs']['Route53Hoste
 dns_domain = <%= node['dns']['domain'] %>
 head_node_private_ip = <%= node['ec2']['local_ipv4'] %>
 head_node_hostname = <%= node['ec2']['local_hostname'] %>
-clustermgtd_heartbeat_file_path = <%= node['slurm']['install_dir'] %>/etc/pcluster/.slurm_plugin/clustermgtd_heartbeat
+clustermgtd_heartbeat_file_path = <%= node['pcluster']['shared_dir'] %>/.slurm_plugin/clustermgtd_heartbeat
 instance_type_mapping = <%= node['slurm']['install_dir'] %>/etc/pcluster/instance_name_type_mappings.json
 run_instances_overrides = <%= node['slurm']['install_dir'] %>/etc/pcluster/run_instances_overrides.json

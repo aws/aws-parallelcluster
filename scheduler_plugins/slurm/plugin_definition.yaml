@@ -2,7 +2,7 @@ PluginInterfaceVersion: "1.0"
 Metadata:
   Scheduler:
     Name: Slurm
-    Version: 20.11.8
+    Version: 21.08.5
   Author: fdm
   Documentation: link
   License: link
@@ -16,8 +16,16 @@ PluginResources:
   ClusterSharedArtifacts:
     - Source: s3://<BUCKET>/scheduler_plugins/slurm/artifacts.tar.gz
 SystemUsers:
-  - Name: slurm_user
+  - Name: slurm-user
+    EnableImds: false
+    SudoerConfiguration:
+      - Commands: /home/pcluster-scheduler-plugin/*/bin/slurm_resume, /home/pcluster-scheduler-plugin/*/bin/slurm_suspend
+        RunAs: pcluster-scheduler-plugin
+  - Name: fleet-mgt-user
     EnableImds: true
+    SudoerConfiguration:
+      - Commands: /usr/sbin/shutdown, /opt/parallelcluster/shared/scheduler-plugin/slurm/bin/scontrol
+        RunAs: root
 Events:
   HeadInit:
     ExecuteCommand:
@@ -40,3 +48,30 @@ Events:
   HeadClusterUpdate:
     ExecuteCommand:
       Command: artifacts/handlers/head_cluster_update.sh
+Monitoring:
+  Logs:
+    Files:
+    - FilePath: /var/log/parallelcluster/clustermgtd
+      TimestampFormat: '%Y-%m-%d %H:%M:%S,%f'
+      NodeType: HEAD
+      LogStreamName: clustermgtd
+    - FilePath: /var/log/parallelcluster/computemgtd
+      TimestampFormat: '%Y-%m-%d %H:%M:%S,%f'
+      NodeType: COMPUTE
+      LogStreamName: computemgtd
+    - FilePath: /var/log/parallelcluster/slurm_resume.log
+      TimestampFormat: '%Y-%m-%d %H:%M:%S,%f'
+      NodeType: HEAD
+      LogStreamName: slurm_resume
+    - FilePath: /var/log/parallelcluster/slurm_suspend.log
+      TimestampFormat: '%Y-%m-%d %H:%M:%S,%f'
+      NodeType: HEAD
+      LogStreamName: slurm_suspend
+    - FilePath: /var/log/slurmd.log
+      TimestampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      NodeType: COMPUTE
+      LogStreamName: slurmd
+    - FilePath: /var/log/slurmctld.log
+      TimestampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      NodeType: HEAD
+      LogStreamName: slurmctld

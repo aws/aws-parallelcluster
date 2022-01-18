@@ -31,14 +31,3 @@ end
 link '/etc/profile.d/slurm.csh' do
   to "#{node['slurm']['install_dir']}/etc/slurm.csh"
 end
-
-# Ensure cluster admin user and slurm user can sudo on slurm commands.
-# This permission is necessary for the cluster admin user, but it is not for the slurm user
-# because the latter can run slurm commands without being root.
-# We introduced it for sake of consistency because daemons and slurm suspend/resume scripts share the same code.
-template '/etc/sudoers.d/99-parallelcluster-slurm' do
-  source 'slurm/99-parallelcluster-slurm.erb'
-  owner 'root'
-  group 'root'
-  mode '0600'
-end

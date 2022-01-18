@@ -17,6 +17,10 @@
 
 # FIXME: assuming Slurm dependencies already exists (packages, Munge, PMIx)
 
+package %w(slurm* libslurm*) do
+  action :purge
+end
+
 slurm_build_deps = value_for_platform(
   'ubuntu' => {
     'default' => %w(libjson-c-dev libhttp-parser-dev),
