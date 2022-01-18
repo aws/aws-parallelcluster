@@ -935,24 +935,6 @@ def create_roles_stack(request, region):
         logging.warning("Skipping deletion of IAM roles stack because --no-delete option is set")
 
 
-def _create_iam_policies(iam_policy_name, region, policy_filename):
-    logging.info("Creating iam policy {0}...".format(iam_policy_name))
-    file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/resources"))
-    env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
-    partition = get_arn_partition(region)
-    account_id = (
-        boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
-        .get_caller_identity()
-        .get("Account")
-    )
-    parallel_cluster_instance_policy = env.get_template(policy_filename).render(
-        partition=partition, region=region, account_id=account_id, cluster_bucket_name="parallelcluster-*"
-    )
-    return boto3.client("iam", region_name=region).create_policy(
-        PolicyName=iam_policy_name, PolicyDocument=parallel_cluster_instance_policy
-    )["Policy"]["Arn"]
-
-
 @pytest.fixture(scope="class")
 def vpc_stack(vpc_stacks, region):
     return vpc_stacks[region]
