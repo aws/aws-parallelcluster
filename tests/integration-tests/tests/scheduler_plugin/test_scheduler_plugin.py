@@ -197,6 +197,10 @@ def _test_event_handler_execution(cluster, region, os, architecture, command_exe
     python_root = command_executor.run_remote_command(f"sudo su - {SCHEDULER_PLUGIN_USER} -c 'which python'").stdout[
         : -len("/python")
     ]
+    # Verify ability to install packages into the python virtual env
+    command_executor.run_remote_command(
+        f"sudo su - {SCHEDULER_PLUGIN_USER} -c 'pip install aws-parallelcluster-node'", raise_on_error=True
+    )
     for event in ["HeadInit", "HeadConfigure", "HeadFinalize"]:
         assert_that(head_scheduler_plugin_log_output).contains(f"[{event}] - INFO: {event} executed")
         _test_event_handler_environment(
