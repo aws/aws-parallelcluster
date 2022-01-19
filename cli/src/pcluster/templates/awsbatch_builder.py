@@ -115,8 +115,8 @@ class AwsBatchConstruct(Construct):
         if self.head_node_instance_role:
             self._add_batch_head_node_policies_to_role()
 
-        # Iam Roles
-        self._ecs_instance_role, self._iam_instance_profile = self._add_ecs_instance_role_and_profile()
+        # Iam Instance Profile for ComputeEnvironment
+        self._iam_instance_profile = self._add_ecs_instance_profile()
 
         # Spot Iam Role
         self._spot_iam_fleet_role = None
@@ -195,7 +195,7 @@ class AwsBatchConstruct(Construct):
             ],
         )
 
-    def _add_ecs_instance_role_and_profile(self):
+    def _add_ecs_instance_profile(self):
         ecs_instance_role = iam.CfnRole(
             self.stack_scope,
             "EcsInstanceRole",
@@ -211,11 +211,9 @@ class AwsBatchConstruct(Construct):
             assume_role_policy_document=get_assume_role_policy_document(f"ec2.{self._url_suffix}"),
         )
 
-        iam_instance_profile = iam.CfnInstanceProfile(
+        return iam.CfnInstanceProfile(
             self.stack_scope, "IamInstanceProfile", path=self._cluster_scoped_iam_path(), roles=[ecs_instance_role.ref]
         )
-
-        return ecs_instance_role, iam_instance_profile
 
     def _add_job_role(self):
         return iam.CfnRole(
@@ -248,7 +246,7 @@ class AwsBatchConstruct(Construct):
                                         account="",
                                     ),
                                 ],
-                                sid="CloudWatchLogsPolicy",
+                                sid="S3PutObjectPolicy",
                             ),
                         ],
                     ),
@@ -271,7 +269,7 @@ class AwsBatchConstruct(Construct):
                                         resource=f"stack/{self.stack_name}-*/*",
                                     ),
                                 ],
-                                sid="CloudWatchLogsPolicy",
+                                sid="CfnDescribeStacksPolicy",
                             ),
                         ],
                     ),
@@ -411,7 +409,7 @@ class AwsBatchConstruct(Construct):
                                         resource=f"stack/{self.stack_name}-*/*",
                                     ),
                                 ],
-                                sid="CloudWatchLogsPolicy",
+                                sid="CfnDescribeStacksPolicy",
                             ),
                         ],
                     ),
