@@ -484,7 +484,12 @@ class AwsBatchConstruct(Construct):
                         sid="ECRPolicy", effect=iam.Effect.ALLOW, actions=["ecr:GetAuthorizationToken"], resources=["*"]
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource="log-group:/aws/parallelcluster/codebuild/*",
+                        )
                     ),
                     iam.PolicyStatement(
                         sid="S3GetObjectPolicy",
@@ -589,7 +594,12 @@ class AwsBatchConstruct(Construct):
                         sid="CodeBuildPolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource="log-group:/aws/lambda/pcluster-ManageDockerImages-*",
+                        )
                     ),
                 ],
             )
@@ -647,7 +657,12 @@ class AwsBatchConstruct(Construct):
                 function_id="BuildNotification",
                 statements=[
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource="log-group:/aws/lambda/pcluster-BuildNotification-*",
+                        )
                     )
                 ],
             )

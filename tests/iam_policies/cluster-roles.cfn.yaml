@@ -26,7 +26,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Effect: Allow
-                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/pcluster-*
               - Action: ec2:DescribeInstances
                 Effect: Allow
                 Resource: '*'
@@ -178,7 +178,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Effect: Allow
-                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/pcluster-*
               - Action:
                   - s3:DeleteObject
                   - s3:DeleteObjectVersion
