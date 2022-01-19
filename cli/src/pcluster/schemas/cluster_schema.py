@@ -1236,7 +1236,9 @@ class SchedulerPluginRequirementsSchema(BaseSchema):
     supports_cluster_update = fields.Bool(metadata={"update_policy": UpdatePolicy.UNSUPPORTED})
     supported_parallel_cluster_versions = fields.Str(
         metadata={"update_policy": UpdatePolicy.UNSUPPORTED},
-        validate=validate.Regexp(r"^((>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+,\s*)*(>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+$"),
+        validate=validate.Regexp(
+            r"^((>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?,\s*)*(>|<|>=|<=)?[0-9]+\.[0-9]+\.[0-9]+([a-z][0-9]+)?$"
+        ),
     )
 
     @post_load
