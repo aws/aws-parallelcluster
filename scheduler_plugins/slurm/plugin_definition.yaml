@@ -19,8 +19,8 @@ SystemUsers:
   - Name: slurm-user
     EnableImds: false
     SudoerConfiguration:
-      - Commands: /home/pcluster-scheduler-plugin/*/bin/slurm_resume, /home/pcluster-scheduler-plugin/*/bin/slurm_suspend
-        RunAs: pcluster-scheduler-plugin
+      - Commands: /opt/parallelcluster/shared/scheduler-plugin/*/bin/slurm_resume, /opt/parallelcluster/shared/scheduler-plugin/*/bin/slurm_suspend
+        RunAs: fleet-mgt-user
   - Name: fleet-mgt-user
     EnableImds: true
     SudoerConfiguration:

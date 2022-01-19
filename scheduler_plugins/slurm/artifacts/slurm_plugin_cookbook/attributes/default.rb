@@ -34,5 +34,5 @@ default['munge']['user'] = 'munge'
 default['munge']['group'] = node['munge']['user']
 
 default['plugin']['user'] = 'pcluster-scheduler-plugin'
-default['plugin']['fleet_mgt_user'] = 'pcluster-scheduler-plugin'  # TODO: change to fleet-mgt-user
+default['plugin']['fleet_mgt_user'] = 'fleet-mgt-user'
 default['dns']['domain'] = "#{node['pcluster']['cluster_name']}.pcluster"
