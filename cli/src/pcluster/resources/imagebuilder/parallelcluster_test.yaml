@@ -76,8 +76,9 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['system_pyenv_root']" {{ CookbookDefaultFile }})
-              PYENV_ROOT=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              PATTERN=$(grep -F "default['cluster']['base_dir']" {{ CookbookDefaultFile }})
+              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              PYENV_ROOT+="${BASE_DIR}/pyenv"
               echo ${PYENV_ROOT}
 
       - name: SchedulerPluginPyenvRoot
@@ -86,8 +87,9 @@ phases:
           commands:
             - |
               set -v
-              PATTERN=$(grep -F "default['cluster']['scheduler_plugin']['pyenv_root']" {{ CookbookDefaultFile }})
-              PYENV_ROOT=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              PATTERN=$(grep -F "default['cluster']['base_dir']" {{ CookbookDefaultFile }})
+              BASE_DIR=$(echo ${PATTERN} | tr -d '\n' | cut -d = -f 2 | xargs)
+              PYENV_ROOT+="${BASE_DIR}/shared/scheduler-plugin/pyenv"
               echo ${PYENV_ROOT}
 
       - name: CookbookVirtualenvPath
