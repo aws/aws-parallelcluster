@@ -132,6 +132,17 @@ def test_scheduler_plugin_region_validator(region, supported_regions, expected_m
             None,
         ),
         (
+            "3.0.2",
+            ">=3.0.1b1, <=3.1.0",
+            None,
+        ),
+        (
+            "3.0.0a1",
+            ">=3.0.1b1, <=3.1.0",
+            "The installed version 3.0.0a1 is not supported by the scheduler plugin. Supported versions are: "
+            ">=3.0.1b1, <=3.1.0.",
+        ),
+        (
             "3.1.0",
             ">=2.9.0, <=3.1.1",
             None,
