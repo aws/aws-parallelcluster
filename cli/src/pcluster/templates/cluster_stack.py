@@ -359,7 +359,12 @@ class ClusterCdkStack(Stack):
                         sid="S3BucketPolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self.format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self.format_arn(
+                            service="logs",
+                            account=self.account,
+                            region=self.region,
+                            resource="log-group:/aws/lambda/pcluster-CleanupResources-*",
+                        )
                     ),
                 ],
             )

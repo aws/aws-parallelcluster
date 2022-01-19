@@ -108,7 +108,7 @@
         "logs:CreateLogStream"
       ],
       "Resource": [
-        "*"
+        "arn:{{ partition }}:logs:*:*:log-group:aws/parallelcluster/*"
       ],
       "Effect": "Allow",
       "Sid": "CWLogs"

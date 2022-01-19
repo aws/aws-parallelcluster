@@ -248,7 +248,12 @@ class SlurmConstruct(Construct):
                         sid="Route53DeletePolicy",
                     ),
                     get_cloud_watch_logs_policy_statement(
-                        resource=self._format_arn(service="logs", account="*", region="*", resource="*")
+                        resource=self._format_arn(
+                            service="logs",
+                            account=self._stack_account,
+                            region=self._stack_region,
+                            resource="log-group:/aws/lambda/pcluster-CleanupRoute53-*",
+                        )
                     ),
                 ],
             )
