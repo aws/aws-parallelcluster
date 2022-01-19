@@ -13,6 +13,7 @@ import os as operating_system
 import re
 
 import pytest
+import requests
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from utils import (
@@ -128,6 +129,10 @@ def _test_dcv_configuration(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
         r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_port) + r"\?authToken=(.*)"
     )
+    if access_from == "0.0.0.0/0":
+        url = re.search(r"https:\/\/.*", result.stdout).group(0)
+        response = requests.get(url, verify=False)
+        assert_that(response.status_code).is_equal_to(200)
 
     # check error cases
     _check_auth_ko(

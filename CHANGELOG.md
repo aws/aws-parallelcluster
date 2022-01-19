@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+2.11.5
+-----
+
+**BUG FIXES**
+- Fix DCV connection through browsers.
+
 2.11.4
 -----
 
