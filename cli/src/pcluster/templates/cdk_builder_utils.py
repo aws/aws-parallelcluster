@@ -179,14 +179,22 @@ def get_mount_dirs_by_type(shared_storage_options: dict, storage_type: SharedSto
     return option_list[0]
 
 
+def dict_to_cfn_tags(tags: dict):
+    """Convert a dictionary to a list of CfnTag."""
+    return [CfnTag(key=key, value=value) for key, value in tags.items()] if tags else []
+
+
+def get_cluster_tags(stack_name: str, raw_dict: bool = False):
+    """Return a list of cluster tags to be used for all the resources."""
+    tags = {PCLUSTER_CLUSTER_NAME_TAG: stack_name}
+    return tags if raw_dict else dict_to_cfn_tags(tags)
+
+
 def get_custom_tags(config: BaseClusterConfig, raw_dict: bool = False):
     """Return a list of tags set by the user."""
     cluster_tags = config.get_cluster_tags()
-    if raw_dict:
-        custom_tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
-    else:
-        custom_tags = [CfnTag(key=tag.key, value=tag.value) for tag in cluster_tags] if cluster_tags else []
-    return custom_tags
+    tags = {tag.key: tag.value for tag in cluster_tags} if cluster_tags else {}
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_default_instance_tags(
@@ -199,8 +207,8 @@ def get_default_instance_tags(
 ):
     """Return a list of default tags to be used for instances."""
     tags = {
+        **get_cluster_tags(stack_name, raw_dict=True),
         "Name": node_type,
-        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
         PCLUSTER_NODE_TYPE_TAG: node_type,
         "parallelcluster:attributes": "{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
             BaseOS=config.image.os,
@@ -220,16 +228,16 @@ def get_default_instance_tags(
     }
     if config.is_intel_hpc_platform_enabled:
         tags["parallelcluster:intel-hpc"] = "enable_intel_hpc_platform=true"
-    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_default_volume_tags(stack_name: str, node_type: str, raw_dict: bool = False):
     """Return a list of default tags to be used for volumes."""
     tags = {
-        PCLUSTER_CLUSTER_NAME_TAG: stack_name,
+        **get_cluster_tags(stack_name, raw_dict=True),
         PCLUSTER_NODE_TYPE_TAG: node_type,
     }
-    return tags if raw_dict else [CfnTag(key=key, value=value) for key, value in tags.items()]
+    return tags if raw_dict else dict_to_cfn_tags(tags)
 
 
 def get_assume_role_policy_document(service: str):
