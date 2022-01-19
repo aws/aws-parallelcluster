@@ -153,7 +153,7 @@ class AwsBatchConstruct(Construct):
     def _add_compute_env(self):
         return batch.CfnComputeEnvironment(
             self.stack_scope,
-            "ComputeEnvironment",
+            "PclusterComputeEnvironment",
             type="MANAGED",
             # service_role=self._batch_service_role.ref,
             state="ENABLED",
@@ -185,7 +185,7 @@ class AwsBatchConstruct(Construct):
     def _add_job_queue(self):
         return batch.CfnJobQueue(
             self.stack_scope,
-            "JobQueue",
+            "PclusterJobQueue",
             priority=1,
             compute_environment_order=[
                 batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
@@ -198,7 +198,7 @@ class AwsBatchConstruct(Construct):
     def _add_ecs_instance_profile(self):
         ecs_instance_role = iam.CfnRole(
             self.stack_scope,
-            "EcsInstanceRole",
+            "PclusterEcsInstanceRole",
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(
@@ -218,7 +218,7 @@ class AwsBatchConstruct(Construct):
     def _add_job_role(self):
         return iam.CfnRole(
             self.stack_scope,
-            "JobRole",
+            "PclusterJobRole",
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(service="iam", account="aws", region="", resource="policy/AmazonS3ReadOnlyAccess"),
@@ -275,7 +275,7 @@ class AwsBatchConstruct(Construct):
     def _add_job_definition_serial(self):
         return batch.CfnJobDefinition(
             self.stack_scope,
-            "JobDefinitionSerial",
+            "PclusterJobDefinitionSerial",
             type="container",
             container_properties=self._get_container_properties(),
         )
@@ -283,7 +283,7 @@ class AwsBatchConstruct(Construct):
     def _add_job_definition_mnp(self):
         return batch.CfnJobDefinition(
             self.stack_scope,
-            "JobDefinitionMNP",
+            "PclusterJobDefinitionMNP",
             type="multinode",
             node_properties=batch.CfnJobDefinition.NodePropertiesProperty(
                 main_node=0,
@@ -402,7 +402,7 @@ class AwsBatchConstruct(Construct):
     def _add_spot_fleet_iam_role(self):
         return iam.CfnRole(
             self.stack_scope,
-            "BatchSpotRole",
+            "PclusterBatchSpotRole",
             path=self._cluster_scoped_iam_path(),
             managed_policy_arns=[
                 self._format_arn(
@@ -456,7 +456,7 @@ class AwsBatchConstruct(Construct):
     def _add_code_build_role(self):
         return iam.CfnRole(
             self.stack_scope,
-            "CodeBuildRole",
+            "PclusterCodeBuildRole",
             path=self._cluster_scoped_iam_path(),
             assume_role_policy_document=get_assume_role_policy_document("codebuild.amazonaws.com"),
         )
@@ -464,7 +464,7 @@ class AwsBatchConstruct(Construct):
     def _add_code_build_policy(self):
         return iam.CfnPolicy(
             self.stack_scope,
-            "CodeBuildPolicy",
+            "PclusterCodeBuildPolicy",
             policy_name="CodeBuildPolicy",
             policy_document=iam.PolicyDocument(
                 statements=[
@@ -517,7 +517,7 @@ class AwsBatchConstruct(Construct):
 
         log_group = logs.CfnLogGroup(
             self.stack_scope,
-            "CodeBuildLogGroup",
+            "PclusterCodeBuildLogGroup",
             log_group_name=log_group_name,
             retention_in_days=get_cloud_watch_logs_retention_days(self.config),
         )
@@ -525,7 +525,7 @@ class AwsBatchConstruct(Construct):
 
         return codebuild.CfnProject(
             self.stack_scope,
-            "CodeBuildDockerImageBuilderProj",
+            "PclusterCodeBuildDockerImageBuilderProj",
             artifacts=codebuild.CfnProject.ArtifactsProperty(type="NO_ARTIFACTS"),
             environment=codebuild.CfnProject.EnvironmentProperty(
                 compute_type="BUILD_GENERAL1_LARGE"
