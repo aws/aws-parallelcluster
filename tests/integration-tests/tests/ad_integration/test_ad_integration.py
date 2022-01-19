@@ -58,6 +58,10 @@ def get_infra_stack_parameters(stack_name):
     }
 
 
+def _get_ldap_base_search(domain_name):
+    return ",".join([f"dc={domain_component}" for domain_component in domain_name.split(".")])
+
+
 def get_ad_config_param_vals(
     directory_stack_outputs,
     nlb_stack_parameters,
@@ -68,9 +72,7 @@ def get_ad_config_param_vals(
     directory_certificate_verification,
 ):
     """Return a dict used to set values for config file parameters."""
-    ldap_search_base = ",".join(
-        [f"dc={domain_component}" for domain_component in directory_stack_outputs.get("DomainName").split(".")]
-    )
+    ldap_search_base = _get_ldap_base_search(directory_stack_outputs.get("DomainName"))
     domain_short_name = directory_stack_outputs.get("DomainShortName")
     read_only_username = directory_stack_outputs.get("ReadOnlyUserName")
 
@@ -193,16 +195,27 @@ def _create_directory_stack(cfn_stacks_factory, request, directory_type, test_re
     )
     ad_admin_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
     ad_user_password = "".join(random.choices(string.ascii_letters + string.digits, k=60))
+    ad_domain_name = f"{directory_type.lower()}.multiuser.pcluster"
+    ad_domain_short_name = "NET"
+    ad_base_search = _get_ldap_base_search(ad_domain_name)
+    if directory_type == "SimpleAD":
+        ad_users_base_search = f"CN=Users,{ad_base_search}"
+    elif directory_type == "MicrosoftAD":
+        ad_users_base_search = f"OU=Users,OU={ad_domain_short_name},{ad_base_search}"
+    else:
+        raise Exception(f"Unknown directory type: {directory_type}")
+
     config_args = {
         "region": region,
         "account": account_id,
         "admin_node_ami_id": retrieve_latest_ami(region, "alinux2"),
         "admin_node_instance_type": "c5.large",
         "admin_node_key_name": request.config.getoption("key_name"),
+        "ad_users_base_search": ad_users_base_search,
         "ad_admin_password": ad_admin_password,
         "ad_user_password": ad_user_password,
-        "ad_domain_name": f"{directory_type.lower()}.multiuser.pcluster",
-        "ad_domain_short_name": "NET",
+        "ad_domain_name": ad_domain_name,
+        "ad_domain_short_name": ad_domain_short_name,
         "default_ec2_domain": "ec2.internal" if region == "us-east-1" else f"{region}.compute.internal",
         "ad_admin_user": "Administrator" if directory_type == "SimpleAD" else "Admin",
         "num_users_to_create": 100,
