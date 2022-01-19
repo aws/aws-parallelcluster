@@ -160,7 +160,6 @@ def _test_get_image_log_events(image):
     """Test pcluster get-image-log-events functionality."""
     logging.info("Testing that pcluster get-image-log-events is working as expected")
     log_stream_name = f"{get_installed_parallelcluster_version()}/1"
-    cloud_init_debug_msg = "Document arn:aws.*:imagebuilder:.*parallelclusterimage.*"
 
     # Get the first event to establish time boundary for testing
     initial_events = image.get_log_events(log_stream_name, limit=1, start_from_head=True)
@@ -189,10 +188,10 @@ def _test_get_image_log_events(image):
             assert_that(events).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).matches(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).matches(first_event["message"])
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_match(cloud_init_debug_msg)
+            assert_that(events[0]["message"]).does_not_match(first_event["message"])
 
 
 def _test_export_logs(s3_bucket_factory, image, region):
