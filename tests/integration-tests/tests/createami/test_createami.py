@@ -193,10 +193,10 @@ def _test_get_image_log_events(image):
             assert_that(events).is_length(expect_count)
 
         if expect_first is True:
-            assert_that(events[0]["message"]).matches(first_event)
+            assert_that(events[0]["message"]).matches(first_event["message"])
 
         if expect_first is False:
-            assert_that(events[0]["message"]).does_not_match(first_event)
+            assert_that(events[0]["message"]).does_not_match(first_event["message"])
 
 
 def _test_export_logs(s3_bucket_factory, image, region):
