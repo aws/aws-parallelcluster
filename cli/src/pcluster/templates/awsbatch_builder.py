@@ -259,15 +259,7 @@ class AwsBatchConstruct(Construct):
                                 actions=["cloudformation:DescribeStacks"],
                                 effect=iam.Effect.ALLOW,
                                 resources=[
-                                    self._format_arn(
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}/*",
-                                    ),
-                                    self._format_arn(
-                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}-*/*",
-                                    ),
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
                                 ],
                                 sid="CfnDescribeStacksPolicy",
                             ),
@@ -339,8 +331,6 @@ class AwsBatchConstruct(Construct):
                                     self._job_queue.ref,
                                     self._job_role.attr_arn,
                                     self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
-                                    # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}-*/*"),
                                     self._format_arn(
                                         service="s3",
                                         resource=f"{self.bucket.name}/{self.bucket.artifact_directory}/batch/*",
@@ -399,15 +389,7 @@ class AwsBatchConstruct(Construct):
                                 actions=["cloudformation:DescribeStacks"],
                                 effect=iam.Effect.ALLOW,
                                 resources=[
-                                    self._format_arn(
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}/*",
-                                    ),
-                                    self._format_arn(
-                                        # ToDo: This resource is for substack. Check if this is necessary for pcluster3
-                                        service="cloudformation",
-                                        resource=f"stack/{self.stack_name}-*/*",
-                                    ),
+                                    self._format_arn(service="cloudformation", resource=f"stack/{self.stack_name}/*"),
                                 ],
                                 sid="CfnDescribeStacksPolicy",
                             ),
