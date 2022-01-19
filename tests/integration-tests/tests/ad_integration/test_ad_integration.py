@@ -38,8 +38,8 @@ from tests.common.osu_common import compile_osu, run_osu_benchmarks
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import get_sts_endpoint, retrieve_latest_ami
 
-NUM_USERS_TO_CREATE = 20
-NUM_USERS_TO_TEST = 10
+NUM_USERS_TO_CREATE = 5
+NUM_USERS_TO_TEST = 3
 
 
 def get_infra_stack_outputs(stack_name):
