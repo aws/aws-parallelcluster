@@ -424,7 +424,14 @@ def _test_custom_log(cluster, os):
 def _test_logs_uploaded(cluster, os):
     """Verify scheduler plugin logs are uploaded to Cloudwatch."""
     expected_log_streams = {
-        "HeadNode": {"cfn-init", "cloud-init", "chef-client", "scheduler-plugin-err", "scheduler-plugin-out"},
+        "HeadNode": {
+            "cfn-init",
+            "cloud-init",
+            "chef-client",
+            "scheduler-plugin-err",
+            "scheduler-plugin-out",
+            "clusterstatusmgtd",
+        },
         "Compute": {"syslog" if os.startswith("ubuntu") else "system-messages", "supervisord", "scheduler-plugin-out"},
     }
     check_pcluster_list_cluster_log_streams(cluster, os, expected_log_streams=expected_log_streams)
