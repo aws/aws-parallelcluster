@@ -25,7 +25,3 @@ Scheduling:
           InstanceType: c5.xlarge
           CustomSettings:
             CustomComputeResourceKey1: CustomValue1
-Monitoring:
-  Logs:
-    CloudWatch:
-      DeletionPolicy: Delete

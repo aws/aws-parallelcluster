@@ -25,6 +25,8 @@
 # - PCLUSTER_COMPUTE_RESOURCE_NAME: contains the name of the compute resource the node belongs to (empty in case of head node).
 # - PCLUSTER_INSTANCE_TYPES_DATA: path to a JSON file containing the instance types data for the instances used in the queues
 # - PCLUSTER_NODE_TYPE: type of the node: head or compute
+# - PCLUSTER_PYTHON_ROOT: path to the root of a Python virtual environment dedicated to the scheduler plugin events.
+#   Python invocation from scheduler plugin handlers will use the Python binaries belonging to this environment.
 ##################################################################
 
 set -e
