@@ -69,6 +69,10 @@ Resources:
     Type: AWS::CloudFormation::CustomResource
   CleanupRoute53Function:
     Properties:
+      FunctionName:
+        Fn::Sub:
+          - pcluster-CleanupRoute53-${Id}
+          - { Id: !Select [2, !Split ['/', !Ref 'AWS::StackId']] }
       Code:
         ZipFile: |
           import cfnresponse

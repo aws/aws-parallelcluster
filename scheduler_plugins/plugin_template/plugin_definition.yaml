@@ -41,6 +41,7 @@ ClusterInfrastructure:
     # when defining this url. The template can be specified as an S3 or HTTPS url.
     Template: s3://<BUCKET>/scheduler_plugins/plugin_template/additional_cluster_infrastructure.cfn.yaml
     # Template: https://<BUCKET>.s3.${Region}.${URLSuffix}/scheduler_plugins/plugin_template/additional_cluster_infrastructure.cfn.yaml
+    Checksum: <TEMPLATE_CHECKSUM>
 PluginResources:
   # HTTPS or S3 URL of remote resources that ParallelCluster downloads and makes available to plugin event handlers.
   # In order to allow access to regionalized resources the ${Region} and the ${URLSuffix} variables are made available
@@ -48,12 +49,14 @@ PluginResources:
   ClusterSharedArtifacts:
     - Source: s3://<BUCKET>/scheduler_plugins/plugin_template/artifacts.tar.gz
       # Source: https://<BUCKET>.s3.${Region}.${URLSuffix}/scheduler_plugins/plugin_template/artifacts.tar.gz
+      Checksum: <ARTIFACTS_CHECKSUM>
 # The scheduler plugins will (possibly) require a number of “system” level users to run various processes.
 # This section can be used to create system users with a consistent user id on all cluster nodes.
 SystemUsers:
   - Name: super-user
     # Whether or not such user has access to IMDS, hence to IAM Instance Profile
     EnableImds: true
+    # Sudoer configuration for the user
     SudoerConfiguration:
       - Commands: ALL
         RunAs: root
@@ -94,3 +97,6 @@ Monitoring:
       TimestampFormat: '%Y-%m-%dT%H:%M:%S%z'
       NodeType: ALL
       LogStreamName: mypluginlog
+Tags:
+  - Key: pcluster-plugin-tag
+    Value: example
